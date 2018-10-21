@@ -1,0 +1,12 @@
+<package>
+  <name>link_bot_gazebo</name>
+  <version>0.0.0</version>
+  <description>link bot gazebo</description>
+  <maintainer email="pmitrano@umich.edu">Peter Mitrano</maintainer>
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>gazebo_ros</run_depend>
+  <run_depend>link_bot_description</run_depend>
+</package>
