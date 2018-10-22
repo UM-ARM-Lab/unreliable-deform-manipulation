@@ -29,7 +29,7 @@ class LinkBotTeleop:
         apply_wrench = rospy.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
         get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
 
-        inputs = [[self.args.vx, self.args.vy]] * 20
+        inputs = [[self.args.vx, self.args.vy]] * 20 + [[0, 0]]*10
 
         data = []
         for fx, fy in inputs:
