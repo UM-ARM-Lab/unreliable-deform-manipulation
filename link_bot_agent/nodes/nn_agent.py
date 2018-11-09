@@ -16,36 +16,13 @@ from gazebo_msgs.srv import ApplyBodyWrench, ApplyBodyWrenchRequest, GetLinkStat
 from std_srvs.srv import Empty, EmptyRequest
 
 
-class NNModel(model_common.BaseModel):
-
-    def __init__(self, N, M, L, n_hidden):
-        super(NNModel).__init__(self, N, M, L)
-
-    def reduce(self, s):
-        pass
-
-    def predict(self, o, u):
-        pass
-
-    def cost(self, o, goal):
-        pass
-
-    def train(self, x_train, y_train, epochs=5):
-        """
-        x train is an array, each row of which looks like:
-            [s_t, u_t, s_{t+1}, goal]
-        y train is an array, each row of which looks like:
-            [c_t, c_{t+1}]
-         """
-        pass
-
-
 class NNLearner:
 
     def __init__(self, args):
         self.args = args
         self.wrapper_name = args.model_name
         self.dt = 0.1
+        goal = np.array([[4], [0], [5], [0], [6], [0]])
         self.nn = NNModel()
         self.wrapper = model_common.ModelWrapper(self.nn)
 
@@ -92,56 +69,10 @@ class NNLearner:
         wrench_req.duration.secs = -1
         wrench_req.duration.nsecs = -1
 
-        goal = np.array([[4], [0], [5], [0], [6], [0]])
-
-        # set up our model
-        summaries = tf.summary.merge_all()
-        sess = tf.Session()
-        saver = tf.train.Saver()
-        stamp = "{:%B_%d_%H:%M:%S}".format(datetime.now())
-        log_dir = os.path.join("log_data", stamp)
-        writer = tf.summary.FileWriter(log_dir)
-        writer.add_graph(sess.graph)
 
         # load our initial training data and train to it
-        if self.args.load:
-            saver.restore(sess, self.args.load)
-        else:
-            init_op = tf.global_variables_initializer()
-            sess.run(init_op)
-
-            self.pause(EmptyRequest())
-
-            log_data = np.loadtxt(self.args.initial_data)
-            n_training_samples = log_data.shape[0]
-            initial_x = np.ndarray(n_training_samples - 1, 6 + 6 + 2 + 6)
-            initial_y = np.ndarray(n_training_samples - 1, 2)
-            for i in range(n_training_samples - 1):
-                s = np.expand_dims(log_data[i][0:6], axis=1)
-                s_ = np.expand_dims(log_data[i + 1][0:6], axis=1)
-                u = np.expand_dims(log_data[i][8:10], axis=1)
-                c = (log_data[i][0] - g[0]) ** 2 + (log_data[i][1] - g[1]) ** 2
-                c_ = (log_data[i + 1][0] - g[0]) ** 2 + (log_data[i + 1][1] - g[1]) ** 2
-                initial_x[i][0:6] = s
-                initial_x[i][6:12] = s_
-                initial_x[i][12:14] = u
-                initial_x[i][14:20] = goal
-                initial_y[i][0] = c
-                initial_y[i][1] = c_
-
-            batch_size = 32
-            for i in range(self.args.epochs):
-                start = np.random.randint(0, n_training_samples - batch_size)
-                batch_x = initial_x[start, start + batch_size][0, 1, 2]
-                batch_y = initial_y[start, start + batch_size]
-                feed_dict = {self.nn.x: batch_x, self.nn.y: batch_y}
-                ops = [self.nn.global_step, summaries, self.nn.loss]
-                step, summary, loss = sess.run(ops, feed_dict=feed_dict)
-                writer.add_summary(summary, step)
-
-            saver.save(sess, os.path.join(log_dir, "nn.ckpt"))
-
-            self.unpause(EmptyRequest())
+        self.pause(EmptyRequest())
+        self.unpause(EmptyRequest())
 
         data = []
 
