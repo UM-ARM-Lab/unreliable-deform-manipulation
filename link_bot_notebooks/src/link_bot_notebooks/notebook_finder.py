@@ -59,7 +59,7 @@ class NotebookLoader(object):
             if cell.cell_type == 'code':
                 # transform the input to executable Python
                 code = self.shell.input_transformer_manager.transform_cell(cell.source)
-                # rtun the code in themodule
+                # run the code in the module
                 exec(code, mod.__dict__)
         finally:
             self.shell.user_ns = save_user_ns

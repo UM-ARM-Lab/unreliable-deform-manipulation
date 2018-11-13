@@ -2,6 +2,8 @@
 from time import sleep
 import argparse
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 import rospy
 from link_bot_notebooks import notebook_finder
@@ -25,17 +27,37 @@ class ScipyLearner:
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
 
-    def plan(self, o, goal):
-        potential_actions = np.random.randint(-100, 100, (100, 2, 1))
-        min_cost_action = potential_actions[0]
-        min_cost = self.model.predict_cost(o, potential_actions[0], self.dt, goal)
+    def plan_on_step(self, o, goal):
+        potential_actions = np.vstack((np.array([[[0], [0]]]), 10 * np.random.randint(-10, 10, size=(200, 2, 1))))
+        min_cost_action = None
+        next_o = None
+        min_cost = 1e9
+        colors = []
+        xs = []
+        ys = []
         for a in potential_actions:
-            c = self.model.predict_cost(o, potential_actions[0], self.dt, goal)
+            o_ = self.model.predict_from_o(o, a, self.dt)
+            c = self.model.cost_of_o(o_, goal)[0, 0]
+            x = o_[0, 0]
+            y = o_[1, 0]
+            xs.append(x)
+            ys.append(y)
+            colors.append(c)
             if c < min_cost:
                 min_cost = c
+                next_o = o_
                 min_cost_action = a
 
-        return min_cost_action
+        return min_cost_action, min_cost, next_o
+
+    def plan(self, o, goal, T=300):
+        actions = []
+        for _ in range(T):
+            a, c, next_o = self.plan_on_step(o, goal)
+            actions.append(a)
+            o = next_o
+
+        return actions
 
     def get_state(self):
         o = []
@@ -59,10 +81,12 @@ class ScipyLearner:
         wrench_req = ApplyBodyWrenchRequest()
         wrench_req.body_name = self.model_name + "::head"
         wrench_req.reference_frame = "world"
-        wrench_req.duration.secs = -1
-        wrench_req.duration.nsecs = -1
+        wrench_req.duration.secs = 0
+        wrench_req.duration.nsecs = self.dt * 1e9
 
-        goal = np.array([[4], [0], [5], [0], [6], [0]])
+        gx = -5
+        gy = -5
+        goal = np.array([[gx], [gy], [gx + 1], [gy], [gx + 2], [gy]])
 
         # load our initial training data and train to it
         if self.args.load:
@@ -71,56 +95,79 @@ class ScipyLearner:
             initial_data = tpo.load_gazebo_data_v2(args.initial_data, goal)
             self.pause(EmptyRequest())
             tpo.train(initial_data, self.model, goal, self.dt, tpo.one_step_cost_prediction_objective)
-            self.model.save(self.args.model_save_file)
-            self.unpause(EmptyRequest())
+            self.model.save(self.args.new_model)
 
         data = []
 
-        # get the current state of the world and reduce it
+        prev_s = None
+        prev_true_cost = None
+
         s = self.get_state()
         o = self.model.reduce(s)
-        cost = self.model.cost_of_o(o, goal)
+        actions = self.plan(o, goal)
+        back_xs = []
+        back_ys = []
+        for a in actions:
+            next_o = self.model.predict_from_o(o, a, self.dt)
+            s_back = np.linalg.lstsq(self.model.A, o, rcond=None)[0]
+            back_xs.append(s_back[0,0])
+            back_ys.append(s_back[1,0])
+            o = next_o
 
-        for i in range(1000):
-            action = self.plan(o, goal)
+        rainbow = cm.rainbow(np.linspace(0, 1, len(actions)))
+        plt.scatter(back_xs, back_ys, c=rainbow)
+        plt.axis('equal')
+        plt.title("first two components of recovered state over time")
+        plt.xlabel("X (meters)")
+        plt.xlabel("Y (meters)")
+        plt.show()
+        return
 
+        for i, action in enumerate(actions):
             wrench_req.wrench.force.x = action[0, 0]
             wrench_req.wrench.force.y = action[1, 0]
 
             # Take action and wait for dt
+            self.unpause(EmptyRequest())
             self.apply_wrench(wrench_req)
             sleep(self.dt)
+            self.pause(EmptyRequest())
 
             # aggregate data
-            prev_s = s
-            prev_cost = cost
             s = self.get_state()
-            cost = self.state_cost(s, goal)
-            datum = np.concatenate((prev_s.flatten(),
-                                    action.flatten(),
-                                    s.flatten(),
-                                    prev_cost.flatten(),
-                                    cost.flatten()))
+            true_cost = self.state_cost(s, goal)
+            o_cost = self.model.cost_of_s(s, goal)[0, 0]
+            if i > 0:
+                datum = np.concatenate(
+                    (prev_s.flatten(), action.flatten(), s.flatten(), prev_true_cost.flatten(), true_cost.flatten()))
+                if self.args.verbose:
+                    print(datum)
 
-            if self.args.verbose:
-                print(datum)
-            data.append(datum)
+                data.append(datum)
 
-            if cost < 1e-2:
+            s_back = np.linalg.lstsq(self.model.A, self.model.reduce(s), rcond=None)[0]
+            print(s.T, s_back.T, true_cost, o_cost)
+            if self.args.pause:
+                raw_input()
+
+            if true_cost < 0.01:
                 print("Success!")
                 break
 
-            # Retrain
-            # self.pause(EmptyRequest())
-            # tpo.train(data, self.model, goal, self.dt, tpo.one_step_cost_prediction_objective)
-            # self.unpause(EmptyRequest())
+            prev_true_cost = true_cost
+            prev_s = s
+
+        # Retrain
+        # self.pause(EmptyRequest())
+        # tpo.train(data, self.model, goal, self.dt, tpo.one_step_cost_prediction_objective)
+        # self.unpause(EmptyRequest())
 
         # Stop the force application
         wrench_req.wrench.force.x = 0
         wrench_req.wrench.force.y = 0
         self.apply_wrench(wrench_req)
 
-        np.savetxt(self.args.outfile, data)
+        np.savetxt(self.args.new_data, data)
 
 
 if __name__ == '__main__':
@@ -129,9 +176,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", '-m', default="myfirst")
     parser.add_argument("--verbose", action='store_true')
-    parser.add_argument("initial_data", help="initial training data file")
-    parser.add_argument("model_save_file", help="initial training data file")
-    parser.add_argument("outfile", help='filename to store data in')
+    parser.add_argument("--pause", action='store_true')
+    parser.add_argument("--initial_data", help="initial training data file")
+    parser.add_argument("new_model", help="initial training data file")
+    parser.add_argument("new_data", help='filename to store data in')
     parser.add_argument("--load", help="load this saved model file")
 
     args = parser.parse_args()
