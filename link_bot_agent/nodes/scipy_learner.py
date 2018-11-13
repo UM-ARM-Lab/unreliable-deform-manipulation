@@ -27,7 +27,7 @@ class ScipyLearner:
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
 
-    def plan_on_step(self, o, goal):
+    def plan_one_step(self, o, goal):
         potential_actions = np.vstack((np.array([[[0], [0]]]), 10 * np.random.randint(-10, 10, size=(200, 2, 1))))
         min_cost_action = None
         next_o = None
@@ -51,11 +51,26 @@ class ScipyLearner:
         return min_cost_action, min_cost, next_o
 
     def plan(self, o, goal, T=300):
-        actions = []
-        for _ in range(T):
-            a, c, next_o = self.plan_on_step(o, goal)
-            actions.append(a)
+        actions = np.zeros((T, 2, 1))
+        os = np.zeros((T, 2))
+        sbacks = np.zeros((T, 6))
+        for i in range(T):
+            s_back = np.linalg.lstsq(self.model.A, o, rcond=None)[0]
+            sbacks[i] = np.squeeze(s_back)
+            os[i] = np.squeeze(o)
+            a, c, next_o = self.plan_one_step(o, goal)
+            print(o.T, a.T)
+            actions[i] = a
             o = next_o
+
+        ax = plt.gca()
+        ax.plot(os[:, 0], os[:, 1], label="$o_1$, $o_2$")
+        ax.plot(sbacks[:, 0], sbacks[:, 1], label="$s_1$, $s_2$ recovered from $o$")
+        ax.quiver(sbacks[:, 0], sbacks[:, 1], actions[:, 0, 0], actions[:, 1, 0])
+        ax.set_xlabel("X (m)")
+        ax.set_ylabel("Y (m)")
+        plt.legend()
+        plt.show()
 
         return actions
 
@@ -77,7 +92,7 @@ class ScipyLearner:
         return np.linalg.norm(s - goal)
 
     def run(self):
-        np.random.seed(123)
+        np.random.seed(111)
         wrench_req = ApplyBodyWrenchRequest()
         wrench_req.body_name = self.model_name + "::head"
         wrench_req.reference_frame = "world"
@@ -97,6 +112,8 @@ class ScipyLearner:
             tpo.train(initial_data, self.model, goal, self.dt, tpo.one_step_cost_prediction_objective)
             self.model.save(self.args.new_model)
 
+        print(self.model)
+
         data = []
 
         prev_s = None
@@ -105,23 +122,6 @@ class ScipyLearner:
         s = self.get_state()
         o = self.model.reduce(s)
         actions = self.plan(o, goal)
-        back_xs = []
-        back_ys = []
-        for a in actions:
-            next_o = self.model.predict_from_o(o, a, self.dt)
-            s_back = np.linalg.lstsq(self.model.A, o, rcond=None)[0]
-            back_xs.append(s_back[0,0])
-            back_ys.append(s_back[1,0])
-            o = next_o
-
-        rainbow = cm.rainbow(np.linspace(0, 1, len(actions)))
-        plt.scatter(back_xs, back_ys, c=rainbow)
-        plt.axis('equal')
-        plt.title("first two components of recovered state over time")
-        plt.xlabel("X (meters)")
-        plt.xlabel("Y (meters)")
-        plt.show()
-        return
 
         for i, action in enumerate(actions):
             wrench_req.wrench.force.x = action[0, 0]
@@ -146,7 +146,7 @@ class ScipyLearner:
                 data.append(datum)
 
             s_back = np.linalg.lstsq(self.model.A, self.model.reduce(s), rcond=None)[0]
-            print(s.T, s_back.T, true_cost, o_cost)
+            print(s.T, s_back.T, action.T, true_cost, o_cost)
             if self.args.pause:
                 raw_input()
 
@@ -171,7 +171,7 @@ class ScipyLearner:
 
 
 if __name__ == '__main__':
-    np.set_printoptions(precision=2, suppress=True)
+    np.set_printoptions(precision=6, suppress=True)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", '-m', default="myfirst")

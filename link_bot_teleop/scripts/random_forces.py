@@ -35,8 +35,8 @@ class LinkBotTeleop:
 
         data = []
         for i in range(args.n_moves):
-            fx = np.random.randint(-100, 100)
-            fy = np.random.randint(-100, 100)
+            fx = np.random.randint(-1, 1) * args.scale
+            fy = np.random.randint(-1, 1) * args.scale
             wrench_req.wrench.force.x = fx
             wrench_req.wrench.force.y = fy
             apply_wrench(wrench_req)
@@ -83,6 +83,7 @@ if __name__ == '__main__':
     parser.add_argument("--model-name", '-m', default="myfirst")
     parser.add_argument("--n-moves", '-n', type=int, default=10)
     parser.add_argument("--verbose", '-v', action="store_true")
+    parser.add_argument("--scale", '-s', type=float, default=10)
 
     args = parser.parse_args()
 
