@@ -6,6 +6,7 @@ from time import sleep
 import numpy as np
 import argparse
 from gazebo_msgs.srv import GetLinkStateRequest, GetLinkState
+from std_srvs.srv import Empty, EmptyRequest
 
 
 class LogGazeboState:
@@ -23,6 +24,8 @@ class LogGazeboState:
         links = ['link_0', 'link_1', 'head']
 
         get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
+        unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
+        unpause(EmptyRequest())
 
         n_time_steps = int(self.duration / DT)
         data = np.ndarray((n_time_steps, 12))
@@ -59,7 +62,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("outfile", help="output file name", type=str)
     parser.add_argument("duration", help="number of seconds to log for", type=float, default=10)
-    parser.add_argument("--model_name", '-m', default="link_bot")
+    parser.add_argument("model_name")
     parser.add_argument("--verbose", '-v', action="store_true")
 
     args = parser.parse_args()
