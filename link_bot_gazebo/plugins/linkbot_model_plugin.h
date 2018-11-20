@@ -9,7 +9,7 @@
 #include <ros/ros.h>
 #include <ros/subscribe_options.h>
 #include <ros/callback_queue.h>
-#include <geometry_msgs/Twist.h>
+#include <sensor_msgs/Joy.h>
 
 namespace gazebo {
     class LinkBotModelPlugin : public ModelPlugin {
@@ -20,7 +20,7 @@ namespace gazebo {
 
         void OnUpdate();
 
-        void OnCmdVel(geometry_msgs::TwistConstPtr const &_msg);
+        void OnCmdVel(sensor_msgs::JoyConstPtr const &_msg);
 
     protected:
 
@@ -38,9 +38,10 @@ namespace gazebo {
         math::Vector3 target_linear_vel_{0, 0, 0};
         physics::LinkPtr link_;
         std::unique_ptr<ros::NodeHandle> ros_node_;
-        ros::Subscriber ros_sub_;
+        ros::Subscriber cmd_sub_;
         ros::CallbackQueue queue_;
         std::thread ros_queue_thread_;
         bool alive_{false};
+        double joy_scale_{1.0};
     };
 }

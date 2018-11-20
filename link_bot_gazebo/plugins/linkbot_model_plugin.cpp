@@ -16,11 +16,11 @@ namespace gazebo {
 
         ros_node_.reset(new ros::NodeHandle("linkbot_model_plugin"));
 
-        ros::SubscribeOptions so = ros::SubscribeOptions::create<geometry_msgs::Twist>(
-                "/linkbot_model_plugin/cmd_vel",
+        ros::SubscribeOptions so = ros::SubscribeOptions::create<sensor_msgs::Joy>(
+                "/joy",
                 1, boost::bind(&LinkBotModelPlugin::OnCmdVel, this, _1),
                 ros::VoidPtr(), &queue_);
-        ros_sub_ = ros_node_->subscribe(so);
+        cmd_sub_ = ros_node_->subscribe(so);
         ros_queue_thread_ = std::thread(std::bind(&LinkBotModelPlugin::QueueThread, this));
 
         if (!sdf->HasElement("kP")) {
@@ -41,11 +41,20 @@ namespace gazebo {
             kD_ = sdf->GetElement("kD")->Get<double>();
         }
 
+
+        if (!sdf->HasElement("joy_scale")) {
+            printf("using default joy_scale=%f\n", joy_scale_);
+        } else {
+            joy_scale_ = sdf->GetElement("joy_scale")->Get<double>();
+        }
+
         if (!sdf->HasElement("link_name")) {
             printf("using default link_name=%s\n", link_name_.c_str());
         } else {
             link_name_ = sdf->GetElement("link_name")->Get<std::string>();
         }
+
+        ROS_INFO("kP=%f, kI=%f, kD=%f", kP_, kI_, kD_);
 
         model_ = parent;
         link_ = parent->GetLink(link_name_);
@@ -65,9 +74,9 @@ namespace gazebo {
         link_->AddForce(force);
     }
 
-    void LinkBotModelPlugin::OnCmdVel(geometry_msgs::TwistConstPtr const &msg) {
-        target_linear_vel_.x = msg->linear.x;
-        target_linear_vel_.y = msg->linear.y;
+    void LinkBotModelPlugin::OnCmdVel(sensor_msgs::JoyConstPtr const &msg) {
+        target_linear_vel_.x = -msg->axes[1] * joy_scale_;
+        target_linear_vel_.y = -msg->axes[0] * joy_scale_;
         ROS_WARN("TARGET: %f, %f", target_linear_vel_.x, target_linear_vel_.y);
     }
 

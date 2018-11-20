@@ -1,7 +1,7 @@
 project(link_bot_gazebo)
 cmake_minimum_required(VERSION 3.5)
 
-find_package(catkin REQUIRED COMPONENTS roscpp std_msgs geometry_msgs)
+find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs)
 find_package(gazebo REQUIRED)
 
 catkin_package()
