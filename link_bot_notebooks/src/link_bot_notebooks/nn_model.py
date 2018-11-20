@@ -8,24 +8,6 @@ import tensorflow as tf
 from link_bot_notebooks import base_model
 
 
-def load_and_construct_training_data(filename, N, M, L, goal):
-    log_data = np.loadtxt(filename)
-    n_training_samples = log_data.shape[0]
-    train_x = np.ndarray((n_training_samples - 1, 3 * N + L))
-    train_y = np.ndarray((n_training_samples - 1, 2))
-    for i in range(n_training_samples - 1):
-        s = log_data[i][0:6]
-        s_ = log_data[i + 1][0:6]
-        u = log_data[i][8:10]
-        c = (log_data[i][0] - goal[0]) ** 2 + (log_data[i][1] - goal[1]) ** 2
-        c_ = (log_data[i + 1][0] - goal[0]) ** 2 + (log_data[i + 1][1] - goal[1]) ** 2
-        train_x[i] = np.concatenate((s, s_, goal, u))
-        train_y[i][0] = c
-        train_y[i][1] = c_
-
-    return n_training_samples, train_x, train_y
-
-
 class NNModel(base_model.BaseModel):
 
     def __init__(self, args, N, M, L, dims):
@@ -175,7 +157,7 @@ class NNModel(base_model.BaseModel):
                 self.writer.add_summary(summary, step)
 
         if self.args.log:
-            self.saver.save(self.sess, os.path.join(self.log_dir, "nn.ckpt"))
+            self.save()
 
     def init(self):
         init_op = tf.global_variables_initializer()

@@ -59,14 +59,22 @@ class ScipyLearner:
             sbacks[i] = np.squeeze(s_back)
             os[i] = np.squeeze(o)
             a, c, next_o = self.plan_one_step(o, goal)
-            print(o.T, a.T)
             actions[i] = a
             o = next_o
 
+        plt.figure()
+        plt.plot(actions[:, 0, 0], label="x force")
+        plt.plot(actions[:, 1, 0], label="y force")
+        plt.xlabel("time steps")
+        plt.ylabel("force (N)")
+        plt.legend()
+
+        plt.figure()
         ax = plt.gca()
         ax.plot(os[:, 0], os[:, 1], label="$o_1$, $o_2$")
         ax.plot(sbacks[:, 0], sbacks[:, 1], label="$s_1$, $s_2$ recovered from $o$")
-        ax.quiver(sbacks[:, 0], sbacks[:, 1], actions[:, 0, 0], actions[:, 1, 0])
+        S = 20
+        q = ax.quiver(sbacks[::S, 0], sbacks[::S, 1], actions[::S, 0, 0], actions[::S, 1, 0], scale=5000, width=0.001)
         ax.set_xlabel("X (m)")
         ax.set_ylabel("Y (m)")
         plt.legend()
@@ -109,7 +117,7 @@ class ScipyLearner:
         else:
             initial_data = tpo.load_gazebo_data_v2(args.initial_data, goal)
             self.pause(EmptyRequest())
-            tpo.train(initial_data, self.model, goal, self.dt, tpo.one_step_cost_prediction_objective)
+            tpo.train(initial_data, self.model, goal, self.dt, tpo.cost_prediction_objective)
             self.model.save(self.args.new_model)
 
         print(self.model)

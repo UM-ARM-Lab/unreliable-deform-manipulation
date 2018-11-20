@@ -3,7 +3,10 @@
 import argparse
 import numpy as np
 
-from link_bot_notebooks.nn_model import NNModel, load_and_construct_training_data
+from link_bot_notebooks import notebook_finder
+from link_bot_notebooks import toy_problem_optimization_common as tpo
+from link_bot_notebooks.nn_model import NNModel
+from link_bot_notebooks.linear_tf_model import LinearTFModel
 
 DIMENSIONS = {
     # Reduction
@@ -17,16 +20,26 @@ DIMENSIONS = {
 
 def train(args):
     goal = np.array([4, 0, 5, 0, 6, 0])
-    n, x, y = load_and_construct_training_data(args.dataset, 6, 2, 2, goal)
-    model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
+    n, x, y = tpo.load_gazebo_data_tf(args.dataset, N=6, M=2, L=2, goal=goal)
+    # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
+    model = LinearTFModel(vars(args), N=6, M=2, L=2)
     model.train(x, y, args.epochs)
 
 
 def model_only(args):
-    model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
+    # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
+    model = LinearTFModel(vars(args), N=6, M=2, L=2)
     if args.log:
         model.init()
         model.save()
+
+def evaluate(args):
+    goal = np.array([4, 0, 5, 0, 6, 0])
+    n, x, y = tpo.load_gazebo_data_tf(args.dataset, N=6, M=2, L=2, goal=goal)
+    # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
+    model = LinearTFModel(vars(args), N=6, M=2, L=2)
+    model.load()
+    model.evaluate(x, y)
 
 
 if __name__ == '__main__':
@@ -40,7 +53,14 @@ if __name__ == '__main__':
     train_subparser.add_argument("dataset", help="dataset (txt file)")
     train_subparser.add_argument("--log", "-l", action="store_true", help="save/log the graph and summaries")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=100)
+    train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
+    train_subparser.add_argument("--batch_size", "-b", type=int, default=256)
     train_subparser.set_defaults(func=train)
+
+    eval_subparser = subparsers.add_parser("eval")
+    eval_subparser.add_argument("dataset", help="dataset (txt file)")
+    eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
+    eval_subparser.set_defaults(func=evaluate)
 
     model_only_subparser = subparsers.add_parser("model_only")
     model_only_subparser.add_argument("--log", "-l", action="store_true", help="save/log the graph and summaries")

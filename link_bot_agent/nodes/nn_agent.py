@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-import tensorflow as tf
-import os
-from datetime import datetime
 from time import sleep
 import argparse
 import numpy as np

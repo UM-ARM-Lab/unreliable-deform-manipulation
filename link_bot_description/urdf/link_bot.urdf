@@ -64,16 +64,16 @@
     <child link="link_1"/>
     <origin xyz="1 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-2" upper="2" effort="10" velocity="1"/>
-    <dynamics damping="5.0" friction="0.0"/>
+    <limit lower="-3" upper="3" effort="10" velocity="1"/>
+    <dynamics damping="1.0" friction="0.0"/>
   </joint>
   <joint name="head_joint" type="revolute">
     <parent link="link_1"/>
     <child link="head"/>
     <origin xyz="1 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-2" upper="2" effort="10" velocity="1"/>
-    <dynamics damping="5.0" friction="0.0"/>
+    <limit lower="-3" upper="3" effort="10" velocity="1"/>
+    <dynamics damping="1.0" friction="0.0"/>
   </joint>
   <gazebo reference="link_0">
     <mu1>0.4</mu1>
@@ -89,5 +89,13 @@
     <mu1>0.4</mu1>
     <mu2>0.4</mu2>
     <material>Gazebo/Blue</material>
+  </gazebo>
+  <gazebo>
+    <plugin name="linkbot_model_plugin" filename="liblinkbot_model_plugind.so">
+        <kP>600.0</kP>
+        <kI>50.0</kI>
+        <kD>0.0</kD>
+        <joy_scale>0.75</joy_scale>
+    </plugin>
   </gazebo>
 </robot>
