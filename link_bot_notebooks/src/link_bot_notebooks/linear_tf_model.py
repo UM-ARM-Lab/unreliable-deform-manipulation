@@ -55,22 +55,22 @@ class LinearTFModel(base_model.BaseModel):
             self.opt = tf.train.AdamOptimizer(
                 learning_rate=self.learning_rate).minimize(self.loss, global_step=self.global_step)
 
-            if 'log' in self.args and self.args['log']:
-                trainable_vars = tf.trainable_variables()
-                grads = zip(tf.gradients(self.loss, trainable_vars), trainable_vars)
-                for grad, var in grads:
-                    tf.summary.histogram(var.name + "/gradient", grad)
+            trainable_vars = tf.trainable_variables()
+            grads = zip(tf.gradients(self.loss, trainable_vars), trainable_vars)
+            for grad, var in grads:
+                tf.summary.histogram(var.name + "/gradient", grad)
 
-                tf.summary.scalar("learning_rate", self.learning_rate)
-                tf.summary.scalar("cost_loss", self.cost_loss)
-                tf.summary.scalar("state_prediction_loss", self.state_prediction_loss)
-                tf.summary.scalar("cost_prediction_loss", self.cost_prediction_loss)
-                tf.summary.scalar("regularization_loss", self.regularization)
-                tf.summary.scalar("loss", self.loss)
+            tf.summary.scalar("learning_rate", self.learning_rate)
+            tf.summary.scalar("cost_loss", self.cost_loss)
+            tf.summary.scalar("state_prediction_loss", self.state_prediction_loss)
+            tf.summary.scalar("cost_prediction_loss", self.cost_prediction_loss)
+            tf.summary.scalar("regularization_loss", self.regularization)
+            tf.summary.scalar("loss", self.loss)
 
             # Set up logging/saving
             self.summaries = tf.summary.merge_all()
-            self.sess = tf.Session()
+            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.015)
+            self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
             self.saver = tf.train.Saver()
             stamp = "{:%B_%d_%H:%M:%S}".format(datetime.now())
             self.log_dir = None
@@ -98,14 +98,20 @@ class LinearTFModel(base_model.BaseModel):
         n_training_samples = x_train.shape[0]
         batch_size = self.args['batch_size']
         try:
+            print("TRAINING FOR {} EPOCHS:", epochs)
             for i in range(epochs):
-                start = np.random.randint(0, n_training_samples - batch_size)
-                batch_s = x_train[start: start + batch_size, 0:self.N]
-                batch_s_ = x_train[start: start + batch_size, self.N: 2 * self.N]
-                batch_g = x_train[start: start + batch_size, 2 * self.N: 3 * self.N]
-                batch_u = x_train[start: start + batch_size, 3 * self.N: 3 * self.N + self.L]
-                batch_c = y_train[start: start + batch_size, 0]
-                batch_c_ = y_train[start: start + batch_size, 1]
+                if batch_size == -1:
+                    start = 0
+                    end = n_training_samples
+                else:
+                    start = np.random.randint(0, n_training_samples - batch_size)
+                    end = start + batch_size
+                batch_s = x_train[start:end, 0:self.N]
+                batch_s_ = x_train[start:end, self.N: 2 * self.N]
+                batch_g = x_train[start:end, 2 * self.N: 3 * self.N]
+                batch_u = x_train[start:end, 3 * self.N: 3 * self.N + self.L]
+                batch_c = y_train[start:end, 0]
+                batch_c_ = y_train[start:end, 1]
                 feed_dict = {self.s: batch_s,
                              self.s_: batch_s_,
                              self.u: batch_u,
@@ -131,19 +137,19 @@ class LinearTFModel(base_model.BaseModel):
         self.sess.run(init_op)
 
     def reduce(self, s):
-        feed_dict = {self.s: s}
+        feed_dict = {self.s: s.T}
         ops = [self.hat_o]
         hat_o = self.sess.run(ops, feed_dict=feed_dict)
         return hat_o
 
     def predict(self, o, u):
-        feed_dict = {self.hat_o: o, self.u: u}
+        feed_dict = {self.hat_o: o.T, self.u: u.T}
         ops = [self.hat_o_]
         hat_o_ = self.sess.run(ops, feed_dict=feed_dict)
         return hat_o_
 
     def cost(self, o, g):
-        feed_dict = {self.hat_o: o, self.g: g}
+        feed_dict = {self.hat_o: o.T, self.g: g.T}
         ops = [self.hat_c]
         hat_c = self.sess.run(ops, feed_dict=feed_dict)
         return hat_c
@@ -154,7 +160,7 @@ class LinearTFModel(base_model.BaseModel):
     def load(self):
         self.saver.restore(self.sess, self.args['checkpoint'])
         global_step = self.sess.run(self.global_step)
-        print(Fore.CYAN + "Restored checkpoint {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
+        print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
 
     def evaluate(self, x_eval, y_eval, display=True):
         s = x_eval[:, 0:self.N]

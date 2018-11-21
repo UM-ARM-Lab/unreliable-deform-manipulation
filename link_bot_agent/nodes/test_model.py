@@ -3,23 +3,24 @@ from time import sleep
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 
 import rospy
 from link_bot_notebooks import notebook_finder
 from link_bot_notebooks import toy_problem_optimization_common as tpo
+from link_bot_notebooks.linear_tf_model import LinearTFModel
 
 from gazebo_msgs.srv import ApplyBodyWrench, ApplyBodyWrenchRequest, GetLinkState, GetLinkStateRequest
 from std_srvs.srv import Empty, EmptyRequest
 
 
-class ScipyLearner:
+class TestModel:
 
     def __init__(self, args):
         self.args = args
         self.model_name = args.model_name
         self.dt = 0.1
-        self.model = tpo.LinearStateSpaceModelWithQuadraticCost(N=6, M=2, L=2)
+        # self.model = tpo.LinearStateSpaceModelWithQuadraticCost(N=6, M=2, L=2)
+        self.model = LinearTFModel({'checkpoint': self.args.checkpoint}, N=6, M=2, L=2)
 
         rospy.init_node('ScipyLearner')
         self.get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
@@ -107,20 +108,10 @@ class ScipyLearner:
         wrench_req.duration.secs = 0
         wrench_req.duration.nsecs = self.dt * 1e9
 
-        gx = -5
-        gy = -5
-        goal = np.array([[gx], [gy], [gx + 1], [gy], [gx + 2], [gy]])
+        goal = np.zeros(6)
 
-        # load our initial training data and train to it
-        if self.args.load:
-            self.model.load(self.args.load)
-        else:
-            initial_data = tpo.load_gazebo_data_v2(args.initial_data, goal)
-            self.pause(EmptyRequest())
-            tpo.train(initial_data, self.model, goal, self.dt, tpo.cost_prediction_objective)
-            self.model.save(self.args.new_model)
-
-        print(self.model)
+        # load our initial model
+        self.model.load()
 
         data = []
 
@@ -156,7 +147,7 @@ class ScipyLearner:
             s_back = np.linalg.lstsq(self.model.A, self.model.reduce(s), rcond=None)[0]
             print(s.T, s_back.T, action.T, true_cost, o_cost)
             if self.args.pause:
-                raw_input()
+                input()
 
             if true_cost < 0.01:
                 print("Success!")
@@ -175,22 +166,21 @@ class ScipyLearner:
         wrench_req.wrench.force.y = 0
         self.apply_wrench(wrench_req)
 
-        np.savetxt(self.args.new_data, data)
+        if self.args.new_data:
+            np.savetxt(self.args.new_data, data)
 
 
 if __name__ == '__main__':
     np.set_printoptions(precision=6, suppress=True)
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("checkpoint", help="load this saved model file")
     parser.add_argument("--model-name", '-m', default="myfirst")
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--pause", action='store_true')
-    parser.add_argument("--initial_data", help="initial training data file")
-    parser.add_argument("new_model", help="initial training data file")
-    parser.add_argument("new_data", help='filename to store data in')
-    parser.add_argument("--load", help="load this saved model file")
+    parser.add_argument("--new_data", help='filename to store data in')
 
     args = parser.parse_args()
 
-    agent = ScipyLearner(args)
+    agent = TestModel(args)
     agent.run()
