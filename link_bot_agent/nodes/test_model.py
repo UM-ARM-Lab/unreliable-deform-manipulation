@@ -37,10 +37,10 @@ class TestModel:
         xs = []
         ys = []
         for a in potential_actions:
-            o_ = self.model.predict_from_o(o, a, self.dt)
-            c = self.model.cost_of_o(o_, goal)[0, 0]
+            o_ = self.model.predict_from_o(o, a.T, dt=self.dt)
+            c = self.model.cost(o_, goal)[0, 0]
             x = o_[0, 0]
-            y = o_[1, 0]
+            y = o_[0, 1]
             xs.append(x)
             ys.append(y)
             colors.append(c)
@@ -51,30 +51,31 @@ class TestModel:
 
         return min_cost_action, min_cost, next_o
 
-    def plan(self, o, goal, T=300):
+    def plan(self, o, goal, T=100):
         actions = np.zeros((T, 2, 1))
         os = np.zeros((T, 2))
         sbacks = np.zeros((T, 6))
         for i in range(T):
-            s_back = np.linalg.lstsq(self.model.A, o, rcond=None)[0]
+            s_back = np.linalg.lstsq(self.model.get_A().T, o.T, rcond=None)[0]
             sbacks[i] = np.squeeze(s_back)
             os[i] = np.squeeze(o)
-            a, c, next_o = self.plan_one_step(o, goal)
-            actions[i] = a
+            # u, c, next_o = self.plan_one_step(o, goal)
+            u, c, next_o = self.model.act(o, goal)
+            actions[i] = u
             o = next_o
 
         plt.figure()
-        plt.plot(actions[:, 0, 0], label="x force")
-        plt.plot(actions[:, 1, 0], label="y force")
+        plt.plot(actions[:, 0, 0], label="x velocity")
+        plt.plot(actions[:, 1, 0], label="y velocity")
         plt.xlabel("time steps")
-        plt.ylabel("force (N)")
+        plt.ylabel("velocity (m/s)")
         plt.legend()
 
         plt.figure()
         ax = plt.gca()
         ax.plot(os[:, 0], os[:, 1], label="$o_1$, $o_2$")
         ax.plot(sbacks[:, 0], sbacks[:, 1], label="$s_1$, $s_2$ recovered from $o$")
-        S = 20
+        S = 10
         q = ax.quiver(sbacks[::S, 0], sbacks[::S, 1], actions[::S, 0, 0], actions[::S, 1, 0], scale=5000, width=0.001)
         ax.set_xlabel("X (m)")
         ax.set_ylabel("Y (m)")
@@ -108,7 +109,7 @@ class TestModel:
         wrench_req.duration.secs = 0
         wrench_req.duration.nsecs = self.dt * 1e9
 
-        goal = np.zeros(6)
+        goal = np.zeros((1, 6))
 
         # load our initial model
         self.model.load()
@@ -119,7 +120,7 @@ class TestModel:
         prev_true_cost = None
 
         s = self.get_state()
-        o = self.model.reduce(s)
+        o = self.model.reduce(s.T)
         actions = self.plan(o, goal)
 
         for i, action in enumerate(actions):
@@ -135,7 +136,7 @@ class TestModel:
             # aggregate data
             s = self.get_state()
             true_cost = self.state_cost(s, goal)
-            o_cost = self.model.cost_of_s(s, goal)[0, 0]
+            o_cost = self.model.cost_of_s(s.T, goal)[0, 0]
             if i > 0:
                 datum = np.concatenate(
                     (prev_s.flatten(), action.flatten(), s.flatten(), prev_true_cost.flatten(), true_cost.flatten()))
@@ -144,8 +145,8 @@ class TestModel:
 
                 data.append(datum)
 
-            s_back = np.linalg.lstsq(self.model.A, self.model.reduce(s), rcond=None)[0]
-            print(s.T, s_back.T, action.T, true_cost, o_cost)
+            # s_back = np.linalg.lstsq(self.model.get_A().T, o.T, rcond=None)[0]
+            print(action.T, true_cost, o_cost)
             if self.args.pause:
                 input()
 

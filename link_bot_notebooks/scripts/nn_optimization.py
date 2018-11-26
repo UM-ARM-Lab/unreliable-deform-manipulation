@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
 import argparse
 import numpy as np
@@ -33,6 +34,7 @@ def model_only(args):
         model.init()
         model.save()
 
+
 def evaluate(args):
     goal = np.array([4, 0, 5, 0, 6, 0])
     n, x, y = tpo.load_train_test(args.dataset, N=6, M=2, L=2, g=goal, extract_func=tpo.two_link_pos_vel_extractor)
@@ -40,6 +42,11 @@ def evaluate(args):
     model = LinearTFModel(vars(args), N=6, M=2, L=2)
     model.load()
     model.evaluate(x, y)
+    s = np.random.randint(-5, 5, size=(1, 6))
+    print("Goal:", np.expand_dims(goal, 0))
+    print("Goal o:", model.reduce(np.expand_dims(goal, 0)))
+    print("some random s:", s)
+    print("o:", model.reduce(s))
 
 
 if __name__ == '__main__':

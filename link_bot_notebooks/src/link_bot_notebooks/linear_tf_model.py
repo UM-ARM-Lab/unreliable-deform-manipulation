@@ -29,14 +29,15 @@ class LinearTFModel(base_model.BaseModel):
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
         self.A = tf.Variable(tf.truncated_normal([N, M]), name="A")
-        self.B = tf.Variable(tf.truncated_normal([M, 1]), name="B")
+        self.B = tf.Variable(tf.truncated_normal([M, M]), name="B")
         self.C = tf.Variable(tf.truncated_normal([L, M]), name="C")
         self.D = tf.Variable(tf.truncated_normal([M, M]), name="D")
 
-        self.hat_o = tf.matmul(self.s, self.A)
-        self.og = tf.matmul(self.g, self.A)
-        self.o_ = tf.matmul(self.s_, self.A)
-        self.hat_o_ = self.hat_o + tf.matmul(self.hat_o, self.B) + tf.matmul(self.u, self.C)
+        self.hat_o = tf.matmul(self.s, self.A, name='reduce')
+        self.og = tf.matmul(self.g, self.A, name='reduce_goal')
+        self.o_ = tf.matmul(self.s_, self.A, name='reduce_')
+        self.hat_o_ = self.hat_o + tf.matmul(self.hat_o, self.B, name='dynamics') + \
+                      tf.matmul(self.u, self.C, name='controls')
         self.hat_c = tf.matmul(tf.matmul((self.og - self.hat_o), self.D), tf.transpose(self.og - self.hat_o))
         self.hat_c_ = tf.matmul(tf.matmul((self.og - self.hat_o_), self.D), tf.transpose(self.og - self.hat_o_))
 
@@ -137,22 +138,41 @@ class LinearTFModel(base_model.BaseModel):
         self.sess.run(init_op)
 
     def reduce(self, s):
-        feed_dict = {self.s: s.T}
+        feed_dict = {self.s: s}
         ops = [self.hat_o]
-        hat_o = self.sess.run(ops, feed_dict=feed_dict)
+        hat_o = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_o
 
     def predict(self, o, u):
-        feed_dict = {self.hat_o: o.T, self.u: u.T}
+        feed_dict = {self.hat_o: o, self.u: u}
         ops = [self.hat_o_]
-        hat_o_ = self.sess.run(ops, feed_dict=feed_dict)
+        hat_o_ = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_o_
 
+    def predict_from_o(self, o, u, dt=None):
+        return self.predict(o, u)
+
+    def cost_of_s(self, s, g):
+        return self.cost(self.reduce(s), g)
+
     def cost(self, o, g):
-        feed_dict = {self.hat_o: o.T, self.g: g.T}
+        feed_dict = {self.hat_o: o, self.g: g}
         ops = [self.hat_c]
-        hat_c = self.sess.run(ops, feed_dict=feed_dict)
+        hat_c = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_c
+
+    def act(self, o, g):
+        """ return the action which gives the lowest cost for the predicted next state """
+        feed_dict = {self.hat_o: o, self.g: g}
+        ops = [self.B, self.C, self.og]
+        B, C, og = self.sess.run(ops, feed_dict=feed_dict)
+        print(B)
+        u = np.linalg.solve(C, og - o - np.dot(B, o))
+
+        feed_dict = {self.hat_o: o, self.g: g, self.u: u}
+        ops = [self.hat_o_, self.hat_c_]
+        hat_o_, hat_c_ = self.sess.run(ops, feed_dict=feed_dict)
+        return u, hat_c_, hat_o_
 
     def save(self):
         self.saver.save(self.sess, os.path.join(self.log_dir, "nn.ckpt"), global_step=self.global_step)
@@ -189,3 +209,9 @@ class LinearTFModel(base_model.BaseModel):
             print("C:\n{}".format(C.T))
             print("D:\n{}".format(D.T))
         return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
+
+    def get_A(self):
+        feed_dict = {}
+        ops = [self.A]
+        A = self.sess.run(ops, feed_dict=feed_dict)[0]
+        return A
