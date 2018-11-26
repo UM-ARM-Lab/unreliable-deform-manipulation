@@ -51,7 +51,7 @@ class TestModel:
 
         return min_cost_action, min_cost, next_o
 
-    def plan(self, o, goal, T=100):
+    def plan(self, o, goal, T=2):
         actions = np.zeros((T, 2, 1))
         os = np.zeros((T, 2))
         sbacks = np.zeros((T, 6))
@@ -59,8 +59,9 @@ class TestModel:
             s_back = np.linalg.lstsq(self.model.get_A().T, o.T, rcond=None)[0]
             sbacks[i] = np.squeeze(s_back)
             os[i] = np.squeeze(o)
-            # u, c, next_o = self.plan_one_step(o, goal)
+            guess_u, guess_c, guess_next_o = self.plan_one_step(o, goal)
             u, c, next_o = self.model.act(o, goal)
+            print(c, guess_c)
             actions[i] = u
             o = next_o
 

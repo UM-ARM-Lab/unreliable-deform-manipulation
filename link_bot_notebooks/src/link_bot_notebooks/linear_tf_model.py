@@ -21,25 +21,27 @@ class LinearTFModel(base_model.BaseModel):
         self.L = L
         self.beta = 1e-4
 
-        self.s = tf.placeholder(tf.float32, shape=(None, N), name="s")
-        self.s_ = tf.placeholder(tf.float32, shape=(None, N), name="s_")
-        self.u = tf.placeholder(tf.float32, shape=(None, L), name="u")
-        self.g = tf.placeholder(tf.float32, shape=(None, N), name="g")
+        self.s = tf.placeholder(tf.float32, shape=(N, None), name="s")
+        self.s_ = tf.placeholder(tf.float32, shape=(N, None), name="s_")
+        self.u = tf.placeholder(tf.float32, shape=(L, None), name="u")
+        self.g = tf.placeholder(tf.float32, shape=(N, None), name="g")
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
-        self.A = tf.Variable(tf.truncated_normal([N, M]), name="A")
+        self.A = tf.Variable(tf.truncated_normal([M, N]), name="A")
         self.B = tf.Variable(tf.truncated_normal([M, M]), name="B")
-        self.C = tf.Variable(tf.truncated_normal([L, M]), name="C")
+        self.C = tf.Variable(tf.truncated_normal([M, L]), name="C")
         self.D = tf.Variable(tf.truncated_normal([M, M]), name="D")
 
-        self.hat_o = tf.matmul(self.s, self.A, name='reduce')
-        self.og = tf.matmul(self.g, self.A, name='reduce_goal')
-        self.o_ = tf.matmul(self.s_, self.A, name='reduce_')
-        self.hat_o_ = self.hat_o + tf.matmul(self.hat_o, self.B, name='dynamics') + \
-                      tf.matmul(self.u, self.C, name='controls')
-        self.hat_c = tf.matmul(tf.matmul((self.og - self.hat_o), self.D), tf.transpose(self.og - self.hat_o))
-        self.hat_c_ = tf.matmul(tf.matmul((self.og - self.hat_o_), self.D), tf.transpose(self.og - self.hat_o_))
+        self.hat_o = tf.matmul(self.A, self.s, name='reduce')
+        self.og = tf.matmul(self.A, self.g, name='reduce_goal')
+        self.o_ = tf.matmul(self.A, self.s_, name='reduce_')
+        self.hat_o_ = self.hat_o + tf.matmul(self.B, self.hat_o, name='dynamics') + \
+                      tf.matmul(self.C, self.u, name='controls')
+        self.d_to_goal = self.og - self.hat_o
+        self.d_to_goal_ = self.og - self.hat_o_
+        self.hat_c = tf.linalg.tensor_diag_part(tf.matmul(tf.matmul(tf.transpose(self.d_to_goal), self.D), self.d_to_goal))
+        self.hat_c_ = tf.linalg.tensor_diag_part(tf.matmul(tf.matmul(tf.transpose(self.d_to_goal_), self.D), self.d_to_goal_))
 
         with tf.name_scope("train"):
             self.cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
@@ -80,7 +82,7 @@ class LinearTFModel(base_model.BaseModel):
                 self.writer = tf.summary.FileWriter(self.log_dir)
                 self.writer.add_graph(self.sess.graph)
 
-    def train(self, x_train, y_train, epochs, seed=0):
+    def train(self, train_x, y_train, epochs, seed=0):
         """
         x train is an array, each row of which looks like:
             [s_t, u_t, s_{t+1}, goal]
@@ -96,10 +98,10 @@ class LinearTFModel(base_model.BaseModel):
         else:
             self.init()
 
-        n_training_samples = x_train.shape[0]
+        n_training_samples = train_x.shape[0]
         batch_size = self.args['batch_size']
         try:
-            print("TRAINING FOR {} EPOCHS:", epochs)
+            print("TRAINING FOR {} EPOCHS:".format(epochs))
             for i in range(epochs):
                 if batch_size == -1:
                     start = 0
@@ -107,10 +109,10 @@ class LinearTFModel(base_model.BaseModel):
                 else:
                     start = np.random.randint(0, n_training_samples - batch_size)
                     end = start + batch_size
-                batch_s = x_train[start:end, 0:self.N]
-                batch_s_ = x_train[start:end, self.N: 2 * self.N]
-                batch_g = x_train[start:end, 2 * self.N: 3 * self.N]
-                batch_u = x_train[start:end, 3 * self.N: 3 * self.N + self.L]
+                batch_s = train_x[start:end, 0:self.N].T
+                batch_s_ = train_x[start:end, self.N: 2 * self.N].T
+                batch_g = train_x[start:end, 2 * self.N: 3 * self.N].T
+                batch_u = train_x[start:end, 3 * self.N: 3 * self.N + self.L].T
                 batch_c = y_train[start:end, 0]
                 batch_c_ = y_train[start:end, 1]
                 feed_dict = {self.s: batch_s,
@@ -122,7 +124,7 @@ class LinearTFModel(base_model.BaseModel):
                 ops = [self.global_step, self.summaries, self.loss, self.opt]
                 step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
 
-                if step % 100 == 0:
+                if step % self.args['print_period'] == 0:
                     print(step, loss)
 
                 if self.args['log']:
@@ -166,10 +168,10 @@ class LinearTFModel(base_model.BaseModel):
         feed_dict = {self.hat_o: o, self.g: g}
         ops = [self.B, self.C, self.og]
         B, C, og = self.sess.run(ops, feed_dict=feed_dict)
-        print(B)
-        u = np.linalg.solve(C, og - o - np.dot(B, o))
+        u = np.linalg.solve(C.T, (og - o - np.dot(o, B)).T)
+        print(u)
 
-        feed_dict = {self.hat_o: o, self.g: g, self.u: u}
+        feed_dict = {self.hat_o: o, self.g: g, self.u: u.T}
         ops = [self.hat_o_, self.hat_c_]
         hat_o_, hat_c_ = self.sess.run(ops, feed_dict=feed_dict)
         return u, hat_c_, hat_o_
@@ -183,10 +185,10 @@ class LinearTFModel(base_model.BaseModel):
         print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
 
     def evaluate(self, x_eval, y_eval, display=True):
-        s = x_eval[:, 0:self.N]
-        s_ = x_eval[:, self.N: 2 * self.N]
-        g = x_eval[:, 2 * self.N: 3 * self.N]
-        u = x_eval[:, 3 * self.N: 3 * self.N + self.L]
+        s = x_eval[:, 0:self.N].T
+        s_ = x_eval[:, self.N: 2 * self.N].T
+        g = x_eval[:, 2 * self.N: 3 * self.N].T
+        u = x_eval[:, 3 * self.N: 3 * self.N + self.L].T
         c = y_eval[:, 0]
         c_ = y_eval[:, 1]
         feed_dict = {self.s: s,
