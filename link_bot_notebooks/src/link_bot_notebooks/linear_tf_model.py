@@ -86,24 +86,19 @@ class LinearTFModel(base_model.BaseModel):
                 self.writer = tf.summary.FileWriter(self.log_dir)
                 self.writer.add_graph(self.sess.graph)
 
-    def train(self, train_x, y_train, epochs):
+    def train(self, train_x, train_y, epochs):
         """
         x train is an array, each row of which looks like:
             [s_t, u_t, s_{t+1}, goal]
         y train is an array, each row of which looks like:
             [c_t, c_{t+1}]
         """
-
-        # load our train training data and train to it
-        if self.args['checkpoint']:
-            self.load()
-        else:
-            self.init()
-
+        interrupted = False
         n_training_samples = train_x.shape[0]
         batch_size = self.args['batch_size']
         try:
-            print("TRAINING FOR {} EPOCHS:".format(epochs))
+            if self.args['verbose']:
+                print("TRAINING FOR {} EPOCHS:".format(epochs))
             for i in range(epochs):
                 if batch_size == -1:
                     start = 0
@@ -115,8 +110,8 @@ class LinearTFModel(base_model.BaseModel):
                 batch_s_ = train_x[start:end, self.N: 2 * self.N].T
                 batch_g = train_x[start:end, 2 * self.N: 3 * self.N].T
                 batch_u = train_x[start:end, 3 * self.N: 3 * self.N + self.L].T
-                batch_c = y_train[start:end, 0]
-                batch_c_ = y_train[start:end, 1]
+                batch_c = train_y[start:end, 0]
+                batch_c_ = train_y[start:end, 1]
                 feed_dict = {self.s: batch_s,
                              self.s_: batch_s_,
                              self.u: batch_u,
@@ -132,10 +127,20 @@ class LinearTFModel(base_model.BaseModel):
                 if self.args['log']:
                     self.writer.add_summary(summary, step)
         except KeyboardInterrupt:
+            print("stop!!!")
+            interrupted = True
             pass
         finally:
             if self.args['log']:
                 self.save()
+
+        return interrupted
+
+    def setup(self):
+        if self.args['checkpoint']:
+            self.load()
+        else:
+            self.init()
 
     def init(self):
         init_op = tf.global_variables_initializer()
