@@ -12,8 +12,11 @@ from link_bot_notebooks import base_model
 
 class LinearTFModel(base_model.BaseModel):
 
-    def __init__(self, args, N, M, L):
+    def __init__(self, args, N, M, L, seed=0):
         base_model.BaseModel.__init__(self, N, M, L)
+
+        np.random.seed(seed)
+        tf.random.set_random_seed(seed)
 
         self.args = args
         self.N = N
@@ -61,7 +64,8 @@ class LinearTFModel(base_model.BaseModel):
             trainable_vars = tf.trainable_variables()
             grads = zip(tf.gradients(self.loss, trainable_vars), trainable_vars)
             for grad, var in grads:
-                tf.summary.histogram(var.name + "/gradient", grad)
+                name = var.name.replace(":", "_")
+                tf.summary.histogram(name + "/gradient", grad)
 
             tf.summary.scalar("learning_rate", self.learning_rate)
             tf.summary.scalar("cost_loss", self.cost_loss)
@@ -82,7 +86,7 @@ class LinearTFModel(base_model.BaseModel):
                 self.writer = tf.summary.FileWriter(self.log_dir)
                 self.writer.add_graph(self.sess.graph)
 
-    def train(self, train_x, y_train, epochs, seed=0):
+    def train(self, train_x, y_train, epochs):
         """
         x train is an array, each row of which looks like:
             [s_t, u_t, s_{t+1}, goal]
@@ -91,8 +95,6 @@ class LinearTFModel(base_model.BaseModel):
         """
 
         # load our train training data and train to it
-        np.random.seed(seed)
-        tf.random.set_random_seed(seed)
         if self.args['checkpoint']:
             self.load()
         else:
@@ -161,6 +163,7 @@ class LinearTFModel(base_model.BaseModel):
         feed_dict = {self.hat_o: o, self.g: g}
         ops = [self.hat_c]
         hat_c = self.sess.run(ops, feed_dict=feed_dict)[0]
+        hat_c = np.expand_dims(hat_c, axis=0)
         return hat_c
 
     def act(self, o, g):
@@ -206,10 +209,10 @@ class LinearTFModel(base_model.BaseModel):
             print("Cost Prediction Loss: {}".format(cp_loss))
             print("Regularization: {}".format(reg))
             print("Overall Loss: {}".format(loss))
-            print("A:\n{}".format(A.T))
-            print("B:\n{}".format(B.T))
-            print("C:\n{}".format(C.T))
-            print("D:\n{}".format(D.T))
+            print("A:\n{}".format(A))
+            print("B:\n{}".format(B))
+            print("C:\n{}".format(C))
+            print("D:\n{}".format(D))
         return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
 
     def get_A(self):
