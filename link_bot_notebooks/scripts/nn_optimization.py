@@ -20,7 +20,7 @@ DIMENSIONS = {
 
 
 def train(args):
-    goal = np.array([[4], [0], [5], [0], [6], [0]])
+    goal = np.array([[0], [0], [0], [1], [0], [2]])
     n, x, y = tpo.load_train_test(args.dataset, N=6, M=2, L=2, g=goal, extract_func=tpo.two_link_pos_vel_extractor)
     # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
     model = LinearTFModel(vars(args), N=6, M=2, L=2)
@@ -36,7 +36,7 @@ def model_only(args):
 
 
 def evaluate(args):
-    goal = np.array([[4], [0], [5], [0], [6], [0]])
+    goal = np.array([[0], [0], [0], [1], [0], [2]])
     n, x, y = tpo.load_train_test(args.dataset, N=6, M=2, L=2, g=goal, extract_func=tpo.two_link_pos_vel_extractor)
     # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
     model = LinearTFModel(vars(args), N=6, M=2, L=2)
