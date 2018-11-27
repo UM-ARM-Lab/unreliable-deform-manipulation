@@ -21,14 +21,15 @@ class LogGazeboState:
     def run(self):
         DT = 0.1  # seconds per time step
 
-        links = ['link_0', 'link_1', 'head']
+        links = ['link_0', 'link_1', 'link_2', 'link_3', 'link_4', 'head']
 
         get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
         unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         unpause(EmptyRequest())
 
         n_time_steps = int(self.duration / DT)
-        data = np.ndarray((n_time_steps, 12))
+        n_links = len(links)
+        data = np.ndarray((n_time_steps, 4*n_links))
         for i in range(n_time_steps):
 
             datum_indx = 0

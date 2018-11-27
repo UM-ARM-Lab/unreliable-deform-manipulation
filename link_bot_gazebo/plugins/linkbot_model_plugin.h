@@ -6,6 +6,7 @@
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
+#include <ignition/math.hh>
 #include <ros/ros.h>
 #include <ros/subscribe_options.h>
 #include <ros/callback_queue.h>
@@ -35,7 +36,7 @@ namespace gazebo {
         common::PID x_pid_;
         common::PID y_pid_;
         std::string link_name_ = "head";
-        math::Vector3 target_linear_vel_{0, 0, 0};
+        ignition::math::Vector3d target_linear_vel_{0, 0, 0};
         physics::LinkPtr link_;
         std::unique_ptr<ros::NodeHandle> ros_node_;
         ros::Subscriber cmd_sub_;

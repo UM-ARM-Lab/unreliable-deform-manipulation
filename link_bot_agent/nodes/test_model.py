@@ -30,7 +30,7 @@ class TestModel:
         self.joy_pub = rospy.Publisher("/joy", Joy, queue_size=10)
 
     def plan_one_step(self, o, goal):
-        potential_actions = 0.4 * np.random.randn(500, 2, 1)
+        potential_actions = 0.3 * np.random.randn(500, 2, 1)
         min_cost_action = None
         next_o = None
         min_cost = 1e9
@@ -52,7 +52,7 @@ class TestModel:
 
         return min_cost_action, min_cost, next_o
 
-    def plan(self, o, goal, T=10, plot=False):
+    def plan(self, o, goal, T=1, plot=False):
         actions = np.zeros((T, 2, 1))
         os = np.zeros((T, 2))
         cs = np.zeros(T)
@@ -61,18 +61,15 @@ class TestModel:
             s_back = np.linalg.lstsq(self.model.get_A(), o, rcond=None)[0]
             sbacks[i] = np.squeeze(s_back)
             os[i] = np.squeeze(o)
-            u, c, next_o = self.plan_one_step(o, goal)
-            # full_u, full_c, next_o = self.model.act(o, goal)
-            # if np.linalg.norm(full_u) > 1.00:
-            #     u = full_u / np.linalg.norm(full_u) * 1.00  # u is in meters per second. Cap to 0.75
-            # else:
-            #     u = full_u
-            # c = self.model.predict_cost(o, u, goal)
-            # next_o = self.model.predict(o, u)
+            # u, c, next_o = self.plan_one_step(o, goal)
+            full_u, full_c, next_o = self.model.act(o, goal)
+            if np.linalg.norm(full_u) > 0.75:
+                u = full_u / np.linalg.norm(full_u) * 0.75  # u is in meters per second. Cap to 0.75
+            else:
+                u = full_u
+            c = self.model.predict_cost(o, u, goal)
+            next_o = self.model.predict(o, u)
             cs[i] = c
-            # print(guess_u, guess_c)
-            # print(full_u, full_c)
-            # print(u, c)
             actions[i] = u
             o = next_o
 
@@ -126,7 +123,7 @@ class TestModel:
         joy_msg = Joy()
         joy_msg.axes = [0, 0]
 
-        goal = np.array([[0], [0], [1], [0], [2], [0]])
+        goal = np.array([[0], [0], [0], [1], [0], [2]])
 
         # load our initial model
         self.model.load()
