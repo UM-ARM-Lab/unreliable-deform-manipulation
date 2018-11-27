@@ -9,7 +9,8 @@ from link_bot_notebooks import notebook_finder
 from link_bot_notebooks import toy_problem_optimization_common as tpo
 from link_bot_notebooks.linear_tf_model import LinearTFModel
 
-from gazebo_msgs.srv import ApplyBodyWrench, ApplyBodyWrenchRequest, GetLinkState, GetLinkStateRequest
+from sensor_msgs.msg import Joy
+from gazebo_msgs.srv import GetLinkState, GetLinkStateRequest
 from std_srvs.srv import Empty, EmptyRequest
 
 
@@ -24,12 +25,12 @@ class TestModel:
 
         rospy.init_node('ScipyLearner')
         self.get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
-        self.apply_wrench = rospy.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
+        self.joy_pub = rospy.Publisher("/joy", Joy, queue_size=10)
 
     def plan_one_step(self, o, goal):
-        potential_actions = np.vstack((np.array([[[0], [0]]]), 10 * np.random.randint(-10, 10, size=(200, 2, 1))))
+        potential_actions = np.vstack((np.array([[[0], [0]]]), 0.1 * np.random.randint(-10, 10, size=(200, 2, 1))))
         min_cost_action = None
         next_o = None
         min_cost = 1e9
@@ -37,10 +38,10 @@ class TestModel:
         xs = []
         ys = []
         for a in potential_actions:
-            o_ = self.model.predict_from_o(o, a.T, dt=self.dt)
+            o_ = self.model.predict_from_o(o, a, dt=self.dt)
             c = self.model.cost(o_, goal)[0, 0]
             x = o_[0, 0]
-            y = o_[0, 1]
+            y = o_[1, 0]
             xs.append(x)
             ys.append(y)
             colors.append(c)
@@ -51,19 +52,36 @@ class TestModel:
 
         return min_cost_action, min_cost, next_o
 
-    def plan(self, o, goal, T=2):
+    def plan(self, o, goal, T=15):
         actions = np.zeros((T, 2, 1))
         os = np.zeros((T, 2))
+        cs = np.zeros(T)
         sbacks = np.zeros((T, 6))
         for i in range(T):
-            s_back = np.linalg.lstsq(self.model.get_A().T, o.T, rcond=None)[0]
+            s_back = np.linalg.lstsq(self.model.get_A(), o, rcond=None)[0]
             sbacks[i] = np.squeeze(s_back)
             os[i] = np.squeeze(o)
-            guess_u, guess_c, guess_next_o = self.plan_one_step(o, goal)
-            u, c, next_o = self.model.act(o, goal)
-            print(c, guess_c)
+            # u, c, next_o = self.plan_one_step(o, goal)
+            # guess_u, guess_c, guess_next_o = self.plan_one_step(o, goal)
+            full_u, full_c, next_o = self.model.act(o, goal)
+            if np.linalg.norm(full_u) > 1.00:
+                u = full_u / np.linalg.norm(full_u) * 1.00  # u is in meters per second. Cap to 0.75
+            else:
+                u = full_u
+            c = self.model.predict_cost(o, u, goal)
+            next_o = self.model.predict(o, u)
+            cs[i] = c
+            # print(guess_u, guess_c)
+            # print(full_u, full_c)
+            # print(u, c)
             actions[i] = u
             o = next_o
+
+        plt.figure()
+        plt.plot(cs)
+        plt.xlabel("time steps")
+        plt.ylabel("predicted cost (squared distance, m^2)")
+        plt.legend()
 
         plt.figure()
         plt.plot(actions[:, 0, 0], label="x velocity")
@@ -104,13 +122,10 @@ class TestModel:
 
     def run(self):
         np.random.seed(111)
-        wrench_req = ApplyBodyWrenchRequest()
-        wrench_req.body_name = self.model_name + "::head"
-        wrench_req.reference_frame = "world"
-        wrench_req.duration.secs = 0
-        wrench_req.duration.nsecs = self.dt * 1e9
+        joy_msg = Joy()
+        joy_msg.axes = [0, 0]
 
-        goal = np.zeros((1, 6))
+        goal = np.array([[0], [0], [1], [0], [2], [0]])
 
         # load our initial model
         self.model.load()
@@ -121,55 +136,49 @@ class TestModel:
         prev_true_cost = None
 
         s = self.get_state()
-        o = self.model.reduce(s.T)
+        o = self.model.reduce(s)
         actions = self.plan(o, goal)
 
-        for i, action in enumerate(actions):
-            wrench_req.wrench.force.x = action[0, 0]
-            wrench_req.wrench.force.y = action[1, 0]
+        try:
+            for i, action in enumerate(actions):
+                joy_msg.axes = [-action[1, 0], -action[0, 0]]
 
-            # Take action and wait for dt
-            self.unpause(EmptyRequest())
-            self.apply_wrench(wrench_req)
-            sleep(self.dt)
-            self.pause(EmptyRequest())
+                # Take action and wait for dt
+                self.unpause(EmptyRequest())
+                self.joy_pub.publish(joy_msg)
+                sleep(self.dt)
+                self.pause(EmptyRequest())
 
-            # aggregate data
-            s = self.get_state()
-            true_cost = self.state_cost(s, goal)
-            o_cost = self.model.cost_of_s(s.T, goal)[0, 0]
-            if i > 0:
-                datum = np.concatenate(
-                    (prev_s.flatten(), action.flatten(), s.flatten(), prev_true_cost.flatten(), true_cost.flatten()))
-                if self.args.verbose:
-                    print(datum)
+                # aggregate data
+                s = self.get_state()
+                true_cost = self.state_cost(s, goal)
+                o_cost = self.model.cost_of_s(s, goal)[0, 0]
+                if i > 0:
+                    datum = np.concatenate(
+                        (prev_s.flatten(), action.flatten(), s.flatten(), prev_true_cost.flatten(), true_cost.flatten()))
+                    if self.args.verbose:
+                        print(datum)
 
-                data.append(datum)
+                    data.append(datum)
 
-            # s_back = np.linalg.lstsq(self.model.get_A().T, o.T, rcond=None)[0]
-            print(action.T, true_cost, o_cost)
-            if self.args.pause:
-                input()
+                # s_back = np.linalg.lstsq(self.model.get_A(), o, rcond=None)[0]
+                print(action.T, true_cost, o_cost)
+                if self.args.pause:
+                    input()
 
-            if true_cost < 0.01:
-                print("Success!")
-                break
+                if true_cost < 0.01:
+                    print("Success!")
+                    break
 
-            prev_true_cost = true_cost
-            prev_s = s
-
-        # Retrain
-        # self.pause(EmptyRequest())
-        # tpo.train(data, self.model, goal, self.dt, tpo.one_step_cost_prediction_objective)
-        # self.unpause(EmptyRequest())
-
-        # Stop the force application
-        wrench_req.wrench.force.x = 0
-        wrench_req.wrench.force.y = 0
-        self.apply_wrench(wrench_req)
-
-        if self.args.new_data:
-            np.savetxt(self.args.new_data, data)
+                prev_true_cost = true_cost
+                prev_s = s
+        except KeyboardInterrupt:
+            pass
+        finally:
+            joy_msg.axes = [0, 0]
+            self.joy_pub.publish(joy_msg)
+            if self.args.new_data:
+                np.savetxt(self.args.new_data, data)
 
 
 if __name__ == '__main__':

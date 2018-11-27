@@ -176,10 +176,9 @@ class LinearTFModel(base_model.BaseModel):
         feed_dict = {self.hat_o: o, self.g: g}
         ops = [self.B, self.C, self.og]
         B, C, og = self.sess.run(ops, feed_dict=feed_dict)
-        u = np.linalg.solve(C.T, (og - o - np.dot(o, B)).T)
-        print(u)
+        u = np.linalg.solve(C, (og - o - np.dot(B, o)))
 
-        feed_dict = {self.hat_o: o, self.g: g, self.u: u.T}
+        feed_dict = {self.hat_o: o, self.g: g, self.u: u}
         ops = [self.hat_o_, self.hat_c_]
         hat_o_, hat_c_ = self.sess.run(ops, feed_dict=feed_dict)
         return u, hat_c_, hat_o_
