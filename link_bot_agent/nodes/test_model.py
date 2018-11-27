@@ -30,7 +30,7 @@ class TestModel:
         self.joy_pub = rospy.Publisher("/joy", Joy, queue_size=10)
 
     def plan_one_step(self, o, goal):
-        potential_actions = np.vstack((np.array([[[0], [0]]]), 0.1 * np.random.randint(-10, 10, size=(200, 2, 1))))
+        potential_actions = 0.4 * np.random.randn(500, 2, 1)
         min_cost_action = None
         next_o = None
         min_cost = 1e9
@@ -61,15 +61,15 @@ class TestModel:
             s_back = np.linalg.lstsq(self.model.get_A(), o, rcond=None)[0]
             sbacks[i] = np.squeeze(s_back)
             os[i] = np.squeeze(o)
-            # u, c, next_o = self.plan_one_step(o, goal)
+            u, c, next_o = self.plan_one_step(o, goal)
             # guess_u, guess_c, guess_next_o = self.plan_one_step(o, goal)
-            full_u, full_c, next_o = self.model.act(o, goal)
-            if np.linalg.norm(full_u) > 1.00:
-                u = full_u / np.linalg.norm(full_u) * 1.00  # u is in meters per second. Cap to 0.75
-            else:
-                u = full_u
-            c = self.model.predict_cost(o, u, goal)
-            next_o = self.model.predict(o, u)
+            # full_u, full_c, next_o = self.model.act(o, goal)
+            # if np.linalg.norm(full_u) > 1.00:
+            #     u = full_u / np.linalg.norm(full_u) * 1.00  # u is in meters per second. Cap to 0.75
+            # else:
+            #     u = full_u
+            # c = self.model.predict_cost(o, u, goal)
+            # next_o = self.model.predict(o, u)
             cs[i] = c
             # print(guess_u, guess_c)
             # print(full_u, full_c)
@@ -148,10 +148,10 @@ class TestModel:
                     joy_msg.axes = [-action[1, 0], -action[0, 0]]
 
                     # Take action and wait for dt
-                    # self.unpause(EmptyRequest())
+                    self.unpause(EmptyRequest())
                     self.joy_pub.publish(joy_msg)
                     sleep(self.dt)
-                    # self.pause(EmptyRequest())
+                    self.pause(EmptyRequest())
 
                     # aggregate data
                     s = self.get_state()
