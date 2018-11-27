@@ -52,7 +52,7 @@ class TestModel:
 
         return min_cost_action, min_cost, next_o
 
-    def plan(self, o, goal, T=15):
+    def plan(self, o, goal, T=10, plot=False):
         actions = np.zeros((T, 2, 1))
         os = np.zeros((T, 2))
         cs = np.zeros(T)
@@ -77,29 +77,31 @@ class TestModel:
             actions[i] = u
             o = next_o
 
-        plt.figure()
-        plt.plot(cs)
-        plt.xlabel("time steps")
-        plt.ylabel("predicted cost (squared distance, m^2)")
-        plt.legend()
+        if plot:
+            plt.figure()
+            plt.plot(cs)
+            plt.xlabel("time steps")
+            plt.ylabel("predicted cost (squared distance, m^2)")
+            plt.legend()
 
-        plt.figure()
-        plt.plot(actions[:, 0, 0], label="x velocity")
-        plt.plot(actions[:, 1, 0], label="y velocity")
-        plt.xlabel("time steps")
-        plt.ylabel("velocity (m/s)")
-        plt.legend()
+            plt.figure()
+            plt.plot(actions[:, 0, 0], label="x velocity")
+            plt.plot(actions[:, 1, 0], label="y velocity")
+            plt.xlabel("time steps")
+            plt.ylabel("velocity (m/s)")
+            plt.legend()
 
-        plt.figure()
-        ax = plt.gca()
-        ax.plot(os[:, 0], os[:, 1], label="$o_1$, $o_2$")
-        ax.plot(sbacks[:, 0], sbacks[:, 1], label="$s_1$, $s_2$ recovered from $o$")
-        S = 10
-        q = ax.quiver(sbacks[::S, 0], sbacks[::S, 1], actions[::S, 0, 0], actions[::S, 1, 0], scale=5000, width=0.001)
-        ax.set_xlabel("X (m)")
-        ax.set_ylabel("Y (m)")
-        plt.legend()
-        plt.show()
+            plt.figure()
+            ax = plt.gca()
+            ax.plot(os[:, 0], os[:, 1], label="$o_1$, $o_2$")
+            ax.plot(sbacks[:, 0], sbacks[:, 1], label="$s_1$, $s_2$ recovered from $o$")
+            S = 10
+            q = ax.quiver(sbacks[::S, 0], sbacks[::S, 1], actions[::S, 0, 0], actions[::S, 1, 0], scale=5000,
+                          width=0.001)
+            ax.set_xlabel("X (m)")
+            ax.set_ylabel("Y (m)")
+            plt.legend()
+            plt.show()
 
         return actions
 
@@ -118,7 +120,7 @@ class TestModel:
 
     @staticmethod
     def state_cost(s, goal):
-        return np.linalg.norm(s - goal)
+        return np.linalg.norm(s[0:2, 0] - goal[0:2, 0])
 
     def run(self):
         np.random.seed(111)
@@ -134,44 +136,47 @@ class TestModel:
 
         prev_s = None
         prev_true_cost = None
-
-        s = self.get_state()
-        o = self.model.reduce(s)
-        actions = self.plan(o, goal)
+        done = False
 
         try:
-            for i, action in enumerate(actions):
-                joy_msg.axes = [-action[1, 0], -action[0, 0]]
-
-                # Take action and wait for dt
-                self.unpause(EmptyRequest())
-                self.joy_pub.publish(joy_msg)
-                sleep(self.dt)
-                self.pause(EmptyRequest())
-
-                # aggregate data
+            self.unpause(EmptyRequest())
+            while not done:
                 s = self.get_state()
-                true_cost = self.state_cost(s, goal)
-                o_cost = self.model.cost_of_s(s, goal)[0, 0]
-                if i > 0:
-                    datum = np.concatenate(
-                        (prev_s.flatten(), action.flatten(), s.flatten(), prev_true_cost.flatten(), true_cost.flatten()))
-                    if self.args.verbose:
-                        print(datum)
+                o = self.model.reduce(s)
+                actions = self.plan(o, goal)
+                for i, action in enumerate(actions):
+                    joy_msg.axes = [-action[1, 0], -action[0, 0]]
 
-                    data.append(datum)
+                    # Take action and wait for dt
+                    # self.unpause(EmptyRequest())
+                    self.joy_pub.publish(joy_msg)
+                    sleep(self.dt)
+                    # self.pause(EmptyRequest())
 
-                # s_back = np.linalg.lstsq(self.model.get_A(), o, rcond=None)[0]
-                print(action.T, true_cost, o_cost)
-                if self.args.pause:
-                    input()
+                    # aggregate data
+                    s = self.get_state()
+                    true_cost = self.state_cost(s, goal)
+                    # if i > 0:
+                    #     datum = np.concatenate((prev_s.flatten(), action.flatten(), s.flatten(), prev_true_cost.flatten(), true_cost.flatten()))
+                    #     if self.args.verbose:
+                    #         print(datum)
+                    #
+                    #     data.append(datum)
 
-                if true_cost < 0.01:
-                    print("Success!")
+                    # s_back = np.linalg.lstsq(self.model.get_A(), o, rcond=None)[0]
+                    if self.args.pause:
+                        input()
+
+                    print("{:0.3f}".format(true_cost))
+                    if true_cost < 0.1:
+                        print("Success!")
+                        done = True
+                        break
+
+                    prev_true_cost = true_cost
+                    prev_s = s
+                if done:
                     break
-
-                prev_true_cost = true_cost
-                prev_s = s
         except KeyboardInterrupt:
             pass
         finally:
