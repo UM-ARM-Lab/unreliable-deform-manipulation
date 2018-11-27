@@ -62,7 +62,6 @@ class TestModel:
             sbacks[i] = np.squeeze(s_back)
             os[i] = np.squeeze(o)
             u, c, next_o = self.plan_one_step(o, goal)
-            # guess_u, guess_c, guess_next_o = self.plan_one_step(o, goal)
             # full_u, full_c, next_o = self.model.act(o, goal)
             # if np.linalg.norm(full_u) > 1.00:
             #     u = full_u / np.linalg.norm(full_u) * 1.00  # u is in meters per second. Cap to 0.75
