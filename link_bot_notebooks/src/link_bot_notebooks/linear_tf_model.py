@@ -37,7 +37,8 @@ class LinearTFModel(base_model.BaseModel):
         # self.B = tf.Variable(np.zeros((M, M)), name="B", trainable=False, dtype=np.float32)
         self.C = tf.Variable(tf.truncated_normal([M, L]), name="C")
         # self.C = tf.Variable(np.eye(M) * 0.1, name="C", dtype=np.float32)
-        self.D = tf.Variable(np.eye(M), name="D", trainable=False, dtype=np.float32)
+        self.D = tf.Variable(tf.truncated_normal([M, M]), name="D")
+        # self.D = tf.Variable(np.eye(M), name="D", trainable=False, dtype=np.float32)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
