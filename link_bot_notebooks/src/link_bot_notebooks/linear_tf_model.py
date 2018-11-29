@@ -32,8 +32,11 @@ class LinearTFModel(base_model.BaseModel):
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
         self.A = tf.Variable(tf.truncated_normal([M, N]), name="A")
+        # self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", trainable=False, dtype=np.float32)
         self.B = tf.Variable(tf.truncated_normal([M, M]), name="B")
+        # self.B = tf.Variable(np.zeros((M, M)), name="B", trainable=False, dtype=np.float32)
         self.C = tf.Variable(tf.truncated_normal([M, L]), name="C")
+        # self.C = tf.Variable(np.eye(M) * 0.1, name="C", dtype=np.float32)
         self.D = tf.Variable(np.eye(M), name="D", trainable=False, dtype=np.float32)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
@@ -79,10 +82,12 @@ class LinearTFModel(base_model.BaseModel):
             gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.015)
             self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
             self.saver = tf.train.Saver()
-            stamp = "{:%B_%d_%H:%M:%S}".format(datetime.now())
             self.log_dir = None
             if "log" in self.args and self.args['log']:
-                self.log_dir = os.path.join("log_data", stamp)
+                logname = "{:%B_%d_%H:%M:%S}".format(datetime.now())
+                if self.args['log'] is not None:
+                    logname = self.args['log'].replace(" ", "_") + logname
+                self.log_dir = os.path.join("log_data", logname)
                 self.writer = tf.summary.FileWriter(self.log_dir)
                 self.writer.add_graph(self.sess.graph)
 
@@ -131,6 +136,14 @@ class LinearTFModel(base_model.BaseModel):
             interrupted = True
             pass
         finally:
+            ops = [self.A, self.B, self.C, self.D]
+            A, B, C, D = self.sess.run(ops, feed_dict={})
+            if self.args['verbose']:
+                print("A:\n{}".format(A))
+                print("B:\n{}".format(B))
+                print("C:\n{}".format(C))
+                print("D:\n{}".format(D))
+
             if self.args['log']:
                 self.save()
 

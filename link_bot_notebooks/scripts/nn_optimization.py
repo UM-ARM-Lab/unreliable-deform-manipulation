@@ -24,7 +24,7 @@ def train(args):
 
     # goal = np.array([[0], [0], [0], [1], [0], [2]])
     goals = []
-    for r in np.random.randn(500, 4):
+    for r in np.random.randn(args.n_goals, 4):
         x = r[0] * 5
         y = r[1] * 5
         theta1 = r[2] * np.pi / 2
@@ -63,7 +63,7 @@ def evaluate(args):
 
 
 if __name__ == '__main__':
-    np.set_printoptions(precision=2, suppress=True)
+    np.set_printoptions(precision=4, suppress=True)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", action='store_true')
@@ -74,11 +74,12 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
     train_subparser.add_argument("dataset", help="dataset (txt file)")
-    train_subparser.add_argument("--log", "-l", action="store_true", help="save/log the graph and summaries")
+    train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=100)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=-1)
     train_subparser.add_argument("--print-period", "-p", type=int, default=100)
+    train_subparser.add_argument("--n-goals", "-n", type=int, default=500)
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")
