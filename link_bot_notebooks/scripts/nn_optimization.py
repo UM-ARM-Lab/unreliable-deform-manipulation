@@ -2,7 +2,10 @@
 from __future__ import print_function
 
 import argparse
+import os
 import numpy as np
+from datetime import datetime
+import git
 
 from link_bot_notebooks import notebook_finder
 from link_bot_notebooks import toy_problem_optimization_common as tpo
@@ -37,10 +40,19 @@ def train(args):
         goals.append(g)
 
     model.setup()
+
+    # create an experiment name
+    repo = git.Repo(search_parent_directories=True)
+    sha = repo.head.object.hexsha
+    stamp = "{:%B_%d_%H:%M:%S}".format(datetime.now())
+    nickname = "" if args.log is None else args.log.replace(" ", "_")
+    log_path = os.path.join(nickname, "{}__{}".format(stamp, sha))
+
     for goal in goals:
-        n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal, extract_func=tpo.link_pos_vel_extractor(args.N))
+        n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal,
+                                      extract_func=tpo.link_pos_vel_extractor(args.N))
         # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
-        interrupted = model.train(x, y, args.epochs)
+        interrupted = model.train(x, y, args.epochs, log_path)
         if interrupted:
             break
 
@@ -55,7 +67,8 @@ def model_only(args):
 
 def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
-    n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal, extract_func=tpo.link_pos_vel_extractor(args.N))
+    n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal,
+                                  extract_func=tpo.link_pos_vel_extractor(args.N))
     # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
     model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L)
     model.load()

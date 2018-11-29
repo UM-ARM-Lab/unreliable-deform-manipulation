@@ -4,8 +4,8 @@ from __future__ import print_function
 import os
 from colorama import Fore
 import numpy as np
-from datetime import datetime
 import tensorflow as tf
+
 
 from link_bot_notebooks import base_model
 
@@ -85,16 +85,8 @@ class LinearTFModel(base_model.BaseModel):
             gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.015)
             self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
             self.saver = tf.train.Saver()
-            self.log_dir = None
-            if "log" in self.args and self.args['log']:
-                logname = "{:%B_%d_%H:%M:%S}".format(datetime.now())
-                if self.args['log'] is not None:
-                    logname = self.args['log'].replace(" ", "_") + logname
-                self.log_dir = os.path.join("log_data", logname)
-                self.writer = tf.summary.FileWriter(self.log_dir)
-                self.writer.add_graph(self.sess.graph)
 
-    def train(self, train_x, train_y, epochs):
+    def train(self, train_x, train_y, epochs, log_path):
         """
         x train is an array, each row of which looks like:
             [s_t, u_t, s_{t+1}, goal]
@@ -104,6 +96,12 @@ class LinearTFModel(base_model.BaseModel):
         interrupted = False
         n_training_samples = train_x.shape[0]
         batch_size = self.args['batch_size']
+
+        if "log" in self.args and self.args['log']:
+            full_log_path = os.path.join("log_data", log_path)
+            writer = tf.summary.FileWriter(full_log_path)
+            writer.add_graph(self.sess.graph)
+
         try:
             if self.args['verbose']:
                 print("TRAINING FOR {} EPOCHS:".format(epochs))
@@ -133,7 +131,7 @@ class LinearTFModel(base_model.BaseModel):
                     print(step, loss)
 
                 if self.args['log']:
-                    self.writer.add_summary(summary, step)
+                    writer.add_summary(summary, step)
         except KeyboardInterrupt:
             print("stop!!!")
             interrupted = True
@@ -148,7 +146,7 @@ class LinearTFModel(base_model.BaseModel):
                 print("D:\n{}".format(D))
 
             if self.args['log']:
-                self.save()
+                self.save(full_log_path)
 
         return interrupted
 
@@ -199,8 +197,10 @@ class LinearTFModel(base_model.BaseModel):
         hat_o_, hat_c_ = self.sess.run(ops, feed_dict=feed_dict)
         return u, hat_c_, hat_o_
 
-    def save(self):
-        self.saver.save(self.sess, os.path.join(self.log_dir, "nn.ckpt"), global_step=self.global_step)
+    def save(self, log_path):
+        global_step = self.sess.run(self.global_step)
+        print(Fore.CYAN + "Saving ckpt {} at step {:d}".format(log_path, global_step) + Fore.RESET)
+        self.saver.save(self.sess, os.path.join(log_path, "nn.ckpt"), global_step=self.global_step)
 
     def load(self):
         self.saver.restore(self.sess, self.args['checkpoint'])
