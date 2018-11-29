@@ -43,8 +43,10 @@ class LinearTFModel(base_model.BaseModel):
                       tf.matmul(self.C, self.u, name='controls')
         self.d_to_goal = self.og - self.hat_o
         self.d_to_goal_ = self.og - self.hat_o_
-        self.hat_c = tf.linalg.tensor_diag_part(tf.matmul(tf.matmul(tf.transpose(self.d_to_goal), self.D), self.d_to_goal))
-        self.hat_c_ = tf.linalg.tensor_diag_part(tf.matmul(tf.matmul(tf.transpose(self.d_to_goal_), self.D), self.d_to_goal_))
+        self.hat_c = tf.linalg.tensor_diag_part(
+            tf.matmul(tf.matmul(tf.transpose(self.d_to_goal), self.D), self.d_to_goal))
+        self.hat_c_ = tf.linalg.tensor_diag_part(
+            tf.matmul(tf.matmul(tf.transpose(self.d_to_goal_), self.D), self.d_to_goal_))
 
         with tf.name_scope("train"):
             self.cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
@@ -79,10 +81,12 @@ class LinearTFModel(base_model.BaseModel):
             gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.015)
             self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
             self.saver = tf.train.Saver()
-            stamp = "{:%B_%d_%H:%M:%S}".format(datetime.now())
             self.log_dir = None
             if "log" in self.args and self.args['log']:
-                self.log_dir = os.path.join("log_data", stamp)
+                logname = "{:%B_%d_%H:%M:%S}".format(datetime.now())
+                if self.args['log'] is not None:
+                    logname = self.args['log'].replace(" ", "_") + logname
+                self.log_dir = os.path.join("log_data", logname)
                 self.writer = tf.summary.FileWriter(self.log_dir)
                 self.writer.add_graph(self.sess.graph)
 

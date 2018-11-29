@@ -20,11 +20,11 @@ DIMENSIONS = {
 
 
 def train(args):
-    model = LinearTFModel(vars(args), N=6, M=2, L=2, seed=123)
+    model = LinearTFModel(vars(args), args.N, args.M, args.L, seed=0)
 
     # goal = np.array([[0], [0], [0], [1], [0], [2]])
     goals = []
-    for r in np.random.randn(500, 4):
+    for r in np.random.randn(args.n_goals, 4):
         x = r[0] * 5
         y = r[1] * 5
         theta1 = r[2] * np.pi / 2
@@ -38,7 +38,7 @@ def train(args):
 
     model.setup()
     for goal in goals:
-        n, x, y = tpo.load_train_test(args.dataset, N=6, M=2, L=2, g=goal, extract_func=tpo.two_link_pos_vel_extractor)
+        n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal, extract_func=tpo.two_link_pos_vel_extractor)
         # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
         interrupted = model.train(x, y, args.epochs)
         if interrupted:
@@ -47,7 +47,7 @@ def train(args):
 
 def model_only(args):
     # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
-    model = LinearTFModel(vars(args), N=6, M=2, L=2)
+    model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L)
     if args.log:
         model.init()
         model.save()
@@ -55,32 +55,31 @@ def model_only(args):
 
 def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
-    n, x, y = tpo.load_train_test(args.dataset, N=6, M=2, L=2, g=goal, extract_func=tpo.two_link_pos_vel_extractor)
+    n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal, extract_func=tpo.two_link_pos_vel_extractor)
     # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
-    model = LinearTFModel(vars(args), N=6, M=2, L=2)
+    model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L)
     model.load()
     model.evaluate(x, y)
-    s = np.random.randint(-5, 5, size=(6, 1))
-    print("Goal:", goal)
-    print("Goal o:", model.reduce(goal))
-    print("some random s:", s)
-    print("o:", model.reduce(s))
 
 
 if __name__ == '__main__':
-    np.set_printoptions(precision=2, suppress=True)
+    np.set_printoptions(precision=4, suppress=True)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", action='store_true')
+    parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
+    parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
+    parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
     train_subparser.add_argument("dataset", help="dataset (txt file)")
-    train_subparser.add_argument("--log", "-l", action="store_true", help="save/log the graph and summaries")
+    train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=100)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=-1)
     train_subparser.add_argument("--print-period", "-p", type=int, default=100)
+    train_subparser.add_argument("--n-goals", "-n", type=int, default=500)
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")
