@@ -47,8 +47,10 @@ class LinearTFModel(base_model.BaseModel):
                       tf.matmul(self.C, self.u, name='controls')
         self.d_to_goal = self.og - self.hat_o
         self.d_to_goal_ = self.og - self.hat_o_
-        self.hat_c = tf.linalg.tensor_diag_part(tf.matmul(tf.matmul(tf.transpose(self.d_to_goal), self.D), self.d_to_goal))
-        self.hat_c_ = tf.linalg.tensor_diag_part(tf.matmul(tf.matmul(tf.transpose(self.d_to_goal_), self.D), self.d_to_goal_))
+        self.hat_c = tf.linalg.tensor_diag_part(
+            tf.matmul(tf.matmul(tf.transpose(self.d_to_goal), self.D), self.d_to_goal))
+        self.hat_c_ = tf.linalg.tensor_diag_part(
+            tf.matmul(tf.matmul(tf.transpose(self.d_to_goal_), self.D), self.d_to_goal_))
 
         with tf.name_scope("train"):
             self.cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
