@@ -20,7 +20,7 @@ DIMENSIONS = {
 
 
 def train(args):
-    model = LinearTFModel(vars(args), N=6, M=2, L=2)
+    model = LinearTFModel(vars(args), N=6, M=2, L=2, seed=123)
 
     # goal = np.array([[0], [0], [0], [1], [0], [2]])
     goals = []
