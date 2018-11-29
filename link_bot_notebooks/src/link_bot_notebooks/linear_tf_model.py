@@ -22,7 +22,7 @@ class LinearTFModel(base_model.BaseModel):
         self.N = N
         self.M = M
         self.L = L
-        self.beta = 1e-4
+        self.beta = 1e-8
 
         self.s = tf.placeholder(tf.float32, shape=(N, None), name="s")
         self.s_ = tf.placeholder(tf.float32, shape=(N, None), name="s_")

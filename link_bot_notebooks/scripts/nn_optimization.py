@@ -38,7 +38,7 @@ def train(args):
 
     model.setup()
     for goal in goals:
-        n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal, extract_func=tpo.five_link_pos_vel_extractor)
+        n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal, extract_func=tpo.link_pos_vel_extractor(args.N))
         # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
         interrupted = model.train(x, y, args.epochs)
         if interrupted:
@@ -55,7 +55,7 @@ def model_only(args):
 
 def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
-    n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal, extract_func=tpo.five_link_pos_vel_extractor)
+    n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal, extract_func=tpo.link_pos_vel_extractor(args.N))
     # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
     model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L)
     model.load()
