@@ -32,13 +32,9 @@ class LinearTFModel(base_model.BaseModel):
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
         self.A = tf.Variable(tf.truncated_normal([M, N]), name="A")
-        # self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", trainable=False, dtype=np.float32)
         self.B = tf.Variable(tf.truncated_normal([M, M]), name="B")
-        # self.B = tf.Variable(np.zeros((M, M)), name="B", trainable=False, dtype=np.float32)
         self.C = tf.Variable(tf.truncated_normal([M, L]), name="C")
-        # self.C = tf.Variable(np.eye(M) * 0.1, name="C", dtype=np.float32)
         self.D = tf.Variable(tf.truncated_normal([M, M]), name="D")
-        # self.D = tf.Variable(np.eye(M), name="D", trainable=False, dtype=np.float32)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
@@ -97,7 +93,7 @@ class LinearTFModel(base_model.BaseModel):
         n_training_samples = train_x.shape[0]
         batch_size = self.args['batch_size']
 
-        if "log" in self.args and self.args['log']:
+        if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
             writer = tf.summary.FileWriter(full_log_path)
             writer.add_graph(self.sess.graph)
@@ -130,7 +126,7 @@ class LinearTFModel(base_model.BaseModel):
                 if step % self.args['print_period'] == 0:
                     print(step, loss)
 
-                if self.args['log']:
+                if self.args['log'] is not None:
                     writer.add_summary(summary, step)
         except KeyboardInterrupt:
             print("stop!!!")
@@ -145,7 +141,7 @@ class LinearTFModel(base_model.BaseModel):
                 print("C:\n{}".format(C))
                 print("D:\n{}".format(D))
 
-            if self.args['log']:
+            if self.args['log'] is not None:
                 self.save(full_log_path)
 
         return interrupted
@@ -190,7 +186,7 @@ class LinearTFModel(base_model.BaseModel):
         feed_dict = {self.hat_o: o, self.g: g}
         ops = [self.B, self.C, self.og]
         B, C, og = self.sess.run(ops, feed_dict=feed_dict)
-        u = np.linalg.solve(C, (og - o - np.dot(B, o)))
+        u = np.linalg.lstsq(C, (og - o - np.dot(B, o)), rcond=None)[0]
 
         feed_dict = {self.hat_o: o, self.g: g, self.u: u}
         ops = [self.hat_o_, self.hat_c_]

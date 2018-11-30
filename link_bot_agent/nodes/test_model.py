@@ -3,15 +3,18 @@ from time import sleep
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-
-import rospy
-from link_bot_notebooks import notebook_finder
-from link_bot_notebooks import toy_problem_optimization_common as tpo
-from link_bot_notebooks.linear_tf_model import LinearTFModel
-
 from sensor_msgs.msg import Joy
 from gazebo_msgs.srv import GetLinkState, GetLinkStateRequest
 from std_srvs.srv import Empty, EmptyRequest
+import rospy
+
+from link_bot_notebooks.linear_tf_model import LinearTFModel
+from link_bot_agent import a_star
+from link_bot_agent import gz_world
+
+
+def h(n1, n2):
+    return np.linalg.norm(np.array(n1) - np.array(n2))
 
 
 class TestModel:
@@ -20,8 +23,7 @@ class TestModel:
         self.args = args
         self.model_name = args.model_name
         self.dt = 0.1
-        # self.model = tpo.LinearStateSpaceModelWithQuadraticCost(N=6, M=2, L=2)
-        self.model = LinearTFModel({'checkpoint': self.args.checkpoint}, N=6, M=2, L=2)
+        self.model = LinearTFModel({'checkpoint': self.args.checkpoint}, N=args.N, M=args.M, L=args.L)
 
         rospy.init_node('ScipyLearner')
         self.get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
@@ -29,12 +31,11 @@ class TestModel:
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.joy_pub = rospy.Publisher("/joy", Joy, queue_size=10)
 
-    def plan_one_step(self, o, goal):
-        potential_actions = 0.3 * np.random.randn(500, 2, 1)
+    def sample_action(self, o, goal):
+        potential_actions = 0.3 * np.random.randn(250, 2, 1)
         min_cost_action = None
         next_o = None
         min_cost = 1e9
-        colors = []
         xs = []
         ys = []
         for a in potential_actions:
@@ -44,7 +45,6 @@ class TestModel:
             y = o_[1, 0]
             xs.append(x)
             ys.append(y)
-            colors.append(c)
             if c < min_cost:
                 min_cost = c
                 next_o = o_
@@ -52,54 +52,57 @@ class TestModel:
 
         return min_cost_action, min_cost, next_o
 
-    def plan(self, o, goal, T=1, plot=False):
+    def greedy_action(self, o, goal):
+        MAX_SPEED = 1
+        full_u, full_c, next_o = self.model.act(o, goal)
+        if np.linalg.norm(full_u) > MAX_SPEED:
+            u = full_u / np.linalg.norm(full_u) * MAX_SPEED  # u is in meters per second. Cap to 0.75
+        else:
+            u = full_u
+        c = self.model.predict_cost(o, u, goal)
+        next_o = self.model.predict(o, u)
+        return u, c, next_o
+
+    def a_star_plan(self, o, og):
+
+        # construct our graph as a list of edges and vertices
+        graph = gz_world.GzWorldGraph()
+        planner = a_star.AStar(graph, h)
+        shortest_path = planner.shortest_path(o, og)
+
+        T = len(shortest_path)
         actions = np.zeros((T, 2, 1))
-        os = np.zeros((T, 2))
+        os = np.zeros((T, self.args.M))
         cs = np.zeros(T)
-        sbacks = np.zeros((T, 6))
+        sbacks = np.zeros((T, self.args.N))
+        for i, o in enumerate(shortest_path):
+            s_back = np.linalg.lstsq(self.model.get_A(), o, rcond=None)[0]
+            sbacks[i] = np.squeeze(s_back)
+            os[i] = np.squeeze(o)
+            cs[i] = c
+            actions[i] = u
+
+        return actions, cs, os, sbacks
+
+    def greedy_plan(self, o, goal, T=1):
+        actions = np.zeros((T, 2, 1))
+        os = np.zeros((T, self.args.M))
+        cs = np.zeros(T)
+        sbacks = np.zeros((T, self.args.N))
+
         for i in range(T):
             s_back = np.linalg.lstsq(self.model.get_A(), o, rcond=None)[0]
             sbacks[i] = np.squeeze(s_back)
             os[i] = np.squeeze(o)
-            # u, c, next_o = self.plan_one_step(o, goal)
-            full_u, full_c, next_o = self.model.act(o, goal)
-            if np.linalg.norm(full_u) > 0.75:
-                u = full_u / np.linalg.norm(full_u) * 0.75  # u is in meters per second. Cap to 0.75
-            else:
-                u = full_u
-            c = self.model.predict_cost(o, u, goal)
-            next_o = self.model.predict(o, u)
+
+            # u, c, next_o = self.sample_action(o, goal)
+            u, c, next_o = self.greedy_action(o, goal)
+
             cs[i] = c
             actions[i] = u
             o = next_o
 
-        if plot:
-            plt.figure()
-            plt.plot(cs)
-            plt.xlabel("time steps")
-            plt.ylabel("predicted cost (squared distance, m^2)")
-            plt.legend()
-
-            plt.figure()
-            plt.plot(actions[:, 0, 0], label="x velocity")
-            plt.plot(actions[:, 1, 0], label="y velocity")
-            plt.xlabel("time steps")
-            plt.ylabel("velocity (m/s)")
-            plt.legend()
-
-            plt.figure()
-            ax = plt.gca()
-            ax.plot(os[:, 0], os[:, 1], label="$o_1$, $o_2$")
-            ax.plot(sbacks[:, 0], sbacks[:, 1], label="$s_1$, $s_2$ recovered from $o$")
-            S = 10
-            q = ax.quiver(sbacks[::S, 0], sbacks[::S, 1], actions[::S, 0, 0], actions[::S, 1, 0], scale=5000,
-                          width=0.001)
-            ax.set_xlabel("X (m)")
-            ax.set_ylabel("Y (m)")
-            plt.legend()
-            plt.show()
-
-        return actions
+        return actions, cs, os, sbacks
 
     def get_state(self):
         o = []
@@ -119,7 +122,7 @@ class TestModel:
         return np.linalg.norm(s[0:2, 0] - goal[0:2, 0])
 
     def run(self):
-        np.random.seed(111)
+        np.random.seed(0)
         joy_msg = Joy()
         joy_msg.axes = [0, 0]
 
@@ -128,18 +131,45 @@ class TestModel:
         # load our initial model
         self.model.load()
 
-        data = []
-
-        prev_s = None
-        prev_true_cost = None
+        # used for most of our planning algorithms
+        og = self.model.reduce(goal)
         done = False
 
         try:
-            self.unpause(EmptyRequest())
             while not done:
                 s = self.get_state()
                 o = self.model.reduce(s)
-                actions = self.plan(o, goal)
+                actions, cs, os, sbacks = self.greedy_plan(o, goal)
+                # actions, cs, os, sbacks = self.a_star_plan(o, og)
+
+                if args.plot_plan:
+                    plt.figure()
+                    plt.plot(cs)
+                    plt.xlabel("time steps")
+                    plt.ylabel("predicted cost (squared distance, m^2)")
+                    plt.legend()
+
+                    plt.figure()
+                    plt.plot(actions[:, 0, 0], label="x velocity")
+                    plt.plot(actions[:, 1, 0], label="y velocity")
+                    plt.xlabel("time steps")
+                    plt.ylabel("velocity (m/s)")
+                    plt.legend()
+
+                    plt.figure()
+                    ax = plt.gca()
+                    # ax.plot(os[:, 0], os[:, 1], label="$o_1$, $o_2$")
+                    ax.plot(sbacks[:, 0], sbacks[:, 1], label="$s_1$, $s_2$ recovered from $o$")
+                    S = 10
+                    q = ax.quiver(sbacks[::S, 0], sbacks[::S, 1], actions[::S, 0, 0], actions[::S, 1, 0], scale=100,
+                                  width=0.002)
+                    ax.set_xlabel("X (m)")
+                    ax.set_ylabel("Y (m)")
+                    ax.set_aspect('equal')
+                    plt.legend()
+                    plt.show()
+                    return
+
                 for i, action in enumerate(actions):
                     joy_msg.axes = [-action[1, 0], -action[0, 0]]
 
@@ -149,17 +179,9 @@ class TestModel:
                     sleep(self.dt)
                     self.pause(EmptyRequest())
 
-                    # aggregate data
                     s = self.get_state()
                     true_cost = self.state_cost(s, goal)
-                    # if i > 0:
-                    #     datum = np.concatenate((prev_s.flatten(), action.flatten(), s.flatten(), prev_true_cost.flatten(), true_cost.flatten()))
-                    #     if self.args.verbose:
-                    #         print(datum)
-                    #
-                    #     data.append(datum)
 
-                    # s_back = np.linalg.lstsq(self.model.get_A(), o, rcond=None)[0]
                     if self.args.pause:
                         input()
 
@@ -169,8 +191,6 @@ class TestModel:
                         done = True
                         break
 
-                    prev_true_cost = true_cost
-                    prev_s = s
                 if done:
                     break
         except KeyboardInterrupt:
@@ -178,8 +198,6 @@ class TestModel:
         finally:
             joy_msg.axes = [0, 0]
             self.joy_pub.publish(joy_msg)
-            if self.args.new_data:
-                np.savetxt(self.args.new_data, data)
 
 
 if __name__ == '__main__':
@@ -190,7 +208,10 @@ if __name__ == '__main__':
     parser.add_argument("--model-name", '-m', default="myfirst")
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--pause", action='store_true')
-    parser.add_argument("--new_data", help='filename to store data in')
+    parser.add_argument("--plot-plan", action='store_true')
+    parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
+    parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
+    parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
 
     args = parser.parse_args()
 
