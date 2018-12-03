@@ -22,8 +22,17 @@ DIMENSIONS = {
 }
 
 
+def experiment_name():
+    repo = git.Repo(search_parent_directories=True)
+    sha = repo.head.object.hexsha[:10]
+    stamp = "{:%B_%d_%H:%M:%S}".format(datetime.now())
+    nickname = "" if args.log is None else args.log.replace(" ", "_")
+    log_path = os.path.join(nickname, "{}__{}".format(stamp, sha))
+    return log_path
+
+
 def train(args):
-    model = LinearTFModel(vars(args), args.N, args.M, args.L)
+    model = LinearTFModel(vars(args), args.N, args.M, args.L, n_steps=args.n_steps)
 
     # goal = np.array([[0], [0], [0], [1], [0], [2]])
     goals = []
@@ -41,38 +50,30 @@ def train(args):
 
     model.setup()
 
-    # create an experiment name
-    repo = git.Repo(search_parent_directories=True)
-    sha = repo.head.object.hexsha
-    stamp = "{:%B_%d_%H:%M:%S}".format(datetime.now())
-    nickname = "" if args.log is None else args.log.replace(" ", "_")
-    log_path = os.path.join(nickname, "{}__{}".format(stamp, sha))
+    log_path = experiment_name()
 
     for goal in goals:
-        n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal,
-                                      extract_func=tpo.link_pos_vel_extractor(args.N))
-        # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
-        interrupted = model.train(x, y, args.epochs, log_path)
+        n, x = tpo.load_train(args.dataset, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
+        interrupted = model.train(x, goal, args.epochs, log_path)
         if interrupted:
             break
 
 
 def model_only(args):
-    # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
-    model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L)
+    model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps)
     if args.log:
         model.init()
-        model.save()
+        log_path = experiment_name()
+        full_log_path = os.path.join("log_data", log_path)
+        model.save(full_log_path)
 
 
 def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
-    n, x, y = tpo.load_train_test(args.dataset, N=args.N, M=args.M, L=args.L, g=goal,
-                                  extract_func=tpo.link_pos_vel_extractor(args.N))
-    # model = NNModel(args, N=6, M=2, L=2, dims=DIMENSIONS)
-    model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L)
+    n, x = tpo.load_train(args.dataset, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
+    model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps)
     model.load()
-    model.evaluate(x, y)
+    model.evaluate(x, goal)
 
 
 if __name__ == '__main__':
@@ -93,15 +94,17 @@ if __name__ == '__main__':
     train_subparser.add_argument("--batch-size", "-b", type=int, default=-1)
     train_subparser.add_argument("--print-period", "-p", type=int, default=100)
     train_subparser.add_argument("--n-goals", "-n", type=int, default=500)
+    train_subparser.add_argument("--n-steps", "-s", type=int, default=1)
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")
     eval_subparser.add_argument("dataset", help="dataset (txt file)")
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
+    eval_subparser.add_argument("--n-steps", "-s", type=int, default=1)
     eval_subparser.set_defaults(func=evaluate)
 
     model_only_subparser = subparsers.add_parser("model_only")
-    model_only_subparser.add_argument("--log", "-l", action="store_true", help="save/log the graph and summaries")
+    model_only_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
     model_only_subparser.set_defaults(func=model_only)
 
     args = parser.parse_args()

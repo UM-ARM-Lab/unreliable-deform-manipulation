@@ -23,7 +23,7 @@ class TestModel:
         self.args = args
         self.model_name = args.model_name
         self.dt = 0.1
-        self.model = LinearTFModel({'checkpoint': self.args.checkpoint}, N=args.N, M=args.M, L=args.L)
+        self.model = LinearTFModel({'checkpoint': self.args.checkpoint}, N=args.N, M=args.M, L=args.L, n_steps=args.n_steps)
 
         rospy.init_node('ScipyLearner')
         self.get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
@@ -212,6 +212,7 @@ if __name__ == '__main__':
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
+    parser.add_argument("--n-steps", "-s", type=int, default=1)
 
     args = parser.parse_args()
 

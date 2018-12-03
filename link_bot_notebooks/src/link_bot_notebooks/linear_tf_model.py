@@ -6,13 +6,19 @@ from colorama import Fore
 import numpy as np
 import tensorflow as tf
 
-
 from link_bot_notebooks import base_model
+
+
+def subsequences(x, n_steps):
+    s = x.dtype.itemsize
+    shape = (n_steps, x.shape[1], x.shape[0] - n_steps + 1)
+    strides = (s * x.shape[1], s, s * x.shape[1])
+    return np.lib.stride_tricks.as_strided(x, shape=shape, strides=strides)
 
 
 class LinearTFModel(base_model.BaseModel):
 
-    def __init__(self, args, N, M, L, seed=0):
+    def __init__(self, args, N, M, L, n_steps, seed=0):
         base_model.BaseModel.__init__(self, N, M, L)
 
         np.random.seed(seed)
@@ -22,12 +28,13 @@ class LinearTFModel(base_model.BaseModel):
         self.N = N
         self.M = M
         self.L = L
+        self.n_steps = n_steps
         self.beta = 1e-8
 
         self.s = tf.placeholder(tf.float32, shape=(N, None), name="s")
         self.s_ = tf.placeholder(tf.float32, shape=(N, None), name="s_")
-        self.u = tf.placeholder(tf.float32, shape=(L, None), name="u")
-        self.g = tf.placeholder(tf.float32, shape=(N, None), name="g")
+        self.u = tf.placeholder(tf.float32, shape=(n_steps, L, None), name="u")
+        self.g = tf.placeholder(tf.float32, shape=(N, 1), name="g")
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
@@ -39,8 +46,13 @@ class LinearTFModel(base_model.BaseModel):
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
         self.o_ = tf.matmul(self.A, self.s_, name='reduce_')
-        self.hat_o_ = self.hat_o + tf.matmul(self.B, self.hat_o, name='dynamics') + \
-                      tf.matmul(self.C, self.u, name='controls')
+
+        self.hat_o_ = self.hat_o
+        for i in range(self.n_steps):
+            self.hat_o_ = self.hat_o_ + tf.matmul(self.B, self.hat_o_, name='dynamics_step_{}'.format(i)) + \
+                          tf.matmul(self.C, self.u[i], name='controls_step_{}'.format(i))
+        # self.hat_o_ = self.hat_o0_
+
         self.d_to_goal = self.og - self.hat_o
         self.d_to_goal_ = self.og - self.hat_o_
         self.hat_c = tf.linalg.tensor_diag_part(
@@ -57,7 +69,7 @@ class LinearTFModel(base_model.BaseModel):
             self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
             self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
-            starter_learning_rate = 0.01
+            starter_learning_rate = 0.1
             self.learning_rate = tf.train.exponential_decay(starter_learning_rate, self.global_step, 5000, 0.8,
                                                             staircase=True)
             self.opt = tf.train.AdamOptimizer(
@@ -82,16 +94,12 @@ class LinearTFModel(base_model.BaseModel):
             self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
             self.saver = tf.train.Saver()
 
-    def train(self, train_x, train_y, epochs, log_path):
+    def train(self, train_x, goal, epochs, log_path):
         """
         x train is an array, each row of which looks like:
-            [s_t, u_t, s_{t+1}, goal]
-        y train is an array, each row of which looks like:
-            [c_t, c_{t+1}]
+            [s_t, u_t]
         """
         interrupted = False
-        n_training_samples = train_x.shape[0]
-        batch_size = self.args['batch_size']
 
         if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
@@ -102,24 +110,19 @@ class LinearTFModel(base_model.BaseModel):
             if self.args['verbose']:
                 print("TRAINING FOR {} EPOCHS:".format(epochs))
             for i in range(epochs):
-                if batch_size == -1:
-                    start = 0
-                    end = n_training_samples
-                else:
-                    start = np.random.randint(0, n_training_samples - batch_size)
-                    end = start + batch_size
-                batch_s = train_x[start:end, 0:self.N].T
-                batch_s_ = train_x[start:end, self.N: 2 * self.N].T
-                batch_g = train_x[start:end, 2 * self.N: 3 * self.N].T
-                batch_u = train_x[start:end, 3 * self.N: 3 * self.N + self.L].T
-                batch_c = train_y[start:end, 0]
-                batch_c_ = train_y[start:end, 1]
-                feed_dict = {self.s: batch_s,
-                             self.s_: batch_s_,
-                             self.u: batch_u,
-                             self.g: batch_g,
-                             self.c: batch_c,
-                             self.c_: batch_c_}
+                # all sub-trajectories of length n_steps
+                seqs = subsequences(train_x, self.n_steps)
+                s = seqs[0, :self.N, :]
+                s_ = seqs[-1, :self.N, :]
+                u = seqs[:, self.N:, :]
+                c = np.sum((seqs[0, [0, 1], :] - goal[[0, 1]])**2, axis=0)
+                c_ = np.sum((seqs[-1, [0, 1], :] - goal[[0, 1]])**2, axis=0)
+                feed_dict = {self.s: s,
+                             self.s_: s_,
+                             self.u: u,
+                             self.g: goal,
+                             self.c: c,
+                             self.c_: c_}
                 ops = [self.global_step, self.summaries, self.loss, self.opt]
                 step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
 
@@ -187,6 +190,7 @@ class LinearTFModel(base_model.BaseModel):
         ops = [self.B, self.C, self.og]
         B, C, og = self.sess.run(ops, feed_dict=feed_dict)
         u = np.linalg.lstsq(C, (og - o - np.dot(B, o)), rcond=None)[0]
+        u = u.reshape(2, -1)
 
         feed_dict = {self.hat_o: o, self.g: g, self.u: u}
         ops = [self.hat_o_, self.hat_c_]
@@ -203,17 +207,17 @@ class LinearTFModel(base_model.BaseModel):
         global_step = self.sess.run(self.global_step)
         print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
 
-    def evaluate(self, x_eval, y_eval, display=True):
-        s = x_eval[:, 0:self.N].T
-        s_ = x_eval[:, self.N: 2 * self.N].T
-        g = x_eval[:, 2 * self.N: 3 * self.N].T
-        u = x_eval[:, 3 * self.N: 3 * self.N + self.L].T
-        c = y_eval[:, 0]
-        c_ = y_eval[:, 1]
+    def evaluate(self, eval_x, goal, display=True):
+        seqs = subsequences(eval_x, self.n_steps)
+        s = seqs[0, :self.N, :]
+        s_ = seqs[-1, :self.N, :]
+        u = seqs[:, self.N:, :]
+        c = np.sum((seqs[0, [0, 1], :] - goal[[0, 1]])**2, axis=0)
+        c_ = np.sum((seqs[-1, [0, 1], :] - goal[[0, 1]])**2, axis=0)
         feed_dict = {self.s: s,
                      self.s_: s_,
                      self.u: u,
-                     self.g: g,
+                     self.g: goal,
                      self.c: c,
                      self.c_: c_}
         ops = [self.A, self.B, self.C, self.D, self.cost_loss, self.state_prediction_loss, self.cost_prediction_loss,
