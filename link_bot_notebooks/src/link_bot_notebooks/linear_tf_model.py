@@ -66,7 +66,7 @@ class LinearTFModel(base_model.BaseModel):
             flat_weights = tf.concat((tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]),
                                       tf.reshape(self.C, [-1]), tf.reshape(self.D, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
-            self.loss = self.cost_loss + self.cost_prediction_loss + self.regularization
+            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             starter_learning_rate = 0.1
             self.learning_rate = tf.train.exponential_decay(starter_learning_rate, self.global_step, 5000, 0.8,
