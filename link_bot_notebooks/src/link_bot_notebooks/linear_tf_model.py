@@ -51,7 +51,6 @@ class LinearTFModel(base_model.BaseModel):
         for i in range(self.n_steps):
             self.hat_o_ = self.hat_o_ + tf.matmul(self.B, self.hat_o_, name='dynamics_step_{}'.format(i)) + \
                           tf.matmul(self.C, self.u[i], name='controls_step_{}'.format(i))
-        # self.hat_o_ = self.hat_o0_
 
         self.d_to_goal = self.og - self.hat_o
         self.d_to_goal_ = self.og - self.hat_o_
@@ -67,7 +66,7 @@ class LinearTFModel(base_model.BaseModel):
             flat_weights = tf.concat((tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]),
                                       tf.reshape(self.C, [-1]), tf.reshape(self.D, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
-            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
+            self.loss = self.cost_loss + self.cost_prediction_loss + self.regularization
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             starter_learning_rate = 0.1
             self.learning_rate = tf.train.exponential_decay(starter_learning_rate, self.global_step, 5000, 0.8,
@@ -107,26 +106,28 @@ class LinearTFModel(base_model.BaseModel):
             writer.add_graph(self.sess.graph)
 
         try:
-            if self.args['verbose']:
-                print("TRAINING FOR {} EPOCHS:".format(epochs))
+            # all sub-trajectories of length n_steps
+            seqs = subsequences(train_x, self.n_steps)
+
+            if train_x.shape[0] < self.n_steps:
+                raise Exception("Need more time steps of data!")
+
+            s = seqs[0, :self.N, :]
+            s_ = seqs[-1, :self.N, :]
+            u = seqs[:, self.N:, :]
+            c = np.sum((seqs[0, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
+            c_ = np.sum((seqs[-1, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
+            feed_dict = {self.s: s,
+                         self.s_: s_,
+                         self.u: u,
+                         self.g: goal,
+                         self.c: c,
+                         self.c_: c_}
+            ops = [self.global_step, self.summaries, self.loss, self.opt]
             for i in range(epochs):
-                # all sub-trajectories of length n_steps
-                seqs = subsequences(train_x, self.n_steps)
-                s = seqs[0, :self.N, :]
-                s_ = seqs[-1, :self.N, :]
-                u = seqs[:, self.N:, :]
-                c = np.sum((seqs[0, [0, 1], :] - goal[[0, 1]])**2, axis=0)
-                c_ = np.sum((seqs[-1, [0, 1], :] - goal[[0, 1]])**2, axis=0)
-                feed_dict = {self.s: s,
-                             self.s_: s_,
-                             self.u: u,
-                             self.g: goal,
-                             self.c: c,
-                             self.c_: c_}
-                ops = [self.global_step, self.summaries, self.loss, self.opt]
                 step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
 
-                if step % self.args['print_period'] == 0:
+                if 'print_period' in self.args and step % self.args['print_period'] == 0:
                     print(step, loss)
 
                 if self.args['log'] is not None:
@@ -139,6 +140,7 @@ class LinearTFModel(base_model.BaseModel):
             ops = [self.A, self.B, self.C, self.D]
             A, B, C, D = self.sess.run(ops, feed_dict={})
             if self.args['verbose']:
+                print("Loss: {}".format(loss))
                 print("A:\n{}".format(A))
                 print("B:\n{}".format(B))
                 print("C:\n{}".format(C))
@@ -186,16 +188,19 @@ class LinearTFModel(base_model.BaseModel):
 
     def act(self, o, g):
         """ return the action which gives the lowest cost for the predicted next state """
-        feed_dict = {self.hat_o: o, self.g: g}
-        ops = [self.B, self.C, self.og]
-        B, C, og = self.sess.run(ops, feed_dict=feed_dict)
-        u = np.linalg.lstsq(C, (og - o - np.dot(B, o)), rcond=None)[0]
-        u = u.reshape(2, -1)
+        min_cost = 1e9
+        min_cost_u = None
+        for angle in np.linspace(-np.pi, np.pi, 100):
+            u = np.array([[[np.cos(angle)], [np.sin(angle)]]])
+            cost = self.predict_cost(o, u, g)[0, 0]
+            if cost < min_cost:
+                min_cost = cost
+                min_cost_u = u
 
-        feed_dict = {self.hat_o: o, self.g: g, self.u: u}
+        feed_dict = {self.hat_o: o, self.g: g, self.u: min_cost_u}
         ops = [self.hat_o_, self.hat_c_]
         hat_o_, hat_c_ = self.sess.run(ops, feed_dict=feed_dict)
-        return u, hat_c_, hat_o_
+        return min_cost_u, hat_c_, hat_o_
 
     def save(self, log_path):
         global_step = self.sess.run(self.global_step)
@@ -212,8 +217,8 @@ class LinearTFModel(base_model.BaseModel):
         s = seqs[0, :self.N, :]
         s_ = seqs[-1, :self.N, :]
         u = seqs[:, self.N:, :]
-        c = np.sum((seqs[0, [0, 1], :] - goal[[0, 1]])**2, axis=0)
-        c_ = np.sum((seqs[-1, [0, 1], :] - goal[[0, 1]])**2, axis=0)
+        c = np.sum((seqs[0, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
+        c_ = np.sum((seqs[-1, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
         feed_dict = {self.s: s,
                      self.s_: s_,
                      self.u: u,

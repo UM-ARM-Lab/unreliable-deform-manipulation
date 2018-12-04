@@ -4,13 +4,11 @@ from __future__ import print_function
 import argparse
 import os
 import numpy as np
-from datetime import datetime
-import git
 
 from link_bot_notebooks import notebook_finder
 from link_bot_notebooks import toy_problem_optimization_common as tpo
-from link_bot_notebooks.nn_model import NNModel
-from link_bot_notebooks.linear_tf_model import LinearTFModel
+from link_bot_notebooks import linear_tf_model
+from link_bot_notebooks import experiments_util
 
 DIMENSIONS = {
     # Reduction
@@ -22,17 +20,8 @@ DIMENSIONS = {
 }
 
 
-def experiment_name():
-    repo = git.Repo(search_parent_directories=True)
-    sha = repo.head.object.hexsha[:10]
-    stamp = "{:%B_%d_%H:%M:%S}".format(datetime.now())
-    nickname = "" if args.log is None else args.log.replace(" ", "_")
-    log_path = os.path.join(nickname, "{}__{}".format(stamp, sha))
-    return log_path
-
-
 def train(args):
-    model = LinearTFModel(vars(args), args.N, args.M, args.L, n_steps=args.n_steps)
+    model = linear_tf_model.LinearTFModel(vars(args), args.N, args.M, args.L, n_steps=args.n_steps)
 
     # goal = np.array([[0], [0], [0], [1], [0], [2]])
     goals = []
@@ -50,7 +39,7 @@ def train(args):
 
     model.setup()
 
-    log_path = experiment_name()
+    log_path = experiments_util.experiment_name(args.log)
 
     for goal in goals:
         n, x = tpo.load_train(args.dataset, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
@@ -60,10 +49,10 @@ def train(args):
 
 
 def model_only(args):
-    model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps)
+    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps)
     if args.log:
         model.init()
-        log_path = experiment_name()
+        log_path = experiments_util.experiment_name()
         full_log_path = os.path.join("log_data", log_path)
         model.save(full_log_path)
 
@@ -71,7 +60,7 @@ def model_only(args):
 def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
     n, x = tpo.load_train(args.dataset, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
-    model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps)
+    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps)
     model.load()
     model.evaluate(x, goal)
 
