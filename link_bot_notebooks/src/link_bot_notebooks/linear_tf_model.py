@@ -11,7 +11,7 @@ from link_bot_notebooks import base_model
 
 def subsequences(x, n_steps):
     s = x.dtype.itemsize
-    shape = (n_steps, x.shape[1], x.shape[0] - n_steps + 1)
+    shape = (n_steps + 1, x.shape[1], x.shape[0] - n_steps)
     strides = (s * x.shape[1], s, s * x.shape[1])
     return np.lib.stride_tricks.as_strided(x, shape=shape, strides=strides)
 
@@ -38,10 +38,10 @@ class LinearTFModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
-        self.A = tf.Variable(tf.truncated_normal([M, N]), name="A")
-        self.B = tf.Variable(tf.truncated_normal([M, M]), name="B")
-        self.C = tf.Variable(tf.truncated_normal([M, L]), name="C")
-        self.D = tf.Variable(tf.truncated_normal([M, M]), name="D")
+        self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32)
+        self.B = tf.Variable(np.zeros((2, 2)), name="B", dtype=tf.float32)
+        self.C = tf.Variable(np.zeros((2, 2)), name="C", dtype=tf.float32)
+        self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
@@ -61,12 +61,12 @@ class LinearTFModel(base_model.BaseModel):
 
         with tf.name_scope("train"):
             self.cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
-            self.state_prediction_loss = tf.losses.mean_squared_error(labels=self.o_, predictions=self.hat_o_)
+            self.state_prediction_loss = tf.reduce_mean(tf.norm(self.o_ - self.hat_o_, axis=0))
             self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_, predictions=self.hat_c_)
             flat_weights = tf.concat((tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]),
                                       tf.reshape(self.C, [-1]), tf.reshape(self.D, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
-            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss
+            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             starter_learning_rate = 0.1
             self.learning_rate = tf.train.exponential_decay(starter_learning_rate, self.global_step, 5000, 0.8,
@@ -114,7 +114,7 @@ class LinearTFModel(base_model.BaseModel):
 
             s = seqs[0, :self.N, :]
             s_ = seqs[-1, :self.N, :]
-            u = seqs[:, self.N:, :]
+            u = seqs[:-1, self.N:, :]
             c = np.sum((seqs[0, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
             c_ = np.sum((seqs[-1, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
             feed_dict = {self.s: s,
@@ -186,16 +186,25 @@ class LinearTFModel(base_model.BaseModel):
         hat_c = np.expand_dims(hat_c, axis=0)
         return hat_c
 
-    def act(self, o, g):
+    def act(self, o, g, max_v=1):
         """ return the action which gives the lowest cost for the predicted next state """
-        min_cost = 1e9
-        min_cost_u = None
-        for angle in np.linspace(-np.pi, np.pi, 100):
-            u = np.array([[[np.cos(angle)], [np.sin(angle)]]])
-            cost = self.predict_cost(o, u, g)[0, 0]
-            if cost < min_cost:
-                min_cost = cost
-                min_cost_u = u
+        feed_dict = {self.hat_o: o, self.g: g}
+        ops = [self.B, self.C, self.og]
+        B, C, og = self.sess.run(ops, feed_dict=feed_dict)
+        u = np.linalg.lstsq(C, (og - o - np.dot(B, o)), rcond=None)[0]
+        u = u.reshape(1, 2, -1)
+
+        if np.linalg.norm(u) < max_v:
+            min_cost_u = u
+        else:
+            min_cost = 1e9
+            min_cost_u = None
+            for angle in np.linspace(-np.pi, np.pi, 100):
+                u = np.array([[[np.cos(angle)], [np.sin(angle)]]])
+                cost = self.predict_cost(o, u, g)[0, 0]
+                if cost < min_cost:
+                    min_cost = cost
+                    min_cost_u = u
 
         feed_dict = {self.hat_o: o, self.g: g, self.u: min_cost_u}
         ops = [self.hat_o_, self.hat_c_]
@@ -216,7 +225,7 @@ class LinearTFModel(base_model.BaseModel):
         seqs = subsequences(eval_x, self.n_steps)
         s = seqs[0, :self.N, :]
         s_ = seqs[-1, :self.N, :]
-        u = seqs[:, self.N:, :]
+        u = seqs[:-1, self.N:, :]
         c = np.sum((seqs[0, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
         c_ = np.sum((seqs[-1, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
         feed_dict = {self.s: s,
@@ -225,9 +234,10 @@ class LinearTFModel(base_model.BaseModel):
                      self.g: goal,
                      self.c: c,
                      self.c_: c_}
-        ops = [self.A, self.B, self.C, self.D, self.cost_loss, self.state_prediction_loss, self.cost_prediction_loss,
+        ops = [self.A, self.B, self.C, self.D, self.o_, self.hat_o_, self.cost_loss, self.state_prediction_loss,
+               self.cost_prediction_loss,
                self.regularization, self.loss]
-        A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
+        A, B, C, D, o_, o_hat_, c_loss, sp_loss, cp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
         if display:
             print("Cost Loss: {}".format(c_loss))
             print("State Prediction Loss: {}".format(sp_loss))

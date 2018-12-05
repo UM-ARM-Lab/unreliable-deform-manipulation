@@ -52,8 +52,8 @@ def model_only(args):
     model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps)
     if args.log:
         model.init()
-        log_path = experiments_util.experiment_name()
-        full_log_path = os.path.join("log_data", log_path)
+        log_path = experiments_util.experiment_name(args.log)
+        full_log_path = os.path.join(os.getcwd(), "log_data", log_path)
         model.save(full_log_path)
 
 
@@ -66,7 +66,7 @@ def evaluate(args):
 
 
 if __name__ == '__main__':
-    np.set_printoptions(precision=4, suppress=True)
+    np.set_printoptions(precision=8, suppress=True)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", action='store_true')
@@ -94,6 +94,7 @@ if __name__ == '__main__':
 
     model_only_subparser = subparsers.add_parser("model_only")
     model_only_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
+    model_only_subparser.add_argument("--n-steps", "-s", type=int, default=1)
     model_only_subparser.set_defaults(func=model_only)
 
     args = parser.parse_args()

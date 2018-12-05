@@ -45,13 +45,7 @@ class GazeboAgent:
 
     def greedy_action(self, o, goal):
         MAX_SPEED = 1
-        full_u, full_c, next_o = self.model.act(o, goal)
-        if np.linalg.norm(full_u) > MAX_SPEED:
-            u = full_u / np.linalg.norm(full_u) * MAX_SPEED  # u is in meters per second. Cap to 0.75
-        else:
-            u = full_u
-        c = self.model.predict_cost(o, u, goal)
-        next_o = self.model.predict(o, u)
+        u, c, next_o = self.model.act(o, goal, MAX_SPEED)
         return u, c, next_o
 
     def a_star_plan(self, o, og):

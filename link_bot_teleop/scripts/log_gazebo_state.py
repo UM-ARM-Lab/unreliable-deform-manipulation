@@ -21,7 +21,7 @@ class LogGazeboState:
     def run(self):
         DT = 0.1  # seconds per time step
 
-        links = ['link_0', 'link_1', 'link_2', 'link_3', 'link_4', 'head']
+        links = ['link_0', 'link_1', 'head']
 
         get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
         unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
