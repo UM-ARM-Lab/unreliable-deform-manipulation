@@ -33,14 +33,14 @@ class LinearTFModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
-        # self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1,t  0, 0, 0, 0]]), name="A", dtype=tf.float32)
-        # self.B = tf.Variable(np.zeros((2, 2)), name="B", dtype=tf.float32)
-        # self.C = tf.Variable(np.eye(2) * 0.5, name="C", dtype=tf.float32)
-        # self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
-        self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
-        self.B = tf.Variable(np.zeros((M, M)), name="B", dtype=tf.float32)
-        self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
-        self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
+        self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32, trainable=False)
+        self.B = tf.Variable(np.zeros((2, 2)), name="B", dtype=tf.float32, trainable=False)
+        self.C = tf.Variable(np.eye(2), name="C", dtype=tf.float32)
+        self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
+        # self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
+        # self.B = tf.Variable(np.ones((M, M))*1e-6, name="B", dtype=tf.float32)
+        # self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
+        # self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
@@ -61,14 +61,12 @@ class LinearTFModel(base_model.BaseModel):
 
         with tf.name_scope("train"):
             self.cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
-            self.state_prediction_error = tf.reduce_sum(tf.math.square(self.o_ - self.hat_o_), axis=0)
-            self.state_prediction_loss = tf.reduce_mean(self.state_prediction_error)
+            self.state_prediction_loss = tf.reduce_mean(tf.norm(self.o_ - self.hat_o_, axis=0))
             self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_, predictions=self.hat_c_)
             flat_weights = tf.concat((tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]),
                                       tf.reshape(self.C, [-1]), tf.reshape(self.D, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
-            # self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
-            self.loss = self.cost_loss + self.state_prediction_loss
+            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             starter_learning_rate = 0.1
             self.learning_rate = tf.train.exponential_decay(starter_learning_rate, self.global_step, 5000, 0.8,

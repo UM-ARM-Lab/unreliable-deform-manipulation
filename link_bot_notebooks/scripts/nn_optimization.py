@@ -55,7 +55,7 @@ def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
     x = tpo.load_train(args.dataset, n_steps=args.n_steps, N=args.N, L=args.L,
                        extract_func=tpo.link_pos_vel_extractor2(args.N))
-    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=DT)
+    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=0.1)
     model.load()
     model.evaluate(x, goal)
 
