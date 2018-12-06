@@ -1,14 +1,15 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
 import argparse
 from time import sleep
-import numpy as np
 
+import numpy as np
 import rospy
-from sensor_msgs.msg import Joy
-from std_srvs.srv import Empty, EmptyRequest
 from gazebo_msgs.srv import GetLinkState, GetLinkStateRequest
 from link_bot_gazebo.msg import LinkBotConfiguration
+from link_bot_gazebo.srv import WorldControl, WorldControlRequest
+from sensor_msgs.msg import Joy
 
 
 def main():
@@ -32,8 +33,10 @@ def main():
     joy_pub = rospy.Publisher("/joy", Joy, queue_size=10)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
-    unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
-    pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
+    world_control = rospy.ServiceProxy('/world_control', WorldControl)
+
+    while config_pub.get_num_connections() < 1:
+        sleep(0.01)
 
     link_names = ['link_0', 'link_1', 'head']
     S = 4 * len(link_names)
@@ -58,6 +61,9 @@ def main():
     data = []
     np.random.seed(0)
     for p in range(args.pulls):
+        if args.verbose:
+            print('=' * 180)
+
         x0 = np.random.uniform(-5, 5)
         y0 = np.random.uniform(-5, 5)
         yaw = np.random.uniform(-np.pi, np.pi)
@@ -73,12 +79,8 @@ def main():
         config.joint_angles_rad = [0, 0]
         config_pub.publish(config)
 
-        # set simulator settle & stop
-        joy_msg.axes = [0, 0]  # stupid xbox controller
-        joy_pub.publish(joy_msg)
-
-        if args.verbose:
-            print('='*180)
+        # we must wait for the first config to take place
+        # presumably because there is delay in setting up the config publisher
 
         for t in range(args.steps + 1):
             # save the state and action data
@@ -89,12 +91,9 @@ def main():
             joy_pub.publish(joy_msg)
 
             # let the simulator run
-            unpause.call(EmptyRequest())
-            rospy.sleep(DT)
-            pause.call(EmptyRequest())
-
-            # the above sequence is non-blocking, and not guaranteed to work
-            sleep(0.1)
+            step = WorldControlRequest()
+            step.steps = DT / 0.001  # assuming 0.001s per simulation step
+            world_control.call(step)  # this will block until stepping is complete
 
             if args.verbose:
                 print(data[-1])
