@@ -26,7 +26,7 @@ def main():
     args = args
     rospy.init_node('apply_straight_pulls')
 
-    DT = 0.1  # seconds per time step
+    DT = 0.5  # seconds per time step
 
     joy_msg = Joy()
     joy_msg.axes = [0, 0]
@@ -36,7 +36,7 @@ def main():
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
 
     while config_pub.get_num_connections() < 1:
-        sleep(0.01)
+        sleep(1)
 
     link_names = ['link_0', 'link_1', 'head']
     S = 4 * len(link_names)
