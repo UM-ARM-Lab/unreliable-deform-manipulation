@@ -42,7 +42,7 @@ def train(args):
     log_path = experiments_util.experiment_name(args.log)
 
     for goal in goals:
-        n, x = tpo.load_train(args.dataset, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
+        x = tpo.load_train(args.dataset, n_steps=args.n_steps, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
         interrupted = model.train(x, goal, args.epochs, log_path)
         if interrupted:
             break
@@ -59,14 +59,14 @@ def model_only(args):
 
 def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
-    n, x = tpo.load_train(args.dataset, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
+    x = tpo.load_train(args.dataset, n_steps=args.n_steps, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
     model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps)
     model.load()
     model.evaluate(x, goal)
 
 
 if __name__ == '__main__':
-    np.set_printoptions(precision=8, suppress=True)
+    np.set_printoptions(precision=6, suppress=True)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", action='store_true')
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=100)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
-    train_subparser.add_argument("--batch-size", "-b", type=int, default=-1)
+    train_subparser.add_argument("--batch-size", "-b", type=int, default=1024)
     train_subparser.add_argument("--print-period", "-p", type=int, default=100)
     train_subparser.add_argument("--n-goals", "-n", type=int, default=500)
     train_subparser.add_argument("--n-steps", "-s", type=int, default=1)
@@ -91,6 +91,7 @@ if __name__ == '__main__':
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
     eval_subparser.add_argument("--n-steps", "-s", type=int, default=1)
     eval_subparser.set_defaults(func=evaluate)
+    eval_subparser.add_argument("--batch-size", "-b", type=int, default=4096)
 
     model_only_subparser = subparsers.add_parser("model_only")
     model_only_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")

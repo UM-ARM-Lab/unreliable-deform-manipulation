@@ -19,16 +19,16 @@ def main():
     tail_y = 5
     for i in range(args.N):
         # take a random action
-        head_vx = np.random.randn() * 0.5
-        head_vy = np.random.randn() * 0.5
+        head_vx = tail_x + np.random.randn() * 0.5
+        head_vy = tail_y + np.random.randn() * 0.5
 
         data[i][0] = tail_x
         data[i][1] = tail_y
         data[i][10] = head_vx
         data[i][11] = head_vy
 
-        tail_x += 0.1 * head_vx
-        tail_y += 0.1 * head_vy
+        tail_x += 0.1 * head_vx + np.random.randn() * 1e-3
+        tail_y += 0.1 * head_vy + np.random.randn() * 1e-3
 
     if args.plot:
         plt.plot(data[:, 10], label='head_vx')

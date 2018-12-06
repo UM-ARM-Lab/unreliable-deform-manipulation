@@ -9,13 +9,6 @@ import tensorflow as tf
 from link_bot_notebooks import base_model
 
 
-def subsequences(x, n_steps):
-    s = x.dtype.itemsize
-    shape = (n_steps + 1, x.shape[1], x.shape[0] - n_steps)
-    strides = (s * x.shape[1], s, s * x.shape[1])
-    return np.lib.stride_tricks.as_strided(x, shape=shape, strides=strides)
-
-
 class LinearTFModel(base_model.BaseModel):
 
     def __init__(self, args, N, M, L, n_steps, seed=0):
@@ -38,10 +31,10 @@ class LinearTFModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
-        self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32)
-        self.B = tf.Variable(np.zeros((2, 2)), name="B", dtype=tf.float32)
-        self.C = tf.Variable(np.zeros((2, 2)), name="C", dtype=tf.float32)
-        self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
+        self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
+        self.B = tf.Variable(tf.truncated_normal(shape=[M, M]), name="B", dtype=tf.float32)
+        self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
+        self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
@@ -106,17 +99,7 @@ class LinearTFModel(base_model.BaseModel):
             writer.add_graph(self.sess.graph)
 
         try:
-            # all sub-trajectories of length n_steps
-            seqs = subsequences(train_x, self.n_steps)
-
-            if train_x.shape[0] < self.n_steps:
-                raise Exception("Need more time steps of data!")
-
-            s = seqs[0, :self.N, :]
-            s_ = seqs[-1, :self.N, :]
-            u = seqs[:-1, self.N:, :]
-            c = np.sum((seqs[0, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
-            c_ = np.sum((seqs[-1, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
+            s, s_, u, c, c_ = self.batch(train_x, goal)
             feed_dict = {self.s: s,
                          self.s_: s_,
                          self.u: u,
@@ -222,12 +205,7 @@ class LinearTFModel(base_model.BaseModel):
         print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
 
     def evaluate(self, eval_x, goal, display=True):
-        seqs = subsequences(eval_x, self.n_steps)
-        s = seqs[0, :self.N, :]
-        s_ = seqs[-1, :self.N, :]
-        u = seqs[:-1, self.N:, :]
-        c = np.sum((seqs[0, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
-        c_ = np.sum((seqs[-1, [0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
+        s, s_, u, c, c_ = self.batch(eval_x, goal)
         feed_dict = {self.s: s,
                      self.s_: s_,
                      self.u: u,
@@ -249,6 +227,26 @@ class LinearTFModel(base_model.BaseModel):
             print("C:\n{}".format(C))
             print("D:\n{}".format(D))
         return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
+
+    def batch(self, x, goal):
+        """ x is 3d.
+            first axis is the time step
+            second axis is the state/action data
+            third axis is the trajectory.
+        """
+        if x.shape[0] < self.n_steps:
+            raise Exception("Need more time steps of data!")
+
+        batch_size = min(x.shape[2], self.args['batch_size'])
+        example_indeces = np.arange(x.shape[2])
+        np.random.shuffle(example_indeces)
+        batch_indeces = example_indeces[:batch_size]
+        s = x[0, :self.N, :][:, batch_indeces]
+        s_ = x[self.n_steps - 1, :self.N, :][:, batch_indeces]
+        u = x[:, self.N:, batch_indeces]
+        c = np.sum((x[0, [0, 1]][:, batch_indeces] - goal[[0, 1]]) ** 2, axis=0)
+        c_ = np.sum((x[-1, [0, 1]][:, batch_indeces] - goal[[0, 1]]) ** 2, axis=0)
+        return s, s_, u, c, c_
 
     def get_A(self):
         feed_dict = {}

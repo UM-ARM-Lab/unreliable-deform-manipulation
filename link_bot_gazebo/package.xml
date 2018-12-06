@@ -1,4 +1,4 @@
-<package>
+<package format="2">
   <name>link_bot_gazebo</name>
   <version>0.0.0</version>
   <description>link bot gazebo</description>
@@ -10,9 +10,11 @@
   <build_depend>roscpp</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>gazebo_ros</build_depend>
+  <build_depend>message_generation</build_depend>
 
-  <run_depend>roscpp</run_depend>
-  <run_depend>sensor_msgs</run_depend>
-  <run_depend>gazebo_ros</run_depend>
-  <run_depend>link_bot_description</run_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>link_bot_description</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
 </package>
