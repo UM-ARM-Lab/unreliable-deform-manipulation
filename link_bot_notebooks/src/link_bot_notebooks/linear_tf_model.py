@@ -243,7 +243,7 @@ class LinearTFModel(base_model.BaseModel):
         batch_indeces = example_indeces[:batch_size]
         s = x[0, :self.N, :][:, batch_indeces]
         s_ = x[self.n_steps - 1, :self.N, :][:, batch_indeces]
-        u = x[:, self.N:, batch_indeces]
+        u = x[:-1, self.N:, batch_indeces]
         c = np.sum((x[0, [0, 1]][:, batch_indeces] - goal[[0, 1]]) ** 2, axis=0)
         c_ = np.sum((x[-1, [0, 1]][:, batch_indeces] - goal[[0, 1]]) ** 2, axis=0)
         return s, s_, u, c, c_
