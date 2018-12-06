@@ -31,10 +31,14 @@ class LinearTFModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
-        self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
-        self.B = tf.Variable(tf.truncated_normal(shape=[M, M]), name="B", dtype=tf.float32)
-        self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
-        self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
+        self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32)
+        self.B = tf.Variable(np.zeros((2, 2)), name="B", dtype=tf.float32)
+        self.C = tf.Variable(np.eye(2) * 0.5, name="C", dtype=tf.float32)
+        self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
+        # self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
+        # self.B = tf.Variable(tf.truncated_normal(shape=[M, M]), name="B", dtype=tf.float32)
+        # self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
+        # self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
@@ -226,6 +230,7 @@ class LinearTFModel(base_model.BaseModel):
             print("B:\n{}".format(B))
             print("C:\n{}".format(C))
             print("D:\n{}".format(D))
+            print(o_, o_hat_)
         return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
 
     def batch(self, x, goal):
@@ -242,7 +247,7 @@ class LinearTFModel(base_model.BaseModel):
         np.random.shuffle(example_indeces)
         batch_indeces = example_indeces[:batch_size]
         s = x[0, :self.N, :][:, batch_indeces]
-        s_ = x[self.n_steps - 1, :self.N, :][:, batch_indeces]
+        s_ = x[self.n_steps, :self.N, :][:, batch_indeces]
         u = x[:-1, self.N:, batch_indeces]
         c = np.sum((x[0, [0, 1]][:, batch_indeces] - goal[[0, 1]]) ** 2, axis=0)
         c_ = np.sum((x[-1, [0, 1]][:, batch_indeces] - goal[[0, 1]]) ** 2, axis=0)
