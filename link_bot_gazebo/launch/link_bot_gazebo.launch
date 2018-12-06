@@ -1,5 +1,9 @@
 <launch>
+  <arg name="gui" default="true"/>
+  <arg name="short_world_name" default="link_bot"/>
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
-    <arg name="world_name" value="$(find link_bot_gazebo)/worlds/link_bot.world"/>
+    <arg name="world_name" default="$(find link_bot_gazebo)/worlds/$(arg short_world_name).world"/>
+    <arg name="paused" default="true"/>
+    <arg name="gui" value="$(arg gui)"/>
   </include>
 </launch>

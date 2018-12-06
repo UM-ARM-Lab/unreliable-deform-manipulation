@@ -12,11 +12,13 @@
         <include>
             <uri>model://sun</uri>
         </include>
-        <include>
-            <uri>model://link_bot_description</uri>
-            <name>link_bot</name>
-            <pose>5 5 0.1 0 0 0</pose>
-        </include>
+        <% for i in 1..10 %>
+            <include>
+                <uri>model://link_bot_description</uri>
+                <name>link_bot_<%=i%></name>
+                <pose><%=i*3%> 0 0.1 0 0 0</pose>
+            </include>
+        <% end %>
         <plugin name="stepping_plugin" filename="libstepping_plugind.so"/>
     </world>
 </sdf>

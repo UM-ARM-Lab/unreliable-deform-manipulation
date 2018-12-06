@@ -11,7 +11,7 @@ from link_bot_notebooks import base_model
 
 class LinearTFModel(base_model.BaseModel):
 
-    def __init__(self, args, N, M, L, n_steps, seed=0):
+    def __init__(self, args, N, M, L, n_steps, dt, seed=0):
         base_model.BaseModel.__init__(self, N, M, L)
 
         np.random.seed(seed)
@@ -23,6 +23,7 @@ class LinearTFModel(base_model.BaseModel):
         self.L = L
         self.n_steps = n_steps
         self.beta = 1e-8
+        set.dt = dt
 
         self.s = tf.placeholder(tf.float32, shape=(N, None), name="s")
         self.s_ = tf.placeholder(tf.float32, shape=(N, None), name="s_")
@@ -47,7 +48,7 @@ class LinearTFModel(base_model.BaseModel):
         self.hat_o_ = self.hat_o
         for i in range(self.n_steps):
             self.hat_o_ = self.hat_o_ + tf.matmul(self.B, self.hat_o_, name='dynamics_step_{}'.format(i)) + \
-                          tf.matmul(self.C, self.u[i], name='controls_step_{}'.format(i))
+                          tf.matmul(self.dt = self.C, self.u[i], name='controls_step_{}'.format(i))
 
         self.d_to_goal = self.og - self.hat_o
         self.d_to_goal_ = self.og - self.hat_o_

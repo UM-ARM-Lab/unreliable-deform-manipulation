@@ -26,7 +26,7 @@ def main():
     args = args
     rospy.init_node('apply_straight_pulls')
 
-    DT = 0.5  # seconds per time step
+    DT = 0.1  # seconds per time step
 
     joy_msg = Joy()
     joy_msg.axes = [0, 0]

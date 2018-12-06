@@ -77,8 +77,6 @@ namespace gazebo {
     void LinkBotModelPlugin::OnCmdVel(sensor_msgs::JoyConstPtr msg) {
         target_linear_vel_.X(-msg->axes[0] * joy_scale_);
         target_linear_vel_.Y(msg->axes[1] * joy_scale_);
-        ROS_WARN("TARGET: %f, %f", target_linear_vel_.X(), target_linear_vel_.Y());
-
     }
 
     void LinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurationConstPtr _msg) {

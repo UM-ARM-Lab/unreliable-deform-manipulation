@@ -26,7 +26,7 @@ def main():
     args = args
     rospy.init_node('apply_random_pulls')
 
-    DT = 0.5  # seconds per time step
+    DT = 0.1  # seconds per time step
 
     joy_msg = Joy()
     joy_msg.axes = [0, 0]
@@ -70,7 +70,7 @@ def main():
         x0 = np.random.uniform(-5, 5)
         y0 = np.random.uniform(-5, 5)
         yaw = r()
-        v = np.random.rand() * 1.5
+        v = np.random.normal(0.75, 1)
         vx = np.cos(r()) * v
         vy = np.sin(r()) * v
 
@@ -81,9 +81,6 @@ def main():
         config.tail_pose.theta = yaw
         config.joint_angles_rad = [r() * 0.9, 0]
         config_pub.publish(config)
-
-        # we must wait for the first config to take place
-        # presumably because there is delay in setting up the config publisher
 
         for t in range(args.steps + 1):
             # save the state and action data

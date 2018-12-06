@@ -1,0 +1,78 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+    <world name="default">
+        <gui>
+            <camera name='user_camera'>
+                <pose frame=''>0 0 25 0 1.5707 1.5707</pose>
+            </camera>
+        </gui>
+        <include>
+            <uri>model://ground_plane</uri>
+        </include>
+        <include>
+            <uri>model://sun</uri>
+        </include>
+        
+            <include>
+                <uri>model://link_bot_description</uri>
+                <name>link_bot_1</name>
+                <pose>3 0 0.1 0 0 0</pose>
+            </include>
+        
+            <include>
+                <uri>model://link_bot_description</uri>
+                <name>link_bot_2</name>
+                <pose>6 0 0.1 0 0 0</pose>
+            </include>
+        
+            <include>
+                <uri>model://link_bot_description</uri>
+                <name>link_bot_3</name>
+                <pose>9 0 0.1 0 0 0</pose>
+            </include>
+        
+            <include>
+                <uri>model://link_bot_description</uri>
+                <name>link_bot_4</name>
+                <pose>12 0 0.1 0 0 0</pose>
+            </include>
+        
+            <include>
+                <uri>model://link_bot_description</uri>
+                <name>link_bot_5</name>
+                <pose>15 0 0.1 0 0 0</pose>
+            </include>
+        
+            <include>
+                <uri>model://link_bot_description</uri>
+                <name>link_bot_6</name>
+                <pose>18 0 0.1 0 0 0</pose>
+            </include>
+        
+            <include>
+                <uri>model://link_bot_description</uri>
+                <name>link_bot_7</name>
+                <pose>21 0 0.1 0 0 0</pose>
+            </include>
+        
+            <include>
+                <uri>model://link_bot_description</uri>
+                <name>link_bot_8</name>
+                <pose>24 0 0.1 0 0 0</pose>
+            </include>
+        
+            <include>
+                <uri>model://link_bot_description</uri>
+                <name>link_bot_9</name>
+                <pose>27 0 0.1 0 0 0</pose>
+            </include>
+        
+            <include>
+                <uri>model://link_bot_description</uri>
+                <name>link_bot_10</name>
+                <pose>30 0 0.1 0 0 0</pose>
+            </include>
+        
+        <plugin name="stepping_plugin" filename="libstepping_plugind.so"/>
+    </world>
+</sdf>
