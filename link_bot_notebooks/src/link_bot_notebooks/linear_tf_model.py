@@ -2,11 +2,12 @@
 from __future__ import print_function
 
 import os
-from colorama import Fore
+
 import numpy as np
 import tensorflow as tf
-
+from colorama import Fore
 from link_bot_notebooks import base_model
+from tensorflow.python import debug as tf_debug
 
 
 class LinearTFModel(base_model.BaseModel):
@@ -23,7 +24,7 @@ class LinearTFModel(base_model.BaseModel):
         self.L = L
         self.n_steps = n_steps
         self.beta = 1e-8
-        set.dt = dt
+        self.dt = dt
 
         self.s = tf.placeholder(tf.float32, shape=(N, None), name="s")
         self.s_ = tf.placeholder(tf.float32, shape=(N, None), name="s_")
@@ -37,7 +38,7 @@ class LinearTFModel(base_model.BaseModel):
         # self.C = tf.Variable(np.eye(2) * 0.5, name="C", dtype=tf.float32)
         # self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
         self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
-        self.B = tf.Variable(tf.truncated_normal(shape=[M, M]), name="B", dtype=tf.float32)
+        self.B = tf.Variable(np.zeros((M, M)), name="B", dtype=tf.float32)
         self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
         self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
@@ -47,8 +48,9 @@ class LinearTFModel(base_model.BaseModel):
 
         self.hat_o_ = self.hat_o
         for i in range(self.n_steps):
-            self.hat_o_ = self.hat_o_ + tf.matmul(self.B, self.hat_o_, name='dynamics_step_{}'.format(i)) + \
-                          tf.matmul(self.dt = self.C, self.u[i], name='controls_step_{}'.format(i))
+            with tf.name_scope("step_{}".format(i)):
+                self.hat_o_ = tf.add(self.hat_o_ + tf.matmul(self.B, self.hat_o_, name='dynamics'.format(i)),
+                              tf.matmul(self.dt * self.C, self.u[i], name='controls'.format(i)), name="hat_o_")
 
         self.d_to_goal = self.og - self.hat_o
         self.d_to_goal_ = self.og - self.hat_o_
@@ -59,12 +61,14 @@ class LinearTFModel(base_model.BaseModel):
 
         with tf.name_scope("train"):
             self.cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
-            self.state_prediction_loss = tf.reduce_mean(tf.norm(self.o_ - self.hat_o_, axis=0))
+            self.state_prediction_error = tf.reduce_sum(tf.math.square(self.o_ - self.hat_o_), axis=0)
+            self.state_prediction_loss = tf.reduce_mean(self.state_prediction_error)
             self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_, predictions=self.hat_c_)
             flat_weights = tf.concat((tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]),
                                       tf.reshape(self.C, [-1]), tf.reshape(self.D, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
-            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
+            # self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
+            self.loss = self.cost_loss + self.state_prediction_loss
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             starter_learning_rate = 0.1
             self.learning_rate = tf.train.exponential_decay(starter_learning_rate, self.global_step, 5000, 0.8,
@@ -89,6 +93,8 @@ class LinearTFModel(base_model.BaseModel):
             self.summaries = tf.summary.merge_all()
             gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.015)
             self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+            if 'debug' in self.args and self.args['debug']:
+                self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
             self.saver = tf.train.Saver()
 
     def train(self, train_x, goal, epochs, log_path):
