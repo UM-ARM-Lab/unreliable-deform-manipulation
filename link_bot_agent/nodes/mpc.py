@@ -20,7 +20,7 @@ class MPCAgent:
     def __init__(self, args):
         self.args = args
         self.dt = 0.1
-        self.model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps)
+        self.model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=self.dt)
         self.agent = agent.GazeboAgent(N=args.N, M=args.M, dt=self.dt, model=self.model,
                                        gazebo_model_name=args.model_name)
 
@@ -78,7 +78,7 @@ class MPCAgent:
                     return
 
                 for i, action in enumerate(actions):
-                    joy_msg.axes = [-action[1, 0], -action[0, 0]]
+                    joy_msg.axes = [-action[0, 0], action[1, 0]]
 
                     # Take action and wait for dt
                     self.unpause(EmptyRequest())
@@ -90,7 +90,7 @@ class MPCAgent:
                     true_cost = self.agent.state_cost(s, goal)
 
                     if self.args.pause:
-                        input()
+                        raw_input('paused...')
 
                     print("{:0.3f}".format(true_cost))
                     if true_cost < 0.1:
