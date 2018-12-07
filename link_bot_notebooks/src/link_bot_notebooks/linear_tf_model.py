@@ -33,12 +33,12 @@ class LinearTFModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
-        self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32, trainable=False)
-        self.B = tf.Variable(np.zeros((2, 2)), name="B", dtype=tf.float32, trainable=False)
+        # self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32, trainable=False)
+        # self.B = tf.Variable(np.zeros((2, 2)), name="B", dtype=tf.float32, trainable=False)
         self.C = tf.Variable(np.eye(2), name="C", dtype=tf.float32)
         self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
-        # self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
-        # self.B = tf.Variable(np.ones((M, M))*1e-6, name="B", dtype=tf.float32)
+        self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
+        self.B = tf.Variable(np.ones((M, M))*1e-6, name="B", dtype=tf.float32)
         # self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
         # self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
