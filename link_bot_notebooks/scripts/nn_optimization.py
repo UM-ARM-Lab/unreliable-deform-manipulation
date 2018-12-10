@@ -33,13 +33,17 @@ def train(args):
     model.setup()
 
     log_path = experiments_util.experiment_name(args.log)
+    x = tpo.load_train(args.dataset, n_steps=args.n_steps, N=args.N, L=args.L,
+                       extract_func=tpo.link_pos_vel_extractor2(args.N))
 
     for goal in goals:
-        x = tpo.load_train(args.dataset, n_steps=args.n_steps, N=args.N, L=args.L,
-                           extract_func=tpo.link_pos_vel_extractor2(args.N))
         interrupted = model.train(x, goal, args.epochs, log_path)
         if interrupted:
             break
+
+    # evaluate
+    goal = np.array([[0], [0], [0], [1], [0], [2]])
+    model.evaluate(x, goal)
 
 
 def model_only(args):

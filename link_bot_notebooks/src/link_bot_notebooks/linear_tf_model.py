@@ -33,14 +33,11 @@ class LinearTFModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
-        # self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32, trainable=False)
-        # self.B = tf.Variable(np.zeros((2, 2)), name="B", dtype=tf.float32, trainable=False)
-        self.C = tf.Variable(np.eye(2), name="C", dtype=tf.float32)
-        self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
-        self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
-        self.B = tf.Variable(np.ones((M, M))*1e-6, name="B", dtype=tf.float32)
-        # self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
-        # self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
+        # self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
+        self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32)
+        self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-13), name="B", dtype=tf.float32)
+        self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
+        self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
@@ -68,11 +65,11 @@ class LinearTFModel(base_model.BaseModel):
             self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
             self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
-            starter_learning_rate = 0.1
+            starter_learning_rate = 0.001
+            # FIXME: removing this would make it impossible to load older models
             self.learning_rate = tf.train.exponential_decay(starter_learning_rate, self.global_step, 5000, 0.8,
                                                             staircase=True)
-            self.opt = tf.train.AdamOptimizer(
-                learning_rate=self.learning_rate).minimize(self.loss, global_step=self.global_step)
+            self.opt = tf.train.AdamOptimizer().minimize(self.loss, global_step=self.global_step)
 
             trainable_vars = tf.trainable_variables()
             grads = zip(tf.gradients(self.loss, trainable_vars), trainable_vars)
@@ -115,11 +112,12 @@ class LinearTFModel(base_model.BaseModel):
                          self.g: goal,
                          self.c: c,
                          self.c_: c_}
-            ops = [self.global_step, self.summaries, self.loss, self.opt]
+            ops = [self.global_step, self.summaries, self.loss, self.opt, self.B]
             for i in range(epochs):
-                step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
+                step, summary, loss, _, B = self.sess.run(ops, feed_dict=feed_dict)
 
                 if 'print_period' in self.args and step % self.args['print_period'] == 0:
+                    # print(np.linalg.norm(B))
                     print(step, loss)
 
                 if self.args['log'] is not None:
