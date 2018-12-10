@@ -35,7 +35,7 @@ class LinearTFModel(base_model.BaseModel):
 
         # self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
         self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32)
-        self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-13), name="B", dtype=tf.float32)
+        self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-3), name="B", dtype=tf.float32)
         self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
         self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
