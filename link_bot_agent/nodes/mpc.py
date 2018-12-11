@@ -59,34 +59,16 @@ def main():
         while not done:
             s = agent.get_state()
             o = model.reduce(s)
-            actions, cs, os, sbacks = agent.greedy_plan(o, goal)
-            # actions, cs, os, sbacks = agent.a_star_plan(o, og)
+            actions = agent.greedy_plan(o, goal)
+            # actions = agent.a_star_plan(o, og)
 
             if args.plot_plan:
-                plt.figure()
-                plt.plot(cs)
-                plt.xlabel("time steps")
-                plt.ylabel("predicted cost (squared distance, m^2)")
-                plt.legend()
-
                 plt.figure()
                 plt.plot(actions[:, 0, 0], label="x velocity")
                 plt.plot(actions[:, 1, 0], label="y velocity")
                 plt.xlabel("time steps")
                 plt.ylabel("velocity (m/s)")
                 plt.legend()
-
-                plt.figure()
-                ax = plt.gca()
-                ax.plot(sbacks[:, 0], sbacks[:, 1], label="$s_1$, $s_2$ recovered from $o$")
-                S = 10
-                ax.quiver(sbacks[::S, 0], sbacks[::S, 1], actions[::S, 0, 0], actions[::S, 1, 0], scale=100,
-                          width=0.002)
-                ax.set_xlabel("X (m)")
-                ax.set_ylabel("Y (m)")
-                ax.set_aspect('equal')
-                plt.legend()
-                plt.show()
                 return
 
             for i, action in enumerate(actions):

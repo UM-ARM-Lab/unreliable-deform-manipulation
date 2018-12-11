@@ -34,8 +34,8 @@ class LinearTFModel(base_model.BaseModel):
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
         # self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
-        self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32)
-        self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-3), name="B", dtype=tf.float32)
+        self.A = tf.Variable(tf.truncated_normal(shape=[M, N], stddev=1e-2), name="A", dtype=tf.float32)
+        self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-2), name="B", dtype=tf.float32)
         self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
         self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
@@ -178,7 +178,7 @@ class LinearTFModel(base_model.BaseModel):
 
     def act(self, o, g, max_v=1):
         """ return the action which gives the lowest cost for the predicted next state """
-        feed_dict = {self.hat_o: o, self.g: g}
+        feed_dict = {self.g: g}
         ops = [self.B, self.C, self.og]
         B, C, og = self.sess.run(ops, feed_dict=feed_dict)
         u = np.linalg.lstsq(C, (og - o - np.dot(B, o)), rcond=None)[0]
