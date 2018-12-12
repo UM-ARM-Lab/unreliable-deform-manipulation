@@ -69,7 +69,7 @@ class GazeboAgent:
 
         return actions, cs, os, sbacks
 
-    def greedy_plan(self, o, goal, T=1):
+    def greedy_plan(self, o, goal, T=10):
         actions = np.zeros((T, 2, 1))
         os = np.zeros((T, self.M))
         cs = np.zeros(T)

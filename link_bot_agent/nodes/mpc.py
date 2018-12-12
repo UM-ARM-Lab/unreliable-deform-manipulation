@@ -59,16 +59,18 @@ def main():
         while not done:
             s = agent.get_state()
             o = model.reduce(s)
-            actions = agent.greedy_plan(o, goal)
+            actions, cs, os, ss = agent.greedy_plan(o, goal)
             # actions = agent.a_star_plan(o, og)
 
             if args.plot_plan:
                 plt.figure()
+                print(actions)
                 plt.plot(actions[:, 0, 0], label="x velocity")
                 plt.plot(actions[:, 1, 0], label="y velocity")
                 plt.xlabel("time steps")
                 plt.ylabel("velocity (m/s)")
                 plt.legend()
+                plt.show()
                 return
 
             for i, action in enumerate(actions):
@@ -85,7 +87,8 @@ def main():
                 if args.pause:
                     input('paused...')
 
-                print("{:0.3f}".format(true_cost))
+                # print("{:0.3f}".format(true_cost))
+                print(action.T)
                 if true_cost < 0.1:
                     print("Success!")
                     done = True

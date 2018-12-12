@@ -16,7 +16,7 @@ class BaseModel:
     def reduce(self, s):
         pass
 
-    def predict(self, o, u, dt=None):
+    def predict(self, o, u):
         pass
 
     def cost(self, o, g):
@@ -28,11 +28,11 @@ class BaseModel:
     def load(self, infile):
         pass
 
-    def predict_from_s(self, s, u, dt=None):
-        return self.predict(self.reduce(s), u, dt)
+    def predict_from_s(self, s, u):
+        return self.predict(self.reduce(s), u)
 
-    def predict_from_o(self, o, u, dt=None):
-        return self.predict(o, u, dt)
+    def predict_from_o(self, o, u):
+        return self.predict(o, u)
 
     def cost_of_s(self, s, g):
         return self.cost(self.reduce(s), g)

@@ -10,7 +10,7 @@ from link_bot_notebooks import base_model
 from tensorflow.python import debug as tf_debug
 
 
-class LinearTFModel(base_model.BaseModel):
+class CostOnlyModel(base_model.BaseModel):
 
     def __init__(self, args, N, M, L, n_steps, dt, seed=0):
         base_model.BaseModel.__init__(self, N, M, L)
@@ -23,7 +23,7 @@ class LinearTFModel(base_model.BaseModel):
         self.M = M
         self.L = L
         self.n_steps = n_steps
-        self.beta = 1e-8
+        self.beta = 1e-16
         self.dt = dt
 
         self.s = tf.placeholder(tf.float32, shape=(N, None), name="s")
@@ -33,43 +33,23 @@ class LinearTFModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
-        # self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
         self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
-        # self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-2), name="B", dtype=tf.float32)
-        self.B = tf.Variable(np.zeros([M, M]), name="B", dtype=tf.float32, trainable=False)
-        self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
         self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
-        self.o_ = tf.matmul(self.A, self.s_, name='reduce_')
-
-        self.hat_o_ = self.hat_o
-        for i in range(self.n_steps):
-            with tf.name_scope("step_{}".format(i)):
-                self.hat_o_ = tf.add(self.hat_o_ + tf.matmul(self.B, self.hat_o_, name='dynamics'.format(i)),
-                              tf.matmul(self.dt * self.C, self.u[i], name='controls'.format(i)), name="hat_o_")
 
         self.d_to_goal = self.og - self.hat_o
-        self.d_to_goal_ = self.og - self.hat_o_
         self.hat_c = tf.linalg.tensor_diag_part(
             tf.matmul(tf.matmul(tf.transpose(self.d_to_goal), self.D), self.d_to_goal))
-        self.hat_c_ = tf.linalg.tensor_diag_part(
-            tf.matmul(tf.matmul(tf.transpose(self.d_to_goal_), self.D), self.d_to_goal_))
 
         with tf.name_scope("train"):
             self.cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
-            self.state_prediction_loss = tf.reduce_mean(tf.norm(self.o_ - self.hat_o_, axis=0))
-            self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_, predictions=self.hat_c_)
-            flat_weights = tf.concat((tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]),
-                                      tf.reshape(self.C, [-1]), tf.reshape(self.D, [-1])), axis=0)
+            flat_weights = tf.concat((tf.reshape(self.A, [-1]), tf.reshape(self.D, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
-            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
+            self.loss = self.cost_loss + self.regularization
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             starter_learning_rate = 0.001
-            # FIXME: removing this would make it impossible to load older models
-            self.learning_rate = tf.train.exponential_decay(starter_learning_rate, self.global_step, 5000, 0.8,
-                                                            staircase=True)
             self.opt = tf.train.AdamOptimizer().minimize(self.loss, global_step=self.global_step)
 
             trainable_vars = tf.trainable_variables()
@@ -78,10 +58,7 @@ class LinearTFModel(base_model.BaseModel):
                 name = var.name.replace(":", "_")
                 tf.summary.histogram(name + "/gradient", grad)
 
-            tf.summary.scalar("learning_rate", self.learning_rate)
             tf.summary.scalar("cost_loss", self.cost_loss)
-            tf.summary.scalar("state_prediction_loss", self.state_prediction_loss)
-            tf.summary.scalar("cost_prediction_loss", self.cost_prediction_loss)
             tf.summary.scalar("regularization_loss", self.regularization)
             tf.summary.scalar("loss", self.loss)
 
@@ -113,12 +90,11 @@ class LinearTFModel(base_model.BaseModel):
                          self.g: goal,
                          self.c: c,
                          self.c_: c_}
-            ops = [self.global_step, self.summaries, self.loss, self.opt, self.B]
+            ops = [self.global_step, self.summaries, self.loss, self.opt]
             for i in range(epochs):
-                step, summary, loss, _, B = self.sess.run(ops, feed_dict=feed_dict)
+                step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
 
                 if 'print_period' in self.args and step % self.args['print_period'] == 0:
-                    # print(np.linalg.norm(B))
                     print(step, loss)
 
                 if self.args['log'] is not None:
@@ -128,13 +104,11 @@ class LinearTFModel(base_model.BaseModel):
             interrupted = True
             pass
         finally:
-            ops = [self.A, self.B, self.C, self.D]
-            A, B, C, D = self.sess.run(ops, feed_dict={})
+            ops = [self.A, self.D]
+            A, D = self.sess.run(ops, feed_dict={})
             if self.args['verbose']:
                 print("Loss: {}".format(loss))
                 print("A:\n{}".format(A))
-                print("B:\n{}".format(B))
-                print("C:\n{}".format(C))
                 print("D:\n{}".format(D))
 
             if self.args['log'] is not None:
@@ -158,12 +132,6 @@ class LinearTFModel(base_model.BaseModel):
         hat_o = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_o
 
-    def predict(self, o, u):
-        feed_dict = {self.hat_o: o, self.u: u}
-        ops = [self.hat_o_]
-        hat_o_ = self.sess.run(ops, feed_dict=feed_dict)[0]
-        return hat_o_
-
     def predict_from_o(self, o, u, dt=None):
         return self.predict(o, u)
 
@@ -176,31 +144,6 @@ class LinearTFModel(base_model.BaseModel):
         hat_c = self.sess.run(ops, feed_dict=feed_dict)[0]
         hat_c = np.expand_dims(hat_c, axis=0)
         return hat_c
-
-    def act(self, o, g, max_v=1):
-        """ return the action which gives the lowest cost for the predicted next state """
-        feed_dict = {self.g: g}
-        ops = [self.B, self.C, self.og]
-        B, C, og = self.sess.run(ops, feed_dict=feed_dict)
-        u = np.linalg.lstsq(C, (og - o - np.dot(B, o)), rcond=None)[0]
-        u = u.reshape(1, 2, -1)
-
-        if np.linalg.norm(u) < max_v:
-            min_cost_u = u * 12
-        else:
-            min_cost = 1e9
-            min_cost_u = None
-            for angle in np.linspace(-np.pi, np.pi, 100):
-                u = np.array([[[np.cos(angle)], [np.sin(angle)]]])
-                cost = self.predict_cost(o, u, g)[0, 0]
-                if cost < min_cost:
-                    min_cost = cost
-                    min_cost_u = u
-
-        feed_dict = {self.hat_o: o, self.g: g, self.u: min_cost_u}
-        ops = [self.hat_o_, self.hat_c_]
-        hat_o_, hat_c_ = self.sess.run(ops, feed_dict=feed_dict)
-        return min_cost_u, hat_c_, hat_o_
 
     def save(self, log_path):
         global_step = self.sess.run(self.global_step)
@@ -220,22 +163,15 @@ class LinearTFModel(base_model.BaseModel):
                      self.g: goal,
                      self.c: c,
                      self.c_: c_}
-        ops = [self.A, self.B, self.C, self.D, self.o_, self.hat_o_, self.cost_loss, self.state_prediction_loss,
-               self.cost_prediction_loss,
-               self.regularization, self.loss]
-        A, B, C, D, o_, o_hat_, c_loss, sp_loss, cp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
+        ops = [self.A,  self.D, self.cost_loss, self.regularization, self.loss]
+        A, D, c_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
         if display:
             print("Cost Loss: {}".format(c_loss))
-            print("State Prediction Loss: {}".format(sp_loss))
-            print("Cost Prediction Loss: {}".format(cp_loss))
             print("Regularization: {}".format(reg))
             print("Overall Loss: {}".format(loss))
             print("A:\n{}".format(A))
-            print("B:\n{}".format(B))
-            print("C:\n{}".format(C))
             print("D:\n{}".format(D))
-            print(o_.T)
-        return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
+        return A, D, c_loss, reg, loss
 
     def batch(self, x, goal):
         """ x is 3d.
@@ -257,9 +193,9 @@ class LinearTFModel(base_model.BaseModel):
         c_ = np.sum((x[-1, [0, 1]][:, batch_indeces] - goal[[0, 1]]) ** 2, axis=0)
         return s, s_, u, c, c_
 
-    def get_ABCD(self):
+    def get_AD(self):
         feed_dict = {}
-        ops = [self.A, self.B, self.C, self.D]
+        ops = [self.A, self.D]
         return self.sess.run(ops, feed_dict=feed_dict)
 
     def get_A(self):
@@ -269,8 +205,6 @@ class LinearTFModel(base_model.BaseModel):
         return A
 
     def __str__(self):
-        A, B, C, D = self.get_ABCD()
+        A, D = self.get_AD()
         return "A:\n" + np.array2string(A) + "\n" + \
-               "B:\n" + np.array2string(B) + "\n" + \
-               "C:\n" + np.array2string(C) + "\n" + \
                "D:\n" + np.array2string(D) + "\n"

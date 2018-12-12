@@ -5,5 +5,4 @@ find_package(catkin REQUIRED COMPONENTS rospy)
 
 catkin_package()
 
-#catkin_install_python(PROGRAMS src/ DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-#catkin_python_setup()
+catkin_python_setup()
