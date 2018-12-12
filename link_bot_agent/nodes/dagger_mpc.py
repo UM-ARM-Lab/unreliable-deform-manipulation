@@ -115,6 +115,7 @@ def main():
 
             if done:
                 break
+
         # aggregate
         dataset.append(new_data)
         for training_goal in training_goals:

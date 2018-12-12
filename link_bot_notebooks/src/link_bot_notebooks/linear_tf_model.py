@@ -48,7 +48,7 @@ class LinearTFModel(base_model.BaseModel):
         for i in range(self.n_steps):
             with tf.name_scope("step_{}".format(i)):
                 self.hat_o_ = tf.add(self.hat_o_ + tf.matmul(self.B, self.hat_o_, name='dynamics'.format(i)),
-                              tf.matmul(self.dt * self.C, self.u[i], name='controls'.format(i)), name="hat_o_")
+                                     tf.matmul(self.dt * self.C, self.u[i], name='controls'.format(i)), name="hat_o_")
 
         self.d_to_goal = self.og - self.hat_o
         self.d_to_goal_ = self.og - self.hat_o_
@@ -118,7 +118,6 @@ class LinearTFModel(base_model.BaseModel):
                 step, summary, loss, _, B = self.sess.run(ops, feed_dict=feed_dict)
 
                 if 'print_period' in self.args and step % self.args['print_period'] == 0:
-                    # print(np.linalg.norm(B))
                     print(step, loss)
 
                 if self.args['log'] is not None:
@@ -220,10 +219,9 @@ class LinearTFModel(base_model.BaseModel):
                      self.g: goal,
                      self.c: c,
                      self.c_: c_}
-        ops = [self.A, self.B, self.C, self.D, self.o_, self.hat_o_, self.cost_loss, self.state_prediction_loss,
-               self.cost_prediction_loss,
+        ops = [self.A, self.B, self.C, self.D, self.cost_loss, self.state_prediction_loss, self.cost_prediction_loss,
                self.regularization, self.loss]
-        A, B, C, D, o_, o_hat_, c_loss, sp_loss, cp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
+        A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
         if display:
             print("Cost Loss: {}".format(c_loss))
             print("State Prediction Loss: {}".format(sp_loss))
@@ -234,7 +232,6 @@ class LinearTFModel(base_model.BaseModel):
             print("B:\n{}".format(B))
             print("C:\n{}".format(C))
             print("D:\n{}".format(D))
-            print(o_.T)
         return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
 
     def batch(self, x, goal):
@@ -248,7 +245,7 @@ class LinearTFModel(base_model.BaseModel):
 
         batch_size = min(x.shape[2], self.args['batch_size'])
         example_indeces = np.arange(x.shape[2])
-        np.random.shuffle(example_indeces)
+        # np.random.shuffle(example_indeces)
         batch_indeces = example_indeces[:batch_size]
         s = x[0, :self.N, :][:, batch_indeces]
         s_ = x[self.n_steps, :self.N, :][:, batch_indeces]
