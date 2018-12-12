@@ -185,7 +185,7 @@ class LinearTFModel(base_model.BaseModel):
         u = u.reshape(1, 2, -1)
 
         if np.linalg.norm(u) < max_v:
-            min_cost_u = u * 12
+            min_cost_u = u
         else:
             min_cost = 1e9
             min_cost_u = None
