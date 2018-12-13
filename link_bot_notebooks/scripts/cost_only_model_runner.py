@@ -83,7 +83,7 @@ if __name__ == '__main__':
     train_subparser.add_argument("--print-period", "-p", type=int, default=100)
     train_subparser.add_argument("--n-goals", "-n", type=int, default=500)
     train_subparser.add_argument("--n-steps", "-s", type=int, default=1)
-    train_subparser.add_argument("--debug", action="store_true")
+    train_subparser.add_argument("--tf-debug", action="store_true")
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")

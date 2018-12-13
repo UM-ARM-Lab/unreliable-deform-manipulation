@@ -11,6 +11,7 @@ import rospy
 
 from link_bot_notebooks.linear_tf_model import LinearTFModel
 from agent import GazeboAgent
+from link_bot_agent import gurobi_act
 
 
 def h(n1, n2):
@@ -26,6 +27,7 @@ def main():
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--pause", action='store_true')
     parser.add_argument("--plot-plan", action='store_true')
+    parser.add_argument("--tf-debug", action='store_true')
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
@@ -51,15 +53,19 @@ def main():
     # load our initial model
     model.load()
 
-    # used for most of our planning algorithms
     og = model.reduce(goal)
+    max_v = 1
+    action_selector = gurobi_act.GurobiAct(model, og, max_v)
+
+    # used for most of our planning algorithms
     done = False
 
     try:
         while not done:
             s = agent.get_state()
             o = model.reduce(s)
-            actions, cs, os, ss = agent.greedy_plan(o, goal)
+            actions = action_selector.act(o)
+            # actions, cs, os, ss = agent.greedy_plan(o, goal)
             # actions = agent.a_star_plan(o, og)
 
             if args.plot_plan:
@@ -87,7 +93,7 @@ def main():
                 if args.pause:
                     input('paused...')
 
-                print("{:0.3f}".format(true_cost))
+                # print("{:0.3f}".format(true_cost))
                 # print(action.T)
                 if true_cost < 0.1:
                     print("Success!")

@@ -33,22 +33,28 @@ class LinearTFModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
-        # self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
+        # self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32)
         self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
         # self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-2), name="B", dtype=tf.float32)
-        self.B = tf.Variable(np.zeros([M, M]), name="B", dtype=tf.float32, trainable=False)
+        self.B = tf.Variable(np.eye(2) * 100, name="B", dtype=tf.float32, trainable=False)
         self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
+        # self.C = tf.Variable(np.eye(2), name="C", dtype=tf.float32)
         self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
+        # self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
         self.o_ = tf.matmul(self.A, self.s_, name='reduce_')
 
-        self.hat_o_ = self.hat_o
-        for i in range(self.n_steps):
+        self.state_bo = tf.matmul(self.B, self.hat_o, name='dynamics'.format(0))
+        self.state_o_ = self.hat_o + self.state_bo
+        self.control_o_ = tf.matmul(self.dt * self.C, self.u[0], name='controls'.format(0))
+        self.hat_o_ = tf.add(self.state_o_, self.control_o_, name='hat_o_')
+        for i in range(self.n_steps - 1):
             with tf.name_scope("step_{}".format(i)):
-                self.hat_o_ = tf.add(self.hat_o_ + tf.matmul(self.B, self.hat_o_, name='dynamics'.format(i)),
-                                     tf.matmul(self.dt * self.C, self.u[i], name='controls'.format(i)), name="hat_o_")
+                self.state_o_ = self.hat_o_ + tf.matmul(self.B, self.hat_o_, name='dynamics'.format(i))
+                self.control_o_ = tf.matmul(self.dt * self.C, self.u[i], name='controls'.format(i))
+                self.hat_o_ = tf.add(self.state_o_, self.control_o_, name='hat_o_')
 
         self.d_to_goal = self.og - self.hat_o
         self.d_to_goal_ = self.og - self.hat_o_
@@ -89,7 +95,7 @@ class LinearTFModel(base_model.BaseModel):
             self.summaries = tf.summary.merge_all()
             gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.015)
             self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-            if 'debug' in self.args and self.args['debug']:
+            if 'tf-debug' in self.args and self.args['tf-debug']:
                 self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
             self.saver = tf.train.Saver()
 
@@ -175,31 +181,6 @@ class LinearTFModel(base_model.BaseModel):
         hat_c = self.sess.run(ops, feed_dict=feed_dict)[0]
         hat_c = np.expand_dims(hat_c, axis=0)
         return hat_c
-
-    def act(self, o, g, max_v=1):
-        """ return the action which gives the lowest cost for the predicted next state """
-        feed_dict = {self.g: g}
-        ops = [self.B, self.C, self.og]
-        B, C, og = self.sess.run(ops, feed_dict=feed_dict)
-        u = np.linalg.lstsq(C, (og - o - np.dot(B, o)), rcond=None)[0]
-        u = u.reshape(1, 2, -1)
-
-        if np.linalg.norm(u) < max_v:
-            min_cost_u = u
-        else:
-            min_cost = 1e9
-            min_cost_u = None
-            for angle in np.linspace(-np.pi, np.pi, 100):
-                u = np.array([[[np.cos(angle)], [np.sin(angle)]]])
-                cost = self.predict_cost(o, u, g)[0, 0]
-                if cost < min_cost:
-                    min_cost = cost
-                    min_cost_u = u
-
-        feed_dict = {self.hat_o: o, self.g: g, self.u: min_cost_u}
-        ops = [self.hat_o_, self.hat_c_]
-        hat_o_, hat_c_ = self.sess.run(ops, feed_dict=feed_dict)
-        return min_cost_u, hat_c_, hat_o_
 
     def save(self, log_path):
         global_step = self.sess.run(self.global_step)

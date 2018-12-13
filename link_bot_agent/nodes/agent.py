@@ -43,9 +43,9 @@ class GazeboAgent:
 
         return min_cost_action, min_cost, next_o
 
-    def greedy_action(self, o, goal):
+    def greedy_action(self, o, g):
         MAX_SPEED = 1
-        u, c, next_o = self.model.act(o, goal, MAX_SPEED)
+        u, c, next_o = self.model.act(o, g, MAX_SPEED)
         return u, c, next_o
 
     def a_star_plan(self, o, og):
@@ -69,7 +69,7 @@ class GazeboAgent:
 
         return actions, cs, os, sbacks
 
-    def greedy_plan(self, o, goal, T=10):
+    def greedy_plan(self, o, g, T=1):
         actions = np.zeros((T, 2, 1))
         os = np.zeros((T, self.M))
         cs = np.zeros(T)
@@ -80,8 +80,8 @@ class GazeboAgent:
             sbacks[i] = np.squeeze(s_back)
             os[i] = np.squeeze(o)
 
-            # u, c, next_o = self.sample_action(o, goal)
-            u, c, next_o = self.greedy_action(o, goal)
+            # u, c, next_o = self.sample_action(o, g)
+            u, c, next_o = self.greedy_action(o, g)
 
             cs[i] = c
             actions[i] = u
