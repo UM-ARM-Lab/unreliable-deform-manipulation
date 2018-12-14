@@ -93,7 +93,7 @@ def main():
                 if args.pause:
                     input('paused...')
 
-                # print("{:0.3f}".format(true_cost))
+                print("{:0.3f}".format(true_cost))
                 # print(action.T)
                 if true_cost < 0.1:
                     print("Success!")

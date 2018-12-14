@@ -34,13 +34,13 @@ class LinearTFModel(base_model.BaseModel):
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
         # self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32)
-        self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
-        # self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-2), name="B", dtype=tf.float32)
-        self.B = tf.Variable(np.eye(2) * 100, name="B", dtype=tf.float32, trainable=False)
-        self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
+        # self.B = tf.Variable(np.eye(2) * 100, name="B", dtype=tf.float32, trainable=False)
         # self.C = tf.Variable(np.eye(2), name="C", dtype=tf.float32)
-        self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
         # self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
+        self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
+        self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-3), name="B", dtype=tf.float32)
+        self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
+        self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
@@ -97,7 +97,7 @@ class LinearTFModel(base_model.BaseModel):
             self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
             if 'tf-debug' in self.args and self.args['tf-debug']:
                 self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
-            self.saver = tf.train.Saver()
+            self.saver = tf.train.Saver(max_to_keep=None)
 
     def train(self, train_x, goal, epochs, log_path):
         """
