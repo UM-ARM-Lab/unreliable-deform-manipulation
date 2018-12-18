@@ -6,28 +6,19 @@ import os
 import numpy as np
 
 from link_bot_notebooks import toy_problem_optimization_common as tpo
-from link_bot_notebooks import linear_tf_model
+from link_bot_notebooks import jumped_linear_model
 from link_bot_notebooks import experiments_util
 
 DT = 0.1
 
 
 def train(args):
-    model = linear_tf_model.LinearTFModel(vars(args), args.N, args.M, args.L, n_steps=args.n_steps, dt=DT)
+    model = jumped_linear_model.JumpedModel(vars(args), args.N, args.M, args.L, n_steps=args.n_steps, dt=DT)
 
-    # goal = np.array([[0], [0], [0], [1], [0], [2]])
     goals = []
     for r in np.random.randn(args.n_goals, 2):
         x = r[0] * 5
         y = r[1] * 5
-        # theta1 = r[2] * np.pi / 2
-        # theta2 = r[3] * np.pi / 2
-        # theta1 = np.random.uniform(-np.pi / 2, np.pi / 2)
-        # theta2 = np.random.uniform(-np.pi / 2, np.pi / 2)
-        # x1 = x + np.cos(theta1)
-        # y1 = y + np.sin(theta1)
-        # x2 = x1 + np.cos(theta2)
-        # y2 = y1 + np.sin(theta2)
         g = np.array([[x], [y], [0], [0], [0], [0]])
         goals.append(g)
 
@@ -42,13 +33,12 @@ def train(args):
         if interrupted:
             break
 
-    # evaluate
     goal = np.array([[0], [0], [0], [1], [0], [2]])
     model.evaluate(x, goal)
 
 
 def model_only(args):
-    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=DT)
+    model = jumped_linear_model.JumpedModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=DT)
     if args.log:
         model.init()
         log_path = experiments_util.experiment_name(args.log)
@@ -60,7 +50,7 @@ def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
     x = tpo.load_train(args.dataset, n_steps=args.n_steps, N=args.N, L=args.L,
                        extract_func=tpo.link_pos_vel_extractor2(args.N))
-    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=0.1)
+    model = jumped_linear_model.JumpedModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=0.1)
     model.load()
     model.evaluate(x, goal)
 
