@@ -18,16 +18,18 @@ def train(args):
 
     # goal = np.array([[0], [0], [0], [1], [0], [2]])
     goals = []
-    for r in np.random.randn(args.n_goals, 4):
+    for r in np.random.randn(args.n_goals, 2):
         x = r[0] * 5
         y = r[1] * 5
-        theta1 = r[2] * np.pi / 2
-        theta2 = r[3] * np.pi / 2
-        x1 = x + np.cos(theta1)
-        y1 = y + np.sin(theta1)
-        x2 = x1 + np.cos(theta2)
-        y2 = y1 + np.sin(theta2)
-        g = np.array([[x], [y], [x1], [y1], [x2], [y2]])
+        # theta1 = r[2] * np.pi / 2
+        # theta2 = r[3] * np.pi / 2
+        # theta1 = np.random.uniform(-np.pi / 2, np.pi / 2)
+        # theta2 = np.random.uniform(-np.pi / 2, np.pi / 2)
+        # x1 = x + np.cos(theta1)
+        # y1 = y + np.sin(theta1)
+        # x2 = x1 + np.cos(theta2)
+        # y2 = y1 + np.sin(theta2)
+        g = np.array([[x], [y], [0], [0], [0], [0]])
         goals.append(g)
 
     model.setup()

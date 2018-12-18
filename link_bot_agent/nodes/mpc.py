@@ -2,20 +2,17 @@
 from __future__ import print_function
 
 import argparse
-from builtins import input
-import numpy as np
+
 import matplotlib.pyplot as plt
-from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from sensor_msgs.msg import Joy
+import numpy as np
 import rospy
-
-from link_bot_notebooks.linear_tf_model import LinearTFModel
-from agent import GazeboAgent
+from builtins import input
 from link_bot_agent import gurobi_act
+from link_bot_gazebo.srv import WorldControl, WorldControlRequest
+from link_bot_notebooks import linear_tf_model
+from sensor_msgs.msg import Joy
 
-
-def h(n1, n2):
-    return np.linalg.norm(np.array(n1) - np.array(n2))
+from agent import GazeboAgent
 
 
 def main():
@@ -36,7 +33,7 @@ def main():
     args = parser.parse_args()
     args = args
     dt = 0.1
-    model = LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=dt)
+    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=dt)
     agent = GazeboAgent(N=args.N, M=args.M, dt=dt, model=model, gazebo_model_name=args.model_name)
 
     rospy.init_node('MPCAgent')
@@ -57,7 +54,6 @@ def main():
     max_v = 1
     action_selector = gurobi_act.GurobiAct(model, og, max_v)
 
-    # used for most of our planning algorithms
     done = False
 
     try:
@@ -65,6 +61,7 @@ def main():
             s = agent.get_state()
             o = model.reduce(s)
             actions = action_selector.act(o)
+            # done = True
             # actions, cs, os, ss = agent.greedy_plan(o, goal)
             # actions = agent.a_star_plan(o, og)
 
@@ -93,8 +90,7 @@ def main():
                 if args.pause:
                     input('paused...')
 
-                print("{:0.3f}".format(true_cost))
-                # print(action.T)
+                # print("{:0.3f}".format(true_cost))
                 if true_cost < 0.1:
                     print("Success!")
                     done = True

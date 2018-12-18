@@ -38,7 +38,7 @@ class LinearTFModel(base_model.BaseModel):
         # self.C = tf.Variable(np.eye(2), name="C", dtype=tf.float32)
         # self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
         self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
-        self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-3), name="B", dtype=tf.float32)
+        self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-2), name="B", dtype=tf.float32)
         self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
         self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
@@ -52,7 +52,7 @@ class LinearTFModel(base_model.BaseModel):
         self.hat_o_ = tf.add(self.state_o_, self.control_o_, name='hat_o_')
         for i in range(self.n_steps - 1):
             with tf.name_scope("step_{}".format(i)):
-                self.state_o_ = self.hat_o_ + tf.matmul(self.B, self.hat_o_, name='dynamics'.format(i))
+                self.state_o_ = self.hat_o_ + tf.matmul(self.dt * self.B, self.hat_o_, name='dynamics'.format(i))
                 self.control_o_ = tf.matmul(self.dt * self.C, self.u[i], name='controls'.format(i))
                 self.hat_o_ = tf.add(self.state_o_, self.control_o_, name='hat_o_')
 
@@ -72,10 +72,6 @@ class LinearTFModel(base_model.BaseModel):
             self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
             self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
-            starter_learning_rate = 0.001
-            # FIXME: removing this would make it impossible to load older models
-            self.learning_rate = tf.train.exponential_decay(starter_learning_rate, self.global_step, 5000, 0.8,
-                                                            staircase=True)
             self.opt = tf.train.AdamOptimizer().minimize(self.loss, global_step=self.global_step)
 
             trainable_vars = tf.trainable_variables()
@@ -84,7 +80,6 @@ class LinearTFModel(base_model.BaseModel):
                 name = var.name.replace(":", "_")
                 tf.summary.histogram(name + "/gradient", grad)
 
-            tf.summary.scalar("learning_rate", self.learning_rate)
             tf.summary.scalar("cost_loss", self.cost_loss)
             tf.summary.scalar("state_prediction_loss", self.state_prediction_loss)
             tf.summary.scalar("cost_prediction_loss", self.cost_prediction_loss)

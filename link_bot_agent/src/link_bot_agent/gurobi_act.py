@@ -25,3 +25,6 @@ class GurobiAct:
         self.gurobi_model.optimize()
         u = np.array([v.x for v in self.gurobi_model.getVars()]).reshape(1, 2, 1)
         return u
+
+    def __repr__(self):
+        return "og: {}, max_v: {}".format(np.array2string(self.og.T), self.max_v)

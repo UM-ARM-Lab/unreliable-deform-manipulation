@@ -19,6 +19,7 @@ def main():
     parser.add_argument("outfile", help='filename to store data in')
     parser.add_argument("pulls", help='how many pulls to do', type=int)
     parser.add_argument("steps", help='how many time steps per pull', type=int)
+    parser.add_argument("--save-frequency", '-f', help='save every this many steps', type=int, default=50)
     parser.add_argument("--verbose", '-v', action="store_true")
 
     args = parser.parse_args()
@@ -67,10 +68,10 @@ def main():
         if args.verbose:
             print('=' * 100)
 
-        x0 = np.random.uniform(-5, 5)
-        y0 = np.random.uniform(-5, 5)
+        x0 = np.random.uniform(-25, 25)
+        y0 = np.random.uniform(-25, 25)
         yaw = r()
-        v = np.random.normal(0.75, 1)
+        v = np.random.normal(0.0, 1.0)
         vx = np.cos(r()) * v
         vy = np.sin(r()) * v
 
@@ -98,11 +99,13 @@ def main():
             if args.verbose:
                 print(data[-1])
 
+        if p % args.save_frequency == 0:
+            np.savetxt(args.outfile, data)
+
     # stop everything
     joy_msg.axes = [0, 0]
     joy_pub.publish(joy_msg)
 
-    np.savetxt(args.outfile, data)
 
 
 if __name__ == '__main__':

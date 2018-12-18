@@ -2,22 +2,19 @@
 from __future__ import print_function
 
 import argparse
-from builtins import input
-import numpy as np
+
 import matplotlib.pyplot as plt
-from sensor_msgs.msg import Joy
+import numpy as np
 import rospy
+from builtins import input
+from link_bot_agent import gurobi_act
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import notebook_finder
-from link_bot_notebooks import toy_problem_optimization_common as tpo
 from link_bot_notebooks import experiments_util
 from link_bot_notebooks import linear_tf_model
+from link_bot_notebooks import toy_problem_optimization_common as tpo
+from sensor_msgs.msg import Joy
 
 from agent import GazeboAgent
-
-
-def h(n1, n2):
-    return np.linalg.norm(np.array(n1) - np.array(n2))
 
 
 def main():
@@ -38,10 +35,11 @@ def main():
     args = parser.parse_args()
     args = args
     dt = 0.1
-    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=dt)
+    # we use n_steps=1 because in the action selector we want to compute
+    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=1, dt=dt)
     agent = GazeboAgent(N=args.N, M=args.M, dt=dt, model=model, gazebo_model_name=args.model_name)
 
-    rospy.init_node('MPCAgent')
+    rospy.init_node('DaggerMPCAgent')
 
     np.random.seed(0)
     joy_msg = Joy()
@@ -58,6 +56,10 @@ def main():
                        extract_func=tpo.link_pos_vel_extractor2(args.N))
     log_path = experiments_util.experiment_name(args.log)
 
+    og = model.reduce(goal)
+    max_v = 1
+    action_selector = gurobi_act.GurobiAct(model, og, max_v)
+
     # generate some goals to train on
     training_goals = []
     for r in np.random.randn(args.n_goals, 4):
@@ -73,7 +75,6 @@ def main():
         training_goals.append(training_goal)
 
     # used for most of our planning algorithms
-    og = model.reduce(goal)
     done = False
 
     try:
@@ -82,7 +83,7 @@ def main():
         for j in range(Q):
             s = agent.get_state()
             o = model.reduce(s)
-            actions = agent.greedy_plan(o, goal)
+            actions = action_selector.act(o)
 
             if args.plot_plan:
                 plt.figure()

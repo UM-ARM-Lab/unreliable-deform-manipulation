@@ -485,7 +485,7 @@ def plot_costmap_2(plt, model, data, g, resolution=0.1, minimum=-5, maximum=5):
     plt.imshow(colors, interpolation=None, extent=[minimum, maximum, minimum, maximum])
 
 
-def policy_quiver(model, goal, ax, cx, cy, r, m, scale=10):
+def policy_quiver(model, action_selector, goal, ax, cx, cy, r, m, scale=10):
     x = []
     y = []
     u = []
@@ -493,7 +493,7 @@ def policy_quiver(model, goal, ax, cx, cy, r, m, scale=10):
     for s1 in np.arange(cx - m, cx + m + r, r):
         for s2 in np.arange(cy - m, cy + m + r, r):
             o = model.reduce(np.array([[s1], [s2], [0], [0], [0], [0]]))
-            a = model.act(o, goal, max_v=2)[0]
+            a = action_selector.act(o)
             x.append(s1)
             y.append(s2)
             u.append(a[0, 0, 0])
