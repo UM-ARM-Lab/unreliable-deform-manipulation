@@ -31,5 +31,6 @@
             <pose>3 -1 0 0 0 0</pose>
             <name>box3</name>
         </include>
+        <plugin name="stepping_plugin" filename="libstepping_plugind.so"/>
     </world>
 </sdf>
