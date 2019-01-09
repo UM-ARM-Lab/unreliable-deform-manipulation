@@ -11,9 +11,12 @@ from link_bot_notebooks import experiments_util
 
 DT = 0.1
 
+def load_sdf(args):
+    args.sdf
+
 
 def train(args):
-    model = jumped_linear_model.JumpedModel(vars(args), args.N, args.M, args.L, n_steps=args.n_steps, dt=DT)
+    model = jumped_linear_model.JumpedModel(load_sdf(args), vars(args), args.N, args.M, args.L, n_steps=args.n_steps, dt=DT)
 
     goals = []
     for r in np.random.randn(args.n_goals, 2):
@@ -38,7 +41,7 @@ def train(args):
 
 
 def model_only(args):
-    model = jumped_linear_model.JumpedModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=DT)
+    model = jumped_linear_model.JumpedModel(load_sdf(args), vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=DT)
     if args.log:
         model.init()
         log_path = experiments_util.experiment_name(args.log)
@@ -50,7 +53,7 @@ def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
     x = tpo.load_train(args.dataset, n_steps=args.n_steps, N=args.N, L=args.L,
                        extract_func=tpo.link_pos_vel_extractor2(args.N))
-    model = jumped_linear_model.JumpedModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=0.1)
+    model = jumped_linear_model.JumpedModel(load_sdf(args), vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=0.1)
     model.load()
     model.evaluate(x, goal)
 
@@ -60,6 +63,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", action='store_true')
+    parser.add_argument("sdf", help="file of the pre-computed signed-distance field")
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)

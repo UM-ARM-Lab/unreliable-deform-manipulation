@@ -25,6 +25,8 @@ class Integrator2D:
             self.B = tf.get_variable("B", initializer=self.small_initial_B, trainable=trainable)
             self.C = tf.get_variable("C", [self.M, self.L], trainable=trainable)
 
+            # I think we can't combine this into one for loop because the TF graph gets messed up
+            # TODO (easy): double check how re-assigning tf-op variables works
             self.state_o_ = self.o + tf.matmul(self.B, self.o, name='dynamics'.format(0))
             self.control_o_ = tf.matmul(self.dt * self.C, self.u[0], name='controls'.format(0))
             self.hat_o_ = tf.add(self.state_o_, self.control_o_, name='hat_o_')
@@ -37,12 +39,13 @@ class Integrator2D:
 
 class JumpedModel(base_model.BaseModel):
 
-    def __init__(self, args, N, M, L, n_steps, dt, seed=0):
+    def __init__(self, sdf, args, N, M, L, n_steps, dt, seed=0):
         base_model.BaseModel.__init__(self, N, M, L)
 
         np.random.seed(seed)
         tf.random.set_random_seed(seed)
 
+        self.sdf = sdf
         self.args = args
         self.N = N
         self.M = M
@@ -58,6 +61,7 @@ class JumpedModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
+        self.D = np.eye(M)
         self.A_control = tf.get_variable("A_control", shape=[M, N])
         self.A_constraint = tf.get_variable("A_constraint", [M, N])
         self.E = tf.get_variable("E", [M, M])
@@ -100,12 +104,12 @@ class JumpedModel(base_model.BaseModel):
         self.hat_c_ = tf.reduce_sum(tf.square(self.d_to_goal_), axis=0)
 
         with tf.name_scope("train"):
-            self.cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
+            self.control_cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
             self.state_prediction_loss = tf.reduce_mean(tf.norm(self.o_control_ - self.hat_o_control_, axis=0))
-            self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_, predictions=self.hat_c_)
+            self.control_cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_, predictions=self.hat_c_)
             trainable_vars = tf.trainable_variables()
             self.regularization = tf.add_n([tf.nn.l2_loss(v) for v in trainable_vars]) * self.beta
-            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
+            self.loss = self.control_cost_loss + self.state_prediction_loss + self.control_cost_prediction_loss + self.regularization
             self.global_step = tf.get_variable("global_step", initializer=0, trainable=False)
             self.opt = tf.train.AdamOptimizer().minimize(self.loss, global_step=self.global_step)
 

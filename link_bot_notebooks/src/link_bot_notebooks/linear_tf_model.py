@@ -33,10 +33,6 @@ class LinearTFModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
-        # self.A = tf.Variable(np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]]), name="A", dtype=tf.float32)
-        # self.B = tf.Variable(np.eye(2) * 100, name="B", dtype=tf.float32, trainable=False)
-        # self.C = tf.Variable(np.eye(2), name="C", dtype=tf.float32)
-        # self.D = tf.Variable(np.eye(2), name="D", dtype=tf.float32)
         self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
         self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-2), name="B", dtype=tf.float32)
         self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
@@ -86,7 +82,6 @@ class LinearTFModel(base_model.BaseModel):
             tf.summary.scalar("regularization_loss", self.regularization)
             tf.summary.scalar("loss", self.loss)
 
-            # Set up logging/saving
             self.summaries = tf.summary.merge_all()
             gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.015)
             self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
@@ -95,10 +90,6 @@ class LinearTFModel(base_model.BaseModel):
             self.saver = tf.train.Saver(max_to_keep=None)
 
     def train(self, train_x, goal, epochs, log_path):
-        """
-        x train is an array, each row of which looks like:
-            [s_t, u_t]
-        """
         interrupted = False
 
         if self.args['log'] is not None:
@@ -164,7 +155,7 @@ class LinearTFModel(base_model.BaseModel):
         hat_o_ = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_o_
 
-    def predict_from_o(self, o, u, dt=None):
+    def predict_from_o(self, o, u):
         return self.predict(o, u)
 
     def cost_of_s(self, s, g):
@@ -221,7 +212,6 @@ class LinearTFModel(base_model.BaseModel):
 
         batch_size = min(x.shape[2], self.args['batch_size'])
         example_indeces = np.arange(x.shape[2])
-        # np.random.shuffle(example_indeces)
         batch_indeces = example_indeces[:batch_size]
         s = x[0, :self.N, :][:, batch_indeces]
         s_ = x[self.n_steps, :self.N, :][:, batch_indeces]
