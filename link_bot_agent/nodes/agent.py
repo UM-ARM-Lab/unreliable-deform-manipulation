@@ -7,8 +7,8 @@ from link_bot_agent import a_star
 from link_bot_agent import gz_world
 
 
-def h(n1, n2):
-    return np.linalg.norm(np.array(n1) - np.array(n2))
+def h(v1, v2):
+    return np.linalg.norm(np.array(v1.o) - np.array(v2.o))
 
 
 class GazeboAgent:
@@ -49,23 +49,24 @@ class GazeboAgent:
         return u, c, next_o
 
     def a_star_plan(self, o, og):
+        def mock_sdf(o):
+            return False
 
-        # construct our graph as a list of edges and vertices
-        graph = gz_world.GzWorldGraph()
+        graph = gz_world.GzWorldGraph(mock_sdf)
         planner = a_star.AStar(graph, h)
-        shortest_path = planner.shortest_path(o, og)
+        shortest_path = planner.shortest_path(gz_world.Vertex(o), gz_world.Vertex(og))
 
         T = len(shortest_path)
         actions = np.zeros((T, 2, 1))
         os = np.zeros((T, self.M))
         cs = np.zeros(T)
         sbacks = np.zeros((T, self.N))
-        for i, o in enumerate(shortest_path):
-            s_back = np.linalg.lstsq(self.model.get_A(), o, rcond=None)[0]
+        for i, v in enumerate(shortest_path):
+            s_back = np.linalg.lstsq(self.model.get_A(), v.o, rcond=None)[0]
             sbacks[i] = np.squeeze(s_back)
-            os[i] = np.squeeze(o)
-            cs[i] = c
-            actions[i] = u
+            os[i] = np.squeeze(v.o)
+            cs[i] = self.model.cost(v.o)
+            actions[i] =
 
         return actions, cs, os, sbacks
 

@@ -51,8 +51,8 @@ def main():
     model.load()
 
     og = model.reduce(goal)
-    max_v = 1
-    action_selector = gurobi_act.GurobiAct(model, og, max_v)
+    # max_v = 1
+    # action_selector = gurobi_act.GurobiAct(model, og, max_v)
 
     done = False
 
@@ -60,10 +60,10 @@ def main():
         while not done:
             s = agent.get_state()
             o = model.reduce(s)
-            actions = action_selector.act(o)
+            # actions = action_selector.act(o)
             # done = True
             # actions, cs, os, ss = agent.greedy_plan(o, goal)
-            # actions = agent.a_star_plan(o, og)
+            actions = agent.a_star_plan(o, og)
 
             if args.plot_plan:
                 plt.figure()

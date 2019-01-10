@@ -21,16 +21,6 @@
             <pose>1 1 0 0 0 0</pose>
             <name>box1</name>
         </include>
-        <include>
-            <uri>model://box</uri>
-            <pose>-1 2 0 0 0 0</pose>
-            <name>box2</name>
-        </include>
-        <include>
-            <uri>model://box</uri>
-            <pose>3 -1 0 0 0 0</pose>
-            <name>box3</name>
-        </include>
         <plugin name="stepping_plugin" filename="libstepping_plugind.so"/>
     </world>
 </sdf>
