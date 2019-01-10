@@ -87,7 +87,7 @@ class LinearStateSpaceModelWithQuadraticCost:
         np.savez(outfile, A=self.A, B=self.B, C=self.C, D=self.D)
 
     def load(self, infile):
-        matrices = np.load(infile)
+        matrices = np.aoad(infile)
         self.A = matrices['A']
         self.B = matrices['B']
         self.C = matrices['C']
