@@ -17,18 +17,16 @@ def train(args):
 
     # goal = np.array([[0], [0], [0], [1], [0], [2]])
     goals = []
-    for r in np.random.randn(args.n_goals, 2):
-        x = r[0] * 5
-        y = r[1] * 5
-        # theta1 = r[2] * np.pi / 2
-        # theta2 = r[3] * np.pi / 2
-        # theta1 = np.random.uniform(-np.pi / 2, np.pi / 2)
-        # theta2 = np.random.uniform(-np.pi / 2, np.pi / 2)
-        # x1 = x + np.cos(theta1)
-        # y1 = y + np.sin(theta1)
-        # x2 = x1 + np.cos(theta2)
-        # y2 = y1 + np.sin(theta2)
-        g = np.array([[x], [y], [0], [0], [0], [0]])
+    for _ in range(args.n_goals):
+        x = np.random.uniform(-5, 5)
+        y = np.random.uniform(-5, 5)
+        theta1 = np.random.uniform(-np.pi / 2, np.pi / 2)
+        theta2 = np.random.uniform(-np.pi / 2, np.pi / 2)
+        x1 = x + np.cos(theta1)
+        y1 = y + np.sin(theta1)
+        x2 = x1 + np.cos(theta2)
+        y2 = y1 + np.sin(theta2)
+        g = np.array([[x], [y], [x1], [y1], [x2], [y2]])
         goals.append(g)
 
     model.setup()
@@ -60,7 +58,6 @@ def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
     x = tpo.load_train(args.dataset, n_steps=args.n_steps, N=args.N, L=args.L,
                        extract_func=tpo.link_pos_vel_extractor2(args.N))
-    print(x.shape)
     model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=0.1)
     model.load()
     model.evaluate(x, goal)

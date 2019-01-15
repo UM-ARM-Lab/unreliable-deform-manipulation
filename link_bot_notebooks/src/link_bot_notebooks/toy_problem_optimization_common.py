@@ -242,6 +242,7 @@ def load_train_test(filename, N, M, L, g, extract_func):
 
 def load_train(filename, n_steps, N, L, extract_func):
     log_data = np.loadtxt(filename)
+    print(log_data.shape)
     n_training_samples = log_data.shape[0]
     n_trajs = int(n_training_samples / (n_steps + 1))
     train_x = np.ndarray((n_steps + 1, N + L, n_trajs))
