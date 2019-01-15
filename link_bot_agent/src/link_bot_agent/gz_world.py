@@ -29,7 +29,8 @@ class Vertex:
 
 class GzWorldGraph:
 
-    def __init__(self, sdf, resolution=0.1):
+    def __init__(self, model, sdf, resolution=0.1):
+        self.model = model
         self.sdf = sdf
         self.resolution = resolution
         self.vertices = []
@@ -64,5 +65,6 @@ class GzWorldGraph:
 
         return neighbors
 
-    def occupied(self, o):
-        return self.sdf(o)
+    def occupied(self, o_control):
+        o_constraint = self.model.reduce_constraint(o_control)
+        return self.sdf(o_constraint)

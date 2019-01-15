@@ -52,7 +52,7 @@ class GazeboAgent:
         def mock_sdf(o):
             return False
 
-        graph = gz_world.GzWorldGraph(mock_sdf)
+        graph = gz_world.GzWorldGraph(self.model, mock_sdf)
         planner = a_star.AStar(graph, h)
         shortest_path = planner.shortest_path(gz_world.Vertex(o), gz_world.Vertex(og))
 
@@ -61,12 +61,14 @@ class GazeboAgent:
         os = np.zeros((T, self.M))
         cs = np.zeros(T)
         sbacks = np.zeros((T, self.N))
-        for i, v in enumerate(shortest_path):
+        for i in range(len(shortest_path)):
+            v = shortest_path[i]
+            v_ = shortest_path[i+1]
             s_back = np.linalg.lstsq(self.model.get_A(), v.o, rcond=None)[0]
             sbacks[i] = np.squeeze(s_back)
             os[i] = np.squeeze(v.o)
             cs[i] = self.model.cost(v.o)
-            actions[i] =
+            actions[i] = self.model.inverse(v.o, v_.o)
 
         return actions, cs, os, sbacks
 

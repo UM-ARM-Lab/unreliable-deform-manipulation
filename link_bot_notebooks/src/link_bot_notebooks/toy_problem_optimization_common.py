@@ -240,7 +240,7 @@ def load_train_test(filename, N, M, L, g, extract_func):
     return n_training_samples, train_x, train_y
 
 
-def load_train(filename, n_steps, N, L, extract_func):
+def load_train(filename, N, L, extract_func, n_steps=1):
     log_data = np.loadtxt(filename)
     n_training_samples = log_data.shape[0]
     n_trajs = int(n_training_samples / (n_steps + 1))

@@ -9,7 +9,7 @@ import rospy
 from builtins import input
 from link_bot_agent import gurobi_act
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import linear_tf_model
+from link_bot_notebooks import linear_invertable_model
 from sensor_msgs.msg import Joy
 
 from agent import GazeboAgent
@@ -33,8 +33,10 @@ def main():
     args = parser.parse_args()
     args = args
     dt = 0.1
-    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=dt)
-    agent = GazeboAgent(N=args.N, M=args.M, dt=dt, model=model, gazebo_model_name=args.model_name)
+    model = linear_invertable_model.LinearInvertableModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=dt)
+
+    agent = GazeboAgent(N=args.N, M=args.M, dt=dt, model=model,
+                        gazebo_model_name=args.model_name)
 
     rospy.init_node('MPCAgent')
 
