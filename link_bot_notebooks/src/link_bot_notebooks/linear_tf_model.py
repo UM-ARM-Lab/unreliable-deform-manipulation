@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import os
+import json
 
 import numpy as np
 import tensorflow as tf
@@ -94,6 +95,19 @@ class LinearTFModel(base_model.BaseModel):
 
         if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
+            metadata_file = open(full_log_path, 'w')
+            metadata = {
+                'log path': full_log_path,
+                'checkpoint': self.args.checkpoint,
+                'N': self.N,
+                'M': self.M,
+                'L': self.L,
+                'n_steps': self.n_steps,
+                'beta': self.beta,
+                'dt': self.dt,
+            }
+            metadata_file.write(json.dumps(metadata, indent=2))
+
             writer = tf.summary.FileWriter(full_log_path)
             writer.add_graph(self.sess.graph)
 
