@@ -13,14 +13,13 @@ DT = 0.1
 
 
 def train(args):
-    model = linear_invertible_constraint_model.LinearInvertibleModel(vars(args), N=args.N, M=args.M, K=args.K, L=args.L, dt=DT)
+    model = linear_invertible_constraint_model.LinearInvertibleModel(vars(args), N=args.N, M=args.M, K=args.K,
+                                                                     L=args.L, dt=DT)
 
     goals = []
-    for r in np.random.randn(args.n_goals, 2):
-        x = r[0] * 5
-        y = r[1] * 5
-        theta1 = r[2] * np.pi / 2
-        theta2 = r[3] * np.pi / 2
+    for _ in range(args.n_goals):
+        x = np.random.uniform(-5, 5)
+        y = np.random.uniform(-5, 5)
         theta1 = np.random.uniform(-np.pi / 2, np.pi / 2)
         theta2 = np.random.uniform(-np.pi / 2, np.pi / 2)
         x1 = x + np.cos(theta1)
@@ -34,6 +33,8 @@ def train(args):
 
     log_path = experiments_util.experiment_name(args.log)
     print(x.shape)
+    # FIXME: we need to distinguish between the trajectory lenghts used in collecting data and the trajectory lenghts we train on!!!
+    print("FIXME: we need to distinguish between the trajectory lenghts used in collecting data and the trajectory lenghts we train on!!!")
     x = tpo.load_train(args.dataset, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
 
     for goal in goals:
@@ -47,7 +48,8 @@ def train(args):
 
 
 def model_only(args):
-    model = linear_invertible_constraint_model.LinearInvertibleModel(vars(args), N=args.N, M=args.M, K=args.K, L=args.L, dt=DT)
+    model = linear_invertible_constraint_model.LinearInvertibleModel(vars(args), N=args.N, M=args.M, K=args.K,
+                                                                     L=args.L, dt=DT)
     if args.log:
         model.init()
         log_path = experiments_util.experiment_name(args.log)
@@ -58,7 +60,8 @@ def model_only(args):
 def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
     x = tpo.load_train(args.dataset, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
-    model = linear_invertible_constraint_model.LinearInvertibleModel(vars(args), N=args.N, M=args.M, K=args.K, L=args.L, dt=0.1)
+    model = linear_invertible_constraint_model.LinearInvertibleModel(vars(args), N=args.N, M=args.M, K=args.K,
+                                                                     L=args.L, dt=0.1)
     model.load()
     model.evaluate(x, goal)
 

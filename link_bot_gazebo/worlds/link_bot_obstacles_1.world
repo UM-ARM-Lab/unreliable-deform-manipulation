@@ -3,7 +3,7 @@
     <world name="default">
         <gui>
             <camera name='user_camera'>
-                <pose frame=''>0 0 25 3.14159 1.57079 3.14159</pose>
+                <pose frame=''>0 0 25 0 1.5707 1.5707</pose>
             </camera>
         </gui>
         <include>
@@ -14,11 +14,11 @@
         </include>
         <include>
             <uri>model://link_bot_description</uri>
-            <pose>5 5 0.1 0 0 0</pose>
+            <pose>7 0 0.1 0 0 3.141592</pose>
         </include>
         <include>
             <uri>model://box</uri>
-            <pose>1 1 0 0 0 0</pose>
+            <pose>2.5 0 0 0 0 0</pose>
             <name>box1</name>
         </include>
         <plugin name="stepping_plugin" filename="libstepping_plugind.so"/>

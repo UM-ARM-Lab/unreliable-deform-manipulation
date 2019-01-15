@@ -10,6 +10,19 @@ from colorama import Fore
 from link_bot_notebooks import base_model
 from tensorflow.python import debug as tf_debug
 
+# assume environment is bounded (-10, 10) in x and y which means we need 20x20
+ROWS = COLS = 20
+numpy_sdf = np.zeros((20, 20))
+
+
+def point_to_index(x, y):
+    row = x - ROWS / 2
+    col = y - COLS / 2
+    return row, col
+
+
+numpy_sdf.__setitem__(point_to_index(2, 0), 1)
+
 
 class LinearInvertibleModel(base_model.BaseModel):
 
@@ -32,6 +45,8 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.u = tf.placeholder(tf.float32, shape=(1, L, None), name="u")
         self.g = tf.placeholder(tf.float32, shape=(N, 1), name="g")
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
+        self.placeholder_sdf = tf.placeholder(tf.float32, shape=(ROWS, COLS), name="sdf")
+        self.constraint = tf.placeholder(tf.float32, shape=(None), name="constraint")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
         self.A_control = tf.Variable(tf.truncated_normal(shape=[self.M_control, N]), name="A_control", dtype=tf.float32)
@@ -40,9 +55,9 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.B = tf.Variable(tf.truncated_normal(shape=[self.M_control, self.M_control], stddev=1e-2), name="B",
                              dtype=tf.float32)
         self.C = tf.Variable(tf.truncated_normal(shape=[self.M_control, L]), name="C", dtype=tf.float32)
-        self.B_inv = tf.Variable(tf.truncated_normal(shape=[self.M_constraint, self.M_constraint]), name="B_inv",
+        self.B_inv = tf.Variable(tf.truncated_normal(shape=[self.M_control, self.M_control]), name="B_inv",
                                  dtype=tf.float32)
-        self.C_inv = tf.Variable(tf.truncated_normal(shape=[L, self.M_constraint]), name="C_inv", dtype=tf.float32)
+        self.C_inv = tf.Variable(tf.truncated_normal(shape=[L, self.M_control]), name="C_inv", dtype=tf.float32)
         self.D = np.eye(self.M_control, dtype=np.float32)
 
         self.hat_o_control = tf.matmul(self.A_control, self.s, name='reduce')
@@ -56,6 +71,8 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.hat_o_control_ = tf.add(self.state_o_, self.temp_o_control, name='hat_o_')
         self.hat_o_constraint_ = tf.matmul(self.A_constraint, self.hat_o_control_, name='constraint_')
 
+        self.hat_constraint = self.sdf(self.hat_o_constraint)
+
         self.d_to_goal = self.og - self.hat_o_control
         self.d_to_goal_ = self.og - self.hat_o_control_
         self.hat_c = tf.linalg.tensor_diag_part(
@@ -63,7 +80,9 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.hat_c_ = tf.linalg.tensor_diag_part(
             tf.matmul(tf.matmul(tf.transpose(self.d_to_goal_), self.D), self.d_to_goal_))
 
-        self.hat_u = tf.matmul(self.C_inv, 1.0 / self.dt * ( self.hat_o_constraint_ - self.hat_o_constraint) - tf.matmul(self.B_inv, self.hat_o_constraint))
+        self.hat_u = tf.matmul(self.C_inv,
+                               1.0 / self.dt * (self.hat_o_control_ - self.hat_o_control) - tf.matmul(self.B_inv,
+                                                                                                      self.hat_o_control))
         self.hat_u = tf.expand_dims(self.hat_u, axis=0)
 
         with tf.name_scope("train"):
@@ -71,10 +90,11 @@ class LinearInvertibleModel(base_model.BaseModel):
             self.state_prediction_loss = tf.reduce_mean(tf.norm(self.o_control_ - self.hat_o_control_, axis=0))
             self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_, predictions=self.hat_c_)
             self.inv_loss = tf.losses.mean_squared_error(labels=self.u, predictions=self.hat_u)
+            self.constraint_loss = tf.losses.mean_squared_error(labels=self.constraint, predictions=self.hat_constraint)
             flat_weights = tf.concat((tf.reshape(self.A_control, [-1]), tf.reshape(self.B, [-1]),
                                       tf.reshape(self.C, [-1]), tf.reshape(self.D, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
-            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.inv_loss + self.regularization
+            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.inv_loss + self.constraint_loss + self.regularization
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             self.opt = tf.train.AdamOptimizer().minimize(self.loss, global_step=self.global_step)
 
@@ -124,11 +144,13 @@ class LinearInvertibleModel(base_model.BaseModel):
             metadata_file.write(json.dumps(metadata, indent=2))
 
         try:
-            s, s_, u, c, c_ = self.batch(train_x, goal)
+            s, s_, u, c, c_, constraint = self.batch(train_x, goal)
             feed_dict = {self.s: s,
                          self.s_: s_,
                          self.u: u,
                          self.g: goal,
+                         self.placeholder_sdf: numpy_sdf,
+                         self.constraint: constraint,
                          self.c: c,
                          self.c_: c_}
             ops = [self.global_step, self.summaries, self.loss, self.opt, self.B]
@@ -175,11 +197,17 @@ class LinearInvertibleModel(base_model.BaseModel):
         hat_o_control = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_o_control
 
-    def constraint(self, o):
-        feed_dict = {self.hat_o_controlo: o}
+    def o_constraint(self, o):
+        feed_dict = {self.hat_o_control: o}
         ops = [self.hat_o_constraint]
         hat_o_constraint = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_o_constraint
+
+    def hat_constraint(self, o):
+        feed_dict = {self.hat_o_control: o}
+        ops = [self.hat_constraint]
+        hat_constraint = self.sess.run(ops, feed_dict=feed_dict)[0]
+        return hat_constraint
 
     def inverse(self, o, o_):
         feed_dict = {self.hat_o_control: o, self.hat_o_control_: o_}
@@ -217,11 +245,12 @@ class LinearInvertibleModel(base_model.BaseModel):
         print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
 
     def evaluate(self, eval_x, goal, display=True):
-        s, s_, u, c, c_ = self.batch(eval_x, goal)
+        s, s_, u, c, c_, constraint = self.batch(eval_x, goal)
         feed_dict = {self.s: s,
                      self.s_: s_,
                      self.u: u,
                      self.g: goal,
+                     self.constraint: constraint,
                      self.c: c,
                      self.c_: c_}
         ops = [self.A_control, self.B, self.C, self.D, self.cost_loss, self.state_prediction_loss,
@@ -247,9 +276,22 @@ class LinearInvertibleModel(base_model.BaseModel):
         s = x[0, :self.N, :][:, batch_indeces]
         s_ = x[1, :self.N, :][:, batch_indeces]
         u = x[:-1, self.N:, batch_indeces]
+        # Here we compute the label for cost/reward and constraints
         c = np.sum((x[0, [0, 1]][:, batch_indeces] - goal[[0, 1]]) ** 2, axis=0)
         c_ = np.sum((x[-1, [0, 1]][:, batch_indeces] - goal[[0, 1]]) ** 2, axis=0)
-        return s, s_, u, c, c_
+        print('s.shape', s.shape)
+        constraint = numpy_sdf.__getitem__(point_to_index(s[:, 4, :], s[:, 5, :]))
+        return s, s_, u, c, c_, constraint
+
+    def sdf(self, point):
+        """
+        point is a 1x2 numpy array [[x], [y]]
+        this function is a temporary hack just to test things
+        """
+        resolution = np.array([[1], [1]], dtype=np.float32)
+        integer_coordinates = tf.cast(tf.divide(point, resolution), dtype=tf.int32)
+        # blindly assume the point is within our grid
+        return tf.gather_nd(self.placeholder_sdf, integer_coordinates)
 
     def get_ABCD(self):
         feed_dict = {}
