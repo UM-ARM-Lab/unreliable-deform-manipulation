@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import os
+import json
 
 import numpy as np
 import tensorflow as tf
@@ -20,8 +21,8 @@ class LinearInvertibleModel(base_model.BaseModel):
 
         self.args = args
         self.N = N
-        self.M = M
-        self.K = K
+        self.M_control = M
+        self.M_constraint = K
         self.L = L
         self.beta = 1e-8
         self.dt = dt
@@ -33,13 +34,16 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(None), name="c")
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
-        self.A_control = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A_control", dtype=tf.float32)
-        self.A_constraint = tf.Variable(tf.truncated_normal(shape=[K, M]), name="A_constraint", dtype=tf.float32)
-        self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-2), name="B", dtype=tf.float32)
-        self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
-        self.B_inv = tf.Variable(tf.truncated_normal(shape=[L, M]), name="B_inv", dtype=tf.float32)
-        self.C_inv = tf.Variable(tf.truncated_normal(shape=[L, M]), name="C_inv", dtype=tf.float32)
-        self.D = np.eye(M, dtype=np.float32)
+        self.A_control = tf.Variable(tf.truncated_normal(shape=[self.M_control, N]), name="A_control", dtype=tf.float32)
+        self.A_constraint = tf.Variable(tf.truncated_normal(shape=[self.M_constraint, self.M_control]),
+                                        name="A_constraint", dtype=tf.float32)
+        self.B = tf.Variable(tf.truncated_normal(shape=[self.M_control, self.M_control], stddev=1e-2), name="B",
+                             dtype=tf.float32)
+        self.C = tf.Variable(tf.truncated_normal(shape=[self.M_control, L]), name="C", dtype=tf.float32)
+        self.B_inv = tf.Variable(tf.truncated_normal(shape=[self.M_constraint, self.M_constraint]), name="B_inv",
+                                 dtype=tf.float32)
+        self.C_inv = tf.Variable(tf.truncated_normal(shape=[L, self.M_constraint]), name="C_inv", dtype=tf.float32)
+        self.D = np.eye(self.M_control, dtype=np.float32)
 
         self.hat_o_control = tf.matmul(self.A_control, self.s, name='reduce')
         self.hat_o_constraint = tf.matmul(self.A_constraint, self.hat_o_control, name='constraint')
@@ -50,6 +54,7 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.state_o_ = self.hat_o_control + self.state_bo
         self.temp_o_control = tf.matmul(self.dt * self.C, self.u[0], name='controls')
         self.hat_o_control_ = tf.add(self.state_o_, self.temp_o_control, name='hat_o_')
+        self.hat_o_constraint_ = tf.matmul(self.A_constraint, self.hat_o_control_, name='constraint_')
 
         self.d_to_goal = self.og - self.hat_o_control
         self.d_to_goal_ = self.og - self.hat_o_control_
@@ -58,17 +63,18 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.hat_c_ = tf.linalg.tensor_diag_part(
             tf.matmul(tf.matmul(tf.transpose(self.d_to_goal_), self.D), self.d_to_goal_))
 
-        self.hat_u = 1.0 / self.dt * (
-                    tf.matmul(self.B_inv, self.hat_o_control) + tf.matmul(self.C_inv, self.hat_o_control_))
+        self.hat_u = tf.matmul(self.C_inv, 1.0 / self.dt * ( self.hat_o_constraint_ - self.hat_o_constraint) - tf.matmul(self.B_inv, self.hat_o_constraint))
+        self.hat_u = tf.expand_dims(self.hat_u, axis=0)
 
         with tf.name_scope("train"):
             self.cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
             self.state_prediction_loss = tf.reduce_mean(tf.norm(self.o_control_ - self.hat_o_control_, axis=0))
             self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_, predictions=self.hat_c_)
+            self.inv_loss = tf.losses.mean_squared_error(labels=self.u, predictions=self.hat_u)
             flat_weights = tf.concat((tf.reshape(self.A_control, [-1]), tf.reshape(self.B, [-1]),
                                       tf.reshape(self.C, [-1]), tf.reshape(self.D, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
-            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
+            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.inv_loss + self.regularization
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             self.opt = tf.train.AdamOptimizer().minimize(self.loss, global_step=self.global_step)
 
@@ -102,6 +108,20 @@ class LinearInvertibleModel(base_model.BaseModel):
             full_log_path = os.path.join("log_data", log_path)
             writer = tf.summary.FileWriter(full_log_path)
             writer.add_graph(self.sess.graph)
+
+            metadata_file = open(full_log_path, 'w')
+            metadata = {
+                'log path': full_log_path,
+                'checkpoint': self.args.checkpoint,
+                'N': self.N,
+                'M control': self.M_control,
+                'K (M constraint)': self.M_constraint,
+                'L': self.L,
+                'n_steps': self.n_steps,
+                'beta': self.beta,
+                'dt': self.dt,
+            }
+            metadata_file.write(json.dumps(metadata, indent=2))
 
         try:
             s, s_, u, c, c_ = self.batch(train_x, goal)

@@ -69,7 +69,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
-    parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
+    parser.add_argument("-M", help="dimensions in latent state", type=int, default=4)
     parser.add_argument("-K", help="dimensions in latent state", type=int, default=2)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
 
