@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import argparse
+import re
 import os
 import numpy as np
 
@@ -32,10 +33,28 @@ def train(args):
     model.setup()
 
     log_path = experiments_util.experiment_name(args.log)
-    print(x.shape)
-    # FIXME: we need to distinguish between the trajectory lenghts used in collecting data and the trajectory lenghts we train on!!!
-    print("FIXME: we need to distinguish between the trajectory lenghts used in collecting data and the trajectory lenghts we train on!!!")
-    x = tpo.load_train(args.dataset, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
+    log_data = np.loadtxt(args.dataset)
+    matches = re.search(r"(\d+)_(\d+)_.*", args.dataset)
+    if not matches:
+        print("could not parse dataset name")
+        return
+    try:
+        number_of_trajectories_during_collection = int(matches.group(1))
+        trajectory_length_during_collection = int(matches.group(2))
+        n_points = number_of_trajectories_during_collection * (trajectory_length_during_collection + 1)
+    except ValueError:
+        print("could not convert regex matches in filename to integers")
+        return
+
+    if n_points != log_data.shape[0]:
+        print("ERROR: number of data points based on file name {}*{}={} does not match shape of data {}".format(
+            number_of_trajectories_during_collection,
+            trajectory_length_during_collection,
+            n_points,
+            log_data.shape[0]))
+        return
+
+    x = tpo.load_train2(log_data, tpo.link_pos_vel_extractor2_indeces(), trajectory_length_during_collection, 1)
 
     for goal in goals:
         interrupted = model.train(x, goal, args.epochs, log_path)

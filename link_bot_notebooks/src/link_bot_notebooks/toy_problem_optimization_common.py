@@ -2,6 +2,7 @@
 
 import numpy as np
 import scipy.optimize as optimize
+from scipy.linalg import hankel
 
 
 class LinearStateSpaceModelWithQuadraticCost:
@@ -225,6 +226,10 @@ def link_pos_vel_extractor2(N):
     return __link_pos_vel_extractor
 
 
+def link_pos_vel_extractor2_indeces():
+    return [0, 1, 4, 5, 8, 9, 10, 11]
+
+
 def load_train_test(filename, N, M, L, g, extract_func):
     log_data = np.loadtxt(filename)
     n_training_samples = log_data.shape[0]
@@ -240,9 +245,24 @@ def load_train_test(filename, N, M, L, g, extract_func):
     return n_training_samples, train_x, train_y
 
 
+def load_train2(log_data, extract_indeces, trajectory_length_during_collection=1, trajectory_length_to_train=1):
+    n_indeces = len(extract_indeces)
+    log_data = log_data[:, extract_indeces]
+    x = log_data.reshape(-1, trajectory_length_during_collection + 1, n_indeces).transpose([1, 2, 0])
+    traj_indeces = subsequences(np.arange(trajectory_length_during_collection), trajectory_length_to_train + 1)
+    train_x = x[traj_indeces, :, :]
+    train_x = train_x.transpose([1, 2, 3, 0])
+    train_x = train_x.reshape(trajectory_length_to_train + 1, n_indeces, -1)
+    return train_x
+
+
+def subsequences(v, q):
+    m = v.shape[0] - q + 1
+    return hankel(v[:m], v[m - 1:])
+
+
 def load_train(filename, N, L, extract_func, n_steps=1):
     log_data = np.loadtxt(filename)
-    print(log_data.shape)
     n_training_samples = log_data.shape[0]
     n_trajs = int(n_training_samples / (n_steps + 1))
     train_x = np.ndarray((n_steps + 1, N + L, n_trajs))
@@ -251,7 +271,6 @@ def load_train(filename, N, L, extract_func, n_steps=1):
         i = int(k / (n_steps + 1))
         j = k % (n_steps + 1)
         train_x[j, :, i] = np.concatenate((s.flatten(), u.flatten()))
-    return train_x
 
 
 def plot_gz_data(plt, new_data):
@@ -263,7 +282,7 @@ def plot_gz_data(plt, new_data):
     plt.plot([s[0][3, 0] for s in new_data], label='y2')
     plt.ylabel("meters")
     plt.xlabel("time (steps)")
-    plt.legend();
+    plt.legend()
 
     plt.figure()
     plt.title(r"Control Input ($u$)")
@@ -271,12 +290,12 @@ def plot_gz_data(plt, new_data):
     plt.plot([s[1][1, 0] for s in new_data], label='vy')
     plt.ylabel("m/s")
     plt.xlabel("time (steps)")
-    plt.legend();
+    plt.legend()
 
     plt.figure()
     plt.title(r"Cost ($c$)")
     plt.plot([s[4] for s in new_data])
-    plt.xlabel("time (steps)");
+    plt.xlabel("time (steps)")
 
     plt.show()
 
@@ -292,14 +311,14 @@ def plot_gz_data_v2(plt, new_data):
     plt.plot([s[0][5, 0] for s in new_data], label='y3')
     plt.ylabel("meters")
     plt.xlabel("time (steps)")
-    plt.legend();
+    plt.legend()
 
     plt.figure()
     plt.title(r"Position of first point")
     plt.scatter([s[0][0, 0] for s in new_data], [s[0][1, 0] for s in new_data])
     plt.ylabel("x (m)")
     plt.xlabel("y (m)")
-    plt.legend();
+    plt.legend()
 
     plt.figure()
     plt.title(r"Control Input ($u$)")
@@ -307,12 +326,12 @@ def plot_gz_data_v2(plt, new_data):
     plt.plot([s[1][1, 0] for s in new_data], label='fy')
     plt.ylabel("m/s")
     plt.xlabel("time (steps)")
-    plt.legend();
+    plt.legend()
 
     plt.figure()
     plt.title(r"Cost ($c$)")
     plt.plot([s[4] for s in new_data])
-    plt.xlabel("time (steps)");
+    plt.xlabel("time (steps)")
 
     plt.show()
 
@@ -374,7 +393,7 @@ def plot_x_rollout(plt, model, data, dt, s0, g):
     plt.plot(np.squeeze(o_s), label='latent space o', linewidth=3, linestyle='--')
     plt.xlabel("time steps")
     plt.ylabel("o")
-    plt.legend();
+    plt.legend()
     plt.show()
 
     return predicted_total_cost
@@ -398,7 +417,7 @@ def plot_xy_rollout(plt, model, data, dt, s0, g):
     plt.plot(np.squeeze(o_s), label='latent space o', linewidth=3, linestyle='--')
     plt.xlabel("time steps")
     plt.ylabel("o")
-    plt.legend();
+    plt.legend()
     plt.show()
 
     return predicted_total_cost
@@ -421,7 +440,7 @@ def plot_cost(plt, model, data, dt, g):
     plt.title("Estimated vs True Cost")
     plt.xlabel("time steps")
     plt.ylabel("o")
-    plt.legend();
+    plt.legend()
     plt.show()
 
 
@@ -445,7 +464,7 @@ def plot_o_rollout(plt, model, data, dt, g):
     plt.plot(np.squeeze(o_rollout), label='rollout from initial s_t', linewidth=3, linestyle='--')
     plt.xlabel("time steps")
     plt.ylabel("o")
-    plt.legend();
+    plt.legend()
     plt.show()
 
 
