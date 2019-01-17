@@ -18,7 +18,8 @@ class TestLoadTrain(unittest.TestCase):
         x = tpo.load_train2(d, [0, 1], trajectory_length_during_collection, trajectory_length_to_train)
         self.assertEqual(x.shape[0], trajectory_length_to_train + 1)
         self.assertEqual(x.shape[1], 2)
-        self.assertEqual(x.shape[2], (trajectory_length_during_collection - trajectory_length_to_train) * n_trajs_collected)
+        self.assertEqual(x.shape[2],
+                         (trajectory_length_during_collection - trajectory_length_to_train) * n_trajs_collected)
         self.assertEqual(x[0, 0, 0], 0)
         self.assertEqual(x[1, 0, 0], 1)
         self.assertEqual(x[0, 0, 1], 1)
@@ -28,6 +29,7 @@ class TestLoadTrain(unittest.TestCase):
 
         self.assertEqual(x[0, 1, 0], 1)
         self.assertEqual(x[1, 1, 0], 2)
+
 
 if __name__ == '__main__':
     unittest.main()
