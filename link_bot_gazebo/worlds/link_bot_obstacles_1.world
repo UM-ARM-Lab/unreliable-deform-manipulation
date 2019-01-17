@@ -3,7 +3,9 @@
     <world name="default">
         <gui>
             <camera name='user_camera'>
-                <pose frame=''>0 0 25 3.14159 1.57079 3.14159</pose>
+                <pose frame=''>0 0 25 0 1.5707 1.5707</pose>
+                <view_controller>ortho</view_controller>
+                <projection_type>orthographic</projection_type>
             </camera>
         </gui>
         <include>
