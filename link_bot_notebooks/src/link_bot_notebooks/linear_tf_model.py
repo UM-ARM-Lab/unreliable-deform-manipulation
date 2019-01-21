@@ -2,13 +2,14 @@
 from __future__ import print_function
 
 import os
+import sys
 import json
 
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
 from link_bot_notebooks import base_model
-from tensorflow.python import debug as tf_debug
+from link_bot_notebooks import toy_problem_optimization_common as tpo
 
 
 class LinearTFModel(base_model.BaseModel):
@@ -35,7 +36,7 @@ class LinearTFModel(base_model.BaseModel):
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
         self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
-        self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=1e-2), name="B", dtype=tf.float32)
+        self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=0.01), name="B", dtype=tf.float32)
         self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
         self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
 
@@ -43,7 +44,7 @@ class LinearTFModel(base_model.BaseModel):
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
         self.o_ = tf.matmul(self.A, self.s_, name='reduce_')
 
-        self.state_bo = tf.matmul(self.B, self.hat_o, name='dynamics'.format(0))
+        self.state_bo = tf.matmul(self.dt * self.B, self.hat_o, name='dynamics'.format(0))
         self.state_o_ = self.hat_o + self.state_bo
         self.control_o_ = tf.matmul(self.dt * self.C, self.u[0], name='controls'.format(0))
         self.hat_o_ = tf.add(self.state_o_, self.control_o_, name='hat_o_')
@@ -84,10 +85,7 @@ class LinearTFModel(base_model.BaseModel):
             tf.summary.scalar("loss", self.loss)
 
             self.summaries = tf.summary.merge_all()
-            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.015)
-            self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-            if 'tf-debug' in self.args and self.args['tf-debug']:
-                self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
+            self.sess = tf.Session()
             self.saver = tf.train.Saver(max_to_keep=None)
 
     def train(self, train_x, goal, epochs, log_path):
@@ -95,10 +93,14 @@ class LinearTFModel(base_model.BaseModel):
 
         if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
-            metadata_file = open(full_log_path, 'w')
+
+            tpo.make_log_dir(full_log_path)
+
+            metadata_path = os.path.join(full_log_path, "metadata.json")
+            metadata_file = open(metadata_path, 'w')
             metadata = {
                 'log path': full_log_path,
-                'checkpoint': self.args.checkpoint,
+                'checkpoint': self.args['checkpoint'],
                 'N': self.N,
                 'M': self.M,
                 'L': self.L,

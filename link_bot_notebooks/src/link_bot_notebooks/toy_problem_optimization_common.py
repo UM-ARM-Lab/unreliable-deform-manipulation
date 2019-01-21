@@ -1,8 +1,24 @@
 #!/usr/bin/env python
 
 import numpy as np
+import re
+import os
+import errno
 import scipy.optimize as optimize
 from scipy.linalg import hankel
+
+
+def make_log_dir(full_log_path):
+    """ https://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python """
+    if "log_data" not in full_log_path:
+        raise ValueError("Full log path must contain 'log_data'")
+    try:
+        os.makedirs(full_log_path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(full_log_path):
+            pass
+        else:
+            raise
 
 
 class LinearStateSpaceModelWithQuadraticCost:
@@ -249,11 +265,36 @@ def load_train2(log_data, extract_indeces, trajectory_length_during_collection=1
     n_indeces = len(extract_indeces)
     log_data = log_data[:, extract_indeces]
     x = log_data.reshape(-1, trajectory_length_during_collection + 1, n_indeces).transpose([1, 2, 0])
-    traj_indeces = subsequences(np.arange(trajectory_length_during_collection), trajectory_length_to_train + 1)
+    traj_indeces = subsequences(np.arange(trajectory_length_during_collection + 1), trajectory_length_to_train + 1)
     train_x = x[traj_indeces, :, :]
     train_x = train_x.transpose([1, 2, 3, 0])
     train_x = train_x.reshape(trajectory_length_to_train + 1, n_indeces, -1)
     return train_x
+
+
+def parse_dataset_name(dataset, log_data):
+    matches = re.search(r"(\d+)_(\d+)_.*", dataset)
+    if not matches:
+        print("could not parse dataset name")
+        return
+    try:
+        number_of_trajectories_during_collection = int(matches.group(1))
+        trajectory_length_during_collection = int(matches.group(2))
+        n_points = number_of_trajectories_during_collection * (trajectory_length_during_collection + 1)
+
+    except ValueError:
+        print("could not convert regex matches in filename to integers")
+        return
+
+    if n_points != log_data.shape[0]:
+        print("ERROR: number of data points based on file name {}*{}={} does not match shape of data {}".format(
+            number_of_trajectories_during_collection,
+            trajectory_length_during_collection,
+            n_points,
+            log_data.shape[0]))
+        return
+
+    return trajectory_length_during_collection
 
 
 def subsequences(v, q):

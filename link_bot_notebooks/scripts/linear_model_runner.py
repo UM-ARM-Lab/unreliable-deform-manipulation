@@ -32,8 +32,10 @@ def train(args):
     model.setup()
 
     log_path = experiments_util.experiment_name(args.log)
-    x = tpo.load_train(args.dataset, n_steps=args.n_steps, N=args.N, L=args.L,
-                       extract_func=tpo.link_pos_vel_extractor2(args.N))
+    log_data = np.loadtxt(args.dataset)
+    trajectory_length_during_collection = tpo.parse_dataset_name(args.dataset, log_data)
+    x = tpo.load_train2(log_data, tpo.link_pos_vel_extractor2_indeces(), trajectory_length_during_collection,
+                        args.n_steps)
 
     for goal in goals:
         interrupted = model.train(x, goal, args.epochs, log_path)
@@ -56,9 +58,10 @@ def model_only(args):
 
 def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
-    x = tpo.load_train(args.dataset, n_steps=args.n_steps, N=args.N, L=args.L,
-                       extract_func=tpo.link_pos_vel_extractor2(args.N))
-    print(x.shape)
+    log_data = np.loadtxt(args.dataset)
+    trajectory_length_during_collection = tpo.parse_dataset_name(args.dataset, log_data)
+    x = tpo.load_train2(log_data, tpo.link_pos_vel_extractor2_indeces(), trajectory_length_during_collection,
+                        args.n_steps)
     model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=0.1)
     model.load()
     model.evaluate(x, goal)
@@ -83,7 +86,6 @@ if __name__ == '__main__':
     train_subparser.add_argument("--print-period", "-p", type=int, default=100)
     train_subparser.add_argument("--n-goals", "-n", type=int, default=500)
     train_subparser.add_argument("--n-steps", "-s", type=int, default=1)
-    train_subparser.add_argument("--tf-debug", action="store_true")
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")

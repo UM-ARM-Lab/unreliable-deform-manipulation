@@ -9,7 +9,7 @@ import rospy
 from builtins import input
 from link_bot_agent import gurobi_act
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import linear_invertable_model
+from link_bot_notebooks import linear_tf_model
 from sensor_msgs.msg import Joy
 
 from agent import GazeboAgent
@@ -33,7 +33,7 @@ def main():
     args = parser.parse_args()
     args = args
     dt = 0.1
-    model = linear_invertable_model.LinearInvertableModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=dt)
+    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=dt)
 
     agent = GazeboAgent(N=args.N, M=args.M, dt=dt, model=model,
                         gazebo_model_name=args.model_name)
@@ -53,8 +53,8 @@ def main():
     model.load()
 
     og = model.reduce(goal)
-    # max_v = 1
-    # action_selector = gurobi_act.GurobiAct(model, og, max_v)
+    max_v = 1
+    action_selector = gurobi_act.GurobiAct(model, og, max_v)
 
     done = False
 
@@ -62,10 +62,10 @@ def main():
         while not done:
             s = agent.get_state()
             o = model.reduce(s)
-            # actions = action_selector.act(o)
+            actions = action_selector.act(o)
             # done = True
             # actions, cs, os, ss = agent.greedy_plan(o, goal)
-            actions = agent.a_star_plan(o, og)
+            # actions = agent.a_star_plan(o, og)
 
             if args.plot_plan:
                 plt.figure()

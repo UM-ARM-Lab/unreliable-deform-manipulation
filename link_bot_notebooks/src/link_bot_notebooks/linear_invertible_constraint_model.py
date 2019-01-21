@@ -8,7 +8,6 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 from link_bot_notebooks import base_model
-from tensorflow.python import debug as tf_debug
 
 # TODO: make this a proper input not a global variable
 # assume environment is bounded (-10, 10) in x and y which means we need 20x20
@@ -79,10 +78,8 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
         self.A_control = tf.Variable(tf.truncated_normal(shape=[self.M_control, N]), name="A_control", dtype=tf.float32)
-        self.A_constraint = tf.Variable(tf.truncated_normal(shape=[self.M_constraint, self.M_control]),
-                                        name="A_constraint", dtype=tf.float32)
-        self.B = tf.Variable(tf.truncated_normal(shape=[self.M_control, self.M_control], stddev=1e-2), name="B",
-                             dtype=tf.float32)
+        self.A_constraint = tf.Variable(tf.truncated_normal(shape=[self.M_constraint, self.M_control]), name="A_constraint", dtype=tf.float32)
+        self.B = tf.Variable(tf.truncated_normal(shape=[self.M_control, self.M_control]), name="B", dtype=tf.float32)
         self.C = tf.Variable(tf.truncated_normal(shape=[self.M_control, L]), name="C", dtype=tf.float32)
         self.B_inv = tf.Variable(tf.truncated_normal(shape=[self.M_control, self.M_control]), name="B_inv",
                                  dtype=tf.float32)
@@ -94,7 +91,7 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.og = tf.matmul(self.A_control, self.g, name='reduce_goal')
         self.o_control_ = tf.matmul(self.A_control, self.s_, name='reduce_')
 
-        self.state_bo = tf.matmul(self.B, self.hat_o_control, name='dynamics')
+        self.state_bo = tf.matmul(self.dt * self.B, self.hat_o_control, name='dynamics')
         self.state_o_ = self.hat_o_control + self.state_bo
         self.temp_o_control = tf.matmul(self.dt * self.C, self.u, name='controls')
         self.hat_o_control_ = tf.add(self.state_o_, self.temp_o_control, name='hat_o_')
@@ -142,10 +139,7 @@ class LinearInvertibleModel(base_model.BaseModel):
             tf.summary.scalar("loss", self.loss)
 
             self.summaries = tf.summary.merge_all()
-            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.015)
-            self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-            if 'tf-debug' in self.args and self.args['tf-debug']:
-                self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
+            self.sess = tf.Session()
             self.saver = tf.train.Saver(max_to_keep=None)
 
     def train(self, train_x, goal, epochs, log_path):
