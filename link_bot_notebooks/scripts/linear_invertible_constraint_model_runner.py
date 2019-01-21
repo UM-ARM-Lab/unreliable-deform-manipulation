@@ -102,7 +102,7 @@ if __name__ == '__main__':
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=100)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=1024)
-    train_subparser.add_argument("--log-period", "-p", type=int, default=100)
+    train_subparser.add_argument("--cog-period", "-p", type=int, default=100)
     train_subparser.add_argument("--n-goals", "-n", type=int, default=500)
     train_subparser.add_argument("--tf-debug", action="store_true")
     train_subparser.set_defaults(func=train)
