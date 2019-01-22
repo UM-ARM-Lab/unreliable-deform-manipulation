@@ -297,12 +297,12 @@ class LinearInvertibleModel(base_model.BaseModel):
         return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
 
     def batch(self, x, goal):
-        batch_size = self.args['batch_size']
-        if batch_size > x.shape[2]:
-            print("WARNING: batch size {} is greater than number of exmaples {}".format(batch_size, x.shape[2]))
-
-        batch_indeces = np.random.randint(0, x.shape[2], size=batch_size)
-        batch_examples = x[:, :, batch_indeces]
+        batch_size = min(x.shape[2], self.args['batch_size'])
+        if batch_size == x.shape[2]:
+            batch_examples = x
+        else:
+            batch_indeces = np.random.randint(0, x.shape[2], size=batch_size)
+            batch_examples = x[:, :, batch_indeces]
 
         # there is always only one s and one s_, but the amount of time between them can vary but changing
         # the length of the trajectories loaded for training, via the parameter 'trajectory_length_to_train'

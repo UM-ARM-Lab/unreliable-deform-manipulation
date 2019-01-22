@@ -83,7 +83,7 @@ if __name__ == '__main__':
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=100)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=1024)
-    train_subparser.add_argument("--print-period", "-p", type=int, default=100)
+    train_subparser.add_argument("--print-period", "-p", type=int, default=500)
     train_subparser.add_argument("--n-goals", "-n", type=int, default=500)
     train_subparser.add_argument("--n-steps", "-s", type=int, default=1)
     train_subparser.set_defaults(func=train)
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
     eval_subparser.add_argument("--n-steps", "-s", type=int, default=1)
     eval_subparser.set_defaults(func=evaluate)
-    eval_subparser.add_argument("--batch-size", "-b", type=int, default=4096)
+    eval_subparser.add_argument("--batch-size", "-b", type=int, default=1024)
 
     model_only_subparser = subparsers.add_parser("model_only")
     model_only_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")

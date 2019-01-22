@@ -126,10 +126,11 @@ class LinearTFModel(base_model.BaseModel):
                 step, summary, loss, _, B = self.sess.run(ops, feed_dict=feed_dict)
 
                 if 'print_period' in self.args and step % self.args['print_period'] == 0:
-                    print(step, loss)
-
-                if self.args['log'] is not None:
-                    writer.add_summary(summary, step)
+                    if self.args['log'] is not None:
+                        writer.add_summary(summary, step)
+                        self.save(full_log_path, loss=loss)
+                    else:
+                        print(step, loss)
         except KeyboardInterrupt:
             print("stop!!!")
             interrupted = True
@@ -143,9 +144,6 @@ class LinearTFModel(base_model.BaseModel):
                 print("B:\n{}".format(B))
                 print("C:\n{}".format(C))
                 print("D:\n{}".format(D))
-
-            if self.args['log'] is not None:
-                self.save(full_log_path)
 
         return interrupted
 
@@ -184,9 +182,13 @@ class LinearTFModel(base_model.BaseModel):
         hat_c = np.expand_dims(hat_c, axis=0)
         return hat_c
 
-    def save(self, log_path):
+    def save(self, log_path, log=True, loss=None):
         global_step = self.sess.run(self.global_step)
-        print(Fore.CYAN + "Saving ckpt {} at step {:d}".format(log_path, global_step) + Fore.RESET)
+        if log:
+            if loss:
+                print(Fore.CYAN + "Saving ckpt {} at step {:d} with loss {}".format(log_path, global_step, loss) + Fore.RESET)
+            else:
+                print(Fore.CYAN + "Saving ckpt {} at step {:d}".format(log_path, global_step) + Fore.RESET)
         self.saver.save(self.sess, os.path.join(log_path, "nn.ckpt"), global_step=self.global_step)
 
     def load(self):
@@ -223,17 +225,23 @@ class LinearTFModel(base_model.BaseModel):
             second axis is the state/action data
             third axis is the trajectory.
         """
-        if x.shape[0] < self.n_steps:
-            raise Exception("Need more time steps of data!")
-
         batch_size = min(x.shape[2], self.args['batch_size'])
-        example_indeces = np.arange(x.shape[2])
-        batch_indeces = example_indeces[:batch_size]
-        s = x[0, :self.N, :][:, batch_indeces]
-        s_ = x[self.n_steps, :self.N, :][:, batch_indeces]
-        u = x[:-1, self.N:, batch_indeces]
-        c = np.sum((x[0, [0, 1]][:, batch_indeces] - goal[[0, 1]]) ** 2, axis=0)
-        c_ = np.sum((x[-1, [0, 1]][:, batch_indeces] - goal[[0, 1]]) ** 2, axis=0)
+        if batch_size == x.shape[2]:
+            batch_examples = x
+        else:
+            batch_indeces = np.random.randint(0, x.shape[2], size=batch_size)
+            batch_examples = x[:, :, batch_indeces]
+
+        # there is always only one s and one s_, but the amount of time between them can vary but changing
+        # the length of the trajectories loaded for training, via the parameter 'trajectory_length_to_train'
+        s = batch_examples[0, :self.N, :]
+        s_ = batch_examples[-1, :self.N, :]
+        u = batch_examples[0:self.n_steps, self.N:, :]
+
+        # Here we compute the label for cost/reward and constraints
+        c = np.sum((s[[0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
+        c_ = np.sum((s_[[0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
+
         return s, s_, u, c, c_
 
     def get_ABCD(self):
