@@ -41,11 +41,12 @@ def sdf(placeholder_sdf, placeholder_sdf_gradient, point):
     resolution = np.array([[1], [1]], dtype=np.float32)
     integer_coordinates = tf.cast(tf.divide(point, resolution), dtype=tf.int32)
     # blindly assume the point is within our grid
-    sdf_value = tf.gather_nd(placeholder_sdf, tf.transpose(integer_coordinates))
+    sdf_value = tf.gather_nd(placeholder_sdf, tf.transpose(integer_coordinates), name='index_sdf')
 
     # noinspection PyUnusedLocal
     def __sdf_gradient_func(dy):
-        sdf_gradient = tf.gather_nd(placeholder_sdf_gradient, integer_coordinates)
+        sdf_gradient = tf.gather_nd(placeholder_sdf_gradient, tf.transpose(integer_coordinates))
+        print(sdf_gradient.get_shape())
         return None, None, sdf_gradient
 
     return sdf_value, __sdf_gradient_func
@@ -87,6 +88,8 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.D = tf.Variable(np.eye(self.M_control, dtype=np.float32), trainable=False)
 
         self.hat_o_control = tf.matmul(self.A_control, self.s, name='reduce')
+        print(self.A_constraint.get_shape())
+        print(self.hat_o_control.get_shape())
         self.hat_o_constraint = tf.matmul(self.A_constraint, self.hat_o_control, name='constraint')
         self.og = tf.matmul(self.A_control, self.g, name='reduce_goal')
         self.o_control_ = tf.matmul(self.A_control, self.s_, name='reduce_')
