@@ -10,6 +10,7 @@ import numpy as np
 import rospy
 from builtins import input
 from link_bot_agent import gurobi_act
+from link_bot_gazebo.msg import LinkBotConfiguration
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import linear_tf_model
 from link_bot_notebooks import toy_problem_optimization_common as tpo
@@ -32,6 +33,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
     joy_msg.axes = [0, 0]
 
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
+    config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     joy_pub = rospy.Publisher("/joy", Joy, queue_size=10)
 
     # load our initial model
@@ -42,6 +44,13 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
     try:
         for goal in goals:
+            # reset to random starting point
+            config = LinkBotConfiguration()
+            config.tail_pose.x = np.random.uniform(-5,5)
+            config.tail_pose.y = np.random.uniform(-5,5)
+            config.tail_pose.theta = np.random.uniform(-np.pi, np.pi)
+            config.joint_angles_rad = np.random.uniform(-np.pi, np.pi, size=2)
+            config_pub.publish(config)
             if verbose:
                 print("goal: {}".format(np.array2string(goal)))
             og = model.reduce(goal)
@@ -115,11 +124,14 @@ def test(args):
 def eval(args):
     fname = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(time.time())))
     goals = tpo.random_goals(args.n_random_goals)
+    g0 = np.array([[0], [0], [0], [1], [0], [2]])
+    goals = [g0] * args.n_random_goals
     min_costs = common(args, goals, max_steps=300)
     print(min_costs)
     print('mean dist to goal', np.mean(min_costs))
     print('stdev dist to goal', np.std(min_costs))
-    print('% success', np.count_nonzero(np.where(min_costs < success_dist)) / len(min_costs))
+    success_percentage = float(np.count_nonzero(np.where(min_costs < success_dist, 1, 0))) / len(min_costs)
+    print('% success', success_percentage)
     np.savetxt(fname, min_costs)
     plt.hist(min_costs)
     plt.show()

@@ -37,7 +37,9 @@ class LinearTFModel(base_model.BaseModel):
         self.A = tf.Variable(tf.truncated_normal(shape=[M, N]), name="A", dtype=tf.float32)
         self.B = tf.Variable(tf.truncated_normal(shape=[M, M], stddev=0.01), name="B", dtype=tf.float32)
         self.C = tf.Variable(tf.truncated_normal(shape=[M, L]), name="C", dtype=tf.float32)
-        self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
+        # self.D = tf.Variable(tf.truncated_normal(shape=[M, M]), name="D", dtype=tf.float32)
+        # we force D to be identity because it's tricky to constrain it to be positive semi-definit and also learned
+        self.D = tf.Variable(np.eye(self.M, dtype=np.float32), trainable=False)
 
         self.hat_o = tf.matmul(self.A, self.s, name='reduce')
         self.og = tf.matmul(self.A, self.g, name='reduce_goal')
