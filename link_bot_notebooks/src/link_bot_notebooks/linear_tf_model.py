@@ -109,6 +109,7 @@ class LinearTFModel(base_model.BaseModel):
                 'n_steps': self.n_steps,
                 'beta': self.beta,
                 'dt': self.dt,
+                'commandline': self.args['commandline'],
             }
             metadata_file.write(json.dumps(metadata, indent=2))
 

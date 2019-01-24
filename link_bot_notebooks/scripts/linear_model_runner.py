@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import argparse
+import sys
 import os
 import numpy as np
 
@@ -67,7 +68,7 @@ def evaluate(args):
     model.evaluate(x, goal)
 
 
-if __name__ == '__main__':
+def main():
     np.set_printoptions(precision=6, suppress=True)
 
     parser = argparse.ArgumentParser()
@@ -80,11 +81,11 @@ if __name__ == '__main__':
     train_subparser = subparsers.add_parser("train")
     train_subparser.add_argument("dataset", help="dataset (txt file)")
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=100)
+    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=200)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=1024)
-    train_subparser.add_argument("--print-period", "-p", type=int, default=500)
-    train_subparser.add_argument("--n-goals", "-n", type=int, default=500)
+    train_subparser.add_argument("--print-period", "-p", type=int, default=200)
+    train_subparser.add_argument("--n-goals", "-n", type=int, default=100)
     train_subparser.add_argument("--n-steps", "-s", type=int, default=1)
     train_subparser.set_defaults(func=train)
 
@@ -101,8 +102,14 @@ if __name__ == '__main__':
     model_only_subparser.set_defaults(func=model_only)
 
     args = parser.parse_args()
+    commandline = ' '.join(sys.argv)
+    args.commandline = commandline
 
     if args == argparse.Namespace():
         parser.print_usage()
     else:
         args.func(args)
+
+
+if __name__ == '__main__':
+    main()

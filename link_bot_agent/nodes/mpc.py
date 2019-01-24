@@ -59,6 +59,7 @@ def main():
     done = False
 
     try:
+        min_true_cost = 1e9
         while not done:
             s = agent.get_state()
             o = model.reduce(s)
@@ -92,7 +93,8 @@ def main():
                 if args.pause:
                     input('paused...')
 
-                # print("{:0.3f}".format(true_cost))
+                print("{:0.3f}".format(true_cost))
+                min_true_cost = min(min_true_cost, true_cost)
                 if true_cost < 0.1:
                     print("Success!")
                     done = True
@@ -100,11 +102,15 @@ def main():
 
             if done:
                 break
+    except rospy.service.ServiceException:
+        pass
     except KeyboardInterrupt:
         pass
     finally:
         joy_msg.axes = [0, 0]
         joy_pub.publish(joy_msg)
+        print()
+    print("Min true cost: {}".format(min_true_cost))
 
 
 if __name__ == '__main__':
