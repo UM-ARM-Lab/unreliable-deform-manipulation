@@ -16,19 +16,8 @@ DT = 0.1
 def train(args):
     model = linear_tf_model.LinearTFModel(vars(args), args.N, args.M, args.L, n_steps=args.n_steps, dt=DT)
 
-    # goal = np.array([[0], [0], [0], [1], [0], [2]])
-    goals = []
-    for _ in range(args.n_goals):
-        x = np.random.uniform(-5, 5)
-        y = np.random.uniform(-5, 5)
-        theta1 = np.random.uniform(-np.pi / 2, np.pi / 2)
-        theta2 = np.random.uniform(-np.pi / 2, np.pi / 2)
-        x1 = x + np.cos(theta1)
-        y1 = y + np.sin(theta1)
-        x2 = x1 + np.cos(theta2)
-        y2 = y1 + np.sin(theta2)
-        g = np.array([[x], [y], [x1], [y1], [x2], [y2]])
-        goals.append(g)
+    goal = np.array([[0], [0], [0], [1], [0], [2]])
+    # goals = tpo.random_goals(args.n_goals)
 
     model.setup()
 
@@ -38,10 +27,10 @@ def train(args):
     x = tpo.load_train2(log_data, tpo.link_pos_vel_extractor2_indeces(), trajectory_length_during_collection,
                         args.n_steps)
 
-    for goal in goals:
-        interrupted = model.train(x, goal, args.epochs, log_path)
-        if interrupted:
-            break
+    # for goal in goals:
+    interrupted = model.train(x, goal, args.epochs, log_path)
+    # if interrupted:
+    #     break
 
     # evaluate
     goal = np.array([[0], [0], [0], [1], [0], [2]])

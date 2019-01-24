@@ -560,3 +560,18 @@ def policy_quiver(model, action_selector, goal, ax, cx, cy, r, m, scale=10):
             u.append(a[0, 0, 0])
             v.append(a[0, 1, 0])
     q = ax.quiver(x, y, u, v, scale=scale, width=scale / 20000.0)
+
+def random_goals(n_goals):
+    goals = []
+    for _ in range(n_goals):
+        x = np.random.uniform(-5, 5)
+        y = np.random.uniform(-5, 5)
+        theta1 = np.random.uniform(-np.pi / 2, np.pi / 2)
+        theta2 = np.random.uniform(-np.pi / 2, np.pi / 2)
+        x1 = x + np.cos(theta1)
+        y1 = y + np.sin(theta1)
+        x2 = x1 + np.cos(theta2)
+        y2 = y1 + np.sin(theta2)
+        g = np.array([[x], [y], [x1], [y1], [x2], [y2]])
+        goals.append(g)
+    return goals
