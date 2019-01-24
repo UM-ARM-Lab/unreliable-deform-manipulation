@@ -59,7 +59,9 @@ def model_only(args):
 
 def evaluate(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
-    x = tpo.load_train(args.dataset, N=args.N, L=args.L, extract_func=tpo.link_pos_vel_extractor2(args.N))
+    log_data = np.loadtxt(args.dataset)
+    trajectory_length_during_collection = tpo.parse_dataset_name(args.dataset, log_data)
+    x = tpo.load_train2(log_data, tpo.link_pos_vel_extractor2_indeces(), trajectory_length_during_collection, 1)
     model = linear_invertible_constraint_model.LinearInvertibleModel(vars(args), N=args.N, M=args.M, K=args.K,
                                                                      L=args.L, dt=0.1)
     model.load()
@@ -67,7 +69,7 @@ def evaluate(args):
 
 
 if __name__ == '__main__':
-    np.set_printoptions(precision=6, suppress=True)
+    np.set_printoptions(precision=6, suppress=True, linewidth=120)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", action='store_true')
@@ -83,7 +85,7 @@ if __name__ == '__main__':
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=100)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=250)
-    train_subparser.add_argument("--cog-period", "-p", type=int, default=100)
+    train_subparser.add_argument("--print-period", "-p", type=int, default=500)
     train_subparser.add_argument("--n-goals", "-n", type=int, default=500)
     train_subparser.set_defaults(func=train)
 

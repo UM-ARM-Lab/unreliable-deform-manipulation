@@ -8,18 +8,21 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 from link_bot_notebooks import base_model
+from link_bot_notebooks import toy_problem_optimization_common as tpo
 
 # TODO: make this a proper input not a global variable
-# assume environment is bounded (-10, 10) in x and y which means we need 20x20
-ROWS = COLS = 20
-numpy_sdf = np.zeros((20, 20))
-numpy_sdf_gradient = np.zeros((20, 20, 2))
+# assume environment is bounded (-12, 12) in x and y which means we need 24x24
+ROWS = COLS = 24
+numpy_sdf = np.zeros((24, 24))
+numpy_sdf_gradient = np.zeros((24, 24, 2))
 
 
 def point_to_index(xy):
-    return xy - np.array([[ROWS / 2], [COLS / 2]])
+    pt_float = xy - np.array([[ROWS / 2], [COLS / 2]])
+    return pt_float.astype(np.int32)
 
 
+# hard code the SDF value of anything within [(1,1),(1,2),(2,2),(2,1)] as SDF value = 1
 numpy_sdf[point_to_index(np.array([2, 0]))] = 1
 numpy_sdf_gradient[point_to_index(np.array([2, 0]))] = [0, 0]
 numpy_sdf_gradient[point_to_index(np.array([3, 0]))] = [1, 0]
@@ -34,10 +37,6 @@ numpy_sdf_gradient[point_to_index(np.array([1, -1]))] = [-1 / np.sqrt(2), -1 / n
 
 @tf.custom_gradient
 def sdf(placeholder_sdf, placeholder_sdf_gradient, point):
-    """
-    point is a 1x2 numpy array [[x], [y]]
-    this function is a temporary hack just to test things
-    """
     resolution = np.array([[1], [1]], dtype=np.float32)
     integer_coordinates = tf.cast(tf.divide(point, resolution), dtype=tf.int32)
     # blindly assume the point is within our grid
@@ -46,8 +45,7 @@ def sdf(placeholder_sdf, placeholder_sdf_gradient, point):
     # noinspection PyUnusedLocal
     def __sdf_gradient_func(dy):
         sdf_gradient = tf.gather_nd(placeholder_sdf_gradient, tf.transpose(integer_coordinates))
-        print(sdf_gradient.get_shape())
-        return None, None, sdf_gradient
+        return None, None, tf.transpose(sdf_gradient)
 
     return sdf_value, __sdf_gradient_func
 
@@ -79,7 +77,8 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.c_ = tf.placeholder(tf.float32, shape=(None), name="c_")
 
         self.A_control = tf.Variable(tf.truncated_normal(shape=[self.M_control, N]), name="A_control", dtype=tf.float32)
-        self.A_constraint = tf.Variable(tf.truncated_normal(shape=[self.M_constraint, self.M_control]), name="A_constraint", dtype=tf.float32)
+        self.A_constraint = tf.Variable(tf.truncated_normal(shape=[self.M_constraint, self.M_control]),
+                                        name="A_constraint", dtype=tf.float32)
         self.B = tf.Variable(tf.truncated_normal(shape=[self.M_control, self.M_control]), name="B", dtype=tf.float32)
         self.C = tf.Variable(tf.truncated_normal(shape=[self.M_control, L]), name="C", dtype=tf.float32)
         self.B_inv = tf.Variable(tf.truncated_normal(shape=[self.M_control, self.M_control]), name="B_inv",
@@ -88,9 +87,7 @@ class LinearInvertibleModel(base_model.BaseModel):
         self.D = tf.Variable(np.eye(self.M_control, dtype=np.float32), trainable=False)
 
         self.hat_o_control = tf.matmul(self.A_control, self.s, name='reduce')
-        print(self.A_constraint.get_shape())
-        print(self.hat_o_control.get_shape())
-        self.hat_o_constraint = tf.matmul(self.A_constraint, self.hat_o_control, name='constraint')
+        self.hat_o_constraint = tf.matmul(self.A_constraint, self.hat_o_control, name='hat_o_constraint')
         self.og = tf.matmul(self.A_control, self.g, name='reduce_goal')
         self.o_control_ = tf.matmul(self.A_control, self.s_, name='reduce_')
 
@@ -142,7 +139,8 @@ class LinearInvertibleModel(base_model.BaseModel):
             tf.summary.scalar("loss", self.loss)
 
             self.summaries = tf.summary.merge_all()
-            self.sess = tf.Session()
+            gpu_config = tf.GPUOptions(per_process_gpu_memory_fraction=0.01)
+            self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_config))
             self.saver = tf.train.Saver(max_to_keep=None)
 
     def train(self, train_x, goal, epochs, log_path):
@@ -153,22 +151,24 @@ class LinearInvertibleModel(base_model.BaseModel):
         full_log_path = None
         if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
-            writer = tf.summary.FileWriter(full_log_path)
-            writer.add_graph(self.sess.graph)
 
-            metadata_file = open(full_log_path, 'w')
+            tpo.make_log_dir(full_log_path)
+
+            metadata_path = os.path.join(full_log_path, "metadata.json")
+            metadata_file = open(metadata_path, 'w')
             metadata = {
                 'log path': full_log_path,
-                'checkpoint': self.args.checkpoint,
+                'checkpoint': self.args['checkpoint'],
                 'N': self.N,
-                'M control': self.M_control,
-                'K (M constraint)': self.M_constraint,
+                'M': self.M,
                 'L': self.L,
-                'n_steps': self.n_steps,
                 'beta': self.beta,
                 'dt': self.dt,
             }
             metadata_file.write(json.dumps(metadata, indent=2))
+
+            writer = tf.summary.FileWriter(full_log_path)
+            writer.add_graph(self.sess.graph)
 
         try:
             s, s_, u, c, c_, constraint = self.batch(train_x, goal)
@@ -185,10 +185,12 @@ class LinearInvertibleModel(base_model.BaseModel):
             for i in range(epochs):
                 step, summary, loss, _, B = self.sess.run(ops, feed_dict=feed_dict)
 
-                if 'log_period' in self.args and step % self.args['log_period'] == 0:
-                    print(step, loss)
+                if 'print_period' in self.args and step % self.args['print_period'] == 0:
                     if self.args['log'] is not None:
                         writer.add_summary(summary, step)
+                        self.save(full_log_path, loss=loss)
+                    else:
+                        print(step, loss)
 
         except KeyboardInterrupt:
             print("stop!!!")
@@ -225,14 +227,26 @@ class LinearInvertibleModel(base_model.BaseModel):
         hat_o_control = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_o_control
 
-    def o_constraint(self, o):
+    def get_hat_o_control(self, o):
         feed_dict = {self.hat_o_control: o}
         ops = [self.hat_o_constraint]
         hat_o_constraint = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_o_constraint
 
-    def hat_constraint(self, o):
-        feed_dict = {self.hat_o_control: o}
+    def hat_constraint_from_s(self, s):
+        feed_dict = {self.s: s,
+                     self.placeholder_sdf: numpy_sdf,
+                     self.placeholder_sdf_gradient: numpy_sdf_gradient,
+                     }
+        ops = [self.hat_constraint]
+        hat_constraint = self.sess.run(ops, feed_dict=feed_dict)[0]
+        return hat_constraint
+
+    def get_hat_constraint(self, o):
+        feed_dict = {self.hat_o_constraint: o,
+                     self.placeholder_sdf: numpy_sdf,
+                     self.placeholder_sdf_gradient: numpy_sdf_gradient,
+                     }
         ops = [self.hat_constraint]
         hat_constraint = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_constraint
@@ -262,9 +276,14 @@ class LinearInvertibleModel(base_model.BaseModel):
         hat_c = np.expand_dims(hat_c, axis=0)
         return hat_c
 
-    def save(self, log_path):
+    def save(self, log_path, log=True, loss=None):
         global_step = self.sess.run(self.global_step)
-        print(Fore.CYAN + "Saving ckpt {} at step {:d}".format(log_path, global_step) + Fore.RESET)
+        if log:
+            if loss:
+                print(Fore.CYAN + "Saving ckpt {} at step {:d} with loss {}".format(log_path, global_step,
+                                                                                    loss) + Fore.RESET)
+            else:
+                print(Fore.CYAN + "Saving ckpt {} at step {:d}".format(log_path, global_step) + Fore.RESET)
         self.saver.save(self.sess, os.path.join(log_path, "nn.ckpt"), global_step=self.global_step)
 
     def load(self):
@@ -283,21 +302,25 @@ class LinearInvertibleModel(base_model.BaseModel):
                      self.placeholder_sdf_gradient: numpy_sdf_gradient,
                      self.c: c,
                      self.c_: c_}
-        ops = [self.A_control, self.B, self.C, self.D, self.cost_loss, self.state_prediction_loss,
-               self.cost_prediction_loss,
-               self.regularization, self.loss]
-        A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
+        ops = [self.A_control, self.A_constraint, self.B, self.C, self.D, self.cost_loss, self.state_prediction_loss,
+               self.cost_prediction_loss, self.constraint_loss, self.regularization, self.loss]
+        A_control, A_constraint, B, C, D, c_loss, sp_loss, cp_loss, constraint_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
+        xx = self.sess.run(self.hat_constraint, feed_dict=feed_dict)
+        np.set_printoptions(threshold=np.nan)
+        print(xx)
         if display:
             print("Cost Loss: {}".format(c_loss))
             print("State Prediction Loss: {}".format(sp_loss))
             print("Cost Prediction Loss: {}".format(cp_loss))
+            print("Constraint Prediction Loss: {}".format(constraint_loss))
             print("Regularization: {}".format(reg))
             print("Overall Loss: {}".format(loss))
-            print("A:\n{}".format(A))
+            print("A_control:\n{}".format(A_control))
+            print("A_constraint:\n{}".format(A_constraint))
             print("B:\n{}".format(B))
             print("C:\n{}".format(C))
             print("D:\n{}".format(D))
-        return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
+        return A_control, A_constraint, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
 
     def batch(self, x, goal):
         batch_size = min(x.shape[2], self.args['batch_size'])
@@ -316,12 +339,15 @@ class LinearInvertibleModel(base_model.BaseModel):
         # Here we compute the label for cost/reward and constraints
         c = np.sum((s[[0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
         c_ = np.sum((s_[[0, 1], :] - goal[[0, 1]]) ** 2, axis=0)
-        constraint = numpy_sdf[point_to_index(s[[4, 5], :]).astype(np.int32)]
+        pts = point_to_index(s[[4, 5], :]).astype(np.int32)
+        xs = pts[0, :]
+        ys = pts[1, :]
+        constraint = numpy_sdf[xs, ys]
         return s, s_, u, c, c_, constraint
 
-    def get_ABCD(self):
+    def get_AABCD(self):
         feed_dict = {}
-        ops = [self.A_control, self.B, self.C, self.D]
+        ops = [self.A_control, self.A_constraint, self.B, self.C, self.D]
         return self.sess.run(ops, feed_dict=feed_dict)
 
     def get_A(self):
@@ -331,10 +357,10 @@ class LinearInvertibleModel(base_model.BaseModel):
         return A
 
     def __str__(self):
-        x = self.sess
         if hasattr(self, "sess"):
-            A, B, C, D = self.get_ABCD()
-            return "A:\n" + np.array2string(A) + "\n" + \
+            A_control, A_constraint, B, C, D = self.get_AABCD()
+            return "A_control:\n" + np.array2string(A_control) + "\n" + \
+                   "A_constraint:\n" + np.array2string(A_constraint) + "\n" + \
                    "B:\n" + np.array2string(B) + "\n" + \
                    "C:\n" + np.array2string(C) + "\n" + \
                    "D:\n" + np.array2string(D) + "\n"

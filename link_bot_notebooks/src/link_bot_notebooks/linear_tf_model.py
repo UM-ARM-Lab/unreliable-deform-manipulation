@@ -2,7 +2,6 @@
 from __future__ import print_function
 
 import os
-import sys
 import json
 
 import numpy as np
@@ -91,6 +90,9 @@ class LinearTFModel(base_model.BaseModel):
     def train(self, train_x, goal, epochs, log_path):
         interrupted = False
 
+        writer = None
+        loss = None
+        full_log_path = None
         if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
 
