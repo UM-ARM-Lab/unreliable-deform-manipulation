@@ -264,6 +264,7 @@ def load_train_test(filename, N, M, L, g, extract_func):
 def load_train2(log_data, extract_indeces, trajectory_length_during_collection=1, trajectory_length_to_train=1):
     n_indeces = len(extract_indeces)
     log_data = log_data[:, extract_indeces]
+    print(log_data.shape)
     x = log_data.reshape(-1, trajectory_length_during_collection + 1, n_indeces).transpose([1, 2, 0])
     traj_indeces = subsequences(np.arange(trajectory_length_during_collection + 1), trajectory_length_to_train + 1)
     train_x = x[traj_indeces, :, :]

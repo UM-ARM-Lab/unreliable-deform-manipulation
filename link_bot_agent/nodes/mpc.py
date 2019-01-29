@@ -46,8 +46,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
         for goal in goals:
             # reset to random starting point
             config = LinkBotConfiguration()
-            config.tail_pose.x = np.random.uniform(-5,5)
-            config.tail_pose.y = np.random.uniform(-5,5)
+            config.tail_pose.x = np.random.uniform(-5, 5)
+            config.tail_pose.y = np.random.uniform(-5, 5)
             config.tail_pose.theta = np.random.uniform(-np.pi, np.pi)
             config.joint_angles_rad = np.random.uniform(-np.pi, np.pi, size=2)
             config_pub.publish(config)
@@ -62,6 +62,14 @@ def common(args, goals, max_steps=1e6, verbose=False):
                 s = agent.get_state()
                 o = model.reduce(s)
                 actions = action_selector.act(o)
+
+                if np.linalg.norm(actions[0]) < 0.1:
+                    done = True
+
+                current_cost = model.cost(o, goal)
+                next_cost = model.predict_cost(o, actions, goal)
+                if verbose and next_cost > current_cost:
+                    print("Local Minimum in cost {} < {}".format(current_cost, next_cost))
 
                 if args.plot_plan:
                     plt.figure()
@@ -113,24 +121,23 @@ def common(args, goals, max_steps=1e6, verbose=False):
             print()
     if verbose:
         print("Min true cost: {}".format(min_true_cost))
-    return min_true_costs
+    return np.array(min_true_costs)
 
 
 def test(args):
     goal = np.array([[0], [0], [0], [1], [0], [2]])
-    common(args, [goal])
+    common(args, [goal], verbose=args.verbose)
 
 
 def eval(args):
     fname = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(time.time())))
-    goals = tpo.random_goals(args.n_random_goals)
     g0 = np.array([[0], [0], [0], [1], [0], [2]])
     goals = [g0] * args.n_random_goals
     min_costs = common(args, goals, max_steps=300)
     print(min_costs)
     print('mean dist to goal', np.mean(min_costs))
     print('stdev dist to goal', np.std(min_costs))
-    success_percentage = float(np.count_nonzero(np.where(min_costs < success_dist, 1, 0))) / len(min_costs)
+    success_percentage = float(np.count_nonzero(np.where(min_costs < success_dist, 1.0, 0.0))) / len(min_costs)
     print('% success', success_percentage)
     np.savetxt(fname, min_costs)
     plt.hist(min_costs)
