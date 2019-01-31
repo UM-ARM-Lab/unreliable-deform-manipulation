@@ -28,6 +28,7 @@ def main():
     rospy.init_node('apply_random_pulls')
 
     DT = 0.1  # seconds per time step
+    time = 0
 
     joy_msg = Joy()
     joy_msg.axes = [0, 0]
@@ -44,15 +45,16 @@ def main():
 
     def get_state(vx, vy):
         # get the new states
-        state = np.zeros(S)
+        state = np.zeros(S + 1)
+        state[0] = time
         for i, link_name in enumerate(link_names):
             req = GetLinkStateRequest()
             req.link_name = link_name
             response = get_link_state.call(req)
-            state[4 * i] = response.link_state.pose.position.x
-            state[4 * i + 1] = response.link_state.pose.position.y
-        state[S - 2] = vx
-        state[S - 1] = vy
+            state[1 + 4 * i] = response.link_state.pose.position.x
+            state[1 + 4 * i + 1] = response.link_state.pose.position.y
+        state[1 + S - 2] = vx
+        state[1 + S - 1] = vy
 
         return state
 
@@ -66,22 +68,22 @@ def main():
     np.random.seed(0)
     for p in range(args.pulls):
         if args.verbose:
-            print('=' * 100)
+            print('=' * 180)
 
-        x0 = np.random.uniform(-25, 25)
-        y0 = np.random.uniform(-25, 25)
-        yaw = r()
-        v = np.random.normal(0.0, 1.0)
-        vx = np.cos(r()) * v
-        vy = np.sin(r()) * v
+        v = np.random.uniform(0.0, 1.0)
+        pull_yaw = r()
+        vx = np.cos(pull_yaw) * v
+        vy = np.sin(pull_yaw) * v
 
         # set the configuration of the model
         config = LinkBotConfiguration()
-        config.tail_pose.x = x0
-        config.tail_pose.y = y0
-        config.tail_pose.theta = yaw
+        config.tail_pose.x = np.random.uniform(-5, 5)
+        config.tail_pose.y = np.random.uniform(-5, 5)
+        config.tail_pose.theta = r()
+        # allow the rope to be bent
         config.joint_angles_rad = [r() * 0.9, 0]
         config_pub.publish(config)
+        time = 0
 
         for t in range(args.steps + 1):
             # save the state and action data
@@ -96,6 +98,8 @@ def main():
             step.steps = DT / 0.001  # assuming 0.001s per simulation step
             world_control.call(step)  # this will block until stepping is complete
 
+            time += DT
+
             if args.verbose:
                 print(data[-1])
 
@@ -105,7 +109,6 @@ def main():
     # stop everything
     joy_msg.axes = [0, 0]
     joy_pub.publish(joy_msg)
-
 
 
 if __name__ == '__main__':

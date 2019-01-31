@@ -1,8 +1,24 @@
 #!/usr/bin/env python
 
 import numpy as np
+import re
+import os
+import errno
 import scipy.optimize as optimize
 from scipy.linalg import hankel
+
+
+def make_log_dir(full_log_path):
+    """ https://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python """
+    if "log_data" not in full_log_path:
+        raise ValueError("Full log path must contain 'log_data'")
+    try:
+        os.makedirs(full_log_path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(full_log_path):
+            pass
+        else:
+            raise
 
 
 class LinearStateSpaceModelWithQuadraticCost:
@@ -230,6 +246,10 @@ def link_pos_vel_extractor2_indeces():
     return [0, 1, 4, 5, 8, 9, 10, 11]
 
 
+def fake_indeces():
+    return [0, 1, 2, 3]
+
+
 def load_train_test(filename, N, M, L, g, extract_func):
     log_data = np.loadtxt(filename)
     n_training_samples = log_data.shape[0]
@@ -245,15 +265,19 @@ def load_train_test(filename, N, M, L, g, extract_func):
     return n_training_samples, train_x, train_y
 
 
-def load_train2(log_data, extract_indeces, trajectory_length_during_collection=1, trajectory_length_to_train=1):
-    n_indeces = len(extract_indeces)
-    log_data = log_data[:, extract_indeces]
-    x = log_data.reshape(-1, trajectory_length_during_collection + 1, n_indeces).transpose([1, 2, 0])
-    traj_indeces = subsequences(np.arange(trajectory_length_during_collection), trajectory_length_to_train + 1)
-    train_x = x[traj_indeces, :, :]
-    train_x = train_x.transpose([1, 2, 3, 0])
-    train_x = train_x.reshape(trajectory_length_to_train + 1, n_indeces, -1)
-    return train_x
+def parse_dataset_name(dataset, log_data):
+    matches = re.search(r"(\d+)_(\d+)_.*", dataset)
+    if not matches:
+        print("could not parse dataset name")
+        return
+    try:
+        trajectory_length_during_collection = int(matches.group(2))
+
+    except ValueError:
+        print("could not convert regex matches in filename to integers")
+        return
+
+    return trajectory_length_during_collection
 
 
 def subsequences(v, q):
@@ -519,3 +543,19 @@ def policy_quiver(model, action_selector, goal, ax, cx, cy, r, m, scale=10):
             u.append(a[0, 0, 0])
             v.append(a[0, 1, 0])
     q = ax.quiver(x, y, u, v, scale=scale, width=scale / 20000.0)
+
+
+def random_goals(n_goals):
+    goals = []
+    for _ in range(n_goals):
+        x = np.random.uniform(-5, 5)
+        y = np.random.uniform(-5, 5)
+        theta1 = np.random.uniform(-np.pi / 2, np.pi / 2)
+        theta2 = np.random.uniform(-np.pi / 2, np.pi / 2)
+        x1 = x + np.cos(theta1)
+        y1 = y + np.sin(theta1)
+        x2 = x1 + np.cos(theta2)
+        y2 = y1 + np.sin(theta2)
+        g = np.array([[x], [y], [x1], [y1], [x2], [y2]])
+        goals.append(g)
+    return goals
