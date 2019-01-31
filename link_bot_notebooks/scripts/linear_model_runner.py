@@ -15,7 +15,7 @@ DT = 0.1
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
-    log_data = np.loadtxt(args.dataset)
+    log_data = np.load(args.dataset)
     trajectory_length_during_collection = tpo.parse_dataset_name(args.dataset, log_data)
     x = tpo.load_train2(log_data, tpo.link_pos_vel_extractor2_indeces(), trajectory_length_during_collection)
     batch_size = min(x.shape[2], args.batch_size)
@@ -29,8 +29,8 @@ def train(args):
 
     # for goal in goals:
     interrupted = model.train(x, goal, args.epochs, log_path)
-    # if interrupted:
-    #     break
+    if interrupted:
+        break
 
     # evaluate
     goal = np.array([[0], [0], [0], [1], [0], [2]])

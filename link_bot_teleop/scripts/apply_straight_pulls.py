@@ -27,6 +27,7 @@ def main():
     rospy.init_node('apply_straight_pulls')
 
     DT = 0.1  # seconds per time step
+    time = 0
 
     joy_msg = Joy()
     joy_msg.axes = [0, 0]
@@ -43,17 +44,21 @@ def main():
 
     def get_state(vx, vy):
         # get the new states
-        state = np.zeros(S)
+        state = np.zeros(S + 1)
+        state[0] = time
         for i, link_name in enumerate(link_names):
             req = GetLinkStateRequest()
             req.link_name = link_name
             response = get_link_state.call(req)
-            state[4 * i] = response.link_state.pose.position.x
-            state[4 * i + 1] = response.link_state.pose.position.y
-        state[S - 2] = vx
-        state[S - 1] = vy
+            state[1 + 4 * i] = response.link_state.pose.position.x
+            state[1 + 4 * i + 1] = response.link_state.pose.position.y
+        state[1 + S - 2] = vx
+        state[1 + S - 1] = vy
 
         return state
+
+    def r():
+        return np.random.uniform(-np.pi, np.pi)
 
     joy_msg.axes = [0, 0]
     joy_pub.publish(joy_msg)
@@ -64,24 +69,25 @@ def main():
         if args.verbose:
             print('=' * 180)
 
-        x0 = np.random.uniform(-5, 5)
-        y0 = np.random.uniform(-5, 5)
-        yaw = np.random.uniform(-np.pi, np.pi)
-        v = np.random.rand() * 1.5
+        v = np.random.uniform(0.0, 1.0)
+        # only one random angle, which sets the angle of the rope and direction of pull
+        yaw = r()
         vx = np.cos(yaw) * v
         vy = np.sin(yaw) * v
 
         # set the configuration of the model
         config = LinkBotConfiguration()
-        config.tail_pose.x = x0
-        config.tail_pose.y = y0
+        config.tail_pose.x = np.random.uniform(-5, 5)
+        config.tail_pose.y = np.random.uniform(-5, 5)
         config.tail_pose.theta = yaw
+        # rope must be straight
         config.joint_angles_rad = [0, 0]
         config_pub.publish(config)
 
         # we must wait for the first config to take place
         # presumably because there is delay in setting up the config publisher
 
+        time = 0
         for t in range(args.steps + 1):
             # save the state and action data
             data.append(get_state(vx, vy))
@@ -94,6 +100,8 @@ def main():
             step = WorldControlRequest()
             step.steps = DT / 0.001  # assuming 0.001s per simulation step
             world_control.call(step)  # this will block until stepping is complete
+
+            time += DT
 
             if args.verbose:
                 print(data[-1])
