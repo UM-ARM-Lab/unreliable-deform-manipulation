@@ -16,8 +16,9 @@ class LinearTFModel(base_model.BaseModel):
     def __init__(self, args, batch_size, N, M, L, dt, n_steps, seed=0):
         base_model.BaseModel.__init__(self, N, M, L)
 
-        np.random.seed(seed)
-        tf.random.set_random_seed(seed)
+        self.seed = seed
+        np.random.seed(self.seed)
+        tf.random.set_random_seed(self.seed)
 
         self.batch_size = batch_size
         self.args = args
@@ -33,9 +34,10 @@ class LinearTFModel(base_model.BaseModel):
         self.g = tf.placeholder(tf.float32, shape=(1, N), name="g")
         self.c = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1), name="c")
 
-        self.A = tf.get_variable("A", shape=[N, M])
-        self.B = tf.get_variable("B", shape=[M, M], initializer=tf.zeros_initializer())
-        self.C = tf.get_variable("C", shape=[M, L], initializer=tf.zeros_initializer())
+        self.A = tf.get_variable("A", shape=[N, M], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
+        self.B = tf.get_variable("B", shape=[M, M],
+                                 initializer=tf.initializers.truncated_normal(0, 0.01, seed=self.seed))
+        self.C = tf.get_variable("C", shape=[M, L], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.Variable(np.eye(self.M, dtype=np.float32), trainable=False)
@@ -59,18 +61,24 @@ class LinearTFModel(base_model.BaseModel):
             self.state_prediction_error = tf.norm(self.hat_o - self.hat_o_, axis=0)
             self.state_prediction_loss = tf.reduce_mean(self.state_prediction_error)
             self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
-            flat_weights = tf.concat((tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]),
-                                      tf.reshape(self.C, [-1]), tf.reshape(self.D, [-1])), axis=0)
-            self.regularization = tf.nn.l2_loss(flat_weights) * self.beta
+            self.flat_weights = tf.concat((tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]),
+                                           tf.reshape(self.C, [-1])), axis=0)
+            self.regularization = tf.nn.l2_loss(self.flat_weights) * self.beta
+
             self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
+
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             self.opt = tf.train.AdamOptimizer().minimize(self.loss, global_step=self.global_step)
 
             trainable_vars = tf.trainable_variables()
-            grads = zip(tf.gradients(self.loss, trainable_vars), trainable_vars)
-            for grad, var in grads:
-                name = var.name.replace(":", "_")
-                tf.summary.histogram(name + "/gradient", grad)
+            for var in trainable_vars:
+                grads = tf.gradients(self.loss, var)
+                for grad in grads:
+                    if grad is not None:
+                        name = var.name.replace(":", "_")
+                        tf.summary.histogram(name + "/gradient", grad)
+                    else:
+                        print("Warning... there is no gradient of the loss with respect to {}".format(var.name))
 
             tf.summary.scalar("cost_loss", self.cost_loss)
             tf.summary.scalar("state_prediction_loss", self.state_prediction_loss)
@@ -96,6 +104,7 @@ class LinearTFModel(base_model.BaseModel):
             metadata_path = os.path.join(full_log_path, "metadata.json")
             metadata_file = open(metadata_path, 'w')
             metadata = {
+                'tf_version': str(tf.__version__),
                 'log path': full_log_path,
                 'checkpoint': self.args['checkpoint'],
                 'N': self.N,
@@ -111,13 +120,11 @@ class LinearTFModel(base_model.BaseModel):
             writer.add_graph(self.sess.graph)
 
         try:
-            s, s_, u, c, c_ = self.batch(train_x, goal)
+            s, u, c = self.compute_cost_label(train_x, goal)
             feed_dict = {self.s: s,
-                         self.s_: s_,
                          self.u: u,
                          self.g: goal,
-                         self.c: c,
-                         self.c_: c_}
+                         self.c: c}
             ops = [self.global_step, self.summaries, self.loss, self.opt, self.B]
             for i in range(epochs):
                 step, summary, loss, _, B = self.sess.run(ops, feed_dict=feed_dict)
@@ -143,6 +150,43 @@ class LinearTFModel(base_model.BaseModel):
                 print("D:\n{}".format(D))
 
         return interrupted
+
+    def evaluate(self, eval_x, goal, display=True):
+        s, u, c = self.compute_cost_label(eval_x, goal)
+        feed_dict = {self.s: s,
+                     self.u: u,
+                     self.g: goal,
+                     self.c: c}
+        ops = [self.A, self.B, self.C, self.D, self.cost_loss, self.state_prediction_loss, self.cost_prediction_loss,
+               self.regularization, self.loss]
+        A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
+        if display:
+            print("Cost Loss: {}".format(c_loss))
+            print("State Prediction Loss: {}".format(sp_loss))
+            print("Cost Prediction Loss: {}".format(cp_loss))
+            print("Regularization: {}".format(reg))
+            print("Overall Loss: {}".format(loss))
+            print("A:\n{}".format(A))
+            print("B:\n{}".format(B))
+            print("C:\n{}".format(C))
+            print("D:\n{}".format(D))
+
+            # visualize a few sample predictions from the testing data
+            self.sess.run([self.hat_o_], feed_dict=feed_dict)
+
+        return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
+
+    def compute_cost_label(self, x, goal):
+        """ x is 3d.
+            first axis is the trajectory.
+            second axis is the time step
+            third axis is the [state|action] data
+        """
+        s = x[:, :, 1:self.N + 1]
+        u = x[:, :-1, self.N + 1:]
+        # NOTE: Here we compute the label for cost/reward and constraints
+        c = np.sum((s[:, :, [0, 1]] - goal[0, [0, 1]]) ** 2, axis=2)
+        return s, u, c
 
     def setup(self):
         if self.args['checkpoint']:
@@ -199,58 +243,6 @@ class LinearTFModel(base_model.BaseModel):
         self.saver.restore(self.sess, self.args['checkpoint'])
         global_step = self.sess.run(self.global_step)
         print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
-
-    def evaluate(self, eval_x, goal, display=True):
-        s, s_, u, c, c_ = self.batch(eval_x, goal)
-        feed_dict = {self.s: s,
-                     self.s_: s_,
-                     self.u: u,
-                     self.g: goal,
-                     self.c: c,
-                     self.c_: c_}
-        ops = [self.A, self.B, self.C, self.D, self.cost_loss, self.state_prediction_loss, self.cost_prediction_loss,
-               self.regularization, self.loss]
-        A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
-        if display:
-            print("Cost Loss: {}".format(c_loss))
-            print("State Prediction Loss: {}".format(sp_loss))
-            print("Cost Prediction Loss: {}".format(cp_loss))
-            print("Regularization: {}".format(reg))
-            print("Overall Loss: {}".format(loss))
-            print("A:\n{}".format(A))
-            print("B:\n{}".format(B))
-            print("C:\n{}".format(C))
-            print("D:\n{}".format(D))
-
-            # visualize a few sample predictions from the testing data
-            self.sess.run([self.hat_o_], feed_dict=feed_dict)
-
-        return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
-
-    def batch(self, x, goal):
-        """ x is 3d.
-            first axis is the trajectory.
-            second axis is the time step
-            third axis is the state/action data
-        """
-        batch_size = min(x.shape[2], self.args['batch_size'])
-        if batch_size == x.shape[2]:
-            batch_examples = x
-        else:
-            batch_indeces = np.random.randint(0, x.shape[2], size=batch_size)
-            batch_examples = x[:, :, batch_indeces]
-
-        # there is always only one s and one s_, but the amount of time between them can vary but changing
-        # the length of the trajectories loaded for training, via the parameter 'trajectory_length_to_train'
-        print(batch_examples.shape)
-        for i in range(batch_examples.shape[0]):
-            s = batch_examples[:self.n_steps, :self.N, :]
-            u = batch_examples[:self.n_steps, self.N:, :]
-
-        # Here we compute the label for cost/reward and constraints
-        c = np.sum((s[:, [0, 1], :] - goal[[0, 1]]) ** 2, axis=1)
-
-        return s, s_, u, c, c_
 
     def get_ABCD(self):
         feed_dict = {}

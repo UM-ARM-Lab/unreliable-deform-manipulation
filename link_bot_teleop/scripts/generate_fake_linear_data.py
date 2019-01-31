@@ -8,22 +8,24 @@ import numpy as np
 
 
 def generate(args):
-    data = np.ndarray((args.num_trajectories, args.trajectory_length, 5))
+    data = np.ndarray((args.num_trajectories, args.trajectory_length, 7))
+
+    B = np.array([[0.1, 0.2], [0.3, 0.4]])
+    C = np.array([[2, 1], [0, 3]])
 
     for t in range(args.num_trajectories):
         # uniformly randomly sample a starting point, velocity, and direction
         v = np.random.uniform(0, args.maxv)
         angle = np.random.uniform(-np.pi, np.pi)
-        x = np.random.uniform(-5, 5)
-        y = np.random.uniform(-5, 5)
+        o = np.random.uniform(-5, 5, size=2)
         vx = np.cos(angle) * v
         vy = np.sin(angle) * v
+        u = np.array([vx, vy])
         for s in range(args.trajectory_length):
             # forward integrate dynamics
-            x = x + vx * args.dt
-            y = y + vy * args.dt
+            o = o + args.dt * np.dot(B, o) + args.dt * np.dot(C, u)
             time = s * args.dt
-            data[t][s] = [time, x, y, x + y, 2 * x - 4 * y]
+            data[t][s] = [time, o[0], o[1], o[0] + o[1], 2 * o[0] - 4 * o[1], vx, vy]
 
     np.save(args.outfile, data)
 
