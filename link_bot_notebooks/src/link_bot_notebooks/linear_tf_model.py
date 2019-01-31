@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from __future__ import print_function
+from __future__ import division, print_function, absolute_import
 
 import os
 import json
@@ -9,6 +9,10 @@ import tensorflow as tf
 from colorama import Fore
 from link_bot_notebooks import base_model
 from link_bot_notebooks import toy_problem_optimization_common as tpo
+from tensorflow.python import debug as tf_debug
+
+true_fake_B = np.array([[0.1, 0.2], [0.3, 0.4]], dtype=np.float32)
+true_fake_C = np.array([[2, 1], [0, 3]], dtype=np.float32)
 
 
 class LinearTFModel(base_model.BaseModel):
@@ -34,41 +38,47 @@ class LinearTFModel(base_model.BaseModel):
         self.g = tf.placeholder(tf.float32, shape=(1, N), name="g")
         self.c = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1), name="c")
 
-        self.A = tf.get_variable("A", shape=[N, M], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
-        self.B = tf.get_variable("B", shape=[M, M],
-                                 initializer=tf.initializers.truncated_normal(0, 0.01, seed=self.seed))
-        self.C = tf.get_variable("C", shape=[M, L], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
+        # self.A = tf.get_variable("A", [N, M], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
+        # self.B = tf.get_variable("B", [M, M], initializer=tf.initializers.truncated_normal(0, 0.01, seed=self.seed))
+        # self.C = tf.get_variable("C", [M, L], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
+
+        self.A = tf.get_variable("A", initializer=np.array([[1, 0], [0, 1], [0, 0], [0, 0]], dtype=np.float32))
+        self.B = tf.get_variable("B", initializer=true_fake_B)
+        self.C = tf.get_variable("C", initializer=true_fake_C)
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
-        self.D = tf.Variable(np.eye(self.M, dtype=np.float32), trainable=False)
+        self.D = tf.Variable(np.eye(self.M, dtype=np.float32), trainable=False, name="D")
 
-        self.hat_o = tf.einsum('bsn,nm->bsm', self.s, self.A, name='reduce')
+        self.hat_o = tf.einsum('bsn,nm->bsm', self.s, self.A, name='hat_o')
         self.og = tf.matmul(self.g, self.A, name='reduce_goal')
 
-        # by copying hat_o we are setting the first element of hat_o_ correctly
-        self.hat_o_ = tf.get_variable("hat_o_", shape=[batch_size, self.n_steps + 1, M])
-        for i in range(1, self.n_steps + 1):
-            Bo = tf.einsum('mp,bp->bm', self.dt * self.B, self.hat_o_[:, i - 1], name='Bo')
-            Cu = tf.einsum('ml,bl->bm', self.dt * self.C, self.u[:, i - 1], name='Cu')
-            oi = self.hat_o_[:, i - 1] + Bo + Cu
-            tf.assign(self.hat_o_[:, i], oi)
+        hat_o_next = []
+        hat_o_next.append(self.hat_o[:, 0, :])
 
-        self.d_to_goal = self.og - self.hat_o
+        for i in range(1, self.n_steps + 1):
+            Bo = tf.einsum('mp,bp->bm', self.dt * self.B, hat_o_next[i - 1], name='Bo')
+            Cu = tf.einsum('ml,bl->bm', self.dt * self.C, self.u[:, i - 1], name='Cu')
+            hat_o_next.append(hat_o_next[i - 1] + Bo + Cu)
+
+        self.hat_o_next = tf.transpose(tf.stack(hat_o_next), [1, 0, 2], name='hat_o_next')
+
+        self.d_to_goal = self.og - self.hat_o_next
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal)
 
         with tf.name_scope("train"):
             self.cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
-            self.state_prediction_error = tf.norm(self.hat_o - self.hat_o_, axis=0)
+            self.state_prediction_error = tf.norm(self.hat_o - self.hat_o_next, axis=0)
             self.state_prediction_loss = tf.reduce_mean(self.state_prediction_error)
             self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
             self.flat_weights = tf.concat((tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]),
                                            tf.reshape(self.C, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(self.flat_weights) * self.beta
 
-            self.loss = self.cost_loss + self.state_prediction_loss + self.cost_prediction_loss + self.regularization
+            self.loss = tf.add_n([self.cost_loss, self.state_prediction_loss, self.cost_prediction_loss,
+                                  self.regularization], name='loss')
 
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
-            self.opt = tf.train.AdamOptimizer().minimize(self.loss, global_step=self.global_step)
+            self.opt = tf.train.AdamOptimizer(learning_rate=0.002).minimize(self.loss, global_step=self.global_step)
 
             trainable_vars = tf.trainable_variables()
             for var in trainable_vars:
@@ -88,6 +98,8 @@ class LinearTFModel(base_model.BaseModel):
 
             self.summaries = tf.summary.merge_all()
             self.sess = tf.Session()
+            if args['debug']:
+                self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
             self.saver = tf.train.Saver(max_to_keep=None)
 
     def train(self, train_x, goal, epochs, log_path):
@@ -172,7 +184,7 @@ class LinearTFModel(base_model.BaseModel):
             print("D:\n{}".format(D))
 
             # visualize a few sample predictions from the testing data
-            self.sess.run([self.hat_o_], feed_dict=feed_dict)
+            self.sess.run([self.hat_o_next], feed_dict=feed_dict)
 
         return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
 
@@ -206,15 +218,15 @@ class LinearTFModel(base_model.BaseModel):
 
     def predict(self, o, u):
         feed_dict = {self.hat_o: o, self.u: u}
-        ops = [self.hat_o_]
-        hat_o_ = self.sess.run(ops, feed_dict=feed_dict)[0]
-        return hat_o_
+        ops = [self.hat_o_next]
+        hat_o_next = self.sess.run(ops, feed_dict=feed_dict)[0]
+        return hat_o_next
 
     def predict_cost(self, o, u, g):
         feed_dict = {self.hat_o: o, self.u: u, self.g: g}
         ops = [self.hat_c_]
-        hat_c_ = self.sess.run(ops, feed_dict=feed_dict)[0]
-        return hat_c_
+        hat_c_next = self.sess.run(ops, feed_dict=feed_dict)[0]
+        return hat_c_next
 
     def predict_from_o(self, o, u):
         return self.predict(o, u)

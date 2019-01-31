@@ -6,12 +6,17 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
+true_fake_B = np.array([[0.1, 0.2], [0.3, 0.4]])
+true_fake_C = np.array([[2, 1], [0, 3]])
 
 def generate(args):
     data = np.ndarray((args.num_trajectories, args.trajectory_length, 7))
 
-    B = np.array([[0.1, 0.2], [0.3, 0.4]])
-    C = np.array([[2, 1], [0, 3]])
+    # True A is expected to be:
+    # [[
+    #
+    #
+    #
 
     for t in range(args.num_trajectories):
         # uniformly randomly sample a starting point, velocity, and direction
@@ -23,7 +28,7 @@ def generate(args):
         u = np.array([vx, vy])
         for s in range(args.trajectory_length):
             # forward integrate dynamics
-            o = o + args.dt * np.dot(B, o) + args.dt * np.dot(C, u)
+            o = o + args.dt * np.dot(true_fake_B, o) + args.dt * np.dot(true_fake_C, u)
             time = s * args.dt
             data[t][s] = [time, o[0], o[1], o[0] + o[1], 2 * o[0] - 4 * o[1], vx, vy]
 

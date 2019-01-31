@@ -54,6 +54,7 @@ def main():
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
+    parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
