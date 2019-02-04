@@ -66,7 +66,7 @@ class LinearTFModel(base_model.BaseModel):
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal)
 
         with tf.name_scope("train"):
-            # Euclidean error in latent space at each time step
+            # sum of squared errors in latent space at each time step
             state_prediction_error = tf.reduce_sum(tf.pow(self.hat_o - self.hat_o_next, 2), axis=2)
             self.state_prediction_loss = tf.reduce_mean(state_prediction_error)
             self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
@@ -140,12 +140,14 @@ class LinearTFModel(base_model.BaseModel):
             for i in range(epochs):
                 step, summary, loss, _, B = self.sess.run(ops, feed_dict=feed_dict)
 
-                if 'print_period' in self.args and step % self.args['print_period'] == 0:
+                if 'save_period' in self.args and step % self.args['save_period'] == 0:
                     if self.args['log'] is not None:
                         writer.add_summary(summary, step)
                         self.save(full_log_path, loss=loss)
-                    else:
-                        print(step, loss)
+
+                if 'print_period' in self.args and step % self.args['print_period'] == 0:
+                    print(step, loss)
+
         except KeyboardInterrupt:
             print("stop!!!")
             interrupted = True
