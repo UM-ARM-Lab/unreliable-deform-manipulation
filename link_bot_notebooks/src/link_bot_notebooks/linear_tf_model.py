@@ -66,31 +66,30 @@ class LinearTFModel(base_model.BaseModel):
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal)
 
         with tf.name_scope("train"):
-            self.cost_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
-            self.state_prediction_error = tf.norm(self.hat_o - self.hat_o_next, axis=0)
-            self.state_prediction_loss = tf.reduce_mean(self.state_prediction_error)
+            # Euclidean error in latent space at each time step
+            state_prediction_error = tf.reduce_sum(tf.pow(self.hat_o - self.hat_o_next, 2), axis=2)
+            self.state_prediction_loss = tf.reduce_mean(state_prediction_error)
             self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
-            self.flat_weights = tf.concat((tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]),
-                                           tf.reshape(self.C, [-1])), axis=0)
+            self.flat_weights = tf.concat(
+                (tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]), tf.reshape(self.C, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(self.flat_weights) * self.beta
 
-            self.loss = tf.add_n([self.cost_loss, self.state_prediction_loss, self.cost_prediction_loss,
-                                  self.regularization], name='loss')
+            self.loss = tf.add_n([self.state_prediction_loss, self.cost_prediction_loss, self.regularization],
+                                 name='loss')
 
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             self.opt = tf.train.AdamOptimizer(learning_rate=0.002).minimize(self.loss, global_step=self.global_step)
 
             trainable_vars = tf.trainable_variables()
             for var in trainable_vars:
-                grads = tf.gradients(self.loss, var)
+                name = var.name.replace(":", "_")
+                grads = tf.gradients(self.loss, var, name='dLoss_d{}'.format(name))
                 for grad in grads:
                     if grad is not None:
-                        name = var.name.replace(":", "_")
                         tf.summary.histogram(name + "/gradient", grad)
                     else:
                         print("Warning... there is no gradient of the loss with respect to {}".format(var.name))
 
-            tf.summary.scalar("cost_loss", self.cost_loss)
             tf.summary.scalar("state_prediction_loss", self.state_prediction_loss)
             tf.summary.scalar("cost_prediction_loss", self.cost_prediction_loss)
             tf.summary.scalar("regularization_loss", self.regularization)
@@ -169,13 +168,12 @@ class LinearTFModel(base_model.BaseModel):
                      self.u: u,
                      self.g: goal,
                      self.c: c}
-        ops = [self.A, self.B, self.C, self.D, self.cost_loss, self.state_prediction_loss, self.cost_prediction_loss,
+        ops = [self.A, self.B, self.C, self.D, self.state_prediction_loss, self.cost_prediction_loss,
                self.regularization, self.loss]
-        A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
+        A, B, C, D, c_loss, sp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
         if display:
             print("Cost Loss: {}".format(c_loss))
             print("State Prediction Loss: {}".format(sp_loss))
-            print("Cost Prediction Loss: {}".format(cp_loss))
             print("Regularization: {}".format(reg))
             print("Overall Loss: {}".format(loss))
             print("A:\n{}".format(A))
@@ -186,7 +184,7 @@ class LinearTFModel(base_model.BaseModel):
             # visualize a few sample predictions from the testing data
             self.sess.run([self.hat_o_next], feed_dict=feed_dict)
 
-        return A, B, C, D, c_loss, sp_loss, cp_loss, reg, loss
+        return A, B, C, D, c_loss, sp_loss, reg, loss
 
     def compute_cost_label(self, x, goal):
         """ x is 3d.
