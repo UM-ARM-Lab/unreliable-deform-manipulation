@@ -39,12 +39,13 @@ class LinearTFModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1), name="c")
 
         # self.A = tf.get_variable("A", [N, M], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
-        # self.B = tf.get_variable("B", [M, M], initializer=tf.initializers.truncated_normal(0, 0.01, seed=self.seed))
+        # self.B = tf.get_variable("B", [M, M], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
         # self.C = tf.get_variable("C", [M, L], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
 
-        self.A = tf.get_variable("A", initializer=np.array([[1, 0], [0, 1], [0, 0], [0, 0]], dtype=np.float32))
-        self.B = tf.get_variable("B", initializer=true_fake_B)
-        self.C = tf.get_variable("C", initializer=true_fake_C)
+        self.A = tf.get_variable("A", initializer=np.array([[1, 0], [0, 1], [0, 0], [0, 0]],
+                                                           dtype=np.float32)) + np.random.randn(4, 2) * 0.1
+        self.B = tf.get_variable("B", initializer=true_fake_B) + np.random.randn(2, 2) * 0.1
+        self.C = tf.get_variable("C", initializer=true_fake_C) + np.random.randn(2, 2) * 0.1
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.Variable(np.eye(self.M, dtype=np.float32), trainable=False, name="D")
@@ -68,14 +69,14 @@ class LinearTFModel(base_model.BaseModel):
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
             state_prediction_error = tf.reduce_sum(tf.pow(self.hat_o - self.hat_o_next, 2), axis=2)
-            self.state_prediction_loss = tf.reduce_mean(state_prediction_error)
-            self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c)
+            self.state_prediction_loss = tf.reduce_mean(state_prediction_error, name='state_prediction_loss')
+            self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c, predictions=self.hat_c,
+                                                                     scope='cost_prediction_loss')
             self.flat_weights = tf.concat(
                 (tf.reshape(self.A, [-1]), tf.reshape(self.B, [-1]), tf.reshape(self.C, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(self.flat_weights) * self.beta
 
-            self.loss = tf.add_n([self.state_prediction_loss, self.cost_prediction_loss, self.regularization],
-                                 name='loss')
+            self.loss = tf.add_n([self.state_prediction_loss, self.cost_prediction_loss, self.regularization])
 
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             self.opt = tf.train.AdamOptimizer(learning_rate=0.002).minimize(self.loss, global_step=self.global_step)
@@ -136,16 +137,16 @@ class LinearTFModel(base_model.BaseModel):
                          self.u: u,
                          self.g: goal,
                          self.c: c}
-            ops = [self.global_step, self.summaries, self.loss, self.opt, self.B]
+            ops = [self.global_step, self.summaries, self.loss, self.opt]
             for i in range(epochs):
-                step, summary, loss, _, B = self.sess.run(ops, feed_dict=feed_dict)
+                step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
 
-                if 'save_period' in self.args and step % self.args['save_period'] == 0:
+                if 'save_period' in self.args and (step % self.args['save_period'] == 0 or step == 1):
                     if self.args['log'] is not None:
                         writer.add_summary(summary, step)
                         self.save(full_log_path, loss=loss)
 
-                if 'print_period' in self.args and step % self.args['print_period'] == 0:
+                if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
                     print(step, loss)
 
         except KeyboardInterrupt:
