@@ -43,9 +43,9 @@ class LinearTFModel(base_model.BaseModel):
         # self.C = tf.get_variable("C", [M, L], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
 
         self.A = tf.get_variable("A", initializer=np.array([[1, 0], [0, 1], [0, 0], [0, 0]],
-                                                           dtype=np.float32)) + np.random.randn(4, 2) * 0.1
-        self.B = tf.get_variable("B", initializer=true_fake_B) + np.random.randn(2, 2) * 0.1
-        self.C = tf.get_variable("C", initializer=true_fake_C) + np.random.randn(2, 2) * 0.1
+                                                           dtype=np.float32)) + np.random.randn(4, 2) * 0.01
+        self.B = tf.get_variable("B", initializer=true_fake_B) + np.random.randn(2, 2) * 0.01
+        self.C = tf.get_variable("C", initializer=true_fake_C) + np.random.randn(2, 2) * 0.01
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.Variable(np.eye(self.M, dtype=np.float32), trainable=False, name="D")
