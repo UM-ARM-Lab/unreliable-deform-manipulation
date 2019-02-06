@@ -104,7 +104,7 @@ def main():
                 print(data[-1])
 
         if p % args.save_frequency == 0:
-            np.savetxt(args.outfile, data)
+            np.save(args.outfile, data)
 
     # stop everything
     joy_msg.axes = [0, 0]
