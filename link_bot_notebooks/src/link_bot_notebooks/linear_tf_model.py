@@ -39,16 +39,21 @@ class LinearTFModel(base_model.BaseModel):
         self.c = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1), name="c")
 
         # self.A = tf.get_variable("A", [N, M], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
-        # self.B = tf.get_variable("B", [M, M], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
-        # self.C = tf.get_variable("C", [M, L], initializer=tf.initializers.truncated_normal(0, 1, seed=self.seed))
+        # self.B = tf.get_variable("B", [M, M], initializer=tf.initializers.truncated_normal(0, 0.1, seed=self.seed))
+        # self.C = tf.get_variable("C", [M, L], initializer=np.eye)
 
-        self.A = tf.get_variable("A", initializer=np.array([[1, 0], [0, 1], [0, 0], [0, 0]],
-                                                           dtype=np.float32)) + np.random.randn(4, 2) * 0.01
-        self.B = tf.get_variable("B", initializer=true_fake_B) + np.random.randn(2, 2) * 0.01
-        self.C = tf.get_variable("C", initializer=true_fake_C) + np.random.randn(2, 2) * 0.01
+        a_init = np.random.randn(N, M).astype(np.float32) * 1e-6
+        a_init[0, 0] = 1
+        a_init[1, 1] = 1
+        b_init = np.random.randn(M, M).astype(np.float32) * 1e-6
+        c_init = np.random.randn(M, L).astype(np.float32) * 1e-6
+        np.fill_diagonal(c_init, 1)
+        self.A = tf.get_variable("A", initializer=a_init)
+        self.B = tf.get_variable("B", initializer=b_init)
+        self.C = tf.get_variable("C", initializer=c_init)
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
-        self.D = tf.Variable(np.eye(self.M, dtype=np.float32), trainable=False, name="D")
+        self.D = tf.get_variable("D", initializer=np.eye(self.M, dtype=np.float32), trainable=False)
 
         self.hat_o = tf.einsum('bsn,nm->bsm', self.s, self.A, name='hat_o')
         self.og = tf.matmul(self.g, self.A, name='reduce_goal')
@@ -212,31 +217,42 @@ class LinearTFModel(base_model.BaseModel):
         self.sess.run(init_op)
 
     def reduce(self, s):
-        feed_dict = {self.s: s}
+        ss = np.ndarray((self.batch_size, self.n_steps + 1, self.N))
+        ss[0, 0] = s
+        feed_dict = {self.s: ss}
         ops = [self.hat_o]
         hat_o = self.sess.run(ops, feed_dict=feed_dict)[0]
-        return hat_o
+        return hat_o[0, 0].reshape(self.M, 1)
 
     def predict(self, o, u):
-        feed_dict = {self.hat_o: o, self.u: u}
+        hat_o = np.ndarray((self.batch_size, self.n_steps + 1, self.M))
+        hat_o[0, 0] = np.squeeze(o)
+        feed_dict = {self.hat_o: hat_o, self.u: u}
         ops = [self.hat_o_next]
         hat_o_next = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_o_next
 
     def predict_cost(self, o, u, g):
-        feed_dict = {self.hat_o: o, self.u: u, self.g: g}
-        ops = [self.hat_c_]
+        hat_o = np.ndarray((self.batch_size, self.n_steps + 1, self.M))
+        hat_o[0, 0] = np.squeeze(o)
+        feed_dict = {self.hat_o: hat_o, self.u: u, self.g: g}
+        ops = [self.hat_c]
         hat_c_next = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_c_next
 
-    def predict_from_o(self, o, u):
-        return self.predict(o, u)
+    def predict_from_s(self, s, u):
+        feed_dict = {self.s: s, self.u: u}
+        ops = [self.hat_o_next]
+        hat_o_next = self.sess.run(ops, feed_dict=feed_dict)[0]
+        return hat_o_next
 
     def cost_of_s(self, s, g):
         return self.cost(self.reduce(s), g)
 
     def cost(self, o, g):
-        feed_dict = {self.hat_o: o, self.g: g}
+        hat_o = np.ndarray((self.batch_size, self.n_steps + 1, self.M))
+        hat_o[0, 0] = np.squeeze(o)
+        feed_dict = {self.hat_o: hat_o, self.g: g, self.u: np.zeros((self.batch_size, self.n_steps, self.L))}
         ops = [self.hat_c]
         hat_c = self.sess.run(ops, feed_dict=feed_dict)[0]
         hat_c = np.expand_dims(hat_c, axis=0)

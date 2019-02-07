@@ -73,6 +73,6 @@
                 <pose>30 0 0.1 0 0 0</pose>
             </include>
 
-        <plugin name="stepping_plugin" filename="libstepping_plugind.so"/>
+        <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
     </world>
 </sdf>

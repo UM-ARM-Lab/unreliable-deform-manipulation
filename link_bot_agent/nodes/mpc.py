@@ -23,12 +23,12 @@ success_dist = 0.1
 
 
 def common(args, goals, max_steps=1e6, verbose=False):
-    model = linear_tf_model.LinearTFModel(vars(args), N=args.N, M=args.M, L=args.L, n_steps=args.n_steps, dt=dt)
+    model = linear_tf_model.LinearTFModel(vars(args), 1, args.N, args.M, args.L, dt, 1)
     agent = GazeboAgent(N=args.N, M=args.M, dt=dt, model=model, gazebo_model_name=args.model_name)
 
     rospy.init_node('MPCAgent')
 
-    np.random.seed(0)
+    np.random.seed(args.seed)
     joy_msg = Joy()
     joy_msg.axes = [0, 0]
 
@@ -63,28 +63,24 @@ def common(args, goals, max_steps=1e6, verbose=False):
                 o = model.reduce(s)
                 actions = action_selector.act(o)
 
-                if np.linalg.norm(actions[0]) < 0.1:
-                    done = True
+                print('o', o.T)
 
-                current_cost = model.cost(o, goal)
-                next_cost = model.predict_cost(o, actions, goal)
-                if verbose and next_cost > current_cost:
-                    print("Local Minimum in cost {} < {}".format(current_cost, next_cost))
+                # sample possible actions
+                min_c = 1e9
+                for i in range(100):
+                    u = np.random.uniform(-max_v, max_v, size=[1, 1, 2])
+                    c = model.predict_cost(o, u, goal)[0, 1]
+                    min_c = min(min_c, c)
+                print('minc', min_c)
 
-                if args.plot_plan:
-                    plt.figure()
-                    if verbose:
-                        print(actions)
-                    plt.plot(actions[:, 0, 0], label="x velocity")
-                    plt.plot(actions[:, 1, 0], label="y velocity")
-                    plt.xlabel("time steps")
-                    plt.ylabel("velocity (m/s)")
-                    plt.legend()
-                    plt.show()
-                    return
+                print('actions', actions)
+                pred_o = model.predict(o, actions)
+
+                # if np.linalg.norm(actions[0]) < 0.1:
+                #     done = True
 
                 for i, action in enumerate(actions):
-                    joy_msg.axes = [-action[0, 0], action[1, 0]]
+                    joy_msg.axes = [-action[0, 0], action[0, 1]]
 
                     joy_pub.publish(joy_msg)
                     step = WorldControlRequest()
@@ -92,13 +88,17 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     world_control.call(step)  # this will block until stepping is complete
 
                     s = agent.get_state()
+                    true_next_o = model.reduce(s)
+                    print('pred', pred_o[0, 1])
+                    print('true', true_next_o.T[0])
+                    print('pred cost', model.cost(pred_o[0, 1], goal)[0, 0, 1])
                     true_cost = agent.state_cost(s, goal)
 
                     if args.pause:
                         input('paused...')
 
                     if verbose:
-                        print("{:0.3f}".format(true_cost))
+                        print("true cost {:0.3f}".format(true_cost))
                     min_true_cost = min(min_true_cost, true_cost)
                     if true_cost < success_dist:
                         if verbose:
@@ -125,13 +125,13 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
 
 def test(args):
-    goal = np.array([[0], [0], [0], [1], [0], [2]])
+    goal = np.array([[0, 0, 0, 0, 0, 0]])
     common(args, [goal], verbose=args.verbose)
 
 
 def eval(args):
     fname = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(time.time())))
-    g0 = np.array([[0], [0], [0], [1], [0], [2]])
+    g0 = np.array([[0, 0, 0, 0, 0, 0]])
     goals = [g0] * args.n_random_goals
     min_costs = common(args, goals, max_steps=300)
     print(min_costs)
@@ -150,14 +150,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("checkpoint", help="load this saved model file")
     parser.add_argument("--model-name", '-m', default="myfirst")
+    parser.add_argument("--seed", '-s', type=int, default=0)
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--pause", action='store_true')
     parser.add_argument("--plot-plan", action='store_true')
-    parser.add_argument("--tf-debug", action='store_true')
+    parser.add_argument("--debug", action='store_true')
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
-    parser.add_argument("--n-steps", "-s", type=int, default=1)
 
     subparsers = parser.add_subparsers()
     test_subparser = subparsers.add_parser("test")

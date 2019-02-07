@@ -19,7 +19,8 @@ def main():
     parser.add_argument("outfile", help='filename to store data in')
     parser.add_argument("pulls", help='how many pulls to do', type=int)
     parser.add_argument("steps", help='how many time steps per pull', type=int)
-    parser.add_argument("--save-frequency", '-f', help='save every this many steps', type=int, default=50)
+    parser.add_argument("--save-frequency", '-f', help='save every this many steps', type=int, default=10)
+    parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--verbose", '-v', action="store_true")
 
     args = parser.parse_args()
@@ -37,8 +38,12 @@ def main():
     get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
 
+    print("waiting", end='')
     while config_pub.get_num_connections() < 1:
+        print('.', end='')
         sleep(1)
+
+    print("ready...")
 
     link_names = ['link_0', 'link_1', 'head']
     S = 4 * len(link_names)
@@ -54,7 +59,7 @@ def main():
             state[1 + 4 * i] = response.link_state.pose.position.x
             state[1 + 4 * i + 1] = response.link_state.pose.position.y
         state[1 + S - 2] = vx
-        state[1 + S - 1] = vy
+        state[1 + S - 1] = vy + 1e-8
 
         return state
 
@@ -65,8 +70,8 @@ def main():
     joy_pub.publish(joy_msg)
 
     data = []
-    np.random.seed(0)
-    for p in range(args.pulls):
+    np.random.seed(args.seed)
+    for p in range(1, args.pulls + 1):
         if args.verbose:
             print('=' * 180)
 
@@ -85,9 +90,12 @@ def main():
         config_pub.publish(config)
         time = 0
 
+        traj = []
         for t in range(args.steps + 1):
             # save the state and action data
-            data.append(get_state(vx, vy))
+            full_state = get_state(vx, vy)
+            filtered_state = np.array(full_state[[0, 1, 2, 5, 6, 9, 10, 11, 12]])
+            traj.append(filtered_state)
 
             # publish the pull command
             joy_msg.axes = [-vx, vy]  # stupid xbox controller
@@ -103,8 +111,11 @@ def main():
             if args.verbose:
                 print(data[-1])
 
+        data.append(traj)
+
         if p % args.save_frequency == 0:
             np.save(args.outfile, data)
+            print(p, 'saving data...')
 
     # stop everything
     joy_msg.axes = [0, 0]

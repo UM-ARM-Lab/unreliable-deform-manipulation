@@ -14,7 +14,6 @@ from link_bot_notebooks import experiments_util
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
     log_data = np.load(args.dataset)
-    print(log_data.shape)
     x = log_data[:, :, :]
     dt = x[0, 1, 0] - x[0, 0, 0]
     model = m.LinearTFModel(vars(args), x.shape[0], args.N, args.M, args.L, dt, x.shape[1] - 1, seed=args.seed)
@@ -64,7 +63,7 @@ def main():
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=200)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--print-period", "-p", type=int, default=200)
-    train_subparser.add_argument("--save-period", type=int, default=1000)
+    train_subparser.add_argument("--save-period", type=int, default=400)
     train_subparser.add_argument("--seed", type=int, default=0)
     train_subparser.set_defaults(func=train)
 

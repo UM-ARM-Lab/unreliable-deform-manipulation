@@ -103,8 +103,8 @@ class GazeboAgent:
             x = link_state.pose.position.x
             y = link_state.pose.position.y
             o.extend([x, y])
-        return np.expand_dims(o, axis=1)
+        return np.expand_dims(o, axis=0)
 
     @staticmethod
     def state_cost(s, goal):
-        return np.linalg.norm(s[0:2, 0] - goal[0:2, 0])
+        return np.linalg.norm(s[0, 0:2] - goal[0, 0:2])

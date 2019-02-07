@@ -18,12 +18,13 @@ class GurobiAct:
 
     def act(self, o):
         """ return the action which gives the lowest cost for the predicted next state """
-        distance = (self.og - (o + np.dot(self.B, o) + self.linear_tf_model.dt * np.dot(self.C, self.u)))
-        obj = np.dot(np.dot(distance.T, self.D), distance)[0, 0]
+        o_next = o + self.linear_tf_model.dt * np.dot(self.B, o) + self.linear_tf_model.dt * np.dot(self.C, self.u)
+        distance = np.squeeze(self.og - o_next)
+        obj = np.dot(np.dot(distance, self.D), distance.T)
         self.gurobi_model.setObjective(obj, gurobi.GRB.MINIMIZE)
 
         self.gurobi_model.optimize()
-        u = np.array([v.x for v in self.gurobi_model.getVars()]).reshape(1, 2, 1)
+        u = np.array([v.x for v in self.gurobi_model.getVars()]).reshape(1, 1, 2)
         return u
 
     def __repr__(self):

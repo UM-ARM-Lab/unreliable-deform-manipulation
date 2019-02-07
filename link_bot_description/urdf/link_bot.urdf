@@ -97,7 +97,7 @@
         <material>Gazebo/Blue</material>
     </gazebo>
     <gazebo>
-        <plugin name="linkbot_model_plugin" filename="liblinkbot_model_plugind.so">
+        <plugin name="linkbot_model_plugin" filename="liblinkbot_model_plugin.so">
             <kP>600.0</kP>
             <kI>10.0</kI>
             <kD>1.0</kD>
