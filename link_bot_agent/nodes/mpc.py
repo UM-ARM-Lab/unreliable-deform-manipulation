@@ -63,21 +63,23 @@ def common(args, goals, max_steps=1e6, verbose=False):
                 o = model.reduce(s)
                 actions = action_selector.act(o)
 
-                print('o', o.T)
+                if args.verbose:
+                    print('o', o.T)
 
-                # sample possible actions
-                min_c = 1e9
-                for i in range(100):
-                    u = np.random.uniform(-max_v, max_v, size=[1, 1, 2])
-                    c = model.predict_cost(o, u, goal)[0, 1]
-                    min_c = min(min_c, c)
-                print('minc', min_c)
+                    # sample possible actions
+                    min_c = 1e9
+                    for i in range(100):
+                        u = np.random.uniform(-max_v, max_v, size=[1, 1, 2])
+                        c = model.predict_cost(o, u, goal)[0, 1]
+                        min_c = min(min_c, c)
+                    print('minc', min_c)
 
-                print('actions', actions)
-                pred_o = model.predict(o, actions)
+                    print('actions', actions)
 
-                # if np.linalg.norm(actions[0]) < 0.1:
-                #     done = True
+                    pred_o = model.predict(o, actions)
+
+                if np.linalg.norm(actions[0]) < 0.1:
+                    done = True
 
                 for i, action in enumerate(actions):
                     joy_msg.axes = [-action[0, 0], action[0, 1]]
@@ -88,17 +90,18 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     world_control.call(step)  # this will block until stepping is complete
 
                     s = agent.get_state()
-                    true_next_o = model.reduce(s)
-                    print('pred', pred_o[0, 1])
-                    print('true', true_next_o.T[0])
-                    print('pred cost', model.cost(pred_o[0, 1], goal)[0, 0, 1])
                     true_cost = agent.state_cost(s, goal)
 
                     if args.pause:
                         input('paused...')
 
                     if verbose:
+                        true_next_o = model.reduce(s)
+                        print('pred', pred_o[0, 1])
+                        print('true', true_next_o.T[0])
+                        print('pred cost', model.cost(pred_o[0, 1], goal)[0, 0, 1])
                         print("true cost {:0.3f}".format(true_cost))
+
                     min_true_cost = min(min_true_cost, true_cost)
                     if true_cost < success_dist:
                         if verbose:

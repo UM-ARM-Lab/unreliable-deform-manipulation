@@ -1,12 +1,6 @@
 <?xml version="1.0"?>
 <robot name="myfirst">
     <link name="link_0">
-        <!--<visual>-->
-            <!--<origin rpy="0 0 0" xyz="0 0 0"/>-->
-            <!--<geometry>-->
-                <!--<sphere radius="0.1"/>-->
-            <!--</geometry>-->
-        <!--</visual>-->
         <visual>
             <origin rpy="0 -1.5707 0" xyz="0.5 0 0"/>
             <geometry>
@@ -53,7 +47,7 @@
                 <sphere radius="0.1"/>
             </geometry>
         </visual>
-        <collision>
+        <collision name="head">
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
                 <box size="0.2 0.2 0.2"/>
@@ -95,6 +89,16 @@
         <mu1>0.4</mu1>
         <mu2>0.4</mu2>
         <material>Gazebo/Blue</material>
+        <sensor name='my_contact' type='contact'>
+            <contact>
+                <collision>head_collision</collision>
+            </contact>
+            <plugin name="head_gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
+                <alwaysOn>true</alwaysOn>
+                <updateRate>5</updateRate>
+                <bumperTopicName>head_contact</bumperTopicName>
+            </plugin>
+        </sensor>
     </gazebo>
     <gazebo>
         <plugin name="linkbot_model_plugin" filename="liblinkbot_model_plugin.so">
