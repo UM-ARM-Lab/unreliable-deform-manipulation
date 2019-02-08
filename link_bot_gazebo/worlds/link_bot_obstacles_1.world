@@ -14,12 +14,37 @@
         </include>
         <include>
             <uri>model://link_bot_description</uri>
-            <pose>7 0 0.1 0 0 3.141592</pose>
+            <pose>0 0 0.1 0 0 3.141592</pose>
         </include>
         <include>
             <uri>model://box</uri>
             <pose>2.5 0 0 0 0 0</pose>
             <name>box1</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>-3.0 0 0 0 0 0</pose>
+            <name>box2</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>-0.5 3 0 0 0 0</pose>
+            <name>box3</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>1.5 -2 0 0 0 0</pose>
+            <name>box4</name>
+        </include>
+        <include>
+            <uri>model://arena</uri>
+            <pose>0 0 0 0 0 0</pose>
+            <name>arena</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>-1.5 -2.5 0 0 0 0</pose>
+            <name>box5</name>
         </include>
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
     </world>
