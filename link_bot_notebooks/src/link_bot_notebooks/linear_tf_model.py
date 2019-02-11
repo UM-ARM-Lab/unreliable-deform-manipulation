@@ -138,6 +138,7 @@ class LinearTFModel(base_model.BaseModel):
 
         try:
             s, u, c = self.compute_cost_label(train_x, goal)
+            print(s.shape)
             feed_dict = {self.s: s,
                          self.u: u,
                          self.g: goal,

@@ -12,6 +12,10 @@ def main():
 
     args = parser.parse_args()
 
+    if len(args.datasets) == 1:
+        print("ERROR: You must supply two datasets! The last argument is interpreted as the output filename.")
+        return
+
     datasets = []
     for datasetname in args.datasets:
         dataset = np.load(datasetname)
