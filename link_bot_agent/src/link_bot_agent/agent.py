@@ -11,6 +11,57 @@ def h(v1, v2):
     return np.linalg.norm(np.array(v1.o) - np.array(v2.o))
 
 
+class LinkConfig:
+
+    def __init__(self):
+        self.x = None
+        self.y = None
+        self.vx = None
+        self.vy = None
+
+
+def get_time_state_action_collision(get_link_state, time, head_vx, head_vy, in_contact):
+    state = get_state(get_link_state)
+    state.insert(0, time)
+    state.insert(1, in_contact)
+    state.insert(-1, head_vx)
+    state.insert(-1, head_vy)
+    return state
+
+
+def get_time_state_action(get_link_state, time, head_vx, head_vy):
+    state = get_state(get_link_state)
+    state.insert(0, time)
+    state.insert(-1, head_vx)
+    state.insert(-1, head_vy)
+    return state
+
+
+def get_state(get_link_state):
+    links = {'link_0': LinkConfig(),
+             'link_1': LinkConfig(),
+             'head': LinkConfig()}
+
+    # get the new states
+    for link_name, link_config in links.items():
+        req = GetLinkStateRequest()
+        req.link_name = link_name
+        response = get_link_state.call(req)
+        link_config.x = response.link_state.pose.position.x
+        link_config.y = response.link_state.pose.position.y
+        link_config.vx = response.link_state.twist.linear.x
+        link_config.vy = response.link_state.twist.linear.y
+
+    return [
+        links['link_0'].x,
+        links['link_0'].y,
+        links['link_1'].x,
+        links['link_1'].y,
+        links['head'].x,
+        links['head'].y,
+    ]
+
+
 class GazeboAgent:
 
     def __init__(self, M, N, dt, model, gazebo_model_name):
@@ -63,7 +114,7 @@ class GazeboAgent:
         sbacks = np.zeros((T, self.N))
         for i in range(len(shortest_path)):
             v = shortest_path[i]
-            v_ = shortest_path[i+1]
+            v_ = shortest_path[i + 1]
             s_back = np.linalg.lstsq(self.model.get_A(), v.o, rcond=None)[0]
             sbacks[i] = np.squeeze(s_back)
             os[i] = np.squeeze(v.o)
@@ -91,19 +142,6 @@ class GazeboAgent:
             o = next_o
 
         return actions, cs, os, sbacks
-
-    def get_state(self):
-        o = []
-        links = ['link_0', 'link_1', 'head']
-        for link in links:
-            link_state_req = GetLinkStateRequest()
-            link_state_req.link_name = link
-            link_state_resp = self.get_link_state(link_state_req)
-            link_state = link_state_resp.link_state
-            x = link_state.pose.position.x
-            y = link_state.pose.position.y
-            o.extend([x, y])
-        return np.expand_dims(o, axis=0)
 
     @staticmethod
     def state_cost(s, goal):

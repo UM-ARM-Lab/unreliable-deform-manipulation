@@ -14,7 +14,7 @@ from link_bot_notebooks import linear_tf_model
 from link_bot_notebooks import toy_problem_optimization_common as tpo
 from sensor_msgs.msg import Joy
 
-from agent import GazeboAgent
+from link_bot.link_bot_agent.src.link_bot_agent.agent import GazeboAgent
 
 
 def main():

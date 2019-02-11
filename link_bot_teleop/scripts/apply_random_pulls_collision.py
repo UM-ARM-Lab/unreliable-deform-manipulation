@@ -11,6 +11,7 @@ from gazebo_msgs.msg import ContactsState
 from link_bot_gazebo.msg import LinkBotConfiguration
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from sensor_msgs.msg import Joy
+from link_bot_agent import agent
 
 in_contact = False
 
@@ -67,37 +68,6 @@ def main():
     init_config.joint_angles_rad = [0, 0]
     config_pub.publish(init_config)
 
-    links = {'link_0': LinkConfig(),
-             'link_1': LinkConfig(),
-             'head': LinkConfig()}
-
-    def get_state(time, head_vx, head_vy):
-        # get the new states
-        for link_name, link_config in links.items():
-            req = GetLinkStateRequest()
-            req.link_name = link_name
-            response = get_link_state.call(req)
-            link_config.x = response.link_state.pose.position.x
-            link_config.y = response.link_state.pose.position.y
-            link_config.vx = response.link_state.twist.linear.x
-            link_config.vy = response.link_state.twist.linear.y
-        state = [
-            time,
-            # state
-            in_contact,
-            links['link_0'].x,
-            links['link_0'].y,
-            links['link_1'].x,
-            links['link_1'].y,
-            links['head'].x,
-            links['head'].y,
-            # control
-            head_vx,
-            head_vy,
-        ]
-
-        return state
-
     def r():
         return np.random.uniform(-np.pi, np.pi)
 
@@ -119,8 +89,7 @@ def main():
         traj = []
         for t in range(args.steps + 1):
             # save the state and action data
-            filtered_state = np.array(get_state(time, head_vx, head_vy))
-            traj.append(filtered_state)
+            traj.append(agent.get_time_state_action_collision(get_link_state, time, head_vx, head_vy, in_contact))
 
             # publish the pull command
             joy_msg.axes = [-head_vx, head_vy]  # stupid xbox controller

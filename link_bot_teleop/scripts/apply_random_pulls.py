@@ -9,6 +9,7 @@ import rospy
 from gazebo_msgs.srv import GetLinkState, GetLinkStateRequest
 from link_bot_gazebo.msg import LinkBotConfiguration
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
+from link_bot_agent import agent
 from sensor_msgs.msg import Joy
 
 
@@ -48,21 +49,6 @@ def main():
     link_names = ['link_0', 'link_1', 'head']
     S = 4 * len(link_names)
 
-    def get_state(vx, vy):
-        # get the new states
-        state = np.zeros(S + 1)
-        state[0] = time
-        for i, link_name in enumerate(link_names):
-            req = GetLinkStateRequest()
-            req.link_name = link_name
-            response = get_link_state.call(req)
-            state[1 + 4 * i] = response.link_state.pose.position.x
-            state[1 + 4 * i + 1] = response.link_state.pose.position.y
-        state[1 + S - 2] = vx
-        state[1 + S - 1] = vy + 1e-8
-
-        return state
-
     def r():
         return np.random.uniform(-np.pi, np.pi)
 
@@ -77,8 +63,8 @@ def main():
 
         v = np.random.uniform(0.0, 1.0)
         pull_yaw = r()
-        vx = np.cos(pull_yaw) * v
-        vy = np.sin(pull_yaw) * v
+        head_vx = np.cos(pull_yaw) * v
+        head_vy = np.sin(pull_yaw) * v
 
         # set the configuration of the model
         config = LinkBotConfiguration()
@@ -93,12 +79,10 @@ def main():
         traj = []
         for t in range(args.steps + 1):
             # save the state and action data
-            full_state = get_state(vx, vy)
-            filtered_state = np.array(full_state[[0, 1, 2, 5, 6, 9, 10, 11, 12]])
-            traj.append(filtered_state)
+            traj.append(agent.get_time_state_action(get_link_state, time, head_vx, head_vy))
 
             # publish the pull command
-            joy_msg.axes = [-vx, vy]  # stupid xbox controller
+            joy_msg.axes = [-head_vx, head_vy]  # stupid xbox controller
             joy_pub.publish(joy_msg)
 
             # let the simulator run

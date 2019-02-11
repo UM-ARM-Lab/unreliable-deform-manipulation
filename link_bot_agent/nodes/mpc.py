@@ -2,7 +2,8 @@
 from __future__ import print_function
 
 import argparse
-import time
+from colorama import Fore
+import time as timemod
 import os
 
 import matplotlib.pyplot as plt
@@ -15,16 +16,31 @@ from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import linear_tf_model
 from link_bot_notebooks import toy_problem_optimization_common as tpo
 from sensor_msgs.msg import Joy
-
-from agent import GazeboAgent
+from link_bot_agent import agent
 
 dt = 0.1
 success_dist = 0.1
 
 
 def common(args, goals, max_steps=1e6, verbose=False):
+    if args.logdir:
+        now = int(timemod.time())
+        os.path.split(args.checkpoint)
+        checkpoint_path = os.path.normpath(args.checkpoint)
+        folders = checkpoint_path.split(os.sep)
+        checkpoint_folders = []
+        relavent = False
+        for folder in folders:
+            if relavent:
+                checkpoint_folders.append(folder)
+            if folder == "log_data":
+                relavent = True
+
+        logfile = os.path.join(args.logdir, "{}_{}.npy".format("_".join(checkpoint_folders), now))
+        print(Fore.CYAN + "Saving new data in {}".format(logfile) + Fore.RESET)
+
     model = linear_tf_model.LinearTFModel(vars(args), 1, args.N, args.M, args.L, dt, 1)
-    agent = GazeboAgent(N=args.N, M=args.M, dt=dt, model=model, gazebo_model_name=args.model_name)
+    gzagent = agent.GazeboAgent(N=args.N, M=args.M, dt=dt, model=model, gazebo_model_name=args.model_name)
 
     rospy.init_node('MPCAgent')
 
@@ -43,11 +59,12 @@ def common(args, goals, max_steps=1e6, verbose=False):
     min_true_costs = []
 
     try:
+        data = []
         for goal in goals:
             # reset to random starting point
             config = LinkBotConfiguration()
-            config.tail_pose.x = np.random.uniform(-5, 5)
-            config.tail_pose.y = np.random.uniform(-5, 5)
+            config.tail_pose.x = np.random.uniform(-3, 3)
+            config.tail_pose.y = np.random.uniform(-3, 3)
             config.tail_pose.theta = np.random.uniform(-np.pi, np.pi)
             config.joint_angles_rad = np.random.uniform(-np.pi, np.pi, size=2)
             config_pub.publish(config)
@@ -58,28 +75,14 @@ def common(args, goals, max_steps=1e6, verbose=False):
             min_true_cost = 1e9
             step_idx = 0
             done = False
+            traj = []
+            time = 0
             while step_idx < max_steps and not done:
-                s = agent.get_state()
+                s = agent.get_state(gzagent.get_link_state)
                 o = model.reduce(s)
                 actions = action_selector.act(o)
-
-                if args.verbose:
-                    print('o', o.T)
-
-                    # sample possible actions
-                    min_c = 1e9
-                    for i in range(100):
-                        u = np.random.uniform(-max_v, max_v, size=[1, 1, 2])
-                        c = model.predict_cost(o, u, goal)[0, 1]
-                        min_c = min(min_c, c)
-                    print('minc', min_c)
-
-                    print('actions', actions)
-
-                    pred_o = model.predict(o, actions)
-
-                if np.linalg.norm(actions[0]) < 0.1:
-                    done = True
+                train_s = agent.get_time_state_action(gzagent.get_link_state, time, actions[0, 0, 0], actions[0, 0, 1])
+                traj.append(train_s)
 
                 for i, action in enumerate(actions):
                     joy_msg.axes = [-action[0, 0], action[0, 1]]
@@ -89,30 +92,25 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     step.steps = dt / 0.001  # assuming 0.001s of simulation time per step
                     world_control.call(step)  # this will block until stepping is complete
 
-                    s = agent.get_state()
-                    true_cost = agent.state_cost(s, goal)
+                    s_next = np.array(agent.get_state(gzagent.get_link_state)).reshape(1, args.N)
+                    true_cost = gzagent.state_cost(s_next, goal)
 
                     if args.pause:
                         input('paused...')
-
-                    if verbose:
-                        true_next_o = model.reduce(s)
-                        print('pred', pred_o[0, 1])
-                        print('true', true_next_o.T[0])
-                        print('pred cost', model.cost(pred_o[0, 1], goal)[0, 0, 1])
-                        print("true cost {:0.3f}".format(true_cost))
 
                     min_true_cost = min(min_true_cost, true_cost)
                     if true_cost < success_dist:
                         if verbose:
                             print("Success!")
-                        done = True
-                        break
                     step_idx += 1
+                    time += dt
 
                 if done:
                     break
             min_true_costs.append(min_true_cost)
+            data.append(traj)
+            if args.logdir:
+                np.save(logfile, data)
     except rospy.service.ServiceException:
         pass
     except KeyboardInterrupt:
@@ -133,10 +131,10 @@ def test(args):
 
 
 def eval(args):
-    fname = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(time.time())))
+    fname = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(timemod.time())))
     g0 = np.array([[0, 0, 0, 0, 0, 0]])
     goals = [g0] * args.n_random_goals
-    min_costs = common(args, goals, max_steps=300)
+    min_costs = common(args, goals, max_steps=51)
     print(min_costs)
     print('mean dist to goal', np.mean(min_costs))
     print('stdev dist to goal', np.std(min_costs))
@@ -161,6 +159,7 @@ def main():
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
+    parser.add_argument("--logdir", '-d', help='data directory to store logged data in')
 
     subparsers = parser.add_subparsers()
     test_subparser = subparsers.add_parser("test")
