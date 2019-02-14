@@ -83,14 +83,6 @@ def common(args, goals, max_steps=1e6, verbose=False):
                 actions = action_selector.act(o)
                 train_s = agent.get_time_state_action(gzagent.get_link_state, time, actions[0, 0, 0], actions[0, 0, 1])
                 traj.append(train_s)
-                gurobi_c = model.predict_cost(o, actions, goal)[0, 1]
-
-                for i in range(100):
-                    theta = np.random.uniform(-np.pi, np.pi)
-                    u = np.array([[[np.cos(theta), np.sin(theta)]]])
-                    my_c = model.predict_cost(o, u, goal)[0, 1]
-                    if my_c < gurobi_c:
-                        print("GUROBI SUCKS!!!!", u, my_c, actions[0], gurobi_c)
 
                 for i, action in enumerate(actions):
                     joy_msg.axes = [-action[0, 0], action[0, 1]]
