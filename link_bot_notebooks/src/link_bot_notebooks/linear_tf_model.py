@@ -138,7 +138,6 @@ class LinearTFModel(base_model.BaseModel):
 
         try:
             s, u, c = self.compute_cost_label(train_x, goal)
-            print(s.shape)
             feed_dict = {self.s: s,
                          self.u: u,
                          self.g: goal,
@@ -177,7 +176,7 @@ class LinearTFModel(base_model.BaseModel):
                      self.u: u,
                      self.g: goal,
                      self.c: c}
-        ops = [self.A, self.B, self.C, self.D, self.state_prediction_loss, self.cost_prediction_loss,
+        ops = [self.A, self.B, self.C, self.D, self.cost_prediction_loss, self.state_prediction_loss,
                self.regularization, self.loss]
         A, B, C, D, c_loss, sp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
         if display:
@@ -251,9 +250,11 @@ class LinearTFModel(base_model.BaseModel):
         return self.cost(self.reduce(s), g)
 
     def cost(self, o, g):
-        hat_o = np.ndarray((self.batch_size, self.n_steps + 1, self.M))
-        hat_o[0, 0] = np.squeeze(o)
-        feed_dict = {self.hat_o: hat_o, self.g: g, self.u: np.zeros((self.batch_size, self.n_steps, self.L))}
+        hat_o_next = np.zeros((self.batch_size, self.n_steps + 1, self.M))
+        for i in range(self.batch_size):
+            for j in range(self.n_steps + 1):
+                hat_o_next[i, j] = np.squeeze(o)
+        feed_dict = {self.hat_o_next: hat_o_next, self.g: g}
         ops = [self.hat_c]
         hat_c = self.sess.run(ops, feed_dict=feed_dict)[0]
         hat_c = np.expand_dims(hat_c, axis=0)

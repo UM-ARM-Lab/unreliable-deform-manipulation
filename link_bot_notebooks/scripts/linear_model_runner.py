@@ -43,7 +43,7 @@ def evaluate(args):
     dt = x[0, 1, 0] - x[0, 0, 0]
     model = m.LinearTFModel(vars(args), x.shape[0], args.N, args.M, args.L, dt, x.shape[1] - 1)
     model.load()
-    model.evaluate(x, goal)
+    return model.evaluate(x, goal)
 
 
 def main():
