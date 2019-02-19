@@ -225,6 +225,10 @@ class LinearTFModel(base_model.BaseModel):
         return hat_o[0, 0].reshape(self.M, 1)
 
     def predict(self, o, u):
+        """
+        :param o: 1xM or Mx1
+        :param u: batch_size x n_steps x L
+        """
         hat_o = np.ndarray((self.batch_size, self.n_steps + 1, self.M))
         hat_o[0, 0] = np.squeeze(o)
         feed_dict = {self.hat_o: hat_o, self.u: u}

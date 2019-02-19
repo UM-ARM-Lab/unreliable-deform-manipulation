@@ -14,7 +14,6 @@ from link_bot_agent import gurobi_act
 from link_bot_gazebo.msg import LinkBotConfiguration
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import linear_tf_model
-from link_bot_notebooks import toy_problem_optimization_common as tpo
 from sensor_msgs.msg import Joy
 from link_bot_agent import agent
 
