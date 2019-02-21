@@ -9,6 +9,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import rospy
+from ompl.util import RNG
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
@@ -43,6 +44,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
     rospy.init_node('MPCAgent')
 
     np.random.seed(args.seed)
+    RNG.setSeed(args.seed)
+
     joy_msg = Joy()
     joy_msg.axes = [0, 0]
 
@@ -78,16 +81,16 @@ def common(args, goals, max_steps=1e6, verbose=False):
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
                 o = model.reduce(s)
-                actions = action_selector.act(o)
+                actions, durations = action_selector.act(o)
                 train_s = agent.get_time_state_action(gzagent.get_link_state, time, actions[0, 0, 0], actions[0, 0, 1])
                 traj.append(train_s)
 
-                for i, action in enumerate(actions):
+                for i, (action, duration) in enumerate(zip(actions, durations)):
                     joy_msg.axes = [-action[0, 0], action[0, 1]]
 
                     joy_pub.publish(joy_msg)
                     step = WorldControlRequest()
-                    step.steps = dt / 0.001  # assuming 0.001s of simulation time per step
+                    step.steps = duration / 0.001  # assuming 0.001s of simulation time per step
                     world_control.call(step)  # this will block until stepping is complete
 
                     s_next = np.array(agent.get_state(gzagent.get_link_state)).reshape(1, args.N)
@@ -101,7 +104,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
                         if verbose:
                             print("Success!")
                     step_idx += 1
-                    time += dt
+                    time += duration
 
                 if done:
                     break
