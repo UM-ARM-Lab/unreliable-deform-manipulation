@@ -70,7 +70,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
             if verbose:
                 print("goal: {}".format(np.array2string(goal)))
             og = model.reduce(goal)
-            action_selector = gurobi_act.GurobiAct(model, og, max_v)
+            action_selector = gurobi_act.GurobiAct(model, max_v)
             min_true_cost = 1e9
             step_idx = 0
             done = False
@@ -79,7 +79,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
                 o = model.reduce(s)
-                actions = action_selector.act(o)
+                actions = action_selector.act(o, og)
                 train_s = agent.get_time_state_action(gzagent.get_link_state, time, actions[0, 0, 0], actions[0, 0, 1])
                 traj.append(train_s)
 

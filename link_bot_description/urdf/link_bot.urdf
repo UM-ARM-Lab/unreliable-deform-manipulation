@@ -76,18 +76,18 @@
         <dynamics damping="1.0" friction="0.0"/>
     </joint>
     <gazebo reference="link_0">
-        <mu1>0.4</mu1>
-        <mu2>0.4</mu2>
+        <mu1>0.0</mu1>
+        <mu2>0.0</mu2>
         <material>Gazebo/Gray</material>
     </gazebo>
     <gazebo reference="link_1">
-        <mu1>0.4</mu1>
-        <mu2>0.4</mu2>
+        <mu1>0.0</mu1>
+        <mu2>0.0</mu2>
         <material>Gazebo/Green</material>
     </gazebo>
     <gazebo reference="head">
-        <mu1>0.4</mu1>
-        <mu2>0.4</mu2>
+        <mu1>0.0</mu1>
+        <mu2>0.0</mu2>
         <material>Gazebo/Blue</material>
         <sensor name='my_contact' type='contact'>
             <contact>
