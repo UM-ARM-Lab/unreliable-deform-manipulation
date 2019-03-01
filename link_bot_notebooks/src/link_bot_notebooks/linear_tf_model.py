@@ -5,6 +5,7 @@ import os
 import json
 
 import numpy as np
+import control
 import tensorflow as tf
 from colorama import Fore
 from link_bot_notebooks import base_model
@@ -188,6 +189,12 @@ class LinearTFModel(base_model.BaseModel):
             print("B:\n{}".format(B))
             print("C:\n{}".format(C))
             print("D:\n{}".format(D))
+            controllable = self.is_controllable()
+            if controllable:
+                controllable_string = Fore.GREEN + "True" + Fore.RESET
+            else:
+                controllable_string = Fore.RED + "False" + Fore.RESET
+            print("Controllable?: " + controllable_string)
 
             # visualize a few sample predictions from the testing data
             self.sess.run([self.hat_o_next], feed_dict=feed_dict)
@@ -278,6 +285,15 @@ class LinearTFModel(base_model.BaseModel):
         self.saver.restore(self.sess, self.args['checkpoint'])
         global_step = self.sess.run(self.global_step)
         print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
+
+    def is_controllable(self):
+        feed_dict = {}
+        ops = [self.B, self.C]
+        # Normal people use A and B here but I picked stupid variable names
+        state_matrix, control_matrix = self.sess.run(ops, feed_dict=feed_dict)
+        controllability_matrix = control.ctrb(state_matrix, control_matrix)
+        rank = np.linalg.matrix_rank(controllability_matrix)
+        return rank == self.M
 
     def get_ABCD(self):
         feed_dict = {}

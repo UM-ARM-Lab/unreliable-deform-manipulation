@@ -7,33 +7,43 @@ import numpy as np
 
 class MyDirectedControlSampler(oc.DirectedControlSampler):
 
-    def __init__(self, si):
+    def __init__(self, si, gurobi_solver):
         super(MyDirectedControlSampler, self).__init__(si)
+        self.gurobi_solver = gurobi_solver
         self.si = si
         self.name_ = "my_sampler"
         self.rng_ = ou.RNG()
 
     def sampleTo(self, sampler, control, state, target):
-        control[0] = 1
-        control[1] = 1
-        target[0] = state[0] + 0.1
-        target[1] = state[1] + 0.1
+        o = np.ndarray((self.gurobi_solver.linear_tf_model.M, 1))
+        og = np.ndarray((self.gurobi_solver.linear_tf_model.M, 1))
+        o[0, 0] = state[0]
+        o[1, 0] = state[1]
+        og[0, 0] = target[0]
+        og[1, 0] = target[1]
+        u = self.gurobi_solver.act(o, og)
+        control[0] = u[0, 0, 0]
+        control[1] = u[0, 0, 1]
         duration_steps = 1
         return duration_steps
 
     @staticmethod
-    def alloc(si):
-        return MyDirectedControlSampler(si)
+    def alloc(si, gurobi_solver):
+        return MyDirectedControlSampler(si, gurobi_solver)
 
     @staticmethod
-    def allocator():
-        return oc.DirectedControlSamplerAllocator(MyDirectedControlSampler.alloc)
+    def allocator(gurobi_solver):
+        def partial(si):
+            return MyDirectedControlSampler.alloc(si, gurobi_solver)
+
+        return oc.DirectedControlSamplerAllocator(partial)
 
 
 class OMPLAct:
 
-    def __init__(self, linear_tf_model, og, max_v):
-        self.linear_tf_model = linear_tf_model
+    def __init__(self, gurobi_solver, og, max_v):
+        self.linear_tf_model = gurobi_solver.linear_tf_model
+        self.gurobi_solver = gurobi_solver
         self.dt = self.linear_tf_model.dt
         self.M = self.linear_tf_model.M
         self.L = self.linear_tf_model.L
@@ -57,13 +67,16 @@ class OMPLAct:
 
         self.ss = oc.SimpleSetup(self.control_space)
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
-        # self.ss.setStatePropagator(oc.StatePropagatorFn(self.dumb_propagate))
-        self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
+
+        self.ss.setStatePropagator(oc.StatePropagatorFn(self.dumb_propagate))
+        # self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
+
         self.si = self.ss.getSpaceInformation()
         self.si.setMinMaxControlDuration(1, 50)
-        self.si.setPropagationStepSize(0.1)
+        self.si.setPropagationStepSize(self.linear_tf_model.dt)
 
-        self.si.setDirectedControlSamplerAllocator(MyDirectedControlSampler.allocator())
+        # self.si.setDirectedControlSamplerAllocator(MyDirectedControlSampler.allocator(self.gurobi_solver))
+
         self.planner = oc.RRT(self.si)
         self.ss.setPlanner(self.planner)
 
@@ -125,6 +138,23 @@ class OMPLAct:
                 speed = control[1]
                 numpy_controls[i, 0, 0] = np.cos(angle) * speed
                 numpy_controls[i, 0, 1] = np.sin(angle) * speed
+
+            # TODO: SMOOTHING
+            new_states = numpy_states.tolist()
+            new_controls = numpy_controls.tolist()
+            new_durations = durations.tolist()
+            for _ in range(100):
+                idx = np.random.randint(0, len(new_states))
+                shortcut_start = new_states[idx]
+                end = np.random.uniform(idx, len(new_states))
+                floor_point = new_states[np.floor(end)]
+                ceil_point = new_states[np.ceil(end)]
+                # linearly interpolate in latent space and try to make a shortcut to this point
+                shortcut_end = floor_point + (np.ceil(end) - idx) * (ceil_point - floor_point)
+                # use gurobi to find the best constrained control
+                u = self.gurobi_solver.act(shortcut_start, shortcut_end)
+
+
 
             # plt.scatter(o[0, 0], o[1, 0], s=100, label='start')
             # plt.scatter(self.og[0, 0], self.og[1, 0], s=100, label='goal')

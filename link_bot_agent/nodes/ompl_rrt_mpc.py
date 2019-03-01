@@ -12,6 +12,7 @@ import rospy
 from ompl.util import RNG
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration
+from link_bot_agent import gurobi_act
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import linear_tf_model
 from sensor_msgs.msg import Joy
@@ -72,7 +73,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
             if verbose:
                 print("goal: {}".format(np.array2string(goal)))
             og = model.reduce(goal)
-            action_selector = ompl_act.OMPLAct(model, og, max_v)
+            gurobi_solver = gurobi_act.GurobiAct(model, max_v)
+            action_selector = ompl_act.OMPLAct(gurobi_solver, og, max_v)
             min_true_cost = 1e9
             step_idx = 0
             done = False
