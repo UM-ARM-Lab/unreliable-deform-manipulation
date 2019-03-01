@@ -1,75 +1,10 @@
+import numpy as np
+import ompl.util as ou
 from ompl import base as ob
 from ompl import control as oc
-import ompl.util as ou
-import numpy as np
+from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler
+from link_bot_agent.random_directed_control_sampler import RandomDirectedControlSampler
 
-
-class LQRDirectedControlSampler(oc.DirectedControlSampler):
-
-    def __init__(self, si, lqr_solver):
-        super(GurobiDirectedControlSampler, self).__init__(si)
-        self.lqr_solver = lqr_solver
-        self.si = si
-        self.name_ = "my_sampler"
-        self.rng_ = ou.RNG()
-
-    def sampleTo(self, sampler, control, state, target):
-        o = np.ndarray((self.lqr_solver.linear_tf_model.M, 1))
-        og = np.ndarray((self.lqr_solver.linear_tf_model.M, 1))
-        o[0, 0] = state[0]
-        o[1, 0] = state[1]
-        og[0, 0] = target[0]
-        og[1, 0] = target[1]
-        u = self.lqr_solver.act(o, og)
-        control[0] = u[0, 0, 0]
-        control[1] = u[0, 0, 1]
-        duration_steps = 1
-        return duration_steps
-
-    @staticmethod
-    def alloc(si, lqr_solver):
-        return GurobiDirectedControlSampler(si, lqr_solver)
-
-    @staticmethod
-    def allocator(lqr_solver):
-        def partial(si):
-            return GurobiDirectedControlSampler.alloc(si, lqr_solver)
-
-        return oc.DirectedControlSamplerAllocator(partial)
-
-
-class GurobiDirectedControlSampler(oc.DirectedControlSampler):
-
-    def __init__(self, si, gurobi_solver):
-        super(GurobiDirectedControlSampler, self).__init__(si)
-        self.gurobi_solver = gurobi_solver
-        self.si = si
-        self.name_ = "my_sampler"
-        self.rng_ = ou.RNG()
-
-    def sampleTo(self, sampler, control, state, target):
-        o = np.ndarray((self.gurobi_solver.linear_tf_model.M, 1))
-        og = np.ndarray((self.gurobi_solver.linear_tf_model.M, 1))
-        o[0, 0] = state[0]
-        o[1, 0] = state[1]
-        og[0, 0] = target[0]
-        og[1, 0] = target[1]
-        u = self.gurobi_solver.act(o, og)
-        control[0] = u[0, 0, 0]
-        control[1] = u[0, 0, 1]
-        duration_steps = 1
-        return duration_steps
-
-    @staticmethod
-    def alloc(si, gurobi_solver):
-        return GurobiDirectedControlSampler(si, gurobi_solver)
-
-    @staticmethod
-    def allocator(gurobi_solver):
-        def partial(si):
-            return GurobiDirectedControlSampler.alloc(si, gurobi_solver)
-
-        return oc.DirectedControlSamplerAllocator(partial)
 
 
 class OMPLAct:
@@ -101,14 +36,18 @@ class OMPLAct:
         self.ss = oc.SimpleSetup(self.control_space)
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
 
-        self.ss.setStatePropagator(oc.StatePropagatorFn(self.dumb_propagate))
-        # self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
+        # self.ss.setStatePropagator(oc.StatePropagatorFn(self.dumb_propagate))
+        self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
 
         self.si = self.ss.getSpaceInformation()
         self.si.setMinMaxControlDuration(1, 50)
         self.si.setPropagationStepSize(self.linear_tf_model.dt)
 
-        # self.si.setDirectedControlSamplerAllocator(MyDirectedControlSampler.allocator(self.gurobi_solver))
+        self.MyDirectedControlSampler = GurobiDirectedControlSampler
+        self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.gurobi_solver))
+
+        # self.MyDirectedControlSampler = RandomDirectedControlSampler
+        # self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.linear_tf_model))
 
         self.planner = oc.RRT(self.si)
         self.ss.setPlanner(self.planner)
@@ -135,6 +74,7 @@ class OMPLAct:
             state[i] = o_next[i].astype(np.float64)
 
     def dumb_propagate(self, start, control, duration, state):
+        print("DUMB PROPAGATE")
         angle = control[0]
         speed = control[1]
         vx = np.cos(angle) * speed
@@ -144,6 +84,7 @@ class OMPLAct:
 
     def act(self, o):
         """ return the action which gives the lowest cost for the predicted next state """
+        self.MyDirectedControlSampler.reset()
         start = ob.State(self.latent_space)
         start[0] = o[0, 0].astype(np.float64)
         start[1] = o[1, 0].astype(np.float64)
@@ -186,7 +127,8 @@ class OMPLAct:
             #     shortcut_end = floor_point + (np.ceil(end) - idx) * (ceil_point - floor_point)
             #     u = self.lqr_solver.act(shortcut_start, shortcut_end)
 
-            # import matplotlib.pyplot as plt
+            self.MyDirectedControlSampler.plot(o, self.og)
+
             # plt.scatter(o[0, 0], o[1, 0], s=100, label='start')
             # plt.scatter(self.og[0, 0], self.og[1, 0], s=100, label='goal')
             # plt.plot(numpy_states[:, 0], numpy_states[:, 1])
@@ -195,7 +137,14 @@ class OMPLAct:
             # plt.axis('equal')
             # plt.legend()
             # plt.show()
-            print()
+            lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in range(1, len(numpy_states))]
+            path_length = np.sum(lengths)
+            final_error = np.linalg.norm(numpy_states[-1] - self.og)
+            duration = np.sum(durations)
+            print("Final Error: {:0.4f}m, Path Length: {:0.4f}m, Steps {}, Duration: {:0.2f}s".format(final_error,
+                                                                                                      path_length,
+                                                                                                      len(durations),
+                                                                                                      duration))
             return numpy_controls, durations
         else:
             raise RuntimeError("No Solution found from {} to {}".format(start, goal))

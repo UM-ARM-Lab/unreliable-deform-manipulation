@@ -79,7 +79,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
                 o = model.reduce(s)
-                actions = action_selector.act(o, og)
+                actions, o_next = action_selector.act(o, og)
                 train_s = agent.get_time_state_action(gzagent.get_link_state, time, actions[0, 0, 0], actions[0, 0, 1])
                 traj.append(train_s)
 

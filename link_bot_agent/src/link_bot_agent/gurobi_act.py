@@ -11,20 +11,21 @@ class GurobiAct:
         self.gurobi_model.setParam('OutputFlag', 0)
         self.u1 = self.gurobi_model.addVar(name="u1", lb=-gurobi.GRB.INFINITY, ub=gurobi.GRB.INFINITY)
         self.u2 = self.gurobi_model.addVar(name="u2", lb=-gurobi.GRB.INFINITY, ub=gurobi.GRB.INFINITY)
-        self.u = np.array([[self.u1], [self.u2]])
+        self.gurobi_u = np.array([[self.u1], [self.u2]])
         self.gurobi_model.addQConstr(self.u1 * self.u1 + self.u2 * self.u2 <= max_v ** 2, "c0")
         self.A, self.B, self.C, self.D = self.linear_tf_model.get_ABCD()
 
     def act(self, o, og):
         """ return the action which gives the lowest cost for the predicted next state """
-        o_next = o + self.linear_tf_model.dt * np.dot(self.B, o) + self.linear_tf_model.dt * np.dot(self.C, self.u)
-        distance = np.squeeze(og - o_next)
+        gurobi_o_next = self.linear_tf_model.simple_predict(o, self.gurobi_u)
+        distance = np.squeeze(og - gurobi_o_next)
         obj = np.dot(np.dot(distance, self.D), distance.T)
         self.gurobi_model.setObjective(obj, gurobi.GRB.MINIMIZE)
 
         self.gurobi_model.optimize()
-        u = np.array([v.x for v in self.gurobi_model.getVars()]).reshape(1, 1, 2)
-        return u
+        numpy_u = np.array([v.x for v in self.gurobi_model.getVars()])
+        o_next = self.linear_tf_model.simple_predict(o, numpy_u.reshape(2, 1))
+        return numpy_u.reshape(1, 1, 2), o_next
 
     def __repr__(self):
         return "max_v: {}".format(self.max_v)

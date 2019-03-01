@@ -241,7 +241,11 @@ class LinearTFModel(base_model.BaseModel):
         feed_dict = {self.hat_o: hat_o, self.u: u}
         ops = [self.hat_o_next]
         hat_o_next = self.sess.run(ops, feed_dict=feed_dict)[0]
-        return hat_o_next
+
+    def simple_predict(self, o, u):
+        A, B, C, D = self.get_ABCD()
+        o_next = o + self.dt * np.dot(B, o) + self.dt * np.dot(C, u)
+        return o_next
 
     def predict_cost(self, o, u, g):
         hat_o = np.ndarray((self.batch_size, self.n_steps + 1, self.M))
