@@ -1,14 +1,47 @@
 from ompl import base as ob
-import matplotlib.pyplot as plt
 from ompl import control as oc
 import ompl.util as ou
 import numpy as np
 
 
-class MyDirectedControlSampler(oc.DirectedControlSampler):
+class LQRDirectedControlSampler(oc.DirectedControlSampler):
+
+    def __init__(self, si, lqr_solver):
+        super(GurobiDirectedControlSampler, self).__init__(si)
+        self.lqr_solver = lqr_solver
+        self.si = si
+        self.name_ = "my_sampler"
+        self.rng_ = ou.RNG()
+
+    def sampleTo(self, sampler, control, state, target):
+        o = np.ndarray((self.lqr_solver.linear_tf_model.M, 1))
+        og = np.ndarray((self.lqr_solver.linear_tf_model.M, 1))
+        o[0, 0] = state[0]
+        o[1, 0] = state[1]
+        og[0, 0] = target[0]
+        og[1, 0] = target[1]
+        u = self.lqr_solver.act(o, og)
+        control[0] = u[0, 0, 0]
+        control[1] = u[0, 0, 1]
+        duration_steps = 1
+        return duration_steps
+
+    @staticmethod
+    def alloc(si, lqr_solver):
+        return GurobiDirectedControlSampler(si, lqr_solver)
+
+    @staticmethod
+    def allocator(lqr_solver):
+        def partial(si):
+            return GurobiDirectedControlSampler.alloc(si, lqr_solver)
+
+        return oc.DirectedControlSamplerAllocator(partial)
+
+
+class GurobiDirectedControlSampler(oc.DirectedControlSampler):
 
     def __init__(self, si, gurobi_solver):
-        super(MyDirectedControlSampler, self).__init__(si)
+        super(GurobiDirectedControlSampler, self).__init__(si)
         self.gurobi_solver = gurobi_solver
         self.si = si
         self.name_ = "my_sampler"
@@ -29,12 +62,12 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
 
     @staticmethod
     def alloc(si, gurobi_solver):
-        return MyDirectedControlSampler(si, gurobi_solver)
+        return GurobiDirectedControlSampler(si, gurobi_solver)
 
     @staticmethod
     def allocator(gurobi_solver):
         def partial(si):
-            return MyDirectedControlSampler.alloc(si, gurobi_solver)
+            return GurobiDirectedControlSampler.alloc(si, gurobi_solver)
 
         return oc.DirectedControlSamplerAllocator(partial)
 
@@ -139,23 +172,21 @@ class OMPLAct:
                 numpy_controls[i, 0, 0] = np.cos(angle) * speed
                 numpy_controls[i, 0, 1] = np.sin(angle) * speed
 
-            # TODO: SMOOTHING
-            new_states = numpy_states.tolist()
-            new_controls = numpy_controls.tolist()
-            new_durations = durations.tolist()
-            for _ in range(100):
-                idx = np.random.randint(0, len(new_states))
-                shortcut_start = new_states[idx]
-                end = np.random.uniform(idx, len(new_states))
-                floor_point = new_states[np.floor(end)]
-                ceil_point = new_states[np.ceil(end)]
-                # linearly interpolate in latent space and try to make a shortcut to this point
-                shortcut_end = floor_point + (np.ceil(end) - idx) * (ceil_point - floor_point)
-                # use gurobi to find the best constrained control
-                u = self.gurobi_solver.act(shortcut_start, shortcut_end)
+            # # TODO: SMOOTHING
+            # new_states = numpy_states.tolist()
+            # new_controls = numpy_controls.tolist()
+            # new_durations = durations.tolist()
+            # for _ in range(100):
+            #     idx = np.random.randint(0, len(new_states))
+            #     shortcut_start = new_states[idx]
+            #     end = np.random.uniform(idx, len(new_states))
+            #     floor_point = new_states[np.floor(end)]
+            #     ceil_point = new_states[np.ceil(end)]
+            #     # linearly interpolate in latent space and try to make a shortcut to this point
+            #     shortcut_end = floor_point + (np.ceil(end) - idx) * (ceil_point - floor_point)
+            #     u = self.lqr_solver.act(shortcut_start, shortcut_end)
 
-
-
+            # import matplotlib.pyplot as plt
             # plt.scatter(o[0, 0], o[1, 0], s=100, label='start')
             # plt.scatter(self.og[0, 0], self.og[1, 0], s=100, label='goal')
             # plt.plot(numpy_states[:, 0], numpy_states[:, 1])
@@ -164,6 +195,7 @@ class OMPLAct:
             # plt.axis('equal')
             # plt.legend()
             # plt.show()
+            print()
             return numpy_controls, durations
         else:
             raise RuntimeError("No Solution found from {} to {}".format(start, goal))
