@@ -6,7 +6,6 @@ from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControl
 from link_bot_agent.random_directed_control_sampler import RandomDirectedControlSampler
 
 
-
 class OMPLAct:
 
     def __init__(self, gurobi_solver, og, max_v):
@@ -113,30 +112,45 @@ class OMPLAct:
                 numpy_controls[i, 0, 0] = np.cos(angle) * speed
                 numpy_controls[i, 0, 1] = np.sin(angle) * speed
 
-            # # TODO: SMOOTHING
-            # new_states = numpy_states.tolist()
-            # new_controls = numpy_controls.tolist()
-            # new_durations = durations.tolist()
-            # for _ in range(100):
-            #     idx = np.random.randint(0, len(new_states))
-            #     shortcut_start = new_states[idx]
-            #     end = np.random.uniform(idx, len(new_states))
-            #     floor_point = new_states[np.floor(end)]
-            #     ceil_point = new_states[np.ceil(end)]
-            #     # linearly interpolate in latent space and try to make a shortcut to this point
-            #     shortcut_end = floor_point + (np.ceil(end) - idx) * (ceil_point - floor_point)
-            #     u = self.lqr_solver.act(shortcut_start, shortcut_end)
+            # SMOOTHING
+            new_states = list(numpy_states)
+            new_controls = list(numpy_controls)
+            new_durations = list(durations)
+            iter = 0
+            while iter < 100 and len(new_states) > 2:
+                iter += 1
+                start_idx = np.random.randint(0, len(new_states))
+                shortcut_start = new_states[start_idx]
+                end_idx = np.random.uniform(start_idx, len(new_states) - 1)
+                end_idx_floor = np.floor(end_idx).astype(np.int32)
+                end_idx_ceil = np.ceil(end_idx).astype(np.int32)
+                if start_idx == end_idx_floor:
+                    continue
+                floor_point = new_states[end_idx_floor]
+                ceil_point = new_states[end_idx_ceil]
+                # linearly interpolate in latent space and try to make a shortcut to this point
+                shortcut_end = floor_point + (end_idx - end_idx_floor) * (ceil_point - floor_point) / (
+                        end_idx_ceil - end_idx_floor)
+                shortcut_start = np.expand_dims(shortcut_start, axis=1)
+                shortcut_end = np.expand_dims(shortcut_end, axis=1)
+                new_shortcut_us, new_shortcut_os = self.gurobi_solver.multi_act(shortcut_start, shortcut_end)
+                if np.allclose(new_shortcut_os[-1], shortcut_end, rtol=0.01):
+                    # popping changes the indexes of everything, so we just pop tat start_idx the right number of times
+                    for i in range(start_idx, end_idx_ceil):
+                        new_states.pop(start_idx)
+                        new_controls.pop(start_idx)
+                        new_durations.pop(start_idx)
+                    for i, (shortcut_u, shortcut_o) in enumerate(zip(new_shortcut_us, new_shortcut_os)):
+                        new_states.insert(start_idx + i, np.squeeze(shortcut_o))  # or maybe shortcut_end?
+                        new_controls.insert(start_idx + i, np.expand_dims(shortcut_u, axis=0))
+                        new_durations.insert(start_idx + i, self.dt)
 
-            self.MyDirectedControlSampler.plot(o, self.og)
+            numpy_states = np.array(new_states)
+            numpy_controls = np.array(new_controls)
+            print(numpy_controls.shape)
+            durations = np.array(new_durations)
+            self.MyDirectedControlSampler.plot(o, self.og, numpy_states)
 
-            # plt.scatter(o[0, 0], o[1, 0], s=100, label='start')
-            # plt.scatter(self.og[0, 0], self.og[1, 0], s=100, label='goal')
-            # plt.plot(numpy_states[:, 0], numpy_states[:, 1])
-            # u = numpy_controls.squeeze(axis=1)
-            # plt.quiver(numpy_states[:,0], numpy_states[:, 1], durations * u[:, 0], durations * u[:, 1])
-            # plt.axis('equal')
-            # plt.legend()
-            # plt.show()
             lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in range(1, len(numpy_states))]
             path_length = np.sum(lengths)
             final_error = np.linalg.norm(numpy_states[-1] - self.og)

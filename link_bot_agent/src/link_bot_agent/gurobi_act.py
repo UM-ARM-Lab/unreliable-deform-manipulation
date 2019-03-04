@@ -27,5 +27,26 @@ class GurobiAct:
         o_next = self.linear_tf_model.simple_predict(o, numpy_u.reshape(2, 1))
         return numpy_u.reshape(1, 1, 2), o_next
 
+    def multi_act(self, o, og):
+        """ return the action which gives the lowest cost for the predicted next state """
+        numpy_us = []
+        os = [o]
+        for _ in range(100):
+            gurobi_o_next = self.linear_tf_model.simple_predict(o, self.gurobi_u)
+            distance = np.squeeze(og - gurobi_o_next)
+            obj = np.dot(np.dot(distance, self.D), distance.T)
+            self.gurobi_model.setObjective(obj, gurobi.GRB.MINIMIZE)
+
+            self.gurobi_model.optimize()
+            numpy_u = np.array([v.x for v in self.gurobi_model.getVars()])
+            o_next = self.linear_tf_model.simple_predict(o, numpy_u.reshape(2, 1))
+            numpy_us.append(numpy_u)
+            os.append(o_next)
+            if np.allclose(o, o_next, rtol=0.01):
+                return numpy_us, np.array(os)
+            o = o_next
+
+        return numpy_us, np.array(os)
+
     def __repr__(self):
         return "max_v: {}".format(self.max_v)

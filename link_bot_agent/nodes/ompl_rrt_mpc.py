@@ -70,6 +70,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
             config.tail_pose.theta = np.random.uniform(-np.pi, np.pi)
             config.joint_angles_rad = np.random.uniform(-np.pi, np.pi, size=2)
             config_pub.publish(config)
+            timemod.sleep(0.1)
+
             if verbose:
                 print("goal: {}".format(np.array2string(goal)))
             og = model.reduce(goal)
