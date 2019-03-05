@@ -16,7 +16,7 @@ from link_bot_agent import gurobi_act
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import linear_tf_model
 from sensor_msgs.msg import Joy
-from link_bot_agent import agent, ompl_act
+from link_bot_agent import agent, ompl_act, ompl_kino_act
 
 dt = 0.1
 success_dist = 0.1
