@@ -17,20 +17,21 @@ class OMPLAct:
         self.max_v = max_v
 
         self.latent_space = ob.RealVectorStateSpace(self.M)
-        self.latent_space.setBounds(-5, 5)
+        self.latent_space.setBounds(-10, 10)
 
         self.ss = og.SimpleSetup(self.latent_space)
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
 
         self.si = self.ss.getSpaceInformation()
 
-        self.planner = og.RRT(self.si)
+        self.planner = og.RRTConnect(self.si)
         self.ss.setPlanner(self.planner)
 
     def setSeed(self, seed):
         ou.RNG.setSeed(seed)
 
     def isStateValid(self, state):
+        # TODO: check learned latent-space constraints here
         return self.latent_space.satisfiesBounds(state)
 
     def steer(self, states):
@@ -38,11 +39,11 @@ class OMPLAct:
         Q = np.eye(self.M)
         R = np.eye(self.L)
         K, S, E = control.lqr(state_matrix, control_matrix, Q, R)
-        print(E)
         n = len(states)
         controls = np.ndarray((n - 1, 1, 2))
         for i in range(n - 1):
             u = np.dot(-K, (states[i] - states[i + 1]))
+            u = u / np.linalg.norm(u) * self.max_v
             controls[i] = u
 
         durations = np.ones(n-1) * self.dt
@@ -50,18 +51,17 @@ class OMPLAct:
 
     def act(self, o):
         """ return the action which gives the lowest cost for the predicted next state """
-        # self.MyDirectedControlSampler.reset()
         start = ob.State(self.latent_space)
-        start[0] = o[0, 0].astype(np.float64)
-        start[1] = o[1, 0].astype(np.float64)
+        for i in range(self.M):
+            start[i] = o[i, 0].astype(np.float64)
 
         goal = ob.State(self.latent_space)
-        goal[0] = self.o_g[0, 0].astype(np.float64)
-        goal[1] = self.o_g[1, 0].astype(np.float64)
+        for i in range(self.M):
+            goal[i] = self.o_g[i, 0].astype(np.float64)
 
         self.ss.clear()
         self.ss.setStartAndGoalStates(start, goal, 0.01)
-        solved = self.ss.solve(5.0)
+        solved = self.ss.solve(60.0)
         if solved:
             self.ss.simplifySolution()
             ompl_path = self.ss.getSolutionPath()
@@ -77,6 +77,7 @@ class OMPLAct:
             print("Final Error: {:0.4f}m, Path Length: {:0.4f}m, Steps {}".format(final_error,
                                                                                   path_length,
                                                                                   len(numpy_states)))
+
             # convert states into controls and durations
             return self.steer(numpy_states)
         else:

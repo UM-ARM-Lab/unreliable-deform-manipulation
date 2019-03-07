@@ -4,6 +4,7 @@ from ompl import base as ob
 from ompl import control as oc
 from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler
 from link_bot_agent.random_directed_control_sampler import RandomDirectedControlSampler
+from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSampler
 
 
 class OMPLAct:
@@ -18,19 +19,12 @@ class OMPLAct:
         self.max_v = max_v
 
         self.latent_space = ob.RealVectorStateSpace(self.M)
-        self.latent_space.setBounds(-5, 5)
+        self.latent_space.setBounds(-10, 10)
 
         self.control_space = oc.RealVectorControlSpace(self.latent_space, self.L)
         # The OMPL control space will be direction and magnitude, not vx, vy directly
         # becahse otherwise we cannot constrain the velocity correctly
         self.control_bounds = ob.RealVectorBounds(2)
-        # angle
-        self.control_bounds.setLow(0, -np.pi)
-        self.control_bounds.setHigh(0, np.pi)
-        # speed
-        self.control_bounds.setLow(1, 0)
-        self.control_bounds.setHigh(1, max_v)
-        self.control_space.setBounds(self.control_bounds)
 
         self.ss = oc.SimpleSetup(self.control_space)
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
@@ -42,8 +36,11 @@ class OMPLAct:
         self.si.setMinMaxControlDuration(1, 50)
         self.si.setPropagationStepSize(self.linear_tf_model.dt)
 
-        self.MyDirectedControlSampler = GurobiDirectedControlSampler
-        self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.gurobi_solver))
+        self.MyDirectedControlSampler = LQRDirectedControlSampler
+        self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.linear_tf_model, max_v))
+
+        # self.MyDirectedControlSampler = GurobiDirectedControlSampler
+        # self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.gurobi_solver))
 
         # self.MyDirectedControlSampler = RandomDirectedControlSampler
         # self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.linear_tf_model))
@@ -61,11 +58,7 @@ class OMPLAct:
 
     def propagate(self, start, control, duration, state):
         _, B, C, _ = self.linear_tf_model.get_ABCD()
-        angle = control[0]
-        speed = control[1]
-        vx = np.cos(angle) * speed
-        vy = np.sin(angle) * speed
-        u = np.array([vx, vy])
+        u = np.array([control[0], control[1]])
         o = np.array([start[i] for i in range(self.M)])
         o_next = o + duration * np.matmul(B, o) + duration * np.matmul(C, u)
         # modify to do the propagation
@@ -74,12 +67,8 @@ class OMPLAct:
 
     def dumb_propagate(self, start, control, duration, state):
         print("DUMB PROPAGATE")
-        angle = control[0]
-        speed = control[1]
-        vx = np.cos(angle) * speed
-        vy = np.sin(angle) * speed
-        state[0] = start[0] + duration * vx
-        state[1] = start[1] + duration * vy
+        state[0] = start[0] + duration * control[0]
+        state[1] = start[1] + duration * control[1]
 
     def act(self, o):
         """ return the action which gives the lowest cost for the predicted next state """
@@ -92,8 +81,8 @@ class OMPLAct:
         goal[0] = self.og[0, 0].astype(np.float64)
         goal[1] = self.og[1, 0].astype(np.float64)
 
-        # TODO: How do we compute epsilon in latent space???
         self.ss.clear()
+        # TODO: How do we compute epsilon in latent space???
         self.ss.setStartAndGoalStates(start, goal, 0.01)
         solved = self.ss.solve(5.0)
         if solved:
@@ -107,10 +96,8 @@ class OMPLAct:
                     numpy_states[i, j] = state[j]
             for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
                 durations[i] = duration
-                angle = control[0]
-                speed = control[1]
-                numpy_controls[i, 0, 0] = np.cos(angle) * speed
-                numpy_controls[i, 0, 1] = np.sin(angle) * speed
+                numpy_controls[i, 0, 0] = control[0]
+                numpy_controls[i, 0, 1] = control[1]
 
             # SMOOTHING
             new_states = list(numpy_states)
