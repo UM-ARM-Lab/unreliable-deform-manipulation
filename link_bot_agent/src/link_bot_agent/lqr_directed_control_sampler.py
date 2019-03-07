@@ -35,6 +35,9 @@ class LQRDirectedControlSampler(MyDirectedControlSampler):
                                                                             np.array2string(target_o.squeeze())))
         u = u / np.linalg.norm(u) * self.max_v
         o_next = self.linear_tf_model.simple_predict(start_o, u)
+
+        LQRDirectedControlSampler.states_sampled_at.append(state)
+
         control[0] = u[0, 0]
         control[1] = u[1, 0]
         target[0] = o_next[0, 0]

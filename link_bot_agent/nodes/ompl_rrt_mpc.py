@@ -9,7 +9,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import rospy
-from ompl.util import RNG
+import ompl.util as ou
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration
 from link_bot_agent import gurobi_act
@@ -45,7 +45,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
     rospy.init_node('MPCAgent')
 
     np.random.seed(args.seed)
-    RNG.setSeed(args.seed)
+    ou.RNG.setSeed(args.seed)
+    ou.setLogLevel(ou.LOG_WARN)
 
     joy_msg = Joy()
     joy_msg.axes = [0, 0]
@@ -59,6 +60,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
     max_v = 1
     min_true_costs = []
+    T = 10
 
     try:
         data = []
@@ -85,11 +87,13 @@ def common(args, goals, max_steps=1e6, verbose=False):
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
                 o = model.reduce(s)
-                actions, durations = action_selector.act(o)
+                actions, durations = action_selector.act(o, verbose)
                 train_s = agent.get_time_state_action(gzagent.get_link_state, time, actions[0, 0, 0], actions[0, 0, 1])
                 traj.append(train_s)
 
                 for i, (action, duration) in enumerate(zip(actions, durations)):
+                    if i >= T:
+                        break
                     joy_msg.axes = [-action[0, 0], action[0, 1]]
 
                     joy_pub.publish(joy_msg)
@@ -98,6 +102,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     world_control.call(step)  # this will block until stepping is complete
 
                     s_next = np.array(agent.get_state(gzagent.get_link_state)).reshape(1, args.N)
+                    # print(s_next, goal)
                     true_cost = gzagent.state_cost(s_next, goal)
 
                     if args.pause:
@@ -105,6 +110,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
                     min_true_cost = min(min_true_cost, true_cost)
                     if true_cost < success_dist:
+                        done = True
                         if verbose:
                             print("Success!")
                     step_idx += 1
@@ -156,7 +162,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("checkpoint", help="load this saved model file")
     parser.add_argument("--model-name", '-m', default="myfirst")
-    parser.add_argument("--seed", '-s', type=int, default=0)
+    parser.add_argument("--seed", '-s', type=int, default=1)
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--pause", action='store_true')
     parser.add_argument("--plot-plan", action='store_true')

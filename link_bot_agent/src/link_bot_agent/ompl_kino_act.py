@@ -70,7 +70,7 @@ class OMPLAct:
         state[0] = start[0] + duration * control[0]
         state[1] = start[1] + duration * control[1]
 
-    def act(self, o):
+    def act(self, o, verbose=False):
         """ return the action which gives the lowest cost for the predicted next state """
         self.MyDirectedControlSampler.reset()
         start = ob.State(self.latent_space)
@@ -84,7 +84,7 @@ class OMPLAct:
         self.ss.clear()
         # TODO: How do we compute epsilon in latent space???
         self.ss.setStartAndGoalStates(start, goal, 0.01)
-        solved = self.ss.solve(5.0)
+        solved = self.ss.solve(0.1)
         if solved:
             ompl_path = self.ss.getSolutionPath()
 
@@ -100,52 +100,50 @@ class OMPLAct:
                 numpy_controls[i, 0, 1] = control[1]
 
             # SMOOTHING
-            new_states = list(numpy_states)
-            new_controls = list(numpy_controls)
-            new_durations = list(durations)
-            iter = 0
-            while iter < 100 and len(new_states) > 2:
-                iter += 1
-                start_idx = np.random.randint(0, len(new_states))
-                shortcut_start = new_states[start_idx]
-                end_idx = np.random.uniform(start_idx, len(new_states) - 1)
-                end_idx_floor = np.floor(end_idx).astype(np.int32)
-                end_idx_ceil = np.ceil(end_idx).astype(np.int32)
-                if start_idx == end_idx_floor:
-                    continue
-                floor_point = new_states[end_idx_floor]
-                ceil_point = new_states[end_idx_ceil]
-                # linearly interpolate in latent space and try to make a shortcut to this point
-                shortcut_end = floor_point + (end_idx - end_idx_floor) * (ceil_point - floor_point) / (
-                        end_idx_ceil - end_idx_floor)
-                shortcut_start = np.expand_dims(shortcut_start, axis=1)
-                shortcut_end = np.expand_dims(shortcut_end, axis=1)
-                new_shortcut_us, new_shortcut_os = self.gurobi_solver.multi_act(shortcut_start, shortcut_end)
-                if np.allclose(new_shortcut_os[-1], shortcut_end, rtol=0.01):
-                    # popping changes the indexes of everything, so we just pop tat start_idx the right number of times
-                    for i in range(start_idx, end_idx_ceil):
-                        new_states.pop(start_idx)
-                        new_controls.pop(start_idx)
-                        new_durations.pop(start_idx)
-                    for i, (shortcut_u, shortcut_o) in enumerate(zip(new_shortcut_us, new_shortcut_os)):
-                        new_states.insert(start_idx + i, np.squeeze(shortcut_o))  # or maybe shortcut_end?
-                        new_controls.insert(start_idx + i, np.expand_dims(shortcut_u, axis=0))
-                        new_durations.insert(start_idx + i, self.dt)
+            # new_states = list(numpy_states)
+            # new_controls = list(numpy_controls)
+            # new_durations = list(durations)
+            # iter = 0
+            # while iter < 100 and len(new_states) > 2:
+            #     iter += 1
+            #     start_idx = np.random.randint(0, len(new_states))
+            #     shortcut_start = new_states[start_idx]
+            #     end_idx = np.random.uniform(start_idx, len(new_states) - 1)
+            #     end_idx_floor = np.floor(end_idx).astype(np.int32)
+            #     end_idx_ceil = np.ceil(end_idx).astype(np.int32)
+            #     if start_idx == end_idx_floor:
+            #         continue
+            #     floor_point = new_states[end_idx_floor]
+            #     ceil_point = new_states[end_idx_ceil]
+            #     # linearly interpolate in latent space and try to make a shortcut to this point
+            #     shortcut_end = floor_point + (end_idx - end_idx_floor) * (ceil_point - floor_point) / (
+            #             end_idx_ceil - end_idx_floor)
+            #     shortcut_start = np.expand_dims(shortcut_start, axis=1)
+            #     shortcut_end = np.expand_dims(shortcut_end, axis=1)
+            #     new_shortcut_us, new_shortcut_os = self.gurobi_solver.multi_act(shortcut_start, shortcut_end)
+            #     if np.allclose(new_shortcut_os[-1], shortcut_end, rtol=0.01):
+            #         # popping changes the indexes of everything, so we just pop tat start_idx the right number of times
+            #         for i in range(start_idx, end_idx_ceil):
+            #             new_states.pop(start_idx)
+            #             new_controls.pop(start_idx)
+            #             new_durations.pop(start_idx)
+            #         for i, (shortcut_u, shortcut_o) in enumerate(zip(new_shortcut_us, new_shortcut_os)):
+            #             new_states.insert(start_idx + i, np.squeeze(shortcut_o))  # or maybe shortcut_end?
+            #             new_controls.insert(start_idx + i, np.expand_dims(shortcut_u, axis=0))
+            #             new_durations.insert(start_idx + i, self.dt)
 
-            numpy_states = np.array(new_states)
-            numpy_controls = np.array(new_controls)
-            print(numpy_controls.shape)
-            durations = np.array(new_durations)
-            self.MyDirectedControlSampler.plot(o, self.og, numpy_states)
+            # numpy_states = np.array(new_states)
+            # numpy_controls = np.array(new_controls)
+            # durations = np.array(new_durations)
 
-            lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in range(1, len(numpy_states))]
-            path_length = np.sum(lengths)
-            final_error = np.linalg.norm(numpy_states[-1] - self.og)
-            duration = np.sum(durations)
-            print("Final Error: {:0.4f}m, Path Length: {:0.4f}m, Steps {}, Duration: {:0.2f}s".format(final_error,
-                                                                                                      path_length,
-                                                                                                      len(durations),
-                                                                                                      duration))
+            if verbose:
+                self.MyDirectedControlSampler.plot(o, self.og, numpy_states)
+                lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in range(1, len(numpy_states))]
+                path_length = np.sum(lengths)
+                final_error = np.linalg.norm(numpy_states[-1] - self.og)
+                duration = np.sum(durations)
+                print("Final Error: {:0.4f}m, Path Length: {:0.4f}m, Steps {}, Duration: {:0.2f}s".format(
+                    final_error, path_length, len(durations), duration))
             return numpy_controls, durations
         else:
             raise RuntimeError("No Solution found from {} to {}".format(start, goal))
