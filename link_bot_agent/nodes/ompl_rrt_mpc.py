@@ -60,7 +60,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
     max_v = 1
     min_true_costs = []
-    T = 10
+    T = 100
 
     try:
         data = []
@@ -71,7 +71,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
             config.tail_pose.y = np.random.uniform(-3, 3)
             config.tail_pose.theta = np.random.uniform(-np.pi, np.pi)
             config.joint_angles_rad = np.random.uniform(-np.pi, np.pi, size=2)
-            # config_pub.publish(config)
+            config_pub.publish(config)
             timemod.sleep(0.1)
 
             if verbose:
@@ -92,7 +92,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
                 traj.append(train_s)
 
                 for i, (action, duration) in enumerate(zip(actions, durations)):
-                    if i >= T:
+                    if i >= T > 0:
                         break
                     joy_msg.axes = [-action[0, 0], action[0, 1]]
 
@@ -116,8 +116,11 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     step_idx += 1
                     time += duration
 
+                print("plan executed.")
+
                 if done:
                     break
+
             min_true_costs.append(min_true_cost)
             data.append(traj)
             if args.logdir:
@@ -162,7 +165,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("checkpoint", help="load this saved model file")
     parser.add_argument("--model-name", '-m', default="myfirst")
-    parser.add_argument("--seed", '-s', type=int, default=1)
+    parser.add_argument("--seed", '-s', type=int, default=2)
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--pause", action='store_true')
     parser.add_argument("--plot-plan", action='store_true')
@@ -171,6 +174,7 @@ def main():
     parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
     parser.add_argument("--logdir", '-d', help='data directory to store logged data in')
+    parser.add_argument("--controller", choices=['gurobi', 'lqr', 'ompl'], default='ompl')
 
     subparsers = parser.add_subparsers()
     test_subparser = subparsers.add_parser("test")

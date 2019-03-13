@@ -36,16 +36,17 @@ class OMPLAct:
         self.si.setMinMaxControlDuration(1, 50)
         self.si.setPropagationStepSize(self.linear_tf_model.dt)
 
-        self.MyDirectedControlSampler = LQRDirectedControlSampler
-        self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.linear_tf_model, max_v))
+        # self.MyDirectedControlSampler = LQRDirectedControlSampler
+        # self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.linear_tf_model, max_v))
 
-        # self.MyDirectedControlSampler = GurobiDirectedControlSampler
-        # self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.gurobi_solver))
+        self.MyDirectedControlSampler = GurobiDirectedControlSampler
+        self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.gurobi_solver))
 
         # self.MyDirectedControlSampler = RandomDirectedControlSampler
         # self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.linear_tf_model))
 
         self.planner = oc.RRT(self.si)
+        self.planner.setGoalBias(0.5)
         self.ss.setPlanner(self.planner)
 
     def setSeed(self, seed):
@@ -82,9 +83,10 @@ class OMPLAct:
         goal[1] = self.og[1, 0].astype(np.float64)
 
         self.ss.clear()
-        # TODO: How do we compute epsilon in latent space???
-        self.ss.setStartAndGoalStates(start, goal, 0.01)
-        solved = self.ss.solve(0.1)
+        # the threshold on "cost-to-goal" is interpretable here as euclidian distance
+        self.ss.setStartAndGoalStates(start, goal, 0.1)
+        solved = self.ss.solve(0.5)
+        print("Planning time: {}".format(self.ss.getLastPlanComputationTime()))
         if solved:
             ompl_path = self.ss.getSolutionPath()
 
@@ -104,7 +106,7 @@ class OMPLAct:
             # new_controls = list(numpy_controls)
             # new_durations = list(durations)
             # iter = 0
-            # while iter < 100 and len(new_states) > 2:
+            # while iter < 200 and len(new_states) > 2:
             #     iter += 1
             #     start_idx = np.random.randint(0, len(new_states))
             #     shortcut_start = new_states[start_idx]
@@ -121,8 +123,9 @@ class OMPLAct:
             #     shortcut_start = np.expand_dims(shortcut_start, axis=1)
             #     shortcut_end = np.expand_dims(shortcut_end, axis=1)
             #     new_shortcut_us, new_shortcut_os = self.gurobi_solver.multi_act(shortcut_start, shortcut_end)
-            #     if np.allclose(new_shortcut_os[-1], shortcut_end, rtol=0.01):
+            #     if np.allclose(new_shortcut_os[-1], shortcut_end, rtol=0.02):
             #         # popping changes the indexes of everything, so we just pop tat start_idx the right number of times
+            #         print("s")
             #         for i in range(start_idx, end_idx_ceil):
             #             new_states.pop(start_idx)
             #             new_controls.pop(start_idx)
@@ -131,7 +134,7 @@ class OMPLAct:
             #             new_states.insert(start_idx + i, np.squeeze(shortcut_o))  # or maybe shortcut_end?
             #             new_controls.insert(start_idx + i, np.expand_dims(shortcut_u, axis=0))
             #             new_durations.insert(start_idx + i, self.dt)
-
+            #
             # numpy_states = np.array(new_states)
             # numpy_controls = np.array(new_controls)
             # durations = np.array(new_durations)

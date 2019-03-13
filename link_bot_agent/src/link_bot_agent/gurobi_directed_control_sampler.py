@@ -11,17 +11,18 @@ class GurobiDirectedControlSampler(MyDirectedControlSampler):
         self.gurobi_solver = gurobi_solver
 
     def sampleTo(self, sampler, control, state, target):
-        o = np.ndarray((self.si.getStateDimension(), 1))
-        og = np.ndarray((self.si.getStateDimension(), 1))
-        o[0, 0] = state[0]
-        o[1, 0] = state[1]
-        og[0, 0] = target[0]
-        og[1, 0] = target[1]
+        M = self.si.getStateDimension()
+        L = self.si.getControlSpace().getDimension()
+        o = np.ndarray((M, 1))
+        og = np.ndarray((M, 1))
+        for i in range(M):
+            o[i, 0] = state[i]
+            og[i, 0] = target[i]
         u, o_next = self.gurobi_solver.act(o, og)
-        control[0] = u[0, 0, 0]
-        control[1] = u[0, 0, 1]
-        target[0] = o_next[0, 0]
-        target[1] = o_next[1, 0]
+        for i in range(L):
+            control[i] = u[0, 0, i]
+        for i in range(M):
+            target[i] = o_next[i, 0]
         duration_steps = 1
 
         GurobiDirectedControlSampler.states_sampled_at.append(state)

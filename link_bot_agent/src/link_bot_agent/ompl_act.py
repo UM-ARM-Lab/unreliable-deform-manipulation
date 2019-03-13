@@ -60,7 +60,7 @@ class OMPLAct:
             goal[i] = self.o_g[i, 0].astype(np.float64)
 
         self.ss.clear()
-        self.ss.setStartAndGoalStates(start, goal, 0.01)
+        self.ss.setStartAndGoalStates(start, goal, 0.1)
         solved = self.ss.solve(60.0)
         if solved:
             self.ss.simplifySolution()

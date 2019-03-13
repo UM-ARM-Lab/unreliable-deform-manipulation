@@ -150,7 +150,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("checkpoint", help="load this saved model file")
     parser.add_argument("--model-name", '-m', default="myfirst")
-    parser.add_argument("--seed", '-s', type=int, default=0)
+    parser.add_argument("--seed", '-s', type=int, default=2)
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--pause", action='store_true')
     parser.add_argument("--plot-plan", action='store_true')
