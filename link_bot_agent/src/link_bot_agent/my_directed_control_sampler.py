@@ -30,7 +30,7 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
         return oc.DirectedControlSamplerAllocator(partial)
 
     @classmethod
-    def plot(cls, start, goal, path):
+    def plot_2d(cls, start, goal, path):
         sampled_points = np.ndarray((len(cls.states_sampled_at), 2))
         for i, (s, p) in enumerate(zip(sampled_points, cls.states_sampled_at)):
             s[0] = p[0]
@@ -44,4 +44,12 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
         plt.xlim([-5, 5])
         plt.ylim([-5, 5])
         plt.legend()
+        plt.show()
+
+    @classmethod
+    def plot_controls(cls, controls):
+        plt.scatter(controls[:, 0, 0], controls[:, 0, 1])
+        plt.xlabel("u0")
+        plt.ylabel("u1")
+        plt.title("control inputs")
         plt.show()

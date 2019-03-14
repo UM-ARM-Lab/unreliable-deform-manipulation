@@ -60,7 +60,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
     max_v = 1
     min_true_costs = []
-    T = 100
+    T = 5
 
     try:
         data = []

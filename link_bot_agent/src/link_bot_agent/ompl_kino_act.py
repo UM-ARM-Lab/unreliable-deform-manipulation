@@ -22,18 +22,13 @@ class OMPLAct:
         self.latent_space.setBounds(-10, 10)
 
         self.control_space = oc.RealVectorControlSpace(self.latent_space, self.L)
-        # The OMPL control space will be direction and magnitude, not vx, vy directly
-        # becahse otherwise we cannot constrain the velocity correctly
-        self.control_bounds = ob.RealVectorBounds(2)
 
         self.ss = oc.SimpleSetup(self.control_space)
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
 
-        # self.ss.setStatePropagator(oc.StatePropagatorFn(self.dumb_propagate))
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
 
         self.si = self.ss.getSpaceInformation()
-        self.si.setMinMaxControlDuration(1, 50)
         self.si.setPropagationStepSize(self.linear_tf_model.dt)
 
         # self.MyDirectedControlSampler = LQRDirectedControlSampler
@@ -58,35 +53,24 @@ class OMPLAct:
         return self.latent_space.satisfiesBounds(state)
 
     def propagate(self, start, control, duration, state):
-        _, B, C, _ = self.linear_tf_model.get_ABCD()
-        u = np.array([control[0], control[1]])
-        o = np.array([start[i] for i in range(self.M)])
-        o_next = o + duration * np.matmul(B, o) + duration * np.matmul(C, u)
-        # modify to do the propagation
-        for i in range(self.M):
-            state[i] = o_next[i].astype(np.float64)
-
-    def dumb_propagate(self, start, control, duration, state):
-        print("DUMB PROPAGATE")
-        state[0] = start[0] + duration * control[0]
-        state[1] = start[1] + duration * control[1]
+        # apprently when we used a directed control sampler this function is not used.
+        pass
 
     def act(self, o, verbose=False):
         """ return the action which gives the lowest cost for the predicted next state """
         self.MyDirectedControlSampler.reset()
         start = ob.State(self.latent_space)
-        start[0] = o[0, 0].astype(np.float64)
-        start[1] = o[1, 0].astype(np.float64)
-
         goal = ob.State(self.latent_space)
-        goal[0] = self.og[0, 0].astype(np.float64)
-        goal[1] = self.og[1, 0].astype(np.float64)
+        for i in range(self.M):
+            start[i] = o[i, 0].astype(np.float64)
+            goal[i] = self.og[i, 0].astype(np.float64)
 
         self.ss.clear()
         # the threshold on "cost-to-goal" is interpretable here as euclidian distance
         self.ss.setStartAndGoalStates(start, goal, 0.1)
-        solved = self.ss.solve(0.5)
+        solved = self.ss.solve(30)
         print("Planning time: {}".format(self.ss.getLastPlanComputationTime()))
+        print("Number of nodes sampled Nodes: {}".format(GurobiDirectedControlSampler.num_samples))
         if solved:
             ompl_path = self.ss.getSolutionPath()
 
@@ -102,45 +86,38 @@ class OMPLAct:
                 numpy_controls[i, 0, 1] = control[1]
 
             # SMOOTHING
-            # new_states = list(numpy_states)
-            # new_controls = list(numpy_controls)
-            # new_durations = list(durations)
-            # iter = 0
-            # while iter < 200 and len(new_states) > 2:
-            #     iter += 1
-            #     start_idx = np.random.randint(0, len(new_states))
-            #     shortcut_start = new_states[start_idx]
-            #     end_idx = np.random.uniform(start_idx, len(new_states) - 1)
-            #     end_idx_floor = np.floor(end_idx).astype(np.int32)
-            #     end_idx_ceil = np.ceil(end_idx).astype(np.int32)
-            #     if start_idx == end_idx_floor:
-            #         continue
-            #     floor_point = new_states[end_idx_floor]
-            #     ceil_point = new_states[end_idx_ceil]
-            #     # linearly interpolate in latent space and try to make a shortcut to this point
-            #     shortcut_end = floor_point + (end_idx - end_idx_floor) * (ceil_point - floor_point) / (
-            #             end_idx_ceil - end_idx_floor)
-            #     shortcut_start = np.expand_dims(shortcut_start, axis=1)
-            #     shortcut_end = np.expand_dims(shortcut_end, axis=1)
-            #     new_shortcut_us, new_shortcut_os = self.gurobi_solver.multi_act(shortcut_start, shortcut_end)
-            #     if np.allclose(new_shortcut_os[-1], shortcut_end, rtol=0.02):
-            #         # popping changes the indexes of everything, so we just pop tat start_idx the right number of times
-            #         print("s")
-            #         for i in range(start_idx, end_idx_ceil):
-            #             new_states.pop(start_idx)
-            #             new_controls.pop(start_idx)
-            #             new_durations.pop(start_idx)
-            #         for i, (shortcut_u, shortcut_o) in enumerate(zip(new_shortcut_us, new_shortcut_os)):
-            #             new_states.insert(start_idx + i, np.squeeze(shortcut_o))  # or maybe shortcut_end?
-            #             new_controls.insert(start_idx + i, np.expand_dims(shortcut_u, axis=0))
-            #             new_durations.insert(start_idx + i, self.dt)
-            #
-            # numpy_states = np.array(new_states)
-            # numpy_controls = np.array(new_controls)
-            # durations = np.array(new_durations)
+            new_states = list(numpy_states)
+            new_controls = list(numpy_controls)
+            new_durations = list(durations)
+            iter = 0
+            while iter < 200 and len(new_states) > 2:
+                iter += 1
+                start_idx = np.random.randint(0, len(new_states) - 1)
+                shortcut_start = new_states[start_idx]
+                end_idx = np.random.randint(start_idx + 1, len(new_states))
+                shortcut_end = new_states[end_idx]
+
+                success, new_shortcut_us, new_shortcut_os = self.gurobi_solver.multi_act(shortcut_start, shortcut_end)
+
+                if success:
+                    # popping changes the indexes of everything, so we just pop tat start_idx the right number of times
+                    for i in range(start_idx, end_idx):
+                        new_states.pop(start_idx)
+                        new_controls.pop(start_idx)
+                        new_durations.pop(start_idx)
+                    for i, (shortcut_u, shortcut_o) in enumerate(zip(new_shortcut_us, new_shortcut_os)):
+                        new_states.insert(start_idx + i, np.squeeze(shortcut_o))  # or maybe shortcut_end?
+                        new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
+                        new_durations.insert(start_idx + i, self.dt)
+
+            numpy_states = np.array(new_states)
+            numpy_controls = np.array(new_controls)
+            durations = np.array(new_durations)
 
             if verbose:
-                self.MyDirectedControlSampler.plot(o, self.og, numpy_states)
+                self.MyDirectedControlSampler.plot_controls(numpy_controls)
+                if self.M == 2:
+                    self.MyDirectedControlSampler.plot_2d(o, self.og, numpy_states)
                 lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in range(1, len(numpy_states))]
                 path_length = np.sum(lengths)
                 final_error = np.linalg.norm(numpy_states[-1] - self.og)

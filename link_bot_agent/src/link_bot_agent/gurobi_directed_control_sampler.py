@@ -6,11 +6,19 @@ from link_bot_agent.my_directed_control_sampler import MyDirectedControlSampler
 
 class GurobiDirectedControlSampler(MyDirectedControlSampler):
 
+    num_samples = 0
+
     def __init__(self, si, gurobi_solver):
         super(GurobiDirectedControlSampler, self).__init__(si, "Gurobi")
         self.gurobi_solver = gurobi_solver
 
+    @classmethod
+    def reset(cls):
+        cls.states_sampled_at = []
+        cls.num_samples = 0
+
     def sampleTo(self, sampler, control, state, target):
+        GurobiDirectedControlSampler.num_samples += 1
         M = self.si.getStateDimension()
         L = self.si.getControlSpace().getDimension()
         o = np.ndarray((M, 1))

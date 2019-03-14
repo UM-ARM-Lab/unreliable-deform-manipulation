@@ -85,6 +85,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
                 for i, action in enumerate(actions):
                     joy_msg.axes = [-action[0, 0], action[0, 1]]
+                    print(action)
 
                     joy_pub.publish(joy_msg)
                     step = WorldControlRequest()
