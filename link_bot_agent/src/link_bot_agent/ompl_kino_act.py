@@ -67,7 +67,8 @@ class OMPLAct:
 
         self.ss.clear()
         # the threshold on "cost-to-goal" is interpretable here as euclidian distance
-        self.ss.setStartAndGoalStates(start, goal, 0.1)
+        epsilon = 0.1
+        self.ss.setStartAndGoalStates(start, goal, 0.4 * epsilon)
         solved = self.ss.solve(30)
         print("Planning time: {}".format(self.ss.getLastPlanComputationTime()))
         print("Number of nodes sampled Nodes: {}".format(GurobiDirectedControlSampler.num_samples))
@@ -90,7 +91,7 @@ class OMPLAct:
             new_controls = list(numpy_controls)
             new_durations = list(durations)
             iter = 0
-            while iter < 200 and len(new_states) > 2:
+            while iter < 10 and len(new_states) > 2:
                 iter += 1
                 start_idx = np.random.randint(0, len(new_states) - 1)
                 shortcut_start = new_states[start_idx]
@@ -109,6 +110,8 @@ class OMPLAct:
                         new_states.insert(start_idx + i, np.squeeze(shortcut_o))  # or maybe shortcut_end?
                         new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
                         new_durations.insert(start_idx + i, self.dt)
+                else:
+                    print("shortcutting failed to progress...")
 
             numpy_states = np.array(new_states)
             numpy_controls = np.array(new_controls)
@@ -116,14 +119,13 @@ class OMPLAct:
 
             if verbose:
                 self.MyDirectedControlSampler.plot_controls(numpy_controls)
-                if self.M == 2:
-                    self.MyDirectedControlSampler.plot_2d(o, self.og, numpy_states)
-                lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in range(1, len(numpy_states))]
-                path_length = np.sum(lengths)
-                final_error = np.linalg.norm(numpy_states[-1] - self.og)
-                duration = np.sum(durations)
-                print("Final Error: {:0.4f}m, Path Length: {:0.4f}m, Steps {}, Duration: {:0.2f}s".format(
-                    final_error, path_length, len(durations), duration))
+                self.MyDirectedControlSampler.plot_2d(o, self.og, numpy_states)
+            lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in range(1, len(numpy_states))]
+            path_length = np.sum(lengths)
+            final_error = np.linalg.norm(numpy_states[-1] - self.og)
+            duration = np.sum(durations)
+            print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
+                final_error, path_length, len(durations), duration))
             return numpy_controls, durations
         else:
             raise RuntimeError("No Solution found from {} to {}".format(start, goal))

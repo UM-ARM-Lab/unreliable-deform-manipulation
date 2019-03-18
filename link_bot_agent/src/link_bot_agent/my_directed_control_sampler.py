@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.decomposition import PCA
 import ompl.util as ou
 from ompl import control as oc
 
@@ -7,6 +8,8 @@ import matplotlib.pyplot as plt
 
 class MyDirectedControlSampler(oc.DirectedControlSampler):
     states_sampled_at = []
+
+    pca_2d = PCA(n_components=2)
 
     def __init__(self, si, name):
         super(MyDirectedControlSampler, self).__init__(si)
@@ -31,11 +34,17 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
 
     @classmethod
     def plot_2d(cls, start, goal, path):
-        sampled_points = np.ndarray((len(cls.states_sampled_at), 2))
+        M = start.shape[0]
+        sampled_points = np.ndarray((len(cls.states_sampled_at), M))
         for i, (s, p) in enumerate(zip(sampled_points, cls.states_sampled_at)):
-            s[0] = p[0]
-            s[1] = p[1]
-        plt.scatter(sampled_points[:, 0], sampled_points[:, 1], s=1)
+            for i in range(M):
+                s[i] = p[i]
+        points_2d = MyDirectedControlSampler.pca_2d.fit_transform(sampled_points)
+        start = MyDirectedControlSampler.pca_2d.transform(start.T).T
+        goal = MyDirectedControlSampler.pca_2d.transform(goal.T).T
+        path = MyDirectedControlSampler.pca_2d.transform(path)
+
+        plt.scatter(points_2d[:, 0], points_2d[:, 1], s=1)
         plt.scatter(start[0, 0], start[1, 0], label='start', s=100, c='blue')
         plt.scatter(goal[0, 0], goal[1, 0], label='goal', s=100, c='green')
         plt.scatter(path[:, 0], path[:, 1], label='path', s=10, c='orange')
@@ -48,7 +57,7 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
 
     @classmethod
     def plot_controls(cls, controls):
-        plt.scatter(controls[:, 0, 0], controls[:, 0, 1])
+        plt.plot(controls[:, 0, 0], controls[:, 0, 1])
         plt.xlabel("u0")
         plt.ylabel("u1")
         plt.title("control inputs")
