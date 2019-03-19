@@ -16,6 +16,8 @@ from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import linear_tf_model
 from sensor_msgs.msg import Joy
 from link_bot_agent import agent, ompl_kino_action_selector, one_step_action_selector, lqr_action_selector
+from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSampler
+from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler
 
 dt = 0.1
 success_dist = 0.1
@@ -59,7 +61,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
     max_v = 1
     min_true_costs = []
-    T = -1
+    T = 50
 
     try:
         data = []
@@ -76,10 +78,14 @@ def common(args, goals, max_steps=1e6, verbose=False):
             if verbose:
                 print("goal: {}".format(np.array2string(goal)))
             og = tf_model.reduce(goal)
-            if args.controller == 'ompl':
-                gurobi_solver = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
+            if args.controller == 'ompl-lqr':
                 lqr_solver = lqr_action_selector.LQRActionSelector(tf_model, max_v)
-                action_selector = ompl_kino_action_selector.OMPLAct(gurobi_solver, lqr_solver, tf_model, og, max_v)
+                action_selector = ompl_kino_action_selector.OMPLAct(lqr_solver, LQRDirectedControlSampler, args.M,
+                                                                    args.L, dt, og, max_v)
+            if args.controller == 'ompl-gurobi':
+                gurobi_solver = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
+                action_selector = ompl_kino_action_selector.OMPLAct(gurobi_solver, GurobiDirectedControlSampler, args.M,
+                                                                    args.L, dt, og, max_v)
             elif args.controller == 'gurobi':
                 action_selector = one_step_action_selector.GurobiAct(tf_model, max_v)
             elif args.controller == 'lqr':
@@ -178,7 +184,7 @@ def main():
     parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
     parser.add_argument("--logdir", '-d', help='data directory to store logged data in')
-    parser.add_argument("--controller", choices=['gurobi', 'lqr', 'ompl'], default='ompl')
+    parser.add_argument("--controller", choices=['gurobi', 'lqr', 'ompl-lqr', 'ompl-gurobi'])
 
     subparsers = parser.add_subparsers()
     test_subparser = subparsers.add_parser("test")

@@ -2,20 +2,17 @@ import numpy as np
 import ompl.util as ou
 from ompl import base as ob
 from ompl import control as oc
-from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler
-from link_bot_agent.random_directed_control_sampler import RandomDirectedControlSampler
-from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSampler
 
 
 class OMPLAct:
 
-    def __init__(self, action_selector, dt, og, max_v):
+    def __init__(self, action_selector, directed_control_sampler, M, L, dt, og, max_v):
         self.action_selector = action_selector
-        self.dt = self.tf_model.dt
-        self.M = self.tf_model.M
-        self.L = self.tf_model.L
-        self.og = og
+        self.directed_control_sampler = directed_control_sampler
         self.dt = dt
+        self.M = M
+        self.L = L
+        self.og = og
         self.max_v = max_v
 
         self.latent_space = ob.RealVectorStateSpace(self.M)
@@ -31,20 +28,13 @@ class OMPLAct:
         self.si = self.ss.getSpaceInformation()
         self.si.setPropagationStepSize(self.dt)
 
-        self.action_selector = action_selector
-        self.si.setDirectedControlSamplerAllocator(LQRDirectedControlSampler.allocator(self.action_selector))
-
-        # self.MyDirectedControlSampler = GurobiDirectedControlSampler
-        # self.si.setDirectedControlSamplerAllocator(GurobiDirectedControlSampler.allocator(self.action_selector))
-
-        # self.MyDirectedControlSampler = RandomDirectedControlSampler
-        # self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator(self.action_selector))
+        self.si.setDirectedControlSamplerAllocator(self.directed_control_sampler.allocator(self.action_selector))
+        self.directed_control_sampler = self.si.allocDirectedControlSampler()
 
         self.planner = oc.RRT(self.si)
         self.planner.setGoalBias(0.5)
         self.ss.setPlanner(self.planner)
 
-        self.directed_control_sampler = self.si.allocDirectedControlSampler(self.action_selector)
 
     def setSeed(self, seed):
         ou.RNG.setSeed(seed)

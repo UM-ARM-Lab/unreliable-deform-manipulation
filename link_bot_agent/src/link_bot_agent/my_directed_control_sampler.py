@@ -19,7 +19,7 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
         self.rng_ = ou.RNG()
 
     def multi_act(self, o, og):
-        self.action_selector.multi_act(o, og)
+        return self.action_selector.multi_act(o, og)
 
     @classmethod
     def reset(cls):
