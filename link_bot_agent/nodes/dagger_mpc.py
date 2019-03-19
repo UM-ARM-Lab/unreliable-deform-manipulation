@@ -7,11 +7,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rospy
 from builtins import input
-from link_bot_agent import gurobi_act
+from src.link_bot_agent import one_step_gurobi_act
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import experiments_util
-from link_bot_notebooks import linear_tf_model
-from link_bot_notebooks import toy_problem_optimization_common as tpo
+from src.link_bot_notebooks import experiments_util
+from src.link_bot_notebooks import linear_tf_model
+from src.link_bot_notebooks import toy_problem_optimization_common as tpo
 from sensor_msgs.msg import Joy
 
 from link_bot.link_bot_agent.src.link_bot_agent.agent import GazeboAgent
@@ -58,7 +58,7 @@ def main():
 
     og = model.reduce(goal)
     max_v = 1
-    action_selector = gurobi_act.GurobiAct(model, og, max_v)
+    action_selector = one_step_gurobi_act.GurobiAct(model, og, max_v)
 
     # generate some goals to train on
     training_goals = []

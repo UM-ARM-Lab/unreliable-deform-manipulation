@@ -13,9 +13,9 @@ import ompl.util as ou
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import linear_tf_model
+from src.link_bot_notebooks import linear_tf_model
 from sensor_msgs.msg import Joy
-from link_bot_agent import agent, ompl_kino_act, gurobi_act, lqr_act
+from src.link_bot_agent import agent, ompl_kino_act, one_step_gurobi_act, lqr_act
 
 dt = 0.1
 success_dist = 0.1
@@ -77,10 +77,10 @@ def common(args, goals, max_steps=1e6, verbose=False):
                 print("goal: {}".format(np.array2string(goal)))
             og = model.reduce(goal)
             if args.controller == 'ompl':
-                gurobi_solver = gurobi_act.GurobiAct(model, max_v)
+                gurobi_solver = one_step_gurobi_act.GurobiAct(model, max_v)
                 action_selector = ompl_kino_act.OMPLAct(gurobi_solver, og, max_v)
             elif args.controller == 'gurobi':
-                action_selector = gurobi_act.GurobiAct(model, max_v)
+                action_selector = one_step_gurobi_act.GurobiAct(model, max_v)
             elif args.controller == 'lqr':
                 action_selector = lqr_act.LQRAct(model, max_v)
 

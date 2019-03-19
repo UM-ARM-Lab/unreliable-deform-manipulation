@@ -10,13 +10,18 @@ class LQRAct:
         self.max_v = max_v
         _, self.state_matrix, self.control_matrix, _ = self.linear_tf_model.get_ABCD()
         R = np.eye(self.linear_tf_model.M)
-        Q = np.eye(self.linear_tf_model.L) * 10
+        Q = np.eye(self.linear_tf_model.L) * 1e-9
         self.K, S, E = control.lqr(self.state_matrix, self.control_matrix, R, Q)
 
     def act(self, o, og):
         """ return the action which gives the lowest cost for the predicted next state """
         u = np.dot(-self.K, o - og)
-        u = u / np.linalg.norm(u) * self.max_v
+        u_norm = np.linalg.norm(u)
+        if u_norm > self.max_v:
+            scaling = self.max_v
+        else:
+            scaling = u_norm
+        u = u * scaling / u_norm
         o_next = self.linear_tf_model.simple_predict(o, u.reshape(2, 1))
         return u.reshape(-1, 1, 2), o_next
 
