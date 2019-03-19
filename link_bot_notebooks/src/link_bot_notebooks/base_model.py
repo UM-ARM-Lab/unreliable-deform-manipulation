@@ -1,14 +1,16 @@
 class BaseModel:
 
-    def __init__(self, N, M, L):
+    def __init__(self, N, M, L, P=0):
         """
         N: dimensionality of the full state
         M: dimensionality in the reduced state
         L: dimensionality in the actions
+        P: dimensionality in the constraints
         """
         self.N = N
         self.M = M
         self.L = L
+        self.P = P
 
     def size(self):
         pass

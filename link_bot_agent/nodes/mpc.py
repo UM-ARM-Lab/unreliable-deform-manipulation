@@ -13,9 +13,9 @@ import ompl.util as ou
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from src.link_bot_notebooks import linear_tf_model
+from link_bot_notebooks import linear_tf_model
 from sensor_msgs.msg import Joy
-from src.link_bot_agent import agent, ompl_kino_act, one_step_gurobi_act, lqr_act
+from link_bot_agent import agent, ompl_kino_act, one_step_gurobi_act, lqr_act
 
 dt = 0.1
 success_dist = 0.1
