@@ -7,9 +7,9 @@ from link_bot_agent.my_directed_control_sampler import MyDirectedControlSampler
 class RandomDirectedControlSampler(MyDirectedControlSampler):
     states_sampled_at = []
 
-    def __init__(self, si, linear_tf_model):
+    def __init__(self, si, tf_model):
         super(RandomDirectedControlSampler, self).__init__(si, "random")
-        self.linear_tf_model = linear_tf_model
+        self.linear_tf_model = tf_model
 
     def sampleTo(self, sampler, control, state, target):
         o = np.ndarray((self.si.getStateDimension(), 1))
@@ -28,14 +28,3 @@ class RandomDirectedControlSampler(MyDirectedControlSampler):
         RandomDirectedControlSampler.states_sampled_at.append(state)
 
         return duration_steps
-
-    @classmethod
-    def alloc(cls, si, linear_tf_model):
-        return cls(si, linear_tf_model)
-
-    @classmethod
-    def allocator(cls, linear_tf_model):
-        def partial(si):
-            return cls.alloc(si, linear_tf_model)
-
-        return oc.DirectedControlSamplerAllocator(partial)

@@ -9,13 +9,13 @@ from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSample
 
 class OMPLAct:
 
-    def __init__(self, gurobi_solver, og, max_v):
-        self.linear_tf_model = gurobi_solver.linear_tf_model
-        self.gurobi_solver = gurobi_solver
-        self.dt = self.linear_tf_model.dt
-        self.M = self.linear_tf_model.M
-        self.L = self.linear_tf_model.L
+    def __init__(self, action_selector, dt, og, max_v):
+        self.action_selector = action_selector
+        self.dt = self.tf_model.dt
+        self.M = self.tf_model.M
+        self.L = self.tf_model.L
         self.og = og
+        self.dt = dt
         self.max_v = max_v
 
         self.latent_space = ob.RealVectorStateSpace(self.M)
@@ -29,20 +29,22 @@ class OMPLAct:
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
 
         self.si = self.ss.getSpaceInformation()
-        self.si.setPropagationStepSize(self.linear_tf_model.dt)
+        self.si.setPropagationStepSize(self.dt)
 
-        # self.MyDirectedControlSampler = LQRDirectedControlSampler
-        # self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.linear_tf_model, max_v))
+        self.action_selector = action_selector
+        self.si.setDirectedControlSamplerAllocator(LQRDirectedControlSampler.allocator(self.action_selector))
 
-        self.MyDirectedControlSampler = GurobiDirectedControlSampler
-        self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.gurobi_solver))
+        # self.MyDirectedControlSampler = GurobiDirectedControlSampler
+        # self.si.setDirectedControlSamplerAllocator(GurobiDirectedControlSampler.allocator(self.action_selector))
 
         # self.MyDirectedControlSampler = RandomDirectedControlSampler
-        # self.si.setDirectedControlSamplerAllocator(self.MyDirectedControlSampler.allocator(self.linear_tf_model))
+        # self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator(self.action_selector))
 
         self.planner = oc.RRT(self.si)
         self.planner.setGoalBias(0.5)
         self.ss.setPlanner(self.planner)
+
+        self.directed_control_sampler = self.si.allocDirectedControlSampler(self.action_selector)
 
     def setSeed(self, seed):
         ou.RNG.setSeed(seed)
@@ -58,7 +60,7 @@ class OMPLAct:
 
     def act(self, o, verbose=False):
         """ return the action which gives the lowest cost for the predicted next state """
-        self.MyDirectedControlSampler.reset()
+        self.directed_control_sampler.reset()
         start = ob.State(self.latent_space)
         goal = ob.State(self.latent_space)
         for i in range(self.M):
@@ -69,9 +71,8 @@ class OMPLAct:
         # the threshold on "cost-to-goal" is interpretable here as euclidian distance
         epsilon = 0.1
         self.ss.setStartAndGoalStates(start, goal, 0.4 * epsilon)
-        solved = self.ss.solve(30)
+        solved = self.ss.solve(10)
         print("Planning time: {}".format(self.ss.getLastPlanComputationTime()))
-        print("Number of nodes sampled Nodes: {}".format(GurobiDirectedControlSampler.num_samples))
         if solved:
             ompl_path = self.ss.getSolutionPath()
 
@@ -95,7 +96,7 @@ class OMPLAct:
                 end_idx = np.random.randint(start_idx + 1, len(new_states))
                 shortcut_end = new_states[end_idx]
 
-                success, new_shortcut_us, new_shortcut_os = self.gurobi_solver.multi_act(shortcut_start, shortcut_end)
+                success, new_shortcut_us, new_shortcut_os = self.directed_control_sampler.multi_act(shortcut_start, shortcut_end)
 
                 if success:
                     # popping changes the indexes of everything, so we just pop tat start_idx the right number of times
@@ -112,8 +113,8 @@ class OMPLAct:
             numpy_controls = np.array(new_controls)
 
             if verbose:
-                self.MyDirectedControlSampler.plot_controls(numpy_controls)
-                self.MyDirectedControlSampler.plot_2d(o, self.og, numpy_states)
+                self.directed_control_sampler.plot_controls(numpy_controls)
+                self.directed_control_sampler.plot_2d(o, self.og, numpy_states)
             lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in range(1, len(numpy_states))]
             path_length = np.sum(lengths)
             final_error = np.linalg.norm(numpy_states[-1] - self.og)

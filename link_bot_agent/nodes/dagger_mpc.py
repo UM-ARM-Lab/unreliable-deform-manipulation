@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rospy
 from builtins import input
-from link_bot_agent import one_step_gurobi_act
+from link_bot_agent import one_step_action_selector
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import experiments_util
 from link_bot_notebooks import linear_tf_model
@@ -58,7 +58,7 @@ def main():
 
     og = model.reduce(goal)
     max_v = 1
-    action_selector = one_step_gurobi_act.GurobiAct(model, og, max_v)
+    action_selector = one_step_action_selector.GurobiAct(model, og, max_v)
 
     # generate some goals to train on
     training_goals = []

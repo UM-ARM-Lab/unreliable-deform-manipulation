@@ -15,7 +15,7 @@ from link_bot_gazebo.msg import LinkBotConfiguration
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import linear_tf_model
 from sensor_msgs.msg import Joy
-from link_bot_agent import agent, ompl_kino_act, one_step_gurobi_act, lqr_act
+from link_bot_agent import agent, ompl_kino_action_selector, one_step_action_selector, lqr_action_selector
 
 dt = 0.1
 success_dist = 0.1
@@ -38,8 +38,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
         logfile = os.path.join(args.logdir, "{}_{}.npy".format("_".join(checkpoint_folders), now))
         print(Fore.CYAN + "Saving new data in {}".format(logfile) + Fore.RESET)
 
-    model = linear_tf_model.LinearTFModel(vars(args), 1, args.N, args.M, args.L, dt, 1)
-    gzagent = agent.GazeboAgent(N=args.N, M=args.M, dt=dt, model=model, gazebo_model_name=args.model_name)
+    tf_model = linear_tf_model.LinearTFModel(vars(args), 1, args.N, args.M, args.L, dt, 1)
+    gzagent = agent.GazeboAgent(N=args.N, M=args.M, dt=dt, model=tf_model, gazebo_model_name=args.model_name)
 
     rospy.init_node('MPCAgent')
 
@@ -54,8 +54,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     joy_pub = rospy.Publisher("/joy", Joy, queue_size=10)
 
-    # load our initial model
-    model.load()
+    # load our initial tf_model
+    tf_model.load()
 
     max_v = 1
     min_true_costs = []
@@ -75,14 +75,15 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
             if verbose:
                 print("goal: {}".format(np.array2string(goal)))
-            og = model.reduce(goal)
+            og = tf_model.reduce(goal)
             if args.controller == 'ompl':
-                gurobi_solver = one_step_gurobi_act.GurobiAct(model, max_v)
-                action_selector = ompl_kino_act.OMPLAct(gurobi_solver, og, max_v)
+                gurobi_solver = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
+                lqr_solver = lqr_action_selector.LQRActionSelector(tf_model, max_v)
+                action_selector = ompl_kino_action_selector.OMPLAct(gurobi_solver, lqr_solver, tf_model, og, max_v)
             elif args.controller == 'gurobi':
-                action_selector = one_step_gurobi_act.GurobiAct(model, max_v)
+                action_selector = one_step_action_selector.GurobiAct(tf_model, max_v)
             elif args.controller == 'lqr':
-                action_selector = lqr_act.LQRAct(model, max_v)
+                action_selector = lqr_action_selector.LQRActionSelector(tf_model, max_v)
 
             min_true_cost = 1e9
             step_idx = 0
@@ -91,7 +92,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
             time = 0
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
-                o = model.reduce(s)
+                o = tf_model.reduce(s)
                 actions, _ = action_selector.act(o, verbose)
                 train_s = agent.get_time_state_action(gzagent.get_link_state, time, actions[0, 0, 0], actions[0, 0, 1])
                 traj.append(train_s)

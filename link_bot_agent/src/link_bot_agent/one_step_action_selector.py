@@ -1,11 +1,13 @@
 import numpy as np
 
 import gurobipy as gurobi
+from link_bot_agent import action_selector
 
 
-class OneStepGurobiAct:
+class OneStepGurobiAct(action_selector.ActionSelector):
 
     def __init__(self, tf_model, max_v):
+        super(OneStepGurobiAct, self).__init__()
         self.tf_model = tf_model
         self.max_v = max_v
         self.gurobi_model = gurobi.Model("model")
@@ -27,27 +29,3 @@ class OneStepGurobiAct:
         numpy_u = np.array([v.x for v in self.gurobi_model.getVars()])
         o_next = self.tf_model.simple_predict(o, numpy_u.reshape(2, 1))
         return numpy_u.reshape(1, 1, 2), o_next
-
-    def multi_act(self, o, og):
-        """ return the action which gives the lowest cost for the predicted next state """
-        o = o.reshape(-1, 1)
-        og = og.reshape(-1, 1)
-        us = []
-        os = [o]
-        for _ in range(100):
-            u, o_next = self.act(o, og)
-            if np.linalg.norm(u) < 1e-3:
-                return False, None, None
-
-            if np.allclose(o, o_next, rtol=0.01):
-                break
-
-            us.append(u)
-            os.append(o_next)
-
-            o = o_next
-
-        return True, np.array(us), np.array(os)
-
-    def __repr__(self):
-        return "max_v: {}".format(self.max_v)
