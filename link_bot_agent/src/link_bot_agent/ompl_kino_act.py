@@ -76,20 +76,17 @@ class OMPLAct:
             ompl_path = self.ss.getSolutionPath()
 
             numpy_controls = np.ndarray((ompl_path.getControlCount(), 1, self.L))
-            durations = np.ndarray(ompl_path.getControlCount())
             numpy_states = np.ndarray((ompl_path.getStateCount(), self.M))
             for i, state in enumerate(ompl_path.getStates()):
                 for j in range(self.M):
                     numpy_states[i, j] = state[j]
             for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
-                durations[i] = duration
                 numpy_controls[i, 0, 0] = control[0]
                 numpy_controls[i, 0, 1] = control[1]
 
             # SMOOTHING
             new_states = list(numpy_states)
             new_controls = list(numpy_controls)
-            new_durations = list(durations)
             iter = 0
             while iter < 10 and len(new_states) > 2:
                 iter += 1
@@ -105,17 +102,14 @@ class OMPLAct:
                     for i in range(start_idx, end_idx):
                         new_states.pop(start_idx)
                         new_controls.pop(start_idx)
-                        new_durations.pop(start_idx)
                     for i, (shortcut_u, shortcut_o) in enumerate(zip(new_shortcut_us, new_shortcut_os)):
                         new_states.insert(start_idx + i, np.squeeze(shortcut_o))  # or maybe shortcut_end?
                         new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
-                        new_durations.insert(start_idx + i, self.dt)
                 else:
                     print("shortcutting failed to progress...")
 
             numpy_states = np.array(new_states)
             numpy_controls = np.array(new_controls)
-            durations = np.array(new_durations)
 
             if verbose:
                 self.MyDirectedControlSampler.plot_controls(numpy_controls)
@@ -123,9 +117,9 @@ class OMPLAct:
             lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in range(1, len(numpy_states))]
             path_length = np.sum(lengths)
             final_error = np.linalg.norm(numpy_states[-1] - self.og)
-            duration = np.sum(durations)
+            duration = self.dt * len(numpy_states)
             print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
-                final_error, path_length, len(durations), duration))
-            return numpy_controls, durations
+                final_error, path_length, len(numpy_states), duration))
+            return numpy_controls, numpy_states
         else:
             raise RuntimeError("No Solution found from {} to {}".format(start, goal))

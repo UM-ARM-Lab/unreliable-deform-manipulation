@@ -9,13 +9,13 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import rospy
+import ompl.util as ou
 from builtins import input
-from link_bot_agent import gurobi_act
 from link_bot_gazebo.msg import LinkBotConfiguration
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import linear_tf_model
 from sensor_msgs.msg import Joy
-from link_bot_agent import agent
+from link_bot_agent import agent, ompl_kino_act, gurobi_act, lqr_act
 
 dt = 0.1
 success_dist = 0.1
@@ -44,6 +44,9 @@ def common(args, goals, max_steps=1e6, verbose=False):
     rospy.init_node('MPCAgent')
 
     np.random.seed(args.seed)
+    ou.RNG.setSeed(args.seed)
+    ou.setLogLevel(ou.LOG_WARN)
+
     joy_msg = Joy()
     joy_msg.axes = [0, 0]
 
@@ -56,6 +59,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
     max_v = 1
     min_true_costs = []
+    T = -1
 
     try:
         data = []
@@ -67,10 +71,19 @@ def common(args, goals, max_steps=1e6, verbose=False):
             config.tail_pose.theta = np.random.uniform(-np.pi, np.pi)
             config.joint_angles_rad = np.random.uniform(-np.pi, np.pi, size=2)
             config_pub.publish(config)
+            timemod.sleep(0.1)
+
             if verbose:
                 print("goal: {}".format(np.array2string(goal)))
             og = model.reduce(goal)
-            action_selector = gurobi_act.GurobiAct(model, max_v)
+            if args.controller == 'ompl':
+                gurobi_solver = gurobi_act.GurobiAct(model, max_v)
+                action_selector = ompl_kino_act.OMPLAct(gurobi_solver, og, max_v)
+            elif args.controller == 'gurobi':
+                action_selector = gurobi_act.GurobiAct(model, max_v)
+            elif args.controller == 'lqr':
+                action_selector = lqr_act.LQRAct(model, max_v)
+
             min_true_cost = 1e9
             step_idx = 0
             done = False
@@ -79,13 +92,14 @@ def common(args, goals, max_steps=1e6, verbose=False):
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
                 o = model.reduce(s)
-                actions, o_next = action_selector.act(o, og)
+                actions, _ = action_selector.act(o, verbose)
                 train_s = agent.get_time_state_action(gzagent.get_link_state, time, actions[0, 0, 0], actions[0, 0, 1])
                 traj.append(train_s)
 
                 for i, action in enumerate(actions):
+                    if i >= T > 0:
+                        break
                     joy_msg.axes = [-action[0, 0], action[0, 1]]
-                    print(action)
 
                     joy_pub.publish(joy_msg)
                     step = WorldControlRequest()
@@ -93,6 +107,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     world_control.call(step)  # this will block until stepping is complete
 
                     s_next = np.array(agent.get_state(gzagent.get_link_state)).reshape(1, args.N)
+                    # print(s_next, goal)
                     true_cost = gzagent.state_cost(s_next, goal)
 
                     if args.pause:
@@ -100,6 +115,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
                     min_true_cost = min(min_true_cost, true_cost)
                     if true_cost < success_dist:
+                        done = True
                         if verbose:
                             print("Success!")
                     step_idx += 1
@@ -107,6 +123,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
                 if done:
                     break
+
             min_true_costs.append(min_true_cost)
             data.append(traj)
             if args.logdir:
@@ -160,6 +177,7 @@ def main():
     parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
     parser.add_argument("--logdir", '-d', help='data directory to store logged data in')
+    parser.add_argument("--controller", choices=['gurobi', 'lqr', 'ompl'], default='ompl')
 
     subparsers = parser.add_subparsers()
     test_subparser = subparsers.add_parser("test")

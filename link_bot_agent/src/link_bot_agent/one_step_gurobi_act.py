@@ -1,8 +1,9 @@
-import gurobipy as gurobi
 import numpy as np
 
+import gurobipy as gurobi
 
-class GurobiAct:
+
+class OneStepGurobiAct:
 
     def __init__(self, linear_tf_model, max_v):
         self.linear_tf_model = linear_tf_model
