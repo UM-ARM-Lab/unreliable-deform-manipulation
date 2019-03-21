@@ -17,17 +17,19 @@ class ActionSelector(object):
         og = og.reshape(-1, 1)
         us = []
         os = [o]
+        errors = []
         for _ in range(100):
             u, o_next = self.act(o, og)
             if np.linalg.norm(u) < 1e-3:
                 return False, None, None
 
-            if np.allclose(o, o_next, rtol=0.01):
-                break
-
             us.append(u)
             os.append(o_next)
 
+            error = np.linalg.norm(o - og)
+            errors.append(error)
+            if error < 0.05:
+                return True, np.array(us), np.array(os)
             o = o_next
 
-        return True, np.array(us), np.array(os)
+        return False, None, None

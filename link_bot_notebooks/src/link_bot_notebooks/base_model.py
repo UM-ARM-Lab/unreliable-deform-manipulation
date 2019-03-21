@@ -27,7 +27,7 @@ class BaseModel:
     def save(self, outfile):
         pass
 
-    def load(self, infile):
+    def load(self):
         pass
 
     def predict_from_s(self, s, u):

@@ -12,9 +12,6 @@ from link_bot_notebooks import base_model
 from link_bot_notebooks import toy_problem_optimization_common as tpo
 from tensorflow.python import debug as tf_debug
 
-true_fake_B = np.array([[0.1, 0.2], [0.3, 0.4]], dtype=np.float32)
-true_fake_C = np.array([[2, 1], [0, 3]], dtype=np.float32)
-
 
 class LinearTFModel(base_model.BaseModel):
 

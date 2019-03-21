@@ -48,6 +48,7 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
         goal = MyDirectedControlSampler.pca_2d.transform(goal.T).T
         path = MyDirectedControlSampler.pca_2d.transform(path)
 
+        plt.figure()
         plt.scatter(points_2d[:, 0], points_2d[:, 1], s=1)
         plt.scatter(start[0, 0], start[1, 0], label='start', s=100, c='blue')
         plt.scatter(goal[0, 0], goal[1, 0], label='goal', s=100, c='green')
@@ -57,12 +58,11 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
         plt.xlim([-5, 5])
         plt.ylim([-5, 5])
         plt.legend()
-        plt.show()
 
     @classmethod
     def plot_controls(cls, controls):
+        plt.figure()
         plt.plot(controls[:, 0, 0], controls[:, 0, 1])
         plt.xlabel("u0")
         plt.ylabel("u1")
         plt.title("control inputs")
-        plt.show()

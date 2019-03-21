@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import ompl.util as ou
 from ompl import base as ob
 from ompl import control as oc
@@ -27,14 +28,14 @@ class OMPLAct:
 
         self.si = self.ss.getSpaceInformation()
         self.si.setPropagationStepSize(self.dt)
+        self.si.setMinMaxControlDuration(1, 10)
 
         self.si.setDirectedControlSamplerAllocator(self.directed_control_sampler.allocator(self.action_selector))
         self.directed_control_sampler = self.si.allocDirectedControlSampler()
 
         self.planner = oc.RRT(self.si)
-        self.planner.setGoalBias(0.5)
+        # self.planner.setGoalBias(0.95)
         self.ss.setPlanner(self.planner)
-
 
     def setSeed(self, seed):
         ou.RNG.setSeed(seed)
@@ -45,8 +46,8 @@ class OMPLAct:
         return self.latent_space.satisfiesBounds(state)
 
     def propagate(self, start, control, duration, state):
-        # apprently when we used a directed control sampler this function is not used.
-        pass
+        # apparently when we used a directed control sampler this function is not used.
+        raise NotImplementedError("Because we usde custom directed control sampler, we expect propogate is not used")
 
     def act(self, o, verbose=False):
         """ return the action which gives the lowest cost for the predicted next state """
@@ -61,7 +62,7 @@ class OMPLAct:
         # the threshold on "cost-to-goal" is interpretable here as euclidian distance
         epsilon = 0.1
         self.ss.setStartAndGoalStates(start, goal, 0.4 * epsilon)
-        solved = self.ss.solve(10)
+        solved = self.ss.solve(2)
         print("Planning time: {}".format(self.ss.getLastPlanComputationTime()))
         if solved:
             ompl_path = self.ss.getSolutionPath()
@@ -78,15 +79,17 @@ class OMPLAct:
             # SMOOTHING
             new_states = list(numpy_states)
             new_controls = list(numpy_controls)
-            iter = 0
-            while iter < 10 and len(new_states) > 2:
-                iter += 1
+            shortcut_iter = 0
+            shortcut_successes = 0
+            while shortcut_iter < 200 and len(new_states) > 2:
+                shortcut_iter += 1
                 start_idx = np.random.randint(0, len(new_states) - 1)
                 shortcut_start = new_states[start_idx]
                 end_idx = np.random.randint(start_idx + 1, len(new_states))
                 shortcut_end = new_states[end_idx]
 
-                success, new_shortcut_us, new_shortcut_os = self.directed_control_sampler.multi_act(shortcut_start, shortcut_end)
+                success, new_shortcut_us, new_shortcut_os = self.directed_control_sampler.multi_act(shortcut_start,
+                                                                                                    shortcut_end)
 
                 if success:
                     # popping changes the indexes of everything, so we just pop tat start_idx the right number of times
@@ -96,15 +99,16 @@ class OMPLAct:
                     for i, (shortcut_u, shortcut_o) in enumerate(zip(new_shortcut_us, new_shortcut_os)):
                         new_states.insert(start_idx + i, np.squeeze(shortcut_o))  # or maybe shortcut_end?
                         new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
-                else:
-                    print("shortcutting failed to progress...")
+                    shortcut_successes += 1
 
             numpy_states = np.array(new_states)
             numpy_controls = np.array(new_controls)
 
             if verbose:
+                print("{}/{} shortcuts succeeded".format(shortcut_successes, shortcut_iter))
                 self.directed_control_sampler.plot_controls(numpy_controls)
                 self.directed_control_sampler.plot_2d(o, self.og, numpy_states)
+                plt.show()
             lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in range(1, len(numpy_states))]
             path_length = np.sum(lengths)
             final_error = np.linalg.norm(numpy_states[-1] - self.og)

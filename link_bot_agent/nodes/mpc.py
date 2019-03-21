@@ -61,7 +61,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
     max_v = 1
     min_true_costs = []
-    T = 50
+    T = -1
 
     try:
         data = []
@@ -87,7 +87,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
                 action_selector = ompl_kino_action_selector.OMPLAct(gurobi_solver, GurobiDirectedControlSampler, args.M,
                                                                     args.L, dt, og, max_v)
             elif args.controller == 'gurobi':
-                action_selector = one_step_action_selector.GurobiAct(tf_model, max_v)
+                action_selector = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
             elif args.controller == 'lqr':
                 action_selector = lqr_action_selector.LQRActionSelector(tf_model, max_v)
 
@@ -106,6 +106,14 @@ def common(args, goals, max_steps=1e6, verbose=False):
                 for i, action in enumerate(actions):
                     if i >= T > 0:
                         break
+
+                    u_norm = np.linalg.norm(action)
+                    if u_norm > max_v:
+                        scaling = max_v
+                    else:
+                        scaling = u_norm
+                    action = action * scaling / u_norm
+
                     joy_msg.axes = [-action[0, 0], action[0, 1]]
 
                     joy_pub.publish(joy_msg)

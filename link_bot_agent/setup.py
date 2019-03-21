@@ -8,4 +8,4 @@ setup_args = generate_distutils_setup(
     packages=['link_bot_agent'],
     package_dir={'': 'src'})
 
-setup(**setup_args)
+setup(**setup_args, requires=['control', 'tensorflow-gpu', 'colorama', 'numpy'])
