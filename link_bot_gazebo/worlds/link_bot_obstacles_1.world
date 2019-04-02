@@ -13,10 +13,6 @@
             <uri>model://sun</uri>
         </include>
         <include>
-            <uri>model://link_bot_description</uri>
-            <pose>0 0 0.1 0 0 3.141592</pose>
-        </include>
-        <include>
             <uri>model://box</uri>
             <pose>2.5 0 0 0 0 0</pose>
             <name>box1</name>

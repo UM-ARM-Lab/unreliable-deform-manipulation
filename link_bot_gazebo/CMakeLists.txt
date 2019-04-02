@@ -1,12 +1,14 @@
 project(link_bot_gazebo)
 cmake_minimum_required(VERSION 3.5)
 
-find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs geometry_msgs message_generation)
+find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs geometry_msgs message_generation sdf_tools)
 find_package(gazebo REQUIRED)
 
 add_message_files(
         FILES
         LinkBotConfiguration.msg
+        LinkBotAction.msg
+        WriteSDF.msg
 )
 
 add_service_files(
@@ -34,4 +36,9 @@ add_library(stepping_plugin SHARED plugins/stepping_plugin.cpp)
 target_include_directories(stepping_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(stepping_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 add_dependencies(stepping_plugin link_bot_gazebo_generate_messages_cpp)
+
+add_library(collision_map_plugin SHARED plugins/collision_map_plugin.cpp)
+target_include_directories(collision_map_plugin PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(collision_map_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+add_dependencies(collision_map_plugin link_bot_gazebo_generate_messages_cpp)
 

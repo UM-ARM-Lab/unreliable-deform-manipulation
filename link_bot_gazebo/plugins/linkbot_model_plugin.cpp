@@ -1,7 +1,7 @@
 #include "linkbot_model_plugin.h"
 
-#include <functional>
 #include <ignition/math/Vector3.hh>
+#include <memory>
 
 namespace gazebo {
 
@@ -16,12 +16,15 @@ namespace gazebo {
 
         ros_node_ = std::make_unique<ros::NodeHandle>("linkbot_model_plugin");
 
-        auto joy_so = ros::SubscribeOptions::create<sensor_msgs::Joy>("/joy", 1, boost::bind(
-                &LinkBotModelPlugin::OnCmdVel, this, _1), ros::VoidPtr(), &queue_);
-        auto config_so = ros::SubscribeOptions::create<link_bot_gazebo::LinkBotConfiguration>(
-                "/link_bot_configuration", 1, boost::bind(&LinkBotModelPlugin::OnConfiguration, this, _1),
-                ros::VoidPtr(), &queue_);
-        cmd_sub_ = ros_node_->subscribe(joy_so);
+        auto action_bind = boost::bind(&LinkBotModelPlugin::OnAction, this, _1);
+        auto action_so = ros::SubscribeOptions::create<link_bot_gazebo::LinkBotAction>("/link_bot_action", 1,
+                                                                                       action_bind, ros::VoidPtr(),
+                                                                                       &queue_);
+        auto config_bind = boost::bind(&LinkBotModelPlugin::OnConfiguration, this, _1);
+        auto config_so = ros::SubscribeOptions::create<link_bot_gazebo::LinkBotConfiguration>("/link_bot_configuration",
+                                                                                              1, config_bind,
+                                                                                              ros::VoidPtr(), &queue_);
+        cmd_sub_ = ros_node_->subscribe(action_so);
         config_sub_ = ros_node_->subscribe(config_so);
         ros_queue_thread_ = std::thread(std::bind(&LinkBotModelPlugin::QueueThread, this));
 
@@ -43,11 +46,10 @@ namespace gazebo {
             kD_ = sdf->GetElement("kD")->Get<double>();
         }
 
-
-        if (!sdf->HasElement("joy_scale")) {
-            printf("using default joy_scale=%f\n", joy_scale_);
+        if (!sdf->HasElement("action_scale")) {
+            printf("using default action_scale=%f\n", action_scale);
         } else {
-            joy_scale_ = sdf->GetElement("joy_scale")->Get<double>();
+            action_scale = sdf->GetElement("action_scale")->Get<double>();
         }
 
         if (!sdf->HasElement("control_link_name")) {
@@ -59,24 +61,52 @@ namespace gazebo {
         ROS_INFO("kP=%f, kI=%f, kD=%f", kP_, kI_, kD_);
 
         model_ = parent;
-        control_link_ = parent->GetLink(control_link_name_);
+
+        control_link_ = model_->GetLink(control_link_name_);
+        if (not control_link_) {
+            std::cout << "invalid link pointer. Link name " << control_link_name_ << " is not one of:\n";
+            for (auto const& link : model_->GetLinks()) {
+               std::cout << link->GetName() << "\n";
+            }
+        }
+
         updateConnection_ = event::Events::ConnectWorldUpdateBegin(std::bind(&LinkBotModelPlugin::OnUpdate, this));
-        x_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
-        y_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
+        x_vel_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
+        y_vel_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
     }
 
     void LinkBotModelPlugin::OnUpdate() {
-        auto const current_linear_vel = control_link_->WorldLinearVel();
-        auto const error = current_linear_vel - target_linear_vel_;
-        ignition::math::Vector3d force;
-        force.X(x_pid_.Update(error.X(), 0.001));
-        force.Y(y_pid_.Update(error.Y(), 0.001));
-        control_link_->AddForce(force);
+        if (use_force_) {
+            control_link_->AddForce(target_force_);
+        } else {
+            auto const current_linear_vel = control_link_->WorldLinearVel();
+            auto const error = current_linear_vel - target_linear_vel_;
+            ignition::math::Vector3d force{};
+            force.X(x_vel_pid_.Update(error.X(), 0.001));
+            force.Y(y_vel_pid_.Update(error.Y(), 0.001));
+            control_link_->AddForce(force);
+        }
     }
 
-    void LinkBotModelPlugin::OnCmdVel(sensor_msgs::JoyConstPtr msg) {
-        target_linear_vel_.X(-msg->axes[0] * joy_scale_);
-        target_linear_vel_.Y(msg->axes[1] * joy_scale_);
+    void LinkBotModelPlugin::OnAction(link_bot_gazebo::LinkBotActionConstPtr msg) {
+        control_link_name_ = msg->control_link_name;
+        control_link_ = model_->GetLink(control_link_name_);
+        if (not control_link_) {
+            std::cout << "invalid link pointer. Link name " << control_link_name_ << " is not one of:\n";
+            for (auto const link : model_->GetLinks()) {
+                std::cout << link->GetName() << "\n";
+            }
+            return;
+        }
+        use_force_ = msg->use_force;
+        if (msg->use_force) {
+            target_force_.X(msg->wrench.force.x * action_scale);
+            target_force_.Y(msg->wrench.force.y * action_scale);
+        }
+        else {
+            target_linear_vel_.X(msg->twist.linear.x * action_scale);
+            target_linear_vel_.Y(msg->twist.linear.y * action_scale);
+        }
     }
 
     void LinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurationConstPtr _msg) {
@@ -87,7 +117,7 @@ namespace gazebo {
             return;
         }
 
-        ignition::math::Pose3d pose;
+        ignition::math::Pose3d pose{};
         pose.Pos().X(_msg->tail_pose.x);
         pose.Pos().Y(_msg->tail_pose.y);
         pose.Pos().Z(0.1);

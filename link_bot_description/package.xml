@@ -13,9 +13,4 @@
   <run_depend>xacro</run_depend>
   <run_depend>robot_state_publisher</run_depend>
   <run_depend>joint_state_publisher</run_depend>
-
-  <export>
-    <gazebo_ros gazebo_model_path="${prefix}/urdf"/>
-    <gazebo_ros gazebo_media_path="${prefix}/urdf"/>
-  </export>
 </package>

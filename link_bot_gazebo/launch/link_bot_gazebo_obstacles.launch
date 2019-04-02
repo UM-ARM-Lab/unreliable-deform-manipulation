@@ -1,6 +1,0 @@
-<launch>
-  <include file="$(find gazebo_ros)/launch/empty_world.launch">
-    <arg name="world_name" value="$(find link_bot_gazebo)/worlds/link_bot_obstacles_1.world"/>
-    <arg name="verbose" default="true"/>
-  </include>
-</launch>

@@ -26,6 +26,13 @@ def get_time_state_action_collision(get_link_state, time, head_vx, head_vy, in_c
     return state
 
 
+def get_time_state_action_rope(get_link_state, time, forces):
+    state = get_state(get_link_state)
+    state.insert(0, time)
+    state.extend(forces)
+    return state
+
+
 def get_time_state_action(get_link_state, time, head_vx, head_vy):
     state = get_state(get_link_state)
     state.insert(0, time)

@@ -7,14 +7,13 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <build_depend>roscpp</build_depend>
-  <build_depend>sensor_msgs</build_depend>
-  <build_depend>gazebo_ros</build_depend>
+  <depend>roscpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>gazebo_ros</depend>
+  <depend>sdf_tools</depend>
+
   <build_depend>message_generation</build_depend>
 
-  <exec_depend>roscpp</exec_depend>
-  <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>gazebo_ros</exec_depend>
   <exec_depend>link_bot_description</exec_depend>
   <exec_depend>message_runtime</exec_depend>
 </package>

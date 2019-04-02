@@ -12,11 +12,6 @@
         <include>
             <uri>model://sun</uri>
         </include>
-        <include>
-            <uri>model://link_bot_description</uri>
-            <name>link_bot</name>
-            <pose>5 5 0.1 0 0 0</pose>
-        </include>
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
     </world>
 </sdf>

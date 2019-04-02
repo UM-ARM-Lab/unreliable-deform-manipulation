@@ -89,17 +89,19 @@ class LinearConstraintModel(base_model.BaseModel):
         R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-6
         R_k_init[0, 0] = 1
         R_k_init[1, 1] = 1
-        B_init = np.random.randn(M, M).astype(np.float32) * 1e-6
-        C_init = np.random.randn(M, L).astype(np.float32) * 1e-6
-        np.fill_diagonal(C_init, 1)
+        A_init = np.random.randn(M, M).astype(np.float32) * 1e-6
+        B_init = np.random.randn(M, L).astype(np.float32) * 1e-6
+        np.fill_diagonal(B_init, 1)
 
         self.R_d = tf.get_variable("R_d", initializer=R_d_init)
+        self.A_d = tf.get_variable("A_d", initializer=A_init)
         self.B_d = tf.get_variable("B_d", initializer=B_init)
-        self.C_d = tf.get_variable("C_d", initializer=C_init)
 
         self.R_k = tf.get_variable("R_k", initializer=R_k_init)
+        self.A_k = tf.get_variable("A_k", initializer=A_init)
         self.B_k = tf.get_variable("B_k", initializer=B_init)
-        self.C_k = tf.get_variable("C_k", initializer=C_init)
+
+        self.threshold_k = tf.get_variable("threshold_k", initializer=1.0)
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.get_variable("D", initializer=np.eye(self.M, dtype=np.float32), trainable=False)
@@ -112,26 +114,26 @@ class LinearConstraintModel(base_model.BaseModel):
         hat_o_k_next = [self.hat_o_k[:, 0, :]]
 
         for i in range(1, self.n_steps + 1):
-            Bdod = tf.einsum('mp,bp->bm', self.dt * self.B_d, hat_o_d_next[i - 1], name='B_d_o_d')
-            Cdu = tf.einsum('ml,bl->bm', self.dt * self.C_d, self.u[:, i - 1], name='C_d_u')
-            hat_o_d_next.append(hat_o_d_next[i - 1] + Bdod + Cdu)
-            Bkok = tf.einsum('mp,bp->bm', self.dt * self.B_k, hat_o_k_next[i - 1], name='B_k_o_k')
-            Cku = tf.einsum('ml,bl->bm', self.dt * self.C_k, self.u[:, i - 1], name='C_k_u')
-            hat_o_k_next.append(hat_o_k_next[i - 1] + Bkok + Cku)
+            Adod = tf.einsum('mp,bp->bm', self.dt * self.A_d, hat_o_d_next[i - 1], name='A_d_o_d')
+            Bdu = tf.einsum('ml,bl->bm', self.dt * self.B_d, self.u[:, i - 1], name='B_d_u')
+            hat_o_d_next.append(hat_o_d_next[i - 1] + Adod + Bdu)
+            Akok = tf.einsum('mp,bp->bm', self.dt * self.A_k, hat_o_k_next[i - 1], name='A_k_o_k')
+            Bku = tf.einsum('ml,bl->bm', self.dt * self.B_k, self.u[:, i - 1], name='B_k_u')
+            hat_o_k_next.append(hat_o_k_next[i - 1] + Akok + Bku)
 
         self.hat_o_d_next = tf.transpose(tf.stack(hat_o_d_next), [1, 0, 2], name='hat_o_d_next')
         self.hat_o_k_next = tf.transpose(tf.stack(hat_o_k_next), [1, 0, 2], name='hat_o_k_next')
 
         self.d_to_goal = self.o_d_goal - self.hat_o_d_next
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal)
-        self.hat_k = sdf(self.placeholder_sdf, self.placeholder_sdf_gradient, self.hat_o_k_next, self.P, self.Q)
+        self.hat_k = sdf(self.placeholder_sdf, self.placeholder_sdf_gradient, self.hat_o_k_next, self.P, self.Q) < self.threshold_k
 
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
-            with tf.name_scope("latent_dynamics_o"):
-                state_prediction_error_in_o = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
-                self.state_prediction_loss_in_o = tf.reduce_mean(state_prediction_error_in_o,
-                                                                 name='state_prediction_loss_in_o')
+            with tf.name_scope("latent_dynamics_d"):
+                state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
+                self.state_prediction_loss_in_d = tf.reduce_mean(state_prediction_error_in_d,
+                                                                 name='state_prediction_loss_in_d')
                 self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_label,
                                                                          predictions=self.hat_c,
                                                                          scope='cost_prediction_loss')
@@ -144,11 +146,11 @@ class LinearConstraintModel(base_model.BaseModel):
                                                                                scope='constraint_prediction_loss')
 
             self.flat_weights = tf.concat(
-                (tf.reshape(self.R_d, [-1]), tf.reshape(self.B_d, [-1]), tf.reshape(self.C_d, [-1])), axis=0)
+                (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(self.flat_weights) * self.beta
 
             self.loss = tf.add_n(
-                [self.state_prediction_loss_in_o, self.state_prediction_loss_in_k, self.cost_prediction_loss,
+                [self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
                  self.constraint_prediction_loss, self.regularization])
 
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
@@ -164,7 +166,7 @@ class LinearConstraintModel(base_model.BaseModel):
                     else:
                         print("Warning... there is no gradient of the loss with respect to {}".format(var.name))
 
-            tf.summary.scalar("state_prediction_loss_in_o", self.state_prediction_loss_in_o)
+            tf.summary.scalar("state_prediction_loss_in_d", self.state_prediction_loss_in_d)
             tf.summary.scalar("cost_prediction_loss", self.cost_prediction_loss)
             tf.summary.scalar("regularization_loss", self.regularization)
             tf.summary.scalar("loss", self.loss)
@@ -205,11 +207,12 @@ class LinearConstraintModel(base_model.BaseModel):
             writer.add_graph(self.sess.graph)
 
         try:
-            s, u, c = self.compute_cost_label(train_x, goal)
+            s, u, c, k = self.compute_cost_label_and_seperate_data(train_x, goal)
             feed_dict = {self.s: s,
                          self.u: u,
                          self.s_goal: goal,
                          self.c_label: c,
+                         self.k_label: k,
                          self.placeholder_sdf: numpy_sdf,
                          self.placeholder_sdf_gradient: numpy_sdf_gradient}
             ops = [self.global_step, self.summaries, self.loss, self.opt]
@@ -229,7 +232,7 @@ class LinearConstraintModel(base_model.BaseModel):
             interrupted = True
             pass
         finally:
-            ops = [self.R_d, self.B_d, self.C_d, self.D]
+            ops = [self.R_d, self.A_d, self.B_d, self.D]
             A, B, C, D = self.sess.run(ops, feed_dict={})
             if self.args['verbose']:
                 print("Loss: {}".format(loss))
@@ -241,23 +244,33 @@ class LinearConstraintModel(base_model.BaseModel):
         return interrupted
 
     def evaluate(self, eval_x, goal, display=True):
-        s, u, c = self.compute_cost_label(eval_x, goal)
+        s, u, c, k = self.compute_cost_label_and_seperate_data(eval_x, goal)
         feed_dict = {self.s: s,
                      self.u: u,
                      self.s_goal: goal,
-                     self.c_label: c}
-        ops = [self.R_d, self.B_d, self.C_d, self.D, self.cost_prediction_loss, self.state_prediction_loss_in_o,
+                     self.c_label: c,
+                     self.k_label: k,
+                     self.placeholder_sdf: numpy_sdf,
+                     self.placeholder_sdf_gradient: numpy_sdf_gradient}
+        ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k, self.state_prediction_loss_in_d,
+               self.state_prediction_loss_in_k, self.cost_prediction_loss, self.constraint_prediction_loss,
                self.regularization, self.loss]
-        A, B, C, D, c_loss, sp_loss, reg, loss = self.sess.run(ops, feed_dict=feed_dict)
+        R_d, A_d, B_d, D, R_k, A_k, B_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss = self.sess.run(ops,
+                                                                                                       feed_dict=feed_dict)
         if display:
+            print("State Prediction Loss in d: {}".format(spd_loss))
+            print("State Prediction Loss in k: {}".format(spk_loss))
             print("Cost Loss: {}".format(c_loss))
-            print("State Prediction Loss: {}".format(sp_loss))
+            print("Constraint Loss: {}".format(k_loss))
             print("Regularization: {}".format(reg))
             print("Overall Loss: {}".format(loss))
-            print("A:\n{}".format(A))
-            print("B:\n{}".format(B))
-            print("C:\n{}".format(C))
+            print("R_d:\n{}".format(R_d))
+            print("A_d:\n{}".format(A_d))
+            print("B_d:\n{}".format(B_d))
             print("D:\n{}".format(D))
+            print("R_k:\n{}".format(R_k))
+            print("A_k:\n{}".format(A_k))
+            print("B_k:\n{}".format(B_k))
             controllable = self.is_controllable()
             if controllable:
                 controllable_string = Fore.GREEN + "True" + Fore.RESET
@@ -268,19 +281,21 @@ class LinearConstraintModel(base_model.BaseModel):
             # visualize a few sample predictions from the testing data
             self.sess.run([self.hat_o_d_next], feed_dict=feed_dict)
 
-        return A, B, C, D, c_loss, sp_loss, reg, loss
+        return R_d, A_d, B_d, D, R_k, A_k, B_k, c_loss, spd_loss, spk_loss, c_loss, k_loss
 
-    def compute_cost_label(self, x, goal):
+    def compute_cost_label_and_seperate_data(self, x, goal):
         """ x is 3d.
             first axis is the trajectory.
             second axis is the time step
             third axis is the [state|action] data
         """
-        s = x[:, :, 1:self.N + 1]
-        u = x[:, :-1, self.N + 1:]
+        # this ordering is prescribed by the cord in agent.py
+        s = x[:, :, 2:2 + self.N]
+        k = x[:, :, 1].reshape(x.shape[0], x.shape[1], self.Q)
+        u = x[:, :-1, -self.L:]
         # NOTE: Here we compute the label for cost/reward and constraints
         c = np.sum((s[:, :, [0, 1]] - goal[0, [0, 1]]) ** 2, axis=2)
-        return s, u, c
+        return s, u, c, k
 
     def setup(self):
         if self.args['checkpoint']:
@@ -310,10 +325,11 @@ class LinearConstraintModel(base_model.BaseModel):
         feed_dict = {self.hat_o_d: hat_o, self.u: u}
         ops = [self.hat_o_d_next]
         hat_o_next = self.sess.run(ops, feed_dict=feed_dict)[0]
+        return hat_o_next
 
     def simple_predict(self, o, u):
-        A, B, C, D = self.get_ABCD()
-        o_next = o + self.dt * np.dot(B, o) + self.dt * np.dot(C, u)
+        R_d, A_d, B_d, D, R_k, A_k, B_k = self.get_matrices()
+        o_next = o + self.dt * np.dot(B_d, o) + self.dt * np.dot(B_d, u)
         return o_next
 
     def predict_cost(self, o, u, g):
@@ -370,27 +386,27 @@ class LinearConstraintModel(base_model.BaseModel):
 
     def is_controllable(self):
         feed_dict = {}
-        ops = [self.B_d, self.C_d]
+        ops = [self.A_d, self.B_d]
         # Normal people use A and B here but I picked stupid variable names
         state_matrix, control_matrix = self.sess.run(ops, feed_dict=feed_dict)
         controllability_matrix = control.ctrb(state_matrix, control_matrix)
         rank = np.linalg.matrix_rank(controllability_matrix)
         return rank == self.M
 
-    def get_ABCD(self):
+    def get_matrices(self):
         feed_dict = {}
-        ops = [self.R_d, self.B_d, self.C_d, self.D]
+        ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k]
         return self.sess.run(ops, feed_dict=feed_dict)
 
-    def get_A(self):
+    def get_R_d(self):
         feed_dict = {}
         ops = [self.R_d]
-        A = self.sess.run(ops, feed_dict=feed_dict)[0]
-        return A
+        R_d = self.sess.run(ops, feed_dict=feed_dict)[0]
+        return R_d
 
     def __str__(self):
-        A, B, C, D = self.get_ABCD()
-        return "A:\n" + np.array2string(A) + "\n" + \
-               "B:\n" + np.array2string(B) + "\n" + \
-               "C:\n" + np.array2string(C) + "\n" + \
+        R_d, A_d, B_d, D, R_k, A_k, B_k = self.get_matrices()
+        return "R_d:\n" + np.array2string(R_d) + "\n" + \
+               "A_d:\n" + np.array2string(A_d) + "\n" + \
+               "B_d:\n" + np.array2string(B_d) + "\n" + \
                "D:\n" + np.array2string(D) + "\n"

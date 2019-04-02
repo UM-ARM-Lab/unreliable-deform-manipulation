@@ -1,0 +1,11 @@
+<sdf version='1.6'>
+  <model name='rope'>
+    <static>0</static>
+    <plugin name='linkbot_model_plugin' filename='liblinkbot_model_plugin.so'>
+      <kP>600.0</kP>
+      <kI>10.0</kI>
+      <kD>1.0</kD>
+      <action_scale>1</action_scale>
+    </plugin>
+  </model>
+</sdf>
