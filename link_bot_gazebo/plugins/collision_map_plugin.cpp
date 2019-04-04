@@ -139,8 +139,11 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
                                      static_cast<unsigned long>(grid.GetNumYCells()),
                                      static_cast<unsigned long>(grid.GetNumZCells()),
                                      3};
+
+  std::vector<double> resolutions{msg->resolution, msg->resolution, msg->resolution};
   cnpy::npz_save(msg->filename, "sdf", &sdf.GetImmutableRawData()[0], shape, "w");
   cnpy::npz_save(msg->filename, "sdf_gradient", &sdf_gradient_flat[0], gradient_shape, "a");
+  cnpy::npz_save(msg->filename, "sdf_resolution", &resolutions, {3}, "a");
 }
 
 CollisionMapPlugin::~CollisionMapPlugin()

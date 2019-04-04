@@ -12,52 +12,28 @@ from link_bot_notebooks import base_model
 from link_bot_notebooks import toy_problem_optimization_common as tpo
 from tensorflow.python import debug as tf_debug
 
-# TODO: make this a proper input not a global variable
-# assume environment is bounded (-12, 12) in x and y which means we need 24x24
-ROWS = COLS = 24
-numpy_sdf = np.zeros((24, 24))
-numpy_sdf_gradient = np.zeros((24, 24, 2))
-
-
-def point_to_index(xy):
-    pt_float = xy - np.array([[ROWS / 2], [COLS / 2]])
-    return pt_float.astype(np.int32)
-
-
-# hard code the SDF value of anything within [(1,1),(1,2),(2,2),(2,1)] as SDF value = 1
-numpy_sdf[point_to_index(np.array([2, 0]))] = 1
-numpy_sdf_gradient[point_to_index(np.array([2, 0]))] = [0, 0]
-numpy_sdf_gradient[point_to_index(np.array([3, 0]))] = [1, 0]
-numpy_sdf_gradient[point_to_index(np.array([2, 1]))] = [0, 1]
-numpy_sdf_gradient[point_to_index(np.array([1, 0]))] = [-1, 0]
-numpy_sdf_gradient[point_to_index(np.array([2, -1]))] = [0, -1]
-numpy_sdf_gradient[point_to_index(np.array([3, 1]))] = [1 / np.sqrt(2), 1 / np.sqrt(2)]
-numpy_sdf_gradient[point_to_index(np.array([3, -1]))] = [1 / np.sqrt(2), -1 / np.sqrt(2)]
-numpy_sdf_gradient[point_to_index(np.array([1, 1]))] = [-1 / np.sqrt(2), 1 / np.sqrt(2)]
-numpy_sdf_gradient[point_to_index(np.array([1, -1]))] = [-1 / np.sqrt(2), -1 / np.sqrt(2)]
-resolution = np.array([1, 1], dtype=np.float32)
-
 
 @tf.custom_gradient
-def sdf(placeholder_sdf, placeholder_sdf_gradient, point, P, Q):
-    integer_coordinates = tf.cast(tf.divide(point, resolution), dtype=tf.int32)
+def sdf_func(sdf, full_sdf_gradient, resolution, sdf_coordinates, P, Q):
+    integer_coordinates = tf.cast(tf.divide(sdf_coordinates, resolution), dtype=tf.int32)
     integer_coordinates = tf.reshape(integer_coordinates, [-1, P])
     # blindly assume the point is within our grid
-    sdf_value = tf.gather_nd(placeholder_sdf, integer_coordinates, name='index_sdf')
-    sdf_value = tf.reshape(sdf_value, (point.shape[0], point.shape[1], Q))
+    sdf_value = tf.gather_nd(sdf, integer_coordinates, name='index_sdf')
+    sdf_value = tf.reshape(sdf_value, (sdf_coordinates.shape[0], sdf_coordinates.shape[1], Q))
 
     # noinspection PyUnusedLocal
     def __sdf_gradient_func(dy):
-        sdf_gradient = tf.gather_nd(placeholder_sdf_gradient, integer_coordinates, name='index_sdf_gradient')
-        sdf_gradient = tf.reshape(sdf_gradient, (point.shape[0], point.shape[1], P))
-        return None, None, sdf_gradient, None, None
+        sdf_gradient = tf.gather_nd(full_sdf_gradient, integer_coordinates, name='index_sdf_gradient')
+        sdf_gradient = tf.reshape(sdf_gradient, (sdf_coordinates.shape[0], sdf_coordinates.shape[1], P))
+        return None, None, None, sdf_gradient, None, None
 
     return sdf_value, __sdf_gradient_func
 
 
 class LinearConstraintModel(base_model.BaseModel):
 
-    def __init__(self, args, batch_size, N, M, L, P, Q, dt, n_steps, seed=0):
+    def __init__(self, args, numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, batch_size, N, M, L, P, Q, dt,
+                 n_steps, seed=0):
         base_model.BaseModel.__init__(self, N, M, L, P)
 
         self.seed = seed
@@ -74,14 +50,13 @@ class LinearConstraintModel(base_model.BaseModel):
         self.beta = 1e-8
         self.n_steps = n_steps
         self.dt = dt
+        self.sdf_rows, self.sdf_cols = numpy_sdf.shape
 
         self.s = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1, N), name="s")
         self.u = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps, L), name="u")
         self.s_goal = tf.placeholder(tf.float32, shape=(1, N), name="s_goal")
         self.c_label = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1), name="c")
         self.k_label = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1, Q), name="k")
-        self.placeholder_sdf = tf.placeholder(tf.float32, shape=(ROWS, COLS), name="sdf")
-        self.placeholder_sdf_gradient = tf.placeholder(tf.float32, shape=(ROWS, COLS, 2), name="sdf_gradient")
 
         R_d_init = np.random.randn(N, M).astype(np.float32) * 1e-6
         R_d_init[0, 0] = 1
@@ -126,7 +101,8 @@ class LinearConstraintModel(base_model.BaseModel):
 
         self.d_to_goal = self.o_d_goal - self.hat_o_d_next
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal)
-        self.hat_k = sdf(self.placeholder_sdf, self.placeholder_sdf_gradient, self.hat_o_k_next, self.P, self.Q) < self.threshold_k
+        self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.hat_o_k_next, self.P, self.Q)
+        self.hat_k = self.sdfs - self.threshold_k
 
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
@@ -141,9 +117,15 @@ class LinearConstraintModel(base_model.BaseModel):
                 state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
                 self.state_prediction_loss_in_k = tf.reduce_mean(state_prediction_error_in_k,
                                                                  name='state_prediction_loss_in_k')
-                self.constraint_prediction_loss = tf.losses.mean_squared_error(labels=self.k_label,
-                                                                               predictions=self.hat_k,
-                                                                               scope='constraint_prediction_loss')
+                # if the hat_k > 0, then we are predicting no collision
+                # if k_label is = 1, the true label is collision
+                # multiplying these two positive numbers gives a high loss, because our prediction is wrong.
+                # if hat_k>0 and k_label=1 we get high loss,
+                # if hat_k>0 and k_label=-1 we get low loss,
+                # if hat_k<0 and k_label=1 we get high loss,
+                # if hat_k<0 and k_label=-1 we get low loss,
+                self.constraint_prediction_loss = tf.reduce_mean(self.hat_k*self.k_label,
+                                                                 name="constraint_prediction_loss")
 
             self.flat_weights = tf.concat(
                 (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)
@@ -212,9 +194,7 @@ class LinearConstraintModel(base_model.BaseModel):
                          self.u: u,
                          self.s_goal: goal,
                          self.c_label: c,
-                         self.k_label: k,
-                         self.placeholder_sdf: numpy_sdf,
-                         self.placeholder_sdf_gradient: numpy_sdf_gradient}
+                         self.k_label: k}
             ops = [self.global_step, self.summaries, self.loss, self.opt]
             for i in range(epochs):
                 step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
@@ -249,9 +229,7 @@ class LinearConstraintModel(base_model.BaseModel):
                      self.u: u,
                      self.s_goal: goal,
                      self.c_label: c,
-                     self.k_label: k,
-                     self.placeholder_sdf: numpy_sdf,
-                     self.placeholder_sdf_gradient: numpy_sdf_gradient}
+                     self.k_label: k}
         ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k, self.state_prediction_loss_in_d,
                self.state_prediction_loss_in_k, self.cost_prediction_loss, self.constraint_prediction_loss,
                self.regularization, self.loss]
@@ -341,10 +319,7 @@ class LinearConstraintModel(base_model.BaseModel):
         return hat_c_next
 
     def hat_constraint(self, s):
-        feed_dict = {self.s: s,
-                     self.placeholder_sdf: numpy_sdf,
-                     self.placeholder_sdf_gradient: numpy_sdf_gradient,
-                     }
+        feed_dict = {self.s: s}
         ops = [self.hat_o_k]
         hat_constraint = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_constraint
