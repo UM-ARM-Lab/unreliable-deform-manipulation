@@ -127,25 +127,9 @@
             <kD>1.0</kD>
             <action_scale>1</action_scale>
         </plugin>
-        <plugin filename="libgazebo_ros_moveit_planning_scene.so" name="gazebo_ros_moveit_planning_scene">
-            <topicName>/planning_scene</topicName>
-            <sceneName>link_bot_obstacles_1</sceneName>
-            <robotName>linkbot</robotName>
-            <updatePeriod>0.1</updatePeriod>
-        </plugin>
         <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
             <legacyModeNS>false</legacyModeNS>
             <robotNamespace>link_bot</robotNamespace>
-        </plugin>
-        <plugin name="p3d_base_controller" filename="libgazebo_ros_p3d.so">
-            <alwaysOn>true</alwaysOn>
-            <updateRate>50.0</updateRate>
-            <bodyName>head</bodyName>
-            <topicName>odom</topicName>
-            <gaussianNoise>0</gaussianNoise>
-            <frameName>world</frameName>
-            <xyzOffsets>0 0 0</xyzOffsets>
-            <rpyOffsets>0 0 0</rpyOffsets>
         </plugin>
     </gazebo>
 </robot>

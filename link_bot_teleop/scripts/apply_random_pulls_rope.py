@@ -80,10 +80,7 @@ def main():
         traj = []
         for t in range(args.steps + 1):
             # save the state and action data
-            forces = [0] * args.num_links * 2
-            forces[control_link_i*2] = fx
-            forces[control_link_i*2 + 1] = fy
-                traj.append(agent.get_time_state_action_rope(get_link_state, time, forces))
+            traj.append(agent.get_rope_data(get_link_state, args.num_links, control_link_i, fx, fy))
 
             # publish the pull command
             action_msg.control_link_name = control_link_name

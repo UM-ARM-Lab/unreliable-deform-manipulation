@@ -43,5 +43,6 @@
             <name>box5</name>
         </include>
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
+        <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
     </world>
 </sdf>

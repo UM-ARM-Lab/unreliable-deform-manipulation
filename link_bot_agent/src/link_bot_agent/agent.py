@@ -26,11 +26,29 @@ def get_time_state_action_collision(get_link_state, time, head_vx, head_vy, in_c
     return state
 
 
-def get_time_state_action_rope(get_link_state, time, forces):
-    state = get_state(get_link_state)
-    state.insert(0, time)
-    state.extend(forces)
-    return state
+def get_rope_data(get_link_state, num_links, control_link_i, fx, fy):
+    # return value should be 3D array
+    # first dim is position/velocity/force
+    # second dim is link
+    # third dim is x/y
+
+    data = np.ndarray((3, num_links, 2))
+    for link_idx in range(num_links):
+        req = GetLinkStateRequest()
+        req.link_name = "link_{:d}".format(link_idx)
+        response = get_link_state.call(req)
+        data[0, link_idx, 0] = response.link_state.pose.position.x
+        data[0, link_idx, 1] = response.link_state.pose.position.y
+        data[1, link_idx, 0] = response.link_state.twist.linear.x
+        data[1, link_idx, 1] = response.link_state.twist.linear.y
+        if link_idx == control_link_i:
+            data[2, link_idx, 0] = fx
+            data[2, link_idx, 1] = fy
+        else:
+            data[2, link_idx, 0] = 0
+            data[2, link_idx, 1] = 0
+
+    return data
 
 
 def get_time_state_action(get_link_state, time, head_vx, head_vy):
