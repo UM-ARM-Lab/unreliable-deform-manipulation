@@ -5,7 +5,9 @@
 #include <std_msgs/ColorRGBA.h>
 #include <sdf_tools/SDF.h>
 #include <arc_utilities/arc_helpers.hpp>
+#include <experimental/filesystem>
 #include <cnpy/cnpy.h>
+#include <functional>
 #include <chrono>
 
 #include "collision_map_plugin.h"
@@ -43,6 +45,12 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
 
 void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
 {
+  std::experimental::filesystem::path const path(msg->filename);
+  if (not std::experimental::filesystem::exists(path)) {
+    std::cout << "Output path [" << path << "] does not exist\n";
+    return;
+  }
+
   Eigen::Isometry3d origin_transform = Eigen::Isometry3d::Identity();
   origin_transform.translation() = Eigen::Vector3d{msg->center.x - msg->x_width / 2,
                                                    msg->center.y - msg->y_height / 2, 0};
@@ -73,7 +81,7 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
       end.Y(grid_location(1));
       ray->SetPoints(start, end);
       ray->GetIntersection(dist, entityName);
-      if (not entityName.empty() and entityName.find(msg->robot_name) != 0)
+      if (not entityName.empty() and (msg->robot_name.empty() or entityName.find(msg->robot_name) != 0))
       {
         grid.SetValue(x_idx, y_idx, 0, occupied_value);
       }
@@ -95,10 +103,16 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
 
 
   auto const t3 = std::chrono::steady_clock::now();
-  auto const sdf_gradient = sdf.GetFullGradient(true);
+  sdf_tools::SignedDistanceField::GradientFunction gradient_function = [&](const int64_t x_index,
+                                                                           const int64_t y_index,
+                                                                           const int64_t z_index,
+                                                                           const bool enable_edge_gradients = false) {
+    return sdf.GetGradient(x_index, y_index, z_index, enable_edge_gradients);
+  };
+  auto const sdf_gradient = sdf.GetFullGradient(gradient_function, true);
   auto const sdf_gradient_flat = [&]()
   {
-    auto const data = sdf_gradient.GetImmutableRawData();
+    auto const &data = sdf_gradient.GetImmutableRawData();
     std::vector<double> flat;
     for (auto const &d : data)
     {

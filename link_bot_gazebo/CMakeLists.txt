@@ -42,6 +42,6 @@ add_dependencies(stepping_plugin link_bot_gazebo_generate_messages)
 
 add_library(collision_map_plugin SHARED plugins/collision_map_plugin.cpp)
 target_include_directories(collision_map_plugin PUBLIC ${catkin_INCLUDE_DIRS})
-target_link_libraries(collision_map_plugin cnpy::cnpy ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+target_link_libraries(collision_map_plugin cnpy::cnpy ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} stdc++fs)
 add_dependencies(collision_map_plugin link_bot_gazebo_generate_messages)
 
