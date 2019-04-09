@@ -29,7 +29,11 @@ def contacts_callback(contacts):
     global in_contact
     in_contact = False
     for state in contacts.states:
-        if state.collision1_name == "myfirst::head::head_collision" and state.collision2_name != "ground_plane::link::collision":
+        if state.collision1_name == "link_bot::head::head_collision" \
+                and state.collision2_name != "ground_plane::link::collision":
+            in_contact = True
+        if state.collision2_name == "link_bot::head::head_collision" \
+                and state.collision1_name != "ground_plane::link::collision":
             in_contact = True
 
 

@@ -6,7 +6,7 @@ from time import sleep
 
 import numpy as np
 import rospy
-from gazebo_msgs.srv import GetLinkState, GetLinkStateRequest
+from gazebo_msgs.srv import GetLinkState
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_agent import agent
@@ -76,6 +76,9 @@ def main():
             config.joint_angles_rad.append(r() * 0.4)
         config_pub.publish(config)
         time = 0
+
+        # wait for this to take effect
+        sleep(0.5)
 
         traj = []
         for t in range(args.steps + 1):

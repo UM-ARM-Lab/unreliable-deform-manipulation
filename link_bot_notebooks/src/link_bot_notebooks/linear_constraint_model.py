@@ -64,17 +64,18 @@ class LinearConstraintModel(base_model.BaseModel):
         R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-6
         R_k_init[4, 0] = 1
         R_k_init[5, 1] = 1
-        # A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-6
-        # B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-6
-        # A_k_init = np.random.randn(M, M).astype(np.float32) * 1e-6
-        # B_k_init = np.random.randn(M, L).astype(np.float32) * 1e-6
-        # np.fill_diagonal(B_d_init, 1)
-        # np.fill_diagonal(B_k_init, 1)
+        A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-6
+        B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-6
+        A_k_init = np.random.randn(M, M).astype(np.float32) * 1e-6
+        B_k_init = np.random.randn(M, L).astype(np.float32) * 1e-6
+        np.fill_diagonal(B_d_init, 1)
+        np.fill_diagonal(B_k_init, 1)
 
-        A_d_init = np.array([[0.1, 0.2], [0.3, 0.4]]).astype(np.float32)
-        B_d_init = np.array([[2, 1], [0, 3]]).astype(np.float32)
-        A_k_init = np.zeros((M, M)).astype(np.float32) * 1e-6
-        B_k_init = np.zeros((M, L)).astype(np.float32) * 1e-6
+        # Fake linear data
+        # A_d_init = np.array([[0.1, 0.2], [0.3, 0.4]]).astype(np.float32)
+        # B_d_init = np.array([[2, 1], [0, 3]]).astype(np.float32)
+        # A_k_init = np.zeros((M, M)).astype(np.float32) * 1e-6
+        # B_k_init = np.zeros((M, L)).astype(np.float32) * 1e-6
 
         self.R_d = tf.get_variable("R_d", initializer=R_d_init)
         self.A_d = tf.get_variable("A_d", initializer=A_d_init)

@@ -24,8 +24,8 @@ def get_time_state_action_collision(get_link_state, time, head_vx, head_vy, in_c
         state.insert(1, 1)
     else:
         state.insert(1, -1)
-    state.insert(-1, head_vx)
-    state.insert(-1, head_vy)
+    state.append(head_vx)
+    state.append(head_vy)
     return state
 
 
@@ -38,7 +38,7 @@ def get_rope_data(get_link_state, num_links, control_link_i, fx, fy):
     data = np.ndarray((3, num_links, 2))
     for link_idx in range(num_links):
         req = GetLinkStateRequest()
-        req.link_name = "link_{:d}".format(link_idx)
+        req.link_name = "rope::link_{:d}".format(link_idx)
         response = get_link_state.call(req)
         data[0, link_idx, 0] = response.link_state.pose.position.x
         data[0, link_idx, 1] = response.link_state.pose.position.y
@@ -57,8 +57,8 @@ def get_rope_data(get_link_state, num_links, control_link_i, fx, fy):
 def get_time_state_action(get_link_state, time, head_vx, head_vy):
     state = get_state(get_link_state)
     state.insert(0, time)
-    state.insert(-1, head_vx)
-    state.insert(-1, head_vy)
+    state.append(head_vx)
+    state.append(head_vy)
     return state
 
 
@@ -70,7 +70,7 @@ def get_state(get_link_state):
     # get the new states
     for link_name, link_config in links.items():
         req = GetLinkStateRequest()
-        req.link_name = link_name
+        req.link_name = "link_bot::" + link_name
         response = get_link_state.call(req)
         link_config.x = response.link_state.pose.position.x
         link_config.y = response.link_state.pose.position.y
