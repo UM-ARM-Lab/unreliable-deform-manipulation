@@ -6,9 +6,9 @@ from time import sleep
 
 import numpy as np
 import rospy
-from gazebo_msgs.srv import GetLinkState, GetLinkStateRequest
+from gazebo_msgs.srv import GetLinkState
 from gazebo_msgs.msg import ContactsState
-from link_bot_gazebo.msg import LinkBotConfiguration
+from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from sensor_msgs.msg import Joy
 from link_bot_agent import agent
@@ -58,8 +58,8 @@ def main():
 
     joy_msg = Joy()
     joy_msg.axes = [0, 0]
-    joy_pub = rospy.Publisher("/joy", Joy, queue_size=10)
     get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
+    action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
     rospy.Subscriber("/head_contact", ContactsState, contacts_callback)
@@ -75,11 +75,9 @@ def main():
     def r():
         return np.random.uniform(-np.pi, np.pi)
 
-    joy_msg.axes = [0, 0]
-    joy_pub.publish(joy_msg)
-
     data = []
     np.random.seed(args.seed)
+    action_msg = LinkBotAction()
     for p in range(1, args.pulls + 1):
         if args.verbose:
             print('=' * 180)
@@ -96,8 +94,11 @@ def main():
             traj.append(agent.get_time_state_action_collision(get_link_state, time, head_vx, head_vy, in_contact))
 
             # publish the pull command
-            joy_msg.axes = [-head_vx, head_vy]  # stupid xbox controller
-            joy_pub.publish(joy_msg)
+            action_msg.control_link_name = 'head'
+            action_msg.use_force = False
+            action_msg.twist.linear.x = head_vx
+            action_msg.twist.linear.y = head_vy
+            action_pub.publish(action_msg)
 
             # let the simulator run
             step = WorldControlRequest()
@@ -114,10 +115,6 @@ def main():
         if p % args.save_frequency == 0:
             np.save(args.outfile, data)
             print(p, 'saving data...')
-
-    # stop everything
-    joy_msg.axes = [0, 0]
-    joy_pub.publish(joy_msg)
 
 
 if __name__ == '__main__':

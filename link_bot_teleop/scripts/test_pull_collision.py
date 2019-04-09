@@ -97,6 +97,8 @@ def plot(args):
     data = np.load(args.infile)
     data = data.squeeze()
 
+    print(data)
+
     plt.figure()
     plt.title("collision bit")
     plt.plot(data[:, 1])

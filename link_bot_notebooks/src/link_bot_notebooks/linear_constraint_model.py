@@ -114,21 +114,26 @@ class LinearConstraintModel(base_model.BaseModel):
         self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.hat_o_k_next, self.P, self.Q)
         self.hat_k = self.sdfs - self.threshold_k
 
+        # NOTE: we use a mask to set the state prediction loss to 0 when the constraint is violated?
+        # this way we don't penalize our model for failing to predict the dynamics in collision
+        self.constraint_label_mask = tf.squeeze(0.5 - self.k_label * 0.5)
+
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
             with tf.name_scope("latent_dynamics_d"):
-                state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
-                # TODO: could we use a mask to set the state prediction loss to 0 when the constraint is violated?
-                # this way we don't penalize our model for failing to predict the dynamics in collision
-                state_prediction_error_in_d = state_prediction_error_in_d * tf.squeeze(self.k_label)
-                self.state_prediction_loss_in_d = tf.reduce_mean(state_prediction_error_in_d,
+                self.state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
+                self.state_prediction_error_in_d = self.state_prediction_error_in_d * self.constraint_label_mask
+                self.state_prediction_loss_in_d = tf.reduce_mean(self.state_prediction_error_in_d,
                                                                  name='state_prediction_loss_in_d')
-                self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_label,
-                                                                         predictions=self.hat_c,
-                                                                         scope='cost_prediction_loss')
+                self.cost_prediction_error = self.hat_c - self.c_label
+                self.cost_prediction_error = self.cost_prediction_error * self.constraint_label_mask
+                self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
+
             with tf.name_scope("latent_constraints_k"):
-                state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
-                self.state_prediction_loss_in_k = tf.reduce_mean(state_prediction_error_in_k, name='state_prediction_loss_in_k')
+                self.state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
+                self.state_prediction_error_in_k = self.state_prediction_error_in_k * self.constraint_label_mask
+                self.state_prediction_loss_in_k = tf.reduce_mean(self.state_prediction_error_in_k,
+                                                                 name='state_prediction_loss_in_k')
                 # if the hat_k > 0, then we are predicting no collision
                 # if k_label is = 1, the true label is collision
                 # multiplying these two positive numbers gives a high loss, because our prediction is wrong.
@@ -207,6 +212,13 @@ class LinearConstraintModel(base_model.BaseModel):
                          self.s_goal: goal,
                          self.c_label: c,
                          self.k_label: k}
+
+            # Debugging
+            hat_o_d_next, hat_o_k_next, cpe = self.sess.run(
+                [self.hat_o_d_next, self.hat_o_k_next, self.cost_prediction_error], feed_dict=feed_dict)
+            print(cpe)
+            return True
+
             ops = [self.global_step, self.summaries, self.loss, self.opt]
             for i in range(epochs):
                 step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
