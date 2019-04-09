@@ -113,13 +113,12 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
   auto const sdf_gradient_flat = [&]()
   {
     auto const &data = sdf_gradient.GetImmutableRawData();
-    std::vector<double> flat;
+    std::vector<float> flat;
     for (auto const &d : data)
     {
-      for (auto const &component : d)
-      {
-        flat.emplace_back(component);
-      }
+      // only save the x/y currently
+      flat.emplace_back(d[0]);
+      flat.emplace_back(d[1]);
     }
     return flat;
   }();
@@ -133,17 +132,15 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
 
   // save to a file
   std::vector<size_t> shape{static_cast<unsigned long>(grid.GetNumXCells()),
-                            static_cast<unsigned long>(grid.GetNumYCells()),
-                            static_cast<unsigned long>(grid.GetNumZCells())};
+                            static_cast<unsigned long>(grid.GetNumYCells())};
   std::vector<size_t> gradient_shape{static_cast<unsigned long>(grid.GetNumXCells()),
                                      static_cast<unsigned long>(grid.GetNumYCells()),
-                                     static_cast<unsigned long>(grid.GetNumZCells()),
-                                     3};
+                                     2};
 
-  std::vector<double> resolutions{msg->resolution, msg->resolution, msg->resolution};
+  std::vector<float> resolutions{msg->resolution, msg->resolution, msg->resolution};
   cnpy::npz_save(msg->filename, "sdf", &sdf.GetImmutableRawData()[0], shape, "w");
   cnpy::npz_save(msg->filename, "sdf_gradient", &sdf_gradient_flat[0], gradient_shape, "a");
-  cnpy::npz_save(msg->filename, "sdf_resolution", &resolutions, {3}, "a");
+  cnpy::npz_save(msg->filename, "sdf_resolution", &resolutions[0], {2}, "a");
 }
 
 CollisionMapPlugin::~CollisionMapPlugin()

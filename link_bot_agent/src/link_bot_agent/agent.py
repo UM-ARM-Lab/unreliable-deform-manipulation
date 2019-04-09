@@ -20,7 +20,10 @@ class LinkConfig:
 def get_time_state_action_collision(get_link_state, time, head_vx, head_vy, in_contact):
     state = get_state(get_link_state)
     state.insert(0, time)
-    state.insert(1, in_contact)
+    if in_contact:
+        state.insert(1, 1)
+    else:
+        state.insert(1, -1)
     state.insert(-1, head_vx)
     state.insert(-1, head_vy)
     return state

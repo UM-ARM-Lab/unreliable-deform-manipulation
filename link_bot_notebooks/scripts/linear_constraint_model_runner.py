@@ -10,13 +10,15 @@ from link_bot_notebooks import linear_constraint_model as m
 from link_bot_notebooks import experiments_util
 
 
+def load_sdf(filename):
+    npz = np.load(filename)
+    return npz['sdf'], npz['sdf_gradient'], npz['sdf_resolution']
+
+
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
     log_data = np.load(args.dataset)
-    sdf, sdf_gradient, sdf_resolution = np.load(args.sdf).values()
-    sdf = sdf.squeeze().astype(np.float32)
-    sdf_gradient = sdf_gradient.squeeze().astype(np.float32)
-    sdf_resolution = sdf_resolution[:2].astype(np.float32)
+    sdf, sdf_gradient, sdf_resolution = load_sdf(args.sdf)
     x = log_data[:, :, :]
     dt = x[0, 1, 0] - x[0, 0, 0]
     model = m.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, x.shape[0], args.N, args.M, args.L,
@@ -48,10 +50,7 @@ def model_only(args):
 def evaluate(args):
     goal = np.zeros((1, args.N))
     log_data = np.load(args.dataset)
-    sdf, sdf_gradient, sdf_resolution = np.load(args.sdf).values()
-    sdf = sdf.squeeze().astype(np.float32)
-    sdf_gradient = sdf_gradient.squeeze().astype(np.float32)
-    sdf_resolution = sdf_resolution[:2].astype(np.float32)
+    sdf, sdf_gradient, sdf_resolution = load_sdf(args.sdf)
     x = log_data[:, :, :]
     dt = x[0, 1, 0] - x[0, 0, 0]
     model = m.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, x.shape[0], args.N, args.M, args.L,
@@ -77,7 +76,7 @@ def main():
     train_subparser.add_argument("dataset", help="dataset (txt file)")
     train_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=200)
+    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=500)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--print-period", "-p", type=int, default=200)
     train_subparser.add_argument("--save-period", type=int, default=400)

@@ -12,12 +12,6 @@ true_fake_C = np.array([[2, 1], [0, 3]])
 def generate(args):
     data = np.ndarray((args.num_trajectories, args.trajectory_length, 7))
 
-    # True A is expected to be:
-    # [[
-    #
-    #
-    #
-
     for t in range(args.num_trajectories):
         # uniformly randomly sample a starting point, velocity, and direction
         v = np.random.uniform(0, args.maxv)

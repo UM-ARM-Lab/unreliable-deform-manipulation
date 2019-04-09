@@ -62,21 +62,30 @@ class LinearConstraintModel(base_model.BaseModel):
         R_d_init[0, 0] = 1
         R_d_init[1, 1] = 1
         R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-6
-        R_k_init[0, 0] = 1
-        R_k_init[1, 1] = 1
-        A_init = np.random.randn(M, M).astype(np.float32) * 1e-6
-        B_init = np.random.randn(M, L).astype(np.float32) * 1e-6
-        np.fill_diagonal(B_init, 1)
+        R_k_init[4, 0] = 1
+        R_k_init[5, 1] = 1
+        # A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-6
+        # B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-6
+        # A_k_init = np.random.randn(M, M).astype(np.float32) * 1e-6
+        # B_k_init = np.random.randn(M, L).astype(np.float32) * 1e-6
+        # np.fill_diagonal(B_d_init, 1)
+        # np.fill_diagonal(B_k_init, 1)
+
+        A_d_init = np.array([[0.1, 0.2], [0.3, 0.4]]).astype(np.float32)
+        B_d_init = np.array([[2, 1], [0, 3]]).astype(np.float32)
+        A_k_init = np.zeros((M, M)).astype(np.float32) * 1e-6
+        B_k_init = np.zeros((M, L)).astype(np.float32) * 1e-6
 
         self.R_d = tf.get_variable("R_d", initializer=R_d_init)
-        self.A_d = tf.get_variable("A_d", initializer=A_init)
-        self.B_d = tf.get_variable("B_d", initializer=B_init)
+        self.A_d = tf.get_variable("A_d", initializer=A_d_init)
+        self.B_d = tf.get_variable("B_d", initializer=B_d_init)
 
         self.R_k = tf.get_variable("R_k", initializer=R_k_init)
-        self.A_k = tf.get_variable("A_k", initializer=A_init)
-        self.B_k = tf.get_variable("B_k", initializer=B_init)
+        self.A_k = tf.get_variable("A_k", initializer=A_k_init)
+        self.B_k = tf.get_variable("B_k", initializer=B_k_init)
 
-        self.threshold_k = tf.get_variable("threshold_k", initializer=1.0)
+        # self.threshold_k = tf.get_variable("threshold_k", initializer=1.0)
+        self.threshold_k = tf.get_variable("threshold_k", initializer=0.1, trainable=False)
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.get_variable("D", initializer=np.eye(self.M, dtype=np.float32), trainable=False)
@@ -108,6 +117,9 @@ class LinearConstraintModel(base_model.BaseModel):
             # sum of squared errors in latent space at each time step
             with tf.name_scope("latent_dynamics_d"):
                 state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
+                # TODO: could we use a mask to set the state prediction loss to 0 when the constraint is violated?
+                # this way we don't penalize our model for failing to predict the dynamics in collision
+                state_prediction_error_in_d = state_prediction_error_in_d * tf.squeeze(self.k_label)
                 self.state_prediction_loss_in_d = tf.reduce_mean(state_prediction_error_in_d,
                                                                  name='state_prediction_loss_in_d')
                 self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_label,
@@ -115,8 +127,7 @@ class LinearConstraintModel(base_model.BaseModel):
                                                                          scope='cost_prediction_loss')
             with tf.name_scope("latent_constraints_k"):
                 state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
-                self.state_prediction_loss_in_k = tf.reduce_mean(state_prediction_error_in_k,
-                                                                 name='state_prediction_loss_in_k')
+                self.state_prediction_loss_in_k = tf.reduce_mean(state_prediction_error_in_k, name='state_prediction_loss_in_k')
                 # if the hat_k > 0, then we are predicting no collision
                 # if k_label is = 1, the true label is collision
                 # multiplying these two positive numbers gives a high loss, because our prediction is wrong.
@@ -124,7 +135,7 @@ class LinearConstraintModel(base_model.BaseModel):
                 # if hat_k>0 and k_label=-1 we get low loss,
                 # if hat_k<0 and k_label=1 we get high loss,
                 # if hat_k<0 and k_label=-1 we get low loss,
-                self.constraint_prediction_loss = tf.reduce_mean(self.hat_k*self.k_label,
+                self.constraint_prediction_loss = tf.reduce_mean(self.hat_k * self.k_label,
                                                                  name="constraint_prediction_loss")
 
             self.flat_weights = tf.concat(
@@ -230,11 +241,11 @@ class LinearConstraintModel(base_model.BaseModel):
                      self.s_goal: goal,
                      self.c_label: c,
                      self.k_label: k}
-        ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k, self.state_prediction_loss_in_d,
-               self.state_prediction_loss_in_k, self.cost_prediction_loss, self.constraint_prediction_loss,
-               self.regularization, self.loss]
-        R_d, A_d, B_d, D, R_k, A_k, B_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss = self.sess.run(ops,
-                                                                                                       feed_dict=feed_dict)
+        ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k, self.threshold_k,
+               self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
+               self.constraint_prediction_loss, self.regularization, self.loss]
+        R_d, A_d, B_d, D, R_k, A_k, B_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss = self.sess.run(ops,
+                                                                                                                    feed_dict=feed_dict)
         if display:
             print("State Prediction Loss in d: {}".format(spd_loss))
             print("State Prediction Loss in k: {}".format(spk_loss))
@@ -249,6 +260,7 @@ class LinearConstraintModel(base_model.BaseModel):
             print("R_k:\n{}".format(R_k))
             print("A_k:\n{}".format(A_k))
             print("B_k:\n{}".format(B_k))
+            print("threashold_k:\n{}".format(threshold_k))
             controllable = self.is_controllable()
             if controllable:
                 controllable_string = Fore.GREEN + "True" + Fore.RESET
