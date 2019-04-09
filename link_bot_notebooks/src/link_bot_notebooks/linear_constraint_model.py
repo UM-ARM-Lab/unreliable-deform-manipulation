@@ -11,13 +11,20 @@ from colorama import Fore
 from link_bot_notebooks import base_model
 from link_bot_notebooks import toy_problem_optimization_common as tpo
 from tensorflow.python import debug as tf_debug
+import matplotlib.pyplot as plt
 
 
 @tf.custom_gradient
-def sdf_func(sdf, full_sdf_gradient, resolution, sdf_coordinates, P, Q):
+def sdf_func(sdf, full_sdf_gradient, resolution, sdf_origin_coordinate, sdf_coordinates, P, Q):
     integer_coordinates = tf.cast(tf.divide(sdf_coordinates, resolution), dtype=tf.int32)
     integer_coordinates = tf.reshape(integer_coordinates, [-1, P])
+    integer_coordinates = integer_coordinates + sdf_origin_coordinate
     # blindly assume the point is within our grid
+
+    # https://github.com/tensorflow/tensorflow/pull/15857
+    # "on CPU an error will be returned and on GPU 0 value will be filled to the expected positions of the output."
+    # TODO: make this handle out of bounds correctly. I think correctly for us means return large number for SDF
+    # and a gradient towards the origin
     sdf_value = tf.gather_nd(sdf, integer_coordinates, name='index_sdf')
     sdf_value = tf.reshape(sdf_value, (sdf_coordinates.shape[0], sdf_coordinates.shape[1], Q))
 
@@ -25,7 +32,7 @@ def sdf_func(sdf, full_sdf_gradient, resolution, sdf_coordinates, P, Q):
     def __sdf_gradient_func(dy):
         sdf_gradient = tf.gather_nd(full_sdf_gradient, integer_coordinates, name='index_sdf_gradient')
         sdf_gradient = tf.reshape(sdf_gradient, (sdf_coordinates.shape[0], sdf_coordinates.shape[1], P))
-        return None, None, None, sdf_gradient, None, None
+        return None, None, None, None, sdf_gradient, None, None
 
     return sdf_value, __sdf_gradient_func
 
@@ -51,6 +58,7 @@ class LinearConstraintModel(base_model.BaseModel):
         self.n_steps = n_steps
         self.dt = dt
         self.sdf_rows, self.sdf_cols = numpy_sdf.shape
+        self.sdf_origin_coordinate = np.array([self.sdf_rows / 2, self.sdf_cols / 2], dtype=np.int32)
 
         self.s = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1, N), name="s")
         self.u = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps, L), name="u")
@@ -111,7 +119,8 @@ class LinearConstraintModel(base_model.BaseModel):
 
         self.d_to_goal = self.o_d_goal - self.hat_o_d_next
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal)
-        self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.hat_o_k_next, self.P, self.Q)
+        self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.sdf_origin_coordinate,
+                             self.hat_o_k_next, self.P, self.Q)
         self.hat_k = self.sdfs - self.threshold_k
 
         # NOTE: we use a mask to set the state prediction loss to 0 when the constraint is violated?
@@ -122,16 +131,16 @@ class LinearConstraintModel(base_model.BaseModel):
             # sum of squared errors in latent space at each time step
             with tf.name_scope("latent_dynamics_d"):
                 self.state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
-                self.state_prediction_error_in_d = self.state_prediction_error_in_d * self.constraint_label_mask
+                # self.state_prediction_error_in_d = self.state_prediction_error_in_d * self.constraint_label_mask
                 self.state_prediction_loss_in_d = tf.reduce_mean(self.state_prediction_error_in_d,
                                                                  name='state_prediction_loss_in_d')
                 self.cost_prediction_error = self.hat_c - self.c_label
-                self.cost_prediction_error = self.cost_prediction_error * self.constraint_label_mask
+                # self.cost_prediction_error = self.cost_prediction_error * self.constraint_label_mask
                 self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
 
             with tf.name_scope("latent_constraints_k"):
                 self.state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
-                self.state_prediction_error_in_k = self.state_prediction_error_in_k * self.constraint_label_mask
+                # self.state_prediction_error_in_k = self.state_prediction_error_in_k * self.constraint_label_mask
                 self.state_prediction_loss_in_k = tf.reduce_mean(self.state_prediction_error_in_k,
                                                                  name='state_prediction_loss_in_k')
                 # if the hat_k > 0, then we are predicting no collision
@@ -212,12 +221,6 @@ class LinearConstraintModel(base_model.BaseModel):
                          self.s_goal: goal,
                          self.c_label: c,
                          self.k_label: k}
-
-            # Debugging
-            hat_o_d_next, hat_o_k_next, cpe = self.sess.run(
-                [self.hat_o_d_next, self.hat_o_k_next, self.cost_prediction_error], feed_dict=feed_dict)
-            print(cpe)
-            return True
 
             ops = [self.global_step, self.summaries, self.loss, self.opt]
             for i in range(epochs):
