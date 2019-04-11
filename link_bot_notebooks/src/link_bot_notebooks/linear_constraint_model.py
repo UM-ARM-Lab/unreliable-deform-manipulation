@@ -69,7 +69,7 @@ class LinearConstraintModel(base_model.BaseModel):
         R_d_init = np.random.randn(N, M).astype(np.float32) * 1e-6
         R_d_init[0, 0] = 1
         R_d_init[1, 1] = 1
-        R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-1
+        R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-6
         R_k_init[4, 0] = 1.0
         R_k_init[5, 1] = 1.0
         A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-6
@@ -94,7 +94,7 @@ class LinearConstraintModel(base_model.BaseModel):
         self.B_k = tf.get_variable("B_k", initializer=B_k_init)
 
         # self.threshold_k = tf.get_variable("threshold_k", initializer=1.0)
-        self.threshold_k = tf.get_variable("threshold_k", initializer=1.00, trainable=True)
+        self.threshold_k = tf.get_variable("threshold_k", initializer=0.15, trainable=True)
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.get_variable("D", initializer=np.eye(self.M, dtype=np.float32), trainable=False)
@@ -159,20 +159,15 @@ class LinearConstraintModel(base_model.BaseModel):
             # self.loss = tf.add_n(
             #     [self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
             #      self.constraint_prediction_loss, self.regularization])
-            test_R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-9
-            test_R_k_init[4, 0] = 1
-            test_R_k_init[5, 1] = 1
-            test_R_k = tf.get_variable("test_R_k", initializer=test_R_k_init, trainable=False)
-            self.test_pred = tf.einsum('bsn,nm->bsm', self.s, test_R_k)
-            test_loss = tf.reduce_mean(tf.square(self.hat_o_k - self.test_pred))
             self.loss = tf.add_n([self.constraint_prediction_loss])
 
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
-            gradients, variables = zip(*self.optimizer.compute_gradients(self.loss))
+            self.opt = tf.train.AdamOptimizer(learning_rate=0.000001).minimize(self.loss, global_step=self.global_step)
             # TODO: ablation test this
-            gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
-            self.opt = self.optimizer.apply_gradients(zip(gradients, variables), global_step=self.global_step)
+            # self.optimizer = tf.train.AdamOptimizer(learning_rate=0.000001)
+            # gradients, variables = zip(*self.optimizer.compute_gradients(self.loss))
+            # gradients, _ = tf.clip_by_global_norm(gradients, 0.0001)
+            # self.opt = self.optimizer.apply_gradients(zip(gradients, variables), global_step=self.global_step)
 
             trainable_vars = tf.trainable_variables()
             for var in trainable_vars:
@@ -186,7 +181,6 @@ class LinearConstraintModel(base_model.BaseModel):
 
             tf.summary.scalar("constraint_prediction_accuracy", self.constraint_prediction_accuracy)
             tf.summary.scalar("k_threshold", self.threshold_k)
-            tf.summary.scalar("rk_loss", test_loss)
             tf.summary.scalar("constraint_predition_loss", self.constraint_prediction_loss)
             tf.summary.scalar("state_prediction_loss_in_d", self.state_prediction_loss_in_d)
             tf.summary.scalar("cost_prediction_loss", self.cost_prediction_loss)
