@@ -120,12 +120,16 @@ class LinearConstraintModel(base_model.BaseModel):
         self.d_to_goal = self.o_d_goal - self.hat_o_d_next
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal)
         self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.sdf_origin_coordinate,
-                             self.hat_o_k_next, self.P, self.Q)
+                             self.hat_o_k
+                             , self.P, self.Q)
         self.hat_k = self.sdfs - self.threshold_k
+        self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32)
+        self.k_label_binary = tf.cast((self.k_label+1)/2, dtype=tf.int32)
+        _, self.constraint_prediction_accuracy = tf.metrics.accuracy(self.hat_k_violated, self.k_label_binary)
 
         # NOTE: we use a mask to set the state prediction loss to 0 when the constraint is violated?
         # this way we don't penalize our model for failing to predict the dynamics in collision
-        self.constraint_label_mask = tf.squeeze(0.5 - self.k_label * 0.5)
+        self.constraint_label_mask = tf.squeeze(self.k_label_binary)
 
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
@@ -157,9 +161,10 @@ class LinearConstraintModel(base_model.BaseModel):
                 (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(self.flat_weights) * self.beta
 
-            self.loss = tf.add_n(
-                [self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
-                 self.constraint_prediction_loss, self.regularization])
+            # self.loss = tf.add_n(
+            #     [self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
+            #      self.constraint_prediction_loss, self.regularization])
+            self.loss = tf.add_n([self.constraint_prediction_loss])
 
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             self.opt = tf.train.AdamOptimizer(learning_rate=0.002).minimize(self.loss, global_step=self.global_step)
@@ -259,9 +264,12 @@ class LinearConstraintModel(base_model.BaseModel):
                      self.k_label: k}
         ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k, self.threshold_k,
                self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
-               self.constraint_prediction_loss, self.regularization, self.loss]
-        R_d, A_d, B_d, D, R_k, A_k, B_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss = self.sess.run(ops,
-                                                                                                                    feed_dict=feed_dict)
+               self.constraint_prediction_loss, self.regularization, self.loss, self.constraint_prediction_accuracy]
+        R_d, A_d, B_d, D, R_k, A_k, B_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss, k_accuracy = \
+            self.sess.run(ops, feed_dict=feed_dict)
+
+        print(self.sess.run([(self.k_label+1)/2, self.hat_k_violated], feed_dict=feed_dict))
+
         if display:
             print("State Prediction Loss in d: {}".format(spd_loss))
             print("State Prediction Loss in k: {}".format(spk_loss))
@@ -277,6 +285,7 @@ class LinearConstraintModel(base_model.BaseModel):
             print("A_k:\n{}".format(A_k))
             print("B_k:\n{}".format(B_k))
             print("threashold_k:\n{}".format(threshold_k))
+            print("constraint prediction accuracy:\n{}".format(k_accuracy))
             controllable = self.is_controllable()
             if controllable:
                 controllable_string = Fore.GREEN + "True" + Fore.RESET
@@ -310,8 +319,7 @@ class LinearConstraintModel(base_model.BaseModel):
             self.init()
 
     def init(self):
-        init_op = tf.global_variables_initializer()
-        self.sess.run(init_op)
+        self.sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
 
     def reduce(self, s):
         ss = np.ndarray((self.batch_size, self.n_steps + 1, self.N))
