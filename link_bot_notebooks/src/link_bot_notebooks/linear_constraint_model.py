@@ -11,7 +11,6 @@ from colorama import Fore
 from link_bot_notebooks import base_model
 from link_bot_notebooks import toy_problem_optimization_common as tpo
 from tensorflow.python import debug as tf_debug
-import matplotlib.pyplot as plt
 
 
 @tf.custom_gradient
@@ -70,8 +69,8 @@ class LinearConstraintModel(base_model.BaseModel):
         R_d_init[0, 0] = 1
         R_d_init[1, 1] = 1
         R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-6
-        R_k_init[4, 0] = 1
-        R_k_init[5, 1] = 1
+        R_k_init[4, 0] = 1.0
+        R_k_init[5, 1] = 1.0
         A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-6
         B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-6
         A_k_init = np.random.randn(M, M).astype(np.float32) * 1e-6
@@ -89,13 +88,12 @@ class LinearConstraintModel(base_model.BaseModel):
         self.A_d = tf.get_variable("A_d", initializer=A_d_init)
         self.B_d = tf.get_variable("B_d", initializer=B_d_init)
 
-        self.R_k = tf.get_variable("R_k", initializer=R_k_init, trainable=False)
+        self.R_k = tf.get_variable("R_k", initializer=R_k_init, trainable=True)
         self.A_k = tf.get_variable("A_k", initializer=A_k_init)
         self.B_k = tf.get_variable("B_k", initializer=B_k_init)
 
         # self.threshold_k = tf.get_variable("threshold_k", initializer=1.0)
-        self.threshold_k = tf.get_variable("threshold_k", initializer=0.15, trainable=True)
-        self.scale_k = tf.get_variable("scale_k", initializer=1.0, trainable=True)
+        self.threshold_k = tf.get_variable("threshold_k", initializer=0.1, trainable=True)
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.get_variable("D", initializer=np.eye(self.M, dtype=np.float32), trainable=False)
@@ -125,7 +123,7 @@ class LinearConstraintModel(base_model.BaseModel):
                              , self.P, self.Q)
         # because the sigmoid is not very sharp we meters are very large, this doesn't give a very sharp boundary for
         # the decision between in collision or not. The trade of is this might cause vanishing gradients
-        self.hat_k = self.scale_k*(self.threshold_k - self.sdfs)
+        self.hat_k = self.threshold_k - self.sdfs
         self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32)
         self.k_label_binary = tf.cast((self.k_label + 1) / 2, dtype=tf.float32)
         _, self.constraint_prediction_accuracy = tf.metrics.accuracy(self.hat_k_violated, self.k_label_binary)
@@ -162,10 +160,19 @@ class LinearConstraintModel(base_model.BaseModel):
             # self.loss = tf.add_n(
             #     [self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
             #      self.constraint_prediction_loss, self.regularization])
+            test_R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-9
+            test_R_k_init[4, 0] = 1
+            test_R_k_init[5, 1] = 1
+            test_R_k = tf.get_variable("test_R_k", initializer=test_R_k_init, trainable=False)
+            self.test_pred = tf.einsum('bsn,nm->bsm', self.s, test_R_k)
+            test_loss = tf.reduce_mean(tf.square(self.hat_o_k-self.test_pred))
             self.loss = tf.add_n([self.constraint_prediction_loss])
 
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
-            self.opt = tf.train.AdamOptimizer(learning_rate=0.02).minimize(self.loss, global_step=self.global_step)
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
+            gradients, variables = zip(*self.optimizer.compute_gradients(self.loss))
+            gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
+            self.opt = self.optimizer.apply_gradients(zip(gradients, variables), global_step=self.global_step)
 
             trainable_vars = tf.trainable_variables()
             for var in trainable_vars:
@@ -177,8 +184,10 @@ class LinearConstraintModel(base_model.BaseModel):
                     else:
                         print("Warning... there is no gradient of the loss with respect to {}".format(var.name))
 
-            tf.summary.scalar("k_scale", self.scale_k)
+            tf.summary.scalar("constraint_prediction_accuracy", self.constraint_prediction_accuracy)
             tf.summary.scalar("k_threshold", self.threshold_k)
+            tf.summary.scalar("rk_loss", test_loss)
+            tf.summary.scalar("constraint_predition_loss", self.constraint_prediction_loss)
             tf.summary.scalar("state_prediction_loss_in_d", self.state_prediction_loss_in_d)
             tf.summary.scalar("cost_prediction_loss", self.cost_prediction_loss)
             tf.summary.scalar("regularization_loss", self.regularization)
@@ -264,12 +273,11 @@ class LinearConstraintModel(base_model.BaseModel):
                      self.s_goal: goal,
                      self.c_label: c,
                      self.k_label: k}
-        ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k, self.scale_k, self.threshold_k,
+        ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k, self.threshold_k,
                self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
                self.constraint_prediction_loss, self.regularization, self.loss, self.constraint_prediction_accuracy]
-        R_d, A_d, B_d, D, R_k, A_k, B_k, scale_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss, k_accuracy = \
+        R_d, A_d, B_d, D, R_k, A_k, B_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss, k_accuracy = \
             self.sess.run(ops, feed_dict=feed_dict)
-        print(self.sess.run([self.k_label_binary, self.hat_k], feed_dict=feed_dict))
 
         if display:
             print("State Prediction Loss in d: {}".format(spd_loss))
@@ -286,7 +294,6 @@ class LinearConstraintModel(base_model.BaseModel):
             print("A_k:\n{}".format(A_k))
             print("B_k:\n{}".format(B_k))
             print("threshold_k:\n{}".format(threshold_k))
-            print("scale_k:\n{}".format(scale_k))
             print("constraint prediction accuracy:\n{}".format(k_accuracy))
             controllable = self.is_controllable()
             if controllable:
