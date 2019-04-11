@@ -94,7 +94,7 @@ class LinearConstraintModel(base_model.BaseModel):
         self.B_k = tf.get_variable("B_k", initializer=B_k_init)
 
         # self.threshold_k = tf.get_variable("threshold_k", initializer=1.0)
-        self.threshold_k = tf.get_variable("threshold_k", initializer=0.15, trainable=True)
+        self.threshold_k = tf.get_variable("threshold_k", initializer=1.00, trainable=True)
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.get_variable("D", initializer=np.eye(self.M, dtype=np.float32), trainable=False)
@@ -125,9 +125,7 @@ class LinearConstraintModel(base_model.BaseModel):
         # the decision between in collision or not. The trade of is this might cause vanishing gradients
         self.hat_k = 100 * (self.threshold_k - self.sdfs)
         self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32, name="hat_k_violated")
-        # TODO: figure out how to use tf.metrics.accuracy correctly...
-        self.constraint_prediction_accuracy = 1 - tf.reduce_mean(
-            tf.cast(tf.abs(self.hat_k_violated - self.k_label_int), tf.float32))
+        _, self.constraint_prediction_accuracy = tf.metrics.accuracy(labels=self.k_label, predictions=self.hat_k_violated)
 
         # NOTE: we use a mask to set the state prediction loss to 0 when the constraint is violated?
         # this way we don't penalize our model for failing to predict the dynamics in collision
