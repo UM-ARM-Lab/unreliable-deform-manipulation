@@ -89,12 +89,13 @@ class LinearConstraintModel(base_model.BaseModel):
         self.A_d = tf.get_variable("A_d", initializer=A_d_init)
         self.B_d = tf.get_variable("B_d", initializer=B_d_init)
 
-        self.R_k = tf.get_variable("R_k", initializer=R_k_init)
+        self.R_k = tf.get_variable("R_k", initializer=R_k_init, trainable=False)
         self.A_k = tf.get_variable("A_k", initializer=A_k_init)
         self.B_k = tf.get_variable("B_k", initializer=B_k_init)
 
         # self.threshold_k = tf.get_variable("threshold_k", initializer=1.0)
-        self.threshold_k = tf.get_variable("threshold_k", initializer=0.15, trainable=False)
+        self.threshold_k = tf.get_variable("threshold_k", initializer=0.15, trainable=True)
+        self.scale_k = tf.get_variable("scale_k", initializer=1.0, trainable=True)
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.get_variable("D", initializer=np.eye(self.M, dtype=np.float32), trainable=False)
@@ -122,9 +123,11 @@ class LinearConstraintModel(base_model.BaseModel):
         self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.sdf_origin_coordinate,
                              self.hat_o_k
                              , self.P, self.Q)
-        self.hat_k = self.sdfs - self.threshold_k
+        # because the sigmoid is not very sharp we meters are very large, this doesn't give a very sharp boundary for
+        # the decision between in collision or not. The trade of is this might cause vanishing gradients
+        self.hat_k = self.scale_k*(self.threshold_k - self.sdfs)
         self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32)
-        self.k_label_binary = tf.cast((self.k_label+1)/2, dtype=tf.int32)
+        self.k_label_binary = tf.cast((self.k_label + 1) / 2, dtype=tf.float32)
         _, self.constraint_prediction_accuracy = tf.metrics.accuracy(self.hat_k_violated, self.k_label_binary)
 
         # NOTE: we use a mask to set the state prediction loss to 0 when the constraint is violated?
@@ -147,15 +150,10 @@ class LinearConstraintModel(base_model.BaseModel):
                 # self.state_prediction_error_in_k = self.state_prediction_error_in_k * self.constraint_label_mask
                 self.state_prediction_loss_in_k = tf.reduce_mean(self.state_prediction_error_in_k,
                                                                  name='state_prediction_loss_in_k')
-                # if the hat_k > 0, then we are predicting no collision
-                # if k_label is = 1, the true label is collision
-                # multiplying these two positive numbers gives a high loss, because our prediction is wrong.
-                # if hat_k>0 and k_label=1 we get high loss,
-                # if hat_k>0 and k_label=-1 we get low loss,
-                # if hat_k<0 and k_label=1 we get high loss,
-                # if hat_k<0 and k_label=-1 we get low loss,
-                self.constraint_prediction_loss = tf.reduce_mean(self.hat_k * self.k_label,
-                                                                 name="constraint_prediction_loss")
+                self.constraint_prediction_loss = tf.reduce_mean(
+                    tf.nn.sigmoid_cross_entropy_with_logits(logits=self.hat_k,
+                                                            labels=self.k_label_binary),
+                    name="constraint_prediction_loss")
 
             self.flat_weights = tf.concat(
                 (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)
@@ -167,7 +165,7 @@ class LinearConstraintModel(base_model.BaseModel):
             self.loss = tf.add_n([self.constraint_prediction_loss])
 
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
-            self.opt = tf.train.AdamOptimizer(learning_rate=0.002).minimize(self.loss, global_step=self.global_step)
+            self.opt = tf.train.AdamOptimizer(learning_rate=0.02).minimize(self.loss, global_step=self.global_step)
 
             trainable_vars = tf.trainable_variables()
             for var in trainable_vars:
@@ -179,6 +177,8 @@ class LinearConstraintModel(base_model.BaseModel):
                     else:
                         print("Warning... there is no gradient of the loss with respect to {}".format(var.name))
 
+            tf.summary.scalar("k_scale", self.scale_k)
+            tf.summary.scalar("k_threshold", self.threshold_k)
             tf.summary.scalar("state_prediction_loss_in_d", self.state_prediction_loss_in_d)
             tf.summary.scalar("cost_prediction_loss", self.cost_prediction_loss)
             tf.summary.scalar("regularization_loss", self.regularization)
@@ -238,6 +238,8 @@ class LinearConstraintModel(base_model.BaseModel):
 
                 if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
                     print(step, loss)
+                    # print(self.sess.run([self.k_label_binary, self.hat_k_violated], feed_dict=feed_dict))
+
 
         except KeyboardInterrupt:
             print("stop!!!")
@@ -262,13 +264,12 @@ class LinearConstraintModel(base_model.BaseModel):
                      self.s_goal: goal,
                      self.c_label: c,
                      self.k_label: k}
-        ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k, self.threshold_k,
+        ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k, self.scale_k, self.threshold_k,
                self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
                self.constraint_prediction_loss, self.regularization, self.loss, self.constraint_prediction_accuracy]
-        R_d, A_d, B_d, D, R_k, A_k, B_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss, k_accuracy = \
+        R_d, A_d, B_d, D, R_k, A_k, B_k, scale_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss, k_accuracy = \
             self.sess.run(ops, feed_dict=feed_dict)
-
-        print(self.sess.run([(self.k_label+1)/2, self.hat_k_violated], feed_dict=feed_dict))
+        print(self.sess.run([self.k_label_binary, self.hat_k], feed_dict=feed_dict))
 
         if display:
             print("State Prediction Loss in d: {}".format(spd_loss))
@@ -284,7 +285,8 @@ class LinearConstraintModel(base_model.BaseModel):
             print("R_k:\n{}".format(R_k))
             print("A_k:\n{}".format(A_k))
             print("B_k:\n{}".format(B_k))
-            print("threashold_k:\n{}".format(threshold_k))
+            print("threshold_k:\n{}".format(threshold_k))
+            print("scale_k:\n{}".format(scale_k))
             print("constraint prediction accuracy:\n{}".format(k_accuracy))
             controllable = self.is_controllable()
             if controllable:
@@ -314,6 +316,7 @@ class LinearConstraintModel(base_model.BaseModel):
 
     def setup(self):
         if self.args['checkpoint']:
+            self.sess.run([tf.local_variables_initializer()])
             self.load()
         else:
             self.init()
