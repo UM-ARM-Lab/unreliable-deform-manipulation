@@ -94,7 +94,7 @@ class LinearConstraintModel(base_model.BaseModel):
         self.B_k = tf.get_variable("B_k", initializer=B_k_init)
 
         # self.threshold_k = tf.get_variable("threshold_k", initializer=1.0)
-        self.threshold_k = tf.get_variable("threshold_k", initializer=0.1, trainable=False)
+        self.threshold_k = tf.get_variable("threshold_k", initializer=0.15, trainable=False)
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.get_variable("D", initializer=np.eye(self.M, dtype=np.float32), trainable=False)
