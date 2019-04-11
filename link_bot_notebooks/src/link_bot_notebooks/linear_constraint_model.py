@@ -25,7 +25,7 @@ def sdf_func(sdf, full_sdf_gradient, resolution, sdf_origin_coordinate, sdf_coor
     # TODO: make this handle out of bounds correctly. I think correctly for us means return large number for SDF
     # and a gradient towards the origin
     sdf_value = tf.gather_nd(sdf, integer_coordinates, name='index_sdf')
-    sdf_value = tf.reshape(sdf_value, (sdf_coordinates.shape[0], sdf_coordinates.shape[1], Q))
+    sdf_value = tf.reshape(sdf_value, (sdf_coordinates.shape[0], sdf_coordinates.shape[1], Q), name='sdfs')
 
     # noinspection PyUnusedLocal
     def __sdf_gradient_func(dy):
@@ -64,11 +64,12 @@ class LinearConstraintModel(base_model.BaseModel):
         self.s_goal = tf.placeholder(tf.float32, shape=(1, N), name="s_goal")
         self.c_label = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1), name="c")
         self.k_label = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1, Q), name="k")
+        self.k_label_int = tf.cast(self.k_label, tf.int32)
 
         R_d_init = np.random.randn(N, M).astype(np.float32) * 1e-6
         R_d_init[0, 0] = 1
         R_d_init[1, 1] = 1
-        R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-6
+        R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-1
         R_k_init[4, 0] = 1.0
         R_k_init[5, 1] = 1.0
         A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-6
@@ -93,7 +94,7 @@ class LinearConstraintModel(base_model.BaseModel):
         self.B_k = tf.get_variable("B_k", initializer=B_k_init)
 
         # self.threshold_k = tf.get_variable("threshold_k", initializer=1.0)
-        self.threshold_k = tf.get_variable("threshold_k", initializer=0.1, trainable=True)
+        self.threshold_k = tf.get_variable("threshold_k", initializer=0.15, trainable=True)
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.get_variable("D", initializer=np.eye(self.M, dtype=np.float32), trainable=False)
@@ -119,18 +120,18 @@ class LinearConstraintModel(base_model.BaseModel):
         self.d_to_goal = self.o_d_goal - self.hat_o_d_next
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal)
         self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.sdf_origin_coordinate,
-                             self.hat_o_k
-                             , self.P, self.Q)
+                             self.hat_o_k, self.P, self.Q)
         # because the sigmoid is not very sharp we meters are very large, this doesn't give a very sharp boundary for
         # the decision between in collision or not. The trade of is this might cause vanishing gradients
-        self.hat_k = self.threshold_k - self.sdfs
-        self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32)
-        self.k_label_binary = tf.cast((self.k_label + 1) / 2, dtype=tf.float32)
-        _, self.constraint_prediction_accuracy = tf.metrics.accuracy(self.hat_k_violated, self.k_label_binary)
+        self.hat_k = 100 * (self.threshold_k - self.sdfs)
+        self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32, name="hat_k_violated")
+        # TODO: figure out how to use tf.metrics.accuracy correctly...
+        self.constraint_prediction_accuracy = 1 - tf.reduce_mean(
+            tf.cast(tf.abs(self.hat_k_violated - self.k_label_int), tf.float32))
 
         # NOTE: we use a mask to set the state prediction loss to 0 when the constraint is violated?
         # this way we don't penalize our model for failing to predict the dynamics in collision
-        self.constraint_label_mask = tf.squeeze(self.k_label_binary)
+        self.constraint_label_mask = tf.squeeze(self.k_label)
 
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
@@ -150,7 +151,7 @@ class LinearConstraintModel(base_model.BaseModel):
                                                                  name='state_prediction_loss_in_k')
                 self.constraint_prediction_loss = tf.reduce_mean(
                     tf.nn.sigmoid_cross_entropy_with_logits(logits=self.hat_k,
-                                                            labels=self.k_label_binary),
+                                                            labels=self.k_label),
                     name="constraint_prediction_loss")
 
             self.flat_weights = tf.concat(
@@ -165,13 +166,14 @@ class LinearConstraintModel(base_model.BaseModel):
             test_R_k_init[5, 1] = 1
             test_R_k = tf.get_variable("test_R_k", initializer=test_R_k_init, trainable=False)
             self.test_pred = tf.einsum('bsn,nm->bsm', self.s, test_R_k)
-            test_loss = tf.reduce_mean(tf.square(self.hat_o_k-self.test_pred))
+            test_loss = tf.reduce_mean(tf.square(self.hat_o_k - self.test_pred))
             self.loss = tf.add_n([self.constraint_prediction_loss])
 
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
             self.optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
             gradients, variables = zip(*self.optimizer.compute_gradients(self.loss))
-            gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
+            # TODO: ablation test this
+            gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
             self.opt = self.optimizer.apply_gradients(zip(gradients, variables), global_step=self.global_step)
 
             trainable_vars = tf.trainable_variables()
@@ -247,7 +249,6 @@ class LinearConstraintModel(base_model.BaseModel):
 
                 if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
                     print(step, loss)
-                    # print(self.sess.run([self.k_label_binary, self.hat_k_violated], feed_dict=feed_dict))
 
 
         except KeyboardInterrupt:

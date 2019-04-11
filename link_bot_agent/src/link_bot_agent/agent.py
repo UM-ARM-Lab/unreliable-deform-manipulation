@@ -23,7 +23,7 @@ def get_time_state_action_collision(get_link_state, time, head_vx, head_vy, in_c
     if in_contact:
         state.insert(1, 1)
     else:
-        state.insert(1, -1)
+        state.insert(1, 0)
     state.append(head_vx)
     state.append(head_vy)
     return state
