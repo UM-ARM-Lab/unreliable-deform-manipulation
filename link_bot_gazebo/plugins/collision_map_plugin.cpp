@@ -40,6 +40,10 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     res.gradient.x = g.first[0];
     res.gradient.y = g.first[1];
     res.gradient.z = g.first[2];
+    auto const i = sdf_.LocationToGridIndex(req.point.x, req.point.y, req.point.z);
+    res.x_index = i.x;
+    res.y_index = i.y;
+    res.z_index = i.z;
     res.success = true;
     return true;
   };

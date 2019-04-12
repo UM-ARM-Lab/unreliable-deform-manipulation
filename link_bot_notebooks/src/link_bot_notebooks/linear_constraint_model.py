@@ -68,14 +68,19 @@ class LinearConstraintModel(base_model.BaseModel):
         R_d_init = np.random.randn(N, M).astype(np.float32) * 1e-6
         R_d_init[0, 0] = 1
         R_d_init[1, 1] = 1
-        R_k_init = np.random.randn(N, P).astype(np.float32)
-        # R_k_init[4, 0] = 1.0
-        # R_k_init[5, 1] = 1.0
+
+        R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-6
+        R_k_init[4, 0] = 1.0
+        R_k_init[5, 1] = 1.0
+
         A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-6
+
         B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-6
-        A_k_init = np.random.randn(M, M).astype(np.float32) * 1e-6
-        B_k_init = np.random.randn(M, L).astype(np.float32) * 1e-6
         np.fill_diagonal(B_d_init, 1)
+
+        A_k_init = np.random.randn(M, M).astype(np.float32) * 1e-6
+
+        B_k_init = np.random.randn(M, L).astype(np.float32) * 1e-6
         np.fill_diagonal(B_k_init, 1)
 
         # Fake linear data
@@ -88,12 +93,11 @@ class LinearConstraintModel(base_model.BaseModel):
         self.A_d = tf.get_variable("A_d", initializer=A_d_init)
         self.B_d = tf.get_variable("B_d", initializer=B_d_init)
 
-        self.R_k = tf.get_variable("R_k", initializer=R_k_init, trainable=True)
+        self.R_k = tf.get_variable("R_k", initializer=R_k_init)
         self.A_k = tf.get_variable("A_k", initializer=A_k_init)
         self.B_k = tf.get_variable("B_k", initializer=B_k_init)
 
-        # self.threshold_k = tf.get_variable("threshold_k", initializer=1.0)
-        self.threshold_k = tf.get_variable("threshold_k", initializer=0.0, trainable=True)
+        self.threshold_k = tf.get_variable("threshold_k", initializer=0.1)
 
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.get_variable("D", initializer=np.eye(self.M, dtype=np.float32), trainable=False)
@@ -117,39 +121,42 @@ class LinearConstraintModel(base_model.BaseModel):
         self.hat_o_k_next = tf.transpose(tf.stack(hat_o_k_next), [1, 0, 2], name='hat_o_k_next')
 
         self.d_to_goal = self.o_d_goal - self.hat_o_d_next
-        self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal)
+        self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal, name='hat_c')
         self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.sdf_origin_coordinate,
                              self.hat_o_k, self.P, self.Q)
         # because the sigmoid is not very sharp we meters are very large, this doesn't give a very sharp boundary for
         # the decision between in collision or not. The trade of is this might cause vanishing gradients
         self.hat_k = 100 * (self.threshold_k - self.sdfs)
         self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32, name="hat_k_violated")
-        _, self.constraint_prediction_accuracy = tf.metrics.accuracy(labels=self.k_label, predictions=self.hat_k_violated)
+        _, self.constraint_prediction_accuracy = tf.metrics.accuracy(labels=self.k_label,
+                                                                     predictions=self.hat_k_violated)
 
         # NOTE: we use a mask to set the state prediction loss to 0 when the constraint is violated?
         # this way we don't penalize our model for failing to predict the dynamics in collision
-        self.constraint_label_mask = tf.squeeze(self.k_label)
+        # the (1-label) inverts the labels so that 0 means in collision and mask out
+        self.constraint_label_mask = 1 - tf.squeeze(self.k_label)
 
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
             with tf.name_scope("latent_dynamics_d"):
                 self.state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
-                # self.state_prediction_error_in_d = self.state_prediction_error_in_d * self.constraint_label_mask
+                self.state_prediction_error_in_d = self.state_prediction_error_in_d * self.constraint_label_mask
                 self.state_prediction_loss_in_d = tf.reduce_mean(self.state_prediction_error_in_d,
                                                                  name='state_prediction_loss_in_d')
-                self.cost_prediction_error = self.hat_c - self.c_label
-                # self.cost_prediction_error = self.cost_prediction_error * self.constraint_label_mask
+                self.cost_prediction_error = tf.square(self.hat_c - self.c_label)
+                self.cost_prediction_error = self.cost_prediction_error * self.constraint_label_mask
                 self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
 
             with tf.name_scope("latent_constraints_k"):
                 self.state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
-                # self.state_prediction_error_in_k = self.state_prediction_error_in_k * self.constraint_label_mask
+                self.state_prediction_error_in_k = self.state_prediction_error_in_k * self.constraint_label_mask
                 self.state_prediction_loss_in_k = tf.reduce_mean(self.state_prediction_error_in_k,
                                                                  name='state_prediction_loss_in_k')
-                self.constraint_prediction_loss = tf.reduce_mean(
-                    tf.nn.sigmoid_cross_entropy_with_logits(logits=self.hat_k,
-                                                            labels=self.k_label),
-                    name="constraint_prediction_loss")
+
+                self.constraint_prediction_error = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.hat_k,
+                                                                                           labels=self.k_label)
+                self.constraint_prediction_loss = tf.reduce_mean(self.constraint_prediction_error,
+                                                                 name="constraint_prediction_loss")
 
             self.flat_weights = tf.concat(
                 (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)
@@ -158,9 +165,10 @@ class LinearConstraintModel(base_model.BaseModel):
             # self.loss = tf.add_n(
             #     [self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
             #      self.constraint_prediction_loss, self.regularization])
-            self.loss = tf.add_n([self.constraint_prediction_loss])
+            self.loss = tf.add_n([self.state_prediction_loss_in_d, self.cost_prediction_loss, self.regularization])
+            # self.loss = tf.add_n([self.constraint_prediction_loss])
 
-            self.global_step = tf.Variable(0, trainable=False, name="global_step")
+            self.global_step = tf.get_variable("global_step", initializer=0, trainable=False)
             self.opt = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.loss, global_step=self.global_step)
 
             trainable_vars = tf.trainable_variables()
@@ -207,6 +215,8 @@ class LinearConstraintModel(base_model.BaseModel):
                 'N': self.N,
                 'M': self.M,
                 'L': self.L,
+                'P': self.P,
+                'Q': self.Q,
                 'beta': self.beta,
                 'dt': self.dt,
                 'commandline': self.args['commandline'],
@@ -235,7 +245,6 @@ class LinearConstraintModel(base_model.BaseModel):
 
                 if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
                     print(step, loss)
-
 
         except KeyboardInterrupt:
             print("stop!!!")
