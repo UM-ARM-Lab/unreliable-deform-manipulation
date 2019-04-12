@@ -126,13 +126,6 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
   };
   sdf_gradient_ = sdf_.GetFullGradient(gradient_function, true);
 
-  {
-    auto const test_grad_value = sdf_gradient_.GetImmutable(2.4, 2.5, 0);
-    std::cout << test_grad_value.first[0] << "," << test_grad_value.first[1] << " " << test_grad_value.second << '\n';
-    auto const test_index = sdf_gradient_.LocationToGridIndex(2.4, 2.5, 0);
-    std::cout << test_index.x << " " << test_index.y << " " << test_index.z << '\n';
-  }
-
   auto const sdf_gradient_flat = [&]() {
     auto const &data = sdf_gradient_.GetImmutableRawData();
     std::vector<float> flat;

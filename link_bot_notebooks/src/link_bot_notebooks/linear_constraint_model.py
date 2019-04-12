@@ -27,11 +27,10 @@ def sdf_func(sdf, full_sdf_gradient, resolution, sdf_origin_coordinate, sdf_coor
     sdf_value = tf.gather_nd(sdf, integer_coordinates, name='index_sdf')
     sdf_value = tf.reshape(sdf_value, (sdf_coordinates.shape[0], sdf_coordinates.shape[1], Q), name='sdfs')
 
-    # noinspection PyUnusedLocal
     def __sdf_gradient_func(dy):
         sdf_gradient = tf.gather_nd(full_sdf_gradient, integer_coordinates, name='index_sdf_gradient')
         sdf_gradient = tf.reshape(sdf_gradient, (sdf_coordinates.shape[0], sdf_coordinates.shape[1], P))
-        return None, None, None, None, sdf_gradient, None, None
+        return None, None, None, None, dy * sdf_gradient, None, None
 
     return sdf_value, __sdf_gradient_func
 
@@ -162,7 +161,7 @@ class LinearConstraintModel(base_model.BaseModel):
             self.loss = tf.add_n([self.constraint_prediction_loss])
 
             self.global_step = tf.Variable(0, trainable=False, name="global_step")
-            self.opt = tf.train.AdamOptimizer(learning_rate=0.000001).minimize(self.loss, global_step=self.global_step)
+            self.opt = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.loss, global_step=self.global_step)
             # TODO: ablation test this
             # self.optimizer = tf.train.AdamOptimizer(learning_rate=0.000001)
             # gradients, variables = zip(*self.optimizer.compute_gradients(self.loss))
