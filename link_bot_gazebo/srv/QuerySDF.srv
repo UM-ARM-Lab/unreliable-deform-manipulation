@@ -1,0 +1,5 @@
+geometry_msgs/Point point
+---
+float64 sdf_value
+geometry_msgs/Point gradient
+bool success

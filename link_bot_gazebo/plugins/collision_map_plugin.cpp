@@ -1,6 +1,6 @@
 #include <cnpy/cnpy.h>
 #include <link_bot_gazebo/WriteSDF.h>
-#include <sdf_tools/SDF.h>
+#include <link_bot_gazebo/QuerySDF.h>
 #include <std_msgs/ColorRGBA.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -8,7 +8,6 @@
 #include <chrono>
 #include <experimental/filesystem>
 #include <functional>
-#include <sdf_tools/collision_map.hpp>
 
 #include "collision_map_plugin.h"
 
@@ -30,22 +29,46 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     ros::init(argc, argv, "collision_map_plugin", ros::init_options::NoSigintHandler);
   }
 
-  ros_node_ = std::make_unique<ros::NodeHandle>("collision_map_plugin");
+  auto cb = [&](link_bot_gazebo::QuerySDFRequest &req, link_bot_gazebo::QuerySDFResponse &res) {
+    if (not ready_) {
+      std::cout << "sdf not generated yet, you must publish that message first\n";
+      res.success = false;
+      return true;
+    }
+    std::tie(res.sdf_value, std::ignore) = sdf_.GetImmutable(req.point.x, req.point.y, req.point.z);
+    auto const g = sdf_gradient_.GetImmutable(req.point.x, req.point.y, req.point.z);
+    res.gradient.x = g.first[0];
+    res.gradient.y = g.first[1];
+    res.gradient.z = g.first[2];
+    res.success = true;
+    return true;
+  };
 
-  auto bind = boost::bind(&CollisionMapPlugin::OnWriteSDF, this, _1);
-  auto so = ros::SubscribeOptions::create<link_bot_gazebo::WriteSDF>("/write_sdf", 1, bind, ros::VoidPtr(), &queue_);
+
+  ros_node_ = std::make_unique<ros::NodeHandle>("collision_map_plugin");
 
   gazebo_sdf_viz_pub_ = ros_node_->advertise<visualization_msgs::Marker>("gazebo_sdf_viz", 1);
 
-  sub_ = ros_node_->subscribe(so);
+  {
+    auto bind = boost::bind(&CollisionMapPlugin::OnWriteSDF, this, _1);
+    auto so = ros::SubscribeOptions::create<link_bot_gazebo::WriteSDF>("/write_sdf", 1, bind, ros::VoidPtr(), &queue_);
+    sub_ = ros_node_->subscribe(so);
+  }
+
+  {
+    auto so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::QuerySDF>("/sdf", cb, ros::VoidConstPtr(), &queue_);
+    service_ = ros_node_->advertiseService(so);
+  }
+
   ros_queue_thread_ = std::thread(std::bind(&CollisionMapPlugin::QueueThread, this));
 }
 
 void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
 {
   std::experimental::filesystem::path const path(msg->filename);
-  if (not std::experimental::filesystem::exists(path)) {
-    std::cout << "Output path [" << path << "] does not exist\n";
+
+  if (not std::experimental::filesystem::exists(path.parent_path())) {
+    std::cout << "Output path parent [" << path.parent_path() << "] does not exist\n";
     return;
   }
 
@@ -87,7 +110,7 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
   std::chrono::duration<double> const time_to_compute_occupancy_grid = t1 - t0;
   std::cout << "Time to compute occupancy grid: " << time_to_compute_occupancy_grid.count() << std::endl;
 
-  auto const sdf = grid.ExtractSignedDistanceField(oob_value.occupancy, false, false).first;
+  sdf_ = grid.ExtractSignedDistanceField(oob_value.occupancy, false, false).first;
 
   auto const t2 = std::chrono::steady_clock::now();
   std::chrono::duration<double> const time_to_compute_sdf = t2 - t1;
@@ -99,11 +122,19 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
   sdf_tools::SignedDistanceField::GradientFunction gradient_function = [&](const int64_t x_index, const int64_t y_index,
                                                                            const int64_t z_index,
                                                                            const bool enable_edge_gradients = false) {
-    return sdf.GetGradient(x_index, y_index, z_index, enable_edge_gradients);
+    return sdf_.GetGradient(x_index, y_index, z_index, enable_edge_gradients);
   };
-  auto const sdf_gradient = sdf.GetFullGradient(gradient_function, true);
+  sdf_gradient_ = sdf_.GetFullGradient(gradient_function, true);
+
+  {
+    auto const test_grad_value = sdf_gradient_.GetImmutable(2.4, 2.5, 0);
+    std::cout << test_grad_value.first[0] << "," << test_grad_value.first[1] << " " << test_grad_value.second << '\n';
+    auto const test_index = sdf_gradient_.LocationToGridIndex(2.4, 2.5, 0);
+    std::cout << test_index.x << " " << test_index.y << " " << test_index.z << '\n';
+  }
+
   auto const sdf_gradient_flat = [&]() {
-    auto const &data = sdf_gradient.GetImmutableRawData();
+    auto const &data = sdf_gradient_.GetImmutableRawData();
     std::vector<float> flat;
     for (auto const &d : data) {
       // only save the x/y currently
@@ -126,9 +157,11 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
                                      static_cast<unsigned long>(grid.GetNumYCells()), 2};
 
   std::vector<float> resolutions{msg->resolution, msg->resolution, msg->resolution};
-  cnpy::npz_save(msg->filename, "sdf", &sdf.GetImmutableRawData()[0], shape, "w");
+  cnpy::npz_save(msg->filename, "sdf", &sdf_.GetImmutableRawData()[0], shape, "w");
   cnpy::npz_save(msg->filename, "sdf_gradient", &sdf_gradient_flat[0], gradient_shape, "a");
   cnpy::npz_save(msg->filename, "sdf_resolution", &resolutions[0], {2}, "a");
+
+  ready_ = true;
 }
 
 CollisionMapPlugin::~CollisionMapPlugin()

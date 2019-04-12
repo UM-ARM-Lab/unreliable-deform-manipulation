@@ -15,6 +15,7 @@ add_message_files(
 add_service_files(
         FILES
         WorldControl.srv
+        QuerySDF.srv
 )
 
 generate_messages(
