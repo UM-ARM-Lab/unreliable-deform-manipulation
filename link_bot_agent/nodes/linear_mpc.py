@@ -135,7 +135,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     step.steps = dt / 0.001  # assuming 0.001s of simulation time per step
                     world_control.call(step)  # this will block until stepping is complete
 
-                    s_next = np.array(links_state).reshape(1, args.N)
+                    # get new state
+                    s_next = np.array(agent.get_state(gzagent.get_link_state)).reshape(1, args.N)
                     true_cost = gzagent.state_cost(s_next, goal)
 
                     if args.verbose:
@@ -191,7 +192,7 @@ def test(args):
 def eval(args):
     fname = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(timemod.time())))
     g0 = np.array([[0, 0, 0, 0, 0, 0]])
-    goals = [g0] * args.n_random_goals
+    goals = [g0] * args.n_goals
     min_costs = common(args, goals, max_steps=151)
     print(min_costs)
     print('mean dist to goal', np.mean(min_costs))
@@ -225,7 +226,7 @@ def main():
     test_subparser.set_defaults(func=test)
 
     eval_subparser = subparsers.add_parser("eval")
-    eval_subparser.add_argument("--n-random-goals", '-n', type=int, default=100)
+    eval_subparser.add_argument("--n-goals", '-n', type=int, default=100)
     eval_subparser.set_defaults(func=eval)
 
     args = parser.parse_args()
