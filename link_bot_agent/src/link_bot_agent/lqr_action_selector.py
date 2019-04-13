@@ -13,7 +13,7 @@ class LQRActionSelector(action_selector.ActionSelector):
         self.state_matrix, self.control_matrix = self.linear_tf_model.get_dynamics_matrices()
         Q = np.eye(self.linear_tf_model.M)
         # apparently if this R is too small things explode???
-        R = np.eye(self.linear_tf_model.L) * 1e-9
+        R = np.eye(self.linear_tf_model.L) * 1e-3
         self.K, S, E = control.lqr(self.state_matrix, self.control_matrix, Q, R)
 
     def act(self, o, og):
