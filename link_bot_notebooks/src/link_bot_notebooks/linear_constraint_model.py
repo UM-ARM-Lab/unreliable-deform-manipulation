@@ -166,16 +166,16 @@ class LinearConstraintModel(base_model.BaseModel):
                 (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(self.flat_weights) * self.beta
 
-            self.loss = tf.add_n([self.state_prediction_loss_in_d,
-                                  self.cost_prediction_loss,
-                                  self.regularization,
-                                  ])
             # self.loss = tf.add_n([self.state_prediction_loss_in_d,
             #                       self.cost_prediction_loss,
             #                       self.regularization,
-            #                       self.state_prediction_loss_in_k,
-            #                       self.constraint_prediction_loss,
             #                       ])
+            self.loss = tf.add_n([self.state_prediction_loss_in_d,
+                                  self.cost_prediction_loss,
+                                  self.regularization,
+                                  self.state_prediction_loss_in_k,
+                                  self.constraint_prediction_loss,
+                                  ])
             # self.loss = tf.add_n([self.constraint_prediction_loss])
 
             self.global_step = tf.get_variable("global_step", initializer=0, trainable=False)
