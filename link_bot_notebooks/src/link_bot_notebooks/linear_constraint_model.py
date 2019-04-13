@@ -120,7 +120,7 @@ class LinearConstraintModel(base_model.BaseModel):
         self.hat_o_d_next = tf.transpose(tf.stack(hat_o_d_next), [1, 0, 2], name='hat_o_d_next')
         self.hat_o_k_next = tf.transpose(tf.stack(hat_o_k_next), [1, 0, 2], name='hat_o_k_next')
 
-        self.d_to_goal = self.o_d_goal - self.hat_o_d_next
+        self.d_to_goal = self.o_d_goal - self.hat_o_d
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal, name='hat_c')
         self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.sdf_origin_coordinate,
                              self.hat_o_k, self.P, self.Q)
