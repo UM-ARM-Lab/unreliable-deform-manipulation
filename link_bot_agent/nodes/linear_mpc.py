@@ -138,6 +138,9 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     s_next = np.array(links_state).reshape(1, args.N)
                     true_cost = gzagent.state_cost(s_next, goal)
 
+                    if args.verbose:
+                        print(action)
+
                     if args.pause:
                         input('paused...')
 
