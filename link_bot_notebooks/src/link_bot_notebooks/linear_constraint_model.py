@@ -135,33 +135,30 @@ class LinearConstraintModel(base_model.BaseModel):
         # this way we don't penalize our model for failing to predict the dynamics in collision
         # the (1-label) inverts the labels so that 0 means in collision and mask out
         self.constraint_label_mask = 1 - tf.squeeze(self.k_label)
-        self.mask_indeces = tf.where(1 - tf.squeeze(self.k_label))
+        self.mask_indeces_2d = tf.where(1 - tf.squeeze(self.k_label))
+        self.mask_indeces_3d = tf.where(1 - self.k_label)
 
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
             with tf.name_scope("latent_dynamics_d"):
                 self.state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
-                self.state_prediction_error_in_d = tf.gather_nd(self.state_prediction_error_in_d, self.mask_indeces)
+                self.state_prediction_error_in_d = tf.gather_nd(self.state_prediction_error_in_d, self.mask_indeces_2d)
                 self.state_prediction_loss_in_d = tf.reduce_mean(self.state_prediction_error_in_d,
                                                                  name='state_prediction_loss_in_d')
                 self.cost_prediction_error = tf.square(self.hat_c - self.c_label)
-                self.cost_prediction_error = tf.gather_nd(self.cost_prediction_error, self.mask_indeces)
+                self.cost_prediction_error = tf.gather_nd(self.cost_prediction_error, self.mask_indeces_2d)
                 self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
                 # self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_label, predictions=self.hat_c,
                 #                                                          scope='cost_prediction_loss')
 
             with tf.name_scope("latent_constraints_k"):
                 self.state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
-                self.state_prediction_error_in_k = tf.gather_nd(self.state_prediction_error_in_k, self.mask_indeces)
+                self.state_prediction_error_in_k = tf.gather_nd(self.state_prediction_error_in_k, self.mask_indeces_2d)
                 self.state_prediction_loss_in_k = tf.reduce_mean(self.state_prediction_error_in_k,
                                                                  name='state_prediction_loss_in_k')
 
-                masked_logits = tf.gather_nd(tf.squeeze(self.hat_k), self.mask_indeces)
-                masked_labels = tf.gather_nd(tf.squeeze(self.k_label), self.mask_indeces)
-                masked_logits = tf.gather_nd(tf.squeeze(self.hat_k), self.mask_indeces)
-                masked_labels = tf.gather_nd(tf.squeeze(self.k_label), self.mask_indeces)
-                self.constraint_prediction_error = tf.nn.sigmoid_cross_entropy_with_logits(logits=masked_logits,
-                                                                                           labels=masked_labels)
+                self.constraint_prediction_error = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.hat_k,
+                                                                                           labels=self.k_label)
                 self.constraint_prediction_loss = tf.reduce_mean(self.constraint_prediction_error,
                                                                  name="constraint_prediction_loss")
 
