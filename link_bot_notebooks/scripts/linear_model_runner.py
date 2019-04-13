@@ -13,18 +13,20 @@ from link_bot_notebooks import experiments_util
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
-    log_data = np.load(args.dataset)
-    x = log_data[:, :, :]
-    dt = x[0, 1, 0] - x[0, 0, 0]
-    model = m.LinearTFModel(vars(args), x.shape[0], args.N, args.M, args.L, dt, x.shape[1] - 1, seed=args.seed)
+    data = np.load(args.dataset)
+    times = data['times']
+    dt = times[0, 1, 0] - times[0, 0, 0]
+    batch_size = data['states'].shape[0]
+    n_steps = times.shape[1] - 1
+    model = m.LinearTFModel(vars(args), batch_size, args.N, args.M, args.L, dt, n_steps, seed=args.seed)
 
     goal = np.zeros((1, args.N))
 
     model.setup()
 
-    model.train(x, goal, args.epochs, log_path)
+    model.train(data, goal, args.epochs, log_path)
 
-    model.evaluate(x, goal)
+    model.evaluate(data, goal)
 
 
 def model_only(args):
@@ -38,12 +40,14 @@ def model_only(args):
 
 def evaluate(args):
     goal = np.zeros((1, args.N))
-    log_data = np.load(args.dataset)
-    x = log_data[:, :, :]
-    dt = x[0, 1, 0] - x[0, 0, 0]
-    model = m.LinearTFModel(vars(args), x.shape[0], args.N, args.M, args.L, dt, x.shape[1] - 1)
+    data = np.load(args.dataset)
+    times = data['times']
+    dt = times[0, 1, 0] - times[0, 0, 0]
+    batch_size = data['states'].shape[0]
+    n_steps = times.shape[1] - 1
+    model = m.LinearTFModel(vars(args), batch_size, args.N, args.M, args.L, dt, n_steps, seed=args.seed)
     model.load()
-    return model.evaluate(x, goal)
+    return model.evaluate(data, goal)
 
 
 def main():

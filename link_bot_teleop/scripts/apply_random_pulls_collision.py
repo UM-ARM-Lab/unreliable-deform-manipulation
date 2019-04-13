@@ -45,6 +45,9 @@ def main():
     parser.add_argument("outfile", help='filename to store data in')
     parser.add_argument("pulls", help='how many pulls to do', type=int)
     parser.add_argument("steps", help='how many time steps per pull', type=int)
+    parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
+    parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
+    parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     parser.add_argument("--save-frequency", '-f', help='save every this many steps', type=int, default=10)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--verbose", '-v', action="store_true")
@@ -75,7 +78,10 @@ def main():
     def r():
         return np.random.uniform(-np.pi, np.pi)
 
-    data = []
+    times = np.ndarray((args.pulls, args.steps + 1, 1))
+    states = np.ndarray((args.pulls, args.steps + 1, args.N))
+    actions = np.ndarray((args.pulls, args.steps, args.L))
+    constraints = np.ndarray((args.pulls, args.steps + 1, args.Q))
     np.random.seed(args.seed)
     action_msg = LinkBotAction()
     for p in range(1, args.pulls + 1):
@@ -88,10 +94,13 @@ def main():
         head_vy = np.sin(pull_yaw) * v
 
         time = 0
-        traj = []
-        for t in range(args.steps + 1):
+        for t in range(args.steps):
             # save the state and action data
-            traj.append(agent.get_time_state_action_collision(get_link_state, time, head_vx, head_vy, in_contact))
+            links_state = agent.get_state(get_link_state)
+            times[p, t] = [time]
+            states[p, t] = links_state
+            actions[p, t] = [head_vx, head_vy]
+            constraints[p, t] = [in_contact]
 
             # publish the pull command
             action_msg.control_link_name = 'head'
@@ -107,13 +116,18 @@ def main():
 
             time += DT
 
-            if args.verbose:
-                print(data[-1])
-
-        data.append(traj)
+        # save the final state
+        links_state = agent.get_state(get_link_state)
+        times[p, t] = [time]
+        states[p, t] = links_state
+        constraints[p, t] = [in_contact]
 
         if p % args.save_frequency == 0:
-            np.save(args.outfile, data)
+            np.savez(args.outfile,
+                     times=times,
+                     states=states,
+                     actions=actions,
+                     constraints=constraints)
             print(p, 'saving data...')
 
 

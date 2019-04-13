@@ -17,18 +17,6 @@ class LinkConfig:
         self.vy = None
 
 
-def get_time_state_action_collision(get_link_state, time, head_vx, head_vy, in_contact):
-    state = get_state(get_link_state)
-    state.insert(0, time)
-    if in_contact:
-        state.insert(1, 1)
-    else:
-        state.insert(1, 0)
-    state.append(head_vx)
-    state.append(head_vy)
-    return state
-
-
 def get_rope_data(get_link_state, num_links, control_link_i, fx, fy):
     # return value should be 3D array
     # first dim is position/velocity/force
@@ -52,14 +40,6 @@ def get_rope_data(get_link_state, num_links, control_link_i, fx, fy):
             data[2, link_idx, 1] = 0
 
     return data
-
-
-def get_time_state_action(get_link_state, time, head_vx, head_vy):
-    state = get_state(get_link_state)
-    state.insert(0, time)
-    state.append(head_vx)
-    state.append(head_vy)
-    return state
 
 
 def get_state(get_link_state):

@@ -121,6 +121,7 @@ class LinearTFModel(base_model.BaseModel):
             metadata = {
                 'tf_version': str(tf.__version__),
                 'log path': full_log_path,
+                'seed': self.args['seed'],
                 'checkpoint': self.args['checkpoint'],
                 'N': self.N,
                 'M': self.M,
@@ -135,7 +136,9 @@ class LinearTFModel(base_model.BaseModel):
             writer.add_graph(self.sess.graph)
 
         try:
-            s, u, c = self.compute_cost_label(train_x, goal)
+            s = train_x['states']
+            u = train_x['actions']
+            c = self.compute_cost_label(s, goal)
             feed_dict = {self.s: s,
                          self.u: u,
                          self.g: goal,
@@ -169,7 +172,9 @@ class LinearTFModel(base_model.BaseModel):
         return interrupted
 
     def evaluate(self, eval_x, goal, display=True):
-        s, u, c = self.compute_cost_label(eval_x, goal)
+        s = eval_x['states']
+        u = eval_x['actions']
+        c = self.compute_cost_label(s, goal)
         feed_dict = {self.s: s,
                      self.u: u,
                      self.g: goal,
@@ -198,17 +203,16 @@ class LinearTFModel(base_model.BaseModel):
 
         return A, B, C, D, c_loss, sp_loss, reg, loss
 
-    def compute_cost_label(self, x, goal):
+    @staticmethod
+    def compute_cost_label(s, goal):
         """ x is 3d.
             first axis is the trajectory.
             second axis is the time step
-            third axis is the [state|action] data
+            third axis is the state data
         """
-        s = x[:, :, 1:self.N + 1]
-        u = x[:, :-1, self.N + 1:]
         # NOTE: Here we compute the label for cost/reward and constraints
         c = np.sum((s[:, :, [0, 1]] - goal[0, [0, 1]]) ** 2, axis=2)
-        return s, u, c
+        return c
 
     def setup(self):
         if self.args['checkpoint']:

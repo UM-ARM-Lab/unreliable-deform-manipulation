@@ -55,7 +55,9 @@ def main():
     joy_msg.axes = [0, 0]
     joy_pub.publish(joy_msg)
 
-    data = []
+    times = np.ndarray((args.pulls, args.steps + 1, 1))
+    states = np.ndarray((args.pulls, args.steps + 1, args.N))
+    actions = np.ndarray((args.pulls, args.steps, args.L))
     np.random.seed(args.seed)
     for p in range(1, args.pulls + 1):
         if args.verbose:
@@ -76,10 +78,12 @@ def main():
         config_pub.publish(config)
         time = 0
 
-        traj = []
-        for t in range(args.steps + 1):
+        for t in range(args.steps):
             # save the state and action data
-            traj.append(agent.get_time_state_action(get_link_state, time, head_vx, head_vy))
+            links_state = agent.get_state(get_link_state)
+            times[p, t] = [time]
+            states[p, t] = links_state
+            actions[p, t] = [head_vx, head_vy]
 
             # publish the pull command
             joy_msg.axes = [-head_vx, head_vy]  # stupid xbox controller
@@ -92,13 +96,16 @@ def main():
 
             time += DT
 
-            if args.verbose:
-                print(data[-1])
-
-        data.append(traj)
+        # save the final state
+        links_state = agent.get_state(get_link_state)
+        times[p, t] = [time]
+        states[p, t] = links_state
 
         if p % args.save_frequency == 0:
-            np.save(args.outfile, data)
+            np.savez(args.outfile,
+                     times=times,
+                     states=states,
+                     actions=actions)
             print(p, 'saving data...')
 
     # stop everything

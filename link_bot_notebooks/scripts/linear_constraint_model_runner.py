@@ -17,21 +17,22 @@ def load_sdf(filename):
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
-    log_data = np.load(args.dataset)
     sdf, sdf_gradient, sdf_resolution = load_sdf(args.sdf)
-    x = log_data[:, :, :]
-    dt = x[0, 1, 0] - x[0, 0, 0]
-    model = m.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, x.shape[0], args.N, args.M, args.L,
-                                    args.P, args.Q, dt, x.shape[1] - 1,
-                                    seed=args.seed)
+    data = np.load(args.dataset)
+    times = data['times']
+    dt = times[0, 1, 0] - times[0, 0, 0]
+    batch_size = data['states'].shape[0]
+    n_steps = times.shape[1] - 1
+    model = m.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, batch_size, args.N, args.M, args.L,
+                                    args.P, args.Q, dt, n_steps, seed=args.seed)
 
     goal = np.zeros((1, args.N))
 
     model.setup()
 
-    model.train(x, goal, args.epochs, log_path)
+    model.train(data, goal, args.epochs, log_path)
 
-    model.evaluate(x, goal)
+    model.evaluate(data, goal)
 
 
 def model_only(args):
@@ -49,14 +50,16 @@ def model_only(args):
 
 def evaluate(args):
     goal = np.zeros((1, args.N))
-    log_data = np.load(args.dataset)
     sdf, sdf_gradient, sdf_resolution = load_sdf(args.sdf)
-    x = log_data[:, :, :]
-    dt = x[0, 1, 0] - x[0, 0, 0]
-    model = m.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, x.shape[0], args.N, args.M, args.L,
-                                    args.P, dt, x.shape[1] - 1)
-    model.load()
-    return model.evaluate(x, goal)
+    data = np.load(args.dataset)
+    times = data['times']
+    dt = times[0, 1, 0] - times[0, 0, 0]
+    batch_size = data['states'].shape[0]
+    n_steps = times.shape[1] - 1
+    model = m.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, batch_size, args.N, args.M, args.L,
+                                    args.P, args.Q, dt, n_steps)
+    model.setup()
+    return model.evaluate(data, goal)
 
 
 def main():
@@ -85,6 +88,7 @@ def main():
 
     eval_subparser = subparsers.add_parser("eval")
     eval_subparser.add_argument("dataset", help="dataset (txt file)")
+    eval_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
     eval_subparser.set_defaults(func=evaluate)
 

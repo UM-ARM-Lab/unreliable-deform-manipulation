@@ -69,14 +69,14 @@ class LinearConstraintModel(base_model.BaseModel):
         R_d_init[0, 0] = 1
         R_d_init[1, 1] = 1
 
-        R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-6
-        R_k_init[4, 0] = 1.0
-        R_k_init[5, 1] = 1.0
-
         A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-6
 
         B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-6
         np.fill_diagonal(B_d_init, 1)
+
+        R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-6
+        R_k_init[4, 0] = 1.0
+        R_k_init[5, 1] = 1.0
 
         A_k_init = np.random.randn(M, M).astype(np.float32) * 1e-6
 
@@ -140,12 +140,14 @@ class LinearConstraintModel(base_model.BaseModel):
             # sum of squared errors in latent space at each time step
             with tf.name_scope("latent_dynamics_d"):
                 self.state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
-                self.state_prediction_error_in_d = self.state_prediction_error_in_d * self.constraint_label_mask
+                # self.state_prediction_error_in_d = self.state_prediction_error_in_d * self.constraint_label_mask
                 self.state_prediction_loss_in_d = tf.reduce_mean(self.state_prediction_error_in_d,
                                                                  name='state_prediction_loss_in_d')
                 self.cost_prediction_error = tf.square(self.hat_c - self.c_label)
-                self.cost_prediction_error = self.cost_prediction_error * self.constraint_label_mask
-                self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
+                # self.cost_prediction_error = self.cost_prediction_error * self.constraint_label_mask
+                # self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
+                self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_label, predictions=self.hat_c,
+                                                                         scope='cost_prediction_loss')
 
             with tf.name_scope("latent_constraints_k"):
                 self.state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
@@ -162,10 +164,16 @@ class LinearConstraintModel(base_model.BaseModel):
                 (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(self.flat_weights) * self.beta
 
-            # self.loss = tf.add_n(
-            #     [self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
-            #      self.constraint_prediction_loss, self.regularization])
-            self.loss = tf.add_n([self.state_prediction_loss_in_d, self.cost_prediction_loss, self.regularization])
+            # self.loss = tf.add_n([self.state_prediction_loss_in_d,
+            #                       self.cost_prediction_loss,
+            #                       self.regularization,
+            #                       ])
+            self.loss = tf.add_n([self.state_prediction_loss_in_d,
+                                  self.cost_prediction_loss,
+                                  self.regularization,
+                                  self.state_prediction_loss_in_k,
+                                  self.constraint_prediction_loss,
+                                  ])
             # self.loss = tf.add_n([self.constraint_prediction_loss])
 
             self.global_step = tf.get_variable("global_step", initializer=0, trainable=False)
@@ -211,6 +219,7 @@ class LinearConstraintModel(base_model.BaseModel):
             metadata = {
                 'tf_version': str(tf.__version__),
                 'log path': full_log_path,
+                'seed': self.args['seed'],
                 'checkpoint': self.args['checkpoint'],
                 'N': self.N,
                 'M': self.M,
@@ -227,7 +236,14 @@ class LinearConstraintModel(base_model.BaseModel):
             writer.add_graph(self.sess.graph)
 
         try:
-            s, u, c, k = self.compute_cost_label_and_seperate_data(train_x, goal)
+            s = train_x['states']
+            u = train_x['actions']
+            c = self.compute_cost_label(s, goal)
+            if 'constraints' in train_x:
+                k = train_x['constraints']
+            else:
+                print("WARNING: no constraint data given")
+                k = np.zeros((s.shape[0], s.shape[1], self.Q))
             feed_dict = {self.s: s,
                          self.u: u,
                          self.s_goal: goal,
@@ -263,7 +279,13 @@ class LinearConstraintModel(base_model.BaseModel):
         return interrupted
 
     def evaluate(self, eval_x, goal, display=True):
-        s, u, c, k = self.compute_cost_label_and_seperate_data(eval_x, goal)
+        s = eval_x['states']
+        u = eval_x['actions']
+        c = self.compute_cost_label(s, goal)
+        if 'constraints' in eval_x:
+            k = eval_x['constraints']
+        else:
+            k = np.zeros((s.shape[0], s.shape[1], self.Q))
         feed_dict = {self.s: s,
                      self.u: u,
                      self.s_goal: goal,
@@ -303,19 +325,15 @@ class LinearConstraintModel(base_model.BaseModel):
 
         return R_d, A_d, B_d, D, R_k, A_k, B_k, c_loss, spd_loss, spk_loss, c_loss, k_loss
 
-    def compute_cost_label_and_seperate_data(self, x, goal):
+    @staticmethod
+    def compute_cost_label(s, goal):
         """ x is 3d.
             first axis is the trajectory.
             second axis is the time step
-            third axis is the [state|action] data
+            third axis is the state data
         """
-        # this ordering is prescribed by the cord in agent.py
-        s = x[:, :, 2:2 + self.N]
-        k = x[:, :, 1].reshape(x.shape[0], x.shape[1], self.Q)
-        u = x[:, :-1, -self.L:]
-        # NOTE: Here we compute the label for cost/reward and constraints
         c = np.sum((s[:, :, [0, 1]] - goal[0, [0, 1]]) ** 2, axis=2)
-        return s, u, c, k
+        return c
 
     def setup(self):
         if self.args['checkpoint']:
