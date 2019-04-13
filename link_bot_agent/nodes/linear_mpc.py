@@ -106,7 +106,6 @@ def common(args, goals, max_steps=1e6, verbose=False):
                 s = agent.get_state(gzagent.get_link_state)
                 o = tf_model.reduce(s)
                 planned_actions, _ = action_selector.act(o, verbose)
-                print(planned_actions)
 
                 for i, action in enumerate(planned_actions):
                     if i >= T > 0:
