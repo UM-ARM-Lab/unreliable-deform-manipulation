@@ -139,7 +139,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     true_cost = gzagent.state_cost(s_next, goal)
 
                     if args.verbose:
-                        print(action)
+                        print(s, action, s_next)
 
                     if args.pause:
                         input('paused...')
