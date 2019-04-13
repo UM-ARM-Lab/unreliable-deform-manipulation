@@ -10,7 +10,7 @@ class LQRActionSelector(action_selector.ActionSelector):
         super(LQRActionSelector, self).__init__()
         self.linear_tf_model = linear_tf_model
         self.max_v = max_v
-        _, self.state_matrix, self.control_matrix, _ = self.linear_tf_model.get_ABCD()
+        self.state_matrix, self.control_matrix = self.linear_tf_model.get_dynamics_matrices()
         Q = np.eye(self.linear_tf_model.M)
         # apparently if this R is too small things explode???
         R = np.eye(self.linear_tf_model.L) * 1e-3

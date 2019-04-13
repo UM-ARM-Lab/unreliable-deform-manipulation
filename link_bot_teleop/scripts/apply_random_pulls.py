@@ -7,10 +7,9 @@ from time import sleep
 import numpy as np
 import rospy
 from gazebo_msgs.srv import GetLinkState, GetLinkStateRequest
-from link_bot_gazebo.msg import LinkBotConfiguration
+from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_agent import agent
-from sensor_msgs.msg import Joy
 
 
 def main():
@@ -32,11 +31,9 @@ def main():
     DT = 0.1  # seconds per time step
     time = 0
 
-    joy_msg = Joy()
-    joy_msg.axes = [0, 0]
-    joy_pub = rospy.Publisher("/joy", Joy, queue_size=10)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
+    action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
 
     print("waiting", end='')
@@ -52,9 +49,7 @@ def main():
     def r():
         return np.random.uniform(-np.pi, np.pi)
 
-    joy_msg.axes = [0, 0]
-    joy_pub.publish(joy_msg)
-
+    action_msg = LinkBotAction()
     times = np.ndarray((args.pulls, args.steps + 1, 1))
     states = np.ndarray((args.pulls, args.steps + 1, args.N))
     actions = np.ndarray((args.pulls, args.steps, args.L))
@@ -86,8 +81,11 @@ def main():
             actions[p, t] = [head_vx, head_vy]
 
             # publish the pull command
-            joy_msg.axes = [-head_vx, head_vy]  # stupid xbox controller
-            joy_pub.publish(joy_msg)
+            action_msg.control_link_name = 'head'
+            action_msg.use_force = False
+            action_msg.twist.linear.x = head_vx
+            action_msg.twist.linear.y = head_vy
+            action_pub.publish(action_msg)
 
             # let the simulator run
             step = WorldControlRequest()

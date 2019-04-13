@@ -8,6 +8,11 @@ import scipy.optimize as optimize
 from scipy.linalg import hankel
 
 
+def load_sdf(filename):
+    npz = np.load(filename)
+    return npz['sdf'], npz['sdf_gradient'], npz['sdf_resolution']
+
+
 def make_log_dir(full_log_path):
     """ https://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python """
     if "log_data" not in full_log_path:

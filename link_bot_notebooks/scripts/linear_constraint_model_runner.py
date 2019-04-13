@@ -8,16 +8,12 @@ import numpy as np
 
 from link_bot_notebooks import linear_constraint_model as m
 from link_bot_notebooks import experiments_util
-
-
-def load_sdf(filename):
-    npz = np.load(filename)
-    return npz['sdf'], npz['sdf_gradient'], npz['sdf_resolution']
+from link_bot_notebooks import toy_problem_optimization_common as tpoc
 
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
-    sdf, sdf_gradient, sdf_resolution = load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
     data = np.load(args.dataset)
     times = data['times']
     dt = times[0, 1, 0] - times[0, 0, 0]
@@ -50,7 +46,7 @@ def model_only(args):
 
 def evaluate(args):
     goal = np.zeros((1, args.N))
-    sdf, sdf_gradient, sdf_resolution = load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
     data = np.load(args.dataset)
     times = data['times']
     dt = times[0, 1, 0] - times[0, 0, 0]

@@ -59,6 +59,7 @@ def main():
     parser.add_argument("-M", help="dimensions in latent state", type=int, default=2)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
     parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
+    parser.add_argument("--seed", type=int, default=0)
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
@@ -68,7 +69,6 @@ def main():
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--print-period", "-p", type=int, default=200)
     train_subparser.add_argument("--save-period", type=int, default=400)
-    train_subparser.add_argument("--seed", type=int, default=0)
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")

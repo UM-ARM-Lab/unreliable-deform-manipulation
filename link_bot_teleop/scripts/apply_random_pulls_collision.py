@@ -10,7 +10,6 @@ from gazebo_msgs.srv import GetLinkState
 from gazebo_msgs.msg import ContactsState
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from sensor_msgs.msg import Joy
 from link_bot_agent import agent
 
 in_contact = False
@@ -59,8 +58,6 @@ def main():
 
     DT = 0.1  # seconds per time step
 
-    joy_msg = Joy()
-    joy_msg.axes = [0, 0]
     get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
     action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)

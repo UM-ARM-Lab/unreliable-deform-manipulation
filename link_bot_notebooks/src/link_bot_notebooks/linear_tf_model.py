@@ -300,6 +300,11 @@ class LinearTFModel(base_model.BaseModel):
         rank = np.linalg.matrix_rank(controllability_matrix)
         return rank == self.M
 
+    def get_dynamics_matrices(self):
+        feed_dict = {}
+        ops = [self.B, self.C]
+        return self.sess.run(ops, feed_dict=feed_dict)
+
     def get_ABCD(self):
         feed_dict = {}
         ops = [self.A, self.B, self.C, self.D]

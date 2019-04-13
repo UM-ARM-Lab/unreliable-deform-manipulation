@@ -433,6 +433,11 @@ class LinearConstraintModel(base_model.BaseModel):
         ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k]
         return self.sess.run(ops, feed_dict=feed_dict)
 
+    def get_dynamics_matrices(self):
+        feed_dict = {}
+        ops = [self.A_d, self.B_d]
+        return self.sess.run(ops, feed_dict=feed_dict)
+
     def get_R_d(self):
         feed_dict = {}
         ops = [self.R_d]
