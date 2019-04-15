@@ -83,12 +83,6 @@ class LinearConstraintModel(base_model.BaseModel):
         B_k_init = np.random.randn(M, L).astype(np.float32) * 1e-6
         np.fill_diagonal(B_k_init, 1)
 
-        # Fake linear data
-        # A_d_init = np.array([[0.1, 0.2], [0.3, 0.4]]).astype(np.float32)
-        # B_d_init = np.array([[2, 1], [0, 3]]).astype(np.float32)
-        # A_k_init = np.zeros((M, M)).astype(np.float32) * 1e-6
-        # B_k_init = np.zeros((M, L)).astype(np.float32) * 1e-6
-
         self.R_d = tf.get_variable("R_d", initializer=R_d_init)
         self.A_d = tf.get_variable("A_d", initializer=A_d_init)
         self.B_d = tf.get_variable("B_d", initializer=B_d_init)
@@ -149,8 +143,6 @@ class LinearConstraintModel(base_model.BaseModel):
                 self.cost_prediction_error = tf.square(self.hat_c - self.c_label)
                 self.cost_prediction_error = tf.gather_nd(self.cost_prediction_error, self.mask_indeces_2d)
                 self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
-                # self.cost_prediction_loss = tf.losses.mean_squared_error(labels=self.c_label, predictions=self.hat_c,
-                #                                                          scope='cost_prediction_loss')
 
             with tf.name_scope("latent_constraints_k"):
                 self.state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
@@ -167,17 +159,12 @@ class LinearConstraintModel(base_model.BaseModel):
                 (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(self.flat_weights) * self.beta
 
-            # self.loss = tf.add_n([self.state_prediction_loss_in_d,
-            #                       self.cost_prediction_loss,
-            #                       self.regularization,
-            #                       ])
             self.loss = tf.add_n([self.state_prediction_loss_in_d,
                                   self.cost_prediction_loss,
                                   self.regularization,
                                   self.state_prediction_loss_in_k,
                                   self.constraint_prediction_loss,
                                   ])
-            # self.loss = tf.add_n([self.constraint_prediction_loss])
 
             self.global_step = tf.get_variable("global_step", initializer=0, trainable=False)
             self.opt = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.loss, global_step=self.global_step)
@@ -201,7 +188,8 @@ class LinearConstraintModel(base_model.BaseModel):
             tf.summary.scalar("loss", self.loss)
 
             self.summaries = tf.summary.merge_all()
-            self.sess = tf.Session()
+            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
+            self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
             if args['debug']:
                 self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
             self.saver = tf.train.Saver(max_to_keep=None)
@@ -349,12 +337,13 @@ class LinearConstraintModel(base_model.BaseModel):
         self.sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
 
     def reduce(self, s):
+        # make dummy size array and just fill in
         ss = np.ndarray((self.batch_size, self.n_steps + 1, self.N))
         ss[0, 0] = s
         feed_dict = {self.s: ss}
-        ops = [self.hat_o_d]
-        hat_o = self.sess.run(ops, feed_dict=feed_dict)[0]
-        return hat_o[0, 0].reshape(self.M, 1)
+        ops = [self.hat_o_d, self.hat_o_k]
+        hat_o_d, hat_o_k = self.sess.run(ops, feed_dict=feed_dict)
+        return hat_o_d[0, 0].reshape(self.M, 1), hat_o_k[0, 0].reshape(self.P, 1)
 
     def predict(self, o, u):
         """
@@ -368,10 +357,16 @@ class LinearConstraintModel(base_model.BaseModel):
         hat_o_next = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_o_next
 
-    def simple_predict(self, o, u):
-        R_d, A_d, B_d, D, R_k, A_k, B_k = self.get_matrices()
-        o_next = o + self.dt * np.dot(B_d, o) + self.dt * np.dot(B_d, u)
-        return o_next
+    def simple_dual_predict(self, o_d, o_k, u):
+        A_d, B_d, A_k, B_k = self.get_dynamics_matrices()
+        o_d_next = o_d + self.dt * np.dot(A_d, o_d) + self.dt * np.dot(B_d, u)
+        o_k_next = o_k + self.dt * np.dot(A_k, o_k) + self.dt * np.dot(B_k, u)
+        return o_d_next, o_k_next
+
+    def simple_predict(self, o_d, u):
+        A_d, B_d, D, A_k, B_k = self.get_dynamics_matrices()
+        o_d_next = o_d + self.dt * np.dot(A_d, o_d) + self.dt * np.dot(B_d, u)
+        return o_d_next
 
     def predict_cost(self, o, u, g):
         hat_o = np.ndarray((self.batch_size, self.n_steps + 1, self.M))
@@ -381,11 +376,15 @@ class LinearConstraintModel(base_model.BaseModel):
         hat_c_next = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_c_next
 
-    def hat_constraint(self, s):
-        feed_dict = {self.s: s}
-        ops = [self.hat_o_k]
-        hat_constraint = self.sess.run(ops, feed_dict=feed_dict)[0]
-        return hat_constraint
+    def constraint_violated(self, o_k):
+        full_o_k = np.ndarray((1, self.n_steps + 1, self.P))
+        full_o_k[0, 0] = o_k
+        feed_dict = {self.hat_o_k: full_o_k}
+        ops = [self.hat_k_violated]
+        constraint_violated = self.sess.run(ops, feed_dict=feed_dict)
+        # take the first op from the list, then take the first batch and first time step from that
+        constraint_violated = constraint_violated[0][0, 0]
+        return constraint_violated
 
     def predict_from_s(self, s, u):
         feed_dict = {self.s: s, self.u: u}
@@ -438,7 +437,7 @@ class LinearConstraintModel(base_model.BaseModel):
 
     def get_dynamics_matrices(self):
         feed_dict = {}
-        ops = [self.A_d, self.B_d]
+        ops = [self.A_d, self.B_d, self.A_k, self.B_k]
         return self.sess.run(ops, feed_dict=feed_dict)
 
     def get_R_d(self):

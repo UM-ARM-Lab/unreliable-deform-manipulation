@@ -15,7 +15,7 @@ from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import linear_tf_model
 from link_bot_notebooks import toy_problem_optimization_common as tpoc
-from link_bot_agent import agent, ompl_kino_action_selector, one_step_action_selector, lqr_action_selector
+from link_bot_agent import agent, ompl_act, one_step_action_selector, lqr_action_selector
 from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSampler
 from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler
 
@@ -83,12 +83,12 @@ def common(args, goals, max_steps=1e6, verbose=False):
             og = tf_model.reduce(goal)
             if args.controller == 'ompl-lqr':
                 lqr_solver = lqr_action_selector.LQRActionSelector(tf_model, max_v)
-                action_selector = ompl_kino_action_selector.OMPLAct(lqr_solver, LQRDirectedControlSampler, args.M,
-                                                                    args.L, dt, og, max_v)
+                action_selector = ompl_act.OMPLAct(lqr_solver, LQRDirectedControlSampler, args.M,
+                                                   args.L, dt, og, max_v)
             if args.controller == 'ompl-gurobi':
                 gurobi_solver = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
-                action_selector = ompl_kino_action_selector.OMPLAct(gurobi_solver, GurobiDirectedControlSampler, args.M,
-                                                                    args.L, dt, og, max_v)
+                action_selector = ompl_act.OMPLAct(gurobi_solver, GurobiDirectedControlSampler, args.M,
+                                                   args.L, dt, og, max_v)
             elif args.controller == 'gurobi':
                 action_selector = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
             elif args.controller == 'lqr':

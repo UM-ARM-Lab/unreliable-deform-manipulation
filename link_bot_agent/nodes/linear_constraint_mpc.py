@@ -15,7 +15,8 @@ from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import linear_constraint_model
 from link_bot_notebooks import toy_problem_optimization_common as tpoc
-from link_bot_agent import agent, ompl_kino_action_selector, one_step_action_selector, lqr_action_selector
+from link_bot_agent import agent, ompl_act, one_step_action_selector, lqr_action_selector, \
+    dual_lqr_action_selector
 from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSampler
 from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler
 
@@ -82,15 +83,17 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
             if verbose:
                 print("goal: {}".format(np.array2string(goal)))
-            og = tf_model.reduce(goal)
+            o_d_goal, _ = tf_model.reduce(goal)
             if args.controller == 'ompl-lqr':
                 lqr_solver = lqr_action_selector.LQRActionSelector(tf_model, max_v)
-                action_selector = ompl_kino_action_selector.OMPLAct(lqr_solver, LQRDirectedControlSampler, args.M,
-                                                                    args.L, dt, og, max_v)
+                action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, o_d_goal, max_v)
+            if args.controller == 'ompl-dual-lqr':
+                lqr_solver = dual_lqr_action_selector.DualLQRActionSelector(tf_model, max_v)
+                action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, o_d_goal, max_v)
             if args.controller == 'ompl-gurobi':
                 gurobi_solver = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
-                action_selector = ompl_kino_action_selector.OMPLAct(gurobi_solver, GurobiDirectedControlSampler, args.M,
-                                                                    args.L, dt, og, max_v)
+                action_selector = ompl_act.OMPLAct(tf_model, gurobi_solver, GurobiDirectedControlSampler,
+                                                   dt, o_d_goal, max_v)
             elif args.controller == 'gurobi':
                 action_selector = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
             elif args.controller == 'lqr':
@@ -106,9 +109,10 @@ def common(args, goals, max_steps=1e6, verbose=False):
             time = 0
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
-                o = tf_model.reduce(s)
-                planned_actions, _ = action_selector.act(o, verbose)
-                print(planned_actions)
+                o_d, o_k = tf_model.reduce(s)
+                planned_actions, _ = action_selector.act(sdf, o_d, o_k, verbose)
+                print(planned_actions.squeeze())
+                return
 
                 for i, action in enumerate(planned_actions):
                     if i >= T > 0:
@@ -184,7 +188,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
 
 def test(args):
-    goal = np.array([[0, 0, 0, 0, 0, 0]])
+    goal = np.array([[-2, 2, 0, 0, 0, 0]])
     common(args, [goal], verbose=args.verbose)
 
 
@@ -221,7 +225,7 @@ def main():
     parser.add_argument("-P", help="dimensions in latent state o_k", type=int, default=2)
     parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     parser.add_argument("--logdir", '-d', help='data directory to store logged data in')
-    parser.add_argument("--controller", choices=['gurobi', 'lqr', 'ompl-lqr', 'ompl-gurobi'])
+    parser.add_argument("--controller", choices=['gurobi', 'lqr', 'ompl-lqr', 'ompl-dual-lqr', 'ompl-gurobi'])
 
     subparsers = parser.add_subparsers()
     test_subparser = subparsers.add_parser("test")
