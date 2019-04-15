@@ -11,7 +11,7 @@ class ActionSelector(object):
     def just_d_act(self, o_d, o_d_goal):
         raise NotImplementedError("ActionSelector is an abstract class.")
 
-    def dual_act(self, o_combined, o_goal_combined):
+    def dual_act(self, o_d, o_k, o_d_goal):
         raise NotImplementedError("ActionSelector is an abstract class.")
 
     def just_d_multi_act(self, o, og):
@@ -38,23 +38,24 @@ class ActionSelector(object):
         return False, None, None
 
     def dual_multi_act(self, o_d, o_k, o_d_goal):
-        o_combined = o_combined.reshape(-1, 1)
-        o_goal_combined = o_goal_combined.reshape(-1, 1)
         us = []
-        os = [o_combined]
+        o_ks = [o_d]
+        o_ds = [o_k]
         errors = []
         for _ in range(100):
             u, o_d_next, o_k_next = self.dual_act(o_d, o_k, o_d_goal)
             if np.linalg.norm(u) < 1e-3:
-                return False, None, None
+                return False, None, None, None
 
             us.append(u)
-            os.append(o_next_combined)
+            o_ds.append(o_d)
+            o_ks.append(o_k)
 
-            error = np.linalg.norm(o_combined - o_goal_combined)
+            error = np.linalg.norm(o_d - o_d_goal)
             errors.append(error)
             if error < 0.05:
-                return True, np.array(us), np.array(os)
-            o_combined = o_next_combnied
+                return True, np.array(us), np.array(o_ds), np.array(o_ks)
+            o_d = o_d_next
+            o_k = o_k_next
 
-        return False, None, None
+        return False, None, None, None

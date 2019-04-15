@@ -13,7 +13,7 @@ import ompl.util as ou
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import linear_constraint_model
+from link_bot_notebooks import linear_constraint_model, linear_tf_model
 from link_bot_notebooks import toy_problem_optimization_common as tpoc
 from link_bot_agent import agent, ompl_act, one_step_action_selector, lqr_action_selector, \
     dual_lqr_action_selector
@@ -21,6 +21,7 @@ from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSample
 from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler
 
 dt = 0.1
+# TODO: make this lower
 success_dist = 0.1
 
 
@@ -42,10 +43,31 @@ def common(args, goals, max_steps=1e6, verbose=False):
         print(Fore.CYAN + "Saving new data in {}".format(logfile) + Fore.RESET)
 
     batch_size = 1
+    max_v = 1
     n_steps = 1
-    sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
-    tf_model = linear_constraint_model.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, batch_size,
-                                                             args.N, args.M, args.L, args.P, args.Q, dt, n_steps)
+    if args.controller == 'ompl-dual-lqr':
+        sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
+        tf_model = linear_constraint_model.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution,
+                                                                 batch_size, args.N, args.M, args.L, args.P, args.Q, dt,
+                                                                 n_steps)
+        tf_model.load()
+        lqr_solver = dual_lqr_action_selector.DualLQRActionSelector(tf_model, max_v)
+        action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, max_v)
+    else:
+        tf_model = linear_tf_model.LinearTFModel(vars(args), batch_size, args.N, args.M, args.L, dt, n_steps)
+        tf_model.load()
+        sdf = None
+        if args.controller == 'ompl-lqr':
+            lqr_solver = lqr_action_selector.LQRActionSelector(tf_model, max_v)
+            action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, max_v)
+        if args.controller == 'ompl-gurobi':
+            gurobi_solver = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
+            action_selector = ompl_act.OMPLAct(tf_model, gurobi_solver, GurobiDirectedControlSampler, dt, max_v)
+        elif args.controller == 'gurobi':
+            action_selector = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
+        elif args.controller == 'lqr':
+            action_selector = lqr_action_selector.LQRActionSelector(tf_model, max_v)
+
     gzagent = agent.GazeboAgent(N=args.N, M=args.M, dt=dt, model=tf_model, gazebo_model_name=args.model_name)
 
     rospy.init_node('MPCAgent')
@@ -58,10 +80,6 @@ def common(args, goals, max_steps=1e6, verbose=False):
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
 
-    # load our initial model
-    tf_model.load()
-
-    max_v = 1
     min_true_costs = []
     T = -1
 
@@ -74,8 +92,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
         for goal in goals:
             # reset to random starting point
             config = LinkBotConfiguration()
-            config.tail_pose.x = np.random.uniform(-3, 3)
-            config.tail_pose.y = np.random.uniform(-3, 3)
+            config.tail_pose.x = np.random.uniform(-4, 4)
+            config.tail_pose.y = np.random.uniform(-4, 4)
             config.tail_pose.theta = np.random.uniform(-np.pi, np.pi)
             config.joint_angles_rad = np.random.uniform(-np.pi, np.pi, size=2)
             config_pub.publish(config)
@@ -83,21 +101,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
             if verbose:
                 print("goal: {}".format(np.array2string(goal)))
+
             o_d_goal, _ = tf_model.reduce(goal)
-            if args.controller == 'ompl-lqr':
-                lqr_solver = lqr_action_selector.LQRActionSelector(tf_model, max_v)
-                action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, o_d_goal, max_v)
-            if args.controller == 'ompl-dual-lqr':
-                lqr_solver = dual_lqr_action_selector.DualLQRActionSelector(tf_model, max_v)
-                action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, o_d_goal, max_v)
-            if args.controller == 'ompl-gurobi':
-                gurobi_solver = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
-                action_selector = ompl_act.OMPLAct(tf_model, gurobi_solver, GurobiDirectedControlSampler,
-                                                   dt, o_d_goal, max_v)
-            elif args.controller == 'gurobi':
-                action_selector = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
-            elif args.controller == 'lqr':
-                action_selector = lqr_action_selector.LQRActionSelector(tf_model, max_v)
 
             min_true_cost = 1e9
             step_idx = 0
@@ -110,20 +115,19 @@ def common(args, goals, max_steps=1e6, verbose=False):
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
                 o_d, o_k = tf_model.reduce(s)
-                planned_actions, _ = action_selector.act(sdf, o_d, o_k, verbose)
-                print(planned_actions.squeeze())
-                return
+                planned_actions, _ = action_selector.act(sdf, o_d, o_k, o_d_goal, verbose)
 
                 for i, action in enumerate(planned_actions):
                     if i >= T > 0:
                         break
 
                     u_norm = np.linalg.norm(action)
-                    if u_norm > max_v:
-                        scaling = max_v
-                    else:
-                        scaling = u_norm
-                    action = action * scaling / u_norm
+                    if u_norm > 1e-9:
+                        if u_norm > max_v:
+                            scaling = max_v
+                        else:
+                            scaling = u_norm
+                        action = action * scaling / u_norm
 
                     links_state = agent.get_state(gzagent.get_link_state)
                     time_traj.append(time)
@@ -149,6 +153,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
                         input('paused...')
 
                     min_true_cost = min(min_true_cost, true_cost)
+                    print(min_true_cost)
                     if true_cost < success_dist:
                         done = True
                         if verbose:
@@ -188,13 +193,13 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
 
 def test(args):
-    goal = np.array([[-2, 2, 0, 0, 0, 0]])
+    goal = np.array([[3, 0, 0, 0, 0, 0]])
     common(args, [goal], verbose=args.verbose)
 
 
 def eval(args):
     fname = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(timemod.time())))
-    g0 = np.array([[0, 0, 0, 0, 0, 0]])
+    g0 = np.array([[3, 0, 0, 0, 0, 0]])
     goals = [g0] * args.n_random_goals
     min_costs = common(args, goals, max_steps=151)
     print(min_costs)

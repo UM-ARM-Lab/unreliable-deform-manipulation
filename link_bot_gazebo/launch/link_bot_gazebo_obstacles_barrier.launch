@@ -1,0 +1,17 @@
+<launch>
+    <arg name="gui" default="true"/>
+    <include file="$(find link_bot_description)/launch/link_bot_description.launch">
+    </include>
+
+    <node name="joy_node" pkg="joy" type="joy_node"/>
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/link_bot_obstacles_barrier.world"/>
+        <arg name="verbose" default="true"/>
+        <arg name="gui" value="$(arg gui)"/>
+    </include>
+
+    <!-- Spawn a robot into Gazebo -->
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
+          args="-file $(find link_bot_description)/urdf/link_bot.urdf -urdf -z 0.1 -x -4 -y 1 -model link_bot"/>
+</launch>

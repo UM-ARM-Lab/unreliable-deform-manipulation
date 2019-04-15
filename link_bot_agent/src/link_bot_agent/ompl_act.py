@@ -7,7 +7,7 @@ from ompl import control as oc
 
 class OMPLAct:
 
-    def __init__(self, tf_model, action_selector, directed_control_sampler, dt, o_goal, max_v):
+    def __init__(self, tf_model, action_selector, directed_control_sampler, dt, max_v):
         self.tf_model = tf_model
         self.action_selector = action_selector
         self.directed_control_sampler = directed_control_sampler
@@ -17,7 +17,6 @@ class OMPLAct:
         self.N = self.tf_model.N
         self.P = self.tf_model.P
         self.Q = self.tf_model.Q
-        self.o_d_goal = o_goal
         self.max_v = max_v
 
         dynamics_latent_space = ob.RealVectorStateSpace(self.M)
@@ -68,14 +67,14 @@ class OMPLAct:
         # apparently when we used a directed control sampler this function is not used.
         raise NotImplementedError("Because we used custom directed control sampler, we expect propagate is not used")
 
-    def act(self, sdf, o_d_start, o_k_start, verbose=False):
+    def act(self, sdf, o_d_start, o_k_start, o_d_goal, verbose=False):
         # create start and goal states
         self.directed_control_sampler.reset()
         start = ob.State(self.latent_space)
         goal = ob.State(self.latent_space)
         for i in range(self.M):
             start()[0][i] = o_d_start[i, 0].astype(np.float64)
-            goal()[0][i] = self.o_d_goal[i, 0].astype(np.float64)
+            goal()[0][i] = o_d_goal[i, 0].astype(np.float64)
         for i in range(self.P):
             start()[1][i] = o_k_start[i, 0].astype(np.float64)
             goal()[1][i] = -999
@@ -84,14 +83,14 @@ class OMPLAct:
         # the threshold on "cost-to-goal" is interpretable here as Euclidian distance
         epsilon = 0.1
         self.ss.setStartAndGoalStates(start, goal, 0.4 * epsilon)
-        solved = self.ss.solve(500)
+        solved = self.ss.solve(1)
         print("Planning time: {}".format(self.ss.getLastPlanComputationTime()))
         if solved:
             ompl_path = self.ss.getSolutionPath()
 
             numpy_controls = np.ndarray((ompl_path.getControlCount(), 1, self.L))
-            numpy_d_states = np.ndarray((ompl_path.getStateCount(), self.M))
-            numpy_k_states = np.ndarray((ompl_path.getStateCount(), self.P))
+            numpy_d_states = np.ndarray((ompl_path.getStateCount(), self.M, 1))
+            numpy_k_states = np.ndarray((ompl_path.getStateCount(), self.P, 1))
             for i, state in enumerate(ompl_path.getStates()):
                 for j in range(self.M):
                     numpy_d_states[i, j] = state[0][j]
@@ -102,40 +101,47 @@ class OMPLAct:
                 numpy_controls[i, 0, 1] = control[1]
 
             # SMOOTHING
-            # new_states = list(numpy_states)
-            # new_controls = list(numpy_controls)
-            # shortcut_iter = 0
-            # shortcut_successes = 0
-            # while shortcut_iter < 200 and len(new_states) > 2:
-            #     shortcut_iter += 1
-            #     start_idx = np.random.randint(0, len(new_states) - 1)
-            #     shortcut_start = new_states[start_idx]
-            #     end_idx = np.random.randint(start_idx + 1, len(new_states))
-            #     shortcut_end = new_states[end_idx]
-            #
-            #     success, new_shortcut_us, new_shortcut_os = self.directed_control_sampler.dual_multi_act(shortcut_start,
-            #                                                                                              shortcut_end)
-            #
-            #     if success:
-            #         # popping changes the indexes of everything, so we just pop tat start_idx the right number of times
-            #         for i in range(start_idx, end_idx):
-            #             new_states.pop(start_idx)
-            #             new_controls.pop(start_idx)
-            #         for i, (shortcut_u, shortcut_o) in enumerate(zip(new_shortcut_us, new_shortcut_os)):
-            #             new_states.insert(start_idx + i, np.squeeze(shortcut_o))  # or maybe shortcut_end?
-            #             new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
-            #         shortcut_successes += 1
-            #
-            # numpy_states = np.array(new_states)
-            # numpy_controls = np.array(new_controls)
+            new_d_states = list(numpy_d_states)
+            new_k_states = list(numpy_k_states)
+            new_controls = list(numpy_controls)
+            shortcut_iter = 0
+            shortcut_successes = 0
+            while shortcut_iter < 200 and len(new_d_states) > 2:
+                shortcut_iter += 1
+                start_idx = np.random.randint(0, len(new_d_states) - 1)
+                d_shortcut_start = new_d_states[start_idx]
+                k_shortcut_start = new_k_states[start_idx]
+                end_idx = np.random.randint(start_idx + 1, len(new_d_states))
+                d_shortcut_end = new_d_states[end_idx]
+
+                success, new_shortcut_us, new_shortcut_o_ds, new_shortcut_o_ks = self.directed_control_sampler.dual_multi_act(
+                    d_shortcut_start, k_shortcut_start, d_shortcut_end)
+
+                if success:
+                    # popping changes the indexes of everything, so we just pop at start_idx the right number of times
+                    for i in range(start_idx, end_idx):
+                        new_d_states.pop(start_idx)
+                        new_k_states.pop(start_idx)
+                        new_controls.pop(start_idx)
+                    for i, (shortcut_u, shortcut_o_d, shortcut_o_k) in enumerate(
+                            zip(new_shortcut_us, new_shortcut_o_ds, new_shortcut_o_ks)):
+                        new_d_states.insert(start_idx + i, shortcut_o_d)  # or maybe shortcut_end?
+                        new_k_states.insert(start_idx + i, shortcut_o_k)  # or maybe shortcut_end?
+                        new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
+                    shortcut_successes += 1
+
+            numpy_d_states = np.array(new_d_states)
+            numpy_k_states = np.array(new_k_states)
+            numpy_controls = np.array(new_controls)
 
             if verbose:
                 # print("{}/{} shortcuts succeeded".format(shortcut_successes, shortcut_iter))
-                self.directed_control_sampler.plot_dual_sdf(sdf, o_d_start, self.o_d_goal, numpy_d_states, numpy_k_states)
+                self.directed_control_sampler.plot_dual_sdf(sdf, o_d_start, self.o_d_goal, numpy_d_states,
+                                                            numpy_k_states)
                 plt.show()
             lengths = [np.linalg.norm(numpy_d_states[i] - numpy_d_states[i - 1]) for i in range(1, len(numpy_d_states))]
             path_length = np.sum(lengths)
-            final_error = np.linalg.norm(numpy_d_states[-1] - self.o_d_goal)
+            final_error = np.linalg.norm(numpy_d_states[-1] - self.o_d_goal.T)
             duration = self.dt * len(numpy_d_states)
             print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
                 final_error, path_length, len(numpy_d_states), duration))
