@@ -47,6 +47,36 @@
             <pose>0 3.5 0 0 0 0</pose>
             <name>box7</name>
         </include>
+        <model name="goal">
+            <pose>2.5 0 0 0 0 0</pose>
+            <static>true</static>
+            <link name="goal_link">
+                <pose>0 0 0 0 0 0</pose>
+                <interial>
+                    <inertia>
+                        <ixx>3e-6</ixx>
+                        <ixy>0</ixy>
+                        <ixz>0</ixz>
+                        <iyy>3e-6</iyy>
+                        <iyz>0</iyz>
+                        <izz>5e-6</izz>
+                    </inertia>
+                    <mass>0.00001</mass>
+                </interial>
+                <visual name="'goal_visual">
+                    <geometry>
+                        <cylinder>
+                            <radius>0.1</radius>
+                            <length>0.01</length>
+                        </cylinder>
+                    </geometry>
+                    <material>
+                        <ambient>0 1 0 1</ambient>
+                        <diffuse>0 1 0 1</diffuse>
+                    </material>
+                </visual>
+            </link>
+        </model>
         <include>
             <uri>model://arena</uri>
             <pose>0 0 0 0 0 0</pose>

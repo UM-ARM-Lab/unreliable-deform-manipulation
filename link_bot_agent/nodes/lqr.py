@@ -42,46 +42,27 @@ def common(args, goals, max_steps=1e6, verbose=False):
         logfile = os.path.join(args.logdir, "{}_{}.npy".format("_".join(checkpoint_folders), now))
         print(Fore.CYAN + "Saving new data in {}".format(logfile) + Fore.RESET)
 
-    np.random.seed(args.seed)
-    ou.RNG.setSeed(args.seed)
-    ou.setLogLevel(ou.LOG_DEBUG)
-
     batch_size = 1
     max_v = 1
     n_steps = 1
-    if args.controller == 'ompl-dual-lqr':
-        sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
-        tf_model = linear_constraint_model.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution,
-                                                                 batch_size, args.N, args.M, args.L, args.P, args.Q, dt,
-                                                                 n_steps)
-        tf_model.load()
-        lqr_solver = dual_lqr_action_selector.DualLQRActionSelector(tf_model, max_v)
-        action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, max_v)
-    else:
-        tf_model = linear_tf_model.LinearTFModel(vars(args), batch_size, args.N, args.M, args.L, dt, n_steps)
-        tf_model.load()
-        sdf = None
-        if args.controller == 'ompl-lqr':
-            lqr_solver = lqr_action_selector.LQRActionSelector(tf_model, max_v)
-            action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, max_v)
-        if args.controller == 'ompl-gurobi':
-            gurobi_solver = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
-            action_selector = ompl_act.OMPLAct(tf_model, gurobi_solver, GurobiDirectedControlSampler, dt, max_v)
-        elif args.controller == 'gurobi':
-            action_selector = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
-        elif args.controller == 'lqr':
-            action_selector = lqr_action_selector.LQRActionSelector(tf_model, max_v)
+    tf_model = linear_tf_model.LinearTFModel(vars(args), batch_size, args.N, args.M, args.L, dt, n_steps)
+    tf_model.load()
+    action_selector = lqr_action_selector.LQRActionSelector(tf_model, max_v)
 
     gzagent = agent.GazeboAgent(N=args.N, M=args.M, dt=dt, model=tf_model, gazebo_model_name=args.model_name)
 
     rospy.init_node('MPCAgent')
+
+    np.random.seed(args.seed)
+    ou.RNG.setSeed(args.seed)
+    ou.setLogLevel(ou.LOG_WARN)
 
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
 
     min_true_costs = []
-    T = 20
+    T = -1
 
     try:
         times = []
@@ -102,7 +83,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
             if verbose:
                 print("goal: {}".format(np.array2string(goal)))
 
-            o_d_goal, _ = tf_model.reduce(goal)
+            o_d_goal = tf_model.reduce(goal)
 
             min_true_cost = 1e9
             step_idx = 0
@@ -114,12 +95,20 @@ def common(args, goals, max_steps=1e6, verbose=False):
             time = 0
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
-                o_d, o_k = tf_model.reduce(s)
-                planned_actions, _ = action_selector.act(sdf, o_d, o_k, o_d_goal, verbose)
+                o_d = tf_model.reduce(s)
+                planned_actions, _ = action_selector.act(o_d, None, o_d_goal, verbose)
 
                 for i, action in enumerate(planned_actions):
                     if i >= T > 0:
                         break
+
+                    u_norm = np.linalg.norm(action)
+                    if u_norm > 1e-9:
+                        if u_norm > max_v:
+                            scaling = max_v
+                        else:
+                            scaling = u_norm
+                        action = action * scaling / u_norm
 
                     links_state = agent.get_state(gzagent.get_link_state)
                     time_traj.append(time)
@@ -130,16 +119,6 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     # publish the pull command
                     action_msg.control_link_name = 'head'
                     action_msg.use_force = False
-
-                    # actions should be scaled in LQR? do it again here?
-                    u_norm = np.linalg.norm(action)
-                    if u_norm > 1e-9:
-                        if u_norm > max_v:
-                            scaling = max_v
-                        else:
-                            scaling = u_norm
-                        action = action * scaling / u_norm
-
                     action_msg.twist.linear.x = action[0, 0]
                     action_msg.twist.linear.y = action[0, 1]
                     action_pub.publish(action_msg)
@@ -155,6 +134,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
                         input('paused...')
 
                     min_true_cost = min(min_true_cost, true_cost)
+                    print(min_true_cost)
                     if true_cost < success_dist:
                         done = True
                         if verbose:
@@ -218,7 +198,6 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("checkpoint", help="load this saved model file")
-    parser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     parser.add_argument("--model-name", '-m', default="link_bot")
     parser.add_argument("--seed", '-s', type=int, default=2)
     parser.add_argument("--verbose", action='store_true')
@@ -231,7 +210,6 @@ def main():
     parser.add_argument("-P", help="dimensions in latent state o_k", type=int, default=2)
     parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     parser.add_argument("--logdir", '-d', help='data directory to store logged data in')
-    parser.add_argument("--controller", choices=['gurobi', 'lqr', 'ompl-lqr', 'ompl-dual-lqr', 'ompl-gurobi'])
 
     subparsers = parser.add_subparsers()
     test_subparser = subparsers.add_parser("test")

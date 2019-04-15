@@ -16,14 +16,32 @@ class LQRActionSelector(action_selector.ActionSelector):
         R = np.eye(self.linear_tf_model.L) * 1e-3
         self.K, S, E = control.lqr(self.state_matrix, self.control_matrix, Q, R)
 
-    def act(self, sdf, o_d, o_k, o_d_goal, verbose=False):
+    def act(self, o_d, o_k, o_d_goal, verbose=False):
         """ return the action which gives the lowest cost for the predicted next state """
         u = np.dot(-self.K, o_d - o_d_goal)
+
+        u_norm = np.linalg.norm(u)
+        if u_norm > 1e-9:
+            if u_norm > self.max_v:
+                scaling = self.max_v
+            else:
+                scaling = u_norm
+            u = u * scaling / u_norm
+
         o_next = self.linear_tf_model.simple_predict(o_d, u.reshape(2, 1))
         return u.reshape(-1, 1, 2), o_next
 
     def just_d_act(self, o_d, o_d_goal):
         """ return the action which gives the lowest cost for the predicted next state """
         u = np.dot(-self.K, o_d - o_d_goal)
+
+        u_norm = np.linalg.norm(u)
+        if u_norm > 1e-9:
+            if u_norm > self.max_v:
+                scaling = self.max_v
+            else:
+                scaling = u_norm
+            u = u * scaling / u_norm
+
         o_next = self.linear_tf_model.simple_predict(o_d, u.reshape(2, 1))
         return u.reshape(-1, 1, 2), o_next

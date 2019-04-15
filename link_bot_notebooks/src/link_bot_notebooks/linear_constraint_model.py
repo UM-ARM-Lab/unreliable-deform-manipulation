@@ -364,7 +364,7 @@ class LinearConstraintModel(base_model.BaseModel):
         return o_d_next, o_k_next
 
     def simple_predict(self, o_d, u):
-        A_d, B_d, D, A_k, B_k = self.get_dynamics_matrices()
+        A_d, B_d, _, _ = self.get_dynamics_matrices()
         o_d_next = o_d + self.dt * np.dot(A_d, o_d) + self.dt * np.dot(B_d, u)
         return o_d_next
 
