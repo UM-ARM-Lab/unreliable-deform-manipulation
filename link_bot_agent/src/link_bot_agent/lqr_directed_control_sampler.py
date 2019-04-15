@@ -40,3 +40,30 @@ class LQRDirectedControlSampler(MyDirectedControlSampler):
 
         duration_steps = 1
         return duration_steps
+
+    def dual_shortcut(self, o_d, o_k, o_d_goal):
+        us = []
+        o_ks = [o_k]
+        o_ds = [o_d]
+        errors = []
+        for _ in range(100):
+            u, o_d_next, o_k_next = self.action_selector.dual_act(o_d, o_k, o_d_goal)
+            constraint_violated = self.action_selector.constraint_violated(o_k_next)
+
+            if constraint_violated:
+                return False, None, None, None
+            if np.linalg.norm(u) < 1e-2:
+                return False, None, None, None
+
+            us.append(u)
+            o_ds.append(o_d)
+            o_ks.append(o_k)
+
+            error = np.linalg.norm(o_d - o_d_goal)
+            errors.append(error)
+            if error < 0.05:
+                return True, np.array(us), np.array(o_ds), np.array(o_ks)
+            o_d = o_d_next
+            o_k = o_k_next
+
+        return False, None, None, None

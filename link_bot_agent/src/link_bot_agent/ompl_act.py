@@ -97,50 +97,55 @@ class OMPLAct:
             numpy_controls[1:] = numpy_controls[0:-1]
 
             # SMOOTHING
-            # new_d_states = list(numpy_d_states)
-            # new_k_states = list(numpy_k_states)
-            # new_controls = list(numpy_controls)
-            # shortcut_iter = 0
-            # shortcut_successes = 0
-            # while shortcut_iter < 200 and len(new_d_states) > 2:
-            #     shortcut_iter += 1
-            #     start_idx = np.random.randint(0, len(new_d_states) - 1)
-            #     d_shortcut_start = new_d_states[start_idx]
-            #     k_shortcut_start = new_k_states[start_idx]
-            #     end_idx = np.random.randint(start_idx + 1, len(new_d_states))
-            #     d_shortcut_end = new_d_states[end_idx]
-            #
-            #     success, new_shortcut_us, new_shortcut_o_ds, new_shortcut_o_ks = self.directed_control_sampler.dual_multi_act(
-            #         d_shortcut_start, k_shortcut_start, d_shortcut_end)
-            #
-            #     if success:
-            #         # popping changes the indexes of everything, so we just pop at start_idx the right number of times
-            #         for i in range(start_idx, end_idx):
-            #             new_d_states.pop(start_idx)
-            #             new_k_states.pop(start_idx)
-            #             new_controls.pop(start_idx)
-            #         for i, (shortcut_u, shortcut_o_d, shortcut_o_k) in enumerate(
-            #                 zip(new_shortcut_us, new_shortcut_o_ds, new_shortcut_o_ks)):
-            #             new_d_states.insert(start_idx + i, shortcut_o_d)  # or maybe shortcut_end?
-            #             new_k_states.insert(start_idx + i, shortcut_o_k)  # or maybe shortcut_end?
-            #             new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
-            #         shortcut_successes += 1
-            #
-            # numpy_d_states = np.array(new_d_states)
-            # numpy_k_states = np.array(new_k_states)
-            # numpy_controls = np.array(new_controls)
+            numpy_d_states, numpy_k_states, numpy_controls = self.smooth(numpy_d_states, numpy_k_states, numpy_controls)
 
             if verbose:
                 # print("{}/{} shortcuts succeeded".format(shortcut_successes, shortcut_iter))
                 self.directed_control_sampler.plot_dual_sdf(sdf, o_d_start, o_d_goal, numpy_d_states,
                                                             numpy_k_states, numpy_controls)
                 plt.show()
+            final_error = np.linalg.norm(numpy_d_states[-1] - o_d_goal)
             lengths = [np.linalg.norm(numpy_d_states[i] - numpy_d_states[i - 1]) for i in range(1, len(numpy_d_states))]
             path_length = np.sum(lengths)
-            final_error = np.linalg.norm(numpy_d_states[-1] - o_d_goal.T)
             duration = self.dt * len(numpy_d_states)
             print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
                 final_error, path_length, len(numpy_d_states), duration))
             return numpy_controls, numpy_d_states
         else:
             raise RuntimeError("No Solution found from {} to {}".format(start, goal))
+
+    def smooth(self, numpy_d_states, numpy_k_states, numpy_controls, iters=100):
+        new_d_states = list(numpy_d_states)
+        new_k_states = list(numpy_k_states)
+        new_controls = list(numpy_controls)
+        shortcut_iter = 0
+        shortcut_successes = 0
+        while shortcut_iter < iters:
+            shortcut_iter += 1
+            start_idx = np.random.randint(0, len(new_d_states) - 1)
+            d_shortcut_start = new_d_states[start_idx]
+            k_shortcut_start = new_k_states[start_idx]
+            end_idx = np.random.randint(start_idx + 1, len(new_d_states))
+            d_shortcut_end = new_d_states[end_idx]
+
+            success, new_shortcut_us, new_shortcut_o_ds, new_shortcut_o_ks = self.directed_control_sampler.dual_shortcut(
+                d_shortcut_start, k_shortcut_start, d_shortcut_end)
+
+            if success:
+                # popping changes the indexes of everything, so we just pop at start_idx the right number of times
+                for i in range(start_idx, end_idx):
+                    new_d_states.pop(start_idx)
+                    new_k_states.pop(start_idx)
+                    new_controls.pop(start_idx)
+                for i, (shortcut_u, shortcut_o_d, shortcut_o_k) in enumerate(
+                        zip(new_shortcut_us, new_shortcut_o_ds, new_shortcut_o_ks)):
+                    new_d_states.insert(start_idx + i, shortcut_o_d)  # or maybe shortcut_end?
+                    new_k_states.insert(start_idx + i, shortcut_o_k)  # or maybe shortcut_end?
+                    new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
+                shortcut_successes += 1
+
+        numpy_d_states = np.array(new_d_states)
+        numpy_k_states = np.array(new_k_states)
+        numpy_controls = np.array(new_controls)
+
+        return numpy_d_states, numpy_k_states, numpy_controls

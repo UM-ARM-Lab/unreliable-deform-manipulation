@@ -19,12 +19,6 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
         self.action_selector = action_selector
         self.rng_ = ou.RNG()
 
-    def just_d_multi_act(self, o, og):
-        return self.action_selector.just_dmulti_act(o, og)
-
-    def dual_multi_act(self, o_d, o_k, o_d_goal):
-        return self.action_selector.dual_multi_act(o_d, o_k, o_d_goal)
-
     @classmethod
     def reset(cls):
         cls.states_sampled_at = []

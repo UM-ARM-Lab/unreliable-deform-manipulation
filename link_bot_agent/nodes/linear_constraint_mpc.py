@@ -22,7 +22,7 @@ from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControl
 
 dt = 0.1
 # TODO: make this lower
-success_dist = 0.1
+success_dist = 0.12
 
 
 def common(args, goals, max_steps=1e6, verbose=False):
@@ -81,7 +81,6 @@ def common(args, goals, max_steps=1e6, verbose=False):
     action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
 
     min_true_costs = []
-    T = 20
 
     try:
         times = []
@@ -118,7 +117,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
                 planned_actions, _ = action_selector.act(sdf, o_d, o_k, o_d_goal, verbose)
 
                 for i, action in enumerate(planned_actions):
-                    if i >= T > 0:
+                    if i >= args.num_actions > 0:
                         break
 
                     links_state = agent.get_state(gzagent.get_link_state)
@@ -230,6 +229,7 @@ def main():
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
     parser.add_argument("-P", help="dimensions in latent state o_k", type=int, default=2)
     parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
+    parser.add_argument("--num-actions", '-T', help="number of actions to execute from the plan", type=int, default=10)
     parser.add_argument("--logdir", '-d', help='data directory to store logged data in')
     parser.add_argument("--controller", choices=['gurobi', 'lqr', 'ompl-lqr', 'ompl-dual-lqr', 'ompl-gurobi'])
 
