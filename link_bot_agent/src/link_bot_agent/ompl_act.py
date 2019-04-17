@@ -77,7 +77,7 @@ class OMPLAct:
         # the threshold on "cost-to-goal" is interpretable here as Euclidian distance
         epsilon = 0.1
         self.ss.setStartAndGoalStates(start, goal, 0.4 * epsilon)
-        solved = self.ss.solve(1)
+        solved = self.ss.solve(1.0)
         print("Planning time: {}".format(self.ss.getLastPlanComputationTime()))
         if solved:
             ompl_path = self.ss.getSolutionPath()
@@ -114,7 +114,7 @@ class OMPLAct:
         else:
             raise RuntimeError("No Solution found from {} to {}".format(start, goal))
 
-    def smooth(self, numpy_d_states, numpy_k_states, numpy_controls, iters=100):
+    def smooth(self, numpy_d_states, numpy_k_states, numpy_controls, iters=20):
         new_d_states = list(numpy_d_states)
         new_k_states = list(numpy_k_states)
         new_controls = list(numpy_controls)
@@ -122,7 +122,9 @@ class OMPLAct:
         shortcut_successes = 0
         while shortcut_iter < iters:
             shortcut_iter += 1
-            start_idx = np.random.randint(0, len(new_d_states) - 1)
+            # bias starting towards the beginning?
+            start_idx = np.random.randint(0, len(new_d_states) / 2)
+            # start_idx = np.random.randint(0, len(new_d_states) - 1)
             d_shortcut_start = new_d_states[start_idx]
             k_shortcut_start = new_k_states[start_idx]
             end_idx = np.random.randint(start_idx + 1, len(new_d_states))

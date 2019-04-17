@@ -17,7 +17,7 @@ class DualLQRActionSelector(action_selector.ActionSelector):
         # control is based on the dynamics (hence the letter d) state
         self.K, S, E = control.lqr(self.A_d, self.B_d, Q, R)
 
-    def just_d_act(self, o_d, o_d_goal):
+    def act(self, o_d, o_k, o_d_goal, verbose=False):
         """ return the action which gives the lowest cost for the predicted next state """
         u = np.dot(-self.K, o_d - o_d_goal)
 

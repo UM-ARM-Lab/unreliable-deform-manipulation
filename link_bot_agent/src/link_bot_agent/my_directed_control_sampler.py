@@ -82,7 +82,7 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
         plt.scatter(goal[0, 0], goal[1, 0], label='goal', s=100)
         plt.plot(d_path[:, 0], d_path[:, 1], label='d path', linewidth=3, c='m')
         plt.plot(k_path[:, 0], k_path[:, 1], label='k path', linewidth=3, c='y')
-        plt.quiver(d_path[:-1, 0], d_path[:-1, 1], controls[:, 0, 0], controls[:, 0, 1])
+        # plt.quiver(d_path[:-1, 0], d_path[:-1, 1], controls[:, 0, 0], controls[:, 0, 1])
         plt.xlabel("o0")
         plt.ylabel("o1")
         plt.axis("equal")

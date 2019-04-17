@@ -13,8 +13,9 @@ import ompl.util as ou
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import  linear_tf_model
-from link_bot_agent import agent,  lqr_action_selector
+from link_bot_notebooks import toy_problem_optimization_common as tpoc
+from link_bot_notebooks import linear_constraint_model
+from link_bot_agent import agent, dual_lqr_action_selector
 
 dt = 0.1
 # TODO: make this lower
@@ -41,9 +42,12 @@ def common(args, goals, max_steps=1e6, verbose=False):
     batch_size = 1
     max_v = 1
     n_steps = 1
-    tf_model = linear_tf_model.LinearTFModel(vars(args), batch_size, args.N, args.M, args.L, dt, n_steps)
+    sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
+    tf_model = linear_constraint_model.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution,
+                                                             batch_size, args.N, args.M, args.L, args.P, args.Q, dt,
+                                                             n_steps)
     tf_model.load()
-    action_selector = lqr_action_selector.LQRActionSelector(tf_model, max_v)
+    action_selector = dual_lqr_action_selector.DualLQRActionSelector(tf_model, max_v)
 
     gzagent = agent.GazeboAgent(N=args.N, M=args.M, dt=dt, model=tf_model, gazebo_model_name=args.model_name)
 
@@ -79,7 +83,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
             if verbose:
                 print("goal: {}".format(np.array2string(goal)))
 
-            o_d_goal = tf_model.reduce(goal)
+            o_d_goal, _ = tf_model.reduce(goal)
 
             min_true_cost = 1e9
             step_idx = 0
@@ -91,7 +95,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
             time = 0
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
-                o_d = tf_model.reduce(s)
+                o_d, _ = tf_model.reduce(s)
                 planned_actions, _ = action_selector.act(o_d, None, o_d_goal, verbose)
 
                 for i, action in enumerate(planned_actions):
@@ -193,6 +197,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("checkpoint", help="load this saved model file")
+    parser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     parser.add_argument("--model-name", '-m', default="link_bot")
     parser.add_argument("--seed", '-s', type=int, default=2)
     parser.add_argument("--verbose", action='store_true')
