@@ -99,8 +99,11 @@ class OMPLAct:
                 for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
                     numpy_controls[i, 0, 0] = control[0]
                     numpy_controls[i, 0, 1] = control[1]
-                # For some reason the last control is always zero and the first control is missing???
-                numpy_controls[1:] = numpy_controls[0:-1]
+
+                # Verification
+                # verified = self.verify(numpy_controls, numpy_d_states, numpy_k_states)
+                # if not verified:
+                #     print("ERROR! NOT VERIFIED!")
 
                 # SMOOTHING
                 numpy_d_states, numpy_k_states, numpy_controls = self.smooth(numpy_d_states, numpy_k_states,
@@ -124,7 +127,7 @@ class OMPLAct:
         except RuntimeError:
             return None, None
 
-    def smooth(self, numpy_d_states, numpy_k_states, numpy_controls, iters=20, verbose=False):
+    def smooth(self, numpy_d_states, numpy_k_states, numpy_controls, iters=50, verbose=False):
         new_d_states = list(numpy_d_states)
         new_k_states = list(numpy_k_states)
         new_controls = list(numpy_controls)
@@ -164,3 +167,23 @@ class OMPLAct:
         numpy_controls = np.array(new_controls)
 
         return numpy_d_states, numpy_k_states, numpy_controls
+
+    def verify(self, controls, o_ds, o_ks):
+        o_d = o_ds[0]
+        o_k = o_ks[0]
+        for i, u in enumerate(controls):
+
+            if not np.allclose(o_d, o_ds[i]):
+                return False
+            if not np.allclose(o_k, o_ks[i]):
+                return False
+            constraint_violated = self.tf_model.constraint_violated(o_k.squeeze())
+            if constraint_violated:
+                return False
+
+            o_d_next, o_k_next = self.tf_model.simple_dual_predict(o_d, o_k, u.reshape(2, 1))
+
+            o_d = o_d_next
+            o_k = o_k_next
+
+        return True

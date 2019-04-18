@@ -54,18 +54,28 @@
         </include>
         <include>
             <uri>model://box</uri>
-            <pose>1.5 3.5 0 0 0 0</pose>
+            <pose>0.5 3.5 0 0 0 0</pose>
             <name>box9</name>
         </include>
         <include>
             <uri>model://box</uri>
-            <pose>2.5 3.5 0 0 0 0</pose>
+            <pose>1.5 3.5 0 0 0 0</pose>
             <name>box10</name>
         </include>
         <include>
             <uri>model://box</uri>
-            <pose>3.5 3.5 0 0 0 0</pose>
+            <pose>2.5 3.5 0 0 0 0</pose>
             <name>box11</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>3.5 3.5 0 0 0 0</pose>
+            <name>box12</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>4.5 3.5 0 0 0 0</pose>
+            <name>box13</name>
         </include>
         <include>
             <uri>model://arena_20</uri>

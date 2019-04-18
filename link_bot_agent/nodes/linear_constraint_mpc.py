@@ -122,8 +122,8 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
         for goal in goals:
             # TODO: make this random initial configuration
             config = LinkBotConfiguration()
-            config.tail_pose.x = np.random.uniform(-8, 0)
-            config.tail_pose.y = np.random.uniform(-6, 6)
+            config.tail_pose.x = np.random.uniform(-3, -2)
+            config.tail_pose.y = np.random.uniform(-8, 8)
             config.tail_pose.theta = np.random.uniform(-np.pi, np.pi)
             config.joint_angles_rad = [0, 0]
             config_pub.publish(config)
