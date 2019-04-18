@@ -111,6 +111,7 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
     failed_plans = 0
     execution_times = []
     min_true_costs = []
+    nums_steps = []
     nums_contacts = []
 
     # Visualization
@@ -234,6 +235,7 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
             execution_times.append(execution_time)
             min_true_costs.append(min_true_cost)
             nums_contacts.append(contacts)
+            nums_steps.append(step_idx)
 
     except rospy.service.ServiceException:
         pass
@@ -241,7 +243,7 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
         pass
 
     print(min_true_costs, execution_times, nums_contacts)
-    return np.array(min_true_costs), np.array(execution_times), np.array(nums_contacts)
+    return np.array(min_true_costs), np.array(execution_times), np.array(nums_contacts), np.array(nums_steps)
 
 
 def test(args):
@@ -255,21 +257,22 @@ def eval(args):
     goals[:, :, 0] = np.random.uniform(2, 6, size=(args.n_random_goals, 1))
     goals[:, :, 1] = np.random.uniform(-3, 3, size=(args.n_random_goals, 1))
 
-    min_costs, execution_times, nums_contacts = common(args, goals, max_steps=450, eval=True)
+    min_costs, execution_times, nums_contacts, nums_steps = common(args, goals, max_steps=450, eval=True)
 
-    success_percentage = float(np.count_nonzero(np.where(min_costs < success_dist, 1.0, 0.0))) / len(min_costs)
     eval_stats_lines = [
-        'mean dist to goal: {}'.format(np.mean(min_costs)),
-        'std dist to goal: {}'.format(np.std(min_costs)),
+        'mean num steps: {}'.format(np.mean(nums_steps)),
+        'std num steps: {}'.format(np.std(nums_steps)),
+        'mean final dist to goal: {}'.format(np.mean(min_costs)),
+        'std final dist to goal: {}'.format(np.std(min_costs)),
         'mean execution time: {}'.format(np.mean(execution_times)),
         'std execution time: {}'.format(np.std(execution_times)),
         'mean num contacts: {}'.format(np.mean(execution_times)),
         'std num contacts: {}'.format(np.std(nums_contacts)),
-        '% success: {}'.format(success_percentage),
         'full data',
-        np.array2string(min_costs),
-        np.array2string(execution_times),
-        np.array2string(nums_contacts),
+        'num steps: {}'.format(np.array2string(nums_steps)),
+        'min costs: {}'.format(np.array2string(min_costs)),
+        'execution times: {}'.format(np.array2string(execution_times)),
+        'num contacts: {}'.format(np.array2string(nums_contacts)),
     ]
 
     print(eval_stats_lines)
@@ -305,7 +308,7 @@ def main():
     test_subparser.set_defaults(func=test)
 
     eval_subparser = subparsers.add_parser("eval")
-    eval_subparser.add_argument("--n-random-goals", '-n', type=int, default=100)
+    eval_subparser.add_argument("--n-random-goals", '-n', type=int, default=50)
     eval_subparser.set_defaults(func=eval)
 
     args = parser.parse_args()

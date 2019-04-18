@@ -65,22 +65,22 @@ class LinearConstraintModel(base_model.BaseModel):
         self.k_label = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1, Q), name="k")
         self.k_label_int = tf.cast(self.k_label, tf.int32)
 
-        R_d_init = np.random.randn(N, M).astype(np.float32) * 1e-6
+        R_d_init = np.random.randn(N, M).astype(np.float32) * 1e-1
         R_d_init[0, 0] = 1
         R_d_init[1, 1] = 1
 
-        A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-6
+        A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-2
 
-        B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-6
+        B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-2
         np.fill_diagonal(B_d_init, 1)
 
-        R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-6
+        R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-2
         R_k_init[4, 0] = 1.0
         R_k_init[5, 1] = 1.0
 
-        A_k_init = np.random.randn(P, P).astype(np.float32) * 1e-6
+        A_k_init = np.random.randn(P, P).astype(np.float32) * 1e-2
 
-        B_k_init = np.random.randn(P, L).astype(np.float32) * 1e-6
+        B_k_init = np.random.randn(P, L).astype(np.float32) * 1e-1
         np.fill_diagonal(B_k_init, 1)
 
         self.R_d = tf.get_variable("R_d", initializer=R_d_init)
@@ -448,8 +448,6 @@ class LinearConstraintModel(base_model.BaseModel):
         return R_d
 
     def __str__(self):
-        R_d, A_d, B_d, D, R_k, A_k, B_k = self.get_matrices()
-        return "R_d:\n" + np.array2string(R_d) + "\n" + \
-               "A_d:\n" + np.array2string(A_d) + "\n" + \
-               "B_d:\n" + np.array2string(B_d) + "\n" + \
-               "D:\n" + np.array2string(D) + "\n"
+        ops = [self.R_d, self.A_d, self.B_d, self.R_k, self.A_k, self.B_k, self.threshold_k]
+        return "R_d: {}\n\nA_d: {}\n\nB_d: {}\n\nR_k: {}\n\nA_k: {}\n\nB_k: {}\n\nthreshold_k: {}\n\n".format(
+            *self.sess.run(ops, feed_dict={}))

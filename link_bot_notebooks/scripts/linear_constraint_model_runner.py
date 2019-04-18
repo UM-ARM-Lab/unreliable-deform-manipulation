@@ -34,9 +34,11 @@ def train(args):
 def model_only(args):
     W = 10
     H = 20
-    model = m.LinearConstraintModel(vars(args), np.random.randn(W, H).astype(np.float32),
-                                    np.random.randn(W, H, 2).astype(np.float32), np.random.randn(2).astype(np.float32),
-                                    250, args.N, args.M, args.L, args.P, args.Q, 0.1, 50)
+    fake_sdf = np.random.randn(W, H).astype(np.float32)
+    fake_sdf_grad = np.random.randn(W, H, 2).astype(np.float32)
+    fake_sdf_res = np.random.randn(2).astype(np.float32)
+    model = m.LinearConstraintModel(vars(args), fake_sdf, fake_sdf_grad, fake_sdf_res, 250, args.N, args.M, args.L,
+                                    args.P, args.Q, 0.1, 50)
     if args.log:
         model.init()
         log_path = experiments_util.experiment_name(args.log)
@@ -56,6 +58,18 @@ def evaluate(args):
                                     args.P, args.Q, dt, n_steps)
     model.setup()
     return model.evaluate(data, goal)
+
+
+def show(args):
+    W = 10
+    H = 20
+    fake_sdf = np.random.randn(W, H).astype(np.float32)
+    fake_sdf_grad = np.random.randn(W, H, 2).astype(np.float32)
+    fake_sdf_res = np.random.randn(2).astype(np.float32)
+    model = m.LinearConstraintModel(vars(args), fake_sdf, fake_sdf_grad, fake_sdf_res, 250, args.N, args.M, args.L,
+                                    args.P, args.Q, 0.1, 1)
+    model.setup()
+    print(model)
 
 
 def main():
@@ -87,6 +101,10 @@ def main():
     eval_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
     eval_subparser.set_defaults(func=evaluate)
+
+    show_subparser = subparsers.add_parser("show")
+    show_subparser.add_argument("checkpoint", help="restart from this *.ckpt name")
+    show_subparser.set_defaults(func=show)
 
     model_only_subparser = subparsers.add_parser("model_only")
     model_only_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
