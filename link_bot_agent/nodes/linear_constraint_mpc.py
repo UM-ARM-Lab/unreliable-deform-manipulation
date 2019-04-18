@@ -58,11 +58,6 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
         logfile = os.path.join(args.logdir, "{}_{}.npy".format("_".join(checkpoint_folders), now))
         print(Fore.CYAN + "Saving new data in {}".format(logfile) + Fore.RESET)
 
-    np.random.seed(args.seed)
-    ou.RNG.setSeed(args.seed)
-    # ou.setLogLevel(ou.LOG_DEBUG)
-    ou.setLogLevel(ou.LOG_ERROR)
-
     batch_size = 1
     max_v = 1
     n_steps = 1
@@ -245,7 +240,7 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
         pass
 
     print(min_true_costs, execution_times, nums_contacts)
-    return np.array(min_true_costs), np.array(execution_times), np.array(nums_contacts), num_failures, num_successes
+    return np.array(min_true_costs), np.array(execution_times), np.array(nums_contacts), num_fails, num_successes
 
 
 def test(args):
@@ -259,16 +254,16 @@ def eval(args):
     goals[:, :, 0] = np.random.uniform(2, 6, size=(args.n_random_goals, 1))
     goals[:, :, 1] = np.random.uniform(-3, 3, size=(args.n_random_goals, 1))
 
-    min_costs, execution_times, nums_contacts, failures, successes = common(args, goals, max_steps=450, eval=True)
+    min_costs, execution_times, nums_contacts, num_fails, num_successes = common(args, goals, max_steps=450, eval=True)
 
     eval_stats_lines = [
-        '% fail: {}'.format(float(failures) / args.n_random_goals),
-        '% success: {}'.format(float(successes) / args.n_random_goals),
+        '% fail: {}'.format(float(num_fails) / args.n_random_goals),
+        '% success: {}'.format(float(num_successes) / args.n_random_goals),
         'mean final dist to goal: {}'.format(np.mean(min_costs)),
         'std final dist to goal: {}'.format(np.std(min_costs)),
         'mean execution time: {}'.format(np.mean(execution_times)),
         'std execution time: {}'.format(np.std(execution_times)),
-        'mean num contacts: {}'.format(np.mean(execution_times)),
+        'mean num contacts: {}'.format(np.mean(nums_contacts)),
         'std num contacts: {}'.format(np.std(nums_contacts)),
         'full data',
         'min costs: {}'.format(np.array2string(min_costs)),
@@ -314,6 +309,11 @@ def main():
     eval_subparser.set_defaults(func=eval)
 
     args = parser.parse_args()
+
+    np.random.seed(args.seed)
+    ou.RNG.setSeed(args.seed)
+    ou.setLogLevel(ou.LOG_DEBUG)
+    # ou.setLogLevel(ou.LOG_ERROR)
 
     if args == argparse.Namespace():
         parser.print_usage()

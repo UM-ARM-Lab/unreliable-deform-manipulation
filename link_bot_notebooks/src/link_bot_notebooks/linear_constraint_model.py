@@ -69,7 +69,7 @@ class LinearConstraintModel(base_model.BaseModel):
         # R_d_init[0, 0] = 1
         # R_d_init[1, 1] = 1
 
-        A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-1
+        A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-3
 
         B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-1
         # np.fill_diagonal(B_d_init, 1)
@@ -78,7 +78,7 @@ class LinearConstraintModel(base_model.BaseModel):
         # R_k_init[4, 0] = 1.0
         # R_k_init[5, 1] = 1.0
 
-        A_k_init = np.random.randn(P, P).astype(np.float32) * 1e-1
+        A_k_init = np.random.randn(P, P).astype(np.float32) * 1e-3
 
         B_k_init = np.random.randn(P, L).astype(np.float32) * 1e-1
         # np.fill_diagonal(B_k_init, 1)
