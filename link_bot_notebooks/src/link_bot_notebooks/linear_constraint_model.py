@@ -78,9 +78,9 @@ class LinearConstraintModel(base_model.BaseModel):
         R_k_init[4, 0] = 1.0
         R_k_init[5, 1] = 1.0
 
-        A_k_init = np.random.randn(M, M).astype(np.float32) * 1e-6
+        A_k_init = np.random.randn(P, P).astype(np.float32) * 1e-6
 
-        B_k_init = np.random.randn(M, L).astype(np.float32) * 1e-6
+        B_k_init = np.random.randn(P, L).astype(np.float32) * 1e-6
         np.fill_diagonal(B_k_init, 1)
 
         self.R_d = tf.get_variable("R_d", initializer=R_d_init)
@@ -183,6 +183,7 @@ class LinearConstraintModel(base_model.BaseModel):
             tf.summary.scalar("k_threshold", self.threshold_k)
             tf.summary.scalar("constraint_predition_loss", self.constraint_prediction_loss)
             tf.summary.scalar("state_prediction_loss_in_d", self.state_prediction_loss_in_d)
+            tf.summary.scalar("state_prediction_loss_in_k", self.state_prediction_loss_in_k)
             tf.summary.scalar("cost_prediction_loss", self.cost_prediction_loss)
             tf.summary.scalar("regularization_loss", self.regularization)
             tf.summary.scalar("loss", self.loss)

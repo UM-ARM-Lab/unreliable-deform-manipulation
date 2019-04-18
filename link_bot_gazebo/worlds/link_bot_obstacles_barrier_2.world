@@ -1,0 +1,78 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+    <world name="default">
+        <gui>
+            <camera name='user_camera'>
+                <pose frame=''>0 0 25 0 1.5707 1.5707</pose>
+            </camera>
+        </gui>
+        <include>
+            <uri>model://ground_plane</uri>
+        </include>
+        <include>
+            <uri>model://sun</uri>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>.5 -4.5 0 0 0 0</pose>
+            <name>box1</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>0.5 -3.5 0 0 0 0</pose>
+            <name>box2</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>0.5 -2.5 0 0 0</pose>
+            <name>box3</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>0.5 -1.5 0 0 0 0</pose>
+            <name>box4</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>0.5 -0.5 0 0 0 0</pose>
+            <name>box5</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>0.5 0.5 0 0 0 0</pose>
+            <name>box6</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>0.5 1.5 0 0 0 0</pose>
+            <name>box7</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>0.5 2.5 0 0 0 0</pose>
+            <name>box8</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>1.5 3.5 0 0 0 0</pose>
+            <name>box9</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>2.5 3.5 0 0 0 0</pose>
+            <name>box10</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>3.5 3.5 0 0 0 0</pose>
+            <name>box11</name>
+        </include>
+        <include>
+            <uri>model://arena_20</uri>
+            <pose>0 0 0 0 0 0</pose>
+            <name>arena</name>
+        </include>
+        <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
+        <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
+    </world>
+</sdf>

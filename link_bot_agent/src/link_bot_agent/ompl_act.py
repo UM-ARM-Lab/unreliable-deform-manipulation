@@ -8,11 +8,12 @@ import numpy as np
 
 class OMPLAct:
 
-    def __init__(self, tf_model, action_selector, directed_control_sampler, dt, max_v):
+    def __init__(self, tf_model, action_selector, directed_control_sampler, dt, max_v, planner_timeout):
         self.tf_model = tf_model
         self.action_selector = action_selector
         self.directed_control_sampler = directed_control_sampler
         self.dt = dt
+        self.planner_timeout = planner_timeout
         self.L = self.tf_model.L
         self.M = self.tf_model.M
         self.N = self.tf_model.N
@@ -22,11 +23,12 @@ class OMPLAct:
 
         dynamics_latent_space = ob.RealVectorStateSpace(self.M)
         constraint_latent_space = ob.RealVectorStateSpace(self.P)
+        self.arena_size = 10
         # TODO: these are arbitrary
         dynamics_latent_space.setName("dynamics latent space")
-        dynamics_latent_space.setBounds(-5, 5)
+        dynamics_latent_space.setBounds(-self.arena_size, self.arena_size)
         constraint_latent_space.setName("constraint latent space")
-        constraint_latent_space.setBounds(-5, 5)
+        constraint_latent_space.setBounds(-self.arena_size, self.arena_size)
 
         self.latent_space = ob.CompoundStateSpace()
         self.latent_space.addSubspace(dynamics_latent_space, 1)
@@ -77,44 +79,52 @@ class OMPLAct:
         # the threshold on "cost-to-goal" is interpretable here as Euclidian distance
         epsilon = 0.1
         self.ss.setStartAndGoalStates(start, goal, 0.4 * epsilon)
-        solved = self.ss.solve(1.0)
-        print("Planning time: {}".format(self.ss.getLastPlanComputationTime()))
-        if solved:
-            ompl_path = self.ss.getSolutionPath()
-
-            numpy_controls = np.ndarray((ompl_path.getControlCount(), 1, self.L))
-            numpy_d_states = np.ndarray((ompl_path.getStateCount(), self.M, 1))
-            numpy_k_states = np.ndarray((ompl_path.getStateCount(), self.P, 1))
-            for i, state in enumerate(ompl_path.getStates()):
-                for j in range(self.M):
-                    numpy_d_states[i, j] = state[0][j]
-                for j in range(self.P):
-                    numpy_k_states[i, j] = state[1][j]
-            for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
-                numpy_controls[i, 0, 0] = control[0]
-                numpy_controls[i, 0, 1] = control[1]
-            # For some reason the last control is always zero and the first control is missing???
-            numpy_controls[1:] = numpy_controls[0:-1]
-
-            # SMOOTHING
-            numpy_d_states, numpy_k_states, numpy_controls = self.smooth(numpy_d_states, numpy_k_states, numpy_controls)
+        try:
+            solved = self.ss.solve(self.planner_timeout)
 
             if verbose:
-                # print("{}/{} shortcuts succeeded".format(shortcut_successes, shortcut_iter))
-                self.directed_control_sampler.plot_dual_sdf(sdf, o_d_start, o_d_goal, numpy_d_states,
-                                                            numpy_k_states, numpy_controls)
-                plt.show()
-            final_error = np.linalg.norm(numpy_d_states[-1] - o_d_goal)
-            lengths = [np.linalg.norm(numpy_d_states[i] - numpy_d_states[i - 1]) for i in range(1, len(numpy_d_states))]
-            path_length = np.sum(lengths)
-            duration = self.dt * len(numpy_d_states)
-            print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
-                final_error, path_length, len(numpy_d_states), duration))
-            return numpy_controls, numpy_d_states
-        else:
-            raise RuntimeError("No Solution found from {} to {}".format(start, goal))
+                print("Planning time: {}".format(self.ss.getLastPlanComputationTime()))
 
-    def smooth(self, numpy_d_states, numpy_k_states, numpy_controls, iters=20):
+            if solved:
+                ompl_path = self.ss.getSolutionPath()
+
+                numpy_controls = np.ndarray((ompl_path.getControlCount(), 1, self.L))
+                numpy_d_states = np.ndarray((ompl_path.getStateCount(), self.M, 1))
+                numpy_k_states = np.ndarray((ompl_path.getStateCount(), self.P, 1))
+                for i, state in enumerate(ompl_path.getStates()):
+                    for j in range(self.M):
+                        numpy_d_states[i, j] = state[0][j]
+                    for j in range(self.P):
+                        numpy_k_states[i, j] = state[1][j]
+                for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
+                    numpy_controls[i, 0, 0] = control[0]
+                    numpy_controls[i, 0, 1] = control[1]
+                # For some reason the last control is always zero and the first control is missing???
+                numpy_controls[1:] = numpy_controls[0:-1]
+
+                # SMOOTHING
+                numpy_d_states, numpy_k_states, numpy_controls = self.smooth(numpy_d_states, numpy_k_states,
+                                                                             numpy_controls,
+                                                                             verbose)
+
+                if verbose:
+                    self.directed_control_sampler.plot_dual_sdf(sdf, o_d_start, o_d_goal, numpy_d_states,
+                                                                numpy_k_states, numpy_controls, self.arena_size)
+                    plt.show()
+                    final_error = np.linalg.norm(numpy_d_states[-1] - o_d_goal)
+                    lengths = [np.linalg.norm(numpy_d_states[i] - numpy_d_states[i - 1]) for i in
+                               range(1, len(numpy_d_states))]
+                    path_length = np.sum(lengths)
+                    duration = self.dt * len(numpy_d_states)
+                    print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
+                        final_error, path_length, len(numpy_d_states), duration))
+                return numpy_controls, numpy_d_states
+            else:
+                raise RuntimeError("No Solution found from {} to {}".format(start, goal))
+        except RuntimeError:
+            return None, None
+
+    def smooth(self, numpy_d_states, numpy_k_states, numpy_controls, iters=20, verbose=False):
         new_d_states = list(numpy_d_states)
         new_k_states = list(numpy_k_states)
         new_controls = list(numpy_controls)
@@ -145,6 +155,9 @@ class OMPLAct:
                     new_k_states.insert(start_idx + i, shortcut_o_k)  # or maybe shortcut_end?
                     new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
                 shortcut_successes += 1
+
+        if verbose:
+            print("{}/{} shortcuts succeeded".format(shortcut_successes, shortcut_iter))
 
         numpy_d_states = np.array(new_d_states)
         numpy_k_states = np.array(new_k_states)

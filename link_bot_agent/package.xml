@@ -9,7 +9,7 @@
 
   <license>BSD</license>
 
-  <author >Peter Mitrano</author>
+  <author>Peter Mitrano</author>
 
 
   <buildtool_depend>catkin</buildtool_depend>

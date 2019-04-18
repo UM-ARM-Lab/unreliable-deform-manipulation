@@ -2,49 +2,66 @@
 from __future__ import print_function
 
 import argparse
-from colorama import Fore
-import time as timemod
+import ompl.util as ou
 import os
+import time as timemod
 
-import matplotlib.pyplot as plt
+from ignition import markers
+from ignition.msgs.marker_pb2 import Marker
 import numpy as np
 import rospy
-import ompl.util as ou
 from builtins import input
+from colorama import Fore
+from gazebo_msgs.msg import ContactsState
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import linear_constraint_model, linear_tf_model
-from link_bot_notebooks import toy_problem_optimization_common as tpoc
+
 from link_bot_agent import agent, ompl_act, one_step_action_selector, lqr_action_selector, \
     dual_lqr_action_selector
-from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSampler
 from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler
+from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSampler
+from link_bot_notebooks import linear_constraint_model, linear_tf_model
+from link_bot_notebooks import toy_problem_optimization_common as tpoc
 
 dt = 0.1
-# TODO: make this lower
-success_dist = 0.12
+success_dist = 0.10
+in_contact = False
 
 
-def common(args, goals, max_steps=1e6, verbose=False):
+def contacts_callback(contacts):
+    global in_contact
+    in_contact = False
+    for state in contacts.states:
+        if state.collision1_name == "link_bot::head::head_collision" \
+                and state.collision2_name != "ground_plane::link::collision":
+            in_contact = True
+        if state.collision2_name == "link_bot::head::head_collision" \
+                and state.collision1_name != "ground_plane::link::collision":
+            in_contact = True
+
+
+def common(args, goals, max_steps=1e6, eval=False, verbose=False):
+    global in_contact
     if args.logdir:
         now = int(timemod.time())
         os.path.split(args.checkpoint)
         checkpoint_path = os.path.normpath(args.checkpoint)
         folders = checkpoint_path.split(os.sep)
         checkpoint_folders = []
-        relavent = False
+        relevant = False
         for folder in folders:
-            if relavent:
+            if relevant:
                 checkpoint_folders.append(folder)
             if folder == "log_data":
-                relavent = True
+                relevant = True
 
         logfile = os.path.join(args.logdir, "{}_{}.npy".format("_".join(checkpoint_folders), now))
         print(Fore.CYAN + "Saving new data in {}".format(logfile) + Fore.RESET)
 
     np.random.seed(args.seed)
     ou.RNG.setSeed(args.seed)
-    ou.setLogLevel(ou.LOG_DEBUG)
+    # ou.setLogLevel(ou.LOG_DEBUG)
+    ou.setLogLevel(ou.LOG_ERROR)
 
     batch_size = 1
     max_v = 1
@@ -56,17 +73,20 @@ def common(args, goals, max_steps=1e6, verbose=False):
                                                                  n_steps)
         tf_model.load()
         lqr_solver = dual_lqr_action_selector.DualLQRActionSelector(tf_model, max_v)
-        action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, max_v)
+        action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, max_v,
+                                           args.planner_timeout)
     else:
         tf_model = linear_tf_model.LinearTFModel(vars(args), batch_size, args.N, args.M, args.L, dt, n_steps)
         tf_model.load()
         sdf = None
         if args.controller == 'ompl-lqr':
             lqr_solver = lqr_action_selector.LQRActionSelector(tf_model, max_v)
-            action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, max_v)
+            action_selector = ompl_act.OMPLAct(tf_model, lqr_solver, LQRDirectedControlSampler, dt, max_v,
+                                               args.planner_timeout)
         if args.controller == 'ompl-gurobi':
             gurobi_solver = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
-            action_selector = ompl_act.OMPLAct(tf_model, gurobi_solver, GurobiDirectedControlSampler, dt, max_v)
+            action_selector = ompl_act.OMPLAct(tf_model, gurobi_solver, GurobiDirectedControlSampler, dt, max_v,
+                                               args.planner_timeout)
         elif args.controller == 'gurobi':
             action_selector = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
         elif args.controller == 'lqr':
@@ -79,27 +99,47 @@ def common(args, goals, max_steps=1e6, verbose=False):
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
+    rospy.Subscriber("/head_contact", ContactsState, contacts_callback)
 
+    times = []
+    states = []
+    actions = []
+    constraints = []
+    action_msg = LinkBotAction()
+
+    # Statistics
+    failed_plans = 0
+    execution_times = []
     min_true_costs = []
+    nums_contacts = []
 
+    # Visualization
+    start_marker = markers.make_marker(rgb=[0, 1, 1], id=1)
+    goal_marker = markers.make_marker(rgb=[0, 1, 0], id=2)
+
+    # Catch planning failure exception
     try:
-        times = []
-        states = []
-        actions = []
-        constraints = []
-        action_msg = LinkBotAction()
         for goal in goals:
-            # reset to random starting point
+            # TODO: make this random initial configuration
             config = LinkBotConfiguration()
-            config.tail_pose.x = -4
-            config.tail_pose.y = 1
-            config.tail_pose.theta = 0
+            config.tail_pose.x = np.random.uniform(-8, 0)
+            config.tail_pose.y = np.random.uniform(-6, 6)
+            config.tail_pose.theta = np.random.uniform(-np.pi, np.pi)
             config.joint_angles_rad = [0, 0]
             config_pub.publish(config)
             timemod.sleep(0.1)
 
+            # publish markers
+            start_marker.pose.position.x = config.tail_pose.x
+            start_marker.pose.position.y = config.tail_pose.y
+            goal_marker.pose.position.x = goal[0, 0]
+            goal_marker.pose.position.y = goal[0, 1]
+            markers.publish(goal_marker)
+            markers.publish(start_marker)
+
             if verbose:
-                print("goal: {}".format(np.array2string(goal)))
+                print("start: {}, {}".format(config.tail_pose.x, config.tail_pose.y))
+                print("goal: {}, {}".format(goal[0, 0], goal[0, 1]))
 
             o_d_goal, _ = tf_model.reduce(goal)
 
@@ -110,18 +150,24 @@ def common(args, goals, max_steps=1e6, verbose=False):
             state_traj = []
             action_traj = []
             constraint_traj = []
-            time = 0
+            discrete_time = 0
+            contacts = 0
+            start_time = timemod.time()
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
                 o_d, o_k = tf_model.reduce(s)
                 planned_actions, _ = action_selector.act(sdf, o_d, o_k, o_d_goal, verbose)
+
+                if planned_actions is None:
+                    failed_plans += 1
+                    break
 
                 for i, action in enumerate(planned_actions):
                     if i >= args.num_actions > 0:
                         break
 
                     links_state = agent.get_state(gzagent.get_link_state)
-                    time_traj.append(time)
+                    time_traj.append(discrete_time)
                     state_traj.append(links_state)
                     action_traj.append(action[0])
                     constraint_traj.append(None)
@@ -147,6 +193,10 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     step.steps = dt / 0.001  # assuming 0.001s of simulation time per step
                     world_control.call(step)  # this will block until stepping is complete
 
+                    # check if we are now in collision
+                    if in_contact:
+                        contacts += 1
+
                     s_next = np.array(links_state).reshape(1, args.N)
                     true_cost = gzagent.state_cost(s_next, goal)
 
@@ -159,18 +209,17 @@ def common(args, goals, max_steps=1e6, verbose=False):
                         if verbose:
                             print("Success!")
                     step_idx += 1
-                    time += dt
+                    discrete_time += dt
 
                 if done:
                     break
 
             # save the final state
             links_state = agent.get_state(gzagent.get_link_state)
-            time_traj.append(time)
+            time_traj.append(discrete_time)
             state_traj.append(links_state)
             constraint_traj.append(None)
 
-            min_true_costs.append(min_true_cost)
             times.append(time_traj)
             states.append(state_traj)
             actions.append(action_traj)
@@ -180,36 +229,53 @@ def common(args, goals, max_steps=1e6, verbose=False):
                          times=times,
                          states=states,
                          actions=actions)
+
+            execution_time = timemod.time() - start_time
+            execution_times.append(execution_time)
+            min_true_costs.append(min_true_cost)
+            nums_contacts.append(contacts)
+
     except rospy.service.ServiceException:
         pass
     except KeyboardInterrupt:
         pass
-    finally:
-        if verbose:
-            print()
-    if verbose:
-        print("Min true cost: {}".format(min_true_cost))
-    return np.array(min_true_costs)
+
+    print(min_true_costs, execution_times, nums_contacts)
+    return np.array(min_true_costs), np.array(execution_times), np.array(nums_contacts)
 
 
 def test(args):
     goal = np.array([[2.5, 0, 0, 0, 0, 0]])
-    common(args, [goal], verbose=args.verbose)
+    common(args, [goal], eval=False, verbose=args.verbose)
 
 
 def eval(args):
-    fname = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(timemod.time())))
-    g0 = np.array([[2.5, 0, 0, 0, 0, 0]])
-    goals = [g0] * args.n_random_goals
-    min_costs = common(args, goals, max_steps=151)
-    print(min_costs)
-    print('mean dist to goal', np.mean(min_costs))
-    print('stdev dist to goal', np.std(min_costs))
+    stats_filename = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(timemod.time())))
+    goals = np.zeros((args.n_random_goals, 1, 6))
+    goals[:, :, 0] = np.random.uniform(2, 6, size=(args.n_random_goals, 1))
+    goals[:, :, 1] = np.random.uniform(-3, 3, size=(args.n_random_goals, 1))
+
+    min_costs, execution_times, nums_contacts = common(args, goals, max_steps=450, eval=True)
+
     success_percentage = float(np.count_nonzero(np.where(min_costs < success_dist, 1.0, 0.0))) / len(min_costs)
-    print('% success', success_percentage)
-    np.savetxt(fname, min_costs)
-    plt.hist(min_costs)
-    plt.show()
+    eval_stats_lines = [
+        'mean dist to goal: {}'.format(np.mean(min_costs)),
+        'std dist to goal: {}'.format(np.std(min_costs)),
+        'mean execution time: {}'.format(np.mean(execution_times)),
+        'std execution time: {}'.format(np.std(execution_times)),
+        'mean num contacts: {}'.format(np.mean(execution_times)),
+        'std num contacts: {}'.format(np.std(nums_contacts)),
+        '% success: {}'.format(success_percentage),
+        'full data',
+        np.array2string(min_costs),
+        np.array2string(execution_times),
+        np.array2string(nums_contacts),
+    ]
+
+    print(eval_stats_lines)
+    stats_file = open(stats_filename, 'w')
+    print(Fore.CYAN + "writing evaluation statistics to: {}".format(stats_filename) + Fore.RESET)
+    stats_file.writelines("\n".join(eval_stats_lines))
 
 
 def main():
@@ -230,6 +296,7 @@ def main():
     parser.add_argument("-P", help="dimensions in latent state o_k", type=int, default=2)
     parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     parser.add_argument("--num-actions", '-T', help="number of actions to execute from the plan", type=int, default=10)
+    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=1.0)
     parser.add_argument("--logdir", '-d', help='data directory to store logged data in')
     parser.add_argument("--controller", choices=['gurobi', 'lqr', 'ompl-lqr', 'ompl-dual-lqr', 'ompl-gurobi'])
 

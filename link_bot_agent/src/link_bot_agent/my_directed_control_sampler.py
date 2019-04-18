@@ -65,7 +65,7 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
         plt.legend()
 
     @classmethod
-    def plot_dual_sdf(cls, sdf, start, goal, d_path, k_path, controls):
+    def plot_dual_sdf(cls, sdf, start, goal, d_path, k_path, controls, arena_size):
         o_d_points = np.ndarray((len(cls.states_sampled_at), 2))
         o_k_points = np.ndarray((len(cls.states_sampled_at), 2))
         for i, (o_d, o_k, p) in enumerate(zip(o_d_points, o_k_points, cls.states_sampled_at)):
@@ -75,7 +75,7 @@ class MyDirectedControlSampler(oc.DirectedControlSampler):
                 o_k[i] = p[1][i]
 
         plt.figure()
-        plt.imshow(np.flipud(sdf.T), extent=[-5.5, 5.5, -5.5, 5.5])
+        plt.imshow(np.flipud(sdf.T), extent=[-arena_size, arena_size, -arena_size, arena_size])
         plt.scatter(o_d_points[:, 0], o_d_points[:, 1], s=1, label='o_d')
         plt.scatter(o_k_points[:, 0], o_k_points[:, 1], s=1, label='o_k')
         plt.scatter(start[0, 0], start[1, 0], label='start', s=100)

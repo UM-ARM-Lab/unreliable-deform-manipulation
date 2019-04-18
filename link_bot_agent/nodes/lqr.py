@@ -67,7 +67,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
         constraints = []
         action_msg = LinkBotAction()
         for goal in goals:
-            # reset to random starting point
+            # TODO: make this random initial configuration
             config = LinkBotConfiguration()
             config.tail_pose.x = -4
             config.tail_pose.y = 1
