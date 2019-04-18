@@ -108,7 +108,8 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
     action_msg = LinkBotAction()
 
     # Statistics
-    failed_plans = 0
+    num_fails = 0
+    num_successes = 0
     execution_times = []
     min_true_costs = []
     nums_steps = []
@@ -160,7 +161,7 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
                 planned_actions, _ = action_selector.act(sdf, o_d, o_k, o_d_goal, verbose)
 
                 if planned_actions is None:
-                    failed_plans += 1
+                    num_fails += 1
                     break
 
                 for i, action in enumerate(planned_actions):
@@ -206,6 +207,7 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
 
                     min_true_cost = min(min_true_cost, true_cost)
                     if true_cost < success_dist:
+                        num_successes += 1
                         done = True
                         if verbose:
                             print("Success!")
@@ -243,7 +245,7 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
         pass
 
     print(min_true_costs, execution_times, nums_contacts)
-    return np.array(min_true_costs), np.array(execution_times), np.array(nums_contacts), np.array(nums_steps)
+    return np.array(min_true_costs), np.array(execution_times), np.array(nums_contacts), num_failures, num_successes
 
 
 def test(args):
@@ -257,11 +259,11 @@ def eval(args):
     goals[:, :, 0] = np.random.uniform(2, 6, size=(args.n_random_goals, 1))
     goals[:, :, 1] = np.random.uniform(-3, 3, size=(args.n_random_goals, 1))
 
-    min_costs, execution_times, nums_contacts, nums_steps = common(args, goals, max_steps=450, eval=True)
+    min_costs, execution_times, nums_contacts, failures, successes = common(args, goals, max_steps=450, eval=True)
 
     eval_stats_lines = [
-        'mean num steps: {}'.format(np.mean(nums_steps)),
-        'std num steps: {}'.format(np.std(nums_steps)),
+        '% fail: {}'.format(float(failures) / args.n_random_goals),
+        '% success: {}'.format(float(successes) / args.n_random_goals),
         'mean final dist to goal: {}'.format(np.mean(min_costs)),
         'std final dist to goal: {}'.format(np.std(min_costs)),
         'mean execution time: {}'.format(np.mean(execution_times)),
@@ -269,10 +271,10 @@ def eval(args):
         'mean num contacts: {}'.format(np.mean(execution_times)),
         'std num contacts: {}'.format(np.std(nums_contacts)),
         'full data',
-        'num steps: {}'.format(np.array2string(nums_steps)),
         'min costs: {}'.format(np.array2string(min_costs)),
         'execution times: {}'.format(np.array2string(execution_times)),
         'num contacts: {}'.format(np.array2string(nums_contacts)),
+        '\n'
     ]
 
     print(eval_stats_lines)
