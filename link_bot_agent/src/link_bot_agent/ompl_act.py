@@ -58,7 +58,6 @@ class OMPLAct:
         constraint_state = np.ndarray(self.P)
         for i in range(self.P):
             constraint_state[i] = state[1][i]
-        print(constraint_state)
         constraint_violated = self.tf_model.constraint_violated(constraint_state)
         constraint_violated = np.any(constraint_violated)
         valid = self.latent_space.satisfiesBounds(state) and not constraint_violated

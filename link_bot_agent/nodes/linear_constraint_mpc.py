@@ -239,7 +239,6 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
     except KeyboardInterrupt:
         pass
 
-    print(min_true_costs, execution_times, nums_contacts)
     return np.array(min_true_costs), np.array(execution_times), np.array(nums_contacts), num_fails, num_successes
 
 
@@ -312,8 +311,8 @@ def main():
 
     np.random.seed(args.seed)
     ou.RNG.setSeed(args.seed)
-    ou.setLogLevel(ou.LOG_DEBUG)
-    # ou.setLogLevel(ou.LOG_ERROR)
+    # ou.setLogLevel(ou.LOG_DEBUG)
+    ou.setLogLevel(ou.LOG_ERROR)
 
     if args == argparse.Namespace():
         parser.print_usage()
