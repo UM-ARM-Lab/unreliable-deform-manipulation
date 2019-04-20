@@ -16,15 +16,16 @@ def main():
         print("ERROR: You must supply two datasets! The last argument is interpreted as the output filename.")
         return
 
-    datasets = []
+    data_dict = {}
     for datasetname in args.datasets:
         dataset = np.load(datasetname)
-        print(dataset.shape)
-        datasets.append(dataset)
+        for key, data in dataset.items():
+            if key not in data_dict:
+                data_dict[key] = data
+            else:
+                data_dict[key] = np.concatenate([data_dict[key], data], axis=0)
 
-    merged_data = np.concatenate(datasets, axis=0)
-
-    np.save(args.outfile, merged_data)
+    np.savez(args.outfile, **data_dict)
 
 
 if __name__ == '__main__':

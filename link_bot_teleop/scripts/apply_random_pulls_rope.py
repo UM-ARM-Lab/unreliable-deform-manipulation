@@ -6,8 +6,9 @@ from time import sleep
 
 import numpy as np
 import rospy
+from geometry_msgs.msg import Wrench
 from gazebo_msgs.srv import GetLinkState
-from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
+from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotForceAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_agent import agent
 
@@ -29,10 +30,9 @@ def main():
     args = args
     rospy.init_node('apply_random_pulls')
 
-    DT = 0.1  # seconds per time step
+    DT = 0.01  # seconds per time step
 
-    action_msg = LinkBotAction()
-    action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
+    action_pub = rospy.Publisher("/link_bot_force_action", LinkBotForceAction, queue_size=10)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
@@ -58,13 +58,6 @@ def main():
         if args.verbose:
             print('=' * 180)
 
-        f = np.random.uniform(0.0, 100.0)
-        control_link_i = np.random.randint(0, len(link_names))
-        control_link_name = link_names[control_link_i]
-        pull_yaw = r()
-        fx = np.cos(pull_yaw) * f
-        fy = np.sin(pull_yaw) * f
-
         # set the configuration of the model
         config = LinkBotConfiguration()
         config.tail_pose.x = np.random.uniform(-3, 3)
@@ -73,24 +66,34 @@ def main():
         for i in range(args.num_links):
             config.tail_pose.theta = r()
             # allow the rope to be slightly bent
-            config.joint_angles_rad.append(r() * 0.4)
+            config.joint_angles_rad.append(r() * 0.2)
         config_pub.publish(config)
-        time = 0
 
         # wait for this to take effect
         sleep(0.5)
 
+        # pick slopes for varying force on each line
+        slopes = np.random.uniform(-3, 3, (args.num_links, 2))
+        initial_forces = np.random.uniform(-15, 15, (args.num_links, 2))
+
+        time = 0
         traj = []
         for t in range(args.steps + 1):
-            # save the state and action data
-            traj.append(agent.get_rope_data(get_link_state, args.num_links, control_link_i, fx, fy))
-
             # publish the pull command
-            action_msg.control_link_name = control_link_name
-            action_msg.use_force = True
-            action_msg.wrench.force.x = fx
-            action_msg.wrench.force.y = fy
+            current_forces = initial_forces + time * slopes
+            action_msg = LinkBotForceAction()
+            for i in range(args.num_links):
+                wrench = Wrench()
+                wrench.force.x = current_forces[i, 0]
+                wrench.force.y = current_forces[i, 1]
+                action_msg.wrenches.append(wrench)
+            # send the command, but this won't have any effect until we call step
             action_pub.publish(action_msg)
+
+            # save the state and action data
+            rope_data = agent.get_rope_data(get_link_state, args.num_links)
+            rope_data[2] = current_forces
+            traj.append(rope_data)
 
             # let the simulator run
             step = WorldControlRequest()

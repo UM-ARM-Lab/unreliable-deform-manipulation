@@ -3,6 +3,7 @@
 <%length = 4.0%>
 <%radius = 0.05%>
 <%link_length = length/num_links%>
+<%collision_link_length = link_length * 0.5%>
 <%link_mass = 10.0/num_links%>
 <?xml version="1.0" ?>
 <robot name="rope">
@@ -17,13 +18,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="<%=link_length / 2.0 - radius / 2.0%> 0 0"/>
             <geometry>
-                <box size="<%=radius*2%> <%=radius*2%> <%=link_length%>"/>
+                <box size="<%=radius*2%> <%=radius*2%> <%=collision_link_length%>"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -45,6 +46,11 @@
         <limit lower="-2" upper="2" effort="10" velocity="2"/>
         <dynamics damping="1" friction="0.0"/>
     </joint>
+    <% end %>
+    <% for i in 0..num_links %>
+    <gazebo reference="link_<%=i%>">
+        <self_collide>true</self_collide>
+    </gazebo>
     <% end %>
     <gazebo>
         <plugin name="linkbot_model_plugin" filename="liblinkbot_model_plugin.so">

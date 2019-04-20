@@ -8,7 +8,8 @@ find_package(gazebo REQUIRED)
 add_message_files(
         FILES
         LinkBotConfiguration.msg
-        LinkBotAction.msg
+        LinkBotVelocityAction.msg
+        LinkBotForceAction.msg
         WriteSDF.msg
 )
 

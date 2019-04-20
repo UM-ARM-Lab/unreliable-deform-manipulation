@@ -4,6 +4,7 @@
 
 
 
+
 <?xml version="1.0" ?>
 <robot name="rope">
     
@@ -17,13 +18,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -45,13 +46,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -73,13 +74,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -101,13 +102,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -129,13 +130,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -157,13 +158,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -185,13 +186,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -213,13 +214,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -241,13 +242,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -269,13 +270,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -297,13 +298,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -325,13 +326,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -353,13 +354,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -381,13 +382,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -409,13 +410,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -437,13 +438,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -465,13 +466,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -493,13 +494,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -521,13 +522,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -549,13 +550,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -577,13 +578,13 @@
         <collision>
             <origin rpy="0 -1.5707 0" xyz="0.07500000000000001 0 0"/>
             <geometry>
-                <box size="0.1 0.1 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.0</mu>
-                        <mu2>0.0</mu2>
+                        <mu>0.02</mu>
+                        <mu2>0.02</mu2>
                     </ode>
                 </friction>
             </surface>
@@ -776,6 +777,91 @@
         <limit lower="-2" upper="2" effort="10" velocity="2"/>
         <dynamics damping="1" friction="0.0"/>
     </joint>
+    
+    
+    <gazebo reference="link_0">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_1">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_2">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_3">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_4">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_5">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_6">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_7">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_8">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_9">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_10">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_11">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_12">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_13">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_14">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_15">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_16">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_17">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_18">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_19">
+        <self_collide>true</self_collide>
+    </gazebo>
+    
+    <gazebo reference="link_20">
+        <self_collide>true</self_collide>
+    </gazebo>
     
     <gazebo>
         <plugin name="linkbot_model_plugin" filename="liblinkbot_model_plugin.so">

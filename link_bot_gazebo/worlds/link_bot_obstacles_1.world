@@ -33,14 +33,19 @@
             <name>box4</name>
         </include>
         <include>
-            <uri>model://arena</uri>
-            <pose>0 0 0 0 0 0</pose>
-            <name>arena</name>
-        </include>
-        <include>
             <uri>model://box</uri>
             <pose>-1.5 -2.5 0 0 0 0</pose>
             <name>box5</name>
+        </include>
+        <include>
+            <uri>model://box</uri>
+            <pose>-0.5 4 0 0 0 0</pose>
+            <name>box6</name>
+        </include>
+        <include>
+            <uri>model://arena_10</uri>
+            <pose>0 0 0 0 0 0</pose>
+            <name>arena</name>
         </include>
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
         <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
