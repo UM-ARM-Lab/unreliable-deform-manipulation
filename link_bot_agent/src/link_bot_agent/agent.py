@@ -17,9 +17,9 @@ class LinkConfig:
         self.vy = None
 
 
-def get_rope_data(get_link_state, num_links, control_link_i, fx, fy):
+def get_rope_data(get_link_state, num_links):
     # return value should be 3D array
-    # first dim is position/velocity/force
+    # first dim is position/velocity
     # second dim is link
     # third dim is x/y
 
@@ -32,12 +32,6 @@ def get_rope_data(get_link_state, num_links, control_link_i, fx, fy):
         data[0, link_idx, 1] = response.link_state.pose.position.y
         data[1, link_idx, 0] = response.link_state.twist.linear.x
         data[1, link_idx, 1] = response.link_state.twist.linear.y
-        if link_idx == control_link_i:
-            data[2, link_idx, 0] = fx
-            data[2, link_idx, 1] = fy
-        else:
-            data[2, link_idx, 0] = 0
-            data[2, link_idx, 1] = 0
 
     return data
 

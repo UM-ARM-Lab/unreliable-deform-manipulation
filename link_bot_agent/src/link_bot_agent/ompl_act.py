@@ -23,12 +23,13 @@ class OMPLAct:
 
         dynamics_latent_space = ob.RealVectorStateSpace(self.M)
         constraint_latent_space = ob.RealVectorStateSpace(self.P)
-        self.arena_size = 10
+        self.arena_size = 5
+        self.latent_space_size = 10
         # TODO: these are arbitrary
         dynamics_latent_space.setName("dynamics latent space")
-        dynamics_latent_space.setBounds(-self.arena_size, self.arena_size)
+        dynamics_latent_space.setBounds(-self.latent_space_size, self.latent_space_size)
         constraint_latent_space.setName("constraint latent space")
-        constraint_latent_space.setBounds(-self.arena_size, self.arena_size)
+        constraint_latent_space.setBounds(-self.latent_space_size, self.latent_space_size)
 
         self.latent_space = ob.CompoundStateSpace()
         self.latent_space.addSubspace(dynamics_latent_space, 1)

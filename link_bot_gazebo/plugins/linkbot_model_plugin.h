@@ -41,7 +41,7 @@ class LinkBotModelPlugin : public ModelPlugin {
   double kI_{0};
   double kD_{0};
   bool use_force_{false};
-  physics::LinkPtr velocity_control_link_;
+  physics::LinkPtr velocity_control_link_{nullptr};
   std::vector<geometry_msgs::Wrench> wrenches_;
   common::PID x_vel_pid_;
   common::PID y_vel_pid_;

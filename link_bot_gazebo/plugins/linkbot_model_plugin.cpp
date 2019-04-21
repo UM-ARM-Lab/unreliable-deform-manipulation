@@ -82,12 +82,14 @@ void LinkBotModelPlugin::OnUpdate()
     }
   }
   else {
-    auto const current_linear_vel = velocity_control_link_->WorldLinearVel();
-    auto const error = current_linear_vel - target_linear_vel_;
-    ignition::math::Vector3d force{};
-    force.X(x_vel_pid_.Update(error.X(), 0.001));
-    force.Y(y_vel_pid_.Update(error.Y(), 0.001));
-    velocity_control_link_->AddForce(force);
+    if (velocity_control_link_) {
+      auto const current_linear_vel = velocity_control_link_->WorldLinearVel();
+      auto const error = current_linear_vel - target_linear_vel_;
+      ignition::math::Vector3d force{};
+      force.X(x_vel_pid_.Update(error.X(), 0.001));
+      force.Y(y_vel_pid_.Update(error.Y(), 0.001));
+      velocity_control_link_->AddForce(force);
+    }
   }
 }
 

@@ -13,7 +13,7 @@ import rospy
 from builtins import input
 from colorama import Fore
 from gazebo_msgs.msg import ContactsState
-from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
+from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 
 from link_bot_agent import agent, ompl_act, one_step_action_selector, lqr_action_selector, \
@@ -40,7 +40,7 @@ def contacts_callback(contacts):
             in_contact = True
 
 
-def common(args, goals, max_steps=1e6, eval=False, verbose=False):
+def common(args, start, max_steps=1e6):
     global in_contact
     if args.logdir:
         now = int(timemod.time())
@@ -55,12 +55,13 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
             if folder == "log_data":
                 relevant = True
 
-        logfile = os.path.join(args.logdir, "{}_{}.npy".format("_".join(checkpoint_folders), now))
+        logfile = os.path.join(args.logdir, "{}_{}.npz".format("_".join(checkpoint_folders), now))
         print(Fore.CYAN + "Saving new data in {}".format(logfile) + Fore.RESET)
 
     batch_size = 1
     max_v = 1
     n_steps = 1
+    n_steps_for_logging = 50
     if args.controller == 'ompl-dual-lqr':
         sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
         tf_model = linear_constraint_model.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution,
@@ -93,14 +94,15 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
 
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
-    action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
+    action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
     rospy.Subscriber("/head_contact", ContactsState, contacts_callback)
 
     times = []
     states = []
     actions = []
     constraints = []
-    action_msg = LinkBotAction()
+    action_msg = LinkBotVelocityAction()
+    action_msg.control_link_name = 'head'
 
     # Statistics
     num_fails = 0
@@ -116,13 +118,16 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
 
     # Catch planning failure exception
     try:
-        for goal in goals:
-            # TODO: make this random initial configuration
+        for trial_idx in range(args.n_trials):
+            goal = np.zeros((1, 6))
+            goal[0, 0] = np.random.uniform(-4.0, 3.0)
+            goal[0, 1] = np.random.uniform(-4.0, 4.0)
+
             config = LinkBotConfiguration()
-            config.tail_pose.x = np.random.uniform(-3, -2)
-            config.tail_pose.y = np.random.uniform(-8, 8)
-            config.tail_pose.theta = np.random.uniform(-np.pi, np.pi)
-            config.joint_angles_rad = [0, 0]
+            config.tail_pose.x = start[0, 0]
+            config.tail_pose.y = start[0, 1]
+            config.tail_pose.theta = np.random.uniform(-0.2, 0.2)
+            config.joint_angles_rad = [np.random.uniform(-0.2, 0.2), 0]
             config_pub.publish(config)
             timemod.sleep(0.1)
 
@@ -134,7 +139,7 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
             markers.publish(goal_marker)
             markers.publish(start_marker)
 
-            if verbose:
+            if args.verbose:
                 print("start: {}, {}".format(config.tail_pose.x, config.tail_pose.y))
                 print("goal: {}, {}".format(goal[0, 0], goal[0, 1]))
 
@@ -142,18 +147,19 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
 
             min_true_cost = 1e9
             step_idx = 0
+            logging_idx = 0
             done = False
-            time_traj = []
-            state_traj = []
-            action_traj = []
-            constraint_traj = []
+            time_traj = np.ndarray((n_steps_for_logging + 1, 1))
+            state_traj = np.ndarray((n_steps_for_logging + 1, args.N))
+            action_traj = np.ndarray((n_steps_for_logging, 2))
+            constraint_traj = np.ndarray((n_steps_for_logging + 1, args.Q))
             discrete_time = 0
             contacts = 0
             start_time = timemod.time()
             while step_idx < max_steps and not done:
                 s = agent.get_state(gzagent.get_link_state)
                 o_d, o_k = tf_model.reduce(s)
-                planned_actions, _ = action_selector.act(sdf, o_d, o_k, o_d_goal, verbose)
+                planned_actions, _ = action_selector.act(sdf, o_d, o_k, o_d_goal, args.verbose)
 
                 if planned_actions is None:
                     num_fails += 1
@@ -164,14 +170,12 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
                         break
 
                     links_state = agent.get_state(gzagent.get_link_state)
-                    time_traj.append(discrete_time)
-                    state_traj.append(links_state)
-                    action_traj.append(action[0])
-                    constraint_traj.append(None)
+                    time_traj[logging_idx] = [discrete_time]
+                    state_traj[logging_idx] = links_state
+                    action_traj[logging_idx] = action[0]
+                    constraint_traj[logging_idx] = [in_contact]
 
                     # publish the pull command
-                    action_msg.control_link_name = 'head'
-                    action_msg.use_force = False
 
                     # actions should be scaled in LQR? do it again here?
                     u_norm = np.linalg.norm(action)
@@ -182,8 +186,8 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
                             scaling = u_norm
                         action = action * scaling / u_norm
 
-                    action_msg.twist.linear.x = action[0, 0]
-                    action_msg.twist.linear.y = action[0, 1]
+                    action_msg.vx = action[0, 0]
+                    action_msg.vy = action[0, 1]
                     action_pub.publish(action_msg)
 
                     step = WorldControlRequest()
@@ -204,30 +208,35 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
                     if true_cost < success_dist:
                         num_successes += 1
                         done = True
-                        if verbose:
+                        if args.verbose:
                             print("Success!")
                     step_idx += 1
+                    logging_idx += 1
                     discrete_time += dt
+
+                    # once we get a full trajectory, append it to the list of trajectories and save everything
+                    # then reset the counter so we start filling the trajectory at the beginning
+                    if logging_idx == n_steps_for_logging:
+                        links_state = agent.get_state(gzagent.get_link_state)
+                        time_traj[logging_idx] = [discrete_time]
+                        state_traj[logging_idx] = links_state
+                        constraint_traj[logging_idx] = [in_contact]
+
+                        logging_idx = 0
+                        times.append(time_traj)
+                        states.append(state_traj)
+                        actions.append(action_traj)
+                        constraints.append(constraint_traj)
+                        if args.logdir:
+                            print("saving data...")
+                            np.savez(logfile,
+                                     times=times,
+                                     states=states,
+                                     actions=actions,
+                                     constraints=constraints)
 
                 if done:
                     break
-
-            # save the final state
-            links_state = agent.get_state(gzagent.get_link_state)
-            time_traj.append(discrete_time)
-            state_traj.append(links_state)
-            constraint_traj.append(None)
-
-            times.append(time_traj)
-            states.append(state_traj)
-            actions.append(action_traj)
-            constraints.append(constraint_traj)
-            if args.logdir:
-                np.savez(args.outfile,
-                         times=times,
-                         states=states,
-                         actions=actions)
-
             execution_time = timemod.time() - start_time
             execution_times.append(execution_time)
             min_true_costs.append(min_true_cost)
@@ -243,21 +252,19 @@ def common(args, goals, max_steps=1e6, eval=False, verbose=False):
 
 
 def test(args):
-    goal = np.array([[2.5, 0, 0, 0, 0, 0]])
-    common(args, [goal], eval=False, verbose=args.verbose)
+    start = np.array([[-1, 0, 0, 0, 0, 0]])
+    common(args, start)
 
 
 def eval(args):
     stats_filename = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(timemod.time())))
-    goals = np.zeros((args.n_random_goals, 1, 6))
-    goals[:, :, 0] = np.random.uniform(2, 6, size=(args.n_random_goals, 1))
-    goals[:, :, 1] = np.random.uniform(-3, 3, size=(args.n_random_goals, 1))
+    start = np.array([[-1, 0, 0, 0, 0, 0]])
 
-    min_costs, execution_times, nums_contacts, num_fails, num_successes = common(args, goals, max_steps=450, eval=True)
+    min_costs, execution_times, nums_contacts, num_fails, num_successes = common(args, start, 100)
 
     eval_stats_lines = [
-        '% fail: {}'.format(float(num_fails) / args.n_random_goals),
-        '% success: {}'.format(float(num_successes) / args.n_random_goals),
+        '% fail: {}'.format(float(num_fails) / args.n_trials),
+        '% success: {}'.format(float(num_successes) / args.n_trials),
         'mean final dist to goal: {}'.format(np.mean(min_costs)),
         'std final dist to goal: {}'.format(np.std(min_costs)),
         'mean execution time: {}'.format(np.mean(execution_times)),
@@ -298,13 +305,13 @@ def main():
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=1.0)
     parser.add_argument("--logdir", '-d', help='data directory to store logged data in')
     parser.add_argument("--controller", choices=['gurobi', 'lqr', 'ompl-lqr', 'ompl-dual-lqr', 'ompl-gurobi'])
+    parser.add_argument("--n-trials", '-n', type=int, default=20)
 
     subparsers = parser.add_subparsers()
     test_subparser = subparsers.add_parser("test")
     test_subparser.set_defaults(func=test)
 
     eval_subparser = subparsers.add_parser("eval")
-    eval_subparser.add_argument("--n-random-goals", '-n', type=int, default=50)
     eval_subparser.set_defaults(func=eval)
 
     args = parser.parse_args()
