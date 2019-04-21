@@ -86,7 +86,7 @@ class LinearConstraintModel(base_model.BaseModel):
         A_k_init = np.zeros((P, P), dtype=np.float32)
         B_k_init = np.zeros((P, L), dtype=np.float32)
         np.fill_diagonal(B_k_init, 1)
-        k_threshold_init = 0.12
+        k_threshold_init = 0.05
 
         self.R_d = tf.get_variable("R_d", initializer=R_d_init)
         self.A_d = tf.get_variable("A_d", initializer=A_d_init)
@@ -142,23 +142,28 @@ class LinearConstraintModel(base_model.BaseModel):
             # sum of squared errors in latent space at each time step
             with tf.name_scope("latent_dynamics_d"):
                 self.state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
-                self.state_prediction_error_in_d = tf.gather_nd(self.state_prediction_error_in_d, self.mask_indeces_2d)
-                self.state_prediction_loss_in_d = tf.reduce_mean(self.state_prediction_error_in_d,
-                                                                 name='state_prediction_loss_in_d')
+                self.state_prediction_error_in_d = tf.gather_nd(self.state_prediction_error_in_d, self.mask_indeces_2d,
+                                                                name='state_prediction_error_in_d')
+                self.state_prediction_loss_in_d = 1.0 * tf.reduce_mean(self.state_prediction_error_in_d,
+                                                                       name='state_prediction_loss_in_d')
                 self.cost_prediction_error = tf.square(self.hat_c - self.c_label)
-                self.cost_prediction_error = tf.gather_nd(self.cost_prediction_error, self.mask_indeces_2d)
-                self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
+                self.cost_prediction_error = tf.gather_nd(self.cost_prediction_error, self.mask_indeces_2d,
+                                                          name='cost_prediction_error')
+                self.cost_prediction_loss = 1.0 * tf.reduce_mean(self.cost_prediction_error,
+                                                                   name='cost_prediction_loss')
 
             with tf.name_scope("latent_constraints_k"):
                 self.state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
-                self.state_prediction_error_in_k = tf.gather_nd(self.state_prediction_error_in_k, self.mask_indeces_2d)
-                self.state_prediction_loss_in_k = tf.reduce_mean(self.state_prediction_error_in_k,
-                                                                 name='state_prediction_loss_in_k')
+                self.state_prediction_error_in_k = tf.gather_nd(self.state_prediction_error_in_k, self.mask_indeces_2d,
+                                                                name='state_prediction_error_in_k')
+                self.state_prediction_loss_in_k = 1.0 * tf.reduce_mean(self.state_prediction_error_in_k,
+                                                                        name='state_prediction_loss_in_k')
 
                 self.constraint_prediction_error = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.hat_k,
-                                                                                           labels=self.k_label)
-                self.constraint_prediction_loss = tf.reduce_mean(self.constraint_prediction_error,
-                                                                 name="constraint_prediction_loss")
+                                                                                           labels=self.k_label,
+                                                                                           name='constraint_prediction_error')
+                self.constraint_prediction_loss = 1.0 * tf.reduce_mean(self.constraint_prediction_error,
+                                                                        name="constraint_prediction_loss")
 
             self.flat_weights = tf.concat(
                 (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)
@@ -166,10 +171,9 @@ class LinearConstraintModel(base_model.BaseModel):
 
             self.loss = tf.add_n([self.state_prediction_loss_in_d,
                                   self.cost_prediction_loss,
-                                  self.regularization,
                                   self.state_prediction_loss_in_k,
                                   self.constraint_prediction_loss,
-                                  ])
+                                  ], name='loss')
 
             self.global_step = tf.get_variable("global_step", initializer=0, trainable=False)
             self.opt = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.loss, global_step=self.global_step)
@@ -184,14 +188,14 @@ class LinearConstraintModel(base_model.BaseModel):
                     else:
                         print("Warning... there is no gradient of the loss with respect to {}".format(var.name))
 
-            tf.summary.scalar("constraint_prediction_accuracy", self.constraint_prediction_accuracy)
-            tf.summary.scalar("k_threshold", self.threshold_k)
-            tf.summary.scalar("constraint_predition_loss", self.constraint_prediction_loss)
-            tf.summary.scalar("state_prediction_loss_in_d", self.state_prediction_loss_in_d)
-            tf.summary.scalar("state_prediction_loss_in_k", self.state_prediction_loss_in_k)
-            tf.summary.scalar("cost_prediction_loss", self.cost_prediction_loss)
-            tf.summary.scalar("regularization_loss", self.regularization)
-            tf.summary.scalar("loss", self.loss)
+            tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy)
+            tf.summary.scalar("k_threshold_summary", self.threshold_k)
+            tf.summary.scalar("constraint_prediction_loss_summary", self.constraint_prediction_loss)
+            tf.summary.scalar("state_prediction_loss_in_d_summary", self.state_prediction_loss_in_d)
+            tf.summary.scalar("state_prediction_loss_in_k_summary", self.state_prediction_loss_in_k)
+            tf.summary.scalar("cost_prediction_loss_summary", self.cost_prediction_loss)
+            tf.summary.scalar("regularization_loss_summary", self.regularization)
+            tf.summary.scalar("loss_summary", self.loss)
 
             self.summaries = tf.summary.merge_all()
             gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
