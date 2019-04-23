@@ -20,7 +20,7 @@ def train(args):
     batch_size = data['states'].shape[0]
     n_steps = times.shape[1] - 1
     model = m.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, batch_size, args.N, args.M, args.L,
-                                    args.P, args.Q, dt, n_steps, seed=args.seed)
+                                    args.P, args.Q, dt, n_steps)
 
     goal = np.zeros((1, args.N))
 
