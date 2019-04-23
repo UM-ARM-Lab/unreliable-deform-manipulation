@@ -124,7 +124,7 @@ class LinearConstraintModel(base_model.BaseModel):
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal, name='hat_c')
         self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.sdf_origin_coordinate,
                              self.hat_o_k, self.P, self.Q)
-        # because the sigmoid is not very sharp we meters are very large, this doesn't give a very sharp boundary for
+        # because the sigmoid is not very sharp (since meters are very large), this doesn't give a very sharp boundary for
         # the decision between in collision or not. The trade of is this might cause vanishing gradients
         self.hat_k = 100 * (self.threshold_k - self.sdfs)
         self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32, name="hat_k_violated")
@@ -142,29 +142,20 @@ class LinearConstraintModel(base_model.BaseModel):
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
             with tf.name_scope("latent_dynamics_d"):
-                self.state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
-                self.state_prediction_error_in_d = tf.gather_nd(self.state_prediction_error_in_d, self.mask_indeces_2d,
-                                                                name='state_prediction_error_in_d')
-                self.state_prediction_loss_in_d = tf.reduce_mean(self.state_prediction_error_in_d,
-                                                                 name='state_prediction_loss_in_d')
-                self.all_cost_prediction_error = tf.square(self.hat_c - self.c_label)
-                self.cost_prediction_error = tf.gather_nd(self.all_cost_prediction_error, self.mask_indeces_2d,
-                                                          name='cost_prediction_error')
-                self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error,
-                                                           name='cost_prediction_loss')
+                self.all_state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
+                self.state_prediction_error_in_d = tf.gather_nd(self.all_state_prediction_error_in_d, self.mask_indeces_2d, name='all_state_prediction_error_in_d')
+                self.state_prediction_loss_in_d = tf.reduce_mean(self.state_prediction_error_in_d, name='state_prediction_loss_in_d')
+                self.all_cost_prediction_error = tf.square(self.hat_c - self.c_label, name='all_cost_prediction_error')
+                self.cost_prediction_error = tf.gather_nd(self.all_cost_prediction_error, self.mask_indeces_2d, name='cost_prediction_error')
+                self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
 
             with tf.name_scope("latent_constraints_k"):
-                self.state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
-                self.state_prediction_error_in_k = tf.gather_nd(self.state_prediction_error_in_k, self.mask_indeces_2d,
-                                                                name='state_prediction_error_in_k')
-                self.state_prediction_loss_in_k = tf.reduce_mean(self.state_prediction_error_in_k,
-                                                                 name='state_prediction_loss_in_k')
+                self.all_state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
+                self.state_prediction_error_in_k = tf.gather_nd(self.all_state_prediction_error_in_k, self.mask_indeces_2d, name='all_state_prediction_error_in_k')
+                self.state_prediction_loss_in_k = tf.reduce_mean(self.state_prediction_error_in_k, name='state_prediction_loss_in_k')
 
-                self.constraint_prediction_error = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.hat_k,
-                                                                                           labels=self.k_label,
-                                                                                           name='constraint_prediction_error')
-                self.constraint_prediction_loss = tf.reduce_mean(self.constraint_prediction_error,
-                                                                 name="constraint_prediction_loss")
+                self.constraint_prediction_error = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.hat_k, labels=self.k_label, name='constraint_prediction_error')
+                self.constraint_prediction_loss = tf.reduce_mean(self.constraint_prediction_error, name="constraint_prediction_loss")
 
             self.flat_weights = tf.concat(
                 (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)

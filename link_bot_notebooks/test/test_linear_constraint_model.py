@@ -33,9 +33,10 @@ class TestLoss(unittest.TestCase):
 
         W = 10
         H = 20
-        sdf = np.random.randn(W, H).astype(np.float32)
-        sdf_gradient = np.random.randn(W, H, 2).astype(np.float32)
-        sdf_resolution = np.random.randn(2).astype(np.float32)
+        sdf = np.ones((H, W), dtype=np.float32)
+        sdf[H // 2 + 2, W // 2 + -3] = -1
+        sdf_gradient = np.zeros((W, H, 2), dtype=np.float32)
+        sdf_resolution = np.array([1, 1], dtype=np.float32)
 
         cls.model = m.LinearConstraintModel(args, sdf, sdf_gradient, sdf_resolution, batch_size, N, M, L, P, Q, dt,
                                             n_steps)
@@ -95,67 +96,56 @@ class TestLoss(unittest.TestCase):
         }
 
     def test_hat_o_d(self):
-        # expected outputs
         expected_hat_o_d = np.array([[
             [3, 7],
             [1, 2],
             [2, -1],
         ]])
 
-        # compute outputs and test for the right output
         hat_o_d = self.model.sess.run(self.model.hat_o_d, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_o_d, expected_hat_o_d)
 
     def test_hat_o_d_next(self):
-        # expected outputs
         expected_hat_o_d_next = np.array([[
             [3, 7],
             [3, 7.1],
             [3.1, 7.2],
         ]])
 
-        # compute outputs and test for the right output
         hat_o_d_next = self.model.sess.run(self.model.hat_o_d_next, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_o_d_next, expected_hat_o_d_next)
 
     def test_hat_o_k(self):
-        # expected outputs
         expected_hat_o_k = np.array([[
             [3, 4],
             [1, 3],
             [2, -3],
         ]])
 
-        # compute outputs and test for the right output
         hat_o_k = self.model.sess.run(self.model.hat_o_k, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_o_k, expected_hat_o_k)
 
     def test_hat_o_k_next(self):
-        # expected outputs
         expected_hat_o_k_next = np.array([[
             [3, 4],
             [3, 4.1],
             [3.1, 4.2],
         ]])
 
-        # compute outputs and test for the right output
         hat_o_k_next = self.model.sess.run(self.model.hat_o_k_next, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_o_k_next, expected_hat_o_k_next)
 
     def test_error_to_goal(self):
-        # expected outputs
         expected_d_to_goal = np.array([[
             [2 - 3, 1 - 7],
             [2 - 1, 1 - 2],
             [2 - 2, 1 - -1],
         ]])
 
-        # compute outputs and test for the right output
         hat_d_to_goal = self.model.sess.run(self.model.d_to_goal, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_d_to_goal, expected_d_to_goal)
 
     def test_cost_loss(self):
-        # expected outputs
         expected_c = np.linalg.norm(np.array([[
             [2 - 3, 1 - 7],
             [2 - 1, 1 - 2],
@@ -169,7 +159,6 @@ class TestLoss(unittest.TestCase):
         ])
         expected_c_loss = np.mean(expected_c_error_masked)
 
-        # compute outputs and test for the right output
         hat_c = self.model.sess.run(self.model.hat_c, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_c, expected_c)
 
@@ -181,6 +170,82 @@ class TestLoss(unittest.TestCase):
 
         c_loss = self.model.sess.run(self.model.cost_prediction_loss, feed_dict=self.feed_dict)
         np.testing.assert_allclose(c_loss, expected_c_loss)
+
+    def test_dynamics_loss(self):
+        expected_state_prediction_error_in_d = np.array([[
+            0,
+            (3 - 1) ** 2 + (7.1 - 2) ** 2,
+            (3.1 - 2) ** 2 + (7.2 - -1) ** 2,
+        ]])
+
+        expected_state_prediction_error_in_d_masked = np.array([
+            0,
+            (3 - 1) ** 2 + (7.1 - 2) ** 2,
+        ])
+
+        expected_sd_loss = np.mean(expected_state_prediction_error_in_d_masked)
+
+        state_prediction_error_in_d = self.model.sess.run(self.model.all_state_prediction_error_in_d,
+                                                          feed_dict=self.feed_dict)
+        np.testing.assert_allclose(state_prediction_error_in_d, expected_state_prediction_error_in_d, rtol=2e-5)
+
+        state_prediction_error_in_d_masked = self.model.sess.run(self.model.state_prediction_error_in_d,
+                                                                 feed_dict=self.feed_dict)
+        np.testing.assert_allclose(state_prediction_error_in_d_masked, expected_state_prediction_error_in_d_masked,
+                                   rtol=2e-5)
+
+        sd_loss = self.model.sess.run(self.model.state_prediction_loss_in_d, feed_dict=self.feed_dict)
+        np.testing.assert_allclose(sd_loss, expected_sd_loss)
+
+    def test_constraint_dynamics_loss(self):
+        expected_state_prediction_error_in_k = np.array([[
+            0,
+            (3 - 1) ** 2 + (4.1 - 3) ** 2,
+            (3.1 - 2) ** 2 + (4.2 - -3) ** 2,
+        ]])
+
+        expected_state_prediction_error_in_k_masked = np.array([
+            0,
+            (3 - 1) ** 2 + (4.1 - 3) ** 2,
+        ])
+
+        expected_sd_loss = np.mean(expected_state_prediction_error_in_k_masked)
+
+        state_prediction_error_in_k = self.model.sess.run(self.model.all_state_prediction_error_in_k,
+                                                          feed_dict=self.feed_dict)
+        np.testing.assert_allclose(state_prediction_error_in_k, expected_state_prediction_error_in_k, rtol=2e-5)
+
+        state_prediction_error_in_k_masked = self.model.sess.run(self.model.state_prediction_error_in_k,
+                                                                 feed_dict=self.feed_dict)
+        np.testing.assert_allclose(state_prediction_error_in_k_masked, expected_state_prediction_error_in_k_masked,
+                                   rtol=2e-5)
+
+        sd_loss = self.model.sess.run(self.model.state_prediction_loss_in_k, feed_dict=self.feed_dict)
+        np.testing.assert_allclose(sd_loss, expected_sd_loss)
+
+    def test_constraint_loss(self):
+        expected_k_violated = np.array([[
+            [False],
+            [False],
+            [True],
+        ]])
+
+        expected_k = np.array([[
+            [-0.5],
+            [-0.5],
+            [1.5],
+        ]]) * 100
+
+        expected_k_loss = np.array([0], dtype=np.float32)
+
+        hat_k_violated = self.model.sess.run(self.model.hat_k_violated, feed_dict=self.feed_dict)
+        np.testing.assert_allclose(hat_k_violated, expected_k_violated)
+
+        hat_k = self.model.sess.run(self.model.hat_k, feed_dict=self.feed_dict)
+        np.testing.assert_allclose(hat_k, expected_k)
+
+        k_loss = self.model.sess.run(self.model.constraint_prediction_loss, feed_dict=self.feed_dict)
+        np.testing.assert_allclose(k_loss, expected_k_loss, atol=1e-20)
 
 
 if __name__ == '__main__':
