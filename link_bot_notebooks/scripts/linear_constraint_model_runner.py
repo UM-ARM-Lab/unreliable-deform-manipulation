@@ -39,11 +39,15 @@ def model_only(args):
     fake_sdf_res = np.random.randn(2).astype(np.float32)
     model = m.LinearConstraintModel(vars(args), fake_sdf, fake_sdf_grad, fake_sdf_res, 250, args.N, args.M, args.L,
                                     args.P, args.Q, 0.1, 50)
+
+    model.init()
+
     if args.log:
-        model.init()
         log_path = experiments_util.experiment_name(args.log)
         full_log_path = os.path.join(os.getcwd(), "log_data", log_path)
         model.save(full_log_path)
+
+    print(model)
 
 
 def evaluate(args):
@@ -83,6 +87,7 @@ def main():
     parser.add_argument("-P", help="dimensions in latent state o_k", type=int, default=2)
     parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
+    parser.add_argument("--seed", type=int, default=0)
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
@@ -93,7 +98,6 @@ def main():
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--print-period", "-p", type=int, default=200)
     train_subparser.add_argument("--save-period", type=int, default=400)
-    train_subparser.add_argument("--seed", type=int, default=0)
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")

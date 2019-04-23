@@ -49,6 +49,12 @@ def evaluate(args):
     model.load()
     return model.evaluate(data, goal)
 
+def show(args):
+    model = m.LinearTFModel(vars(args), 250, args.N, args.M, args.L, 0.1, 1)
+    model.setup()
+    print(model)
+
+
 
 def main():
     np.set_printoptions(precision=6, suppress=True)
@@ -75,6 +81,10 @@ def main():
     eval_subparser.add_argument("dataset", help="dataset (txt file)")
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
     eval_subparser.set_defaults(func=evaluate)
+
+    show_subparser = subparsers.add_parser("show")
+    show_subparser.add_argument("checkpoint", help="restart from this *.ckpt name")
+    show_subparser.set_defaults(func=show)
 
     model_only_subparser = subparsers.add_parser("model_only")
     model_only_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")

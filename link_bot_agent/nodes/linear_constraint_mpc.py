@@ -260,7 +260,7 @@ def eval(args):
     stats_filename = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(timemod.time())))
     start = np.array([[-1, 0, 0, 0, 0, 0]])
 
-    min_costs, execution_times, nums_contacts, num_fails, num_successes = common(args, start, 100)
+    min_costs, execution_times, nums_contacts, num_fails, num_successes = common(args, start, 200)
 
     eval_stats_lines = [
         '% fail: {}'.format(float(num_fails) / args.n_trials),

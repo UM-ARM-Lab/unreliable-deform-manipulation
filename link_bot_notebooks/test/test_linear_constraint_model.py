@@ -13,7 +13,7 @@ class TestLoss(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         dt = 0.1
-        batch_size = 1
+        batch_size = 2
         n_steps = 2
 
         args = {
@@ -34,7 +34,7 @@ class TestLoss(unittest.TestCase):
         W = 10
         H = 20
         sdf = np.ones((H, W), dtype=np.float32)
-        sdf[H // 2 + 2, W // 2 + -3] = -1
+        sdf[H // 2 + 1, W // 2 + 3] = -1
         sdf_gradient = np.zeros((W, H, 2), dtype=np.float32)
         sdf_resolution = np.array([1, 1], dtype=np.float32)
 
@@ -70,92 +70,120 @@ class TestLoss(unittest.TestCase):
 
         # Construct inputs
         s = np.array([
-            [3, 7, 4],
-            [1, 2, 3],
-            [2, -1, -3],
+            [[3, 7, 4],
+             [1, 2, 3],
+             [2, -1, -3]],
+            [[-1, 2, -1],
+             [1, 1, 2],
+             [1, 2, -2]],
         ])
 
         u = np.array([
-            [0, 1],
-            [1, 1],
+            [[0, 1],
+             [1, 1]],
+            [[1, 0],
+             [1, 0]],
         ])
 
         cls.c = np.linalg.norm(s - cls.goal, axis=1)
         cls.k = np.array([
-            [0],
-            [0],
-            [1],
+            [[0],
+             [1],
+             [0]],
+            [[0],
+             [0],
+             [0]],
         ])
 
         cls.feed_dict = {
-            cls.model.s: np.expand_dims(s, axis=0),
-            cls.model.u: np.expand_dims(u, axis=0),
+            cls.model.s: s,
+            cls.model.u: u,
             cls.model.s_goal: cls.goal,
-            cls.model.c_label: np.expand_dims(cls.c, axis=0),
-            cls.model.k_label: np.expand_dims(cls.k, axis=0)
+            cls.model.c_label: cls.c,
+            cls.model.k_label: cls.k,
         }
 
     def test_hat_o_d(self):
-        expected_hat_o_d = np.array([[
-            [3, 7],
-            [1, 2],
-            [2, -1],
-        ]])
+        expected_hat_o_d = np.array([
+            [[3, 7],
+             [1, 2],
+             [2, -1]],
+            [[-1, 2],
+             [1, 1],
+             [1, 2]],
+        ])
 
         hat_o_d = self.model.sess.run(self.model.hat_o_d, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_o_d, expected_hat_o_d)
 
     def test_hat_o_d_next(self):
-        expected_hat_o_d_next = np.array([[
-            [3, 7],
-            [3, 7.1],
-            [3.1, 7.2],
-        ]])
+        expected_hat_o_d_next = np.array([
+            [[3, 7],
+             [3, 7.1],
+             [3.1, 7.2]],
+            [[-1, 2],
+             [-0.9, 2],
+             [-0.8, 2]],
+        ])
 
         hat_o_d_next = self.model.sess.run(self.model.hat_o_d_next, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_o_d_next, expected_hat_o_d_next)
 
     def test_hat_o_k(self):
-        expected_hat_o_k = np.array([[
-            [3, 4],
-            [1, 3],
-            [2, -3],
-        ]])
+        expected_hat_o_k = np.array([
+            [[3, 4],
+             [1, 3],
+             [2, -3]],
+            [[-1, -1],
+             [1, 2],
+             [1, -2]],
+        ])
 
         hat_o_k = self.model.sess.run(self.model.hat_o_k, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_o_k, expected_hat_o_k)
 
     def test_hat_o_k_next(self):
-        expected_hat_o_k_next = np.array([[
-            [3, 4],
-            [3, 4.1],
-            [3.1, 4.2],
-        ]])
+        expected_hat_o_k_next = np.array([
+            [[3, 4],
+             [3, 4.1],
+             [3.1, 4.2]],
+            [[-1, -1],
+             [-0.9, -1],
+             [-0.8, -1]],
+        ])
 
         hat_o_k_next = self.model.sess.run(self.model.hat_o_k_next, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_o_k_next, expected_hat_o_k_next)
 
     def test_error_to_goal(self):
-        expected_d_to_goal = np.array([[
-            [2 - 3, 1 - 7],
-            [2 - 1, 1 - 2],
-            [2 - 2, 1 - -1],
-        ]])
+        expected_d_to_goal = np.array([
+            [[2 - 3, 1 - 7],
+             [2 - 1, 1 - 2],
+             [2 - 2, 1 - -1]],
+            [[2 - -1, 1 - 2],
+             [2 - 1, 1 - 1],
+             [2 - 1, 1 - 2]],
+        ])
 
         hat_d_to_goal = self.model.sess.run(self.model.d_to_goal, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_d_to_goal, expected_d_to_goal)
 
     def test_cost_loss(self):
-        expected_c = np.linalg.norm(np.array([[
-            [2 - 3, 1 - 7],
-            [2 - 1, 1 - 2],
-            [2 - 2, 1 - -1],
-        ]]), axis=2) ** 2
+        expected_c = np.linalg.norm(np.array([
+            [[2 - 3, 1 - 7],
+             [2 - 1, 1 - 2],
+             [2 - 2, 1 - -1]],
+            [[2 - -1, 1 - 2],
+             [2 - 1, 1 - 1],
+             [2 - 1, 1 - 2]],
+        ]), axis=2) ** 2
 
         expected_c_error = (expected_c - self.c) ** 2
         expected_c_error_masked = np.array([
-            expected_c_error[0, 0],
-            expected_c_error[0, 1]
+            expected_c_error[0, 0],  # only the first time step should be un-masked
+            expected_c_error[1, 0],  # for the second trajectory, all steps are un-masked
+            expected_c_error[1, 1],
+            expected_c_error[1, 2],
         ])
         expected_c_loss = np.mean(expected_c_error_masked)
 
@@ -180,7 +208,6 @@ class TestLoss(unittest.TestCase):
 
         expected_state_prediction_error_in_d_masked = np.array([
             0,
-            (3 - 1) ** 2 + (7.1 - 2) ** 2,
         ])
 
         expected_sd_loss = np.mean(expected_state_prediction_error_in_d_masked)
@@ -206,7 +233,6 @@ class TestLoss(unittest.TestCase):
 
         expected_state_prediction_error_in_k_masked = np.array([
             0,
-            (3 - 1) ** 2 + (4.1 - 3) ** 2,
         ])
 
         expected_sd_loss = np.mean(expected_state_prediction_error_in_k_masked)
@@ -226,14 +252,14 @@ class TestLoss(unittest.TestCase):
     def test_constraint_loss(self):
         expected_k_violated = np.array([[
             [False],
-            [False],
             [True],
+            [False],
         ]])
 
         expected_k = np.array([[
             [-0.5],
-            [-0.5],
             [1.5],
+            [-0.5],
         ]]) * 100
 
         expected_k_loss = np.array([0], dtype=np.float32)

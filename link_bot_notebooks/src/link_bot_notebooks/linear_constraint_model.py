@@ -13,6 +13,22 @@ from link_bot_notebooks import toy_problem_optimization_common as tpo
 from tensorflow.python import debug as tf_debug
 
 
+def make_constraint_mask(arr, axis=1):
+    """ takes in a 2d array and returns two lists of indeces all elements before the first constriant violation """
+    arr = arr.squeeze()
+    invalid_val = arr.shape[1]
+    mask = arr != 0
+    indeces_of_first_violation = np.where(mask.any(axis=axis), mask.argmax(axis=axis), invalid_val)
+    batch_indeces = []
+    time_indeces = []
+    for batch_index, index_of_first_violation in enumerate(indeces_of_first_violation):
+        for index_with_no_violation in range(index_of_first_violation):
+            batch_indeces.append(batch_index)
+            time_indeces.append(index_with_no_violation)
+
+    return batch_indeces, time_indeces
+
+
 @tf.custom_gradient
 def sdf_func(sdf, full_sdf_gradient, resolution, sdf_origin_coordinate, sdf_coordinates, P, Q):
     integer_coordinates = tf.cast(tf.divide(sdf_coordinates, resolution), dtype=tf.int32)
@@ -63,6 +79,7 @@ class LinearConstraintModel(base_model.BaseModel):
         self.s_goal = tf.placeholder(tf.float32, shape=(1, N), name="s_goal")
         self.c_label = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1), name="c")
         self.k_label = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1, Q), name="k")
+        self.k_mask_indeces_2d = tf.placeholder(tf.int32, shape=(None, 2), name="k_mask_indeces_2d")
         self.k_label_int = tf.cast(self.k_label, tf.int32)
 
         # R_d_init = np.random.randn(N, M).astype(np.float32) * 1e-1
@@ -79,7 +96,7 @@ class LinearConstraintModel(base_model.BaseModel):
         R_d_init[1, 1] = 1
         A_d_init = np.zeros((M, M), dtype=np.float32)
         B_d_init = np.zeros((M, L), dtype=np.float32)
-        np.fill_diagonal(B_d_init, 1)
+        np.fill_diagonal(B_d_init, 0.3)
         R_k_init = np.zeros((N, P), dtype=np.float32)
         R_k_init[N - 2, 0] = 1.0
         R_k_init[N - 1, 1] = 1.0
@@ -134,28 +151,37 @@ class LinearConstraintModel(base_model.BaseModel):
         # NOTE: we use a mask to set the state prediction loss to 0 when the constraint is violated?
         # this way we don't penalize our model for failing to predict the dynamics in collision
         # the (1-label) inverts the labels so that 0 means in collision and mask out
-        self.constraint_label_mask = 1 - tf.squeeze(self.k_label)
         # TODO: this is invalid for when Q is not 1
-        self.mask_indeces_2d = tf.where(1 - tf.reshape(self.k_label, [self.batch_size, self.n_steps + 1]))
-        self.mask_indeces_3d = tf.where(1 - self.k_label)
 
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
             with tf.name_scope("latent_dynamics_d"):
-                self.all_state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2), axis=2)
-                self.state_prediction_error_in_d = tf.gather_nd(self.all_state_prediction_error_in_d, self.mask_indeces_2d, name='all_state_prediction_error_in_d')
-                self.state_prediction_loss_in_d = tf.reduce_mean(self.state_prediction_error_in_d, name='state_prediction_loss_in_d')
+                self.all_state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2),
+                                                                     axis=2)
+                self.state_prediction_error_in_d = tf.gather_nd(self.all_state_prediction_error_in_d,
+                                                                self.k_mask_indeces_2d,
+                                                                name='all_state_prediction_error_in_d')
+                self.state_prediction_loss_in_d = tf.reduce_mean(self.state_prediction_error_in_d,
+                                                                 name='state_prediction_loss_in_d')
                 self.all_cost_prediction_error = tf.square(self.hat_c - self.c_label, name='all_cost_prediction_error')
-                self.cost_prediction_error = tf.gather_nd(self.all_cost_prediction_error, self.mask_indeces_2d, name='cost_prediction_error')
+                self.cost_prediction_error = tf.gather_nd(self.all_cost_prediction_error, self.k_mask_indeces_2d,
+                                                          name='cost_prediction_error')
                 self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
 
             with tf.name_scope("latent_constraints_k"):
-                self.all_state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2), axis=2)
-                self.state_prediction_error_in_k = tf.gather_nd(self.all_state_prediction_error_in_k, self.mask_indeces_2d, name='all_state_prediction_error_in_k')
-                self.state_prediction_loss_in_k = tf.reduce_mean(self.state_prediction_error_in_k, name='state_prediction_loss_in_k')
+                self.all_state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2),
+                                                                     axis=2)
+                self.state_prediction_error_in_k = tf.gather_nd(self.all_state_prediction_error_in_k,
+                                                                self.k_mask_indeces_2d,
+                                                                name='all_state_prediction_error_in_k')
+                self.state_prediction_loss_in_k = tf.reduce_mean(self.state_prediction_error_in_k,
+                                                                 name='state_prediction_loss_in_k')
 
-                self.constraint_prediction_error = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.hat_k, labels=self.k_label, name='constraint_prediction_error')
-                self.constraint_prediction_loss = tf.reduce_mean(self.constraint_prediction_error, name="constraint_prediction_loss")
+                self.constraint_prediction_error = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.hat_k,
+                                                                                           labels=self.k_label,
+                                                                                           name='constraint_prediction_error')
+                self.constraint_prediction_loss = tf.reduce_mean(self.constraint_prediction_error,
+                                                                 name="constraint_prediction_loss")
 
             self.flat_weights = tf.concat(
                 (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)
@@ -241,7 +267,8 @@ class LinearConstraintModel(base_model.BaseModel):
                          self.u: u,
                          self.s_goal: goal,
                          self.c_label: c,
-                         self.k_label: k}
+                         self.k_label: k,
+                         self.k_mask_indeces_2d: make_constraint_mask(k)}
 
             ops = [self.global_step, self.summaries, self.loss, self.opt]
             for i in range(epochs):
@@ -283,7 +310,8 @@ class LinearConstraintModel(base_model.BaseModel):
                      self.u: u,
                      self.s_goal: goal,
                      self.c_label: c,
-                     self.k_label: k}
+                     self.k_label: k,
+                     self.k_mask_indeces_2d: make_constraint_mask(k)}
         ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k, self.threshold_k,
                self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
                self.constraint_prediction_loss, self.regularization, self.loss, self.constraint_prediction_accuracy]
