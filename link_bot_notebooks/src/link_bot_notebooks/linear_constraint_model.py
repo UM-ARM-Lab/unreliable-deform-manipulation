@@ -26,7 +26,7 @@ def make_constraint_mask(arr, axis=1):
             batch_indeces.append(batch_index)
             time_indeces.append(index_with_no_violation)
 
-    return batch_indeces, time_indeces
+    return np.vstack((batch_indeces, time_indeces)).T
 
 
 @tf.custom_gradient

@@ -95,12 +95,20 @@ class TestLoss(unittest.TestCase):
              [0]],
         ])
 
+        k_mask_indeces_2d = np.array([
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [1, 2],
+        ])
+
         cls.feed_dict = {
             cls.model.s: s,
             cls.model.u: u,
             cls.model.s_goal: cls.goal,
             cls.model.c_label: cls.c,
             cls.model.k_label: cls.k,
+            cls.model.k_mask_indeces_2d: k_mask_indeces_2d
         }
 
     def test_hat_o_d(self):
@@ -200,14 +208,20 @@ class TestLoss(unittest.TestCase):
         np.testing.assert_allclose(c_loss, expected_c_loss)
 
     def test_dynamics_loss(self):
-        expected_state_prediction_error_in_d = np.array([[
-            0,
-            (3 - 1) ** 2 + (7.1 - 2) ** 2,
-            (3.1 - 2) ** 2 + (7.2 - -1) ** 2,
-        ]])
+        expected_state_prediction_error_in_d = np.array([
+            [0,
+             (3 - 1) ** 2 + (7.1 - 2) ** 2,
+             (3.1 - 2) ** 2 + (7.2 - -1) ** 2],
+            [0,
+             (-0.9 - 1) ** 2 + (2 - 1) ** 2,
+             (-0.8 - 1) ** 2 + (2 - 2) ** 2],
+        ])
 
         expected_state_prediction_error_in_d_masked = np.array([
             0,
+            0,
+            (-0.9 - 1) ** 2 + (2 - 1) ** 2,
+            (-0.8 - 1) ** 2 + (2 - 2) ** 2,
         ])
 
         expected_sd_loss = np.mean(expected_state_prediction_error_in_d_masked)
@@ -225,14 +239,20 @@ class TestLoss(unittest.TestCase):
         np.testing.assert_allclose(sd_loss, expected_sd_loss)
 
     def test_constraint_dynamics_loss(self):
-        expected_state_prediction_error_in_k = np.array([[
-            0,
-            (3 - 1) ** 2 + (4.1 - 3) ** 2,
-            (3.1 - 2) ** 2 + (4.2 - -3) ** 2,
-        ]])
+        expected_state_prediction_error_in_k = np.array([
+            [0,
+             (3 - 1) ** 2 + (4.1 - 3) ** 2,
+             (3.1 - 2) ** 2 + (4.2 - -3) ** 2],
+            [0,
+             (-0.9 - 1) ** 2 + (-1.0 - 2) ** 2,
+             (-0.8 - 1) ** 2 + (-1.0 - -2) ** 2],
+        ])
 
         expected_state_prediction_error_in_k_masked = np.array([
             0,
+            0,
+            (-0.9 - 1) ** 2 + (-1.0 - 2) ** 2,
+            (-0.8 - 1) ** 2 + (-1.0 - -2) ** 2,
         ])
 
         expected_sd_loss = np.mean(expected_state_prediction_error_in_k_masked)
@@ -250,17 +270,23 @@ class TestLoss(unittest.TestCase):
         np.testing.assert_allclose(sd_loss, expected_sd_loss)
 
     def test_constraint_loss(self):
-        expected_k_violated = np.array([[
-            [False],
-            [True],
-            [False],
-        ]])
+        expected_k_violated = np.array([
+            [[False],
+             [True],
+             [False]],
+            [[False],
+             [False],
+             [False]],
+        ])
 
-        expected_k = np.array([[
-            [-0.5],
-            [1.5],
-            [-0.5],
-        ]]) * 100
+        expected_k = np.array([
+            [[-0.5],
+             [1.5],
+             [-0.5]],
+            [[-0.5],
+             [-0.5],
+             [-0.5]],
+        ]) * 100
 
         expected_k_loss = np.array([0], dtype=np.float32)
 
