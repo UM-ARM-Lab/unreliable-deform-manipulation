@@ -17,6 +17,8 @@ void LinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr co
 
   ros_node_ = std::make_unique<ros::NodeHandle>("linkbot_model_plugin");
 
+  auto joy_bind = boost::bind(&LinkBotModelPlugin::OnJoy, this, _1);
+  auto joy_so = ros::SubscribeOptions::create<sensor_msgs::Joy>("/joy", 1, joy_bind, ros::VoidPtr(), &queue_);
   auto vel_action_bind = boost::bind(&LinkBotModelPlugin::OnVelocityAction, this, _1);
   auto vel_action_so = ros::SubscribeOptions::create<link_bot_gazebo::LinkBotVelocityAction>(
       "/link_bot_velocity_action", 1, vel_action_bind, ros::VoidPtr(), &queue_);
@@ -26,6 +28,7 @@ void LinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr co
   auto config_bind = boost::bind(&LinkBotModelPlugin::OnConfiguration, this, _1);
   auto config_so = ros::SubscribeOptions::create<link_bot_gazebo::LinkBotConfiguration>(
       "/link_bot_configuration", 1, config_bind, ros::VoidPtr(), &queue_);
+  joy_sub_ = ros_node_->subscribe(joy_so);
   vel_cmd_sub_ = ros_node_->subscribe(vel_action_so);
   force_cmd_sub_ = ros_node_->subscribe(force_action_so);
   config_sub_ = ros_node_->subscribe(config_so);
@@ -91,6 +94,23 @@ void LinkBotModelPlugin::OnUpdate()
       velocity_control_link_->AddForce(force);
     }
   }
+}
+
+void LinkBotModelPlugin::OnJoy(sensor_msgs::JoyConstPtr const msg)
+{
+  use_force_ = false;
+  velocity_control_link_ = model_->GetLink("head");
+  if (not velocity_control_link_) {
+    std::cout << "invalid link pointer. Link name "
+              << "head"
+              << " is not one of:\n";
+    for (auto const &link : model_->GetLinks()) {
+      std::cout << link->GetName() << "\n";
+    }
+    return;
+  }
+  target_linear_vel_.X(-msg->axes[0] * action_scale);
+  target_linear_vel_.Y(msg->axes[1] * action_scale);
 }
 
 void LinkBotModelPlugin::OnVelocityAction(link_bot_gazebo::LinkBotVelocityActionConstPtr const msg)

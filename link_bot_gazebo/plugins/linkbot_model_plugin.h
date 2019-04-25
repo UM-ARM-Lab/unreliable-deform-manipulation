@@ -10,6 +10,7 @@
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <ros/subscribe_options.h>
+#include <sensor_msgs/Joy.h>
 #include <gazebo/common/common.hh>
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
@@ -24,6 +25,8 @@ class LinkBotModelPlugin : public ModelPlugin {
   ~LinkBotModelPlugin() override;
 
   void OnUpdate();
+
+  void OnJoy(sensor_msgs::JoyConstPtr msg);
 
   void OnForceAction(link_bot_gazebo::LinkBotForceActionConstPtr msg);
 
@@ -47,6 +50,7 @@ class LinkBotModelPlugin : public ModelPlugin {
   common::PID y_vel_pid_;
   ignition::math::Vector3d target_linear_vel_{0, 0, 0};
   std::unique_ptr<ros::NodeHandle> ros_node_;
+  ros::Subscriber joy_sub_;
   ros::Subscriber vel_cmd_sub_;
   ros::Subscriber force_cmd_sub_;
   ros::Subscriber config_sub_;

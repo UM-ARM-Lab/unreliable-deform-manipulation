@@ -95,6 +95,7 @@ def main():
             time += DT
 
         # save the final state
+        t += 1
         links_state = agent.get_state(get_link_state)
         times[p, t] = [time]
         states[p, t] = links_state

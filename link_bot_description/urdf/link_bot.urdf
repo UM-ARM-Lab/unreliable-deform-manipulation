@@ -75,26 +75,6 @@
         <limit lower="-3" upper="3" effort="10" velocity="1"/>
         <dynamics damping="1.0" friction="0.0"/>
     </joint>
-    <transmission name="joint1">
-        <type>transmission_interface/SimpleTransmission</type>
-        <joint name="joint">
-            <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
-        </joint>
-        <actuator name="motor1">
-            <hardwareInterface>EffortJointInterface</hardwareInterface>
-            <mechanicalReduction>1</mechanicalReduction>
-        </actuator>
-    </transmission>
-    <transmission name="head_joint">
-        <type>transmission_interface/SimpleTransmission</type>
-        <joint name="head_joint">
-            <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
-        </joint>
-        <actuator name="head_motor">
-            <hardwareInterface>EffortJointInterface</hardwareInterface>
-            <mechanicalReduction>1</mechanicalReduction>
-        </actuator>
-    </transmission>
     <gazebo reference="link_0">
         <mu1>0.4</mu1>
         <mu2>0.4</mu2>

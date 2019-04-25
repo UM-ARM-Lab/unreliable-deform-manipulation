@@ -6,6 +6,7 @@ import json
 
 import numpy as np
 import control
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from colorama import Fore
 from link_bot_notebooks import base_model
@@ -96,7 +97,7 @@ class LinearConstraintModel(base_model.BaseModel):
         R_d_init[1, 1] = 1
         A_d_init = np.zeros((M, M), dtype=np.float32)
         B_d_init = np.zeros((M, L), dtype=np.float32)
-        np.fill_diagonal(B_d_init, 0.3)
+        np.fill_diagonal(B_d_init, 1.0)
         R_k_init = np.zeros((N, P), dtype=np.float32)
         R_k_init[N - 2, 0] = 1.0
         R_k_init[N - 1, 1] = 1.0
@@ -174,6 +175,8 @@ class LinearConstraintModel(base_model.BaseModel):
                 self.state_prediction_error_in_k = tf.gather_nd(self.all_state_prediction_error_in_k,
                                                                 self.k_mask_indeces_2d,
                                                                 name='all_state_prediction_error_in_k')
+                self.top_state_prediction_error_in_k, self.top_state_prediction_error_in_k_indeces \
+                    = tf.math.top_k(self.state_prediction_error_in_k, k=100)
                 self.state_prediction_loss_in_k = tf.reduce_mean(self.state_prediction_error_in_k,
                                                                  name='state_prediction_loss_in_k')
 
@@ -263,12 +266,21 @@ class LinearConstraintModel(base_model.BaseModel):
             else:
                 print("WARNING: no constraint data given")
                 k = np.zeros((s.shape[0], s.shape[1], self.Q))
+            mask = make_constraint_mask(k)
             feed_dict = {self.s: s,
                          self.u: u,
                          self.s_goal: goal,
                          self.c_label: c,
                          self.k_label: k,
-                         self.k_mask_indeces_2d: make_constraint_mask(k)}
+                         self.k_mask_indeces_2d: mask}
+
+            predr, idc = self.sess.run([self.top_state_prediction_error_in_k, self.top_state_prediction_error_in_k_indeces], feed_dict=feed_dict)
+            np.set_printoptions(linewidth=200)
+            bad_trajs = np.unique(mask[idc][:, 0])
+            print(bad_trajs)
+            plt.plot(np.squeeze(predr))
+            plt.show()
+            return
 
             ops = [self.global_step, self.summaries, self.loss, self.opt]
             for i in range(epochs):
