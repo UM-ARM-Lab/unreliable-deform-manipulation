@@ -6,7 +6,6 @@ import json
 
 import numpy as np
 import control
-import matplotlib.pyplot as plt
 import tensorflow as tf
 from colorama import Fore
 from link_bot_notebooks import base_model
@@ -104,7 +103,7 @@ class LinearConstraintModel(base_model.BaseModel):
         A_k_init = np.zeros((P, P), dtype=np.float32)
         B_k_init = np.zeros((P, L), dtype=np.float32)
         np.fill_diagonal(B_k_init, 1)
-        k_threshold_init = 0.10
+        k_threshold_init = 0.20
 
         self.R_d = tf.get_variable("R_d", initializer=R_d_init)
         self.A_d = tf.get_variable("A_d", initializer=A_d_init)
@@ -274,14 +273,6 @@ class LinearConstraintModel(base_model.BaseModel):
                          self.k_label: k,
                          self.k_mask_indeces_2d: mask}
 
-            predr, idc = self.sess.run([self.top_state_prediction_error_in_k, self.top_state_prediction_error_in_k_indeces], feed_dict=feed_dict)
-            np.set_printoptions(linewidth=200)
-            bad_trajs = np.unique(mask[idc][:, 0])
-            print(bad_trajs)
-            plt.plot(np.squeeze(predr))
-            plt.show()
-            return
-
             ops = [self.global_step, self.summaries, self.loss, self.opt]
             for i in range(epochs):
                 step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
@@ -292,7 +283,7 @@ class LinearConstraintModel(base_model.BaseModel):
                         self.save(full_log_path, loss=loss)
 
                 if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
-                    print(step, loss)
+                    print('step: {}, loss: {} '.format(step, loss))
 
         except KeyboardInterrupt:
             print("stop!!!")
@@ -404,6 +395,11 @@ class LinearConstraintModel(base_model.BaseModel):
         o_d_next = o_d + self.dt * np.dot(A_d, o_d) + self.dt * np.dot(B_d, u)
         o_k_next = o_k + self.dt * np.dot(A_k, o_k) + self.dt * np.dot(B_k, u)
         return o_d_next, o_k_next
+
+    def simple_predict_constraint(self, o_k, u):
+        _, _, A_k, B_k = self.get_dynamics_matrices()
+        o_k_next = o_k + self.dt * np.dot(A_k, o_k) + self.dt * np.dot(B_k, u)
+        return o_k_next
 
     def simple_predict(self, o_d, u):
         A_d, B_d, _, _ = self.get_dynamics_matrices()

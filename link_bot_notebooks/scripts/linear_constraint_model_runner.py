@@ -96,7 +96,7 @@ def main():
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=500)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
-    train_subparser.add_argument("--print-period", "-p", type=int, default=200)
+    train_subparser.add_argument("--print-period", "-p", type=int, default=100)
     train_subparser.add_argument("--save-period", type=int, default=400)
     train_subparser.set_defaults(func=train)
 

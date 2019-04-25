@@ -126,7 +126,29 @@ class OMPLAct:
             else:
                 raise RuntimeError("No Solution found from {} to {}".format(start, goal))
         except RuntimeError:
-            return None, None
+            # try to find an action which moves us out of constraint violation
+            recovery_action = self.sample_recovery_action(sdf, o_k_start)
+            if recovery_action is None:
+                return None, None
+            else:
+                print("successful recovery!")
+                return np.reshape(recovery_action, [1, 1, 2]), None
+
+    def sample_recovery_action(self, sdf, o_k_start):
+        for _ in range(100):
+            # FIXME: this is specific to the current type of action I'm using
+            # FIXME: this is such a hack
+            v = np.random.uniform(-2, 2)
+            angle = np.random.uniform(-np.pi, np.pi)
+            u = np.array([[np.cos(angle) * v], [np.sin(angle) * v]])
+            constraint_state = self.tf_model.simple_predict_constraint(o_k_start, u)
+            constraint_state = np.squeeze(constraint_state)
+            constraint_violated = self.tf_model.constraint_violated(constraint_state)
+            constraint_violated = np.any(constraint_violated)
+            if not constraint_violated:
+                return u
+
+        return None
 
     def smooth(self, numpy_d_states, numpy_k_states, numpy_controls, iters=50, verbose=False):
         new_d_states = list(numpy_d_states)
