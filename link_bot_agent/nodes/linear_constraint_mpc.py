@@ -64,6 +64,14 @@ def common(args, start, max_steps=1e6):
     n_steps_for_logging = 50
     if args.controller == 'ompl-dual-lqr':
         sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
+        sdf_rows, sdf_cols = sdf.shape
+        sdf_origin_coordinate = np.array([sdf_rows / 2, sdf_cols / 2], dtype=np.int32)
+
+        def sdf_by_xy(x, y):
+            point = np.array([[x, y]])
+            indeces = (point / sdf_resolution).astype(np.int32) + sdf_origin_coordinate
+            return sdf[indeces[0, 0], indeces[0, 1]]
+
         tf_model = linear_constraint_model.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution,
                                                                  batch_size, args.N, args.M, args.L, args.P, args.Q, dt,
                                                                  n_steps)
@@ -85,8 +93,6 @@ def common(args, start, max_steps=1e6):
                                                args.planner_timeout)
         elif args.controller == 'gurobi':
             action_selector = one_step_action_selector.OneStepGurobiAct(tf_model, max_v)
-        elif args.controller == 'lqr':
-            action_selector = lqr_action_selector.LQRActionSelector(tf_model, max_v)
 
     gzagent = agent.GazeboAgent(N=args.N, M=args.M, dt=dt, model=tf_model, gazebo_model_name=args.model_name)
 
@@ -173,7 +179,9 @@ def common(args, start, max_steps=1e6):
                     time_traj[logging_idx] = [discrete_time]
                     state_traj[logging_idx] = links_state
                     action_traj[logging_idx] = action[0]
-                    constraint_traj[logging_idx] = [in_contact]
+                    sdf_at_head = sdf_by_xy(links_state[4], links_state[5])
+                    distance_to_obstacle_constraint = 0.20
+                    constraint_traj[logging_idx] = [float(sdf_at_head < distance_to_obstacle_constraint)]
 
                     # publish the pull command
 
@@ -220,7 +228,9 @@ def common(args, start, max_steps=1e6):
                         links_state = agent.get_state(gzagent.get_link_state)
                         time_traj[logging_idx] = [discrete_time]
                         state_traj[logging_idx] = links_state
-                        constraint_traj[logging_idx] = [in_contact]
+                        sdf_at_head = sdf_by_xy(links_state[4], links_state[5])
+                        distance_to_obstacle_constraint = 0.20
+                        constraint_traj[logging_idx] = [float(sdf_at_head < distance_to_obstacle_constraint)]
 
                         logging_idx = 0
                         times.append(time_traj)
@@ -304,7 +314,7 @@ def main():
     parser.add_argument("--num-actions", '-T', help="number of actions to execute from the plan", type=int, default=10)
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=1.0)
     parser.add_argument("--logdir", '-d', help='data directory to store logged data in')
-    parser.add_argument("--controller", choices=['gurobi', 'lqr', 'ompl-lqr', 'ompl-dual-lqr', 'ompl-gurobi'])
+    parser.add_argument("--controller", choices=['gurobi', 'ompl-lqr', 'ompl-dual-lqr', 'ompl-gurobi'])
     parser.add_argument("--n-trials", '-n', type=int, default=20)
 
     subparsers = parser.add_subparsers()
