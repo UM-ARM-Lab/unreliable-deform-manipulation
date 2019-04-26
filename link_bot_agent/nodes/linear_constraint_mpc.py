@@ -275,8 +275,8 @@ def eval(args):
     eval_stats_lines = [
         '% fail: {}'.format(float(num_fails) / args.n_trials),
         '% success: {}'.format(float(num_successes) / args.n_trials),
-        'mean final dist to goal: {}'.format(np.mean(min_costs)),
-        'std final dist to goal: {}'.format(np.std(min_costs)),
+        'mean min dist to goal: {}'.format(np.mean(min_costs)),
+        'std min dist to goal: {}'.format(np.std(min_costs)),
         'mean execution time: {}'.format(np.mean(execution_times)),
         'std execution time: {}'.format(np.std(execution_times)),
         'mean num contacts: {}'.format(np.mean(nums_contacts)),

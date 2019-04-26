@@ -24,6 +24,7 @@ def main():
     parser.add_argument("--save-frequency", '-f', help='save every this many steps', type=int, default=10)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--verbose", '-v', action="store_true")
+    parser.add_argument("--condition", choices=['constant', 'vary-magnitude', 'vary-direction'])
 
     args = parser.parse_args()
 
@@ -45,7 +46,6 @@ def main():
     print("ready...")
 
     link_names = ['link_{}'.format(i) for i in range(args.num_links)]
-    S = 4 * len(link_names)
 
     def r():
         return np.random.uniform(-np.pi, np.pi)
@@ -69,30 +69,48 @@ def main():
             config.joint_angles_rad.append(r() * 0.2)
         config_pub.publish(config)
 
+        # let the world step once
+        step = WorldControlRequest()
+        step.steps = DT / 0.001  # assuming 0.001s per simulation step
+        world_control.call(step)  # this will block until stepping is complete
+
         # wait for this to take effect
         sleep(0.5)
 
         # pick slopes for varying force on each line
-        slopes = np.random.uniform(-3, 3, (args.num_links, 2))
-        initial_forces = np.random.uniform(-15, 15, (args.num_links, 2))
+        index_of_node_to_apply_force_to = np.random.randint(0, args.num_links)
+        initial_force = np.random.uniform(-75, 75, 2)
+        if args.condition == 'constant':
+            magnitude_rate = np.zeros(2)
+            direction_rate = 0
+        elif args.condition == 'vary-magnitude':
+            magnitude_rate = np.random.uniform(-5, 5, 2)
+            direction_rate = 0
+        elif args.condition == 'vary-direction':
+            magnitude_rate = 0
+            direction_rate = np.random.uniform(-np.pi / 2, np.pi / 2, 2)
+        else:
+            raise RuntimeError("invalid condition")
 
         time = 0
         traj = []
         for t in range(args.steps + 1):
-            # publish the pull command
-            current_forces = initial_forces + time * slopes
+            current_force = initial_force + time * magnitude_rate + direction_rate * time
+
+            forces = np.zeros((args.num_links, 2))
+            forces[index_of_node_to_apply_force_to] = current_force
             action_msg = LinkBotForceAction()
             for i in range(args.num_links):
                 wrench = Wrench()
-                wrench.force.x = current_forces[i, 0]
-                wrench.force.y = current_forces[i, 1]
+                wrench.force.x = forces[i, 0]
+                wrench.force.y = forces[i, 1]
                 action_msg.wrenches.append(wrench)
             # send the command, but this won't have any effect until we call step
             action_pub.publish(action_msg)
 
             # save the state and action data
             rope_data = agent.get_rope_data(get_link_state, args.num_links)
-            rope_data[2] = current_forces
+            rope_data[2] = forces
             traj.append(rope_data)
 
             # let the simulator run
@@ -110,8 +128,6 @@ def main():
         if p % args.save_frequency == 0:
             np.save(args.outfile, data)
             print(p, 'saving data...')
-
-    # TODO: zero all forces?
 
 
 if __name__ == '__main__':

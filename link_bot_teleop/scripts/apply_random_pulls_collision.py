@@ -57,6 +57,12 @@ def main():
     init_config.tail_pose.theta = 0
     init_config.joint_angles_rad = [0, 0]
     config_pub.publish(init_config)
+
+    # let the world step once
+    step = WorldControlRequest()
+    step.steps = DT / 0.001  # assuming 0.001s per simulation step
+    world_control.call(step)  # this will block until stepping is complete
+
     sleep(0.5)
 
     # load the SDF
