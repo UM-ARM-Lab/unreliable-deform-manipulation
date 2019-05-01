@@ -3,8 +3,8 @@ from __future__ import print_function
 
 import argparse
 import os
-import sys
 
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
@@ -57,26 +57,79 @@ def train(args):
         np.savez(outfile, **arrays_to_save)
 
 
+def plot(args):
+    data = np.load(args.data)
+    evaluation_results = data.values()
+
+    print("# Evaluations: {}".format(len(evaluation_results)))
+
+    total_losses = [e[-1] for e in evaluation_results]
+    mean_total_loss = np.mean(total_losses)
+    std_total_loss = np.std(total_losses)
+    min_total_loss = np.min(total_losses)
+    max_total_loss = np.max(total_losses)
+    sorted_idx = np.argsort(total_losses)
+    all_sorted = [evaluation_results[i] for i in sorted_idx]
+    best_params = all_sorted[0]
+
+    print("Mean total loss: {:0.3f}".format(mean_total_loss))
+    print("Stdev total loss: {:0.3f}".format(std_total_loss))
+    print("Min total loss: {:0.3f}".format(min_total_loss))
+    print("Max total loss: {:0.3f}".format(max_total_loss))
+
+    print("Best parameters:")
+    # R_d, A_d, B_d, D, R_k, A_k, B_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss
+    print("R_d:\n{}".format(best_params[0]))
+    print("A_d:\n{}".format(best_params[1]))
+    print("B_d:\n{}".format(best_params[2]))
+    print("R_k:\n{}".format(best_params[3]))
+    print("A_k:\n{}".format(best_params[4]))
+    print("B_k:\n{}".format(best_params[5]))
+    print("threshold_k:\n{}".format(best_params[6]))
+    print("State Prediction Loss in d: {}".format(best_params[7]))
+    print("State Prediction Loss in k: {}".format(best_params[8]))
+    print("Cost Loss: {}".format(best_params[9]))
+    print("Constraint Loss: {}".format(best_params[10]))
+    print("Regularization: {}".format(best_params[11]))
+    print("Overall Loss: {}".format(best_params[12]))
+
+    plt.hist(total_losses, bins=np.arange(0, 8, 0.2))
+    plt.xlabel("Loss after 10,000 training steps")
+    plt.ylabel("count")
+    plt.show()
+
+
 def main():
     np.set_printoptions(precision=6, suppress=True)
 
+    plt.style.use("paper")
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("dataset", help="dataset (txt file)")
-    parser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
-    parser.add_argument("num-training-attempts", type=int, help="number of times to run train", default=100)
-    parser.add_argument("--verbose", action='store_true')
-    parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
-    parser.add_argument("-M", help="dimensions in latent state o_d", type=int, default=2)
-    parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
-    parser.add_argument("-P", help="dimensions in latent state o_k", type=int, default=2)
-    parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
-    parser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=10000)
+    subparsers = parser.add_subparsers()
+
+    gen_subparser = subparsers.add_parser('generate')
+    gen_subparser.add_argument("dataset", help="dataset (txt file)")
+    gen_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
+    gen_subparser.add_argument("num-training-attempts", type=int, help="number of times to run train", default=1000)
+    gen_subparser.add_argument("--verbose", action='store_true')
+    gen_subparser.add_argument("-N", help="dimensions in input state", type=int, default=6)
+    gen_subparser.add_argument("-M", help="dimensions in latent state o_d", type=int, default=2)
+    gen_subparser.add_argument("-L", help="dimensions in control input", type=int, default=2)
+    gen_subparser.add_argument("-P", help="dimensions in latent state o_k", type=int, default=2)
+    gen_subparser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
+    gen_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=10000)
+    gen_subparser.add_argument("--seed-offset", "-s", type=int, help="offset the random seed", default=100)
+    gen_subparser.set_defaults(func=train)
+
+    plot_subparser = subparsers.add_parser("plot")
+    plot_subparser.add_argument('data', help='npz file of generated results')
+    plot_subparser.set_defaults(func=plot)
 
     args = parser.parse_args()
-    commandline = ' '.join(sys.argv)
-    args.commandline = commandline
-
-    train(args)
+    if args == argparse.Namespace():
+        parser.print_usage()
+    else:
+        args.func(args)
 
 
 if __name__ == '__main__':

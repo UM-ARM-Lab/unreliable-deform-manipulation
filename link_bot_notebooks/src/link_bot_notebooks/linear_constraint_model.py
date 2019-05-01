@@ -83,28 +83,28 @@ class LinearConstraintModel(base_model.BaseModel):
         self.k_label_int = tf.cast(self.k_label, tf.int32)
 
         # RANDOM INIT
-        R_d_init = np.random.randn(N, M).astype(np.float32) * 1e-1
-        A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-3
-        B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-1
-        R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-1
-        A_k_init = np.random.randn(P, P).astype(np.float32) * 1e-3
-        B_k_init = np.random.randn(P, L).astype(np.float32) * 1e-1
-        k_threshold_init = np.random.rand() * 1e-1
+        # R_d_init = np.random.randn(N, M).astype(np.float32) * 1e-1
+        # A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-3
+        # B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-1
+        # R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-1
+        # A_k_init = np.random.randn(P, P).astype(np.float32) * 1e-3
+        # B_k_init = np.random.randn(P, L).astype(np.float32) * 1e-1
+        # k_threshold_init = np.random.rand() * 1e-1
 
         # IDEAL INIT
-        # R_d_init = np.zeros((N, M), dtype=np.float32)
-        # R_d_init[0, 0] = 1
-        # R_d_init[1, 1] = 1
-        # A_d_init = np.zeros((M, M), dtype=np.float32)
-        # B_d_init = np.zeros((M, L), dtype=np.float32)
-        # np.fill_diagonal(B_d_init, 1.0)
-        # R_k_init = np.zeros((N, P), dtype=np.float32)
-        # R_k_init[N - 2, 0] = 1.0
-        # R_k_init[N - 1, 1] = 1.0
-        # A_k_init = np.zeros((P, P), dtype=np.float32)
-        # B_k_init = np.zeros((P, L), dtype=np.float32)
-        # np.fill_diagonal(B_k_init, 1)
-        # k_threshold_init = 0.20
+        R_d_init = np.zeros((N, M), dtype=np.float32)
+        R_d_init[0, 0] = 1
+        R_d_init[1, 1] = 1
+        A_d_init = np.zeros((M, M), dtype=np.float32)
+        B_d_init = np.zeros((M, L), dtype=np.float32)
+        np.fill_diagonal(B_d_init, 0.4)
+        R_k_init = np.zeros((N, P), dtype=np.float32)
+        R_k_init[N - 2, 0] = 1.0
+        R_k_init[N - 1, 1] = 1.0
+        A_k_init = np.zeros((P, P), dtype=np.float32)
+        B_k_init = np.zeros((P, L), dtype=np.float32)
+        np.fill_diagonal(B_k_init, 1)
+        k_threshold_init = 0.20
 
         self.R_d = tf.get_variable("R_d", initializer=R_d_init)
         self.A_d = tf.get_variable("A_d", initializer=A_d_init)
