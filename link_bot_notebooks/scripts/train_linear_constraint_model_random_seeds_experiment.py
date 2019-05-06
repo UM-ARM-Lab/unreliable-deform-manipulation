@@ -7,6 +7,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from colorama import Fore
 
 from link_bot_notebooks import experiments_util
 from link_bot_notebooks import linear_constraint_model as m
@@ -25,6 +26,7 @@ def train(args):
     args['checkpoint'] = None
     args['debug'] = False
     args['seed'] = 0
+    args['random_init'] = True
     N = 6
     M = 2
     L = 2
@@ -35,7 +37,7 @@ def train(args):
     arrays_to_save = {}
     name = experiments_util.experiment_name("attempt_train")
     outfile = os.path.join('test_data', name + ".npz")
-    print("Saving results to: ", outfile)
+    print(Fore.CYAN, "Saving results to: ", outfile, Fore.RESET)
 
     for i in range(args['num-training-attempts']):
         # initialize the weights
@@ -56,6 +58,14 @@ def train(args):
         print("finished {}, with loss {}".format(i, loss))
         np.savez(outfile, **arrays_to_save)
 
+        # if the model is good enough, checkpoint it
+        if loss < args['ckpt_loss_threshold']:
+            experiment_name = experiments_util.experiment_name('random_init', 'seed_{}'.format(i))
+            log_path = os.path.join(os.getcwd(), "log_data", experiment_name)
+            experiments_util.make_log_dir(log_path)
+            full_log_path = os.path.join(os.getcwd(), "log_data", log_path)
+            model.save(full_log_path, loss=True)
+
 
 def plot(args):
     data = np.load(args.data)
@@ -69,6 +79,7 @@ def plot(args):
     min_total_loss = np.min(total_losses)
     max_total_loss = np.max(total_losses)
     sorted_idx = np.argsort(total_losses)
+    sorted_losses = [total_losses[i] for i in sorted_idx]
     all_sorted = [evaluation_results[i] for i in sorted_idx]
     best_params = all_sorted[0]
 
@@ -110,7 +121,7 @@ def main():
     gen_subparser = subparsers.add_parser('generate')
     gen_subparser.add_argument("dataset", help="dataset (txt file)")
     gen_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
-    gen_subparser.add_argument("num-training-attempts", type=int, help="number of times to run train", default=1000)
+    gen_subparser.add_argument("num-training-attempts", type=int, help="number of times to run train")
     gen_subparser.add_argument("--verbose", action='store_true')
     gen_subparser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     gen_subparser.add_argument("-M", help="dimensions in latent state o_d", type=int, default=2)
@@ -119,6 +130,7 @@ def main():
     gen_subparser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     gen_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=10000)
     gen_subparser.add_argument("--seed-offset", "-s", type=int, help="offset the random seed", default=100)
+    gen_subparser.add_argument("--ckpt-loss-threshold", type=float, default=0.9)
     gen_subparser.set_defaults(func=train)
 
     plot_subparser = subparsers.add_parser("plot")

@@ -72,7 +72,9 @@ def common(args, start, max_steps=1e6):
             indeces = (point / sdf_resolution).astype(np.int32) + sdf_origin_coordinate
             return sdf[indeces[0, 0], indeces[0, 1]]
 
-        tf_model = linear_constraint_model.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution,
+        args_dict = vars(args)
+        args_dict['random_init'] = False
+        tf_model = linear_constraint_model.LinearConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution,
                                                                  batch_size, args.N, args.M, args.L, args.P, args.Q, dt,
                                                                  n_steps)
         tf_model.load()
@@ -263,7 +265,8 @@ def common(args, start, max_steps=1e6):
 
 def test(args):
     start = np.array([[-1, 0, 0, 0, 0, 0]])
-    common(args, start)
+    args.n_trials = 1
+    common(args, start, max_steps=1000)
 
 
 def eval(args):

@@ -8,12 +8,12 @@ import numpy as np
 
 from link_bot_notebooks import linear_constraint_model as m
 from link_bot_notebooks import experiments_util
-from link_bot_notebooks import toy_problem_optimization_common as tpoc
+from link_bot_notebooks import toy_problem_optimization_common as tpo
 
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
-    sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution = tpo.load_sdf(args.sdf)
     data = np.load(args.dataset)
     times = data['times']
     dt = times[0, 1, 0] - times[0, 0, 0]
@@ -44,6 +44,7 @@ def model_only(args):
 
     if args.log:
         log_path = experiments_util.experiment_name(args.log)
+        experiments_util.make_log_dir(log_path)
         full_log_path = os.path.join(os.getcwd(), "log_data", log_path)
         model.save(full_log_path)
 
@@ -52,13 +53,15 @@ def model_only(args):
 
 def evaluate(args):
     goal = np.zeros((1, args.N))
-    sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution = tpo.load_sdf(args.sdf)
     data = np.load(args.dataset)
     times = data['times']
     dt = times[0, 1, 0] - times[0, 0, 0]
     batch_size = data['states'].shape[0]
     n_steps = times.shape[1] - 1
-    model = m.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, batch_size, args.N, args.M, args.L,
+    args_dict = vars(args)
+    args_dict['random_init'] = False
+    model = m.LinearConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, batch_size, args.N, args.M, args.L,
                                     args.P, args.Q, dt, n_steps)
     model.setup()
     return model.evaluate(data, goal)
@@ -70,7 +73,9 @@ def show(args):
     fake_sdf = np.random.randn(W, H).astype(np.float32)
     fake_sdf_grad = np.random.randn(W, H, 2).astype(np.float32)
     fake_sdf_res = np.random.randn(2).astype(np.float32)
-    model = m.LinearConstraintModel(vars(args), fake_sdf, fake_sdf_grad, fake_sdf_res, 250, args.N, args.M, args.L,
+    args_dict = vars(args)
+    args_dict['random_init'] = False
+    model = m.LinearConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, 250, args.N, args.M, args.L,
                                     args.P, args.Q, 0.1, 1)
     model.setup()
     print(model)
@@ -98,6 +103,7 @@ def main():
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--print-period", "-p", type=int, default=100)
     train_subparser.add_argument("--save-period", type=int, default=400)
+    train_subparser.add_argument("--random-init", action='store_true')
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")

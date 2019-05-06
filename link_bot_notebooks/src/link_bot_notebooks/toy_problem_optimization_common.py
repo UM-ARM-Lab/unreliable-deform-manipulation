@@ -2,8 +2,6 @@
 
 import numpy as np
 import re
-import os
-import errno
 import scipy.optimize as optimize
 from scipy.linalg import hankel
 
@@ -11,19 +9,6 @@ from scipy.linalg import hankel
 def load_sdf(filename):
     npz = np.load(filename)
     return npz['sdf'], npz['sdf_gradient'], npz['sdf_resolution']
-
-
-def make_log_dir(full_log_path):
-    """ https://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python """
-    if "log_data" not in full_log_path:
-        raise ValueError("Full log path must contain 'log_data'")
-    try:
-        os.makedirs(full_log_path)
-    except OSError as exc:  # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(full_log_path):
-            pass
-        else:
-            raise
 
 
 class LinearStateSpaceModelWithQuadraticCost:

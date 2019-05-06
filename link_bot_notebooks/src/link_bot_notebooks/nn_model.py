@@ -7,6 +7,8 @@ import json
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
+
+import link_bot_notebooks.experiments_util
 from link_bot_notebooks import base_model
 from link_bot_notebooks import toy_problem_optimization_common as tpo
 
@@ -111,7 +113,7 @@ class LinearTFModel(base_model.BaseModel):
         if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
 
-            tpo.make_log_dir(full_log_path)
+            link_bot_notebooks.experiments_util.make_log_dir(full_log_path)
 
             metadata_path = os.path.join(full_log_path, "metadata.json")
             metadata_file = open(metadata_path, 'w')

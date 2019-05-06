@@ -1,7 +1,6 @@
 from ompl import base as ob
 from ompl import control as oc
 
-import control
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -129,16 +128,17 @@ class OMPLAct:
             # try to find an action which moves us out of constraint violation
             recovery_action = self.sample_recovery_action(sdf, o_k_start)
             if recovery_action is None:
+                print("Failed recovery!")
                 return None, None
             else:
-                print("successful recovery!")
+                print("Successful recovery!")
                 return np.reshape(recovery_action, [1, 1, 2]), None
 
     def sample_recovery_action(self, sdf, o_k_start):
         for _ in range(100):
             # FIXME: this is specific to the current type of action I'm using
             # FIXME: this is such a hack
-            v = np.random.uniform(-2, 2)
+            v = np.random.uniform(-4, 4)
             angle = np.random.uniform(-np.pi, np.pi)
             u = np.array([[np.cos(angle) * v], [np.sin(angle) * v]])
             constraint_state = self.tf_model.simple_predict_constraint(o_k_start, u)
