@@ -2,6 +2,7 @@
 from __future__ import division, print_function, absolute_import
 
 import os
+import matplotlib.pyplot as plt
 import json
 
 import numpy as np
@@ -11,7 +12,6 @@ from colorama import Fore
 
 import link_bot_notebooks.experiments_util
 from link_bot_notebooks import base_model
-from link_bot_notebooks import toy_problem_optimization_common as tpo
 from tensorflow.python import debug as tf_debug
 
 
@@ -76,9 +76,9 @@ class LinearConstraintModel(base_model.BaseModel):
         self.sdf_rows, self.sdf_cols = numpy_sdf.shape
         self.sdf_origin_coordinate = np.array([self.sdf_rows / 2, self.sdf_cols / 2], dtype=np.int32)
 
-        self.s = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1, N), name="s")
+        self.observations = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1, N), name="observations")
         self.u = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps, L), name="u")
-        self.s_goal = tf.placeholder(tf.float32, shape=(1, N), name="s_goal")
+        self.observation_goal = tf.placeholder(tf.float32, shape=(1, N), name="s_goal")
         self.c_label = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1), name="c")
         self.k_label = tf.placeholder(tf.float32, shape=(batch_size, self.n_steps + 1, Q), name="k")
         self.k_mask_indeces_2d = tf.placeholder(tf.int32, shape=(None, 2), name="k_mask_indeces_2d")
@@ -86,34 +86,42 @@ class LinearConstraintModel(base_model.BaseModel):
 
         if args['random_init']:
             # RANDOM INIT
-            R_d_init = np.random.randn(N, M).astype(np.float32) * 1e-1
-            A_d_init = np.random.randn(M, M).astype(np.float32) * 1e-3
-            B_d_init = np.random.randn(M, L).astype(np.float32) * 1e-1
+            R_c_init = np.random.randn(N, M).astype(np.float32) * 1e-1
+            A_c_init = np.random.randn(M, M).astype(np.float32) * 1e-3
+            B_c_init = np.random.randn(M, L).astype(np.float32) * 1e-1
             R_k_init = np.random.randn(N, P).astype(np.float32) * 1e-1
             A_k_init = np.random.randn(P, P).astype(np.float32) * 1e-3
             B_k_init = np.random.randn(P, L).astype(np.float32) * 1e-1
             k_threshold_init = np.random.rand() * 1e-1
         else:
             # IDEAL INIT
-            R_d_init = np.zeros((N, M), dtype=np.float32)
-            R_d_init[0, 0] = 1
-            R_d_init[1, 1] = 1
-            A_d_init = np.zeros((M, M), dtype=np.float32)
-            B_d_init = np.zeros((M, L), dtype=np.float32)
-            np.fill_diagonal(B_d_init, 0.4)
+            R_c_init = np.zeros((N, M), dtype=np.float32)
+            R_c_init[0, 0] = 1
+            R_c_init[1, 1] = 1
+            R_inv_c_init = np.zeros((M, N), dtype=np.float32)
+            R_inv_c_init[0, 0] = 1
+            R_inv_c_init[1, 1] = 1
+            A_c_init = np.zeros((M, M), dtype=np.float32)
+            B_c_init = np.zeros((M, L), dtype=np.float32)
+            np.fill_diagonal(B_c_init, 0.4)
             R_k_init = np.zeros((N, P), dtype=np.float32)
             R_k_init[N - 2, 0] = 1.0
             R_k_init[N - 1, 1] = 1.0
+            R_inv_k_init = np.zeros((P, N), dtype=np.float32)
+            R_inv_k_init[0, N - 2] = 1.0
+            R_inv_k_init[1, N - 1] = 1.0
             A_k_init = np.zeros((P, P), dtype=np.float32)
             B_k_init = np.zeros((P, L), dtype=np.float32)
             np.fill_diagonal(B_k_init, 1)
             k_threshold_init = 0.20
 
-        self.R_d = tf.get_variable("R_d", initializer=R_d_init)
-        self.A_d = tf.get_variable("A_d", initializer=A_d_init)
-        self.B_d = tf.get_variable("B_d", initializer=B_d_init)
+        self.R_c = tf.get_variable("R_c", initializer=R_c_init)
+        self.R_inv_c = tf.get_variable("R_inv_c", initializer=R_inv_c_init)
+        self.A_c = tf.get_variable("A_c", initializer=A_c_init)
+        self.B_c = tf.get_variable("B_c", initializer=B_c_init)
 
         self.R_k = tf.get_variable("R_k", initializer=R_k_init)
+        self.R_inv_k = tf.get_variable("R_inv_k", initializer=R_inv_k_init)
         self.A_k = tf.get_variable("A_k", initializer=A_k_init)
         self.B_k = tf.get_variable("B_k", initializer=B_k_init)
 
@@ -122,29 +130,31 @@ class LinearConstraintModel(base_model.BaseModel):
         # we force D to be identity because it's tricky to constrain it to be positive semi-definite
         self.D = tf.get_variable("D", initializer=np.eye(self.M, dtype=np.float32), trainable=False)
 
-        self.hat_o_d = tf.einsum('bsn,nm->bsm', self.s, self.R_d, name='hat_o_d')
-        self.hat_o_k = tf.einsum('bsn,nm->bsm', self.s, self.R_k, name='hat_o_k')
-        self.o_d_goal = tf.matmul(self.s_goal, self.R_d, name='og')
+        self.hat_latent_c = tf.einsum('bsn,nm->bsm', self.observations, self.R_c, name='hat_latent_c')
+        self.hat_latent_k = tf.einsum('bsn,nm->bsm', self.observations, self.R_k, name='hat_latent_k')
+        self.latent_c_goal = tf.matmul(self.observation_goal, self.R_c, name='og')
 
-        hat_o_d_next = [self.hat_o_d[:, 0, :]]
-        hat_o_k_next = [self.hat_o_k[:, 0, :]]
+        hat_latent_c_next = [self.hat_latent_c[:, 0, :]]
+        hat_latent_k_next = [self.hat_latent_k[:, 0, :]]
 
         for i in range(1, self.n_steps + 1):
-            Adod = tf.einsum('mp,bp->bm', self.dt * self.A_d, hat_o_d_next[i - 1], name='A_d_o_d')
-            Bdu = tf.einsum('ml,bl->bm', self.dt * self.B_d, self.u[:, i - 1], name='B_d_u')
-            hat_o_d_next.append(hat_o_d_next[i - 1] + Adod + Bdu)
-            Akok = tf.einsum('mp,bp->bm', self.dt * self.A_k, hat_o_k_next[i - 1], name='A_k_o_k')
+            Adod = tf.einsum('mp,bp->bm', self.dt * self.A_c, hat_latent_c_next[i - 1], name='A_c_latent_c')
+            Bdu = tf.einsum('ml,bl->bm', self.dt * self.B_c, self.u[:, i - 1], name='B_c_u')
+            hat_latent_c_next.append(hat_latent_c_next[i - 1] + Adod + Bdu)
+            Akok = tf.einsum('mp,bp->bm', self.dt * self.A_k, hat_latent_k_next[i - 1], name='A_k_latent_k')
             Bku = tf.einsum('ml,bl->bm', self.dt * self.B_k, self.u[:, i - 1], name='B_k_u')
-            hat_o_k_next.append(hat_o_k_next[i - 1] + Akok + Bku)
+            hat_latent_k_next.append(hat_latent_k_next[i - 1] + Akok + Bku)
 
-        self.hat_o_d_next = tf.transpose(tf.stack(hat_o_d_next), [1, 0, 2], name='hat_o_d_next')
-        self.hat_o_k_next = tf.transpose(tf.stack(hat_o_k_next), [1, 0, 2], name='hat_o_k_next')
+        self.hat_latent_c_next = tf.transpose(tf.stack(hat_latent_c_next), [1, 0, 2], name='hat_latent_c_next')
+        self.hat_latent_k_next = tf.transpose(tf.stack(hat_latent_k_next), [1, 0, 2], name='hat_latent_k_next')
+
+        # project back up to the full state space
 
         # not using predictions in latent space, just projects of the true state to the latent space
-        self.d_to_goal = self.o_d_goal - self.hat_o_d
+        self.d_to_goal = self.latent_c_goal - self.hat_latent_c
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal, name='hat_c')
         self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.sdf_origin_coordinate,
-                             self.hat_o_k, self.P, self.Q)
+                             self.hat_latent_k, self.P, self.Q)
         # because the sigmoid is not very sharp (since meters are very large), this doesn't give a very sharp boundary for
         # the decision between in collision or not. The trade of is this might cause vanishing gradients
         self.hat_k = 100 * (self.threshold_k - self.sdfs)
@@ -159,21 +169,21 @@ class LinearConstraintModel(base_model.BaseModel):
 
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
-            with tf.name_scope("latent_dynamics_d"):
-                self.all_state_prediction_error_in_d = tf.reduce_sum(tf.pow(self.hat_o_d - self.hat_o_d_next, 2),
+            with tf.name_scope("latent_dynamics_c"):
+                self.all_state_prediction_error_in_c = tf.reduce_sum(tf.pow(self.hat_latent_c - self.hat_latent_c_next, 2),
                                                                      axis=2)
-                self.state_prediction_error_in_d = tf.gather_nd(self.all_state_prediction_error_in_d,
+                self.state_prediction_error_in_c = tf.gather_nd(self.all_state_prediction_error_in_c,
                                                                 self.k_mask_indeces_2d,
-                                                                name='all_state_prediction_error_in_d')
-                self.state_prediction_loss_in_d = tf.reduce_mean(self.state_prediction_error_in_d,
-                                                                 name='state_prediction_loss_in_d')
+                                                                name='all_state_prediction_error_in_c')
+                self.state_prediction_loss_in_c = tf.reduce_mean(self.state_prediction_error_in_c,
+                                                                 name='state_prediction_loss_in_c')
                 self.all_cost_prediction_error = tf.square(self.hat_c - self.c_label, name='all_cost_prediction_error')
                 self.cost_prediction_error = tf.gather_nd(self.all_cost_prediction_error, self.k_mask_indeces_2d,
                                                           name='cost_prediction_error')
                 self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
 
             with tf.name_scope("latent_constraints_k"):
-                self.all_state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_o_k - self.hat_o_k_next, 2),
+                self.all_state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_latent_k - self.hat_latent_k_next, 2),
                                                                      axis=2)
                 self.state_prediction_error_in_k = tf.gather_nd(self.all_state_prediction_error_in_k,
                                                                 self.k_mask_indeces_2d,
@@ -190,10 +200,10 @@ class LinearConstraintModel(base_model.BaseModel):
                                                                  name="constraint_prediction_loss")
 
             self.flat_weights = tf.concat(
-                (tf.reshape(self.R_d, [-1]), tf.reshape(self.A_d, [-1]), tf.reshape(self.B_d, [-1])), axis=0)
+                (tf.reshape(self.R_c, [-1]), tf.reshape(self.A_c, [-1]), tf.reshape(self.B_c, [-1])), axis=0)
             self.regularization = tf.nn.l2_loss(self.flat_weights) * self.beta
 
-            self.loss = tf.add_n([self.state_prediction_loss_in_d,
+            self.loss = tf.add_n([self.state_prediction_loss_in_c,
                                   self.cost_prediction_loss,
                                   self.state_prediction_loss_in_k,
                                   self.constraint_prediction_loss,
@@ -215,7 +225,7 @@ class LinearConstraintModel(base_model.BaseModel):
             tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy)
             tf.summary.scalar("k_threshold_summary", self.threshold_k)
             tf.summary.scalar("constraint_prediction_loss_summary", self.constraint_prediction_loss)
-            tf.summary.scalar("state_prediction_loss_in_d_summary", self.state_prediction_loss_in_d)
+            tf.summary.scalar("state_prediction_loss_in_c_summary", self.state_prediction_loss_in_c)
             tf.summary.scalar("state_prediction_loss_in_k_summary", self.state_prediction_loss_in_k)
             tf.summary.scalar("cost_prediction_loss_summary", self.cost_prediction_loss)
             tf.summary.scalar("regularization_loss_summary", self.regularization)
@@ -261,18 +271,18 @@ class LinearConstraintModel(base_model.BaseModel):
             writer.add_graph(self.sess.graph)
 
         try:
-            s = train_x['states']
+            observations = train_x['states']
             u = train_x['actions']
-            c = self.compute_cost_label(s, goal)
+            c = self.compute_cost_label(observations, goal)
             if 'constraints' in train_x:
                 k = train_x['constraints']
             else:
                 print("WARNING: no constraint data given")
-                k = np.zeros((s.shape[0], s.shape[1], self.Q))
+                k = np.zeros((observations.shape[0], observations.shape[1], self.Q))
             mask = make_constraint_mask(k)
-            feed_dict = {self.s: s,
+            feed_dict = {self.observations: observations,
                          self.u: u,
-                         self.s_goal: goal,
+                         self.observation_goal: goal,
                          self.c_label: c,
                          self.k_label: k,
                          self.k_mask_indeces_2d: mask}
@@ -294,7 +304,7 @@ class LinearConstraintModel(base_model.BaseModel):
             interrupted = True
             pass
         finally:
-            ops = [self.R_d, self.A_d, self.B_d, self.D]
+            ops = [self.R_c, self.A_c, self.B_c, self.D]
             A, B, C, D = self.sess.run(ops, feed_dict={})
             if self.args['verbose']:
                 print("Loss: {}".format(loss))
@@ -305,36 +315,56 @@ class LinearConstraintModel(base_model.BaseModel):
 
         return interrupted
 
-    def evaluate(self, eval_x, goal, display=True):
-        s = eval_x['states']
+    def evaluate(self, eval_x, goal, display=True, plot_rollout=False):
+        observations = eval_x['states']
         u = eval_x['actions']
-        c = self.compute_cost_label(s, goal)
+        c = self.compute_cost_label(observations, goal)
         if 'constraints' in eval_x:
             k = eval_x['constraints']
         else:
-            k = np.zeros((s.shape[0], s.shape[1], self.Q))
-        feed_dict = {self.s: s,
+            k = np.zeros((observations.shape[0], observations.shape[1], self.Q))
+        feed_dict = {self.observations: observations,
                      self.u: u,
-                     self.s_goal: goal,
+                     self.observation_goal: goal,
                      self.c_label: c,
                      self.k_label: k,
                      self.k_mask_indeces_2d: make_constraint_mask(k)}
-        ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k, self.threshold_k,
-               self.state_prediction_loss_in_d, self.state_prediction_loss_in_k, self.cost_prediction_loss,
+        ops = [self.R_c, self.A_c, self.B_c, self.D, self.R_k, self.A_k, self.B_k, self.threshold_k,
+               self.state_prediction_loss_in_c, self.state_prediction_loss_in_k, self.cost_prediction_loss,
                self.constraint_prediction_loss, self.regularization, self.loss, self.constraint_prediction_accuracy]
-        R_d, A_d, B_d, D, R_k, A_k, B_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss, k_accuracy = \
+        R_c, A_c, B_c, D, R_k, A_k, B_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss, k_accuracy = \
             self.sess.run(ops, feed_dict=feed_dict)
 
+        print(observations[0])
+        print(u[0,0])
+        hat_latent_c, hat_latent_c_next = self.sess.run([self.hat_latent_c, self.hat_latent_c_next], feed_dict=feed_dict)
+        print(hat_latent_c[0])
+        print(hat_latent_c_next[0])
+
+        if plot_rollout:
+            j = 1
+            plt.figure()
+            plt.plot(observations[j, :, 0], observations[j, :, 1], label='true tail path')
+            plt.plot(observations[j, :, 4], observations[j, :, 5], label='true head path')
+            plt.plot(hat_latent_c[j, :, 0], hat_latent_c[j, :, 1], label='latent c path')
+            plt.plot(hat_latent_c_next[j, :, 0], hat_latent_c_next[0, :, 1], label='predicted latent c path')
+            plt.quiver(observations[j, :, 0], observations[j, :, 1], u[j, :, 0], u[j, :, 1], width=0.001)
+            plt.legend()
+            plt.xlabel("X (m)")
+            plt.ylabel("Y (m)")
+            plt.axis("equal")
+            plt.show()
+
         if display:
-            print("State Prediction Loss in d: {}".format(spd_loss))
-            print("State Prediction Loss in k: {}".format(spk_loss))
-            print("Cost Loss: {}".format(c_loss))
-            print("Constraint Loss: {}".format(k_loss))
-            print("Regularization: {}".format(reg))
-            print("Overall Loss: {}".format(loss))
-            print("R_d:\n{}".format(R_d))
-            print("A_d:\n{}".format(A_d))
-            print("B_d:\n{}".format(B_d))
+            print("State Prediction Loss in d: {:0.3f}".format(float(spd_loss)))
+            print("State Prediction Loss in k: {:0.3f}".format(float(spk_loss)))
+            print("Cost Loss: {:0.3f}".format(float(c_loss)))
+            print("Constraint Loss: {:0.3f}".format(float(k_loss)))
+            print("Regularization: {:0.3f}".format(float(reg)))
+            print("Overall Loss: {:0.3f}".format(float(loss)))
+            print("R_c:\n{}".format(R_c))
+            print("A_c:\n{}".format(A_c))
+            print("B_c:\n{}".format(B_c))
             print("D:\n{}".format(D))
             print("R_k:\n{}".format(R_k))
             print("A_k:\n{}".format(A_k))
@@ -349,18 +379,18 @@ class LinearConstraintModel(base_model.BaseModel):
             print("Controllable?: " + controllable_string)
 
             # visualize a few sample predictions from the testing data
-            self.sess.run([self.hat_o_d_next], feed_dict=feed_dict)
+            self.sess.run([self.hat_latent_c_next], feed_dict=feed_dict)
 
-        return R_d, A_d, B_d, D, R_k, A_k, B_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss
+        return R_c, A_c, B_c, D, R_k, A_k, B_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss
 
     @staticmethod
-    def compute_cost_label(s, goal):
+    def compute_cost_label(observations, goal):
         """ x is 3d.
             first axis is the trajectory.
             second axis is the time step
             third axis is the state data
         """
-        c = np.sum((s[:, :, [0, 1]] - goal[0, [0, 1]]) ** 2, axis=2)
+        c = np.sum((observations[:, :, [0, 1]] - goal[0, [0, 1]]) ** 2, axis=2)
         return c
 
     def setup(self):
@@ -373,76 +403,76 @@ class LinearConstraintModel(base_model.BaseModel):
     def init(self):
         self.sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
 
-    def reduce(self, s):
+    def reduce(self, observations):
         # make dummy size array and just fill in
         ss = np.ndarray((self.batch_size, self.n_steps + 1, self.N))
-        ss[0, 0] = s
-        feed_dict = {self.s: ss}
-        ops = [self.hat_o_d, self.hat_o_k]
-        hat_o_d, hat_o_k = self.sess.run(ops, feed_dict=feed_dict)
-        return hat_o_d[0, 0].reshape(self.M, 1), hat_o_k[0, 0].reshape(self.P, 1)
+        ss[0, 0] = observations
+        feed_dict = {self.observations: ss}
+        ops = [self.hat_latent_c, self.hat_latent_k]
+        hat_latent_c, hat_latent_k = self.sess.run(ops, feed_dict=feed_dict)
+        return hat_latent_c[0, 0].reshape(self.M, 1), hat_latent_k[0, 0].reshape(self.P, 1)
 
-    def predict(self, o, u):
+    def predict(self, latent_c, u):
         """
-        :param o: 1xM or Mx1
+        :param latent_c: 1xM or Mx1
         :param u: batch_size x n_steps x L
         """
         hat_o = np.ndarray((self.batch_size, self.n_steps + 1, self.M))
-        hat_o[0, 0] = np.squeeze(o)
-        feed_dict = {self.hat_o_d: hat_o, self.u: u}
-        ops = [self.hat_o_d_next]
-        hat_o_next = self.sess.run(ops, feed_dict=feed_dict)[0]
-        return hat_o_next
+        hat_o[0, 0] = np.squeeze(latent_c)
+        feed_dict = {self.hat_latent_c: hat_o, self.u: u}
+        ops = [self.hat_latent_c_next]
+        hat_latent_next = self.sess.run(ops, feed_dict=feed_dict)[0]
+        return hat_latent_next
 
-    def simple_dual_predict(self, o_d, o_k, u):
-        A_d, B_d, A_k, B_k = self.get_dynamics_matrices()
-        o_d_next = o_d + self.dt * np.dot(A_d, o_d) + self.dt * np.dot(B_d, u)
-        o_k_next = o_k + self.dt * np.dot(A_k, o_k) + self.dt * np.dot(B_k, u)
-        return o_d_next, o_k_next
+    def simple_dual_predict(self, latent_c, latent_k, u):
+        A_c, B_c, A_k, B_k = self.get_dynamics_matrices()
+        latent_c_next = latent_c + self.dt * np.dot(A_c, latent_c) + self.dt * np.dot(B_c, u)
+        latent_k_next = latent_k + self.dt * np.dot(A_k, latent_k) + self.dt * np.dot(B_k, u)
+        return latent_c_next, latent_k_next
 
-    def simple_predict_constraint(self, o_k, u):
+    def simple_predict_constraint(self, latent_k, u):
         _, _, A_k, B_k = self.get_dynamics_matrices()
-        o_k_next = o_k + self.dt * np.dot(A_k, o_k) + self.dt * np.dot(B_k, u)
-        return o_k_next
+        latent_k_next = latent_k + self.dt * np.dot(A_k, latent_k) + self.dt * np.dot(B_k, u)
+        return latent_k_next
 
-    def simple_predict(self, o_d, u):
-        A_d, B_d, _, _ = self.get_dynamics_matrices()
-        o_d_next = o_d + self.dt * np.dot(A_d, o_d) + self.dt * np.dot(B_d, u)
-        return o_d_next
+    def simple_predict(self, latent_c, u):
+        A_c, B_c, _, _ = self.get_dynamics_matrices()
+        latent_c_next = latent_c + self.dt * np.dot(A_c, latent_c) + self.dt * np.dot(B_c, u)
+        return latent_c_next
 
-    def predict_cost(self, o, u, g):
+    def predict_cost(self, latent_c, u, g):
         hat_o = np.ndarray((self.batch_size, self.n_steps + 1, self.M))
-        hat_o[0, 0] = np.squeeze(o)
-        feed_dict = {self.hat_o_d: hat_o, self.u: u, self.s_goal: g}
+        hat_o[0, 0] = np.squeeze(latent_c)
+        feed_dict = {self.hat_latent_c: hat_o, self.u: u, self.observation_goal: g}
         ops = [self.hat_c]
         hat_c_next = self.sess.run(ops, feed_dict=feed_dict)[0]
         return hat_c_next
 
-    def constraint_violated(self, o_k):
-        full_o_k = np.ndarray((1, self.n_steps + 1, self.P))
-        full_o_k[0, 0] = o_k
-        feed_dict = {self.hat_o_k: full_o_k}
+    def constraint_violated(self, latent_k):
+        full_latent_k = np.ndarray((1, self.n_steps + 1, self.P))
+        full_latent_k[0, 0] = latent_k
+        feed_dict = {self.hat_latent_k: full_latent_k}
         ops = [self.hat_k_violated]
         constraint_violated = self.sess.run(ops, feed_dict=feed_dict)
         # take the first op from the list, then take the first batch and first time step from that
         constraint_violated = constraint_violated[0][0, 0]
         return constraint_violated
 
-    def predict_from_s(self, s, u):
-        feed_dict = {self.s: s, self.u: u}
-        ops = [self.hat_o_d_next]
-        hat_o_next = self.sess.run(ops, feed_dict=feed_dict)[0]
-        return hat_o_next
+    def predict_from_s(self, observations, u):
+        feed_dict = {self.observations: observations, self.u: u}
+        ops = [self.hat_latent_c_next]
+        hat_latent_next = self.sess.run(ops, feed_dict=feed_dict)[0]
+        return hat_latent_next
 
-    def cost_of_s(self, s, g):
-        return self.cost(self.reduce(s), g)
+    def cost_of_s(self, observations, g):
+        return self.cost(self.reduce(observations), g)
 
-    def cost(self, o, g):
-        hat_o_next = np.zeros((self.batch_size, self.n_steps + 1, self.M))
+    def cost(self, latent_c, g):
+        hat_latent_next = np.zeros((self.batch_size, self.n_steps + 1, self.M))
         for i in range(self.batch_size):
             for j in range(self.n_steps + 1):
-                hat_o_next[i, j] = np.squeeze(o)
-        feed_dict = {self.hat_o_d_next: hat_o_next, self.s_goal: g}
+                hat_latent_next[i, j] = np.squeeze(latent_c)
+        feed_dict = {self.hat_latent_c_next: hat_latent_next, self.observation_goal: g}
         ops = [self.hat_c]
         hat_c = self.sess.run(ops, feed_dict=feed_dict)[0]
         hat_c = np.expand_dims(hat_c, axis=0)
@@ -465,7 +495,7 @@ class LinearConstraintModel(base_model.BaseModel):
 
     def is_controllable(self):
         feed_dict = {}
-        ops = [self.A_d, self.B_d]
+        ops = [self.A_c, self.B_c]
         # Normal people use A and B here but I picked stupid variable names
         state_matrix, control_matrix = self.sess.run(ops, feed_dict=feed_dict)
         controllability_matrix = control.ctrb(state_matrix, control_matrix)
@@ -474,21 +504,21 @@ class LinearConstraintModel(base_model.BaseModel):
 
     def get_matrices(self):
         feed_dict = {}
-        ops = [self.R_d, self.A_d, self.B_d, self.D, self.R_k, self.A_k, self.B_k]
+        ops = [self.R_c, self.A_c, self.B_c, self.D, self.R_k, self.A_k, self.B_k]
         return self.sess.run(ops, feed_dict=feed_dict)
 
     def get_dynamics_matrices(self):
         feed_dict = {}
-        ops = [self.A_d, self.B_d, self.A_k, self.B_k]
+        ops = [self.A_c, self.B_c, self.A_k, self.B_k]
         return self.sess.run(ops, feed_dict=feed_dict)
 
-    def get_R_d(self):
+    def get_R_c(self):
         feed_dict = {}
-        ops = [self.R_d]
-        R_d = self.sess.run(ops, feed_dict=feed_dict)[0]
-        return R_d
+        ops = [self.R_c]
+        R_c = self.sess.run(ops, feed_dict=feed_dict)[0]
+        return R_c
 
     def __str__(self):
-        ops = [self.R_d, self.A_d, self.B_d, self.R_k, self.A_k, self.B_k, self.threshold_k]
-        return "R_d:\n{}\nA_d:\n{}\nB_d:\n{}\nR_k:\n{}\nA_k:\n{}\nB_k:\n{}\n\nthreshold_k:\n{}\n".format(
+        ops = [self.R_c, self.A_c, self.B_c, self.R_k, self.A_k, self.B_k, self.threshold_k]
+        return "R_c:\n{}\nA_c:\n{}\nB_c:\n{}\nR_k:\n{}\nA_k:\n{}\nB_k:\n{}\n\nthreshold_k:\n{}\n".format(
             *self.sess.run(ops, feed_dict={}))

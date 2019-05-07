@@ -21,6 +21,7 @@ class TestLoss(unittest.TestCase):
             'log': False,
             'checkpoint': None,
             'seed': 999,
+            'random_init': False,
         }
 
         N = 3
@@ -58,9 +59,9 @@ class TestLoss(unittest.TestCase):
         k_threshold_init = 0.5
 
         assign_weights_ops = [
-            tf.assign(cls.model.R_d, R_d_init),
-            tf.assign(cls.model.A_d, A_d_init),
-            tf.assign(cls.model.B_d, B_d_init),
+            tf.assign(cls.model.R_c, R_d_init),
+            tf.assign(cls.model.A_c, A_d_init),
+            tf.assign(cls.model.B_c, B_d_init),
             tf.assign(cls.model.R_k, R_k_init),
             tf.assign(cls.model.A_k, A_k_init),
             tf.assign(cls.model.B_k, B_k_init),
@@ -103,16 +104,16 @@ class TestLoss(unittest.TestCase):
         ])
 
         cls.feed_dict = {
-            cls.model.s: s,
+            cls.model.observations: s,
             cls.model.u: u,
-            cls.model.s_goal: cls.goal,
+            cls.model.observation_goal: cls.goal,
             cls.model.c_label: cls.c,
             cls.model.k_label: cls.k,
             cls.model.k_mask_indeces_2d: k_mask_indeces_2d
         }
 
-    def test_hat_o_d(self):
-        expected_hat_o_d = np.array([
+    def test_hat_latent_c(self):
+        expected_hat_latent_c = np.array([
             [[3, 7],
              [1, 2],
              [2, -1]],
@@ -121,11 +122,11 @@ class TestLoss(unittest.TestCase):
              [1, 2]],
         ])
 
-        hat_o_d = self.model.sess.run(self.model.hat_o_d, feed_dict=self.feed_dict)
-        np.testing.assert_allclose(hat_o_d, expected_hat_o_d)
+        hat_latent_c = self.model.sess.run(self.model.hat_latent_c, feed_dict=self.feed_dict)
+        np.testing.assert_allclose(hat_latent_c, expected_hat_latent_c)
 
-    def test_hat_o_d_next(self):
-        expected_hat_o_d_next = np.array([
+    def test_hat_latent_c_next(self):
+        expected_hat_latent_c_next = np.array([
             [[3, 7],
              [3, 7.1],
              [3.1, 7.2]],
@@ -134,8 +135,8 @@ class TestLoss(unittest.TestCase):
              [-0.8, 2]],
         ])
 
-        hat_o_d_next = self.model.sess.run(self.model.hat_o_d_next, feed_dict=self.feed_dict)
-        np.testing.assert_allclose(hat_o_d_next, expected_hat_o_d_next)
+        hat_latent_c_next = self.model.sess.run(self.model.hat_latent_c_next, feed_dict=self.feed_dict)
+        np.testing.assert_allclose(hat_latent_c_next, expected_hat_latent_c_next)
 
     def test_hat_o_k(self):
         expected_hat_o_k = np.array([
@@ -147,7 +148,7 @@ class TestLoss(unittest.TestCase):
              [1, -2]],
         ])
 
-        hat_o_k = self.model.sess.run(self.model.hat_o_k, feed_dict=self.feed_dict)
+        hat_o_k = self.model.sess.run(self.model.hat_latent_k, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_o_k, expected_hat_o_k)
 
     def test_hat_o_k_next(self):
@@ -160,7 +161,7 @@ class TestLoss(unittest.TestCase):
              [-0.8, -1]],
         ])
 
-        hat_o_k_next = self.model.sess.run(self.model.hat_o_k_next, feed_dict=self.feed_dict)
+        hat_o_k_next = self.model.sess.run(self.model.hat_latent_k_next, feed_dict=self.feed_dict)
         np.testing.assert_allclose(hat_o_k_next, expected_hat_o_k_next)
 
     def test_error_to_goal(self):
@@ -208,7 +209,7 @@ class TestLoss(unittest.TestCase):
         np.testing.assert_allclose(c_loss, expected_c_loss)
 
     def test_dynamics_loss(self):
-        expected_state_prediction_error_in_d = np.array([
+        expected_state_prediction_error_in_c = np.array([
             [0,
              (3 - 1) ** 2 + (7.1 - 2) ** 2,
              (3.1 - 2) ** 2 + (7.2 - -1) ** 2],
@@ -217,25 +218,25 @@ class TestLoss(unittest.TestCase):
              (-0.8 - 1) ** 2 + (2 - 2) ** 2],
         ])
 
-        expected_state_prediction_error_in_d_masked = np.array([
+        expected_state_prediction_error_in_c_masked = np.array([
             0,
             0,
             (-0.9 - 1) ** 2 + (2 - 1) ** 2,
             (-0.8 - 1) ** 2 + (2 - 2) ** 2,
         ])
 
-        expected_sd_loss = np.mean(expected_state_prediction_error_in_d_masked)
+        expected_sd_loss = np.mean(expected_state_prediction_error_in_c_masked)
 
-        state_prediction_error_in_d = self.model.sess.run(self.model.all_state_prediction_error_in_d,
+        state_prediction_error_in_c = self.model.sess.run(self.model.all_state_prediction_error_in_c,
                                                           feed_dict=self.feed_dict)
-        np.testing.assert_allclose(state_prediction_error_in_d, expected_state_prediction_error_in_d, rtol=2e-5)
+        np.testing.assert_allclose(state_prediction_error_in_c, expected_state_prediction_error_in_c, rtol=2e-5)
 
-        state_prediction_error_in_d_masked = self.model.sess.run(self.model.state_prediction_error_in_d,
+        state_prediction_error_in_c_masked = self.model.sess.run(self.model.state_prediction_error_in_c,
                                                                  feed_dict=self.feed_dict)
-        np.testing.assert_allclose(state_prediction_error_in_d_masked, expected_state_prediction_error_in_d_masked,
+        np.testing.assert_allclose(state_prediction_error_in_c_masked, expected_state_prediction_error_in_c_masked,
                                    rtol=2e-5)
 
-        sd_loss = self.model.sess.run(self.model.state_prediction_loss_in_d, feed_dict=self.feed_dict)
+        sd_loss = self.model.sess.run(self.model.state_prediction_loss_in_c, feed_dict=self.feed_dict)
         np.testing.assert_allclose(sd_loss, expected_sd_loss)
 
     def test_constraint_dynamics_loss(self):

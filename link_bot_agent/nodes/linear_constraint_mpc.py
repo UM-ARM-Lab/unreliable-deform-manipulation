@@ -6,8 +6,6 @@ import ompl.util as ou
 import os
 import time as timemod
 
-from ignition import markers
-from ignition.msgs.marker_pb2 import Marker
 import numpy as np
 import rospy
 from builtins import input
@@ -16,6 +14,7 @@ from gazebo_msgs.msg import ContactsState
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 
+from ignition import markers
 from link_bot_agent import agent, ompl_act, one_step_action_selector, lqr_action_selector, \
     dual_lqr_action_selector
 from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler

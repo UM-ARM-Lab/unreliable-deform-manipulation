@@ -11,7 +11,7 @@ import numpy as np
 import rospy
 import ompl.util as ou
 from builtins import input
-from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
+from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import  linear_tf_model
 from link_bot_agent import agent,  lqr_action_selector
@@ -55,7 +55,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
-    action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
+    action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
 
     min_true_costs = []
     T = -1
@@ -65,7 +65,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
         states = []
         actions = []
         constraints = []
-        action_msg = LinkBotAction()
+        action_msg = LinkBotVelocityAction()
+        action_msg.control_link_name = 'head'
         for goal in goals:
             # TODO: make this random initial configuration
             config = LinkBotConfiguration()
@@ -113,10 +114,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
                     constraint_traj.append(None)
 
                     # publish the pull command
-                    action_msg.control_link_name = 'head'
-                    action_msg.use_force = False
-                    action_msg.twist.linear.x = action[0, 0]
-                    action_msg.twist.linear.y = action[0, 1]
+                    action_msg.vx = action[0, 0]
+                    action_msg.vy = action[0, 1]
                     action_pub.publish(action_msg)
 
                     step = WorldControlRequest()
