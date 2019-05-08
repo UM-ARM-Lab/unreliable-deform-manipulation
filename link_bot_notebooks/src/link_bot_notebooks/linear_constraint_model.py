@@ -98,30 +98,22 @@ class LinearConstraintModel(base_model.BaseModel):
             R_c_init = np.zeros((N, M), dtype=np.float32)
             R_c_init[0, 0] = 1
             R_c_init[1, 1] = 1
-            R_inv_c_init = np.zeros((M, N), dtype=np.float32)
-            R_inv_c_init[0, 0] = 1
-            R_inv_c_init[1, 1] = 1
             A_c_init = np.zeros((M, M), dtype=np.float32)
             B_c_init = np.zeros((M, L), dtype=np.float32)
             np.fill_diagonal(B_c_init, 0.4)
             R_k_init = np.zeros((N, P), dtype=np.float32)
             R_k_init[N - 2, 0] = 1.0
             R_k_init[N - 1, 1] = 1.0
-            R_inv_k_init = np.zeros((P, N), dtype=np.float32)
-            R_inv_k_init[0, N - 2] = 1.0
-            R_inv_k_init[1, N - 1] = 1.0
             A_k_init = np.zeros((P, P), dtype=np.float32)
             B_k_init = np.zeros((P, L), dtype=np.float32)
             np.fill_diagonal(B_k_init, 1)
             k_threshold_init = 0.20
 
         self.R_c = tf.get_variable("R_c", initializer=R_c_init)
-        self.R_inv_c = tf.get_variable("R_inv_c", initializer=R_inv_c_init)
         self.A_c = tf.get_variable("A_c", initializer=A_c_init)
         self.B_c = tf.get_variable("B_c", initializer=B_c_init)
 
         self.R_k = tf.get_variable("R_k", initializer=R_k_init)
-        self.R_inv_k = tf.get_variable("R_inv_k", initializer=R_inv_k_init)
         self.A_k = tf.get_variable("A_k", initializer=A_k_init)
         self.B_k = tf.get_variable("B_k", initializer=B_k_init)
 
