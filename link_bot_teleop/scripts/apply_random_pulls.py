@@ -7,7 +7,7 @@ from time import sleep
 import numpy as np
 import rospy
 from gazebo_msgs.srv import GetLinkState, GetLinkStateRequest
-from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
+from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_agent import agent
 
@@ -21,6 +21,8 @@ def main():
     parser.add_argument("steps", help='how many time steps per pull', type=int)
     parser.add_argument("--save-frequency", '-f', help='save every this many steps', type=int, default=10)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
+    parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
+    parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
     parser.add_argument("--verbose", '-v', action="store_true")
 
     args = parser.parse_args()
@@ -33,7 +35,7 @@ def main():
 
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
-    action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
+    action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
 
     print("waiting", end='')
@@ -49,12 +51,13 @@ def main():
     def r():
         return np.random.uniform(-np.pi, np.pi)
 
-    action_msg = LinkBotAction()
+    action_msg = LinkBotVelocityAction()
+    action_msg.control_link_name = 'head'
     times = np.ndarray((args.pulls, args.steps + 1, 1))
     states = np.ndarray((args.pulls, args.steps + 1, args.N))
     actions = np.ndarray((args.pulls, args.steps, args.L))
     np.random.seed(args.seed)
-    for p in range(1, args.pulls + 1):
+    for p in range(args.pulls):
         if args.verbose:
             print('=' * 180)
 
@@ -81,10 +84,8 @@ def main():
             actions[p, t] = [head_vx, head_vy]
 
             # publish the pull command
-            action_msg.control_link_name = 'head'
-            action_msg.use_force = False
-            action_msg.twist.linear.x = head_vx
-            action_msg.twist.linear.y = head_vy
+            action_msg.vx = head_vx
+            action_msg.vy = head_vy
             action_pub.publish(action_msg)
 
             # let the simulator run
@@ -107,9 +108,11 @@ def main():
                      actions=actions)
             print(p, 'saving data...')
 
-    # stop everything
-    joy_msg.axes = [0, 0]
-    joy_pub.publish(joy_msg)
+    np.savez(args.outfile,
+             times=times,
+             states=states,
+             actions=actions)
+    print(p, 'saving data...')
 
 
 if __name__ == '__main__':
