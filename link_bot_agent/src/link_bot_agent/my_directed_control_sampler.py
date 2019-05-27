@@ -4,7 +4,6 @@ import ompl.util as ou
 from ompl import control as oc
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 
 
 class MyDirectedControlSampler(oc.DirectedControlSampler):

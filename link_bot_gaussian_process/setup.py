@@ -1,15 +1,13 @@
-from setuptools import setup
+## ! DO NOT MANUALLY INVOKE THIS setup.py, USE CATKIN INSTEAD
 
-requirements = [
-    'gpflow>=1.3.0'
-]
+from distutils.core import setup
+from catkin_pkg.python_setup import generate_distutils_setup
 
-setup(
-    name='link_bot_gaussian_process',
-    version='0.0.0',
-    package_dir={'': 'src'},
+# fetch values from package.xml
+setup_args = generate_distutils_setup(
     packages=['link_bot_gaussian_process'],
-    install_requires=requirements,
-    zip_safe=True,
+    package_dir={'': 'src'},
+    requires=['control', 'matplotlib', 'numpy', 'tensorflow', 'colorama'],
 )
 
+setup(**setup_args)

@@ -5,3 +5,7 @@
 # Train the full linear constraint model
 
     ./scripts/linear_constraint_model_runner.py train ../link_bot_teleop/data/250_50_collision.npz -e 2000 ../link_bot_teleop/data/sdf.npz
+
+# perfect constraint prediction
+
+    ./scripts/constraint_model_runner.py train ../link_bot_teleop/data/250_50_sdf_based_collision.npz ../link_bot_teleop/data/obstacles_1_sdf.npz  -e 0

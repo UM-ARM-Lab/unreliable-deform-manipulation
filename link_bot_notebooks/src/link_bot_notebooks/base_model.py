@@ -1,6 +1,6 @@
 class BaseModel:
 
-    def __init__(self, N, M, L, P=0):
+    def __init__(self, N, M=0, L=0, P=0):
         """
         N: dimensionality of the full state
         M: dimensionality in the reduced state

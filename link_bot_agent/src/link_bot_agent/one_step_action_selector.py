@@ -1,6 +1,6 @@
 import numpy as np
 
-import gurobipy as gurobi
+import gurobi
 from link_bot_agent import action_selector
 
 

@@ -1,6 +1,8 @@
 import errno
+import json
 import os
 from datetime import datetime
+
 import git
 
 
@@ -24,3 +26,13 @@ def make_log_dir(full_log_path):
             pass
         else:
             raise
+
+
+def write_metadata(metadata, log_path):
+    full_log_path = os.path.join("log_data", log_path)
+
+    make_log_dir(full_log_path)
+
+    metadata_path = os.path.join(full_log_path, "metadata.json")
+    metadata_file = open(metadata_path, 'w')
+    metadata_file.write(json.dumps(metadata, indent=2))

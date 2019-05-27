@@ -1,8 +1,3 @@
-import numpy as np
-
-import gurobipy as gurobi
-
-
 class ActionSelector(object):
 
     def __init__(self):

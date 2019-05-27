@@ -15,10 +15,12 @@ def train(args):
     log_path = experiments_util.experiment_name(args.log)
     sdf, sdf_gradient, sdf_resolution = tpo.load_sdf(args.sdf)
     data = np.load(args.dataset)
-    times = data['times']
-    dt = times[0, 1, 0] - times[0, 0, 0]
-    batch_size = data['states'].shape[0]
-    n_steps = times.shape[1] - 1
+    if 'times' in data:
+        times = data['times']
+        dt = times[0, 1, 0] - times[0, 0, 0]
+    else:
+        dt = 0.1
+    batch_size, n_steps, _ = data['actions'].shape
     model = m.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, batch_size, args.N, args.M, args.L,
                                     args.P, args.Q, dt, n_steps)
 
@@ -55,10 +57,13 @@ def evaluate(args):
     goal = np.zeros((1, args.N))
     sdf, sdf_gradient, sdf_resolution = tpo.load_sdf(args.sdf)
     data = np.load(args.dataset)
-    times = data['times']
-    dt = times[0, 1, 0] - times[0, 0, 0]
-    batch_size = data['states'].shape[0]
-    n_steps = times.shape[1] - 1
+    if 'times' in data:
+        times = data['times']
+        dt = times[0, 1, 0] - times[0, 0, 0]
+    else:
+        dt = 0.1
+    batch_size, n_steps, _ = data['actions'].shape
+    print(n_steps)
     args_dict = vars(args)
     args_dict['random_init'] = False
     model = m.LinearConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, batch_size, args.N, args.M, args.L,

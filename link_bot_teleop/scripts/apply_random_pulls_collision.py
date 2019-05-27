@@ -129,6 +129,7 @@ def main():
 
         if p % args.save_frequency == 0:
             np.savez(args.outfile,
+                     sdf_path=args.sdf,
                      times=times,
                      states=states,
                      actions=actions,
