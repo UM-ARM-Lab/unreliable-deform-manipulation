@@ -65,11 +65,14 @@ class ConstraintModel(base_model.BaseModel):
             R_k_init[N - 1, 1] = 1.0
             k_threshold_init = 0.20
 
-        self.R_k = tf.get_variable("R_k", initializer=R_k_init)
+        # self.R_k = tf.get_variable("R_k", initializer=R_k_init)
 
-        self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init)
+        self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=True)
 
-        self.hat_latent_k = tf.einsum('bn,nm->bm', self.observations, self.R_k, name='hat_latent_k')
+        # self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
+        h = tf.layers.dense(self.observations, 10, activation=tf.nn.relu)
+        h = tf.layers.dense(h, 64, activation=tf.nn.relu)
+        self.hat_latent_k = tf.layers.dense(h, 2, activation=None)
 
         self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, sdf_origin_coordinate,
                              self.hat_latent_k, 2)
@@ -89,12 +92,8 @@ class ConstraintModel(base_model.BaseModel):
             self.constraint_prediction_loss = tf.reduce_mean(self.constraint_prediction_error,
                                                              name="constraint_prediction_loss")
 
-            self.flat_weights = tf.reshape(self.R_k, [-1])
-            self.regularization = tf.nn.l2_loss(self.flat_weights) * self.beta
-
             self.loss = tf.add_n([
                 self.constraint_prediction_loss,
-                self.regularization
             ], name='loss')
 
             self.global_step = tf.get_variable("global_step", initializer=0, trainable=False)
@@ -113,7 +112,6 @@ class ConstraintModel(base_model.BaseModel):
             tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy)
             tf.summary.scalar("k_threshold_summary", self.threshold_k)
             tf.summary.scalar("constraint_prediction_loss_summary", self.constraint_prediction_loss)
-            tf.summary.scalar("regularization_loss_summary", self.regularization)
             tf.summary.scalar("loss_summary", self.loss)
 
             self.summaries = tf.summary.merge_all()
@@ -178,11 +176,8 @@ class ConstraintModel(base_model.BaseModel):
             interrupted = True
             pass
         finally:
-            ops = [self.R_k]
-            R_k, = self.sess.run(ops, feed_dict={})
             if self.args['verbose']:
                 print("Loss: {}".format(loss))
-                print("R_k:\n{}".format(R_k))
 
         return interrupted
 
@@ -192,19 +187,17 @@ class ConstraintModel(base_model.BaseModel):
         feed_dict = {self.observations: observations,
                      self.k_label: k,
                      }
-        ops = [self.R_k, self.threshold_k, self.constraint_prediction_loss, self.regularization, self.loss,
+        ops = [self.threshold_k, self.constraint_prediction_loss, self.loss,
                self.constraint_prediction_accuracy]
-        R_k, threshold_k, k_loss, reg, loss, k_accuracy = self.sess.run(ops, feed_dict=feed_dict)
+        threshold_k, k_loss, loss, k_accuracy = self.sess.run(ops, feed_dict=feed_dict)
 
         if display:
             print("Constraint Loss: {:0.3f}".format(float(k_loss)))
-            print("Regularization: {:0.3f}".format(float(reg)))
             print("Overall Loss: {:0.3f}".format(float(loss)))
-            print("R_k:\n{}".format(R_k))
             print("threshold_k:\n{}".format(threshold_k))
             print("constraint prediction accuracy:\n{}".format(k_accuracy))
 
-        return R_k, threshold_k, k_loss, reg, loss
+        return threshold_k, k_loss, loss
 
     def setup(self):
         if self.args['checkpoint']:
@@ -242,5 +235,5 @@ class ConstraintModel(base_model.BaseModel):
         print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
 
     def __str__(self):
-        ops = [self.R_k, self.threshold_k]
-        return "R_k:\n{}\nthreshold_k:\n{}\n".format(*self.sess.run(ops, feed_dict={}))
+        ops = [self.threshold_k]
+        return "threshold_k:\n{}\n".format(*self.sess.run(ops, feed_dict={}))
