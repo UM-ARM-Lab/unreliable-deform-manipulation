@@ -83,6 +83,7 @@ def main():
     train_subparser = subparsers.add_parser("train")
     train_subparser.add_argument("dataset", help="dataset (txt file)")
     train_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
+    train_subparser.add_argument("--batch-size", "-b", type=int, default=128)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=500)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")

@@ -60,7 +60,8 @@ def train(args):
 
         # if the model is good enough, checkpoint it
         if loss < args['ckpt_loss_threshold']:
-            experiment_name = experiments_util.experiment_name('random_init', 'seed_{}'.format(i))
+            experiment_name = experiments_util.experiment_name('random_init_linear_constraint_model',
+                                                               'seed_{}'.format(i))
             log_path = os.path.join(os.getcwd(), "log_data", experiment_name)
             experiments_util.make_log_dir(log_path)
             full_log_path = os.path.join(os.getcwd(), "log_data", log_path)

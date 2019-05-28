@@ -56,11 +56,11 @@ class ConstraintModel(base_model.BaseModel):
 
         if args['random_init']:
             # RANDOM INIT
-            R_k_init = np.random.randn(N, 1).astype(np.float32) * 1e-1
+            R_k_init = np.random.randn(N, 2).astype(np.float32) * 1e-1
             k_threshold_init = np.random.rand() * 1e-1
         else:
             # IDEAL INIT
-            R_k_init = np.zeros((N, 2), dtype=np.float32)
+            R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.2
             R_k_init[N - 2, 0] = 1.0
             R_k_init[N - 1, 1] = 1.0
             k_threshold_init = 0.20
@@ -153,12 +153,16 @@ class ConstraintModel(base_model.BaseModel):
         try:
             observations = train_x['states'].reshape(-1, self.N)
             k = train_x['constraints'].reshape(-1, 1)
-            feed_dict = {self.observations: observations,
-                         self.k_label: k,
-                         }
-
             ops = [self.global_step, self.summaries, self.loss, self.opt]
             for i in range(epochs):
+
+                batch_idx = np.random.choice(np.arange(observations.shape[0]), size=self.args['batch_size'])
+                observations_batch = observations[batch_idx]
+                k_batch = k[batch_idx]
+
+                feed_dict = {self.observations: observations_batch,
+                             self.k_label: k_batch,
+                             }
                 step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
 
                 if 'save_period' in self.args and (step % self.args['save_period'] == 0 or step == 1):
@@ -225,7 +229,7 @@ class ConstraintModel(base_model.BaseModel):
     def save(self, log_path, log=True, loss=None):
         global_step = self.sess.run(self.global_step)
         if log:
-            if loss:
+            if loss is not None:
                 print(Fore.CYAN + "Saving ckpt {} at step {:d} with loss {}".format(log_path, global_step,
                                                                                     loss) + Fore.RESET)
             else:

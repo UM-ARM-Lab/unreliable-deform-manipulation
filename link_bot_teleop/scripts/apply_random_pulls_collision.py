@@ -1,13 +1,10 @@
 #!/usr/bin/env python
-from __future__ import print_function
-
 import argparse
 from time import sleep
 
 import numpy as np
 import rospy
 from gazebo_msgs.srv import GetLinkState
-from gazebo_msgs.msg import ContactsState
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_agent import agent
@@ -60,7 +57,7 @@ def main():
 
     # let the world step once
     step = WorldControlRequest()
-    step.steps = DT / 0.001  # assuming 0.001s per simulation step
+    step.steps = int(DT / 0.001)  # assuming 0.001s per simulation step
     world_control.call(step)  # this will block until stepping is complete
 
     sleep(0.5)
@@ -113,7 +110,7 @@ def main():
 
             # let the simulator run
             step = WorldControlRequest()
-            step.steps = DT / 0.001  # assuming 0.001s per simulation step
+            step.steps = int(DT / 0.001)  # assuming 0.001s per simulation step
             world_control.call(step)  # this will block until stepping is complete
 
             time += DT
@@ -135,6 +132,14 @@ def main():
                      actions=actions,
                      constraints=constraints)
             print(p, 'saving data...')
+
+    np.savez(args.outfile,
+             sdf_path=args.sdf,
+             times=times,
+             states=states,
+             actions=actions,
+             constraints=constraints)
+    print(p, 'saving data...')
 
 
 if __name__ == '__main__':
