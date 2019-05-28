@@ -62,8 +62,8 @@ def train(args):
 
 
 def plot(args):
-    data = np.load(args.data)
-    evaluation_results = data.values()
+    data = np.load(args.data, allow_pickle=True)
+    evaluation_results = list(data.values())
 
     print("# Evaluations: {}".format(len(evaluation_results)))
 
@@ -83,20 +83,7 @@ def plot(args):
     print("Max total loss: {:0.3f}".format(max_total_loss))
 
     print("Best parameters:")
-    # R_d, A_d, B_d, D, R_k, A_k, B_k, threshold_k, spd_loss, spk_loss, c_loss, k_loss, reg, loss
-    print("R_d:\n{}".format(best_params[0]))
-    print("A_d:\n{}".format(best_params[1]))
-    print("B_d:\n{}".format(best_params[2]))
-    print("R_k:\n{}".format(best_params[3]))
-    print("A_k:\n{}".format(best_params[4]))
-    print("B_k:\n{}".format(best_params[5]))
-    print("threshold_k:\n{}".format(best_params[6]))
-    print("State Prediction Loss in d: {}".format(best_params[7]))
-    print("State Prediction Loss in k: {}".format(best_params[8]))
-    print("Cost Loss: {}".format(best_params[9]))
-    print("Constraint Loss: {}".format(best_params[10]))
-    print("Regularization: {}".format(best_params[11]))
-    print("Overall Loss: {}".format(best_params[12]))
+    print(best_params)
 
     plt.hist(total_losses, bins=np.arange(0, 8, 0.2))
     plt.xlabel("Loss after 10,000 training steps")
