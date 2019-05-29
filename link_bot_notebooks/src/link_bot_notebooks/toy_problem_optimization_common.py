@@ -13,8 +13,8 @@ def sdf_idx_to_point(row, col, resolution, sdf_origin):
 
 
 def point_to_sdf_idx(x, y, resolution, sdf_origin):
-    row = int(x / resolution[0, 0] + sdf_origin[0, 0])
-    col = int(y / resolution[1, 0] + sdf_origin[1, 0])
+    row = int(x / resolution[0] + sdf_origin[0])
+    col = int(y / resolution[1] + sdf_origin[1])
     return row, col
 
 
@@ -22,8 +22,8 @@ def load_sdf(filename):
     npz = np.load(filename)
     sdf = npz['sdf']
     grad = npz['sdf_gradient']
-    res = npz['sdf_resolution'].reshape(2, 1)
-    origin = np.array(sdf.shape, dtype=np.int32).reshape(2, 1) // 2
+    res = npz['sdf_resolution'].reshape(2)
+    origin = np.array(sdf.shape, dtype=np.int32).reshape(2) // 2
     return sdf, grad, res, origin
 
 

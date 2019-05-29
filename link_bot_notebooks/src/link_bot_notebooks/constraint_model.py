@@ -14,8 +14,9 @@ from link_bot_notebooks import base_model
 
 
 @tf.custom_gradient
-def sdf_func(sdf, full_sdf_gradient, resolution, sdf_origin_coordinate, sdf_coordinates, P):
-    integer_coordinates = tf.cast(tf.divide(sdf_coordinates, resolution), dtype=tf.int32)
+def sdf_func(sdf, full_sdf_gradient, sdf_resolution, sdf_origin_coordinate, sdf_coordinates, P):
+    float_coordinates = tf.math.divide(sdf_coordinates, sdf_resolution)
+    integer_coordinates = tf.cast(float_coordinates, dtype=tf.int32)
     integer_coordinates = tf.reshape(integer_coordinates, [-1, P])
     integer_coordinates = integer_coordinates + sdf_origin_coordinate
     # blindly assume the point is within our grid
@@ -24,6 +25,10 @@ def sdf_func(sdf, full_sdf_gradient, resolution, sdf_origin_coordinate, sdf_coor
     # "on CPU an error will be returned and on GPU 0 value will be filled to the expected positions of the output."
     # TODO: make this handle out of bounds correctly. I think correctly for us means return large number for SDF
     # and a gradient towards the origin
+
+    # for coordinate in integer_coordinates:
+    #     if c
+
     sdf_value = tf.gather_nd(sdf, integer_coordinates, name='index_sdf')
     sdf_value = tf.reshape(sdf_value, [-1, 1], name='sdfs')
 
@@ -51,28 +56,40 @@ class ConstraintModel(base_model.BaseModel):
         self.observations = tf.placeholder(tf.float32, shape=(None, N), name="observations")
         self.k_label = tf.placeholder(tf.float32, shape=(None, 1), name="k")
         self.k_label_int = tf.cast(self.k_label, tf.int32)
+        self.hidden_layer_dims = None
 
+        ################################################
+        #                 Linear Model                 #
+        ################################################
         if args['random_init']:
             # RANDOM INIT
             R_k_init = np.random.randn(N, 2).astype(np.float32) * 1e-1
             k_threshold_init = np.random.rand() * 1e-1
         else:
             # IDEAL INIT
-            R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.2
+            R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.0
             R_k_init[N - 2, 0] = 1.0
             R_k_init[N - 1, 1] = 1.0
             k_threshold_init = 0.20
-
-        # self.R_k = tf.get_variable("R_k", initializer=R_k_init)
-
+            print(R_k_init)
+        self.R_k = tf.get_variable("R_k", initializer=R_k_init)
         self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
+        self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
 
-        # self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
-        self.hidden_layer_dims = [128, 128]
-        h = self.observations
-        for hidden_layer_dim in self.hidden_layer_dims:
-            h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu)
-        self.hat_latent_k = tf.layers.dense(h, 2, activation=None)
+        #############################################
+        #                 MLP Model                 #
+        #############################################
+        # k_threshold_init = 0.20
+        # self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
+        # self.hidden_layer_dims = [128, 128]
+        # h = self.observations
+        # for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
+        #     h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, name='hidden_layer_{}'.format(layer_idx))
+        # self.hat_latent_k = tf.layers.dense(h, 2, activation=None, name='output_layer')
+
+        #######################################################
+        #                 End Model Definition                #
+        #######################################################
 
         self.sdfs = sdf_func(np_sdf, np_sdf_gradient, np_sdf_resolution, np_sdf_origin, self.hat_latent_k, 2)
         # because the sigmoid is not very sharp (since meters are very large),
@@ -154,28 +171,30 @@ class ConstraintModel(base_model.BaseModel):
 
             n_test_examples = 5000
             end_train_idx = int(full_observations.shape[0] - n_test_examples)
+            np.random.shuffle(full_observations)
             train_observations = full_observations[:end_train_idx]
             test_observations = full_observations[end_train_idx:]
             train_k = full_k[:end_train_idx]
             test_k = full_k[end_train_idx:]
             train_ops = [self.global_step, self.summaries, self.loss, self.opt]
-            test_ops = [self.loss]
+            test_ops = [self.summaries, self.loss]
             for i in range(epochs):
 
                 batch_idx = np.random.choice(np.arange(train_observations.shape[0]), size=self.args['batch_size'])
-                observations_batch = train_observations[batch_idx]
-                k_batch = train_k[batch_idx]
+                train_observations_batch = train_observations[batch_idx]
+                train_k_batch = train_k[batch_idx]
 
-                train_feed_dict = {self.observations: observations_batch,
-                                   self.k_label: k_batch}
+                train_feed_dict = {self.observations: train_observations_batch,
+                                   self.k_label: train_k_batch}
                 test_feed_dict = {self.observations: test_observations,
                                   self.k_label: test_k}
-                step, summary, train_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
-                test_loss, = self.sess.run(test_ops, feed_dict=test_feed_dict)
+                step, train_summary, train_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
+                test_summary, test_loss = self.sess.run(test_ops, feed_dict=test_feed_dict)
 
                 if 'save_period' in self.args and (step % self.args['save_period'] == 0 or step == 1):
                     if self.args['log'] is not None:
-                        writer.add_summary(summary, step)
+                        writer.add_summary(train_summary, step)
+                        writer.add_summary(test_summary, step)
                         self.save(full_log_path, loss=test_loss)
 
                 if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
