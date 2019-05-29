@@ -2,22 +2,22 @@
 from __future__ import print_function
 
 import argparse
-import ompl.util as ou
 import os
 import time as timemod
+from builtins import input
 
 import numpy as np
-import rospy
-from builtins import input
+import ompl.util as ou
+import tensorflow as tf
 from colorama import Fore
-from gazebo_msgs.msg import ContactsState
-from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
-from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 
+import rospy
+from gazebo_msgs.srv import GetLinkState
 from ignition import markers
 from link_bot_agent import agent, gp_rrt
-from link_bot_agent.gp_directed_control_sampler import GPDirectedControlSampler
 from link_bot_gaussian_process import link_bot_gp
+from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
+from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import toy_problem_optimization_common as tpoc
 
 dt = 0.1
@@ -26,25 +26,25 @@ in_contact = False
 
 
 def common(args, start, max_steps=1e6):
-    batch_size = 1
     max_v = 1
-    n_steps = 1
-    sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
-    sdf_rows, sdf_cols = sdf.shape
-    sdf_origin_coordinate = np.array([sdf_rows / 2, sdf_cols / 2], dtype=np.int32)
-
-    def sdf_by_xy(x, y):
-        point = np.array([[x, y]])
-        indeces = (point / sdf_resolution).astype(np.int32) + sdf_origin_coordinate
-        return sdf[indeces[0, 0], indeces[0, 1]]
+    sdf, sdf_gradient, sdf_resolution, sdf_origin = tpoc.load_sdf(args.sdf)
 
     args_dict = vars(args)
     args_dict['random_init'] = False
-    gp_model = link_bot_gp.LinkBotGP()
-    gp_model.load(args.checkpoint)
-    rrt = gp_rrt.GPRRT(gp_model, GPDirectedControlSampler, dt, max_v, args.planner_timeout)
+    fwd_gp_model = link_bot_gp.LinkBotGP()
+    fwd_gp_model.load(args.fwd_gp_model)
+    inv_gp_model = link_bot_gp.LinkBotGP()
+    inv_gp_model.load(args.inv_gp_model)
 
-    gzagent = agent.GazeboAgent(N=args.N, M=args.M, dt=dt, model=tf_model, gazebo_model_name=args.model_name)
+    def sdf_violated(numpy_state):
+        x = numpy_state[0, 0]
+        y = numpy_state[1, 0]
+        row_col = tpoc.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
+        return sdf[row_col] < args.sdf_threshold
+
+    rrt = gp_rrt.GPRRT(fwd_gp_model, inv_gp_model, sdf_violated, dt, max_v, args.planner_timeout)
+
+    get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
 
     rospy.init_node('MPCAgent')
 
@@ -70,13 +70,13 @@ def common(args, start, max_steps=1e6):
     # Catch planning failure exception
     try:
         for trial_idx in range(args.n_trials):
-            goal = np.zeros((1, 6))
+            goal = np.zeros((6, 1))
             goal[0, 0] = np.random.uniform(-4.0, 3.0)
-            goal[0, 1] = np.random.uniform(-4.0, 4.0)
+            goal[1, 0] = np.random.uniform(-4.0, 4.0)
 
             config = LinkBotConfiguration()
             config.tail_pose.x = start[0, 0]
-            config.tail_pose.y = start[0, 1]
+            config.tail_pose.y = start[1, 0]
             config.tail_pose.theta = np.random.uniform(-0.2, 0.2)
             config.joint_angles_rad = [np.random.uniform(-0.2, 0.2), 0]
             config_pub.publish(config)
@@ -86,13 +86,13 @@ def common(args, start, max_steps=1e6):
             start_marker.pose.position.x = config.tail_pose.x
             start_marker.pose.position.y = config.tail_pose.y
             goal_marker.pose.position.x = goal[0, 0]
-            goal_marker.pose.position.y = goal[0, 1]
+            goal_marker.pose.position.y = goal[1, 0]
             markers.publish(goal_marker)
             markers.publish(start_marker)
 
             if args.verbose:
                 print("start: {}, {}".format(config.tail_pose.x, config.tail_pose.y))
-                print("goal: {}, {}".format(goal[0, 0], goal[0, 1]))
+                print("goal: {}, {}".format(goal[0, 0], goal[1, 0]))
 
             min_true_cost = 1e9
             step_idx = 0
@@ -102,8 +102,9 @@ def common(args, start, max_steps=1e6):
             contacts = 0
             start_time = timemod.time()
             while step_idx < max_steps and not done:
-                s = agent.get_state(gzagent.get_link_state)
-                planned_actions, _ = rrt.plan(start, goal, sdf, args.verbose)
+                s = agent.get_state(get_link_state)
+                s = np.array(s).reshape((fwd_gp_model.n_state, 1))
+                planned_actions, _ = rrt.plan(s, goal, sdf, args.verbose)
 
                 if planned_actions is None:
                     num_fails += 1
@@ -115,7 +116,7 @@ def common(args, start, max_steps=1e6):
 
                     # publish the pull command
                     action_msg.vx = action[0, 0]
-                    action_msg.vy = action[0, 1]
+                    action_msg.vy = action[1, 0]
                     action_pub.publish(action_msg)
 
                     step = WorldControlRequest()
@@ -126,9 +127,9 @@ def common(args, start, max_steps=1e6):
                     if in_contact:
                         contacts += 1
 
-                    links_state = agent.get_state(gzagent.get_link_state)
-                    s_next = np.array(links_state).reshape(1, args.N)
-                    true_cost = gzagent.state_cost(s_next, goal)
+                    links_state = agent.get_state(get_link_state)
+                    s_next = np.array(links_state).reshape(1, fwd_gp_model.n_inputs)
+                    true_cost = tpoc.state_cost(s_next, goal)
 
                     if args.pause:
                         input('paused...')
@@ -160,14 +161,14 @@ def common(args, start, max_steps=1e6):
 
 
 def test(args):
-    start = np.array([[-1, 0, 0, 0, 0, 0]])
+    start = np.array([[-1], [0], [0], [0], [0], [0]])
     args.n_trials = 1
     common(args, start, max_steps=1000)
 
 
 def eval(args):
     stats_filename = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(timemod.time())))
-    start = np.array([[-1, 0, 0, 0, 0, 0]])
+    start = np.array([[-1], [0], [0], [0], [0], [0]])
 
     min_costs, execution_times, nums_contacts, num_fails, num_successes = common(args, start, 200)
 
@@ -194,10 +195,12 @@ def eval(args):
 
 
 def main():
-    np.set_printoptions(precision=6, suppress=True)
+    np.set_printoptions(precision=6, suppress=True, linewidth=250)
+    tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("checkpoint", help="load this saved model file")
+    parser.add_argument("fwd_gp_model", help="load this saved forward model file")
+    parser.add_argument("inv_gp_model", help="load this saved inverse model file")
     parser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     parser.add_argument("--model-name", '-m', default="link_bot")
     parser.add_argument("--seed", '-s', type=int, default=2)
@@ -205,15 +208,11 @@ def main():
     parser.add_argument("--pause", action='store_true')
     parser.add_argument("--plot-plan", action='store_true')
     parser.add_argument("--debug", action='store_true')
-    parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
-    parser.add_argument("-M", help="dimensions in latent state o_d", type=int, default=2)
-    parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
-    parser.add_argument("-P", help="dimensions in latent state o_k", type=int, default=2)
-    parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     parser.add_argument("--num-actions", '-T', help="number of actions to execute from the plan", type=int, default=10)
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=1.0)
     parser.add_argument("--controller", choices=['gurobi', 'ompl-lqr', 'ompl-dual-lqr', 'ompl-gurobi'])
     parser.add_argument("--n-trials", '-n', type=int, default=20)
+    parser.add_argument("--sdf-threshold", type=float, help='smallest allowed distance to an obstacle', default=0.20)
 
     subparsers = parser.add_subparsers()
     test_subparser = subparsers.add_parser("test")

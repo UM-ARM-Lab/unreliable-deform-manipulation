@@ -28,11 +28,11 @@ def make_log_dir(full_log_path):
             raise
 
 
-def write_metadata(metadata, log_path):
+def write_metadata(metadata, filename, log_path):
     full_log_path = os.path.join("log_data", log_path)
 
     make_log_dir(full_log_path)
 
-    metadata_path = os.path.join(full_log_path, "metadata.json")
+    metadata_path = os.path.join(full_log_path, filename)
     metadata_file = open(metadata_path, 'w')
     metadata_file.write(json.dumps(metadata, indent=2))

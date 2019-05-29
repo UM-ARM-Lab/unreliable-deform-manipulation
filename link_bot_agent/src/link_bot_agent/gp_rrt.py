@@ -3,25 +3,28 @@ from ompl import control as oc
 
 import matplotlib.pyplot as plt
 import numpy as np
+from link_bot_agent.gp_directed_control_sampler import GPDirectedControlSampler
 
 
 class GPRRT:
 
-    def __init__(self, gp_model, dt, max_v, planner_timeout):
-        self.gp_model = gp_model
+    def __init__(self, fwd_gp_model, inv_gp_model, constraint_violated, dt, max_v, planner_timeout):
+        self.fwd_gp_model = fwd_gp_model
+        self.inv_gp_model = inv_gp_model
+        self.constraint_violated = constraint_violated
         self.dt = dt
         self.planner_timeout = planner_timeout
-        self.N = self.gp_model.N  # state dimensionality
-        self.L = self.gp_model.L  # control dimensionality
+        self.n_state = self.fwd_gp_model.n_state
+        self.n_control = self.fwd_gp_model.n_control
         self.max_v = max_v
 
-        # self.arena_size = 5
-        self.state_space_size = 10
-        self.state_space = ob.RealVectorStateSpace(self.N)
+        self.arena_size = 5
+        self.state_space_size = 5
+        self.state_space = ob.RealVectorStateSpace(self.n_state)
         self.state_space.setName("dynamics latent space")
         self.state_space.setBounds(-self.state_space_size, self.state_space_size)
 
-        self.control_space = oc.RealVectorControlSpace(self.state_space, self.L)
+        self.control_space = oc.RealVectorControlSpace(self.state_space, self.n_control)
 
         self.ss = oc.SimpleSetup(self.control_space)
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
@@ -33,8 +36,8 @@ class GPRRT:
         # use the default state propagator, it won't be called anyways because we use a directed control sampler
         self.ss.setStatePropagator(oc.StatePropagator(self.si))
 
-        self.si.setDirectedControlSamplerAllocator(self.directed_control_sampler.allocator(self.gp_model))
-        self.directed_control_sampler = self.si.allocDirectedControlSampler()
+        self.si.setDirectedControlSamplerAllocator(
+            GPDirectedControlSampler.allocator(self.fwd_gp_model, self.inv_gp_model))
 
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(False)
@@ -42,30 +45,26 @@ class GPRRT:
 
     def isStateValid(self, state):
         # check if our model predicts that constraints are violated in this state
-        constraint_state = np.ndarray(self.P)
-        for i in range(self.P):
-            constraint_state[i] = state[1][i]
-        constraint_violated = self.tf_model.constraint_violated(constraint_state)
-        constraint_violated = np.any(constraint_violated)
-        valid = self.latent_space.satisfiesBounds(state) and not constraint_violated
+        numpy_state = np.ndarray((self.n_state, 1))
+        for i in range(self.n_state):
+            numpy_state[i, 0] = state[i]
+        constraint_violated = self.constraint_violated(numpy_state)
+        valid = self.state_space.satisfiesBounds(state) and not constraint_violated
         return valid
 
-    def plan(self, start, goal, sdf, verbose=False):
+    def plan(self, numpy_start, numpy_goal, sdf, verbose=False):
         # create start and goal states
-        self.directed_control_sampler.reset()
-        start = ob.State(self.latent_space)
-        goal = ob.State(self.latent_space)
-        for i in range(self.M):
-            start()[0][i] = o_d_start[i, 0].astype(np.float64)
-            goal()[0][i] = o_d_goal[i, 0].astype(np.float64)
-        for i in range(self.P):
-            start()[1][i] = o_k_start[i, 0].astype(np.float64)
-            goal()[1][i] = -999
+        GPDirectedControlSampler.reset()
+        start = ob.State(self.state_space)
+        goal = ob.State(self.state_space)
+        for i in range(self.n_state):
+            start()[i] = numpy_start[i, 0].astype(np.float64)
+            goal()[i] = numpy_goal[i, 0].astype(np.float64)
 
         self.ss.clear()
-        # the threshold on "cost-to-goal" is interpretable here as Euclidian distance
+        # the threshold on "cost-to-goal" is interpretable here as Euclidean distance
         epsilon = 0.1
-        self.ss.setStartAndGoalStates(start, goal, 0.4 * epsilon)
+        self.ss.setStartAndGoalStates(start, goal, epsilon)
         try:
             solved = self.ss.solve(self.planner_timeout)
 
@@ -75,125 +74,89 @@ class GPRRT:
             if solved:
                 ompl_path = self.ss.getSolutionPath()
 
-                numpy_controls = np.ndarray((ompl_path.getControlCount(), 1, self.L))
-                numpy_d_states = np.ndarray((ompl_path.getStateCount(), self.M, 1))
-                numpy_k_states = np.ndarray((ompl_path.getStateCount(), self.P, 1))
+                numpy_controls = np.ndarray((ompl_path.getControlCount(), 1, self.n_control))
+                numpy_states = np.ndarray((ompl_path.getStateCount(), self.n_control, 1))
+                print(numpy_states, numpy_controls)
                 for i, state in enumerate(ompl_path.getStates()):
-                    for j in range(self.M):
-                        numpy_d_states[i, j] = state[0][j]
-                    for j in range(self.P):
-                        numpy_k_states[i, j] = state[1][j]
+                    for j in range(self.n_control):
+                        numpy_states[i, j] = state[j]
                 for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
                     numpy_controls[i, 0, 0] = control[0]
                     numpy_controls[i, 0, 1] = control[1]
 
                 # Verification
-                # verified = self.verify(numpy_controls, numpy_d_states, numpy_k_states)
+                # verified = self.verify(numpy_controls, numpy_states)
                 # if not verified:
                 #     print("ERROR! NOT VERIFIED!")
 
                 # SMOOTHING
-                numpy_d_states, numpy_k_states, numpy_controls = self.smooth(numpy_d_states, numpy_k_states,
-                                                                             numpy_controls,
-                                                                             verbose)
+                # numpy_states, numpy_controls = self.smooth(numpy_states, numpy_controls, verbose)
 
                 if verbose:
-                    self.directed_control_sampler.plot_dual_sdf(sdf, o_d_start, o_d_goal, numpy_d_states,
-                                                                numpy_k_states, numpy_controls, self.arena_size)
+                    GPDirectedControlSampler.plot(sdf, numpy_start, numpy_goal, numpy_states, numpy_controls,
+                                                  self.arena_size)
                     plt.show()
-                    final_error = np.linalg.norm(numpy_d_states[-1] - o_d_goal)
-                    lengths = [np.linalg.norm(numpy_d_states[i] - numpy_d_states[i - 1]) for i in
-                               range(1, len(numpy_d_states))]
+                    final_error = np.linalg.norm(numpy_states[-1] - numpy_goal)
+                    lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in
+                               range(1, len(numpy_states))]
                     path_length = np.sum(lengths)
-                    duration = self.dt * len(numpy_d_states)
+                    duration = self.dt * len(numpy_states)
                     print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
-                        final_error, path_length, len(numpy_d_states), duration))
-                return numpy_controls, numpy_d_states
+                        final_error, path_length, len(numpy_states), duration))
+                return numpy_controls, numpy_states
             else:
                 raise RuntimeError("No Solution found from {} to {}".format(start, goal))
         except RuntimeError:
-            # try to find an action which moves us out of constraint violation
-            recovery_action = self.sample_recovery_action(sdf, o_k_start)
-            if recovery_action is None:
-                print("Failed recovery!")
-                return None, None
-            else:
-                print("Successful recovery!")
-                return np.reshape(recovery_action, [1, 1, 2]), None
+            return None, None
 
-    def sample_recovery_action(self, sdf, o_k_start):
-        for _ in range(100):
-            # FIXME: this is specific to the current type of action I'm using
-            # FIXME: this is such a hack
-            v = np.random.uniform(-4, 4)
-            angle = np.random.uniform(-np.pi, np.pi)
-            u = np.array([[np.cos(angle) * v], [np.sin(angle) * v]])
-            constraint_state = self.tf_model.simple_predict_constraint(o_k_start, u)
-            constraint_state = np.squeeze(constraint_state)
-            constraint_violated = self.tf_model.constraint_violated(constraint_state)
-            constraint_violated = np.any(constraint_violated)
-            if not constraint_violated:
-                return u
-
-        return None
-
-    def smooth(self, numpy_d_states, numpy_k_states, numpy_controls, iters=50, verbose=False):
-        new_d_states = list(numpy_d_states)
-        new_k_states = list(numpy_k_states)
+    def smooth(self, numpy_states, numpy_controls, iters=50, verbose=False):
+        new_states = list(numpy_states)
         new_controls = list(numpy_controls)
         shortcut_iter = 0
         shortcut_successes = 0
         while shortcut_iter < iters:
             shortcut_iter += 1
             # bias starting towards the beginning?
-            start_idx = np.random.randint(0, len(new_d_states) / 2)
-            # start_idx = np.random.randint(0, len(new_d_states) - 1)
-            d_shortcut_start = new_d_states[start_idx]
-            k_shortcut_start = new_k_states[start_idx]
-            end_idx = np.random.randint(start_idx + 1, len(new_d_states))
-            d_shortcut_end = new_d_states[end_idx]
+            start_idx = np.random.randint(0, len(new_states) / 2)
+            # start_idx = np.random.randint(0, len(new_states) - 1)
+            d_shortcut_start = new_states[start_idx]
+            end_idx = np.random.randint(start_idx + 1, len(new_states))
+            d_shortcut_end = new_states[end_idx]
 
-            success, new_shortcut_us, new_shortcut_o_ds, new_shortcut_o_ks = self.directed_control_sampler.dual_shortcut(
-                d_shortcut_start, k_shortcut_start, d_shortcut_end)
+            success, new_shortcut_us, new_shortcut_ss, = GPDirectedControlSampler.shortcut(
+                d_shortcut_start, d_shortcut_end)
 
             if success:
                 # popping changes the indexes of everything, so we just pop at start_idx the right number of times
                 for i in range(start_idx, end_idx):
-                    new_d_states.pop(start_idx)
-                    new_k_states.pop(start_idx)
+                    new_states.pop(start_idx)
                     new_controls.pop(start_idx)
-                for i, (shortcut_u, shortcut_o_d, shortcut_o_k) in enumerate(
-                        zip(new_shortcut_us, new_shortcut_o_ds, new_shortcut_o_ks)):
-                    new_d_states.insert(start_idx + i, shortcut_o_d)  # or maybe shortcut_end?
-                    new_k_states.insert(start_idx + i, shortcut_o_k)  # or maybe shortcut_end?
+                for i, (shortcut_u, shortcut_s) in enumerate(
+                        zip(new_shortcut_us, new_shortcut_ss)):
+                    new_states.insert(start_idx + i, shortcut_s)  # or maybe shortcut_end?
                     new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
                 shortcut_successes += 1
 
         if verbose:
             print("{}/{} shortcuts succeeded".format(shortcut_successes, shortcut_iter))
 
-        numpy_d_states = np.array(new_d_states)
-        numpy_k_states = np.array(new_k_states)
+        numpy_states = np.array(new_states)
         numpy_controls = np.array(new_controls)
 
-        return numpy_d_states, numpy_k_states, numpy_controls
+        return numpy_states, numpy_controls
 
-    def verify(self, controls, o_ds, o_ks):
-        o_d = o_ds[0]
-        o_k = o_ks[0]
+    def verify(self, controls, ss):
+        s = ss[0]
         for i, u in enumerate(controls):
 
-            if not np.allclose(o_d, o_ds[i]):
+            if not np.allclose(s, ss[i]):
                 return False
-            if not np.allclose(o_k, o_ks[i]):
-                return False
-            constraint_violated = self.tf_model.constraint_violated(o_k.squeeze())
+            constraint_violated = self.fwd_gp_model.constraint_violated(s.squeeze())
             if constraint_violated:
                 return False
 
-            o_d_next, o_k_next = self.tf_model.simple_dual_predict(o_d, o_k, u.reshape(2, 1))
+            s_next = self.fwd_gp_model.simple_dual_predict(s, u.reshape(2, 1))
 
-            o_d = o_d_next
-            o_k = o_k_next
+            s = s_next
 
         return True

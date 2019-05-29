@@ -37,7 +37,7 @@ def sdf_func(sdf, full_sdf_gradient, resolution, sdf_origin_coordinate, sdf_coor
 
 class ConstraintModel(base_model.BaseModel):
 
-    def __init__(self, args, numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, N):
+    def __init__(self, args, np_sdf, np_sdf_gradient, np_sdf_resolution, np_sdf_origin, N):
         base_model.BaseModel.__init__(self, N)
 
         self.seed = args['seed']
@@ -47,8 +47,6 @@ class ConstraintModel(base_model.BaseModel):
         self.args = args
         self.N = N
         self.beta = 1e-8
-        self.sdf_rows, self.sdf_cols = numpy_sdf.shape
-        sdf_origin_coordinate = np.array([self.sdf_rows / 2, self.sdf_cols / 2], dtype=np.int32)
 
         self.observations = tf.placeholder(tf.float32, shape=(None, N), name="observations")
         self.k_label = tf.placeholder(tf.float32, shape=(None, 1), name="k")
@@ -67,15 +65,16 @@ class ConstraintModel(base_model.BaseModel):
 
         # self.R_k = tf.get_variable("R_k", initializer=R_k_init)
 
-        self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=True)
+        self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
 
         # self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
-        h = tf.layers.dense(self.observations, 10, activation=tf.nn.relu)
-        h = tf.layers.dense(h, 64, activation=tf.nn.relu)
+        self.hidden_layer_dims = [128, 128]
+        h = self.observations
+        for hidden_layer_dim in self.hidden_layer_dims:
+            h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu)
         self.hat_latent_k = tf.layers.dense(h, 2, activation=None)
 
-        self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, sdf_origin_coordinate,
-                             self.hat_latent_k, 2)
+        self.sdfs = sdf_func(np_sdf, np_sdf_gradient, np_sdf_resolution, np_sdf_origin, self.hat_latent_k, 2)
         # because the sigmoid is not very sharp (since meters are very large),
         # this doesn't give a very sharp boundary for the decision between in collision or not.
         # The trade of is this might cause vanishing gradients
@@ -121,7 +120,7 @@ class ConstraintModel(base_model.BaseModel):
                 self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
             self.saver = tf.train.Saver(max_to_keep=None)
 
-    def train(self, train_x, epochs, log_path):
+    def train(self, full_x, epochs, log_path):
         interrupted = False
 
         writer = None
@@ -142,6 +141,7 @@ class ConstraintModel(base_model.BaseModel):
                 'N': self.N,
                 'beta': self.beta,
                 'commandline': self.args['commandline'],
+                'hidden_layer_dims': self.hidden_layer_dims,
             }
             metadata_file.write(json.dumps(metadata, indent=2))
 
@@ -149,27 +149,37 @@ class ConstraintModel(base_model.BaseModel):
             writer.add_graph(self.sess.graph)
 
         try:
-            observations = train_x['states'].reshape(-1, self.N)
-            k = train_x['constraints'].reshape(-1, 1)
-            ops = [self.global_step, self.summaries, self.loss, self.opt]
+            full_observations = full_x['states'].reshape(-1, self.N)
+            full_k = full_x['constraints'].reshape(-1, 1)
+
+            n_test_examples = 5000
+            end_train_idx = int(full_observations.shape[0] - n_test_examples)
+            train_observations = full_observations[:end_train_idx]
+            test_observations = full_observations[end_train_idx:]
+            train_k = full_k[:end_train_idx]
+            test_k = full_k[end_train_idx:]
+            train_ops = [self.global_step, self.summaries, self.loss, self.opt]
+            test_ops = [self.loss]
             for i in range(epochs):
 
-                batch_idx = np.random.choice(np.arange(observations.shape[0]), size=self.args['batch_size'])
-                observations_batch = observations[batch_idx]
-                k_batch = k[batch_idx]
+                batch_idx = np.random.choice(np.arange(train_observations.shape[0]), size=self.args['batch_size'])
+                observations_batch = train_observations[batch_idx]
+                k_batch = train_k[batch_idx]
 
-                feed_dict = {self.observations: observations_batch,
-                             self.k_label: k_batch,
-                             }
-                step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
+                train_feed_dict = {self.observations: observations_batch,
+                                   self.k_label: k_batch}
+                test_feed_dict = {self.observations: test_observations,
+                                  self.k_label: test_k}
+                step, summary, train_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
+                test_loss, = self.sess.run(test_ops, feed_dict=test_feed_dict)
 
                 if 'save_period' in self.args and (step % self.args['save_period'] == 0 or step == 1):
                     if self.args['log'] is not None:
                         writer.add_summary(summary, step)
-                        self.save(full_log_path, loss=loss)
+                        self.save(full_log_path, loss=test_loss)
 
                 if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
-                    print('step: {}, loss: {} '.format(step, loss))
+                    print('step: {:4d}, train loss: {:8.4f} test loss {:8.4f}'.format(step, train_loss, test_loss))
 
         except KeyboardInterrupt:
             print("stop!!!")

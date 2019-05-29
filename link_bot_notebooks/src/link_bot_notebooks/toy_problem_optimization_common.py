@@ -6,9 +6,29 @@ import scipy.optimize as optimize
 from scipy.linalg import hankel
 
 
+def sdf_idx_to_point(row, col, resolution, sdf_origin):
+    x = (col - sdf_origin[0, 0]) * resolution[0, 0]
+    y = (row - sdf_origin[1, 0]) * resolution[1, 0]
+    return np.array([[y], [x]])
+
+
+def point_to_sdf_idx(x, y, resolution, sdf_origin):
+    row = int(x / resolution[0, 0] + sdf_origin[0, 0])
+    col = int(y / resolution[1, 0] + sdf_origin[1, 0])
+    return row, col
+
+
 def load_sdf(filename):
     npz = np.load(filename)
-    return npz['sdf'], npz['sdf_gradient'], npz['sdf_resolution']
+    sdf = npz['sdf']
+    grad = npz['sdf_gradient']
+    res = npz['sdf_resolution'].reshape(2, 1)
+    origin = np.array(sdf.shape, dtype=np.int32).reshape(2, 1) // 2
+    return sdf, grad, res, origin
+
+
+def state_cost(s, goal):
+    return np.linalg.norm(s[0:2] - goal[0:2])
 
 
 class LinearStateSpaceModelWithQuadraticCost:

@@ -1,11 +1,12 @@
 import os
 from time import time
 
-from colorama import Fore
 import gpflow as gpf
 import gpflow.multioutput.features as mf
 import gpflow.multioutput.kernels as mk
+import matplotlib.pyplot as plt
 import numpy as np
+from colorama import Fore
 
 from link_bot_notebooks import experiments_util
 
@@ -14,18 +15,20 @@ class LinkBotGP:
 
     def __init__(self):
         """ you have to called either train or load before any of the other methods """
-        self.N = None
-        self.D = None
-        self.P = None
-        self.M = None
+        self.n_data_points = None  # number of data points
+        self.n_inputs = None  # input dimensionality
+        self.n_outputs = None  # output dimensionality
+        self.n_inducing_points = None
+        self.n_state = None
+        self.n_control = None
         self.maximum_training_iterations = None
         self.model_def = None
         self.model = None
 
     def train(self, X, Y, M=100, verbose=True, maximum_training_iterations=100):
-        self.N, self.D = X.shape
-        _, self.P = Y.shape
-        self.M = M  # number of inducing points
+        self.n_data_points, self.n_inputs = X.shape
+        _, self.n_outputs = Y.shape
+        self.n_inducing_points = M  # number of inducing points
         X = X
         Y = Y
 
@@ -35,13 +38,14 @@ class LinkBotGP:
             'initial_hyper_params': {
                 'lengthscales': 1.0
             },
-            'initial_likelihood_variance': [0.1] * self.P
+            'initial_likelihood_variance': [0.1] * self.n_outputs
         }
-        kern_list = [self.model_def['class'](self.D, **self.model_def['initial_hyper_params']) for _ in
-                     range(self.P)]
+        kern_list = [self.model_def['class'](self.n_inputs, **self.model_def['initial_hyper_params']) for _ in
+                     range(self.n_outputs)]
         kernel = mk.SeparateIndependentMok(kern_list)
 
-        Zs = [X[np.random.permutation(self.N)[:self.M], ...].copy() for _ in range(self.P)]
+        Zs = [X[np.random.permutation(self.n_data_points)[:self.n_inducing_points], ...].copy() for _ in
+              range(self.n_outputs)]
         # initialise as list inducing features
         feature_list = [gpf.features.InducingPoints(Z) for Z in Zs]
         # create multi-output features from feature_list
@@ -61,10 +65,12 @@ class LinkBotGP:
 
     def metadata(self):
         return {
-            'N': self.N,
-            'D': self.D,
-            'P': self.P,
-            'M': self.M,
+            'n_data_points': self.n_data_points,
+            'n_inputs': self.n_inputs,
+            'n_outputs': self.n_outputs,
+            'n_states': self.n_outputs,
+            'n_control': self.n_inputs - self.n_outputs,
+            'n_inducing_points': self.n_inducing_points,
             'maximum_training_iterations': self.maximum_training_iterations,
             'kernel_type': self.model_def['class'].__name__,
             'initial_hyper_params': self.model_def['initial_hyper_params'],
@@ -84,3 +90,25 @@ class LinkBotGP:
     def load(self, model_path):
         print(Fore.CYAN + "Loading model from {}".format(model_path) + Fore.RESET)
         self.model = gpf.saver.Saver().load(model_path)
+        self.n_data_points, self.n_inputs = self.model.X.shape
+        self.n_outputs = self.model.Y.shape[1]
+        self.n_inducing_points = self.model.feature.feat_list[0].Z.shape[0]
+        self.n_state = self.n_outputs
+        self.n_control = self.n_inputs - self.n_outputs
+        # load these from the metadata file?
+        self.maximum_training_iterations = None
+        self.model_def = None
+
+    def fwd_act(self, s, u):
+        x_star = np.vstack((s, u.T)).T
+        print(x_star)
+        mu, var = self.model.predict_y(x_star)
+        print(mu)
+        return mu
+
+    def inv_act(self, s, s_target):
+        x_star = np.vstack((s, s_target)).T
+        print(x_star)
+        mu, var = self.model.predict_y(x_star)
+        print(mu)
+        return mu

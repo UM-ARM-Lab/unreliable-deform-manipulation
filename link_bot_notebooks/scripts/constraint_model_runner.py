@@ -14,9 +14,9 @@ from link_bot_notebooks import toy_problem_optimization_common as tpo
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
-    sdf, sdf_gradient, sdf_resolution = tpo.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution, sdf_origin = tpo.load_sdf(args.sdf)
     data = np.load(args.dataset)
-    model = m.ConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, args.N)
+    model = m.ConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
 
     model.setup()
 
@@ -31,9 +31,10 @@ def model_only(args):
     fake_sdf = np.random.randn(W, H).astype(np.float32)
     fake_sdf_grad = np.random.randn(W, H, 2).astype(np.float32)
     fake_sdf_res = np.random.randn(2).astype(np.float32)
+    fake_sdf_origin = np.random.randn(2).astype(np.float32)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = m.ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, 250, args.N)
+    model = m.ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, args.N)
 
     model.init()
 
@@ -47,11 +48,11 @@ def model_only(args):
 
 
 def evaluate(args):
-    sdf, sdf_gradient, sdf_resolution = tpo.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution, sdf_origin = tpo.load_sdf(args.sdf)
     data = np.load(args.dataset)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = m.ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, args.N)
+    model = m.ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
     model.setup()
     return model.evaluate(data)
 
@@ -62,9 +63,10 @@ def show(args):
     fake_sdf = np.random.randn(W, H).astype(np.float32)
     fake_sdf_grad = np.random.randn(W, H, 2).astype(np.float32)
     fake_sdf_res = np.random.randn(2).astype(np.float32)
+    fake_sdf_origin = np.random.randn(2).astype(np.float32)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = m.ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, 250, args.N)
+    model = m.ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, args.N)
     model.setup()
     print(model)
 
@@ -88,7 +90,7 @@ def main():
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=500)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--print-period", "-p", type=int, default=100)
-    train_subparser.add_argument("--save-period", type=int, default=400)
+    train_subparser.add_argument("--save-period", type=int, default=1000)
     train_subparser.add_argument("--random-init", action='store_true')
     train_subparser.set_defaults(func=train)
 
