@@ -71,7 +71,6 @@ class ConstraintModel(base_model.BaseModel):
             R_k_init[N - 2, 0] = 1.0
             R_k_init[N - 1, 1] = 1.0
             k_threshold_init = 0.20
-            print(R_k_init)
         self.R_k = tf.get_variable("R_k", initializer=R_k_init)
         self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
         self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
@@ -137,7 +136,21 @@ class ConstraintModel(base_model.BaseModel):
                 self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
             self.saver = tf.train.Saver(max_to_keep=None)
 
-    def train(self, full_x, epochs, log_path):
+    def split_data(self, full_x, n_test_examples):
+        full_observations = full_x['states'].reshape(-1, self.N)
+        full_k = full_x['constraints'].reshape(-1, 1)
+
+        end_train_idx = int(full_observations.shape[0] - n_test_examples)
+        shuffled_idx = np.random.permutation(full_observations.shape[0])
+        full_observations = full_observations[shuffled_idx]
+        full_k = full_k[shuffled_idx]
+        train_observations = full_observations[:end_train_idx]
+        test_observations = full_observations[end_train_idx:]
+        train_k = full_k[:end_train_idx]
+        test_k = full_k[end_train_idx:]
+        return train_observations, train_k, test_observations, test_k
+
+    def train(self, train_observations, train_k, test_observations, test_k, epochs, log_path):
         interrupted = False
 
         writer = None
@@ -166,16 +179,6 @@ class ConstraintModel(base_model.BaseModel):
             writer.add_graph(self.sess.graph)
 
         try:
-            full_observations = full_x['states'].reshape(-1, self.N)
-            full_k = full_x['constraints'].reshape(-1, 1)
-
-            n_test_examples = 5000
-            end_train_idx = int(full_observations.shape[0] - n_test_examples)
-            np.random.shuffle(full_observations)
-            train_observations = full_observations[:end_train_idx]
-            test_observations = full_observations[end_train_idx:]
-            train_k = full_k[:end_train_idx]
-            test_k = full_k[end_train_idx:]
             train_ops = [self.global_step, self.summaries, self.loss, self.opt]
             test_ops = [self.summaries, self.loss]
             for i in range(epochs):
@@ -210,14 +213,10 @@ class ConstraintModel(base_model.BaseModel):
 
         return interrupted
 
-    def evaluate(self, eval_x, display=True):
-        observations = eval_x['states'].reshape(-1, self.N)
-        k = eval_x['constraints'].reshape(-1, 1)
+    def evaluate(self, observations, k, display=True):
         feed_dict = {self.observations: observations,
-                     self.k_label: k,
-                     }
-        ops = [self.threshold_k, self.constraint_prediction_loss, self.loss,
-               self.constraint_prediction_accuracy]
+                     self.k_label: k}
+        ops = [self.threshold_k, self.constraint_prediction_loss, self.loss, self.constraint_prediction_accuracy]
         threshold_k, k_loss, loss, k_accuracy = self.sess.run(ops, feed_dict=feed_dict)
 
         if display:

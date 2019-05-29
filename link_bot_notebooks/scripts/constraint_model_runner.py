@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import argparse
+from colorama import Fore
 import sys
 import os
 import tensorflow as tf
@@ -20,9 +21,14 @@ def train(args):
 
     model.setup()
 
-    model.train(data, args.epochs, log_path)
+    split_data = model.split_data(data, n_test_examples=5000)
+    train_observations, train_k, test_observations, test_k = split_data
+    model.train(*split_data, args.epochs, log_path)
 
-    model.evaluate(data)
+    print(Fore.GREEN + "\nTrain Evaluation" + Fore.RESET)
+    model.evaluate(train_observations, train_k)
+    print(Fore.GREEN + "\nTest Evaluation" + Fore.RESET)
+    model.evaluate(test_observations, test_k)
 
 
 def model_only(args):
@@ -54,7 +60,12 @@ def evaluate(args):
     args_dict['random_init'] = False
     model = m.ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
     model.setup()
-    return model.evaluate(data)
+
+    # take all the data as test data
+    split_data = model.split_data(data, n_test_examples=-1)
+    train_observations, train_k, test_observations, test_k = split_data
+
+    return model.evaluate(test_observations, test_k)
 
 
 def show(args):
