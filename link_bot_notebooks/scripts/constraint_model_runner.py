@@ -22,13 +22,13 @@ def train(args):
     model.setup()
 
     split_data = model.split_data(data)
-    train_observations, train_k, test_observations, test_k = split_data
+    train_observations, train_k, validation_observations, validation_k = split_data
     model.train(*split_data, args.epochs, log_path)
 
     print(Fore.GREEN + "\nTrain Evaluation" + Fore.RESET)
     model.evaluate(train_observations, train_k)
     print(Fore.GREEN + "\nTest Evaluation" + Fore.RESET)
-    model.evaluate(test_observations, test_k)
+    model.evaluate(validation_observations, validation_k)
 
 
 def model_only(args):
@@ -61,11 +61,11 @@ def evaluate(args):
     model = m.ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
     model.setup()
 
-    # take all the data as test data
-    split_data = model.split_data(data, fraction_test=1.00)
-    train_observations, train_k, test_observations, test_k = split_data
+    # take all the data as validation data
+    split_data = model.split_data(data, fraction_validation=1.00)
+    train_observations, train_k, validation_observations, validation_k = split_data
 
-    return model.evaluate(test_observations, test_k)
+    return model.evaluate(validation_observations, validation_k)
 
 
 def show(args):

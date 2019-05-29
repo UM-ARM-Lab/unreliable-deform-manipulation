@@ -61,30 +61,30 @@ class ConstraintModel(base_model.BaseModel):
         ################################################
         #                 Linear Model                 #
         ################################################
-        if args['random_init']:
-            # RANDOM INIT
-            R_k_init = np.random.randn(N, 2).astype(np.float32) * 1e-1
-            k_threshold_init = np.random.rand() * 1e-1
-        else:
-            # IDEAL INIT
-            R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.1
-            R_k_init[N - 2, 0] = 1.0
-            R_k_init[N - 1, 1] = 1.0
-            k_threshold_init = 0.20
-        self.R_k = tf.get_variable("R_k", initializer=R_k_init)
-        self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
-        self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
+        # if args['random_init']:
+        #     # RANDOM INIT
+        #     R_k_init = np.random.randn(N, 2).astype(np.float32) * 1e-1
+        #     k_threshold_init = np.random.rand() * 1e-1
+        # else:
+        #     # IDEAL INIT
+        #     R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.1
+        #     R_k_init[N - 2, 0] = 1.0
+        #     R_k_init[N - 1, 1] = 1.0
+        #     k_threshold_init = 0.20
+        # self.R_k = tf.get_variable("R_k", initializer=R_k_init)
+        # self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
+        # self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
 
         #############################################
         #                 MLP Model                 #
         #############################################
-        # k_threshold_init = 0.20
-        # self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
-        # self.hidden_layer_dims = [128, 128]
-        # h = self.observations
-        # for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
-        #     h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, name='hidden_layer_{}'.format(layer_idx))
-        # self.hat_latent_k = tf.layers.dense(h, 2, activation=None, name='output_layer')
+        k_threshold_init = 0.20
+        self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
+        self.hidden_layer_dims = [128, 128]
+        h = self.observations
+        for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
+            h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, name='hidden_layer_{}'.format(layer_idx))
+        self.hat_latent_k = tf.layers.dense(h, 2, activation=None, name='output_layer')
 
         #######################################################
         #                 End Model Definition                #
@@ -124,33 +124,47 @@ class ConstraintModel(base_model.BaseModel):
                     else:
                         print("Warning... there is no gradient of the loss with respect to {}".format(var.name))
 
-            tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy)
-            tf.summary.scalar("k_threshold_summary", self.threshold_k)
-            tf.summary.scalar("constraint_prediction_loss_summary", self.constraint_prediction_loss)
-            tf.summary.scalar("loss_summary", self.loss)
+            tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy,
+                              collections=['train'])
+            tf.summary.scalar("k_threshold_summary", self.threshold_k, collections=['train'])
+            tf.summary.scalar("constraint_prediction_loss_summary", self.constraint_prediction_loss,
+                              collections=['train'])
+            tf.summary.scalar("loss_summary", self.loss,
+                              collections=['train'])
 
-            self.summaries = tf.summary.merge_all()
-            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
-            self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-            if args['debug']:
-                self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
-            self.saver = tf.train.Saver(max_to_keep=None)
+        with tf.name_scope("validation"):
+            tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy,
+                              collections=['validation'])
+            tf.summary.scalar("k_threshold_summary", self.threshold_k, collections=['validation'])
+            tf.summary.scalar("constraint_prediction_loss_summary", self.constraint_prediction_loss,
+                              collections=['validation'])
+            tf.summary.scalar("loss_summary", self.loss,
+                              collections=['validation'])
 
-    def split_data(self, full_x, fraction_test=0.90):
+            self.train_summary = tf.summary.merge_all('train')
+            self.validation_summary = tf.summary.merge_all('validation')
+
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
+        self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+        if args['debug']:
+            self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
+        self.saver = tf.train.Saver(max_to_keep=None)
+
+    def split_data(self, full_x, fraction_validation=0.10):
         full_observations = full_x['states'].reshape(-1, self.N)
         full_k = full_x['constraints'].reshape(-1, 1)
 
-        end_train_idx = int(full_observations.shape[0] * fraction_test)
+        end_train_idx = int(full_observations.shape[0] * (1 - fraction_validation))
         shuffled_idx = np.random.permutation(full_observations.shape[0])
         full_observations = full_observations[shuffled_idx]
         full_k = full_k[shuffled_idx]
         train_observations = full_observations[:end_train_idx]
-        test_observations = full_observations[end_train_idx:]
+        validation_observations = full_observations[end_train_idx:]
         train_k = full_k[:end_train_idx]
-        test_k = full_k[end_train_idx:]
-        return train_observations, train_k, test_observations, test_k
+        validation_k = full_k[end_train_idx:]
+        return train_observations, train_k, validation_observations, validation_k
 
-    def train(self, train_observations, train_k, test_observations, test_k, epochs, log_path):
+    def train(self, train_observations, train_k, validation_observations, validation_k, epochs, log_path):
         interrupted = False
 
         writer = None
@@ -179,8 +193,8 @@ class ConstraintModel(base_model.BaseModel):
             writer.add_graph(self.sess.graph)
 
         try:
-            train_ops = [self.global_step, self.summaries, self.loss, self.opt]
-            test_ops = [self.summaries, self.loss]
+            train_ops = [self.global_step, self.train_summary, self.loss, self.opt]
+            validation_ops = [self.validation_summary, self.loss]
             for i in range(epochs):
 
                 batch_idx = np.random.choice(np.arange(train_observations.shape[0]), size=self.args['batch_size'])
@@ -189,19 +203,19 @@ class ConstraintModel(base_model.BaseModel):
 
                 train_feed_dict = {self.observations: train_observations_batch,
                                    self.k_label: train_k_batch}
-                test_feed_dict = {self.observations: test_observations,
-                                  self.k_label: test_k}
+                validation_feed_dict = {self.observations: validation_observations,
+                                        self.k_label: validation_k}
                 step, train_summary, train_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
-                test_summary, test_loss = self.sess.run(test_ops, feed_dict=test_feed_dict)
+                validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
 
                 if 'save_period' in self.args and (step % self.args['save_period'] == 0 or step == 1):
                     if self.args['log'] is not None:
                         writer.add_summary(train_summary, step)
-                        writer.add_summary(test_summary, step)
-                        self.save(full_log_path, loss=test_loss)
+                        writer.add_summary(validation_summary, step)
+                        self.save(full_log_path, loss=validation_loss)
 
                 if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
-                    print('step: {:4d}, train loss: {:8.4f} test loss {:8.4f}'.format(step, train_loss, test_loss))
+                    print('step: {:4d}, train loss: {:8.4f} val loss {:8.4f}'.format(step, train_loss, validation_loss))
 
         except KeyboardInterrupt:
             print("stop!!!")
