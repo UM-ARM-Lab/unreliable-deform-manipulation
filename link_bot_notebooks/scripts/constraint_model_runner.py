@@ -21,7 +21,7 @@ def train(args):
 
     model.setup()
 
-    split_data = model.split_data(data, n_test_examples=5000)
+    split_data = model.split_data(data)
     train_observations, train_k, test_observations, test_k = split_data
     model.train(*split_data, args.epochs, log_path)
 
@@ -62,7 +62,7 @@ def evaluate(args):
     model.setup()
 
     # take all the data as test data
-    split_data = model.split_data(data, n_test_examples=-1)
+    split_data = model.split_data(data, fraction_test=1.00)
     train_observations, train_k, test_observations, test_k = split_data
 
     return model.evaluate(test_observations, test_k)

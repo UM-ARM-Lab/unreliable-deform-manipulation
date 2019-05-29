@@ -67,7 +67,7 @@ class ConstraintModel(base_model.BaseModel):
             k_threshold_init = np.random.rand() * 1e-1
         else:
             # IDEAL INIT
-            R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.0
+            R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.1
             R_k_init[N - 2, 0] = 1.0
             R_k_init[N - 1, 1] = 1.0
             k_threshold_init = 0.20
@@ -136,11 +136,11 @@ class ConstraintModel(base_model.BaseModel):
                 self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
             self.saver = tf.train.Saver(max_to_keep=None)
 
-    def split_data(self, full_x, n_test_examples):
+    def split_data(self, full_x, fraction_test=0.90):
         full_observations = full_x['states'].reshape(-1, self.N)
         full_k = full_x['constraints'].reshape(-1, 1)
 
-        end_train_idx = int(full_observations.shape[0] - n_test_examples)
+        end_train_idx = int(full_observations.shape[0] * fraction_test)
         shuffled_idx = np.random.permutation(full_observations.shape[0])
         full_observations = full_observations[shuffled_idx]
         full_k = full_k[shuffled_idx]
