@@ -100,15 +100,23 @@ class LinkBotGP:
         self.model_def = None
 
     def fwd_act(self, s, u):
-        x_star = np.vstack((s, u.T)).T
-        print(x_star)
+        s = s.T
+        x_star = np.hstack((s, u))
         mu, var = self.model.predict_y(x_star)
-        print(mu)
+        mu = s + mu
         return mu
 
-    def inv_act(self, s, s_target):
+    def inv_act(self, s, s_target, max_v=1.0):
         x_star = np.vstack((s, s_target)).T
-        print(x_star)
         mu, var = self.model.predict_y(x_star)
-        print(mu)
+
+        # TODO: is this a bad thing?
+        u_norm = np.linalg.norm(mu)
+        if u_norm > 1e-9:
+            if u_norm > max_v:
+                scaling = max_v
+            else:
+                scaling = u_norm
+            mu = mu * scaling / u_norm
+
         return mu

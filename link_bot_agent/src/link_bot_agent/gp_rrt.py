@@ -4,6 +4,7 @@ from ompl import control as oc
 import matplotlib.pyplot as plt
 import numpy as np
 from link_bot_agent.gp_directed_control_sampler import GPDirectedControlSampler
+from link_bot_agent.link_bot_goal import LinkBotGoal
 
 
 class GPRRT:
@@ -37,7 +38,7 @@ class GPRRT:
         self.ss.setStatePropagator(oc.StatePropagator(self.si))
 
         self.si.setDirectedControlSamplerAllocator(
-            GPDirectedControlSampler.allocator(self.fwd_gp_model, self.inv_gp_model))
+            GPDirectedControlSampler.allocator(self.fwd_gp_model, self.inv_gp_model, self.max_v))
 
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(False)
@@ -56,15 +57,15 @@ class GPRRT:
         # create start and goal states
         GPDirectedControlSampler.reset()
         start = ob.State(self.state_space)
-        goal = ob.State(self.state_space)
         for i in range(self.n_state):
             start()[i] = numpy_start[i, 0].astype(np.float64)
-            goal()[i] = numpy_goal[i, 0].astype(np.float64)
-
-        self.ss.clear()
         # the threshold on "cost-to-goal" is interpretable here as Euclidean distance
         epsilon = 0.1
-        self.ss.setStartAndGoalStates(start, goal, epsilon)
+        goal = LinkBotGoal(self.si, epsilon, numpy_goal)
+
+        self.ss.clear()
+        self.ss.setStartState(start)
+        self.ss.setGoal(goal)
         try:
             solved = self.ss.solve(self.planner_timeout)
 
@@ -74,15 +75,14 @@ class GPRRT:
             if solved:
                 ompl_path = self.ss.getSolutionPath()
 
-                numpy_controls = np.ndarray((ompl_path.getControlCount(), 1, self.n_control))
-                numpy_states = np.ndarray((ompl_path.getStateCount(), self.n_control, 1))
-                print(numpy_states, numpy_controls)
+                numpy_states = np.ndarray((ompl_path.getStateCount(), self.n_state))
+                numpy_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
                 for i, state in enumerate(ompl_path.getStates()):
-                    for j in range(self.n_control):
+                    for j in range(self.n_state):
                         numpy_states[i, j] = state[j]
-                for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
-                    numpy_controls[i, 0, 0] = control[0]
-                    numpy_controls[i, 0, 1] = control[1]
+                for i, control in enumerate(ompl_path.getControls()):
+                    for j in range(self.n_control):
+                        numpy_controls[i, j] = control[j]
 
                 # Verification
                 # verified = self.verify(numpy_controls, numpy_states)
@@ -96,7 +96,7 @@ class GPRRT:
                     GPDirectedControlSampler.plot(sdf, numpy_start, numpy_goal, numpy_states, numpy_controls,
                                                   self.arena_size)
                     plt.show()
-                    final_error = np.linalg.norm(numpy_states[-1] - numpy_goal)
+                    final_error = np.linalg.norm(numpy_states[-1, 0:2] - numpy_goal)
                     lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in
                                range(1, len(numpy_states))]
                     path_length = np.sum(lengths)

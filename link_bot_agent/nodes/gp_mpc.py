@@ -37,8 +37,8 @@ def common(args, start, max_steps=1e6):
     inv_gp_model.load(args.inv_gp_model)
 
     def sdf_violated(numpy_state):
-        x = numpy_state[0, 0]
-        y = numpy_state[1, 0]
+        x = numpy_state[4, 0]
+        y = numpy_state[5, 0]
         row_col = tpoc.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
         return sdf[row_col] < args.sdf_threshold
 
@@ -70,7 +70,7 @@ def common(args, start, max_steps=1e6):
     # Catch planning failure exception
     try:
         for trial_idx in range(args.n_trials):
-            goal = np.zeros((6, 1))
+            goal = np.zeros((2, 1))
             goal[0, 0] = np.random.uniform(-4.0, 3.0)
             goal[1, 0] = np.random.uniform(-4.0, 4.0)
 
@@ -115,12 +115,12 @@ def common(args, start, max_steps=1e6):
                         break
 
                     # publish the pull command
-                    action_msg.vx = action[0, 0]
-                    action_msg.vy = action[1, 0]
+                    action_msg.vx = action[0]
+                    action_msg.vy = action[1]
                     action_pub.publish(action_msg)
 
                     step = WorldControlRequest()
-                    step.steps = dt / 0.001  # assuming 0.001s of simulation time per step
+                    step.steps = int(dt / 0.001)  # assuming 0.001s of simulation time per step
                     world_control.call(step)  # this will block until stepping is complete
 
                     # check if we are now in collision
@@ -128,7 +128,7 @@ def common(args, start, max_steps=1e6):
                         contacts += 1
 
                     links_state = agent.get_state(get_link_state)
-                    s_next = np.array(links_state).reshape(1, fwd_gp_model.n_inputs)
+                    s_next = np.array(links_state).reshape(1, fwd_gp_model.n_state)
                     true_cost = tpoc.state_cost(s_next, goal)
 
                     if args.pause:
@@ -208,8 +208,8 @@ def main():
     parser.add_argument("--pause", action='store_true')
     parser.add_argument("--plot-plan", action='store_true')
     parser.add_argument("--debug", action='store_true')
-    parser.add_argument("--num-actions", '-T', help="number of actions to execute from the plan", type=int, default=10)
-    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=1.0)
+    parser.add_argument("--num-actions", '-T', help="number of actions to execute from the plan", type=int, default=-1)
+    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=90.0)
     parser.add_argument("--controller", choices=['gurobi', 'ompl-lqr', 'ompl-dual-lqr', 'ompl-gurobi'])
     parser.add_argument("--n-trials", '-n', type=int, default=20)
     parser.add_argument("--sdf-threshold", type=float, help='smallest allowed distance to an obstacle', default=0.20)
