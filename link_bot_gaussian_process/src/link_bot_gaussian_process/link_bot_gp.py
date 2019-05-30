@@ -107,7 +107,8 @@ class LinkBotGP:
         return mu
 
     def inv_act(self, s, s_target, max_v=1.0):
-        x_star = np.vstack((s, s_target)).T
+        s_delta = s_target - s
+        x_star = np.vstack((s, s_delta)).T
         mu, var = self.model.predict_y(x_star)
 
         # TODO: is this a bad thing?
