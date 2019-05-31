@@ -124,16 +124,4 @@ class LinkBotGP:
     def inv_act(self, s, s_target, max_v=1.0):
         x_star = (s_target - s).T
         mu, var = self.model.predict_y(x_star)
-
-        u = np.array([[mu[0, 0] * mu[0, 2], mu[0, 1] * mu[0, 2]]])
-
-        # TODO: is this a bad thing?
-        u_norm = np.linalg.norm(u)
-        if u_norm > 1e-9:
-            if u_norm > max_v:
-                scaling = max_v
-            else:
-                scaling = u_norm
-            mu = mu * scaling / u_norm
-
-        return mu
+        return LinkBotGP.convert_u(mu)

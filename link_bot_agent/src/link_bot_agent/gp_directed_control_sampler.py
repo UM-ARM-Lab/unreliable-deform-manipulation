@@ -46,8 +46,6 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
 
         u = self.inv_gp_model.inv_act(s, s_target, self.max_v)
         # u = self.inv_sample()
-        # this u will be the [cos, sin, mag] representation so we have to convert first
-        u = LinkBotGP.convert_u(u)
         s_next = self.fwd_gp_model.fwd_act(s, u)
 
         for i in range(n_control):

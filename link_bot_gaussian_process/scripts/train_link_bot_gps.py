@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-import csv
 
 import argparse
 from tabulate import tabulate
 
 import gpflow as gpf
+from colorama import Fore
 import numpy as np
 import tensorflow as tf
 
@@ -84,11 +84,14 @@ def main():
 
     # Train
     ###########################################################################
-    gpf.reset_default_graph_and_session()
+    config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=False, per_process_gpu_memory_fraction=0.1))
+    gpf.reset_default_session(config=config)
     fwd_model = link_bot_gp.LinkBotGP()
     inv_model = link_bot_gp.LinkBotGP()
 
+    print("Training forward model")
     fwd_model.train(fwd_train_x, fwd_train_y, verbose=args.verbose)
+    print("Training inverse model")
     inv_model.train(inv_train_x, inv_train_y, verbose=args.verbose)
 
     # Save
