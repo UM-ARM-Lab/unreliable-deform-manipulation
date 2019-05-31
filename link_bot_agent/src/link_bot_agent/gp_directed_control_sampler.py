@@ -1,9 +1,17 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import ompl.util as ou
+from PIL import Image
 from matplotlib.lines import Line2D
 from ompl import control as oc
-from PIL import Image
+
+
+def inv_sample():
+    # v = np.random.uniform(0, 1)
+    v = 1
+    theta = np.random.uniform(-np.pi, np.pi)
+    return np.array([[np.cos(theta) * v, np.sin(theta) * v]])
+
 
 class GPDirectedControlSampler(oc.DirectedControlSampler):
     states_sampled_at = []
@@ -44,7 +52,7 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
             s_target[i, 0] = target_out[i]
 
         # u = self.inv_gp_model.inv_act(s, s_target, self.max_v)
-        u = self.inv_sample()
+        u = inv_sample()
         s_next = self.fwd_gp_model.fwd_act(s, u)
 
         for i in range(n_control):
@@ -95,10 +103,3 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
         ]
 
         plt.legend(custom_lines, ['tail', 'head', 'start', 'goal', 'tail path', 'head path'])
-
-    def inv_sample(self):
-        # v = np.random.uniform(0, 1)
-        # v = 1
-        # theta = np.random.uniform(-np.pi, np.pi)
-        return np.array([[0.0, -1.0]])
-        # return np.array([[np.cos(theta) * v, np.sin(theta) * v]])

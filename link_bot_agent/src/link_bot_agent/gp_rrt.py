@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from link_bot_agent.gp_directed_control_sampler import GPDirectedControlSampler
 from link_bot_agent.link_bot_goal import LinkBotGoal
+from link_bot_gaussian_process import link_bot_gp
 
 
 class GPRRT:
@@ -95,6 +96,8 @@ class GPRRT:
                 if verbose:
                     GPDirectedControlSampler.plot(sdf, numpy_start, numpy_goal, numpy_states, numpy_controls,
                                                   self.arena_size)
+                    particles = link_bot_gp.predict(self.fwd_gp_model, numpy_start.T, numpy_controls)
+                    animation = link_bot_gp.animate_predict(particles)
                     plt.show()
                     final_error = np.linalg.norm(numpy_states[-1, 0:2] - numpy_goal)
                     lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in

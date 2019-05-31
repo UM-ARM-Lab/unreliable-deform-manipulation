@@ -4,11 +4,59 @@ from time import time
 import gpflow as gpf
 import gpflow.multioutput.features as mf
 import gpflow.multioutput.kernels as mk
-from link_bot_gaussian_process import data_reformatting
+import matplotlib.pyplot as plt
 import numpy as np
 from colorama import Fore
+from matplotlib.animation import FuncAnimation
 
+from link_bot_gaussian_process import data_reformatting
 from link_bot_notebooks import experiments_util
+
+
+def predict(fwd_model, initial_x, u_trajectory, steps=None, initial_variance=0.00001):
+    if steps is None:
+        steps = u_trajectory.shape[0]
+
+    x_t = np.copy(initial_x)
+
+    prediction = np.zeros((steps, fwd_model.n_state))
+
+    for t in range(steps):
+        prediction[t] = x_t
+        x_t_relative = data_reformatting.make_relative_to_head(x_t)
+        combined_x_t_particles_relative = np.hstack((x_t_relative, [u_trajectory[t]]))
+
+        mu_delta_x_t_plus_1s, _ = fwd_model.model.predict_y(combined_x_t_particles_relative)
+
+        x_t = x_t + mu_delta_x_t_plus_1s
+
+    return prediction
+
+
+def animate_predict(prediction):
+    T = prediction.shape[0]
+
+    fig = plt.figure(figsize=(10, 10))
+
+    x_0 = prediction[0]
+    x_0_particles_xs = [x_0[0], x_0[2], x_0[4]]
+    x_0_particles_ys = [x_0[1], x_0[3], x_0[5]]
+    line = plt.plot(x_0_particles_xs, x_0_particles_ys, color='black', alpha=0.2)[0]
+
+    plt.xlabel("x (m)")
+    plt.ylabel("y (m)")
+    plt.xlim([-7, 7])
+    plt.ylim([-7, 7])
+
+    def update(t):
+        x_t = prediction[t]
+        x_t_particles_xs = [x_t[0], x_t[2], x_t[4]]
+        x_t_particles_ys = [x_t[1], x_t[3], x_t[5]]
+        line.set_xdata(x_t_particles_xs)
+        line.set_ydata(x_t_particles_ys)
+
+    anim = FuncAnimation(fig, update, frames=T, interval=100)
+    return anim
 
 
 class LinkBotGP:
@@ -36,7 +84,7 @@ class LinkBotGP:
         self.model_def = {
             'class': gpf.kernels.SquaredExponential,
             'initial_hyper_params': {
-                'lengthscales': [1.0]*self.n_inputs
+                'lengthscales': [1.0] * self.n_inputs
             },
             'initial_likelihood_variance': [0.1] * self.n_outputs
         }
@@ -68,8 +116,8 @@ class LinkBotGP:
             'n_data_points': self.n_data_points,
             'n_inputs': self.n_inputs,
             'n_outputs': self.n_outputs,
-            'n_states': self.n_outputs,
-            'n_control': self.n_inputs - self.n_outputs,
+            'n_states': self.n_state,
+            'n_control': self.n_control,
             'n_inducing_points': self.n_inducing_points,
             'maximum_training_iterations': self.maximum_training_iterations,
             'kernel_type': self.model_def['class'].__name__,

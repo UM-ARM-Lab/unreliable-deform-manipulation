@@ -24,7 +24,7 @@ def format_forward_data(data, traj_idx_start=0, traj_idx_end=-1):
     states = data['states'][traj_idx_start:traj_idx_end]
     actions = data['actions'][traj_idx_start:traj_idx_end]
 
-    # compute the delta in world frame
+    # compute the delta
     delta = states[:, 1:] - states[:, :-1]
     # make input data more zero centered by making things relative to the head
     states_relative_to_head = make_relative_to_head(states)

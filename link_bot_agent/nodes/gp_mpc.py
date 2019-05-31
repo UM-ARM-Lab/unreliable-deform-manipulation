@@ -79,10 +79,14 @@ def common(args, start, max_steps=1e6):
             goal[1, 0] = np.random.uniform(-4.0, 4.0)
 
             config = LinkBotConfiguration()
-            config.tail_pose.x = start[0, 0]
-            config.tail_pose.y = start[1, 0]
-            config.tail_pose.theta = np.random.uniform(-0.2, 0.2)
-            config.joint_angles_rad = [np.random.uniform(-0.2, 0.2), 0]
+            # config.tail_pose.x = start[0, 0]
+            # config.tail_pose.y = start[1, 0]
+            # config.tail_pose.theta = np.random.uniform(-0.2, 0.2)
+            # config.joint_angles_rad = [np.random.uniform(-0.2, 0.2), 0]
+            config.tail_pose.x = -2.4194
+            config.tail_pose.y = 0.323
+            config.tail_pose.theta = 1.2766
+            config.joint_angles_rad = [2.54, 0]
             config_pub.publish(config)
             timemod.sleep(0.1)
 
@@ -167,7 +171,7 @@ def common(args, start, max_steps=1e6):
 def test(args):
     start = np.array([[-1], [0], [0], [0], [0], [0]])
     args.n_trials = 1
-    common(args, start, max_steps=1000)
+    common(args, start, max_steps=args.max_steps)
 
 
 def eval(args):
@@ -219,6 +223,7 @@ def main():
 
     subparsers = parser.add_subparsers()
     test_subparser = subparsers.add_parser("test")
+    test_subparser.add_argument('--max-steps', type=int, default=10000)
     test_subparser.set_defaults(func=test)
 
     eval_subparser = subparsers.add_parser("eval")
