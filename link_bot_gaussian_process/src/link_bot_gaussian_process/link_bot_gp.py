@@ -25,7 +25,7 @@ class LinkBotGP:
         self.model_def = None
         self.model = None
 
-    def train(self, X, Y, M=100, verbose=True, maximum_training_iterations=100):
+    def train(self, X, Y, M=100, verbose=True, maximum_training_iterations=300):
         self.n_data_points, self.n_inputs = X.shape
         _, self.n_outputs = Y.shape
         self.n_inducing_points = M  # number of inducing points
