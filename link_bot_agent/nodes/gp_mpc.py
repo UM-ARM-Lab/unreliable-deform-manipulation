@@ -41,8 +41,11 @@ def common(args, start, max_steps=1e6):
     inv_gp_model.load(os.path.join(args.model_dir, 'inv_model'))
 
     def sdf_violated(numpy_state):
+        # true tail selection
         x = numpy_state[4, 0]
         y = numpy_state[5, 0]
+        # learned tail selection
+
         row_col = tpoc.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
         return sdf[row_col] < args.sdf_threshold
 

@@ -161,6 +161,8 @@ class LinkBotGP:
     def convert_triplet_action(u):
         # we should normalize the cos/sin components just because they may not be perfectly normalized
         nu = np.linalg.norm(u[0, :2])
+        if nu < 1e-6:
+            return np.zeros((1, 2))
         return np.array([[u[0, 0] / nu * u[0, 2], u[0, 1] / nu * u[0, 2]]])
 
     def fwd_act(self, s, u):

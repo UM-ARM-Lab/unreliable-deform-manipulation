@@ -40,10 +40,10 @@ def main():
     fwd_test_x = fwd_test_data[3]
     fwd_test_y = fwd_test_data[1]
 
-    inv_train_data = data_reformatting.format_inverse_data(data, train_idx_start, train_idx_end, take_every=10)
+    inv_train_data = data_reformatting.format_inverse_data(data, train_idx_start, train_idx_end)
     inv_train_x = inv_train_data[0]
     inv_train_y = inv_train_data[1]
-    inv_test_data = data_reformatting.format_inverse_data(data, test_idx_start, test_idx_end, take_every=10)
+    inv_test_data = data_reformatting.format_inverse_data(data, test_idx_start, test_idx_end)
     inv_test_x = inv_test_data[0]
     inv_test_y = inv_test_data[1]
 
@@ -55,9 +55,11 @@ def main():
     inv_model = link_bot_gp.LinkBotGP()
 
     print("Training forward model")
-    fwd_model.train(fwd_train_x, fwd_train_y, verbose=args.verbose)
+    fwd_model.train(fwd_train_x, fwd_train_y, verbose=args.verbose, maximum_training_iterations=300,
+                    n_inducing_points=20)
     print("Training inverse model")
-    inv_model.train(inv_train_x, inv_train_y, verbose=args.verbose)
+    inv_model.train(inv_train_x, inv_train_y, verbose=args.verbose, maximum_training_iterations=300,
+                    n_inducing_points=20)
 
     # Save
     ###########################################################################

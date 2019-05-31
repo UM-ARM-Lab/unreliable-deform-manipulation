@@ -147,8 +147,9 @@ class LinearConstraintModel(base_model.BaseModel):
         self.hat_c = tf.einsum('bst,tp,bsp->bs', self.d_to_goal, self.D, self.d_to_goal, name='hat_c')
         self.sdfs = sdf_func(numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, self.sdf_origin_coordinate,
                              self.hat_latent_k, self.P, self.Q)
-        # because the sigmoid is not very sharp (since meters are very large), this doesn't give a very sharp boundary for
-        # the decision between in collision or not. The trade of is this might cause vanishing gradients
+        # because the sigmoid is not very sharp (since meters are very large),
+        # this doesn't give a very sharp boundary for the decision between in collision or not.
+        # The trade of is this might cause vanishing gradients
         self.hat_k = 100 * (self.threshold_k - self.sdfs)
         self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32, name="hat_k_violated")
         _, self.constraint_prediction_accuracy = tf.metrics.accuracy(labels=self.k_label,
