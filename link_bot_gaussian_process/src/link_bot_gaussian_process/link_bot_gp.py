@@ -25,10 +25,10 @@ class LinkBotGP:
         self.model_def = None
         self.model = None
 
-    def train(self, X, Y, M=100, verbose=True, maximum_training_iterations=300):
+    def train(self, X, Y, n_inducing_points=100, verbose=True, maximum_training_iterations=300):
         self.n_data_points, self.n_inputs = X.shape
         _, self.n_outputs = Y.shape
-        self.n_inducing_points = M  # number of inducing points
+        self.n_inducing_points = n_inducing_points  # number of inducing points
         X = X
         Y = Y
 
@@ -110,18 +110,20 @@ class LinkBotGP:
         self.model_def = None
 
     @staticmethod
-    def convert_u(u):
-        return np.array([[u[0, 0] * u[0, 2], u[0, 1] * u[0, 2]]])
+    def convert_triplet_action(u):
+        # we should normalize the cos/sin components just because they may not be perfectly normalized
+        nu = np.linalg.norm(u[0, :2])
+        return np.array([[u[0, 0] / nu * u[0, 2], u[0, 1] / nu * u[0, 2]]])
 
     def fwd_act(self, s, u):
         s = s.T
         s_relative = data_reformatting.make_relative_to_head(s)
         x_star = np.hstack((s_relative, u))
-        mu, var = self.model.predict_y(x_star)
-        mu = s + mu
-        return mu
+        delta_mu, _ = self.model.predict_y(x_star)
+        s_next = s + delta_mu
+        return s_next
 
     def inv_act(self, s, s_target, max_v=1.0):
         x_star = (s_target - s).T
-        mu, var = self.model.predict_y(x_star)
-        return LinkBotGP.convert_u(mu)
+        triplet_action, _ = self.model.predict_y(x_star)
+        return LinkBotGP.convert_triplet_action(triplet_action)

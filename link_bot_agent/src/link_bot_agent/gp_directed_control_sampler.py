@@ -3,8 +3,7 @@ import numpy as np
 import ompl.util as ou
 from matplotlib.lines import Line2D
 from ompl import control as oc
-
-from link_bot_gaussian_process.link_bot_gp import LinkBotGP
+from PIL import Image
 
 class GPDirectedControlSampler(oc.DirectedControlSampler):
     states_sampled_at = []
@@ -44,8 +43,8 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
             s[i, 0] = state[i]
             s_target[i, 0] = target_out[i]
 
-        u = self.inv_gp_model.inv_act(s, s_target, self.max_v)
-        # u = self.inv_sample()
+        # u = self.inv_gp_model.inv_act(s, s_target, self.max_v)
+        u = self.inv_sample()
         s_next = self.fwd_gp_model.fwd_act(s, u)
 
         for i in range(n_control):
@@ -65,8 +64,9 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
     @classmethod
     def plot(cls, sdf, start, goal, path, controls, arena_size):
         plt.figure()
-
-        plt.imshow(np.flipud(sdf.T), extent=[-arena_size, arena_size, -arena_size, arena_size])
+        img = Image.fromarray(np.uint8(np.flipud(sdf.T) * 128))
+        small_sdf = img.resize((100, 100))
+        plt.imshow(small_sdf, extent=[-arena_size, arena_size, -arena_size, arena_size])
 
         for s in cls.states_sampled_at:
             # draw the configuration of the rope
@@ -98,6 +98,7 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
 
     def inv_sample(self):
         # v = np.random.uniform(0, 1)
-        v = 1
-        theta = np.random.uniform(-np.pi, np.pi)
-        return np.array([[np.cos(theta) * v, np.sin(theta) * v]])
+        # v = 1
+        # theta = np.random.uniform(-np.pi, np.pi)
+        return np.array([[0.0, -1.0]])
+        # return np.array([[np.cos(theta) * v, np.sin(theta) * v]])
