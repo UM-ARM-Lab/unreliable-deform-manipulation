@@ -19,6 +19,7 @@ from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import toy_problem_optimization_common as tpoc
+import gpflow as gpf
 
 dt = 0.1
 success_dist = 0.10
@@ -26,15 +27,18 @@ in_contact = False
 
 
 def common(args, start, max_steps=1e6):
+    config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=False, per_process_gpu_memory_fraction=0.01))
+    gpf.reset_default_session(config=config)
+
     max_v = 1
     sdf, sdf_gradient, sdf_resolution, sdf_origin = tpoc.load_sdf(args.sdf)
 
     args_dict = vars(args)
     args_dict['random_init'] = False
     fwd_gp_model = link_bot_gp.LinkBotGP()
-    fwd_gp_model.load(args.fwd_gp_model)
+    fwd_gp_model.load(os.path.join(args.model_dir, 'fwd_model'))
     inv_gp_model = link_bot_gp.LinkBotGP()
-    inv_gp_model.load(args.inv_gp_model)
+    inv_gp_model.load(os.path.join(args.model_dir, 'inv_model'))
 
     def sdf_violated(numpy_state):
         x = numpy_state[4, 0]
@@ -199,8 +203,7 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("fwd_gp_model", help="load this saved forward model file")
-    parser.add_argument("inv_gp_model", help="load this saved inverse model file")
+    parser.add_argument("model_dir", help="load this saved forward model file")
     parser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     parser.add_argument("--model-name", '-m', default="link_bot")
     parser.add_argument("--seed", '-s', type=int, default=2)

@@ -4,6 +4,7 @@ import ompl.util as ou
 from matplotlib.lines import Line2D
 from ompl import control as oc
 
+from link_bot_gaussian_process.link_bot_gp import LinkBotGP
 
 class GPDirectedControlSampler(oc.DirectedControlSampler):
     states_sampled_at = []
@@ -43,8 +44,10 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
             s[i, 0] = state[i]
             s_target[i, 0] = target_out[i]
 
-        # u = self.inv_gp_model.inv_act(s, s_target, self.max_v)
-        u = self.inv_sample()
+        u = self.inv_gp_model.inv_act(s, s_target, self.max_v)
+        # u = self.inv_sample()
+        # this u will be the [cos, sin, mag] representation so we have to convert first
+        u = LinkBotGP.convert_u(u)
         s_next = self.fwd_gp_model.fwd_act(s, u)
 
         for i in range(n_control):
@@ -85,7 +88,6 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
         plt.axis("equal")
 
         custom_lines = [
-            # Line2D([0], [0], color='k', lw=1, alpha=0.1),
             Line2D([0], [0], color='r', lw=1),
             Line2D([0], [0], color='orange', lw=1),
             Line2D([0], [0], color='y', lw=1),

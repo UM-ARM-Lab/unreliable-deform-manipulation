@@ -18,6 +18,15 @@ def point_to_sdf_idx(x, y, resolution, sdf_origin):
     return row, col
 
 
+def yaw_diff(a, b):
+    diff = a - b
+    greater_indeces = np.argwhere(diff > np.pi)
+    diff[greater_indeces] = diff[greater_indeces] - 2 * np.pi
+    less_indeces = np.argwhere(diff < -np.pi)
+    diff[less_indeces] = diff[less_indeces] + 2 * np.pi
+    return diff
+
+
 def load_sdf(filename):
     npz = np.load(filename)
     sdf = npz['sdf']

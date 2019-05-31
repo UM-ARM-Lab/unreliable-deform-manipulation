@@ -4,7 +4,7 @@ from time import time
 import gpflow as gpf
 import gpflow.multioutput.features as mf
 import gpflow.multioutput.kernels as mk
-import matplotlib.pyplot as plt
+from link_bot_gaussian_process import data_reformatting
 import numpy as np
 from colorama import Fore
 
@@ -36,7 +36,7 @@ class LinkBotGP:
         self.model_def = {
             'class': gpf.kernels.SquaredExponential,
             'initial_hyper_params': {
-                'lengthscales': 1.0
+                'lengthscales': [1.0]*self.n_inputs
             },
             'initial_likelihood_variance': [0.1] * self.n_outputs
         }
@@ -77,14 +77,24 @@ class LinkBotGP:
             'initial_likelihood_variance': self.model_def['initial_likelihood_variance'],
         }
 
-    def save(self):
+    def save(self, log_path, model_name):
         saver = gpf.saver.Saver()
-        log_path = experiments_util.experiment_name('separate_independent', 'gpf')
+
         full_log_path = os.path.join(os.getcwd(), 'log_data', log_path)
+
         experiments_util.make_log_dir(full_log_path)
-        experiments_util.write_metadata(self.metadata(), log_path)
-        model_path = os.path.join(full_log_path, 'model')
+        experiments_util.write_metadata(self.metadata(), model_name + '-metadata.json', log_path)
+        model_path = os.path.join(full_log_path, model_name)
         print(Fore.CYAN + "Saving model to {}".format(model_path) + Fore.RESET)
+
+        if os.path.exists(model_path):
+            response = input("Do you want to overwrite {}? [y/n]".format(model_path))
+            if 'y' in response:
+                os.remove(model_path)
+            else:
+                print(Fore.YELLOW + "Answered no - aborting." + Fore.RESET)
+                return
+
         saver.save(model_path, self.model)
 
     def load(self, model_path):
@@ -99,20 +109,26 @@ class LinkBotGP:
         self.maximum_training_iterations = None
         self.model_def = None
 
+    @staticmethod
+    def convert_u(u):
+        return np.array([[u[0, 0] * u[0, 2], u[0, 1] * u[0, 2]]])
+
     def fwd_act(self, s, u):
         s = s.T
-        x_star = np.hstack((s, u))
+        s_relative = data_reformatting.make_relative_to_head(s)
+        x_star = np.hstack((s_relative, u))
         mu, var = self.model.predict_y(x_star)
         mu = s + mu
         return mu
 
     def inv_act(self, s, s_target, max_v=1.0):
-        s_delta = s_target - s
-        x_star = np.vstack((s, s_delta)).T
+        x_star = (s_target - s).T
         mu, var = self.model.predict_y(x_star)
 
+        u = np.array([[mu[0, 0] * mu[0, 2], mu[0, 1] * mu[0, 2]]])
+
         # TODO: is this a bad thing?
-        u_norm = np.linalg.norm(mu)
+        u_norm = np.linalg.norm(u)
         if u_norm > 1e-9:
             if u_norm > max_v:
                 scaling = max_v
