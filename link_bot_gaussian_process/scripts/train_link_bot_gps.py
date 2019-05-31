@@ -75,10 +75,10 @@ def main():
     fwd_test_x = fwd_test_data[3]
     fwd_test_y = fwd_test_data[1]
 
-    inv_train_data = data_reformatting.format_inverse_data(data, train_idx_start, train_idx_end)
+    inv_train_data = data_reformatting.format_inverse_data(data, train_idx_start, train_idx_end, take_every=10)
     inv_train_x = inv_train_data[0]
     inv_train_y = inv_train_data[1]
-    inv_test_data = data_reformatting.format_inverse_data(data, test_idx_start, test_idx_end)
+    inv_test_data = data_reformatting.format_inverse_data(data, test_idx_start, test_idx_end, take_every=10)
     inv_test_x = inv_test_data[0]
     inv_test_y = inv_test_data[1]
 
@@ -106,7 +106,7 @@ def main():
     headers = ['error metric', 'min', 'max', 'mean', 'median', 'std']
     aggregate_metrics = np.vstack((fwd_model_error_metrics(fwd_model, fwd_test_x, fwd_test_y),
                                    inv_model_error_metrics(inv_model, inv_test_x, inv_test_y)))
-    table = tabulate(aggregate_metrics, headers=headers, tablefmt='github', floatfmt='2.4f')
+    table = tabulate(aggregate_metrics, headers=headers, tablefmt='github', floatfmt='6.3f')
     print(table)
     with open("metrics.md", 'w') as f:
         f.writelines(table)
