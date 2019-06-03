@@ -80,11 +80,11 @@ class ConstraintModel(base_model.BaseModel):
         ################################################
         if args['random_init']:
             # RANDOM INIT
-            alphas_init = np.random.randn(3).astype(np.float32) * 1e-1
+            alphas_init = np.random.randn(3).astype(np.float32)
             k_threshold_init = np.random.rand() * 1e-1
         else:
             # IDEAL INIT
-            alphas_init = np.array([1, 0, 0]).astype(np.float32)
+            alphas_init = np.array([0, 1, 1]).astype(np.float32)
             k_threshold_init = 0.20
         self.alphas = tf.get_variable("R_k", initializer=alphas_init)
         alpha_blocks = []
