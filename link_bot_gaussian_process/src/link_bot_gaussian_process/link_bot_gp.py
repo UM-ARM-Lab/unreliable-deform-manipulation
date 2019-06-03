@@ -160,6 +160,7 @@ class LinkBotGP:
     @staticmethod
     def convert_triplet_action(u):
         # we should normalize the cos/sin components just because they may not be perfectly normalized
+        u = np.atleast_2d(u)
         nu = np.linalg.norm(u[0, :2])
         if nu < 1e-6:
             return np.zeros((1, 2))
@@ -174,6 +175,10 @@ class LinkBotGP:
         return s_next
 
     def inv_act(self, s, s_target, max_v=1.0):
-        x_star = (s_target - s).T
-        triplet_action, _ = self.model.predict_y(x_star)
-        return LinkBotGP.convert_triplet_action(triplet_action)
+        delta = (s_target - s).T
+        head_delta_mag = np.linalg.norm(delta[:, 4:6], axis=1, keepdims=True)
+        x_star = np.concatenate((delta, head_delta_mag), axis=1)
+        output, _ = self.model.predict_y(x_star)
+        triplet_action = output[0, :3]
+        pred_n_steps = output[0, 3]
+        return LinkBotGP.convert_triplet_action(triplet_action), pred_n_steps

@@ -51,14 +51,18 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
             s[i, 0] = state[i]
             s_target[i, 0] = target_out[i]
 
-        u = self.inv_gp_model.inv_act(s, s_target, self.max_v)
+        u, duration_steps_float = self.inv_gp_model.inv_act(s, s_target, self.max_v)
         # u = inv_sample()
-        s_next = self.fwd_gp_model.fwd_act(s, u)
+        # these are all horrible hacks
+        duration_steps = max(int(duration_steps_float), 1)
+        print(duration_steps)
+        for i in range(duration_steps):
+            s_next = self.fwd_gp_model.fwd_act(s, u)
+            s = s_next
 
         GPDirectedControlSampler.states_sampled_at.append(s)
 
         # check validity
-        duration_steps = 1
         if not self.si.isValid(target_out):
             duration_steps = 0
 

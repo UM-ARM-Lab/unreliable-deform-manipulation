@@ -58,9 +58,9 @@ class ConstraintModel(base_model.BaseModel):
         self.k_label_int = tf.cast(self.k_label, tf.int32)
         self.hidden_layer_dims = None
 
-        ################################################
-        #                 Linear Model                 #
-        ################################################
+        ##############################################
+        #             Full Linear Model              #
+        ##############################################
         # if args['random_init']:
         #     # RANDOM INIT
         #     R_k_init = np.random.randn(N, 2).astype(np.float32) * 1e-1
@@ -75,16 +75,36 @@ class ConstraintModel(base_model.BaseModel):
         # self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
         # self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
 
+        ################################################
+        #           Linear Combination Model           #
+        ################################################
+        if args['random_init']:
+            # RANDOM INIT
+            alphas_init = np.random.randn(3).astype(np.float32) * 1e-1
+            k_threshold_init = np.random.rand() * 1e-1
+        else:
+            # IDEAL INIT
+            alphas_init = np.array([1, 0, 0]).astype(np.float32)
+            k_threshold_init = 0.20
+        self.alphas = tf.get_variable("R_k", initializer=alphas_init)
+        alpha_blocks = []
+        for alpha in tf.unstack(self.alphas):
+            alpha_blocks.append(tf.linalg.tensor_diag([alpha, alpha]))
+        self.alpha_blocks = tf.concat(alpha_blocks, axis=0)
+        self.R_k = tf.stack(self.alpha_blocks, axis=0)
+        self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
+        self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
+
         #############################################
         #                 MLP Model                 #
         #############################################
-        k_threshold_init = 0.20
-        self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
-        self.hidden_layer_dims = [128, 128]
-        h = self.observations
-        for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
-            h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, name='hidden_layer_{}'.format(layer_idx))
-        self.hat_latent_k = tf.layers.dense(h, 2, activation=None, name='output_layer')
+        # k_threshold_init = 0.20
+        # self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
+        # self.hidden_layer_dims = [128, 128]
+        # h = self.observations
+        # for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
+        #     h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, name='hidden_layer_{}'.format(layer_idx))
+        # self.hat_latent_k = tf.layers.dense(h, 2, activation=None, name='output_layer')
 
         #######################################################
         #                 End Model Definition                #
@@ -212,6 +232,7 @@ class ConstraintModel(base_model.BaseModel):
                     if self.args['log'] is not None:
                         writer.add_summary(train_summary, step)
                         writer.add_summary(validation_summary, step)
+                        print(self.sess.run(self.R_k))
                         self.save(full_log_path, loss=validation_loss)
 
                 if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
