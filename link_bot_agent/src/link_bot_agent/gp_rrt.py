@@ -1,10 +1,12 @@
 from ompl import base as ob
 from ompl import control as oc
 
+from time import time
 import matplotlib.pyplot as plt
 import numpy as np
-from link_bot_agent.gp_directed_control_sampler import GPDirectedControlSampler
+from link_bot_agent.gp_directed_control_sampler import GPDirectedControlSampler, plot
 from link_bot_agent.link_bot_goal import LinkBotGoal
+from link_bot_agent import ompl_util
 from link_bot_gaussian_process import link_bot_gp
 
 
@@ -47,22 +49,21 @@ class GPRRT:
 
     def isStateValid(self, state):
         # check if our model predicts that constraints are violated in this state
-        numpy_state = np.ndarray((self.n_state, 1))
+        np_state = np.ndarray((1, self.n_state))
         for i in range(self.n_state):
-            numpy_state[i, 0] = state[i]
-        constraint_violated = self.constraint_violated(numpy_state)
+            np_state[0, i] = state[i]
+        constraint_violated = self.constraint_violated(np_state)
         valid = self.state_space.satisfiesBounds(state) and not constraint_violated
         return valid
 
-    def plan(self, numpy_start, numpy_goal, sdf, verbose=False):
+    def plan(self, np_start, np_goal, sdf, verbose=False):
         # create start and goal states
-        GPDirectedControlSampler.reset()
         start = ob.State(self.state_space)
         for i in range(self.n_state):
-            start()[i] = numpy_start[i, 0].astype(np.float64)
+            start()[i] = np_start[0, i].astype(np.float64)
         # the threshold on "cost-to-goal" is interpretable here as Euclidean distance
         epsilon = 0.1
-        goal = LinkBotGoal(self.si, epsilon, numpy_goal)
+        goal = LinkBotGoal(self.si, epsilon, np_goal)
 
         self.ss.clear()
         self.ss.setStartState(start)
@@ -76,45 +77,50 @@ class GPRRT:
             if solved:
                 ompl_path = self.ss.getSolutionPath()
 
-                numpy_states = np.ndarray((ompl_path.getStateCount(), self.n_state))
-                numpy_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
+                np_states = np.ndarray((ompl_path.getStateCount(), self.n_state))
+                np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
+                np_durations = np.ndarray(ompl_path.getControlCount())
                 for i, state in enumerate(ompl_path.getStates()):
                     for j in range(self.n_state):
-                        numpy_states[i, j] = state[j]
-                for i, control in enumerate(ompl_path.getControls()):
+                        np_states[i, j] = state[j]
+                for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
+                    np_durations[i] = duration
                     for j in range(self.n_control):
-                        numpy_controls[i, j] = control[j]
+                        np_controls[i, j] = control[j]
+                np_duration_steps_int = (np_durations / self.dt).astype(np.int)
 
                 # Verification
-                # verified = self.verify(numpy_controls, numpy_states)
+                # verified = self.verify(np_controls, np_states)
                 # if not verified:
                 #     print("ERROR! NOT VERIFIED!")
 
                 # SMOOTHING
-                # numpy_states, numpy_controls = self.smooth(numpy_states, numpy_controls, verbose)
+                # np_states, np_controls = self.smooth(np_states, np_controls, verbose)
 
                 if verbose:
-                    GPDirectedControlSampler.plot(sdf, numpy_start, numpy_goal, numpy_states, numpy_controls,
-                                                  self.arena_size)
-                    particles = link_bot_gp.predict(self.fwd_gp_model, numpy_start.T, numpy_controls)
-                    animation = link_bot_gp.animate_predict(particles)
+                    planner_data = ob.PlannerData(self.si)
+                    self.planner.getPlannerData(planner_data)
+                    plot(planner_data, sdf, np_start, np_goal, np_states, np_controls, self.arena_size)
+                    particles = link_bot_gp.predict(self.fwd_gp_model, np_start, np_controls, np_duration_steps_int)
+                    animation = link_bot_gp.animate_predict(particles, sdf, self.arena_size)
+                    animation.save('gp_mpc_{}.gif'.format(int(time())), writer='imagemagick', fps=10)
                     plt.show()
-                    final_error = np.linalg.norm(numpy_states[-1, 0:2] - numpy_goal)
-                    lengths = [np.linalg.norm(numpy_states[i] - numpy_states[i - 1]) for i in
-                               range(1, len(numpy_states))]
+                    final_error = np.linalg.norm(np_states[-1, 0:2] - np_goal)
+                    lengths = [np.linalg.norm(np_states[i] - np_states[i - 1]) for i in range(1, len(np_states))]
                     path_length = np.sum(lengths)
-                    duration = self.dt * len(numpy_states)
+                    duration = self.dt * len(np_states)
                     print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
-                        final_error, path_length, len(numpy_states), duration))
-                return numpy_controls, numpy_states
+                        final_error, path_length, len(np_states), duration))
+                np_controls_flat = ompl_util.flatten_plan(np_controls, np_duration_steps_int)
+                return np_controls_flat, np_states
             else:
                 raise RuntimeError("No Solution found from {} to {}".format(start, goal))
         except RuntimeError:
             return None, None
 
-    def smooth(self, numpy_states, numpy_controls, iters=50, verbose=False):
-        new_states = list(numpy_states)
-        new_controls = list(numpy_controls)
+    def smooth(self, np_states, np_controls, iters=50, verbose=False):
+        new_states = list(np_states)
+        new_controls = list(np_controls)
         shortcut_iter = 0
         shortcut_successes = 0
         while shortcut_iter < iters:
@@ -143,10 +149,10 @@ class GPRRT:
         if verbose:
             print("{}/{} shortcuts succeeded".format(shortcut_successes, shortcut_iter))
 
-        numpy_states = np.array(new_states)
-        numpy_controls = np.array(new_controls)
+        np_states = np.array(new_states)
+        np_controls = np.array(new_controls)
 
-        return numpy_states, numpy_controls
+        return np_states, np_controls
 
     def verify(self, controls, ss):
         s = ss[0]

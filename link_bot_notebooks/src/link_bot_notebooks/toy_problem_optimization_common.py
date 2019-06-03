@@ -37,7 +37,7 @@ def load_sdf(filename):
 
 
 def state_cost(s, goal):
-    return np.linalg.norm(s[0:2] - goal[0:2])
+    return np.linalg.norm(s[0, 0:2] - goal[0, 0:2])
 
 
 class LinearStateSpaceModelWithQuadraticCost:

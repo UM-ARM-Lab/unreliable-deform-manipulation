@@ -91,6 +91,7 @@ def main():
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("model-type", choices=[str(t) for t in m.ConstraintModelType])
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")

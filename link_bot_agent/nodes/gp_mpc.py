@@ -19,6 +19,7 @@ from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import toy_problem_optimization_common as tpoc
+from link_bot_notebooks.constraint_model import ConstraintModel
 import gpflow as gpf
 
 dt = 0.1
@@ -36,18 +37,30 @@ def common(args, start, max_steps=1e6):
     args_dict = vars(args)
     args_dict['random_init'] = False
     fwd_gp_model = link_bot_gp.LinkBotGP()
-    fwd_gp_model.load(os.path.join(args.model_dir, 'fwd_model'))
+    fwd_gp_model.load(os.path.join(args.gp_model_dir, 'fwd_model'))
     inv_gp_model = link_bot_gp.LinkBotGP()
     inv_gp_model.load(os.path.join(args.model_dir, 'inv_model'))
 
-    def sdf_violated(numpy_state):
-        # true tail selection
-        x = numpy_state[4, 0]
-        y = numpy_state[5, 0]
+    args_dict = dict(args)
+    constraint_model = ConstraintModel(args_dict, )
+    constraint_model.
+
+    def sdf_violated(np_state):
+        # This should be loaded from the learned constraint model
+        R_k = np.array([[0, 0],
+                        [0, 0],
+                        [0, 0],
+                        [0, 0],
+                        [1, 0],
+                        [0, 1]])
+        pt = np_state @ R_k
+        x = pt[0, 0]
+        y = pt[0, 1]
         # learned tail selection
 
         row_col = tpoc.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
-        return sdf[row_col] < args.sdf_threshold
+        violated = sdf[row_col] < args.sdf_threshold
+        return violated
 
     rrt = gp_rrt.GPRRT(fwd_gp_model, inv_gp_model, sdf_violated, dt, max_v, args.planner_timeout)
 
@@ -77,19 +90,19 @@ def common(args, start, max_steps=1e6):
     # Catch planning failure exception
     try:
         for trial_idx in range(args.n_trials):
-            goal = np.zeros((2, 1))
+            goal = np.zeros((1, 2))
             goal[0, 0] = np.random.uniform(-4.0, 3.0)
-            goal[1, 0] = np.random.uniform(-4.0, 4.0)
+            goal[0, 1] = np.random.uniform(-4.0, 4.0)
 
             config = LinkBotConfiguration()
-            # config.tail_pose.x = start[0, 0]
-            # config.tail_pose.y = start[1, 0]
-            # config.tail_pose.theta = np.random.uniform(-0.2, 0.2)
-            # config.joint_angles_rad = [np.random.uniform(-0.2, 0.2), 0]
-            config.tail_pose.x = -2.4194
-            config.tail_pose.y = 0.323
-            config.tail_pose.theta = 1.2766
-            config.joint_angles_rad = [2.54, 0]
+            config.tail_pose.x = start[0, 0]
+            config.tail_pose.y = start[0, 1]
+            config.tail_pose.theta = np.random.uniform(-0.2, 0.2)
+            config.joint_angles_rad = [np.random.uniform(-0.2, 0.2), 0]
+            # config.tail_pose.x = -2.4194
+            # config.tail_pose.y = 0.323
+            # config.tail_pose.theta = 1.2766
+            # config.joint_angles_rad = [2.54, 0]
             config_pub.publish(config)
             timemod.sleep(0.1)
 
@@ -97,13 +110,13 @@ def common(args, start, max_steps=1e6):
             start_marker.pose.position.x = config.tail_pose.x
             start_marker.pose.position.y = config.tail_pose.y
             goal_marker.pose.position.x = goal[0, 0]
-            goal_marker.pose.position.y = goal[1, 0]
+            goal_marker.pose.position.y = goal[0, 1]
             markers.publish(goal_marker)
             markers.publish(start_marker)
 
             if args.verbose:
                 print("start: {}, {}".format(config.tail_pose.x, config.tail_pose.y))
-                print("goal: {}, {}".format(goal[0, 0], goal[1, 0]))
+                print("goal: {}, {}".format(goal[0, 0], goal[0, 1]))
 
             min_true_cost = 1e9
             step_idx = 0
@@ -114,7 +127,7 @@ def common(args, start, max_steps=1e6):
             start_time = timemod.time()
             while step_idx < max_steps and not done:
                 s = agent.get_state(get_link_state)
-                s = np.array(s).reshape((fwd_gp_model.n_state, 1))
+                s = np.array(s).reshape((1, fwd_gp_model.n_state))
                 planned_actions, _ = rrt.plan(s, goal, sdf, args.verbose)
 
                 if planned_actions is None:
@@ -172,14 +185,14 @@ def common(args, start, max_steps=1e6):
 
 
 def test(args):
-    start = np.array([[-1], [0], [0], [0], [0], [0]])
+    start = np.array([[-1, 0, 0, 0, 0, 0]])
     args.n_trials = 1
     common(args, start, max_steps=args.max_steps)
 
 
 def eval(args):
     stats_filename = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(timemod.time())))
-    start = np.array([[-1], [0], [0], [0], [0], [0]])
+    start = np.array([[-1, 0, 0, 0, 0, 0]])
 
     min_costs, execution_times, nums_contacts, num_fails, num_successes = common(args, start, 200)
 
@@ -210,7 +223,8 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("model_dir", help="load this saved forward model file")
+    parser.add_argument("gp_model_dir", help="load this saved forward model file")
+    parser.add_argument("tf_constraint_model", help="constraint model checkpoint")
     parser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     parser.add_argument("--model-name", '-m', default="link_bot")
     parser.add_argument("--seed", '-s', type=int, default=2)

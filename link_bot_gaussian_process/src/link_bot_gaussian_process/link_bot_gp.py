@@ -6,6 +6,7 @@ import gpflow.multioutput.features as mf
 import gpflow.multioutput.kernels as mk
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
 from colorama import Fore
 from matplotlib.animation import FuncAnimation
 
@@ -13,18 +14,25 @@ from link_bot_gaussian_process import data_reformatting
 from link_bot_notebooks import experiments_util
 
 
-def predict(fwd_model, initial_x, u_trajectory, steps=None, initial_variance=0.00001):
-    if steps is None:
-        steps = u_trajectory.shape[0]
+def predict(fwd_model, np_state, np_controls, np_duration_steps_int, steps=None, initial_variance=0.00001):
+    # flatten and combine np_controls and durations
+    np_controls_flat = []
+    for control, duration in zip(np_controls, np_duration_steps_int):
+        for i in range(duration):
+            np_controls_flat.append(control)
+    np_controls_flat = np.array(np_controls_flat)
 
-    x_t = np.copy(initial_x)
+    if steps is None:
+        steps = np_controls_flat.shape[0]
+
+    x_t = np.copy(np_state)
 
     prediction = np.zeros((steps, fwd_model.n_state))
 
     for t in range(steps):
         prediction[t] = x_t
         x_t_relative = data_reformatting.make_relative_to_head(x_t)
-        combined_x_t_particles_relative = np.hstack((x_t_relative, [u_trajectory[t]]))
+        combined_x_t_particles_relative = np.hstack((x_t_relative, [np_controls_flat[t]]))
 
         mu_delta_x_t_plus_1s, _ = fwd_model.model.predict_y(combined_x_t_particles_relative)
 
@@ -33,10 +41,14 @@ def predict(fwd_model, initial_x, u_trajectory, steps=None, initial_variance=0.0
     return prediction
 
 
-def animate_predict(prediction):
+def animate_predict(prediction, sdf, arena_size):
     T = prediction.shape[0]
 
     fig = plt.figure(figsize=(10, 10))
+    max = np.max(np.flipud(sdf.T))
+    img = Image.fromarray(np.uint8(np.flipud(sdf.T) / max * 256))
+    small_sdf = img.resize((50, 50))
+    plt.imshow(small_sdf, extent=[-arena_size, arena_size, -arena_size, arena_size])
 
     x_0 = prediction[0]
     x_0_particles_xs = [x_0[0], x_0[2], x_0[4]]
@@ -45,8 +57,8 @@ def animate_predict(prediction):
 
     plt.xlabel("x (m)")
     plt.ylabel("y (m)")
-    plt.xlim([-7, 7])
-    plt.ylim([-7, 7])
+    plt.xlim([-arena_size - 1, arena_size + 1])
+    plt.ylim([-arena_size - 1, arena_size + 1])
 
     def update(t):
         x_t = prediction[t]
@@ -167,18 +179,24 @@ class LinkBotGP:
         return np.array([[u[0, 0] / nu * u[0, 2], u[0, 1] / nu * u[0, 2]]])
 
     def fwd_act(self, s, u):
-        s = s.T
         s_relative = data_reformatting.make_relative_to_head(s)
         x_star = np.hstack((s_relative, u))
         delta_mu, _ = self.model.predict_y(x_star)
+        # delta_mu = 0.1 * np.array([u[0, 0], u[0, 1], u[0, 0], u[0, 1], u[0, 0], u[0, 1]])
         s_next = s + delta_mu
         return s_next
 
     def inv_act(self, s, s_target, max_v=1.0):
-        delta = (s_target - s).T
-        head_delta_mag = np.linalg.norm(delta[:, 4:6], axis=1, keepdims=True)
-        x_star = np.concatenate((delta, head_delta_mag), axis=1)
-        output, _ = self.model.predict_y(x_star)
-        triplet_action = output[0, :3]
-        pred_n_steps = output[0, 3]
-        return LinkBotGP.convert_triplet_action(triplet_action), pred_n_steps
+        # delta = s_target - s
+        # head_delta_mag = np.linalg.norm(delta[:, 4:6], axis=1, keepdims=True)
+        # x_star = np.concatenate((delta, head_delta_mag), axis=1)
+        # output, _ = self.model.predict_y(x_star)
+        # triplet_action = output[0, :3]
+        # pred_n_steps = output[0, 3]
+        # vx_vy_u = LinkBotGP.convert_triplet_action(triplet_action)
+        vx_vy_u = np.atleast_2d(s_target[0, 0:2] - s[0, 0:2])
+        u_norm = np.linalg.norm(vx_vy_u)
+        if u_norm > 1:
+            vx_vy_u = vx_vy_u / u_norm
+        pred_n_steps = np.linalg.norm(vx_vy_u) / 0.1
+        return vx_vy_u, pred_n_steps

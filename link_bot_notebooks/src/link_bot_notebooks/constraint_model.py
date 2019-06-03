@@ -3,6 +3,7 @@ from __future__ import division, print_function, absolute_import
 
 import json
 import os
+from enum import Enum
 
 import numpy as np
 import tensorflow as tf
@@ -40,11 +41,15 @@ def sdf_func(sdf, full_sdf_gradient, sdf_resolution, sdf_origin_coordinate, sdf_
     return sdf_value, __sdf_gradient_func
 
 
-class ConstraintModel(base_model.BaseModel):
+class ConstraintModelType(Enum):
+    FullLinear = 1
+    LinearCombination = 2
+    FNN = 3
+
+class ConstraintModel:
 
     def __init__(self, args, np_sdf, np_sdf_gradient, np_sdf_resolution, np_sdf_origin, N):
-        base_model.BaseModel.__init__(self, N)
-
+        self.N = N
         self.seed = args['seed']
         np.random.seed(self.seed)
         tf.random.set_random_seed(self.seed)
@@ -58,53 +63,55 @@ class ConstraintModel(base_model.BaseModel):
         self.k_label_int = tf.cast(self.k_label, tf.int32)
         self.hidden_layer_dims = None
 
-        ##############################################
-        #             Full Linear Model              #
-        ##############################################
-        # if args['random_init']:
-        #     # RANDOM INIT
-        #     R_k_init = np.random.randn(N, 2).astype(np.float32) * 1e-1
-        #     k_threshold_init = np.random.rand() * 1e-1
-        # else:
-        #     # IDEAL INIT
-        #     R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.1
-        #     R_k_init[N - 2, 0] = 1.0
-        #     R_k_init[N - 1, 1] = 1.0
-        #     k_threshold_init = 0.20
-        # self.R_k = tf.get_variable("R_k", initializer=R_k_init)
-        # self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
-        # self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
+        if args.model_type == ConstraintModelType.FullLinear:
+            ##############################################
+            #             Full Linear Model              #
+            ##############################################
+            if args['random_init']:
+                # RANDOM INIT
+                R_k_init = np.random.randn(N, 2).astype(np.float32) * 1e-1
+                k_threshold_init = np.random.rand() * 1e-1
+            else:
+                # IDEAL INIT
+                R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.1
+                R_k_init[N - 2, 0] = 1.0
+                R_k_init[N - 1, 1] = 1.0
+                k_threshold_init = 0.20
+            self.R_k = tf.get_variable("R_k", initializer=R_k_init)
+            self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
+            self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
+        elif args.model_type == ConstraintModelType.FullLinear:
+            ################################################
+            #           Linear Combination Model           #
+            ################################################
+            if args['random_init']:
+                # RANDOM INIT
+                alphas_init = np.random.randn(3).astype(np.float32)
+                k_threshold_init = np.random.rand() * 1e-1
+            else:
+                # IDEAL INIT
+                alphas_init = np.array([0, 1, 1]).astype(np.float32)
+                k_threshold_init = 0.20
+            self.alphas = tf.get_variable("R_k", initializer=alphas_init)
+            alpha_blocks = []
+            for alpha in tf.unstack(self.alphas):
+                alpha_blocks.append(tf.linalg.tensor_diag([alpha, alpha]))
+            self.alpha_blocks = tf.concat(alpha_blocks, axis=0)
+            self.R_k = tf.stack(self.alpha_blocks, axis=0)
+            self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
+            self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
 
-        ################################################
-        #           Linear Combination Model           #
-        ################################################
-        if args['random_init']:
-            # RANDOM INIT
-            alphas_init = np.random.randn(3).astype(np.float32)
-            k_threshold_init = np.random.rand() * 1e-1
-        else:
-            # IDEAL INIT
-            alphas_init = np.array([0, 1, 1]).astype(np.float32)
+        elif args.model_type == ConstraintModelType.FFN
+            #############################################
+            #      Feed-Forward Neural Network Model    #
+            #############################################
             k_threshold_init = 0.20
-        self.alphas = tf.get_variable("R_k", initializer=alphas_init)
-        alpha_blocks = []
-        for alpha in tf.unstack(self.alphas):
-            alpha_blocks.append(tf.linalg.tensor_diag([alpha, alpha]))
-        self.alpha_blocks = tf.concat(alpha_blocks, axis=0)
-        self.R_k = tf.stack(self.alpha_blocks, axis=0)
-        self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
-        self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
-
-        #############################################
-        #                 MLP Model                 #
-        #############################################
-        # k_threshold_init = 0.20
-        # self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
-        # self.hidden_layer_dims = [128, 128]
-        # h = self.observations
-        # for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
-        #     h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, name='hidden_layer_{}'.format(layer_idx))
-        # self.hat_latent_k = tf.layers.dense(h, 2, activation=None, name='output_layer')
+            self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
+            self.hidden_layer_dims = [128, 128]
+            h = self.observations
+            for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
+                h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, name='hidden_layer_{}'.format(layer_idx))
+            self.hat_latent_k = tf.layers.dense(h, 2, activation=None, name='output_layer')
 
         #######################################################
         #                 End Model Definition                #
@@ -206,6 +213,7 @@ class ConstraintModel(base_model.BaseModel):
                 'beta': self.beta,
                 'commandline': self.args['commandline'],
                 'hidden_layer_dims': self.hidden_layer_dims,
+                'model_type': self.args['model_type'],
             }
             metadata_file.write(json.dumps(metadata, indent=2))
 
