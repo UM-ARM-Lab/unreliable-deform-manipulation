@@ -49,12 +49,14 @@ class GPRRT:
 
     def isStateValid(self, state):
         # check if our model predicts that constraints are violated in this state
+        if not self.state_space.satisfiesBounds(state):
+            return False
+
         np_state = np.ndarray((1, self.n_state))
         for i in range(self.n_state):
             np_state[0, i] = state[i]
         constraint_violated = self.constraint_violated(np_state)
-        valid = self.state_space.satisfiesBounds(state) and not constraint_violated
-        return valid
+        return not constraint_violated
 
     def plan(self, np_start, np_goal, sdf, verbose=False):
         # create start and goal states

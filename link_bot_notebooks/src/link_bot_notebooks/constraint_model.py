@@ -11,7 +11,6 @@ from colorama import Fore
 from tensorflow.python import debug as tf_debug
 
 import link_bot_notebooks.experiments_util
-from link_bot_notebooks import base_model
 
 
 @tf.custom_gradient
@@ -46,10 +45,14 @@ class ConstraintModelType(Enum):
     LinearCombination = 2
     FNN = 3
 
+    @classmethod
+    def strings(cls):
+        return [e.name for e in cls]
+
+
 class ConstraintModel:
 
     def __init__(self, args, np_sdf, np_sdf_gradient, np_sdf_resolution, np_sdf_origin, N):
-        self.N = N
         self.seed = args['seed']
         np.random.seed(self.seed)
         tf.random.set_random_seed(self.seed)
@@ -63,7 +66,8 @@ class ConstraintModel:
         self.k_label_int = tf.cast(self.k_label, tf.int32)
         self.hidden_layer_dims = None
 
-        if args.model_type == ConstraintModelType.FullLinear:
+        model_type = ConstraintModelType[args['model_type']]
+        if model_type == ConstraintModelType.FullLinear:
             ##############################################
             #             Full Linear Model              #
             ##############################################
@@ -80,7 +84,8 @@ class ConstraintModel:
             self.R_k = tf.get_variable("R_k", initializer=R_k_init)
             self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
             self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
-        elif args.model_type == ConstraintModelType.FullLinear:
+
+        elif model_type == ConstraintModelType.LinearCombination:
             ################################################
             #           Linear Combination Model           #
             ################################################
@@ -101,7 +106,7 @@ class ConstraintModel:
             self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
             self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
 
-        elif args.model_type == ConstraintModelType.FFN
+        elif model_type == ConstraintModelType.FNN:
             #############################################
             #      Feed-Forward Neural Network Model    #
             #############################################
@@ -110,7 +115,8 @@ class ConstraintModel:
             self.hidden_layer_dims = [128, 128]
             h = self.observations
             for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
-                h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, name='hidden_layer_{}'.format(layer_idx))
+                h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu,
+                                    name='hidden_layer_{}'.format(layer_idx))
             self.hat_latent_k = tf.layers.dense(h, 2, activation=None, name='output_layer')
 
         #######################################################
@@ -240,7 +246,6 @@ class ConstraintModel:
                     if self.args['log'] is not None:
                         writer.add_summary(train_summary, step)
                         writer.add_summary(validation_summary, step)
-                        print(self.sess.run(self.R_k))
                         self.save(full_log_path, loss=validation_loss)
 
                 if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
@@ -269,6 +274,13 @@ class ConstraintModel:
             print("constraint prediction accuracy:\n{}".format(k_accuracy))
 
         return threshold_k, k_loss, loss
+
+    def violated(self, observation, sdf=None, sdf_resolution=None, sdf_origin=None):
+        # unused parameters
+        del sdf, sdf_resolution, sdf_origin
+        feed_dict = {self.observations: np.atleast_2d(observation)}
+        violated = self.sess.run(self.hat_k_violated, feed_dict=feed_dict)
+        return np.any(violated)
 
     def setup(self):
         if self.args['checkpoint']:

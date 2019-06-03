@@ -19,12 +19,17 @@ from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_notebooks import toy_problem_optimization_common as tpoc
-from link_bot_notebooks.constraint_model import ConstraintModel
+from link_bot_notebooks.constraint_model import ConstraintModel, ConstraintModelType
 import gpflow as gpf
 
 dt = 0.1
 success_dist = 0.10
 in_contact = False
+
+true_positives = 0
+false_positives = 0
+true_negatives = 0
+false_negatives = 0
 
 
 def common(args, start, max_steps=1e6):
@@ -39,28 +44,33 @@ def common(args, start, max_steps=1e6):
     fwd_gp_model = link_bot_gp.LinkBotGP()
     fwd_gp_model.load(os.path.join(args.gp_model_dir, 'fwd_model'))
     inv_gp_model = link_bot_gp.LinkBotGP()
-    inv_gp_model.load(os.path.join(args.model_dir, 'inv_model'))
+    inv_gp_model.load(os.path.join(args.gp_model_dir, 'inv_model'))
 
-    args_dict = dict(args)
-    constraint_model = ConstraintModel(args_dict, )
-    constraint_model.
+    args_dict = vars(args)
+    N = 6
 
-    def sdf_violated(np_state):
-        # This should be loaded from the learned constraint model
-        R_k = np.array([[0, 0],
-                        [0, 0],
-                        [0, 0],
-                        [0, 0],
-                        [1, 0],
-                        [0, 1]])
-        pt = np_state @ R_k
-        x = pt[0, 0]
-        y = pt[0, 1]
-        # learned tail selection
+    constraint_tf_graph = tf.Graph()
+    with constraint_tf_graph.as_default():
+        constraint_model = ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, N)
+        constraint_model.setup()
 
-        row_col = tpoc.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
-        violated = sdf[row_col] < args.sdf_threshold
-        return violated
+        def sdf_violated(np_state):
+            global true_positives, true_negatives, false_positives, false_negatives
+            violated = constraint_model.violated(np_state, sdf, sdf_resolution, sdf_origin)
+            x = np_state[0, 4]
+            y = np_state[0, 5]
+            row_col = tpoc.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
+            true_violated = sdf[row_col] < args.sdf_threshold
+            if violated:
+                if true_violated:
+                    true_positives += 1
+                else:
+                    false_positives += 1
+            else:
+                if true_violated:
+                    true_negatives += 1
+                else:
+                    false_negatives += 1
 
     rrt = gp_rrt.GPRRT(fwd_gp_model, inv_gp_model, sdf_violated, dt, max_v, args.planner_timeout)
 
@@ -129,6 +139,8 @@ def common(args, start, max_steps=1e6):
                 s = agent.get_state(get_link_state)
                 s = np.array(s).reshape((1, fwd_gp_model.n_state))
                 planned_actions, _ = rrt.plan(s, goal, sdf, args.verbose)
+                print('precision:', true_positives / (true_positives + false_positives))
+                print('recall:', true_negatives / (true_negatives + false_negatives))
 
                 if planned_actions is None:
                     num_fails += 1
@@ -224,7 +236,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("gp_model_dir", help="load this saved forward model file")
-    parser.add_argument("tf_constraint_model", help="constraint model checkpoint")
+    parser.add_argument("checkpoint", help="constraint model checkpoint")
+    parser.add_argument("model_type", choices=ConstraintModelType.strings())
     parser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     parser.add_argument("--model-name", '-m', default="link_bot")
     parser.add_argument("--seed", '-s', type=int, default=2)
