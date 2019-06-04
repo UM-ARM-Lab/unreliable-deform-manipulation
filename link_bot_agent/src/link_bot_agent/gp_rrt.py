@@ -26,18 +26,8 @@ class LinkBotStateSpace(ob.RealVectorStateSpace):
         weights = [1, 1, 0, 0, 0, 0]
         dist = 0
         for i in range(self.getDimension()):
-            dist += weights[i] * (s1[i] - s2[i])**2
+            dist += weights[i] * (s1[i] - s2[i]) ** 2
         return dist
-
-    # def allocState(self):
-    #     return super(LinkBotStateSpace, self).allocState()
-        # return LinkBotStateSpace(self.getDimension())
-
-    # def freeState(self, s):
-    #     del s
-    #
-    # def __getitem__(self, idx):
-    #     return super(LinkBotStateSpace, self).__getitem__(idx)
 
 
 class GPRRT:
@@ -53,7 +43,7 @@ class GPRRT:
         self.max_v = max_v
 
         self.arena_size = 5
-        self.state_space_size = 5
+        self.state_space_size = 10  # be careful this will cause out of bounds in the SDF
         self.state_space = LinkBotStateSpace(self.n_state)
         self.state_space.setName("dynamics latent space")
         self.state_space.setBounds(-self.state_space_size, self.state_space_size)

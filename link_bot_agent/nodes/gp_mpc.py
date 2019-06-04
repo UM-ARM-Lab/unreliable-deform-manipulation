@@ -265,8 +265,7 @@ def main():
 
     np.random.seed(args.seed)
     ou.RNG.setSeed(args.seed)
-    # ou.setLogLevel(ou.LOG_DEBUG)
-    ou.setLogLevel(ou.LOG_INFO)
+    ou.setLogLevel(ou.LOG_DEBUG)
     # ou.setLogLevel(ou.LOG_ERROR)
 
     if args == argparse.Namespace():
