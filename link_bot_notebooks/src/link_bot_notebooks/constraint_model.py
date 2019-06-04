@@ -66,6 +66,10 @@ class ConstraintModel:
         self.k_label_int = tf.cast(self.k_label, tf.int32)
         self.hidden_layer_dims = None
 
+        self.sdf = np_sdf
+        self.sdf_resolution = np_sdf_resolution
+        self.sdf_origin = np_sdf_origin
+
         model_type = ConstraintModelType[args['model_type']]
         if model_type == ConstraintModelType.FullLinear:
             ##############################################
@@ -267,6 +271,25 @@ class ConstraintModel:
         ops = [self.threshold_k, self.constraint_prediction_loss, self.loss, self.constraint_prediction_accuracy]
         threshold_k, k_loss, loss, k_accuracy = self.sess.run(ops, feed_dict=feed_dict)
 
+        hat_latent_k = self.sess.run(self.hat_latent_k, feed_dict=feed_dict)
+
+        import matplotlib.pyplot as plt
+        from PIL import Image
+        plt.figure()
+        skip = 20
+        o_scatter_x = observations[::skip, 4]
+        o_scatter_y = observations[::skip, 5]
+        h_scatter_x = hat_latent_k[::skip, 0]
+        h_scatter_y = hat_latent_k[::skip, 1]
+        img = Image.fromarray(np.uint8(np.flipud(self.sdf.T) > threshold_k))
+        small_sdf = img.resize((50, 50))
+        plt.imshow(small_sdf, extent=[-5, 5, -5, 5])
+        for ox, oy, hx, hy in zip(o_scatter_x, o_scatter_y, h_scatter_x, h_scatter_y):
+            plt.plot([ox, hx], [oy, hy], c='k', linewidth=1, zorder=1)
+        plt.scatter(o_scatter_x, o_scatter_y, s=25, c='blue', zorder=2)
+        plt.scatter(h_scatter_x, h_scatter_y, s=25, c='red', zorder=2)
+        plt.show()
+
         if display:
             print("Constraint Loss: {:0.3f}".format(float(k_loss)))
             print("Overall Loss: {:0.3f}".format(float(loss)))
@@ -279,8 +302,8 @@ class ConstraintModel:
         # unused parameters
         del sdf, sdf_resolution, sdf_origin
         feed_dict = {self.observations: np.atleast_2d(observation)}
-        violated = self.sess.run(self.hat_k_violated, feed_dict=feed_dict)
-        return np.any(violated)
+        violated, pt = self.sess.run([self.hat_k_violated, self.hat_latent_k], feed_dict=feed_dict)
+        return np.any(violated), pt
 
     def setup(self):
         if self.args['checkpoint']:
