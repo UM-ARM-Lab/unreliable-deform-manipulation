@@ -36,7 +36,7 @@ def plot(planner_data, sdf, start, goal, path, controls, arena_size):
         plt.scatter(s[0], s[1], s=25, c='r')
 
         if len(edges_map.keys()) == 0:
-            plt.plot([s[0], s[2], s[4]], [s[1], s[3], s[5]], linewidth=1, c='orange')
+            plt.plot([s[0], s[2], s[4]], [s[1], s[3], s[5]], linewidth=1, c='orange', alpha=0.05)
 
         planner_data.getEdges(vertex_index, edges_map)
         for vertex_index2 in edges_map.keys():

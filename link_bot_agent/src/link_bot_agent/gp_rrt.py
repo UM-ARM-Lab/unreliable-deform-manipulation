@@ -10,6 +10,36 @@ from link_bot_agent import ompl_util
 from link_bot_gaussian_process import link_bot_gp
 
 
+class LinkBotStateSpace(ob.RealVectorStateSpace):
+
+    def __init__(self, n_state):
+        super(LinkBotStateSpace, self).__init__(n_state)
+        self.setDimensionName(0, 'tail_x')
+        self.setDimensionName(1, 'tail_y')
+        self.setDimensionName(2, 'mid_x')
+        self.setDimensionName(3, 'mid_y')
+        self.setDimensionName(4, 'head_x')
+        self.setDimensionName(5, 'head_y')
+
+    def distance(self, s1, s2):
+        # all the weight is in the tail
+        weights = [1, 1, 0, 0, 0, 0]
+        dist = 0
+        for i in range(self.getDimension()):
+            dist += weights[i] * (s1[i] - s2[i])**2
+        return dist
+
+    # def allocState(self):
+    #     return super(LinkBotStateSpace, self).allocState()
+        # return LinkBotStateSpace(self.getDimension())
+
+    # def freeState(self, s):
+    #     del s
+    #
+    # def __getitem__(self, idx):
+    #     return super(LinkBotStateSpace, self).__getitem__(idx)
+
+
 class GPRRT:
 
     def __init__(self, fwd_gp_model, inv_gp_model, constraint_violated, dt, max_v, planner_timeout):
@@ -24,7 +54,7 @@ class GPRRT:
 
         self.arena_size = 5
         self.state_space_size = 5
-        self.state_space = ob.RealVectorStateSpace(self.n_state)
+        self.state_space = LinkBotStateSpace(self.n_state)
         self.state_space.setName("dynamics latent space")
         self.state_space.setBounds(-self.state_space_size, self.state_space_size)
 
@@ -61,10 +91,11 @@ class GPRRT:
     def plan(self, np_start, np_goal, sdf, verbose=False):
         # create start and goal states
         start = ob.State(self.state_space)
+        # self.state_space.allocState()
         for i in range(self.n_state):
             start()[i] = np_start[0, i].astype(np.float64)
         # the threshold on "cost-to-goal" is interpretable here as Euclidean distance
-        epsilon = 0.1
+        epsilon = 0.25
         goal = LinkBotGoal(self.si, epsilon, np_goal)
 
         self.ss.clear()

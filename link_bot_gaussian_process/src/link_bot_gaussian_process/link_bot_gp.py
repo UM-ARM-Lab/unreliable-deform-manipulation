@@ -32,9 +32,9 @@ def predict(fwd_model, np_state, np_controls, np_duration_steps_int, steps=None,
     for t in range(steps):
         prediction[t] = x_t
         x_t_relative = data_reformatting.make_relative_to_head(x_t)
-        combined_x_t_particles_relative = np.hstack((x_t_relative, [np_controls_flat[t]]))
+        combined_x_t_relative = np.hstack((x_t_relative, [np_controls_flat[t]]))
 
-        mu_delta_x_t_plus_1s, _ = fwd_model.model.predict_y(combined_x_t_particles_relative)
+        mu_delta_x_t_plus_1s, _ = fwd_model.model.predict_y(combined_x_t_relative)
 
         x_t = x_t + mu_delta_x_t_plus_1s
 
@@ -51,9 +51,9 @@ def animate_predict(prediction, sdf, arena_size):
     plt.imshow(small_sdf, extent=[-arena_size, arena_size, -arena_size, arena_size])
 
     x_0 = prediction[0]
-    x_0_particles_xs = [x_0[0], x_0[2], x_0[4]]
-    x_0_particles_ys = [x_0[1], x_0[3], x_0[5]]
-    line = plt.plot(x_0_particles_xs, x_0_particles_ys, color='black', alpha=0.2)[0]
+    x_0_xs = [x_0[0], x_0[2], x_0[4]]
+    x_0_ys = [x_0[1], x_0[3], x_0[5]]
+    line = plt.plot(x_0_xs, x_0_ys, color='black', linewidth=10)[0]
 
     plt.xlabel("x (m)")
     plt.ylabel("y (m)")
@@ -62,10 +62,10 @@ def animate_predict(prediction, sdf, arena_size):
 
     def update(t):
         x_t = prediction[t]
-        x_t_particles_xs = [x_t[0], x_t[2], x_t[4]]
-        x_t_particles_ys = [x_t[1], x_t[3], x_t[5]]
-        line.set_xdata(x_t_particles_xs)
-        line.set_ydata(x_t_particles_ys)
+        x_t_xs = [x_t[0], x_t[2], x_t[4]]
+        x_t_ys = [x_t[1], x_t[3], x_t[5]]
+        line.set_xdata(x_t_xs)
+        line.set_ydata(x_t_ys)
 
     anim = FuncAnimation(fig, update, frames=T, interval=100)
     return anim

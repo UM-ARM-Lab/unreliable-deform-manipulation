@@ -26,11 +26,6 @@ dt = 0.1
 success_dist = 0.10
 in_contact = False
 
-true_positives = 0
-false_positives = 0
-true_negatives = 0
-false_negatives = 0
-
 
 def common(args, start, max_steps=1e6):
     config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=False, per_process_gpu_memory_fraction=0.01))
@@ -49,28 +44,37 @@ def common(args, start, max_steps=1e6):
     args_dict = vars(args)
     N = 6
 
-    constraint_tf_graph = tf.Graph()
-    with constraint_tf_graph.as_default():
-        constraint_model = ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, N)
-        constraint_model.setup()
+    ##############################################
+    #             NN Constraint Model            #
+    ##############################################
+    # constraint_tf_graph = tf.Graph()
+    # with constraint_tf_graph.as_default():
+    #     constraint_model = ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, N)
+    #     constraint_model.setup()
+    #
+    #     def sdf_violated(np_state):
+    #         violated = constraint_model.violated(np_state, sdf, sdf_resolution, sdf_origin)
+    #         x = np_state[0, 4]
+    #         y = np_state[0, 5]
+    #         row_col = tpoc.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
+    #         true_violated = sdf[row_col] < args.sdf_threshold
 
-        def sdf_violated(np_state):
-            global true_positives, true_negatives, false_positives, false_negatives
-            violated = constraint_model.violated(np_state, sdf, sdf_resolution, sdf_origin)
-            x = np_state[0, 4]
-            y = np_state[0, 5]
-            row_col = tpoc.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
-            true_violated = sdf[row_col] < args.sdf_threshold
-            if violated:
-                if true_violated:
-                    true_positives += 1
-                else:
-                    false_positives += 1
-            else:
-                if true_violated:
-                    true_negatives += 1
-                else:
-                    false_negatives += 1
+    #############################################
+    #           R_k Constraint Model            #
+    #############################################
+    def sdf_violated(np_state):
+        R_k = np.array([[0, 0],
+                        [0, 0],
+                        [0, 0],
+                        [0, 0],
+                        [1, 0],
+                        [0, 1]])
+        pt = np_state @ R_k
+        x = pt[0, 0]
+        y = pt[0, 1]
+        row_col = tpoc.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
+        violated = sdf[row_col] < args.sdf_threshold
+        return violated
 
     rrt = gp_rrt.GPRRT(fwd_gp_model, inv_gp_model, sdf_violated, dt, max_v, args.planner_timeout)
 
@@ -139,8 +143,6 @@ def common(args, start, max_steps=1e6):
                 s = agent.get_state(get_link_state)
                 s = np.array(s).reshape((1, fwd_gp_model.n_state))
                 planned_actions, _ = rrt.plan(s, goal, sdf, args.verbose)
-                print('precision:', true_positives / (true_positives + false_positives))
-                print('recall:', true_negatives / (true_negatives + false_negatives))
 
                 if planned_actions is None:
                     num_fails += 1
@@ -236,8 +238,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("gp_model_dir", help="load this saved forward model file")
-    parser.add_argument("checkpoint", help="constraint model checkpoint")
-    parser.add_argument("model_type", choices=ConstraintModelType.strings())
+    # parser.add_argument("checkpoint", help="constraint model checkpoint")
+    # parser.add_argument("model_type", choices=ConstraintModelType.strings())
     parser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     parser.add_argument("--model-name", '-m', default="link_bot")
     parser.add_argument("--seed", '-s', type=int, default=2)
@@ -264,7 +266,8 @@ def main():
     np.random.seed(args.seed)
     ou.RNG.setSeed(args.seed)
     # ou.setLogLevel(ou.LOG_DEBUG)
-    ou.setLogLevel(ou.LOG_ERROR)
+    ou.setLogLevel(ou.LOG_INFO)
+    # ou.setLogLevel(ou.LOG_ERROR)
 
     if args == argparse.Namespace():
         parser.print_usage()
