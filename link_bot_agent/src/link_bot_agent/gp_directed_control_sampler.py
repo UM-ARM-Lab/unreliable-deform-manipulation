@@ -33,16 +33,16 @@ def plot(planner_data, sdf, start, goal, path, controls, arena_size):
         s = v.getState()
         edges_map = ob.mapUintToPlannerDataEdge()
 
-        plt.scatter(s[0], s[1], s=25, c='r')
+        plt.scatter(s[0], s[1], s=25, c='r', zorder=2)
 
         if len(edges_map.keys()) == 0:
-            plt.plot([s[0], s[2], s[4]], [s[1], s[3], s[5]], linewidth=1, c='orange', alpha=0.05)
+            plt.plot([s[0], s[2], s[4]], [s[1], s[3], s[5]], linewidth=1, c='orange', alpha=0.2, zorder=1)
 
         planner_data.getEdges(vertex_index, edges_map)
         for vertex_index2 in edges_map.keys():
             v2 = planner_data.getVertex(vertex_index2)
             s2 = v2.getState()
-            plt.plot([s[0], s2[0]], [s[1], s2[1]], c='gray')
+            plt.plot([s[0], s2[0]], [s[1], s2[1]], c='gray', zorder=0)
 
     plt.xlabel("x")
     plt.ylabel("y")

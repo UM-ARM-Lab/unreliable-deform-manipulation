@@ -43,7 +43,7 @@ class GPRRT:
         self.max_v = max_v
 
         self.arena_size = 5
-        self.state_space_size = 10  # be careful this will cause out of bounds in the SDF
+        self.state_space_size = 5  # be careful this will cause out of bounds in the SDF
         self.state_space = LinkBotStateSpace(self.n_state)
         self.state_space.setName("dynamics latent space")
         self.state_space.setBounds(-self.state_space_size, self.state_space_size)
