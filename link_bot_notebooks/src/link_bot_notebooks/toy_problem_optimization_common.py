@@ -6,6 +6,10 @@ import scipy.optimize as optimize
 from scipy.linalg import hankel
 
 
+def sdf_indeces_to_point(rowcols, resolution, origin):
+    return (rowcols - origin) * resolution
+
+
 def sdf_idx_to_point(row, col, resolution, sdf_origin):
     x = (col - sdf_origin[0, 0]) * resolution[0, 0]
     y = (row - sdf_origin[1, 0]) * resolution[1, 0]

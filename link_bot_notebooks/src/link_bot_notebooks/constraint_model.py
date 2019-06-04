@@ -86,7 +86,7 @@ class ConstraintModel:
                 R_k_init[N - 1, 1] = 1.0
                 k_threshold_init = 0.20
             self.R_k = tf.get_variable("R_k", initializer=R_k_init)
-            self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
+            self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=True)
             self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
 
         elif model_type == ConstraintModelType.LinearCombination:
@@ -107,7 +107,7 @@ class ConstraintModel:
                 alpha_blocks.append(tf.linalg.tensor_diag([alpha, alpha]))
             self.alpha_blocks = tf.concat(alpha_blocks, axis=0)
             self.R_k = tf.stack(self.alpha_blocks, axis=0)
-            self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
+            self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=True)
             self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
 
         elif model_type == ConstraintModelType.FNN:
@@ -128,7 +128,7 @@ class ConstraintModel:
         #######################################################
 
         self.sdfs = sdf_func(np_sdf, np_sdf_gradient, np_sdf_resolution, np_sdf_origin, self.hat_latent_k, 2)
-        # because the sigmoid is not very sharp (since meters are very large),
+        # because the sigmoid is not very sharp (since meters are very large in the domain of sigmoid),
         # this doesn't give a very sharp boundary for the decision between in collision or not.
         # The trade of is this might cause vanishing gradients
         self.hat_k = 100 * (self.threshold_k - self.sdfs)
