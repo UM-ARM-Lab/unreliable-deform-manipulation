@@ -1,10 +1,13 @@
 import argparse
+import bisect
+from time import time
 
 import matplotlib.pyplot as plt
-import bisect
 import numpy as np
+from colorama import Fore
 from scipy.optimize import root
 from scipy.spatial import cKDTree
+from tabulate import tabulate
 
 from link_bot_notebooks import toy_problem_optimization_common as tpoc
 
@@ -50,27 +53,6 @@ def select_data_at_constraint_boundary(states, constraints):
     return data_at_boundary
 
 
-def nn_correspondences(source, target):
-    """
-    source is a N_d by 2 matrix of points in R^2, which are the result of transforming data_at_constraint_boundary by R_k
-    source is CONSTANT
-    target is a N_m by 2 matrix of points in R^2, which is sdf_points_at_constraint_boundary
-    we need to find the nearest point in target to each point in source
-    """
-    indeces = np.ndarray([source.shape[0]], dtype=np.int)
-    for i, source_point in enumerate(source):
-        min_distance = np.inf
-        min_idx = None
-        for idx, target_point in enumerate(target):
-            dist = np.linalg.norm(target_point - source_point)
-            if dist < min_distance:
-                min_distance = dist
-                min_idx = idx
-        indeces[i] = min_idx
-
-    return indeces
-
-
 def nearby_sdf_lookup(sdf_dict, origin, res, threshold):
     sorted_distance_keys = sdf_dict['sorted_distance_keys']
     nearest_distance_key = bisect.bisect_left(sorted_distance_keys, threshold)
@@ -107,12 +89,14 @@ def func(sdf_dict, origin, res, data_at_constraint_boundary, params):
     global correspondence_cache
 
     R_k = Rk(params)
+    bias = np.ones(2) * params[3]
 
     # iterate over the data and find the data points which are on the boundary of collision, and take their average
-    transformed_data = data_at_constraint_boundary @ R_k
+    transformed_data = data_at_constraint_boundary @ R_k + bias
 
-    # sdf_threshold = params[-1]
-    sdf_threshold = 0.2
+    # The third parameter represents the distance from the edge of the rope to the obstacle,
+    # and then there is a required boundary of 10cm
+    sdf_threshold = params[4] + 0.1
     if sdf_threshold in correspondence_cache:
         sdf_points_at_threshold, kd_tree = correspondence_cache[sdf_threshold]
         _, correspondence_guess = kd_tree.query(transformed_data)
@@ -122,53 +106,34 @@ def func(sdf_dict, origin, res, data_at_constraint_boundary, params):
         correspondence_cache[sdf_threshold] = (sdf_points_at_threshold, kd_tree)
         _, correspondence_guess = kd_tree.query(transformed_data)
 
-    # correspondence_guess = nn_correspondences(transformed_data, sdf_points_at_threshold)
     corresponding_sdf_points = sdf_points_at_threshold[correspondence_guess]
 
     error = np.linalg.norm(corresponding_sdf_points - transformed_data, axis=1)
-    # loss = np.mean(error)
-    # return loss, corresponding_sdf_points
     return error, corresponding_sdf_points
 
 
 def attempt_minimize(sdf_dict, origin, res, data_at_constraint_boundary, out_params=[]):
     def _func(params):
-        print(params)
         loss, corresponding_sdf_points = func(sdf_dict, origin, res, data_at_constraint_boundary, params)
         out_params.append(corresponding_sdf_points)
         return loss
 
-    # initial_a = np.random.randn(3)
-    initial_a = [1, 0, 0]
-    # initial_threshold = np.random.uniform(0.01, 0.40, size=1)
-    # initial_threshold = [0.2]
-    # initial_params = np.concatenate((initial_a, initial_threshold))
-    # print(initial_params)
-    # bounds = Bounds([-np.inf, -np.inf, -np.inf, 0], [np.inf, np.inf, np.inf, 1])
-    sol = root(_func, x0=initial_a, jac=None, method='lm')
+    initial_a = np.random.randn(3)
+    initial_bias = np.random.randn(1) * 1e-1
+    initial_object_radius = np.random.uniform(0.0, 0.20, size=1)
+    # initial_a = [1, 0, 0]
+    # initial_object_radius = [0.2]
+    initial_params = np.concatenate((initial_a, initial_bias, initial_object_radius))
+    sol = root(_func, x0=initial_params, jac=None, method='lm')
     return sol
 
 
-def main():
-    np.set_printoptions(suppress=True, linewidth=200, precision=2)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('data')
-    parser.add_argument('sdf')
-    parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--plot', action='store_true')
-
-    args = parser.parse_args()
-
-    np.random.seed(args.seed)
-    plt.style.use('slides')
-
+def setup(args):
     data = np.load(args.data)
-
-    sdf, _, sdf_resolution, sdf_origin = tpoc.load_sdf(args.sdf)
-
     states = data['states']
     constraints = data['constraints']
+
+    sdf, _, sdf_resolution, sdf_origin = tpoc.load_sdf(args.sdf)
 
     # convert the sdf into a dict of {distance: [(row, col), (row, col), ...], distance:, [...], ...}
     sdf_dict = sdf_to_dict(sdf)
@@ -178,26 +143,32 @@ def main():
 
     data_at_constraint_boundary = select_data_at_constraint_boundary(states, constraints)
 
-    success_threshold = 0.02
-    failures = 0
-    maximum_iterations = 100
+    return sdf, sdf_resolution, sdf_origin, states, constraints, sdf_dict, data_at_constraint_boundary
+
+
+def solve_once(args):
+    sdf, sdf_resolution, sdf_origin, states, constraints, sdf_dict, data_at_constraint_boundary = setup(args)
+
+    maximum_iterations = 1000
+    t0 = time()
+    sol = None
+    mean_error = np.inf
+    sdf_points_at_threshold = None
+    success = False
     for attempt in range(maximum_iterations):
         out_params = []
         sol = attempt_minimize(sdf_dict, sdf_origin, sdf_resolution, data_at_constraint_boundary, out_params)
         mean_error = np.mean(sol.fun)
-        print(mean_error, sol.x)
         sdf_points_at_threshold = out_params[0]
-        if mean_error < success_threshold:
-            print("mean error: {:0.4f}".format(mean_error))
-            print("parameters: {}".format(sol.x))
+        if mean_error < args.success_threshold:
+            success = True
             break
-    # http://book.pythontips.com/en/latest/for_-_else.html
-    else:
-        failures += 1
-    print("# failures: {}".format(failures))
+
+    dt = time() - t0
 
     if args.plot:
         # show all location of the tail overlayed on the SDF
+        plt.style.use('slides')
         plt.figure()
         subsample = 10
         plt.imshow(np.flipud(sdf.T), extent=[-5, 5, -5, 5])
@@ -209,6 +180,71 @@ def main():
         plt.legend()
         plt.axis("equal")
         plt.show()
+
+    return dt, attempt, success, sol.x, mean_error
+
+
+def solve_once_main(args):
+    np.random.seed(args.seed)
+    dt, attempts, success, params, mean_error = solve_once(args)
+    color = Fore.GREEN if success else Fore.RED
+    print(color + "mean error: {:6.4f}m".format(mean_error) + Fore.RESET)
+    print("parameters: {}".format(params))
+    print("attempts: {}".format(attempts))
+    print("solve time: {:6.4f}s".format(dt))
+
+
+def evaluate(args):
+    np.random.seed(args.seed)
+    dts = np.ndarray(args.n_runs)
+    successes = 0
+    errors = np.ndarray(args.n_runs)
+    attempts = np.ndarray(args.n_runs)
+    for i in range(args.n_runs):
+        dt, attempt, success, _, error, = solve_once(args)
+        print('.', end='')
+        dts[i] = dt
+        successes += 1 if success else 0
+        errors[i] = error
+        attempts[i] = attempt
+
+    headers = ['metric', 'min', 'max', 'mean', 'median']
+    metrics = [
+        ['error (m)', np.min(errors), np.max(errors), np.mean(errors), np.median(errors)],
+        ['attempts', np.min(attempts), np.max(attempts), np.mean(attempts), np.median(attempts)],
+        ['time (s)', np.min(dts), np.max(dts), np.mean(dts), np.median(dts)],
+    ]
+    table = tabulate(metrics, headers=headers, tablefmt='github', floatfmt='6.3f')
+    print(table)
+    print('successes: {}/{}'.format(successes, args.n_runs))
+
+
+def main():
+    np.set_printoptions(suppress=True, linewidth=200, precision=2)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('data')
+    parser.add_argument('sdf')
+    parser.add_argument('--success-threshold', type=float, default=0.0105)
+
+    subparsers = parser.add_subparsers()
+    solve_once_parser = subparsers.add_parser('solve_once')
+    solve_once_parser.add_argument('--plot', action='store_true')
+    solve_once_parser.add_argument('--seed', type=int, default=7)
+    solve_once_parser.set_defaults(func=solve_once_main)
+
+    evaluate_parser = subparsers.add_parser('evaluate')
+    evaluate_parser.add_argument('--n-runs', type=int, default=100)
+    evaluate_parser.add_argument('--plot', action='store_true')
+    evaluate_parser.add_argument('--seed', type=int, default=0)
+    evaluate_parser.set_defaults(func=evaluate)
+
+    args = parser.parse_args()
+
+    if args == argparse.Namespace():
+        parser.print_usage()
+    else:
+        args.func(args)
 
 
 if __name__ == '__main__':
