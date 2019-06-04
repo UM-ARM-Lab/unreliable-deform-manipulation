@@ -24,20 +24,6 @@ def sdf_to_dict(sdf):
     return sdf_dict
 
 
-def Rk(params):
-    a1 = params[0]
-    a2 = params[1]
-    a3 = params[2]
-    return np.array([
-        [a1, 0],
-        [0, a1],
-        [a2, 0],
-        [0, a2],
-        [a3, 0],
-        [0, a3],
-    ])
-
-
 def select_data_at_constraint_boundary(states, constraints):
     data_at_boundary = []
     T = states.shape[1]
@@ -62,14 +48,14 @@ def nearby_sdf_lookup(sdf_dict, origin, res, threshold):
     right_idx_near = True
     nearby_distance_keys = [nearest_distance_key]
     while left_idx_near or right_idx_near:
-        if left_idx_near:
+        if left_idx_near and nearest_distance_key + left_idx < len(sorted_distance_keys) - 1:
             left_idx += 1
             left_d = sorted_distance_keys[nearest_distance_key - left_idx]
             if abs(left_d - threshold) > 0.005:
                 left_idx_near = False
             else:
                 nearby_distance_keys.append(nearest_distance_key - left_idx)
-        if right_idx_near:
+        if right_idx_near and nearest_distance_key + right_idx < len(sorted_distance_keys) - 1:
             right_idx += 1
             right_d = sorted_distance_keys[nearest_distance_key + right_idx]
             if abs(right_d - threshold) > 0.005:
@@ -88,15 +74,15 @@ correspondence_cache = {}
 def func(sdf_dict, origin, res, data_at_constraint_boundary, params):
     global correspondence_cache
 
-    R_k = Rk(params)
-    bias = np.ones(2) * params[3]
-
     # iterate over the data and find the data points which are on the boundary of collision, and take their average
-    transformed_data = data_at_constraint_boundary @ R_k + bias
+    Rk = np.concatenate(([1], params[0:2]))
+    shaped_data = np.transpose(data_at_constraint_boundary.reshape(108, 3, 2), [0, 2, 1])
+    shaped_data[:, :, 1:] -= shaped_data[:, :, :1]
+    transformed_data = shaped_data @ Rk
 
-    # The third parameter represents the distance from the edge of the rope to the obstacle,
+    # The third parameter represents the distance from the edge of the object to the obstacle,
     # and then there is a required boundary of 10cm
-    sdf_threshold = params[4] + 0.1
+    sdf_threshold = params[2] + 0.1
     if sdf_threshold in correspondence_cache:
         sdf_points_at_threshold, kd_tree = correspondence_cache[sdf_threshold]
         _, correspondence_guess = kd_tree.query(transformed_data)
@@ -114,16 +100,16 @@ def func(sdf_dict, origin, res, data_at_constraint_boundary, params):
 
 def attempt_minimize(sdf_dict, origin, res, data_at_constraint_boundary, out_params=[]):
     def _func(params):
-        loss, corresponding_sdf_points = func(sdf_dict, origin, res, data_at_constraint_boundary, params)
+        errors, corresponding_sdf_points = func(sdf_dict, origin, res, data_at_constraint_boundary, params)
         out_params.append(corresponding_sdf_points)
-        return loss
+        return errors
 
-    initial_a = np.random.randn(3)
-    initial_bias = np.random.randn(1) * 1e-1
-    initial_object_radius = np.random.uniform(0.0, 0.20, size=1)
-    # initial_a = [1, 0, 0]
-    # initial_object_radius = [0.2]
-    initial_params = np.concatenate((initial_a, initial_bias, initial_object_radius))
+    # these three numbers represent a linear combination of the points in the object
+    # initial_a = np.random.randn(2)
+    # initial_object_radius = np.random.uniform(0.0, 0.20, size=1)
+    initial_a = [0, 1]
+    initial_object_radius = [0.1]
+    initial_params = np.concatenate((initial_a, initial_object_radius))
     sol = root(_func, x0=initial_params, jac=None, method='lm')
     return sol
 
@@ -159,6 +145,7 @@ def solve_once(args):
         out_params = []
         sol = attempt_minimize(sdf_dict, sdf_origin, sdf_resolution, data_at_constraint_boundary, out_params)
         mean_error = np.mean(sol.fun)
+        print(sol.x, mean_error)
         sdf_points_at_threshold = out_params[0]
         if mean_error < args.success_threshold:
             success = True
