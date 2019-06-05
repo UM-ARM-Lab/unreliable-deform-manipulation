@@ -179,6 +179,13 @@ class LinkBotGP:
         return np.array([[u[0, 0] / nu * u[0, 2], u[0, 1] / nu * u[0, 2]]])
 
     def fwd_act(self, s, u):
+        """
+        Given a state and action, predict the next state
+        :param s: a 1xN vector containing the relative position from each point to the last point,
+        including the last point. example: [-1, 1, 0, 1, 0, 0]
+        :param u: a 1x2 vector containing x and y velocity, as applied to the last point
+        :return: the _delta_ state
+        """
         s_relative = data_reformatting.make_relative_to_head(s)
         x_star = np.hstack((s_relative, u))
         delta_mu, _ = self.model.predict_y(x_star)

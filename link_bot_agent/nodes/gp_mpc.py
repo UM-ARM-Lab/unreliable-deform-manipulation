@@ -255,7 +255,7 @@ def main():
     # parser.add_argument("model_type", choices=ConstraintModelType.strings())
     parser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     parser.add_argument("--model-name", '-m', default="link_bot")
-    parser.add_argument("--seed", '-s', type=int, default=2)
+    parser.add_argument("--seed", '-s', type=int, default=1)
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--pause", action='store_true')
     parser.add_argument("--plot-plan", action='store_true')
