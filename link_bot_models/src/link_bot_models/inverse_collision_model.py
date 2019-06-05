@@ -9,7 +9,7 @@ from scipy.optimize import least_squares
 from scipy.spatial import cKDTree
 from tabulate import tabulate
 
-from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
+from link_bot_pycommon import link_bot_pycommon
 
 
 def sdf_to_dict(sdf):
@@ -64,7 +64,7 @@ def nearby_sdf_lookup(sdf_dict, origin, res, threshold):
                 nearby_distance_keys.append(nearest_distance_key + right_idx)
 
     indeces = np.concatenate([sdf_dict[sorted_distance_keys[k]] for k in nearby_distance_keys])
-    points = tpoc.sdf_indeces_to_point(indeces, resolution=res, origin=origin)
+    points = link_bot_pycommon.sdf_indeces_to_point(indeces, resolution=res, origin=origin)
     return points
 
 
@@ -126,7 +126,7 @@ def setup(args):
     states = data['states']
     constraints = data['constraints']
 
-    sdf, _, sdf_resolution, sdf_origin = tpoc.load_sdf(args.sdf)
+    sdf, _, sdf_resolution, sdf_origin = link_bot_pycommon.load_sdf(args.sdf)
 
     # convert the sdf into a dict of {distance: [(row, col), (row, col), ...], distance:, [...], ...}
     sdf_dict = sdf_to_dict(sdf)

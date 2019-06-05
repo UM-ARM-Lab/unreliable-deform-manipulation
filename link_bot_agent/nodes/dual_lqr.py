@@ -11,10 +11,10 @@ import numpy as np
 import rospy
 import ompl.util as ou
 from builtins import input
-from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
+from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
-from link_bot_models.src.link_bot_models import linear_constraint_model
+from link_bot_pycommon import link_bot_pycommon
+from link_bot_models import linear_constraint_model
 from link_bot_agent import agent, dual_lqr_action_selector
 
 dt = 0.1
@@ -42,7 +42,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
     batch_size = 1
     max_v = 1
     n_steps = 1
-    sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution = link_bot_pycommon.load_sdf(args.sdf)
     tf_model = linear_constraint_model.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution,
                                                              batch_size, args.N, args.M, args.L, args.P, args.Q, dt,
                                                              n_steps)
@@ -59,7 +59,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
-    action_pub = rospy.Publisher("/link_bot_action", LinkBotAction, queue_size=10)
+    action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
 
     min_true_costs = []
     T = -1
@@ -69,7 +69,7 @@ def common(args, goals, max_steps=1e6, verbose=False):
         states = []
         actions = []
         constraints = []
-        action_msg = LinkBotAction()
+        action_msg = LinkBotVelocityAction()
         for goal in goals:
             # reset to random starting point
             config = LinkBotConfiguration()
@@ -118,9 +118,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
 
                     # publish the pull command
                     action_msg.control_link_name = 'head'
-                    action_msg.use_force = False
-                    action_msg.twist.linear.x = action[0, 0]
-                    action_msg.twist.linear.y = action[0, 1]
+                    action_msg.vx = action[0, 0]
+                    action_msg.vy = action[0, 1]
                     action_pub.publish(action_msg)
 
                     step = WorldControlRequest()

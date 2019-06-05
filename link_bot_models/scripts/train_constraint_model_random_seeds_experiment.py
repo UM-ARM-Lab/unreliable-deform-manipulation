@@ -9,12 +9,12 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_models.src.link_bot_models import constraint_model as m
-from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc, experiments_util
+from link_bot_models import constraint_model as m
+from link_bot_pycommon import link_bot_pycommon, experiments_util
 
 
 def train(args):
-    sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution = link_bot_pycommon.load_sdf(args.sdf)
     data = np.load(args.dataset)
 
     args = vars(args)

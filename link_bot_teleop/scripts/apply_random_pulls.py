@@ -6,7 +6,7 @@ from time import sleep
 
 import numpy as np
 import rospy
-from gazebo_msgs.srv import GetLinkState, GetLinkStateRequest
+from gazebo_msgs.srv import GetLinkState
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_agent import agent

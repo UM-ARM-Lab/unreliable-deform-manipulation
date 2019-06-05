@@ -19,8 +19,8 @@ from link_bot_agent import agent, ompl_act, one_step_action_selector, lqr_action
     dual_lqr_action_selector
 from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler
 from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSampler
-from link_bot_models.src.link_bot_models import linear_tf_model, linear_constraint_model
-from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
+from link_bot_models import linear_tf_model, linear_constraint_model
+from link_bot_pycommon import link_bot_pycommon
 
 dt = 0.1
 success_dist = 0.10
@@ -62,7 +62,7 @@ def common(args, start, max_steps=1e6):
     n_steps = 1
     n_steps_for_logging = 50
     if args.controller == 'ompl-dual-lqr':
-        sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
+        sdf, sdf_gradient, sdf_resolution = link_bot_pycommon.load_sdf(args.sdf)
         sdf_rows, sdf_cols = sdf.shape
         sdf_origin_coordinate = np.array([sdf_rows / 2, sdf_cols / 2], dtype=np.int32)
 

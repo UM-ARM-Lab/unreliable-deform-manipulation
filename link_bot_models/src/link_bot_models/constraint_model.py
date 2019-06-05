@@ -7,37 +7,10 @@ from enum import Enum
 
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
 from tensorflow.python import debug as tf_debug
 
-import link_bot_pycommon.src.link_bot_pycommon.experiments_util
-
-
-@tf.custom_gradient
-def sdf_func(sdf, full_sdf_gradient, sdf_resolution, sdf_origin_coordinate, sdf_coordinates, P):
-    float_coordinates = tf.math.divide(sdf_coordinates, sdf_resolution)
-    integer_coordinates = tf.cast(float_coordinates, dtype=tf.int32)
-    integer_coordinates = tf.reshape(integer_coordinates, [-1, P])
-    integer_coordinates = integer_coordinates + sdf_origin_coordinate
-    # blindly assume the point is within our grid
-
-    # https://github.com/tensorflow/tensorflow/pull/15857
-    # "on CPU an error will be returned and on GPU 0 value will be filled to the expected positions of the output."
-    # TODO: make this handle out of bounds correctly. I think correctly for us means return large number for SDF
-    # and a gradient towards the origin
-
-    # for coordinate in integer_coordinates:
-    #     if c
-
-    sdf_value = tf.gather_nd(sdf, integer_coordinates, name='index_sdf')
-    sdf_value = tf.reshape(sdf_value, [-1, 1], name='sdfs')
-
-    def __sdf_gradient_func(dy):
-        sdf_gradient = tf.gather_nd(full_sdf_gradient, integer_coordinates, name='index_sdf_gradient')
-        sdf_gradient = tf.reshape(sdf_gradient, [-1, P])
-        return None, None, None, None, dy * sdf_gradient, None
-
-    return sdf_value, __sdf_gradient_func
+import link_bot_pycommon.experiments_util
+from link_bot_models.tf_signed_distance_field_op import sdf_func
 
 
 class ConstraintModelType(Enum):
@@ -53,12 +26,8 @@ class ConstraintModelType(Enum):
 class ConstraintModel:
 
     def __init__(self, args, np_sdf, np_sdf_gradient, np_sdf_resolution, np_sdf_origin, N):
-        self.seed = args['seed']
-        np.random.seed(self.seed)
-        tf.random.set_random_seed(self.seed)
+        super(ConstraintModel, self).__init__(args, N)
 
-        self.args = args
-        self.N = N
         self.beta = 1e-8
 
         self.observations = tf.placeholder(tf.float32, shape=(None, N), name="observations")
@@ -210,7 +179,7 @@ class ConstraintModel:
         if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
 
-            link_bot_pycommon.src.link_bot_pycommon.experiments_util.make_log_dir(full_log_path)
+            link_bot_pycommon.experiments_util.make_log_dir(full_log_path)
 
             metadata_path = os.path.join(full_log_path, "metadata.json")
             metadata_file = open(metadata_path, 'w')
@@ -305,16 +274,6 @@ class ConstraintModel:
         violated, pt = self.sess.run([self.hat_k_violated, self.hat_latent_k], feed_dict=feed_dict)
         return np.any(violated), pt
 
-    def setup(self):
-        if self.args['checkpoint']:
-            self.sess.run([tf.local_variables_initializer()])
-            self.load()
-        else:
-            self.init()
-
-    def init(self):
-        self.sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
-
     def constraint_violated(self, latent_k):
         full_latent_k = np.ndarray((1, self.P))
         full_latent_k[0, 0] = latent_k
@@ -324,21 +283,6 @@ class ConstraintModel:
         # take the first op from the list, then take the first batch and first time step from that
         constraint_violated = constraint_violated[0, 0]
         return constraint_violated
-
-    def save(self, log_path, log=True, loss=None):
-        global_step = self.sess.run(self.global_step)
-        if log:
-            if loss is not None:
-                print(Fore.CYAN + "Saving ckpt {} at step {:d} with loss {}".format(log_path, global_step,
-                                                                                    loss) + Fore.RESET)
-            else:
-                print(Fore.CYAN + "Saving ckpt {} at step {:d}".format(log_path, global_step) + Fore.RESET)
-        self.saver.save(self.sess, os.path.join(log_path, "nn.ckpt"), global_step=self.global_step)
-
-    def load(self):
-        self.saver.restore(self.sess, self.args['checkpoint'])
-        global_step = self.sess.run(self.global_step)
-        print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
 
     def __str__(self):
         ops = [self.threshold_k]

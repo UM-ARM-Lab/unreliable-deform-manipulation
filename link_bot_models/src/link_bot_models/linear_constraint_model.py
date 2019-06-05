@@ -10,8 +10,9 @@ import control
 import tensorflow as tf
 from colorama import Fore
 
-import link_bot_pycommon.src.link_bot_pycommon.experiments_util
-from link_bot_models.src.link_bot_models import base_model
+import link_bot_pycommon.experiments_util
+from link_bot_models import base_model
+from link_bot_models.tf_signed_distance_field_op import sdf_func
 from tensorflow.python import debug as tf_debug
 
 
@@ -31,41 +32,13 @@ def make_constraint_mask(arr, axis=1):
     return np.vstack((batch_indeces, time_indeces)).T
 
 
-@tf.custom_gradient
-def sdf_func(sdf, full_sdf_gradient, resolution, sdf_origin_coordinate, sdf_coordinates, P, Q):
-    integer_coordinates = tf.cast(tf.divide(sdf_coordinates, resolution), dtype=tf.int32)
-    integer_coordinates = tf.reshape(integer_coordinates, [-1, P])
-    integer_coordinates = integer_coordinates + sdf_origin_coordinate
-    # blindly assume the point is within our grid
-
-    # https://github.com/tensorflow/tensorflow/pull/15857
-    # "on CPU an error will be returned and on GPU 0 value will be filled to the expected positions of the output."
-    # TODO: make this handle out of bounds correctly. I think correctly for us means return large number for SDF
-    # and a gradient towards the origin
-    sdf_value = tf.gather_nd(sdf, integer_coordinates, name='index_sdf')
-    sdf_value = tf.reshape(sdf_value, (sdf_coordinates.shape[0], sdf_coordinates.shape[1], Q), name='sdfs')
-
-    def __sdf_gradient_func(dy):
-        sdf_gradient = tf.gather_nd(full_sdf_gradient, integer_coordinates, name='index_sdf_gradient')
-        sdf_gradient = tf.reshape(sdf_gradient, (sdf_coordinates.shape[0], sdf_coordinates.shape[1], P))
-        return None, None, None, None, dy * sdf_gradient, None, None
-
-    return sdf_value, __sdf_gradient_func
-
-
 class LinearConstraintModel(base_model.BaseModel):
 
     def __init__(self, args, numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, batch_size, N, M, L, P, Q, dt,
                  n_steps):
-        base_model.BaseModel.__init__(self, N, M, L, P)
-
-        self.seed = args['seed']
-        np.random.seed(self.seed)
-        tf.random.set_random_seed(self.seed)
+        super(LinearConstraintModel, self).__init__(args, N)
 
         self.batch_size = batch_size
-        self.args = args
-        self.N = N
         self.M = M
         self.L = L
         self.P = P
@@ -240,7 +213,7 @@ class LinearConstraintModel(base_model.BaseModel):
         if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
 
-            link_bot_pycommon.src.link_bot_pycommon.experiments_util.make_log_dir(full_log_path)
+            link_bot_pycommon.experiments_util.make_log_dir(full_log_path)
 
             metadata_path = os.path.join(full_log_path, "metadata.json")
             metadata_file = open(metadata_path, 'w')
@@ -386,16 +359,6 @@ class LinearConstraintModel(base_model.BaseModel):
         c = np.sum((observations[:, :, [0, 1]] - goal[0, [0, 1]]) ** 2, axis=2)
         return c
 
-    def setup(self):
-        if self.args['checkpoint']:
-            self.sess.run([tf.local_variables_initializer()])
-            self.load()
-        else:
-            self.init()
-
-    def init(self):
-        self.sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
-
     def reduce(self, observations):
         # make dummy size array and just fill in
         ss = np.ndarray((self.batch_size, self.n_steps + 1, self.N))
@@ -470,21 +433,6 @@ class LinearConstraintModel(base_model.BaseModel):
         hat_c = self.sess.run(ops, feed_dict=feed_dict)[0]
         hat_c = np.expand_dims(hat_c, axis=0)
         return hat_c
-
-    def save(self, log_path, log=True, loss=None):
-        global_step = self.sess.run(self.global_step)
-        if log:
-            if loss:
-                print(Fore.CYAN + "Saving ckpt {} at step {:d} with loss {}".format(log_path, global_step,
-                                                                                    loss) + Fore.RESET)
-            else:
-                print(Fore.CYAN + "Saving ckpt {} at step {:d}".format(log_path, global_step) + Fore.RESET)
-        self.saver.save(self.sess, os.path.join(log_path, "nn.ckpt"), global_step=self.global_step)
-
-    def load(self):
-        self.saver.restore(self.sess, self.args['checkpoint'])
-        global_step = self.sess.run(self.global_step)
-        print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
 
     def is_controllable(self):
         feed_dict = {}

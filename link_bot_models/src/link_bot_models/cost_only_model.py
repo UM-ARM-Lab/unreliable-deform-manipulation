@@ -5,21 +5,15 @@ import os
 
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
-from link_bot_models.src.link_bot_models import base_model
+from link_bot_models import base_model
 from tensorflow.python import debug as tf_debug
 
 
 class CostOnlyModel(base_model.BaseModel):
 
     def __init__(self, args, N, M, L, n_steps, dt, seed=0):
-        base_model.BaseModel.__init__(self, N, M, L)
+        super(CostOnlyModel, self).__init__(args, N)
 
-        np.random.seed(seed)
-        tf.random.set_random_seed(seed)
-
-        self.args = args
-        self.N = N
         self.M = M
         self.L = L
         self.n_steps = n_steps
@@ -116,16 +110,6 @@ class CostOnlyModel(base_model.BaseModel):
 
         return interrupted
 
-    def setup(self):
-        if self.args['checkpoint']:
-            self.load()
-        else:
-            self.init()
-
-    def init(self):
-        init_op = tf.global_variables_initializer()
-        self.sess.run(init_op)
-
     def reduce(self, s):
         feed_dict = {self.s: s}
         ops = [self.hat_o]
@@ -144,16 +128,6 @@ class CostOnlyModel(base_model.BaseModel):
         hat_c = self.sess.run(ops, feed_dict=feed_dict)[0]
         hat_c = np.expand_dims(hat_c, axis=0)
         return hat_c
-
-    def save(self, log_path):
-        global_step = self.sess.run(self.global_step)
-        print(Fore.CYAN + "Saving ckpt {} at step {:d}".format(log_path, global_step) + Fore.RESET)
-        self.saver.save(self.sess, os.path.join(log_path, "nn.ckpt"), global_step=self.global_step)
-
-    def load(self):
-        self.saver.restore(self.sess, self.args['checkpoint'])
-        global_step = self.sess.run(self.global_step)
-        print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
 
     def evaluate(self, eval_x, goal, display=True):
         s, s_, u, c, c_ = self.batch(eval_x, goal)

@@ -1,49 +1,47 @@
+import numpy as np
+import tensorflow as tf
+import os
+from colorama import Fore
+
+
 class BaseModel:
 
-    def __init__(self, N, M=0, L=0, P=0):
+    def __init__(self, args_dict, N):
         """
+        args_dict: the argsparse args but as a dict
         N: dimensionality of the full state
-        M: dimensionality in the reduced state
-        L: dimensionality in the actions
-        P: dimensionality in the constraints
         """
+        self.args_dict = args_dict
         self.N = N
-        self.M = M
-        self.L = L
-        self.P = P
 
-    def size(self):
-        pass
+        self.seed = self.args_dict['seed']
+        np.random.seed(self.seed)
+        tf.random.set_random_seed(self.seed)
 
-    def reduce(self, s):
-        pass
+    def setup(self):
+        if self.args['checkpoint']:
+            self.sess.run([tf.local_variables_initializer()])
+            self.load()
+        else:
+            self.init()
 
-    def predict(self, o, u):
-        pass
-
-    def cost(self, o, g):
-        pass
-
-    def save(self, outfile):
-        pass
+    def init(self):
+        self.sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
 
     def load(self):
-        pass
+        self.saver.restore(self.sess, self.args['checkpoint'])
+        global_step = self.sess.run(self.global_step)
+        print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
 
-    def predict_from_s(self, s, u):
-        return self.predict(self.reduce(s), u)
+    def save(self, log_path, log=True, loss=None):
+        global_step = self.sess.run(self.global_step)
+        if log:
+            if loss is not None:
+                print(Fore.CYAN + "Saving ckpt {} at step {:d} with loss {}".format(log_path, global_step,
+                                                                                    loss) + Fore.RESET)
+            else:
+                print(Fore.CYAN + "Saving ckpt {} at step {:d}".format(log_path, global_step) + Fore.RESET)
+        self.saver.save(self.sess, os.path.join(log_path, "nn.ckpt"), global_step=self.global_step)
 
-    def predict_from_o(self, o, u):
-        return self.predict(o, u)
-
-    def cost_of_s(self, s, g):
-        return self.cost(self.reduce(s), g)
-
-    def predict_cost_of_s(self, s, u, g):
-        return self.cost(self.predict(self.reduce(s), u), g)
-
-    def predict_cost(self, o, u, g):
-        return self.cost(self.predict(o, u), g)
-
-    def __repr__(self):
-        pass
+    def __str__(self):
+        return "base_model"

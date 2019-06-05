@@ -1,6 +1,6 @@
 import numpy as np
 
-from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
+from link_bot_pycommon import link_bot_pycommon
 
 
 def make_row(metric_name, e):
@@ -34,7 +34,7 @@ def inv_model_error_metrics(my_model, test_x, test_y):
     # compute dot product of each column of a with each column of b
     pred_theta = np.arctan2(pred_y[:, 1], pred_y[:, 0])
     true_theta = np.arctan2(test_y[:, 1], test_y[:, 0])
-    abs_angle_error = abs(np.rad2deg(tpoc.yaw_diff(true_theta, pred_theta)))
+    abs_angle_error = abs(np.rad2deg(link_bot_pycommon.yaw_diff(true_theta, pred_theta)))
 
     abs_time_step_error = abs(pred_y[:, 3] - test_y[:, 3])
 

@@ -19,7 +19,7 @@ from link_bot_agent import agent, gp_rrt
 from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
+from link_bot_pycommon import link_bot_pycommon
 import gpflow as gpf
 
 dt = 0.1
@@ -44,7 +44,7 @@ def common(args, start, max_steps=1e6):
     gpf.reset_default_session(config=config)
 
     max_v = 1
-    sdf, sdf_gradient, sdf_resolution, sdf_origin = tpoc.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution, sdf_origin = link_bot_pycommon.load_sdf(args.sdf)
 
     args_dict = vars(args)
     args_dict['random_init'] = False
@@ -67,7 +67,7 @@ def common(args, start, max_steps=1e6):
     #         violated = constraint_model.violated(np_state, sdf, sdf_resolution, sdf_origin)
     #         x = np_state[0, 4]
     #         y = np_state[0, 5]
-    #         row_col = tpoc.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
+    #         row_col = link_bot_pycommon.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
     #         true_violated = sdf[row_col] < args.sdf_threshold
 
     #############################################
@@ -83,7 +83,7 @@ def common(args, start, max_steps=1e6):
         pt = np_state @ R_k
         x = pt[0, 0]
         y = pt[0, 1]
-        row_col = tpoc.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
+        row_col = link_bot_pycommon.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
         violated = sdf[row_col] < args.sdf_threshold
         return violated
 
@@ -176,7 +176,7 @@ def common(args, start, max_steps=1e6):
 
                     links_state = agent.get_state(get_link_state)
                     s_next = np.array(links_state).reshape(1, fwd_gp_model.n_state)
-                    true_cost = tpoc.state_cost(s_next, goal)
+                    true_cost = link_bot_pycommon.state_cost(s_next, goal)
 
                     if args.pause:
                         input('paused...')

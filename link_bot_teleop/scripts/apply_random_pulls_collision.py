@@ -8,7 +8,7 @@ from gazebo_msgs.srv import GetLinkState
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_agent import agent
-from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
+from link_bot_pycommon import link_bot_pycommon
 
 
 class LinkConfig:
@@ -63,7 +63,7 @@ def main():
     sleep(0.5)
 
     # load the SDF
-    sdf, sdf_gradient, sdf_resolution = tpoc.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution = link_bot_pycommon.load_sdf(args.sdf)
     sdf_rows, sdf_cols = sdf.shape
     sdf_origin_coordinate = np.array([sdf_rows / 2, sdf_cols / 2], dtype=np.int32)
 

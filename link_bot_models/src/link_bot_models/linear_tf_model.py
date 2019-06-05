@@ -9,23 +9,17 @@ import control
 import tensorflow as tf
 from colorama import Fore
 
-import link_bot_pycommon.src.link_bot_pycommon.experiments_util
-from link_bot_models.src.link_bot_models import base_model
+import link_bot_pycommon.experiments_util
+from link_bot_models import base_model
 from tensorflow.python import debug as tf_debug
 
 
 class LinearTFModel(base_model.BaseModel):
 
-    def __init__(self, args, batch_size, N, M, L, dt, n_steps, seed=0):
-        base_model.BaseModel.__init__(self, N, M, L)
-
-        self.seed = seed
-        np.random.seed(self.seed)
-        tf.random.set_random_seed(self.seed)
+    def __init__(self, args, batch_size, N, M, L, dt, n_steps):
+        super(LinearTFModel, self).__init__(args, N)
 
         self.batch_size = batch_size
-        self.args = args
-        self.N = N
         self.M = M
         self.L = L
         self.beta = 1e-8
@@ -115,7 +109,7 @@ class LinearTFModel(base_model.BaseModel):
         if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
 
-            link_bot_pycommon.src.link_bot_pycommon.experiments_util.make_log_dir(full_log_path)
+            link_bot_pycommon.experiments_util.make_log_dir(full_log_path)
 
             metadata_path = os.path.join(full_log_path, "metadata.json")
             metadata_file = open(metadata_path, 'w')
@@ -215,16 +209,6 @@ class LinearTFModel(base_model.BaseModel):
         c = np.sum((s[:, :, [0, 1]] - goal[0, [0, 1]]) ** 2, axis=2)
         return c
 
-    def setup(self):
-        if self.args['checkpoint']:
-            self.load()
-        else:
-            self.init()
-
-    def init(self):
-        init_op = tf.global_variables_initializer()
-        self.sess.run(init_op)
-
     def reduce(self, s):
         ss = np.ndarray((self.batch_size, self.n_steps + 1, self.N))
         ss[0, 0] = s
@@ -276,21 +260,6 @@ class LinearTFModel(base_model.BaseModel):
         hat_c = self.sess.run(ops, feed_dict=feed_dict)[0]
         hat_c = np.expand_dims(hat_c, axis=0)
         return hat_c
-
-    def save(self, log_path, log=True, loss=None):
-        global_step = self.sess.run(self.global_step)
-        if log:
-            if loss:
-                print(Fore.CYAN + "Saving ckpt {} at step {:d} with loss {}".format(log_path, global_step,
-                                                                                    loss) + Fore.RESET)
-            else:
-                print(Fore.CYAN + "Saving ckpt {} at step {:d}".format(log_path, global_step) + Fore.RESET)
-        self.saver.save(self.sess, os.path.join(log_path, "nn.ckpt"), global_step=self.global_step)
-
-    def load(self):
-        self.saver.restore(self.sess, self.args['checkpoint'])
-        global_step = self.sess.run(self.global_step)
-        print(Fore.CYAN + "Restored ckpt {} at step {:d}".format(self.args['checkpoint'], global_step) + Fore.RESET)
 
     def is_controllable(self):
         feed_dict = {}

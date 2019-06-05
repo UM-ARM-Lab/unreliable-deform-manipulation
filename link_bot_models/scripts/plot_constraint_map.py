@@ -7,8 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 
-from link_bot_models.src.link_bot_models import constraint_model as m
-from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
+from link_bot_models import constraint_model as m
+from link_bot_pycommon import link_bot_pycommon
 
 true_positives = 0
 false_positives = 0
@@ -21,7 +21,7 @@ def evaluate(sdf, sdf_resolution, sdf_origin, model, threshold, rope_configurati
 
     rope_configuration = np.atleast_2d(rope_configuration)
     violated, pt = model.violated(rope_configuration)
-    row_col = tpoc.point_to_sdf_idx(rope_configuration[0, 4], rope_configuration[0, 5], sdf_resolution, sdf_origin)
+    row_col = link_bot_pycommon.point_to_sdf_idx(rope_configuration[0, 4], rope_configuration[0, 5], sdf_resolution, sdf_origin)
     true_violated = sdf[row_col] < threshold
 
     if violated:
@@ -70,7 +70,7 @@ def main():
 
     args = parser.parse_args()
 
-    sdf, sdf_gradient, sdf_resolution, sdf_origin = tpoc.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution, sdf_origin = link_bot_pycommon.load_sdf(args.sdf)
     args_dict = vars(args)
     model = m.ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
     model.setup()
