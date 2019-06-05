@@ -13,8 +13,8 @@ import ompl.util as ou
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import toy_problem_optimization_common as tpoc
-from link_bot_notebooks import linear_constraint_model
+from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
+from link_bot_models.src.link_bot_models import linear_constraint_model
 from link_bot_agent import agent, dual_lqr_action_selector
 
 dt = 0.1

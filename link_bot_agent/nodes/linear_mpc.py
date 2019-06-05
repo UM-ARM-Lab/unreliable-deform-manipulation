@@ -13,8 +13,7 @@ import ompl.util as ou
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import linear_tf_model
-from link_bot_notebooks import toy_problem_optimization_common as tpoc
+from link_bot_models.src.link_bot_models import linear_tf_model
 from link_bot_agent import agent, ompl_act, one_step_action_selector, lqr_action_selector
 from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSampler
 from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler

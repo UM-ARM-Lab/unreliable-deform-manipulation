@@ -10,8 +10,8 @@ import control
 import tensorflow as tf
 from colorama import Fore
 
-import link_bot_notebooks.experiments_util
-from link_bot_notebooks import base_model
+import link_bot_pycommon.src.link_bot_pycommon.experiments_util
+from link_bot_models.src.link_bot_models import base_model
 from tensorflow.python import debug as tf_debug
 
 
@@ -240,7 +240,7 @@ class LinearConstraintModel(base_model.BaseModel):
         if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
 
-            link_bot_notebooks.experiments_util.make_log_dir(full_log_path)
+            link_bot_pycommon.src.link_bot_pycommon.experiments_util.make_log_dir(full_log_path)
 
             metadata_path = os.path.join(full_log_path, "metadata.json")
             metadata_file = open(metadata_path, 'w')

@@ -19,8 +19,7 @@ from link_bot_agent import agent, gp_rrt
 from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import toy_problem_optimization_common as tpoc
-from link_bot_notebooks.constraint_model import ConstraintModel, ConstraintModelType
+from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
 import gpflow as gpf
 
 dt = 0.1

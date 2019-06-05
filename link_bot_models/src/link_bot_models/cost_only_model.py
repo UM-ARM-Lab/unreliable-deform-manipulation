@@ -6,7 +6,7 @@ import os
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
-from link_bot_notebooks import base_model
+from link_bot_models.src.link_bot_models import base_model
 from tensorflow.python import debug as tf_debug
 
 

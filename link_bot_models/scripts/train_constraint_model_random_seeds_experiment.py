@@ -9,9 +9,8 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_notebooks import experiments_util
-from link_bot_notebooks import constraint_model as m
-from link_bot_notebooks import toy_problem_optimization_common as tpoc
+from link_bot_models.src.link_bot_models import constraint_model as m
+from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc, experiments_util
 
 
 def train(args):

@@ -11,7 +11,7 @@ from colorama import Fore
 from matplotlib.animation import FuncAnimation
 
 from link_bot_gaussian_process import data_reformatting
-from link_bot_notebooks import experiments_util
+from link_bot_pycommon.src.link_bot_pycommon import experiments_util
 
 
 def predict(fwd_model, np_state, np_controls, np_duration_steps_int, steps=None, initial_variance=0.00001):

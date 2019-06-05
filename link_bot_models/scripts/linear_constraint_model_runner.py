@@ -2,33 +2,34 @@
 from __future__ import print_function
 
 import argparse
-from colorama import Fore
 import sys
 import os
-import tensorflow as tf
 import numpy as np
 
-from link_bot_notebooks import constraint_model as m
-from link_bot_notebooks import experiments_util
-from link_bot_notebooks import toy_problem_optimization_common as tpo
+from link_bot_models.src.link_bot_models import linear_constraint_model as m
+from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpo, experiments_util
 
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
-    sdf, sdf_gradient, sdf_resolution, sdf_origin = tpo.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution = tpo.load_sdf(args.sdf)
     data = np.load(args.dataset)
-    model = m.ConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
+    if 'times' in data:
+        times = data['times']
+        dt = times[0, 1, 0] - times[0, 0, 0]
+    else:
+        dt = 0.1
+    batch_size, n_steps, _ = data['actions'].shape
+    model = m.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, batch_size, args.N, args.M, args.L,
+                                    args.P, args.Q, dt, n_steps)
+
+    goal = np.zeros((1, args.N))
 
     model.setup()
 
-    split_data = model.split_data(data)
-    train_observations, train_k, validation_observations, validation_k = split_data
-    model.train(*split_data, args.epochs, log_path)
+    model.train(data, goal, args.epochs, log_path)
 
-    print(Fore.GREEN + "\nTrain Evaluation" + Fore.RESET)
-    model.evaluate(train_observations, train_k)
-    print(Fore.GREEN + "\nTest Evaluation" + Fore.RESET)
-    model.evaluate(validation_observations, validation_k)
+    model.evaluate(data, goal)
 
 
 def model_only(args):
@@ -37,10 +38,8 @@ def model_only(args):
     fake_sdf = np.random.randn(W, H).astype(np.float32)
     fake_sdf_grad = np.random.randn(W, H, 2).astype(np.float32)
     fake_sdf_res = np.random.randn(2).astype(np.float32)
-    fake_sdf_origin = np.random.randn(2).astype(np.float32)
-    args_dict = vars(args)
-    args_dict['random_init'] = False
-    model = m.ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, args.N)
+    model = m.LinearConstraintModel(vars(args), fake_sdf, fake_sdf_grad, fake_sdf_res, 250, args.N, args.M, args.L,
+                                    args.P, args.Q, 0.1, 50)
 
     model.init()
 
@@ -54,18 +53,22 @@ def model_only(args):
 
 
 def evaluate(args):
-    sdf, sdf_gradient, sdf_resolution, sdf_origin = tpo.load_sdf(args.sdf)
+    goal = np.zeros((1, args.N))
+    sdf, sdf_gradient, sdf_resolution = tpo.load_sdf(args.sdf)
     data = np.load(args.dataset)
+    if 'times' in data:
+        times = data['times']
+        dt = times[0, 1, 0] - times[0, 0, 0]
+    else:
+        dt = 0.1
+    batch_size, n_steps, _ = data['actions'].shape
+    print(n_steps)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = m.ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
+    model = m.LinearConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, batch_size, args.N, args.M, args.L,
+                                    args.P, args.Q, dt, n_steps)
     model.setup()
-
-    # take all the data as validation data
-    split_data = model.split_data(data, fraction_validation=1.00)
-    train_observations, train_k, validation_observations, validation_k = split_data
-
-    return model.evaluate(validation_observations, validation_k)
+    return model.evaluate(data, goal)
 
 
 def show(args):
@@ -74,35 +77,36 @@ def show(args):
     fake_sdf = np.random.randn(W, H).astype(np.float32)
     fake_sdf_grad = np.random.randn(W, H, 2).astype(np.float32)
     fake_sdf_res = np.random.randn(2).astype(np.float32)
-    fake_sdf_origin = np.random.randn(2).astype(np.float32)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = m.ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, args.N)
+    model = m.LinearConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, 250, args.N, args.M, args.L,
+                                    args.P, args.Q, 0.1, 1)
     model.setup()
     print(model)
 
 
 def main():
     np.set_printoptions(precision=6, suppress=True)
-    tf.logging.set_verbosity(tf.logging.ERROR)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
+    parser.add_argument("-M", help="dimensions in latent state o_d", type=int, default=2)
+    parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
+    parser.add_argument("-P", help="dimensions in latent state o_k", type=int, default=2)
+    parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("model_type", choices=m.ConstraintModelType.strings())
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
     train_subparser.add_argument("dataset", help="dataset (txt file)")
     train_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
-    train_subparser.add_argument("--batch-size", "-b", type=int, default=128)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=50000)
+    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=500)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--print-period", "-p", type=int, default=100)
-    train_subparser.add_argument("--save-period", type=int, default=1000)
+    train_subparser.add_argument("--save-period", type=int, default=400)
     train_subparser.add_argument("--random-init", action='store_true')
     train_subparser.set_defaults(func=train)
 

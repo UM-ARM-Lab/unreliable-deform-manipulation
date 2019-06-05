@@ -5,10 +5,8 @@ import argparse
 import os
 import numpy as np
 
-from link_bot_notebooks import notebook_finder
-from link_bot_notebooks import toy_problem_optimization_common as tpo
-from link_bot_notebooks import cost_only_model
-from link_bot_notebooks import experiments_util
+from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpo, experiments_util
+from link_bot_models.src.link_bot_models import cost_only_model
 
 DT = 0.1
 

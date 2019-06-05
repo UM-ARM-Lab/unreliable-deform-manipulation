@@ -1,6 +1,6 @@
 import numpy as np
 
-from link_bot_notebooks import toy_problem_optimization_common as tpoc
+from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
 
 
 def make_row(metric_name, e):

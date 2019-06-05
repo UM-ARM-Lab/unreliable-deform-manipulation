@@ -8,7 +8,7 @@ from gazebo_msgs.srv import GetLinkState
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from link_bot_agent import agent
-from link_bot_notebooks import toy_problem_optimization_common as tpoc
+from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
 
 
 class LinkConfig:

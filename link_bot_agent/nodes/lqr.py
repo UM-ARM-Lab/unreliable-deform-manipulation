@@ -13,7 +13,7 @@ import ompl.util as ou
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_notebooks import  linear_tf_model
+from link_bot_models.src.link_bot_models import linear_tf_model
 from link_bot_agent import agent,  lqr_action_selector
 
 dt = 0.1

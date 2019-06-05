@@ -6,9 +6,8 @@ import sys
 import os
 import numpy as np
 
-from link_bot_notebooks import toy_problem_optimization_common as tpo
-from link_bot_notebooks import linear_tf_model as m
-from link_bot_notebooks import experiments_util
+from link_bot_models.src.link_bot_models import linear_tf_model as m
+from link_bot_pycommon.src.link_bot_pycommon import experiments_util
 
 
 def train(args):

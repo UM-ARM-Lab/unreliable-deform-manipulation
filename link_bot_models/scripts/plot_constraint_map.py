@@ -7,8 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 
-from link_bot_notebooks import constraint_model as m
-from link_bot_notebooks import toy_problem_optimization_common as tpoc
+from link_bot_models.src.link_bot_models import constraint_model as m
+from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
 
 true_positives = 0
 false_positives = 0

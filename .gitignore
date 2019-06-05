@@ -1,2 +1,4 @@
 *.swp
+log_data
+logdata
 __pycache__

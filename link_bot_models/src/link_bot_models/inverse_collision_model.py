@@ -9,7 +9,7 @@ from scipy.optimize import least_squares
 from scipy.spatial import cKDTree
 from tabulate import tabulate
 
-from link_bot_notebooks import toy_problem_optimization_common as tpoc
+from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpoc
 
 
 def sdf_to_dict(sdf):

@@ -10,7 +10,7 @@ import tensorflow as tf
 from colorama import Fore
 from tensorflow.python import debug as tf_debug
 
-import link_bot_notebooks.experiments_util
+import link_bot_pycommon.src.link_bot_pycommon.experiments_util
 
 
 @tf.custom_gradient
@@ -210,7 +210,7 @@ class ConstraintModel:
         if self.args['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
 
-            link_bot_notebooks.experiments_util.make_log_dir(full_log_path)
+            link_bot_pycommon.src.link_bot_pycommon.experiments_util.make_log_dir(full_log_path)
 
             metadata_path = os.path.join(full_log_path, "metadata.json")
             metadata_file = open(metadata_path, 'w')
