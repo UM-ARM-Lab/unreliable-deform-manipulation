@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import argparse
 import os
-import time as timemod
+import time
 from builtins import input
 
 import numpy as np
@@ -12,6 +12,7 @@ import tensorflow as tf
 from colorama import Fore
 
 import rospy
+from gazebo_msgs.msg import ContactsState
 from gazebo_msgs.srv import GetLinkState
 from ignition import markers
 from link_bot_agent import agent, gp_rrt
@@ -25,6 +26,18 @@ import gpflow as gpf
 dt = 0.1
 success_dist = 0.10
 in_contact = False
+
+
+def contacts_callback(contacts):
+    global in_contact
+    in_contact = False
+    for state in contacts.states:
+        if state.collision1_name == "link_bot::head::head_collision" \
+                and state.collision2_name != "ground_plane::link::collision":
+            in_contact = True
+        if state.collision2_name == "link_bot::head::head_collision" \
+                and state.collision1_name != "ground_plane::link::collision":
+            in_contact = True
 
 
 def common(args, start, max_steps=1e6):
@@ -41,14 +54,13 @@ def common(args, start, max_steps=1e6):
     inv_gp_model = link_bot_gp.LinkBotGP()
     inv_gp_model.load(os.path.join(args.gp_model_dir, 'inv_model'))
 
-    args_dict = vars(args)
-    N = 6
-
     ##############################################
     #             NN Constraint Model            #
     ##############################################
     # constraint_tf_graph = tf.Graph()
     # with constraint_tf_graph.as_default():
+    #     args_dict = vars(args)
+    #     N = 6
     #     constraint_model = ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, N)
     #     constraint_model.setup()
     #
@@ -85,6 +97,7 @@ def common(args, start, max_steps=1e6):
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
+    rospy.Subscriber("/head_contact", ContactsState, contacts_callback)
 
     action_msg = LinkBotVelocityAction()
     action_msg.control_link_name = 'head'
@@ -93,6 +106,7 @@ def common(args, start, max_steps=1e6):
     num_fails = 0
     num_successes = 0
     execution_times = []
+    planning_times = []
     min_true_costs = []
     nums_steps = []
     nums_contacts = []
@@ -113,12 +127,8 @@ def common(args, start, max_steps=1e6):
             config.tail_pose.y = start[0, 1]
             config.tail_pose.theta = np.random.uniform(-0.2, 0.2)
             config.joint_angles_rad = [np.random.uniform(-0.2, 0.2), 0]
-            # config.tail_pose.x = -2.4194
-            # config.tail_pose.y = 0.323
-            # config.tail_pose.theta = 1.2766
-            # config.joint_angles_rad = [2.54, 0]
             config_pub.publish(config)
-            timemod.sleep(0.1)
+            time.sleep(0.1)
 
             # publish markers
             start_marker.pose.position.x = config.tail_pose.x
@@ -138,11 +148,11 @@ def common(args, start, max_steps=1e6):
             done = False
             discrete_time = 0
             contacts = 0
-            start_time = timemod.time()
+            start_time = time.time()
             while step_idx < max_steps and not done:
                 s = agent.get_state(get_link_state)
                 s = np.array(s).reshape((1, fwd_gp_model.n_state))
-                planned_actions, _ = rrt.plan(s, goal, sdf, args.verbose)
+                planned_actions, _, planning_time = rrt.plan(s, goal, sdf, args.verbose)
 
                 if planned_actions is None:
                     num_fails += 1
@@ -184,8 +194,9 @@ def common(args, start, max_steps=1e6):
 
                 if done:
                     break
-            execution_time = timemod.time() - start_time
+            execution_time = time.time() - start_time
             execution_times.append(execution_time)
+            planning_times.append(planning_time)
             min_true_costs.append(min_true_cost)
             nums_contacts.append(contacts)
             nums_steps.append(step_idx)
@@ -195,7 +206,7 @@ def common(args, start, max_steps=1e6):
     except KeyboardInterrupt:
         pass
 
-    return np.array(min_true_costs), np.array(execution_times), np.array(nums_contacts), num_fails, num_successes
+    return np.array(min_true_costs), np.array(execution_times), np.array(planning_times), np.array(nums_contacts), num_fails, num_successes
 
 
 def test(args):
@@ -205,16 +216,18 @@ def test(args):
 
 
 def eval(args):
-    stats_filename = os.path.join(os.path.dirname(args.checkpoint), 'eval_{}.txt'.format(int(timemod.time())))
+    stats_filename = os.path.join(args.gp_model_dir, 'eval_{}.txt'.format(int(time.time())))
     start = np.array([[-1, 0, 0, 0, 0, 0]])
 
-    min_costs, execution_times, nums_contacts, num_fails, num_successes = common(args, start, 200)
+    min_costs, execution_times, planning_times, nums_contacts, num_fails, num_successes = common(args, start, max_steps=1)
 
     eval_stats_lines = [
         '% fail: {}'.format(float(num_fails) / args.n_trials),
         '% success: {}'.format(float(num_successes) / args.n_trials),
         'mean min dist to goal: {}'.format(np.mean(min_costs)),
         'std min dist to goal: {}'.format(np.std(min_costs)),
+        'mean planning time: {}'.format(np.mean(planning_times)),
+        'std planning time: {}'.format(np.std(planning_times)),
         'mean execution time: {}'.format(np.mean(execution_times)),
         'std execution time: {}'.format(np.std(execution_times)),
         'mean num contacts: {}'.format(np.mean(nums_contacts)),
@@ -265,8 +278,8 @@ def main():
 
     np.random.seed(args.seed)
     ou.RNG.setSeed(args.seed)
-    ou.setLogLevel(ou.LOG_DEBUG)
-    # ou.setLogLevel(ou.LOG_ERROR)
+    # ou.setLogLevel(ou.LOG_DEBUG)
+    ou.setLogLevel(ou.LOG_ERROR)
 
     if args == argparse.Namespace():
         parser.print_usage()

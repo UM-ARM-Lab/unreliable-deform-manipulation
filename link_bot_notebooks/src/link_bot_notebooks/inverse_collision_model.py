@@ -5,7 +5,6 @@ from time import time
 import matplotlib.pyplot as plt
 import numpy as np
 from colorama import Fore
-# from scipy.optimize import root
 from scipy.optimize import least_squares
 from scipy.spatial import cKDTree
 from tabulate import tabulate
@@ -100,7 +99,7 @@ def func(sdf_dict, origin, res, data_at_constraint_boundary, params):
     return error, corresponding_sdf_points
 
 
-def attempt_minimize(sdf_dict, origin, res, data_at_constraint_boundary, out_params=[]):
+def attempt_minimize(args, sdf_dict, origin, res, data_at_constraint_boundary, out_params=[]):
     def _func(params):
         errors, corresponding_sdf_points = func(sdf_dict, origin, res, data_at_constraint_boundary, params)
         out_params.append(corresponding_sdf_points)
@@ -112,8 +111,13 @@ def attempt_minimize(sdf_dict, origin, res, data_at_constraint_boundary, out_par
     # initial_a = [0, 1]
     # initial_object_radius = [0.1]
     initial_params = np.concatenate((initial_a, initial_object_radius))
-    bounds = ([-np.inf, -np.inf, 0], [np.inf, np.inf, np.inf])
-    sol = least_squares(_func, x0=initial_params, bounds=bounds, method='trf', loss='huber')
+    if args.method == 'lm':
+        sol = least_squares(_func, x0=initial_params, method='lm', loss='linear')
+    elif args.method == 'trf':
+        bounds = ([-np.inf, -np.inf, 0], [np.inf, np.inf, np.inf])
+        sol = least_squares(_func, x0=initial_params, bounds=bounds, method='trf', loss='huber')
+    else:
+        raise ValueError("invalid method " + args.method)
     return sol
 
 
@@ -138,7 +142,7 @@ def setup(args):
 def solve_once(args):
     sdf, sdf_resolution, sdf_origin, states, constraints, sdf_dict, data_at_constraint_boundary = setup(args)
 
-    maximum_iterations = 1000
+    maximum_iterations = 200
     t0 = time()
     sol = None
     mean_error = np.inf
@@ -146,7 +150,7 @@ def solve_once(args):
     success = False
     for attempt in range(maximum_iterations):
         out_params = []
-        sol = attempt_minimize(sdf_dict, sdf_origin, sdf_resolution, data_at_constraint_boundary, out_params)
+        sol = attempt_minimize(args, sdf_dict, sdf_origin, sdf_resolution, data_at_constraint_boundary, out_params)
         mean_error = np.mean(sol.fun)
         sdf_points_at_threshold = out_params[0]
         if mean_error < args.success_threshold:
@@ -204,6 +208,7 @@ def evaluate(args):
         ['time (s)', np.min(dts), np.max(dts), np.mean(dts), np.median(dts)],
     ]
     table = tabulate(metrics, headers=headers, tablefmt='github', floatfmt='6.3f')
+    print()
     print(table)
     print('successes: {}/{}'.format(successes, args.n_runs))
 
@@ -214,6 +219,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('data')
     parser.add_argument('sdf')
+    parser.add_argument('--method', choices=['lm', 'trf'], default='lm')
     parser.add_argument('--success-threshold', type=float, default=0.0105)
 
     subparsers = parser.add_subparsers()
@@ -223,9 +229,9 @@ def main():
     solve_once_parser.set_defaults(func=solve_once_main)
 
     evaluate_parser = subparsers.add_parser('evaluate')
-    evaluate_parser.add_argument('--n-runs', type=int, default=100)
+    evaluate_parser.add_argument('--n-runs', type=int, default=250)
     evaluate_parser.add_argument('--plot', action='store_true')
-    evaluate_parser.add_argument('--seed', type=int, default=0)
+    evaluate_parser.add_argument('--seed', type=int, default=1)
     evaluate_parser.set_defaults(func=evaluate)
 
     args = parser.parse_args()

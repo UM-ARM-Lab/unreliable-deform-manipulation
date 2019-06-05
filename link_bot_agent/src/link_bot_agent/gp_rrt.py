@@ -93,9 +93,10 @@ class GPRRT:
         self.ss.setGoal(goal)
         try:
             solved = self.ss.solve(self.planner_timeout)
+            planning_time = self.ss.getLastPlanComputationTime()
 
             if verbose:
-                print("Planning time: {}".format(self.ss.getLastPlanComputationTime()))
+                print("Planning time: {}".format(planning_time))
 
             if solved:
                 ompl_path = self.ss.getSolutionPath()
@@ -135,11 +136,11 @@ class GPRRT:
                     print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
                         final_error, path_length, len(np_states), duration))
                 np_controls_flat = ompl_util.flatten_plan(np_controls, np_duration_steps_int)
-                return np_controls_flat, np_states
+                return np_controls_flat, np_states, planning_time
             else:
                 raise RuntimeError("No Solution found from {} to {}".format(start, goal))
         except RuntimeError:
-            return None, None
+            return None, None, -1
 
     def smooth(self, np_states, np_controls, iters=50, verbose=False):
         new_states = list(np_states)
