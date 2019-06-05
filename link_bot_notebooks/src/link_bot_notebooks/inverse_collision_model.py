@@ -5,7 +5,8 @@ from time import time
 import matplotlib.pyplot as plt
 import numpy as np
 from colorama import Fore
-from scipy.optimize import root
+# from scipy.optimize import root
+from scipy.optimize import least_squares
 from scipy.spatial import cKDTree
 from tabulate import tabulate
 
@@ -76,9 +77,10 @@ def func(sdf_dict, origin, res, data_at_constraint_boundary, params):
 
     # iterate over the data and find the data points which are on the boundary of collision, and take their average
     Rk = np.concatenate(([1], params[0:2]))
-    shaped_data = np.transpose(data_at_constraint_boundary.reshape(108, 3, 2), [0, 2, 1])
-    shaped_data[:, :, 1:] -= shaped_data[:, :, :1]
-    transformed_data = shaped_data @ Rk
+    data_at_constraint_boundary = np.copy(data_at_constraint_boundary)
+    data_at_constraint_boundary = np.transpose(data_at_constraint_boundary.reshape(108, 3, 2), [0, 2, 1])
+    data_at_constraint_boundary[:, :, 1:] -= data_at_constraint_boundary[:, :, :1]
+    transformed_data = data_at_constraint_boundary @ Rk
 
     # The third parameter represents the distance from the edge of the object to the obstacle,
     # and then there is a required boundary of 10cm
@@ -105,12 +107,13 @@ def attempt_minimize(sdf_dict, origin, res, data_at_constraint_boundary, out_par
         return errors
 
     # these three numbers represent a linear combination of the points in the object
-    # initial_a = np.random.randn(2)
-    # initial_object_radius = np.random.uniform(0.0, 0.20, size=1)
-    initial_a = [0, 1]
-    initial_object_radius = [0.1]
+    initial_a = np.random.randn(2)
+    initial_object_radius = np.random.uniform(0.0, 0.20, size=1)
+    # initial_a = [0, 1]
+    # initial_object_radius = [0.1]
     initial_params = np.concatenate((initial_a, initial_object_radius))
-    sol = root(_func, x0=initial_params, jac=None, method='lm')
+    bounds = ([-np.inf, -np.inf, 0], [np.inf, np.inf, np.inf])
+    sol = least_squares(_func, x0=initial_params, bounds=bounds, method='trf', loss='huber')
     return sol
 
 
@@ -145,7 +148,6 @@ def solve_once(args):
         out_params = []
         sol = attempt_minimize(sdf_dict, sdf_origin, sdf_resolution, data_at_constraint_boundary, out_params)
         mean_error = np.mean(sol.fun)
-        print(sol.x, mean_error)
         sdf_points_at_threshold = out_params[0]
         if mean_error < args.success_threshold:
             success = True
@@ -217,7 +219,7 @@ def main():
     subparsers = parser.add_subparsers()
     solve_once_parser = subparsers.add_parser('solve_once')
     solve_once_parser.add_argument('--plot', action='store_true')
-    solve_once_parser.add_argument('--seed', type=int, default=7)
+    solve_once_parser.add_argument('--seed', type=int, default=None)
     solve_once_parser.set_defaults(func=solve_once_main)
 
     evaluate_parser = subparsers.add_parser('evaluate')
