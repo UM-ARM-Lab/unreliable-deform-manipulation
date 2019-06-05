@@ -1,19 +1,14 @@
 #!/usr/bin/env python
 from __future__ import division, print_function, absolute_import
 
-import os
-import matplotlib.pyplot as plt
-import json
-
-import numpy as np
 import control
+import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-import link_bot_pycommon.experiments_util
 from link_bot_models import base_model
 from link_bot_models.tf_signed_distance_field_op import sdf_func
-from tensorflow.python import debug as tf_debug
 
 
 def make_constraint_mask(arr, axis=1):
@@ -57,7 +52,7 @@ class LinearConstraintModel(base_model.BaseModel):
         self.k_mask_indeces_2d = tf.placeholder(tf.int32, shape=(None, 2), name="k_mask_indeces_2d")
         self.k_label_int = tf.cast(self.k_label, tf.int32)
 
-        if args['random_init']:
+        if self.args_dict['random_init']:
             # RANDOM INIT
             R_c_init = np.random.randn(N, M).astype(np.float32) * 1e-1
             A_c_init = np.random.randn(M, M).astype(np.float32) * 1e-3
@@ -136,8 +131,9 @@ class LinearConstraintModel(base_model.BaseModel):
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
             with tf.name_scope("latent_dynamics_c"):
-                self.all_state_prediction_error_in_c = tf.reduce_sum(tf.pow(self.hat_latent_c - self.hat_latent_c_next, 2),
-                                                                     axis=2)
+                self.all_state_prediction_error_in_c = tf.reduce_sum(
+                    tf.pow(self.hat_latent_c - self.hat_latent_c_next, 2),
+                    axis=2)
                 self.state_prediction_error_in_c = tf.gather_nd(self.all_state_prediction_error_in_c,
                                                                 self.k_mask_indeces_2d,
                                                                 name='all_state_prediction_error_in_c')
@@ -149,8 +145,9 @@ class LinearConstraintModel(base_model.BaseModel):
                 self.cost_prediction_loss = tf.reduce_mean(self.cost_prediction_error, name='cost_prediction_loss')
 
             with tf.name_scope("latent_constraints_k"):
-                self.all_state_prediction_error_in_k = tf.reduce_sum(tf.pow(self.hat_latent_k - self.hat_latent_k_next, 2),
-                                                                     axis=2)
+                self.all_state_prediction_error_in_k = tf.reduce_sum(
+                    tf.pow(self.hat_latent_k - self.hat_latent_k_next, 2),
+                    axis=2)
                 self.state_prediction_error_in_k = tf.gather_nd(self.all_state_prediction_error_in_k,
                                                                 self.k_mask_indeces_2d,
                                                                 name='all_state_prediction_error_in_k')
@@ -198,88 +195,44 @@ class LinearConstraintModel(base_model.BaseModel):
             tf.summary.scalar("loss_summary", self.loss)
 
             self.summaries = tf.summary.merge_all()
-            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
-            self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-            if args['debug']:
-                self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
-            self.saver = tf.train.Saver(max_to_keep=None)
 
-    def train(self, train_x, goal, epochs, log_path):
-        interrupted = False
+        self.finish_setup()
 
-        writer = None
-        loss = None
-        full_log_path = None
-        if self.args['log'] is not None:
-            full_log_path = os.path.join("log_data", log_path)
+    def metadata(self):
+        metadata = {
+            'tf_version': str(tf.__version__),
+            'seed': self.args_dict['seed'],
+            'checkpoint': self.args_dict['checkpoint'],
+            'N': self.N,
+            'beta': self.beta,
+            'commandline': self.args_dict['commandline'],
+            'dt': self.dt,
+            'n_steps': self.n_steps,
+            'M': self.M,
+            'L': self.L,
+            'P': self.P,
+            'Q': self.Q,
+        }
+        return metadata
 
-            link_bot_pycommon.experiments_util.make_log_dir(full_log_path)
-
-            metadata_path = os.path.join(full_log_path, "metadata.json")
-            metadata_file = open(metadata_path, 'w')
-            metadata = {
-                'tf_version': str(tf.__version__),
-                'log path': full_log_path,
-                'seed': self.args['seed'],
-                'checkpoint': self.args['checkpoint'],
-                'N': self.N,
-                'M': self.M,
-                'L': self.L,
-                'P': self.P,
-                'Q': self.Q,
-                'beta': self.beta,
-                'dt': self.dt,
-                'commandline': self.args['commandline'],
-            }
-            metadata_file.write(json.dumps(metadata, indent=2))
-
-            writer = tf.summary.FileWriter(full_log_path)
-            writer.add_graph(self.sess.graph)
-
-        try:
-            observations = train_x['states']
-            u = train_x['actions']
-            c = self.compute_cost_label(observations, goal)
-            if 'constraints' in train_x:
-                k = train_x['constraints']
-            else:
-                print("WARNING: no constraint data given")
-                k = np.zeros((observations.shape[0], observations.shape[1], self.Q))
-            mask = make_constraint_mask(k)
-            feed_dict = {self.observations: observations,
-                         self.u: u,
-                         self.observation_goal: goal,
-                         self.c_label: c,
-                         self.k_label: k,
-                         self.k_mask_indeces_2d: mask}
-
-            ops = [self.global_step, self.summaries, self.loss, self.opt]
-            for i in range(epochs):
-                step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
-
-                if 'save_period' in self.args and (step % self.args['save_period'] == 0 or step == 1):
-                    if self.args['log'] is not None:
-                        writer.add_summary(summary, step)
-                        self.save(full_log_path, loss=loss)
-
-                if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
-                    print('step: {}, loss: {} '.format(step, loss))
-
-        except KeyboardInterrupt:
-            print("stop!!!")
-            interrupted = True
-            pass
-        finally:
-            ops = [self.R_c, self.A_c, self.B_c, self.D]
-            A, B, C, D = self.sess.run(ops, feed_dict={})
-            if self.args['verbose']:
-                print("Loss: {}".format(loss))
-                print("A:\n{}".format(A))
-                print("B:\n{}".format(B))
-                print("C:\n{}".format(C))
-                print("D:\n{}".format(D))
-
-        return interrupted
+    def build_feed_dict(self, x, y, **kwargs):
+        observations = x['states']
+        u = x['actions']
+        goal = kwargs['goal']
+        c = self.compute_cost_label(observations, goal)
+        if 'constraints' in x:
+            k = x['constraints']
+        else:
+            print("WARNING: no constraint data given")
+            k = np.zeros((observations.shape[0], observations.shape[1], self.Q))
+        mask = make_constraint_mask(k)
+        feed_dict = {self.observations: observations,
+                     self.u: u,
+                     self.observation_goal: goal,
+                     self.c_label: c,
+                     self.k_label: k,
+                     self.k_mask_indeces_2d: mask}
+        return feed_dict
 
     def evaluate(self, eval_x, goal, display=True, plot_rollout=False):
         observations = eval_x['states']
@@ -302,8 +255,9 @@ class LinearConstraintModel(base_model.BaseModel):
             self.sess.run(ops, feed_dict=feed_dict)
 
         print(observations[0])
-        print(u[0,0])
-        hat_latent_c, hat_latent_c_next = self.sess.run([self.hat_latent_c, self.hat_latent_c_next], feed_dict=feed_dict)
+        print(u[0, 0])
+        hat_latent_c, hat_latent_c_next = self.sess.run([self.hat_latent_c, self.hat_latent_c_next],
+                                                        feed_dict=feed_dict)
         print(hat_latent_c[0])
         print(hat_latent_c_next[0])
 

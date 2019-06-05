@@ -1,17 +1,12 @@
 #!/usr/bin/env python
 from __future__ import division, print_function, absolute_import
 
-import os
-import json
-
-import numpy as np
 import control
+import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-import link_bot_pycommon.experiments_util
 from link_bot_models import base_model
-from tensorflow.python import debug as tf_debug
 
 
 class LinearTFModel(base_model.BaseModel):
@@ -51,8 +46,7 @@ class LinearTFModel(base_model.BaseModel):
         self.hat_o = tf.einsum('bsn,nm->bsm', self.s, self.A, name='hat_o')
         self.og = tf.matmul(self.g, self.A, name='reduce_goal')
 
-        hat_o_next = []
-        hat_o_next.append(self.hat_o[:, 0, :])
+        hat_o_next = [self.hat_o[:, 0, :]]
 
         for i in range(1, self.n_steps + 1):
             Bo = tf.einsum('mp,bp->bm', self.dt * self.B, hat_o_next[i - 1], name='Bo')
@@ -95,76 +89,32 @@ class LinearTFModel(base_model.BaseModel):
             tf.summary.scalar("loss", self.loss)
 
             self.summaries = tf.summary.merge_all()
-            self.sess = tf.Session()
-            if args['debug']:
-                self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
-            self.saver = tf.train.Saver(max_to_keep=None)
 
-    def train(self, train_x, goal, epochs, log_path):
-        interrupted = False
+            self.finish_setup()
 
-        writer = None
-        loss = None
-        full_log_path = None
-        if self.args['log'] is not None:
-            full_log_path = os.path.join("log_data", log_path)
+    def metadata(self):
+        metadata = {
+            'tf_version': str(tf.__version__),
+            'seed': self.args_dict['seed'],
+            'checkpoint': self.args_dict['checkpoint'],
+            'N': self.N,
+            'beta': self.beta,
+            'commandline': self.args_dict['commandline'],
+            'dt': self.dt,
+            'n_steps': self.n_steps,
+        }
+        return metadata
 
-            link_bot_pycommon.experiments_util.make_log_dir(full_log_path)
-
-            metadata_path = os.path.join(full_log_path, "metadata.json")
-            metadata_file = open(metadata_path, 'w')
-            metadata = {
-                'tf_version': str(tf.__version__),
-                'log path': full_log_path,
-                'seed': self.args['seed'],
-                'checkpoint': self.args['checkpoint'],
-                'N': self.N,
-                'M': self.M,
-                'L': self.L,
-                'beta': self.beta,
-                'dt': self.dt,
-                'commandline': self.args['commandline'],
-            }
-            metadata_file.write(json.dumps(metadata, indent=2))
-
-            writer = tf.summary.FileWriter(full_log_path)
-            writer.add_graph(self.sess.graph)
-
-        try:
-            s = train_x['states']
-            u = train_x['actions']
-            c = self.compute_cost_label(s, goal)
-            feed_dict = {self.s: s,
-                         self.u: u,
-                         self.g: goal,
-                         self.c: c}
-            ops = [self.global_step, self.summaries, self.loss, self.opt]
-            for i in range(epochs):
-                step, summary, loss, _ = self.sess.run(ops, feed_dict=feed_dict)
-
-                if 'save_period' in self.args and (step % self.args['save_period'] == 0 or step == 1):
-                    if self.args['log'] is not None:
-                        writer.add_summary(summary, step)
-                        self.save(full_log_path, loss=loss)
-
-                if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
-                    print(step, loss)
-
-        except KeyboardInterrupt:
-            print("stop!!!")
-            interrupted = True
-            pass
-        finally:
-            ops = [self.A, self.B, self.C, self.D]
-            A, B, C, D = self.sess.run(ops, feed_dict={})
-            if self.args['verbose']:
-                print("Loss: {}".format(loss))
-                print("A:\n{}".format(A))
-                print("B:\n{}".format(B))
-                print("C:\n{}".format(C))
-                print("D:\n{}".format(D))
-
-        return interrupted
+    def build_feed_dict(self, x, y, **kwargs):
+        s = x['states']
+        u = x['actions']
+        goal = kwargs['goal']
+        c = self.compute_cost_label(s, goal)
+        feed_dict = {self.s: s,
+                     self.u: u,
+                     self.g: goal,
+                     self.c: c}
+        return feed_dict
 
     def evaluate(self, eval_x, goal, display=True):
         s = eval_x['states']

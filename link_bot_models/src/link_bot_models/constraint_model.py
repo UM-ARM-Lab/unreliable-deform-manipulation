@@ -7,6 +7,7 @@ from enum import Enum
 
 import numpy as np
 import tensorflow as tf
+from link_bot_models.base_model import BaseModel
 from tensorflow.python import debug as tf_debug
 
 import link_bot_pycommon.experiments_util
@@ -23,7 +24,7 @@ class ConstraintModelType(Enum):
         return [e.name for e in cls]
 
 
-class ConstraintModel:
+class ConstraintModel(BaseModel):
 
     def __init__(self, args, np_sdf, np_sdf_gradient, np_sdf_resolution, np_sdf_origin, N):
         super(ConstraintModel, self).__init__(args, N)
@@ -39,12 +40,12 @@ class ConstraintModel:
         self.sdf_resolution = np_sdf_resolution
         self.sdf_origin = np_sdf_origin
 
-        model_type = ConstraintModelType[args['model_type']]
+        model_type = ConstraintModelType[self.args_dict['model_type']]
         if model_type == ConstraintModelType.FullLinear:
             ##############################################
             #             Full Linear Model              #
             ##############################################
-            if args['random_init']:
+            if self.args_dict['random_init']:
                 # RANDOM INIT
                 R_k_init = np.random.randn(N, 2).astype(np.float32) * 1e-1
                 k_threshold_init = np.random.rand() * 1e-1
@@ -62,7 +63,7 @@ class ConstraintModel:
             ################################################
             #           Linear Combination Model           #
             ################################################
-            if args['random_init']:
+            if self.args_dict['random_init']:
                 # RANDOM INIT
                 alphas_init = np.random.randn(3).astype(np.float32)
                 k_threshold_init = np.random.rand() * 1e-1
@@ -147,14 +148,7 @@ class ConstraintModel:
             tf.summary.scalar("loss_summary", self.loss,
                               collections=['validation'])
 
-            self.train_summary = tf.summary.merge_all('train')
-            self.validation_summary = tf.summary.merge_all('validation')
-
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
-        self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-        if args['debug']:
-            self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)
-        self.saver = tf.train.Saver(max_to_keep=None)
+        self.finish_setup()
 
     def split_data(self, full_x, fraction_validation=0.10):
         full_observations = full_x['states'].reshape(-1, self.N)
@@ -170,69 +164,22 @@ class ConstraintModel:
         validation_k = full_k[end_train_idx:]
         return train_observations, train_k, validation_observations, validation_k
 
-    def train(self, train_observations, train_k, validation_observations, validation_k, epochs, log_path):
-        interrupted = False
+    def metadata(self):
+        metadata = {
+            'tf_version': str(tf.__version__),
+            'seed': self.args_dict['seed'],
+            'checkpoint': self.args_dict['checkpoint'],
+            'N': self.N,
+            'beta': self.beta,
+            'commandline': self.args_dict['commandline'],
+            'hidden_layer_dims': self.hidden_layer_dims,
+            'model_type': self.args_dict['model_type'],
+        }
+        return metadata
 
-        writer = None
-        loss = None
-        full_log_path = None
-        if self.args['log'] is not None:
-            full_log_path = os.path.join("log_data", log_path)
-
-            link_bot_pycommon.experiments_util.make_log_dir(full_log_path)
-
-            metadata_path = os.path.join(full_log_path, "metadata.json")
-            metadata_file = open(metadata_path, 'w')
-            metadata = {
-                'tf_version': str(tf.__version__),
-                'log path': full_log_path,
-                'seed': self.args['seed'],
-                'checkpoint': self.args['checkpoint'],
-                'N': self.N,
-                'beta': self.beta,
-                'commandline': self.args['commandline'],
-                'hidden_layer_dims': self.hidden_layer_dims,
-                'model_type': self.args['model_type'],
-            }
-            metadata_file.write(json.dumps(metadata, indent=2))
-
-            writer = tf.summary.FileWriter(full_log_path)
-            writer.add_graph(self.sess.graph)
-
-        try:
-            train_ops = [self.global_step, self.train_summary, self.loss, self.opt]
-            validation_ops = [self.validation_summary, self.loss]
-            for i in range(epochs):
-
-                batch_idx = np.random.choice(np.arange(train_observations.shape[0]), size=self.args['batch_size'])
-                train_observations_batch = train_observations[batch_idx]
-                train_k_batch = train_k[batch_idx]
-
-                train_feed_dict = {self.observations: train_observations_batch,
-                                   self.k_label: train_k_batch}
-                validation_feed_dict = {self.observations: validation_observations,
-                                        self.k_label: validation_k}
-                step, train_summary, train_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
-                validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
-
-                if 'save_period' in self.args and (step % self.args['save_period'] == 0 or step == 1):
-                    if self.args['log'] is not None:
-                        writer.add_summary(train_summary, step)
-                        writer.add_summary(validation_summary, step)
-                        self.save(full_log_path, loss=validation_loss)
-
-                if 'print_period' in self.args and (step % self.args['print_period'] == 0 or step == 1):
-                    print('step: {:4d}, train loss: {:8.4f} val loss {:8.4f}'.format(step, train_loss, validation_loss))
-
-        except KeyboardInterrupt:
-            print("stop!!!")
-            interrupted = True
-            pass
-        finally:
-            if self.args['verbose']:
-                print("Loss: {}".format(loss))
-
-        return interrupted
+    def build_feed_dict(self, x, y):
+        return {self.observations: x,
+                self.k_label: y}
 
     def evaluate(self, observations, k, display=True):
         feed_dict = {self.observations: observations,
