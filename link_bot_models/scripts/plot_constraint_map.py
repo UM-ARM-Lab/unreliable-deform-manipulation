@@ -32,7 +32,7 @@ class PlotType(link_bot_pycommon.ArgsEnum):
 class EvaluateResult:
     rope_configuration: np.ndarray
     predicted_point: np.ndarray
-    pred_violated: bool
+    predicted_violated: bool
     true_violated: bool
 
 
@@ -96,7 +96,7 @@ def get_rope_configurations(args):
 
 
 def evaluate_single(sdf, sdf_resolution, sdf_origin, model, threshold, rope_configuration):
-    pred_violated, predicted_point = model.violated(rope_configuration)
+    predicted_violated, predicted_point = model.violated(rope_configuration)
     predicted_point = predicted_point.squeeze()
     rope_configuration = rope_configuration.squeeze()
     head_x = rope_configuration[4]
@@ -104,7 +104,7 @@ def evaluate_single(sdf, sdf_resolution, sdf_origin, model, threshold, rope_conf
     row_col = link_bot_pycommon.point_to_sdf_idx(head_x, head_y, sdf_resolution, sdf_origin)
     true_violated = sdf[row_col] < threshold
 
-    result = EvaluateResult(rope_configuration, predicted_point, pred_violated, true_violated)
+    result = EvaluateResult(rope_configuration, predicted_point, predicted_violated, true_violated)
     return result
 
 
@@ -129,7 +129,7 @@ def plot_examples(sdf_image, results, subsample=10, title=''):
     head_xs = [result.rope_configuration[4] for result in results[::subsample]]
     head_ys = [result.rope_configuration[5] for result in results[::subsample]]
 
-    plt.scatter(predicted_xs, predicted_ys, s=5, c='r', label='pred', zorder=2)
+    plt.scatter(predicted_xs, predicted_ys, s=5, c='r', label='predicted', zorder=2)
     plt.scatter(head_xs, head_ys, s=5, c='b', label='true', zorder=2)
 
     for result in results[::subsample]:
@@ -146,7 +146,7 @@ def plot_single_example(sdf_image, result):
     plt.imshow(sdf_image, extent=[-5, 5, -5, 5])
     plt.plot(result.rope_configuration[[0, 2, 4]], result.rope_configuration[[1, 3, 5]], label='rope')
 
-    if result.pred_violated:
+    if result.predicted_violated:
         pred_color = 'r'
     else:
         pred_color = 'g'
@@ -171,14 +171,14 @@ def plot_interpolate(sdf, sdf_resolution, sdf_origin, sdf_image, model, threshol
     head_ys = np.linspace(-4.95, 4.95, 25)
     theta_1s = np.linspace(-np.pi, np.pi, 2)
     theta_2s = np.linspace(-np.pi, np.pi, 2)
-    mgrid = np.meshgrid(head_xs, head_ys, theta_1s, theta_2s)
-    mgrid = [m.reshape(-1) for m in mgrid]
-    rope_params = np.vstack(mgrid).T
+    grid = np.meshgrid(head_xs, head_ys, theta_1s, theta_2s)
+    grid = [g.reshape(-1) for g in grid]
+    rope_params = np.vstack(grid).T
     rope_configuration_0 = make_rope_configuration(*rope_params[0])
 
     result_0 = evaluate_single(sdf, sdf_resolution, sdf_origin, model, threshold, rope_configuration_0)
-    head_scatt = plt.scatter(result_0.rope_configuration[4], result_0.rope_configuration[5], s=50, c='b', zorder=2)
-    pred_scatt = plt.scatter(result_0.predicted_point[0], result_0.predicted_point[1], s=10, c='r', zorder=2)
+    head_scatter = plt.scatter(result_0.rope_configuration[4], result_0.rope_configuration[5], s=50, c='b', zorder=2)
+    prediction_scatter = plt.scatter(result_0.predicted_point[0], result_0.predicted_point[1], s=10, c='r', zorder=2)
 
     xs_0 = [rope_configuration_0[0], rope_configuration_0[2], rope_configuration_0[4]]
     ys_0 = [rope_configuration_0[1], rope_configuration_0[3], rope_configuration_0[5]]
@@ -199,9 +199,9 @@ def plot_interpolate(sdf, sdf_resolution, sdf_origin, sdf_image, model, threshol
         rope_configuration = make_rope_configuration(*rope_params[t])
         result = evaluate_single(sdf, sdf_resolution, sdf_origin, model, threshold, rope_configuration)
 
-        head_scatt.set_offsets(rope_configuration[4:6])
+        head_scatter.set_offsets(rope_configuration[4:6])
 
-        pred_scatt.set_offsets(result.predicted_point)
+        prediction_scatter.set_offsets(result.predicted_point)
 
         xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
         ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
@@ -226,8 +226,8 @@ def plot(args, sdf, sdf_resolution, sdf_origin, model, threshold, results, true_
     sdf_image = img.resize((200, 200))
 
     if args.plot_type == PlotType.random_individual:
-        random_indeces = np.random.choice(m, size=10, replace=False)
-        random_results = results[random_indeces]
+        random_indexes = np.random.choice(model, size=10, replace=False)
+        random_results = results[random_indexes]
         figs = []
         for random_result in random_results:
             fig = plot_single_example(sdf_image, random_result)
@@ -235,7 +235,7 @@ def plot(args, sdf, sdf_resolution, sdf_origin, model, threshold, results, true_
         return SavableFigureCollection(figs)
 
     elif args.plot_type == PlotType.random_combined:
-        random_indeces = np.random.choice(m, size=1000, replace=False)
+        random_indeces = np.random.choice(model, size=1000, replace=False)
         random_results = results[random_indeces]
         savable = plot_examples(sdf_image, random_results, subsample=1, title='random samples')
         return savable
@@ -293,13 +293,13 @@ def main():
     # evaluate the rope configurations
     results = evaluate(sdf, sdf_resolution, sdf_origin, model, threshold, rope_configurations)
 
-    true_positives = np.array([result for result in results if result.true_violated and result.pred_violated])
+    true_positives = np.array([result for result in results if result.true_violated and result.predicted_violated])
     n_true_positives = len(true_positives)
-    false_positives = np.array([result for result in results if result.true_violated and not result.pred_violated])
+    false_positives = np.array([result for result in results if result.true_violated and not result.predicted_violated])
     n_false_positives = len(false_positives)
-    true_negatives = np.array([result for result in results if not result.true_violated and not result.pred_violated])
+    true_negatives = np.array([result for result in results if not result.true_violated and not result.predicted_violated])
     n_true_negatives = len(true_negatives)
-    false_negatives = np.array([result for result in results if not result.true_violated and result.pred_violated])
+    false_negatives = np.array([result for result in results if not result.true_violated and result.predicted_violated])
     n_false_negatives = len(false_negatives)
 
     accuracy = (n_true_positives + n_true_negatives) / m
