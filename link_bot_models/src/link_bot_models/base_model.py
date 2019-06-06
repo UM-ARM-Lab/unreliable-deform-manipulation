@@ -44,7 +44,7 @@ class BaseModel:
         self.train_summary = tf.summary.merge_all('train')
         self.validation_summary = tf.summary.merge_all('validation')
 
-        gpu_options = tf.GPUOptions(self.args_dict['gpu_memory_fraction'])
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=self.args_dict['gpu_memory_fraction'])
         self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
         if self.args_dict['debug']:
             self.sess = tf_debug.LocalCLIDebugWrapperSession(self.sess)

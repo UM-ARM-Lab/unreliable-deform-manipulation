@@ -1,27 +1,20 @@
 #!/usr/bin/env python
 from __future__ import division, print_function, absolute_import
 
-import json
-import os
-from enum import Enum
+from enum import auto
 
 import numpy as np
 import tensorflow as tf
+
 from link_bot_models.base_model import BaseModel
-from tensorflow.python import debug as tf_debug
-
-import link_bot_pycommon.experiments_util
 from link_bot_models.tf_signed_distance_field_op import sdf_func
+from link_bot_pycommon import link_bot_pycommon
 
 
-class ConstraintModelType(Enum):
-    FullLinear = 1
-    LinearCombination = 2
-    FNN = 3
-
-    @classmethod
-    def strings(cls):
-        return [e.name for e in cls]
+class ConstraintModelType(link_bot_pycommon.ArgsEnum):
+    FullLinear = auto()
+    LinearCombination = auto()
+    FNN = auto()
 
 
 class ConstraintModel(BaseModel):
@@ -40,7 +33,7 @@ class ConstraintModel(BaseModel):
         self.sdf_resolution = np_sdf_resolution
         self.sdf_origin = np_sdf_origin
 
-        model_type = ConstraintModelType[self.args_dict['model_type']]
+        model_type = self.args_dict['model_type']
         if model_type == ConstraintModelType.FullLinear:
             ##############################################
             #             Full Linear Model              #

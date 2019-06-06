@@ -1,4 +1,5 @@
 import numpy as np
+from enum import Enum
 
 
 def sdf_indeces_to_point(rowcols, resolution, origin):
@@ -37,3 +38,17 @@ def load_sdf(filename):
 
 def state_cost(s, goal):
     return np.linalg.norm(s[0, 0:2] - goal[0, 0:2])
+
+
+class ArgsEnum(Enum):
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def from_string(cls, s):
+        try:
+            return cls[s]
+        except KeyError:
+            raise ValueError()
+

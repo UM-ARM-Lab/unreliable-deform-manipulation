@@ -8,15 +8,15 @@ import os
 import tensorflow as tf
 import numpy as np
 
-from link_bot_models.src.link_bot_models import constraint_model as m
-from link_bot_pycommon.src.link_bot_pycommon import link_bot_pycommon as tpo, experiments_util
+from link_bot_models.constraint_model import ConstraintModelType, ConstraintModel
+from link_bot_pycommon import link_bot_pycommon, experiments_util
 
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
-    sdf, sdf_gradient, sdf_resolution, sdf_origin = tpo.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution, sdf_origin = link_bot_pycommon.load_sdf(args.sdf)
     data = np.load(args.dataset)
-    model = m.ConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
+    model = ConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
 
     model.setup()
 
@@ -39,7 +39,7 @@ def model_only(args):
     fake_sdf_origin = np.random.randn(2).astype(np.float32)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = m.ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, args.N)
+    model = ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, args.N)
 
     model.init()
 
@@ -53,11 +53,11 @@ def model_only(args):
 
 
 def evaluate(args):
-    sdf, sdf_gradient, sdf_resolution, sdf_origin = tpo.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution, sdf_origin = link_bot_pycommon.load_sdf(args.sdf)
     data = np.load(args.dataset)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = m.ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
+    model = ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
     model.setup()
 
     # take all the data as validation data
@@ -76,7 +76,7 @@ def show(args):
     fake_sdf_origin = np.random.randn(2).astype(np.float32)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = m.ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, args.N)
+    model = ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, args.N)
     model.setup()
     print(model)
 
@@ -90,7 +90,7 @@ def main():
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("model_type", choices=m.ConstraintModelType.strings())
+    parser.add_argument("model_type", type=ConstraintModelType.from_string, choices=list(ConstraintModelType))
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
