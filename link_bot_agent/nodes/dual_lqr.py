@@ -42,10 +42,9 @@ def common(args, goals, max_steps=1e6, verbose=False):
     batch_size = 1
     max_v = 1
     n_steps = 1
-    sdf, sdf_gradient, sdf_resolution = link_bot_pycommon.load_sdf(args.sdf)
-    tf_model = linear_constraint_model.LinearConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution,
-                                                             batch_size, args.N, args.M, args.L, args.P, args.Q, dt,
-                                                             n_steps)
+    sdf_data = link_bot_pycommon.load_sdf_data(args.sdf)
+    tf_model = linear_constraint_model.LinearConstraintModel(vars(args), sdf_data, batch_size, args.N, args.M, args.L, args.P,
+                                                             args.Q, dt, n_steps)
     tf_model.load()
     action_selector = dual_lqr_action_selector.DualLQRActionSelector(tf_model, max_v)
 

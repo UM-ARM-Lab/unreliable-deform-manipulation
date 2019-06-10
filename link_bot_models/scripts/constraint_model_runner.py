@@ -14,9 +14,9 @@ from link_bot_pycommon import link_bot_pycommon, experiments_util
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
-    sdf, sdf_gradient, sdf_resolution, sdf_origin = link_bot_pycommon.load_sdf(args.sdf)
+    sdf_data = link_bot_pycommon.load_sdf_data(args.sdf)
     data = np.load(args.dataset)
-    model = ConstraintModel(vars(args), sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
+    model = ConstraintModel(vars(args), sdf_data, args.N)
 
     model.setup()
 
@@ -53,11 +53,11 @@ def model_only(args):
 
 
 def evaluate(args):
-    sdf, sdf_gradient, sdf_resolution, sdf_origin = link_bot_pycommon.load_sdf(args.sdf)
+    sdf_data = link_bot_pycommon.load_sdf_data(args.sdf)
     data = np.load(args.dataset)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, args.N)
+    model = ConstraintModel(args_dict, sdf_data, args.N)
     model.setup()
 
     # take all the data as validation data

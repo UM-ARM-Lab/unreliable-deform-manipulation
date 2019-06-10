@@ -3,9 +3,13 @@ from __future__ import division, print_function, absolute_import
 
 from enum import auto
 
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from PIL import Image
+from attr import dataclass
 
+from link_bot_models import plotting
 from link_bot_models.base_model import BaseModel
 from link_bot_models.tf_signed_distance_field_op import sdf_func
 from link_bot_pycommon import link_bot_pycommon
@@ -19,7 +23,7 @@ class ConstraintModelType(link_bot_pycommon.ArgsEnum):
 
 class ConstraintModel(BaseModel):
 
-    def __init__(self, args, np_sdf, np_sdf_gradient, np_sdf_resolution, np_sdf_origin, N):
+    def __init__(self, args, sdf_data, N):
         super(ConstraintModel, self).__init__(args, N)
 
         self.beta = 1e-8
@@ -29,9 +33,7 @@ class ConstraintModel(BaseModel):
         self.k_label_int = tf.cast(self.k_label, tf.int32)
         self.hidden_layer_dims = None
 
-        self.sdf = np_sdf
-        self.sdf_resolution = np_sdf_resolution
-        self.sdf_origin = np_sdf_origin
+        self.sdf_data = sdf_data
 
         model_type = self.args_dict['model_type']
         if model_type == ConstraintModelType.FullLinear:
@@ -44,10 +46,10 @@ class ConstraintModel(BaseModel):
                 k_threshold_init = np.random.rand() * 1e-1
             else:
                 # IDEAL INIT
-                R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.1
-                R_k_init[N - 2, 0] = 1.0
-                R_k_init[N - 1, 1] = 1.0
-                k_threshold_init = 0.20
+                R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.0
+                R_k_init[4, 0] = 1.0
+                R_k_init[5, 1] = 1.0
+                k_threshold_init = 0.0
             self.R_k = tf.get_variable("R_k", initializer=R_k_init)
             self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=True)
             self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
@@ -90,7 +92,7 @@ class ConstraintModel(BaseModel):
         #                 End Model Definition                #
         #######################################################
 
-        self.sdfs = sdf_func(np_sdf, np_sdf_gradient, np_sdf_resolution, np_sdf_origin, self.hat_latent_k, 2)
+        self.sdfs = sdf_func(sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin, self.hat_latent_k, 2)
         # because the sigmoid is not very sharp (since meters are very large in the domain of sigmoid),
         # this doesn't give a very sharp boundary for the decision between in collision or not.
         # The trade of is this might cause vanishing gradients
@@ -166,11 +168,11 @@ class ConstraintModel(BaseModel):
             'beta': self.beta,
             'commandline': self.args_dict['commandline'],
             'hidden_layer_dims': self.hidden_layer_dims,
-            'model_type': self.args_dict['model_type'],
+            'model_type': str(self.args_dict['model_type']),
         }
         return metadata
 
-    def build_feed_dict(self, x, y):
+    def build_feed_dict(self, x, y, **kwargs):
         return {self.observations: x,
                 self.k_label: y}
 
@@ -180,23 +182,7 @@ class ConstraintModel(BaseModel):
         ops = [self.threshold_k, self.constraint_prediction_loss, self.loss, self.constraint_prediction_accuracy]
         threshold_k, k_loss, loss, k_accuracy = self.sess.run(ops, feed_dict=feed_dict)
 
-        hat_latent_k = self.sess.run(self.hat_latent_k, feed_dict=feed_dict)
-
-        import matplotlib.pyplot as plt
-        from PIL import Image
-        plt.figure()
-        skip = 20
-        o_scatter_x = observations[::skip, 4]
-        o_scatter_y = observations[::skip, 5]
-        h_scatter_x = hat_latent_k[::skip, 0]
-        h_scatter_y = hat_latent_k[::skip, 1]
-        img = Image.fromarray(np.uint8(np.flipud(self.sdf.T) > threshold_k))
-        small_sdf = img.resize((50, 50))
-        plt.imshow(small_sdf, extent=[-5, 5, -5, 5])
-        for ox, oy, hx, hy in zip(o_scatter_x, o_scatter_y, h_scatter_x, h_scatter_y):
-            plt.plot([ox, hx], [oy, hy], c='k', linewidth=1, zorder=1)
-        plt.scatter(o_scatter_x, o_scatter_y, s=25, c='blue', zorder=2)
-        plt.scatter(h_scatter_x, h_scatter_y, s=25, c='red', zorder=2)
+        plotting.plot_examples_2(self.sdf_data, observations[::1], threshold_k, self)
         plt.show()
 
         if display:
@@ -207,12 +193,12 @@ class ConstraintModel(BaseModel):
 
         return threshold_k, k_loss, loss
 
-    def violated(self, observation, sdf=None, sdf_resolution=None, sdf_origin=None):
+    def violated(self, observations, sdf=None, sdf_resolution=None, sdf_origin=None):
         # unused parameters
         del sdf, sdf_resolution, sdf_origin
-        feed_dict = {self.observations: np.atleast_2d(observation)}
+        feed_dict = {self.observations: np.atleast_2d(observations)}
         violated, pt = self.sess.run([self.hat_k_violated, self.hat_latent_k], feed_dict=feed_dict)
-        return np.any(violated), pt
+        return np.any(violated, axis=1), pt
 
     def constraint_violated(self, latent_k):
         full_latent_k = np.ndarray((1, self.P))
@@ -227,3 +213,35 @@ class ConstraintModel(BaseModel):
     def __str__(self):
         ops = [self.threshold_k]
         return "threshold_k:\n{}\n".format(*self.sess.run(ops, feed_dict={}))
+
+
+@dataclass
+class EvaluateResult:
+    rope_configuration: np.ndarray
+    predicted_point: np.ndarray
+    predicted_violated: bool
+    true_violated: bool
+
+
+def evaluate_single(sdf_data, model, threshold, rope_configuration):
+    predicted_violated, predicted_point = model.violated(rope_configuration)
+    predicted_point = predicted_point.squeeze()
+    rope_configuration = rope_configuration.squeeze()
+    head_x = rope_configuration[4]
+    head_y = rope_configuration[5]
+    row_col = link_bot_pycommon.point_to_sdf_idx(head_x, head_y, sdf_data.resolution, sdf_data.origin)
+    true_violated = sdf_data.sdf[row_col] < threshold
+
+    result = EvaluateResult(rope_configuration, predicted_point, predicted_violated, true_violated)
+    return result
+
+
+def evaluate(sdf_data, model, threshold, states_flat):
+    m = states_flat.shape[0]
+    results = np.ndarray([m], dtype=EvaluateResult)
+    for i, rope_configuration in enumerate(states_flat):
+        rope_configuration = np.atleast_2d(rope_configuration)
+        result = evaluate_single(sdf_data, model, threshold, rope_configuration)
+        results[i] = result
+
+    return results

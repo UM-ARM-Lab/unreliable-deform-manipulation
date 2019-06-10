@@ -91,6 +91,10 @@ class BaseModel:
         try:
             train_ops = [self.global_step, self.train_summary, self.loss, self.opt]
             validation_ops = [self.validation_summary, self.loss]
+
+            if self.args_dict['log'] is not None:
+                self.save(full_log_path, self.args_dict['log'])
+
             # FIXME: make epochs actually a full thing of the dataset, and batch exactly cover the dataset
             # instead of the current method which is just randomly pick with replacement every time
             for i in range(epochs):

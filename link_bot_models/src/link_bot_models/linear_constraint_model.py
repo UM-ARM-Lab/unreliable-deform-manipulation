@@ -29,7 +29,7 @@ def make_constraint_mask(arr, axis=1):
 
 class LinearConstraintModel(base_model.BaseModel):
 
-    def __init__(self, args, numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, batch_size, N, M, L, P, Q, dt,
+    def __init__(self, args, numpy_sdf, numpy_sdf_gradient, numpy_sdf_resolution, numpy_sdf_extent, batch_size, N, M, L, P, Q, dt,
                  n_steps):
         super(LinearConstraintModel, self).__init__(args, N)
 
@@ -41,6 +41,10 @@ class LinearConstraintModel(base_model.BaseModel):
         self.beta = 1e-8
         self.n_steps = n_steps
         self.dt = dt
+        self.sdf_extent = numpy_sdf_extent
+        self.sdf = numpy_sdf
+        self.sdf_gradient = numpy_sdf_gradient
+        self.sdf_resolution = numpy_sdf_resolution
         self.sdf_rows, self.sdf_cols = numpy_sdf.shape
         self.sdf_origin_coordinate = np.array([self.sdf_rows / 2, self.sdf_cols / 2], dtype=np.int32)
 

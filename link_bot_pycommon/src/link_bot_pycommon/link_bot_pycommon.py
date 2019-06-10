@@ -1,5 +1,9 @@
-import numpy as np
 from enum import Enum
+
+import numpy as np
+from attr import dataclass
+import PIL.Image
+from colorama import Fore
 
 
 def sdf_indeces_to_point(rowcols, resolution, origin):
@@ -14,8 +18,8 @@ def sdf_idx_to_point(row, col, resolution, origin):
 
 def sdf_bounds(sdf, resolution, origin):
     xmin, ymin = sdf_idx_to_point(0, 0, resolution, origin)
-    xmax, ymax = sdf_idx_to_point(*sdf.shape, resolution, origin)
-    return xmin, xmax, ymin, ymax
+    xmax, ymax = sdf_idx_to_point(sdf.shape[0], sdf.shape[1], resolution, origin)
+    return [xmin, xmax, ymin, ymax]
 
 
 def point_to_sdf_idx(x, y, resolution, origin):
@@ -33,12 +37,41 @@ def yaw_diff(a, b):
     return diff
 
 
+@dataclass
+class SDF:
+    sdf: np.ndarray
+    gradient: np.ndarray
+    resolution: np.ndarray
+    origin: np.ndarray
+    extent: list
+    image: PIL.Image
+
+
+def load_sdf_data(filename):
+    npz = np.load(filename)
+    sdf = npz['sdf']
+    grad = npz['sdf_gradient']
+    res = npz['sdf_resolution'].reshape(2)
+    if 'sdf_origin' in npz:
+        origin = npz['sdf_origin'].reshape(2)
+    else:
+        origin = np.array(sdf.shape, dtype=np.int32).reshape(2) // 2
+        print(Fore.YELLOW + "WARNING: sdf npz file does not specify its origin, assume origin {}".format(origin) + Fore.RESET)
+    extent = sdf_bounds(sdf, res, origin)
+    image = PIL.Image.fromarray(np.flipud(sdf.T))
+    return SDF(sdf=sdf, gradient=grad, resolution=res, origin=origin, extent=extent, image=image)
+
+
 def load_sdf(filename):
     npz = np.load(filename)
     sdf = npz['sdf']
     grad = npz['sdf_gradient']
     res = npz['sdf_resolution'].reshape(2)
-    origin = np.array(sdf.shape, dtype=np.int32).reshape(2) // 2
+    if 'sdf_origin' in npz:
+        origin = npz['sdf_origin'].reshape(2)
+    else:
+        origin = np.array(sdf.shape, dtype=np.int32).reshape(2) // 2
+        print(Fore.YELLOW + "WARNING: sdf npz file does not specify its origin, assume origin {}".format(origin) + Fore.RESET)
     return sdf, grad, res, origin
 
 
