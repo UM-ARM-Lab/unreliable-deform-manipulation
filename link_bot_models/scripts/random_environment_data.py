@@ -7,7 +7,7 @@ from link_bot_pycommon import link_bot_pycommon
 import sdf_tools
 
 
-def plot(args, grid_world, sdf_data, threshold, rope_configurations, constraint_labels):
+def plot(args, sdf_data, threshold, rope_configurations, constraint_labels):
     sdf_fig = plt.figure()
     # Note: images should always be flipped and transposed because of how image coordinates work.
     #       however, we do not flip/transpose when indexing into the SDF, this is just needed when plotting.
@@ -18,15 +18,18 @@ def plot(args, grid_world, sdf_data, threshold, rope_configurations, constraint_
     subsample = 16
     x_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[0])
     y_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[1])
-    x, y = np.meshgrid(x_range, y_range)
+    y, x = np.meshgrid(y_range, x_range)
     dx = sdf_data.gradient[::subsample, ::subsample, 0]
     dy = sdf_data.gradient[::subsample, ::subsample, 1]
     plt.quiver(x, y, dx, dy, units='x', scale=5, headwidth=2, headlength=4)
 
     grid_fig = plt.figure()
-    plt.imshow(np.flipud(grid_world.T) > threshold, extent=sdf_data.extent)
+    binary = (sdf_data.sdf < threshold).astype(np.uint8)
+    plt.imshow(np.flipud(binary.T), extent=sdf_data.extent)
 
-    for rope_configuration, constraint_label in zip(rope_configurations[:1000], constraint_labels[:1000]):
+    for idx in np.random.choice(rope_configurations.shape[0], size=1000):
+        rope_configuration = rope_configurations[idx]
+        constraint_label = constraint_labels[idx]
         xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
         ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
         plt.plot(xs, ys, linewidth=1, zorder=2)
@@ -80,7 +83,8 @@ def generate(args):
                  grid_world=grid_world,
                  states=rope_configurations,
                  rope_configurations=rope_configurations,
-                 constraints=constraint_labels)
+                 constraints=constraint_labels,
+                 threshold=args.distance_constraint_threshold)
         np.savez(args.outfile + '_sdf.npz',
                  sdf=sdf,
                  sdf_gradient=sdf_gradient,
@@ -89,20 +93,20 @@ def generate(args):
 
     if args.plot:
         sdf_data = link_bot_pycommon.SDF(sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, None)
-        plot(args, grid_world, sdf_data, args.distance_constraint_threshold, rope_configurations, constraint_labels)
+        plot(args, sdf_data, args.distance_constraint_threshold, rope_configurations, constraint_labels)
 
         plt.show()
 
 
 def plot_main(args):
     data = np.load(args.data)
-    grid_world = data['grid_world']
     rope_configurations = data['rope_configurations']
+    threshold = data['threshold']
     constraint_labels = data['constraints']
 
     sdf_data = link_bot_pycommon.load_sdf_data(args.sdf)
 
-    plot(args, grid_world, sdf_data, args.distance_constraint_threshold, rope_configurations, constraint_labels)
+    plot(args, sdf_data, threshold, rope_configurations, constraint_labels)
 
     plt.show()
 
@@ -128,7 +132,6 @@ def main():
     plot_parser.set_defaults(func=plot_main)
     plot_parser.add_argument('data', help='generated file, npz')
     plot_parser.add_argument('sdf', help='generated file, npz')
-    plot_parser.add_argument('--distance-constraint-threshold', type=np.float32, default=0.0, help='constraint threshold')
 
     args = parser.parse_args()
 

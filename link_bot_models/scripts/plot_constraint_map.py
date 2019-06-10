@@ -18,7 +18,7 @@ def get_rope_configurations(args):
     if args.dataset:
         data = np.load(args.dataset)
         states = data['states']
-        N = states.shape[2]
+        N = states.shape[-1]
         assert N == 6
         rope_configurations = states.reshape(-1, N)
     else:
@@ -36,12 +36,14 @@ def get_rope_configurations(args):
 def plot(args, sdf_data, model, threshold, results, true_positives, true_negatives, false_positives, false_negatives):
     n_examples = results.shape[0]
 
+    sdf_data.image = (sdf_data.image < threshold).astype(np.uint8)
+
     if args.plot_type == plotting.PlotType.random_individual:
         random_indexes = np.random.choice(n_examples, size=10, replace=False)
         random_results = results[random_indexes]
         figs = []
         for random_result in random_results:
-            fig = plotting.plot_single_example(sdf_data.image, random_result)
+            fig = plotting.plot_single_example(sdf_data, random_result)
             figs.append(fig)
         return plotting.SavableFigureCollection(figs)
 
@@ -89,6 +91,7 @@ def main():
     parser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     parser.add_argument("checkpoint", help="eval the *.ckpt name")
     parser.add_argument("plot_type", type=plotting.PlotType.from_string, choices=list(plotting.PlotType))
+    parser.add_argument("threshold", type=float)
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--save", action='store_true')
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
@@ -104,14 +107,12 @@ def main():
     model = ConstraintModel(args_dict, sdf_data, args.N)
     model.setup()
 
-    threshold = 0.2
-
     # get the rope configurations we're going to evaluate
     rope_configurations = get_rope_configurations(args)
     m = rope_configurations.shape[0]
 
     # evaluate the rope configurations
-    results = constraint_model.evaluate(sdf_data, model, threshold, rope_configurations)
+    results = constraint_model.evaluate(sdf_data, model, args.threshold, rope_configurations)
 
     true_positives = np.array([result for result in results if result.true_violated and result.predicted_violated])
     n_true_positives = len(true_positives)
@@ -129,7 +130,7 @@ def main():
     print('precision:', precision)
     print('recall:', recall)
 
-    savable = plot(args, sdf_data, model, threshold, results, true_positives, true_negatives,
+    savable = plot(args, sdf_data, model, args.threshold, results, true_positives, true_negatives,
                    false_positives, false_negatives)
 
     plt.show()

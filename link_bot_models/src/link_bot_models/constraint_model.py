@@ -31,6 +31,7 @@ class ConstraintModel(BaseModel):
         self.k_label = tf.placeholder(tf.float32, shape=(None, 1), name="k")
         self.k_label_int = tf.cast(self.k_label, tf.int32)
         self.hidden_layer_dims = None
+        self.fig = None
 
         self.sdf_data = sdf_data
 
@@ -83,8 +84,7 @@ class ConstraintModel(BaseModel):
             self.hidden_layer_dims = [128, 128]
             h = self.observations
             for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
-                h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu,
-                                    name='hidden_layer_{}'.format(layer_idx))
+                h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, name='hidden_layer_{}'.format(layer_idx))
             self.hat_latent_k = tf.layers.dense(h, 2, activation=None, name='output_layer')
 
         #######################################################
@@ -115,11 +115,11 @@ class ConstraintModel(BaseModel):
             oob_down = self.hat_latent_k[:, 1] >= sdf_data.extent[3]
             self.out_of_bounds = tf.math.reduce_any(tf.stack((oob_up, oob_down, oob_left, oob_right), axis=1), axis=1, name='oob')
             self.in_bounds_value = tf.ones_like(self.distances_to_origin) * 0.0
-            self.distances_out_of_bounds = tf.where(self.out_of_bounds, self.distances_to_origin, self.in_bounds_value, name='distance_oob')
-            self.out_of_bounds_loss = tf.reduce_mean(self.distances_to_origin, name='out_of_bounds_loss')
+            self.distances_out_of_bounds = tf.where(self.out_of_bounds, self.distances_to_origin, self.in_bounds_value)
+            self.out_of_bounds_loss = tf.reduce_mean(self.distances_out_of_bounds, name='out_of_bounds_loss')
 
             self.loss = tf.add_n([
-                # self.constraint_prediction_loss,
+                self.constraint_prediction_loss,
                 self.out_of_bounds_loss,
             ], name='loss')
 
@@ -197,9 +197,6 @@ class ConstraintModel(BaseModel):
         ops = [self.threshold_k, self.constraint_prediction_loss, self.loss, self.constraint_prediction_accuracy]
         threshold_k, k_loss, loss, k_accuracy = self.sess.run(ops, feed_dict=feed_dict)
 
-        plotting.plot_examples_2(self.sdf_data, observations[::100], threshold_k, self)
-        plt.show()
-
         if display:
             print("Constraint Loss: {:0.3f}".format(float(k_loss)))
             print("Overall Loss: {:0.3f}".format(float(loss)))
@@ -207,6 +204,17 @@ class ConstraintModel(BaseModel):
             print("constraint prediction accuracy:\n{}".format(k_accuracy))
 
         return threshold_k, k_loss, loss
+
+    def start_train_hook(self):
+        self.fig = plt.figure()
+
+    def train_feed_hook(self, iteration, train_x_batch, train_y_batch):
+        pass
+        # if iteration % 1 == 0:
+        #     threshold_k = self.sess.run(self.threshold_k)
+        #     self.fig.clf()
+        #     plotting.plot_examples_on_fig(self.fig, self.sdf_data, train_x_batch[::10], train_y_batch[::10], threshold_k, self, draw_correspondences=True)
+        #     plt.pause(5)
 
     def violated(self, observations, sdf=None, sdf_resolution=None, sdf_origin=None):
         # unused parameters

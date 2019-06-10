@@ -73,9 +73,9 @@ def plot_examples(sdf_image, extent, results, subsample=10, title=''):
     return SavableFigure(fig)
 
 
-def plot_single_example(sdf_image, extent, result):
+def plot_single_example(sdf_data, result):
     fig = plt.figure()
-    plt.imshow(sdf_image, extent=extent)
+    plt.imshow(sdf_data.image, extent=sdf_data.extent)
     plt.plot(result.rope_configuration[[0, 2, 4]], result.rope_configuration[[1, 3, 5]], label='rope')
 
     if result.predicted_violated:
@@ -242,19 +242,21 @@ def plot_contours(sdf_data, model, threshold):
     return SavableFigure(fig)
 
 
-def plot_examples_2(sdf_data, rope_configurations, threshold, model):
-    fig = plt.figure()
+def plot_examples_on_fig(fig, sdf_data, rope_configurations, constraint_labels, threshold, model, draw_correspondences=False):
     binary_image = sdf_data.image > threshold
     plt.imshow(binary_image, extent=sdf_data.extent)
 
-    violated, predicted_points = model.violated(rope_configurations)
-    for rope_configuration, predicted_point in zip(rope_configurations, predicted_points):
-        plt.plot(rope_configuration[[0, 2, 4]], rope_configuration[[1, 3, 5]], zorder=4)
-        plt.plot([rope_configuration[4], predicted_point[0]], [rope_configuration[5], predicted_point[1]], zorder=3, c='k')
+    ax = fig.gca()
 
-    plt.scatter(rope_configurations[:, 4], rope_configurations[:, 5], c='b', s=100, zorder=1)
+    violated, predicted_points = model.violated(rope_configurations)
+    for rope_configuration, predicted_point, constraint_label in zip(rope_configurations, predicted_points, constraint_labels):
+        color = 'r' if constraint_label else 'g'
+        ax.scatter(rope_configuration[4], rope_configuration[5], c=color, s=10, zorder=3)
+        ax.plot(rope_configuration[[0, 2, 4]], rope_configuration[[1, 3, 5]], zorder=2)
+        if draw_correspondences:
+            ax.plot([rope_configuration[4], predicted_point[0]], [rope_configuration[5], predicted_point[1]], zorder=1, c='k')
 
     pred_color = ['r' if v else 'g' for v in violated]
-    plt.scatter(predicted_points[:, 0], predicted_points[:, 1], c=pred_color, s=10, zorder=2)
+    ax.scatter(predicted_points[:, 0], predicted_points[:, 1], c=pred_color, s=10, zorder=4, marker='x')
 
     return SavableFigure(fig)

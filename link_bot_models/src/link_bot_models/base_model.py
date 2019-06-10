@@ -92,6 +92,8 @@ class BaseModel:
             train_ops = [self.global_step, self.train_summary, self.loss, self.opt]
             validation_ops = [self.validation_summary, self.loss]
 
+            self.start_train_hook()
+
             if self.args_dict['log'] is not None:
                 self.save(full_log_path, self.args_dict['log'])
 
@@ -106,7 +108,7 @@ class BaseModel:
                 train_feed_dict = self.build_feed_dict(train_x_batch, train_y_batch, **kwargs)
                 validation_feed_dict = self.build_feed_dict(validation_x, validation_y, **kwargs)
 
-                print(self.sess.run([self.out_of_bounds], feed_dict=train_feed_dict))
+                self.train_feed_hook(i, train_x_batch, train_y_batch)
 
                 step, train_summary, train_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
                 validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
@@ -132,6 +134,12 @@ class BaseModel:
 
     def build_feed_dict(self, x, y, **kwargs):
         raise NotImplementedError()
+
+    def start_train_hook(self):
+        pass
+
+    def train_feed_hook(self, iteration, train_x_batch, train_y_batch):
+        pass
 
     def load(self):
         self.saver.restore(self.sess, self.args_dict['checkpoint'])
