@@ -251,8 +251,9 @@ def plot_examples_2(sdf_data, rope_configurations, threshold, model):
     plt.imshow(binary_image, extent=sdf_data.extent)
 
     violated, predicted_points = model.violated(rope_configurations)
-    for rope_configuration in rope_configurations:
-        plt.plot(rope_configuration[[0, 2, 4]], rope_configuration[[1, 3, 5]])
+    for rope_configuration, predicted_point in zip(rope_configurations, predicted_points):
+        plt.plot(rope_configuration[[0, 2, 4]], rope_configuration[[1, 3, 5]], zorder=4)
+        plt.plot([rope_configuration[4], predicted_point[0]], [rope_configuration[5], predicted_point[1]], zorder=3, c='k')
 
     plt.scatter(rope_configurations[:, 4], rope_configurations[:, 5], c='b', s=100, zorder=1)
 

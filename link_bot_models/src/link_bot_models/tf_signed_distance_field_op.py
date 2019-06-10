@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 
@@ -9,20 +10,26 @@ def sdf_func(sdf, full_sdf_gradient, sdf_resolution, sdf_origin_coordinate, sdf_
     integer_coordinates = tf.add(integer_coordinates, sdf_origin_coordinate, name='integer_coordinates')
     # blindly assume the point is within our grid
 
-    # https://github.com/tensorflow/tensorflow/pull/15857
-    # "on CPU an error will be returned and on GPU 0 value will be filled to the expected positions of the output."
-    # TODO: make this handle out of bounds correctly. I think correctly for us means return large number for SDF
-    # and a gradient towards the origin
-
-    # for coordinate in integer_coordinates:
-    #     if c
+    oob_left = integer_coordinates[:, 0] < 0
+    oob_right = integer_coordinates[:, 0] >= sdf.shape[1]
+    oob_up = integer_coordinates[:, 1] < 0
+    oob_down = integer_coordinates[:, 1] >= sdf.shape[0]
+    out_of_bounds = tf.math.reduce_any(tf.stack((oob_up, oob_down, oob_left, oob_right), axis=1), axis=1)
 
     sdf_value = tf.gather_nd(sdf, integer_coordinates, name='sdf_gather')
     sdf_value = tf.reshape(sdf_value, [-1, 1], name='index_sdfs')
 
+    # TODO: how to handle out of bounds???
+    oob_value = tf.ones_like(sdf_value) * 0.0
+
+    sdf_value = tf.where(out_of_bounds, oob_value, sdf_value, name='sdf_value')
+
     def __sdf_gradient_func(dy):
         sdf_gradient = tf.gather_nd(full_sdf_gradient, integer_coordinates, name='sdf_gradients_gather')
         sdf_gradient = tf.reshape(sdf_gradient, [-1, P], name='index_sdf_gradient')
+        # TODO: how to handle out of bounds???
+        oob_gradient = tf.ones_like(sdf_gradient) * 0.0
+        sdf_gradient = tf.where(out_of_bounds, oob_gradient, sdf_gradient, name='sdf_gradient')
         return None, None, None, None, dy * sdf_gradient, None
 
     return sdf_value, __sdf_gradient_func

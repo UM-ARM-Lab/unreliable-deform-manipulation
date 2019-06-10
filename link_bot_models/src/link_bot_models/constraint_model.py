@@ -6,7 +6,6 @@ from enum import auto
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from PIL import Image
 from attr import dataclass
 
 from link_bot_models import plotting
@@ -46,12 +45,12 @@ class ConstraintModel(BaseModel):
                 k_threshold_init = np.random.rand() * 1e-1
             else:
                 # IDEAL INIT
-                R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.0
+                R_k_init = np.zeros((N, 2), dtype=np.float32) + np.random.randn(N, 2).astype(np.float32) * 0.1
                 R_k_init[4, 0] = 1.0
                 R_k_init[5, 1] = 1.0
                 k_threshold_init = 0.0
             self.R_k = tf.get_variable("R_k", initializer=R_k_init)
-            self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=True)
+            self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
             self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
 
         elif model_type == ConstraintModelType.LinearCombination:
@@ -65,21 +64,21 @@ class ConstraintModel(BaseModel):
             else:
                 # IDEAL INIT
                 alphas_init = np.array([0, 1, 1]).astype(np.float32)
-                k_threshold_init = 0.20
+                k_threshold_init = 0.0
             self.alphas = tf.get_variable("R_k", initializer=alphas_init)
             alpha_blocks = []
             for alpha in tf.unstack(self.alphas):
                 alpha_blocks.append(tf.linalg.tensor_diag([alpha, alpha]))
             self.alpha_blocks = tf.concat(alpha_blocks, axis=0)
             self.R_k = tf.stack(self.alpha_blocks, axis=0)
-            self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=True)
+            self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
             self.hat_latent_k = tf.matmul(self.observations, self.R_k, name='hat_latent_k')
 
         elif model_type == ConstraintModelType.FNN:
             #############################################
             #      Feed-Forward Neural Network Model    #
             #############################################
-            k_threshold_init = 0.20
+            k_threshold_init = 0.0
             self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
             self.hidden_layer_dims = [128, 128]
             h = self.observations
@@ -95,8 +94,9 @@ class ConstraintModel(BaseModel):
         self.sdfs = sdf_func(sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin, self.hat_latent_k, 2)
         # because the sigmoid is not very sharp (since meters are very large in the domain of sigmoid),
         # this doesn't give a very sharp boundary for the decision between in collision or not.
-        # The trade of is this might cause vanishing gradients
-        self.hat_k = 100 * (self.threshold_k - self.sdfs)
+        # The trade of is this might cause exploding/vanishing gradients
+        self.sigmoid_scale = 1.0
+        self.hat_k = self.sigmoid_scale * (self.threshold_k - self.sdfs)
         self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32, name="hat_k_violated")
         _, self.constraint_prediction_accuracy = tf.metrics.accuracy(labels=self.k_label,
                                                                      predictions=self.hat_k_violated)
@@ -122,7 +122,7 @@ class ConstraintModel(BaseModel):
                 grads = tf.gradients(self.loss, var, name='dLoss_d{}'.format(name))
                 for grad in grads:
                     if grad is not None:
-                        tf.summary.histogram(name + "/gradient", grad)
+                        tf.summary.histogram(name + "/gradient", grad, collections=['train'])
                     else:
                         print("Warning... there is no gradient of the loss with respect to {}".format(var.name))
 
@@ -166,6 +166,7 @@ class ConstraintModel(BaseModel):
             'checkpoint': self.args_dict['checkpoint'],
             'N': self.N,
             'beta': self.beta,
+            'sigmoid_scale': self.sigmoid_scale,
             'commandline': self.args_dict['commandline'],
             'hidden_layer_dims': self.hidden_layer_dims,
             'model_type': str(self.args_dict['model_type']),
@@ -182,7 +183,7 @@ class ConstraintModel(BaseModel):
         ops = [self.threshold_k, self.constraint_prediction_loss, self.loss, self.constraint_prediction_accuracy]
         threshold_k, k_loss, loss, k_accuracy = self.sess.run(ops, feed_dict=feed_dict)
 
-        plotting.plot_examples_2(self.sdf_data, observations[::1], threshold_k, self)
+        plotting.plot_examples_2(self.sdf_data, observations[::10], threshold_k, self)
         plt.show()
 
         if display:
