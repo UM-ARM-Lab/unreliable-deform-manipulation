@@ -6,15 +6,21 @@ def sdf_indeces_to_point(rowcols, resolution, origin):
     return (rowcols - origin) * resolution
 
 
-def sdf_idx_to_point(row, col, resolution, sdf_origin):
-    x = (col - sdf_origin[0, 0]) * resolution[0, 0]
-    y = (row - sdf_origin[1, 0]) * resolution[1, 0]
-    return np.array([[y], [x]])
+def sdf_idx_to_point(row, col, resolution, origin):
+    x = (col - origin[0]) * resolution[0]
+    y = (row - origin[1]) * resolution[1]
+    return np.array([y, x])
 
 
-def point_to_sdf_idx(x, y, resolution, sdf_origin):
-    row = int(x / resolution[0] + sdf_origin[0])
-    col = int(y / resolution[1] + sdf_origin[1])
+def sdf_bounds(sdf, resolution, origin):
+    xmin, ymin = sdf_idx_to_point(0, 0, resolution, origin)
+    xmax, ymax = sdf_idx_to_point(*sdf.shape, resolution, origin)
+    return xmin, xmax, ymin, ymax
+
+
+def point_to_sdf_idx(x, y, resolution, origin):
+    row = int(x / resolution[0] + origin[0])
+    col = int(y / resolution[1] + origin[1])
     return row, col
 
 
@@ -62,3 +68,15 @@ def make_rope_configuration(head_x, head_y, theta_1, theta_2):
     rope_configuration[0] = rope_configuration[2] + np.cos(theta_2)
     rope_configuration[1] = rope_configuration[3] + np.sin(theta_2)
     return rope_configuration
+
+
+def make_rope_configurations(head_xs, head_ys, theta_1s, theta_2s):
+    n = head_xs.shape[0]
+    rope_configurations = np.zeros((n, 6))
+    rope_configurations[:, 4] = head_xs
+    rope_configurations[:, 5] = head_ys
+    rope_configurations[:, 2] = rope_configurations[:, 4] + np.cos(theta_1s)
+    rope_configurations[:, 3] = rope_configurations[:, 5] + np.sin(theta_1s)
+    rope_configurations[:, 0] = rope_configurations[:, 2] + np.cos(theta_2s)
+    rope_configurations[:, 1] = rope_configurations[:, 3] + np.sin(theta_2s)
+    return rope_configurations

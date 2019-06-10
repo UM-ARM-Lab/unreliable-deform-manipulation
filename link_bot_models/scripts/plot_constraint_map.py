@@ -8,7 +8,7 @@ from matplotlib.animation import FuncAnimation
 from matplotlib import animation
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
+from PIL import Image, ImageEnhance
 from enum import auto
 
 from attr import dataclass
@@ -26,6 +26,8 @@ class PlotType(link_bot_pycommon.ArgsEnum):
     false_positives = auto()
     false_negatives = auto()
     interpolate = auto()
+    contours = auto()
+    animate_contours = auto()
 
 
 @dataclass
@@ -182,7 +184,7 @@ def plot_interpolate(sdf, sdf_resolution, sdf_origin, sdf_image, model, threshol
         Line2D([0], [0], color='r', lw=1),
         Line2D([0], [0], color='b', lw=1),
     ]
-    plt.legend(custom_lines, ['pred', 'true'])
+    plt.legend(custom_lines, ['head', 'prediction'])
 
     def update(t):
         rope_configuration = link_bot_pycommon.make_rope_configuration(*rope_params[t])
@@ -202,11 +204,106 @@ def plot_interpolate(sdf, sdf_resolution, sdf_origin, sdf_image, model, threshol
     T = rope_params.shape[0]
     interval_ms = int(duration_s * 1000 / T)
     duration_s = T / fps
-    print('animation will be {} seconds long'.format(duration_s))
     anim = FuncAnimation(fig, update, frames=T, interval=interval_ms)
     Writer = animation.writers['ffmpeg']
     writer = Writer(fps=fps, bitrate=1800)
     return SavableAnimationWrapper(anim, writer)
+
+
+def animate_contours(sdf, sdf_resolution, sdf_origin, sdf_image, model):
+    fig = plt.figure()
+    plt.title('level sets')
+    enhancer = ImageEnhance.Brightness(sdf_image)
+    brightened_sdf_image = enhancer.enhance(5.0)
+    plt.imshow(brightened_sdf_image, extent=[-5, 5, -5, 5])
+
+    xmin, xmax, ymin, ymax = link_bot_pycommon.sdf_bounds(sdf, sdf_resolution, sdf_origin)
+    contour_spacing_y = 4
+    contour_spacing_x = 1
+    y_range = np.arange(ymin, ymax + sdf_resolution[0], sdf_resolution[0] * contour_spacing_y)
+    y = y_range[0]
+    head_xs_flat = np.arange(xmin, xmax + sdf_resolution[1], sdf_resolution[1] * contour_spacing_x)
+    head_ys_flat = np.ones_like(head_xs_flat) * y
+
+    zeros = np.zeros_like(head_xs_flat)
+    rope_configurations = link_bot_pycommon.make_rope_configurations(head_xs_flat, head_ys_flat, zeros, zeros)
+
+    _, predicted_points = model.violated(rope_configurations)
+
+    predicted_xs = predicted_points[:, 0]
+    predicted_ys = predicted_points[:, 1]
+
+    head_line = plt.plot(head_xs_flat, head_ys_flat, color='r', linewidth=3, zorder=1)[0]
+    predicted_line = plt.plot(predicted_xs, predicted_ys, color='b', linewidth=1, zorder=2)[0]
+
+    custom_lines = [
+        Line2D([0], [0], color='r', lw=1),
+        Line2D([0], [0], color='b', lw=1),
+    ]
+    plt.legend(custom_lines, ['head', 'prediction'])
+
+    def update(t):
+        y = y_range[t]
+        head_xs_flat = np.arange(xmin, xmax + sdf_resolution[1], sdf_resolution[1] * contour_spacing_x)
+        head_ys_flat = np.ones_like(head_xs_flat) * y
+
+        rope_configurations = link_bot_pycommon.make_rope_configurations(head_xs_flat, head_ys_flat, zeros, zeros)
+
+        _, predicted_points = model.violated(rope_configurations)
+
+        predicted_xs = predicted_points[:, 0]
+        predicted_ys = predicted_points[:, 1]
+
+        red = blue = (y - y_range[0]) / (y_range[-1] - y_range[0])
+        head_line.set_xdata(head_xs_flat)
+        head_line.set_ydata(head_ys_flat)
+        predicted_line.set_xdata(predicted_xs)
+        predicted_line.set_ydata(predicted_ys)
+
+    fps = 100
+    duration_s = 10
+    T = y_range.shape[0]
+    interval_ms = int(duration_s * 1000 / T)
+    duration_s = T / fps
+    anim = FuncAnimation(fig, update, frames=T, interval=interval_ms)
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(fps=fps, bitrate=1800)
+    return SavableAnimationWrapper(anim, writer)
+
+
+def plot_contours(sdf, sdf_resolution, sdf_origin, sdf_image, model):
+    fig = plt.figure()
+    plt.title('level sets')
+    enhancer = ImageEnhance.Brightness(sdf_image)
+    brightened_sdf_image = enhancer.enhance(5.0)
+    plt.imshow(brightened_sdf_image, extent=[-5, 5, -5, 5])
+
+    x_min, x_max, y_min, y_max = link_bot_pycommon.sdf_bounds(sdf, sdf_resolution, sdf_origin)
+    contour_spacing_y = 1000
+    contour_spacing_x = 1
+    y_range = np.arange(y_min, y_max + sdf_resolution[0], sdf_resolution[0] * contour_spacing_y)
+    for y in y_range:
+        head_xs_flat = np.arange(x_min, x_max + sdf_resolution[1], sdf_resolution[1] * contour_spacing_x)
+        head_ys_flat = np.ones_like(head_xs_flat) * y
+
+        zeros = np.zeros_like(head_xs_flat)
+        rope_configurations = link_bot_pycommon.make_rope_configurations(head_xs_flat, head_ys_flat, zeros, zeros)
+
+        _, predicted_points = model.violated(rope_configurations)
+
+        predicted_xs = predicted_points[:, 0]
+        predicted_ys = predicted_points[:, 1]
+
+        red = blue = (y - y_range[0]) / (y_range[-1] - y_range[0])
+        plt.plot(head_xs_flat, head_ys_flat, color=(red, 0, 0), linewidth=3, zorder=1)
+        plt.plot(predicted_xs, predicted_ys, color=(0, 0, blue), linewidth=1, zorder=2)
+
+    custom_lines = [
+        Line2D([0], [0], color='r', lw=1),
+        Line2D([0], [0], color='b', lw=1),
+    ]
+    plt.legend(custom_lines, ['head', 'prediction'])
+    return SavableFigure(fig)
 
 
 def plot(args, sdf, sdf_resolution, sdf_origin, model, threshold, results, true_positives, true_negatives,
@@ -247,6 +344,14 @@ def plot(args, sdf, sdf_resolution, sdf_origin, model, threshold, results, true_
 
     elif args.plot_type == PlotType.interpolate:
         savable = plot_interpolate(sdf, sdf_resolution, sdf_origin, sdf_image, model, threshold, title='interpolate')
+        return savable
+
+    elif args.plot_type == PlotType.contours:
+        savable = plot_contours(sdf, sdf_resolution, sdf_origin, sdf_image, model)
+        return savable
+
+    elif args.plot_type == PlotType.animate_contours:
+        savable = animate_contours(sdf, sdf_resolution, sdf_origin, sdf_image, model)
         return savable
 
 
