@@ -37,9 +37,10 @@ def model_only(args):
     fake_sdf_grad = np.random.randn(W, H, 2).astype(np.float32)
     fake_sdf_res = np.random.randn(2).astype(np.float32)
     fake_sdf_origin = np.random.randn(2).astype(np.float32)
+    sdf_data = link_bot_pycommon.SDF(fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, None, None)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, args.N)
+    model = ConstraintModel(args_dict, sdf_data, args.N)
 
     model.init()
 
@@ -74,9 +75,10 @@ def show(args):
     fake_sdf_grad = np.random.randn(W, H, 2).astype(np.float32)
     fake_sdf_res = np.random.randn(2).astype(np.float32)
     fake_sdf_origin = np.random.randn(2).astype(np.float32)
+    sdf_data = link_bot_pycommon.SDF(fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, None, None)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = ConstraintModel(args_dict, fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, args.N)
+    model = ConstraintModel(args_dict, sdf_data, args.N)
     model.setup()
     print(model)
 

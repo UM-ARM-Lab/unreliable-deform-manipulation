@@ -3,14 +3,14 @@ from __future__ import print_function
 
 import argparse
 from time import time
-from PIL import Image
-import tensorflow as tf
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
 
 from link_bot_models import constraint_model
-from link_bot_models.constraint_model import ConstraintModel, ConstraintModelType
 from link_bot_models import plotting
+from link_bot_models.constraint_model import ConstraintModel, ConstraintModelType
 from link_bot_pycommon import link_bot_pycommon
 
 
@@ -52,11 +52,11 @@ def plot(args, sdf_data, model, threshold, results, true_positives, true_negativ
         return savable
 
     elif args.plot_type == plotting.PlotType.true_positives:
-        savable = plotting.plot_examples(sdf_data.image, sdf_data.extent, true_positives, subsample=1, title='true positives')
+        savable = plotting.plot_examples(sdf_data.image, sdf_data.extent, true_positives, subsample=5, title='true positives')
         return savable
 
     elif args.plot_type == plotting.PlotType.true_negatives:
-        savable = plotting.plot_examples(sdf_data.image, sdf_data.extent, true_negatives, subsample=1, title='true negatives')
+        savable = plotting.plot_examples(sdf_data.image, sdf_data.extent, true_negatives, subsample=5, title='true negatives')
         return savable
 
     elif args.plot_type == plotting.PlotType.false_positives:
@@ -72,11 +72,11 @@ def plot(args, sdf_data, model, threshold, results, true_positives, true_negativ
         return savable
 
     elif args.plot_type == plotting.PlotType.contours:
-        savable = plotting.plot_contours(sdf_data, sdf_data.image, model)
+        savable = plotting.plot_contours(sdf_data, model, threshold)
         return savable
 
     elif args.plot_type == plotting.PlotType.animate_contours:
-        savable = plotting.animate_contours(sdf_data, sdf_data.image, model)
+        savable = plotting.animate_contours(sdf_data, model, threshold)
         return savable
 
 

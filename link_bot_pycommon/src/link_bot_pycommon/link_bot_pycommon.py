@@ -1,8 +1,6 @@
 from enum import Enum
 
 import numpy as np
-from attr import dataclass
-import PIL.Image
 from colorama import Fore
 
 
@@ -37,14 +35,15 @@ def yaw_diff(a, b):
     return diff
 
 
-@dataclass
 class SDF:
-    sdf: np.ndarray
-    gradient: np.ndarray
-    resolution: np.ndarray
-    origin: np.ndarray
-    extent: list
-    image: PIL.Image
+
+    def __init__(self, sdf, gradient, resolution, origin, extent, image):
+        self.sdf = sdf
+        self.gradient = gradient
+        self.resolution = resolution
+        self.origin = origin
+        self.extent = extent
+        self.image = image
 
 
 def load_sdf_data(filename):
@@ -58,7 +57,7 @@ def load_sdf_data(filename):
         origin = np.array(sdf.shape, dtype=np.int32).reshape(2) // 2
         print(Fore.YELLOW + "WARNING: sdf npz file does not specify its origin, assume origin {}".format(origin) + Fore.RESET)
     extent = sdf_bounds(sdf, res, origin)
-    image = PIL.Image.fromarray(np.flipud(sdf.T))
+    image = np.flipud(sdf.T)
     return SDF(sdf=sdf, gradient=grad, resolution=res, origin=origin, extent=extent, image=image)
 
 

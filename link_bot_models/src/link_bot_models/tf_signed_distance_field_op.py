@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 
 
@@ -20,15 +19,15 @@ def sdf_func(sdf, full_sdf_gradient, sdf_resolution, sdf_origin_coordinate, sdf_
     sdf_value = tf.reshape(sdf_value, [-1, 1], name='index_sdfs')
 
     # TODO: how to handle out of bounds???
-    oob_value = tf.ones_like(sdf_value) * 0.0
-
-    sdf_value = tf.where(out_of_bounds, oob_value, sdf_value, name='sdf_value')
+    # oob_value = tf.ones_like(sdf_value) * 0.0
+    # sdf_value = tf.where(out_of_bounds, oob_value, sdf_value, name='sdf_value')
 
     def __sdf_gradient_func(dy):
         sdf_gradient = tf.gather_nd(full_sdf_gradient, integer_coordinates, name='sdf_gradients_gather')
         sdf_gradient = tf.reshape(sdf_gradient, [-1, P], name='index_sdf_gradient')
         # TODO: how to handle out of bounds???
-        oob_gradient = tf.ones_like(sdf_gradient) * 0.0
+        # oob_gradient = tf.ones_like(sdf_gradient) * 0.0
+        oob_gradient = tf.cast(sdf_origin_coordinate - integer_coordinates, dtype=tf.float32) * 0.0
         sdf_gradient = tf.where(out_of_bounds, oob_gradient, sdf_gradient, name='sdf_gradient')
         return None, None, None, None, dy * sdf_gradient, None
 

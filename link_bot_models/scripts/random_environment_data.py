@@ -7,25 +7,26 @@ from link_bot_pycommon import link_bot_pycommon
 import sdf_tools
 
 
-def plot(args, grid_world, sdf, sdf_gradient, rope_configurations, constraint_labels):
+def plot(args, grid_world, sdf_data, threshold, rope_configurations, constraint_labels):
     sdf_fig = plt.figure()
     # Note: images should always be flipped and transposed because of how image coordinates work.
     #       however, we do not flip/transpose when indexing into the SDF, this is just needed when plotting.
-    plt.imshow(np.flipud(sdf.T), extent=[0, args.w, 0, args.h])
+    plt.imshow(np.flipud(sdf_data.sdf.T), extent=sdf_data.extent, interpolation=None)
 
     grad_fig = plt.figure()
-    plt.imshow(np.flipud(sdf.T), extent=[0, args.w, 0, args.h])
-    n_rows, n_cols = sdf.shape
+    plt.imshow(np.flipud(sdf_data.sdf.T), extent=sdf_data.extent)
     subsample = 16
-    x, y = np.meshgrid(range(0, n_rows, subsample), range(0, n_cols, subsample))
-    dx = sdf_gradient[::subsample, ::subsample, 0]
-    dy = sdf_gradient[::subsample, ::subsample, 1]
-    plt.quiver(x * args.res, y * args.res, dx, dy, units='x', scale=5, headwidth=2, headlength=4)
+    x_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[0])
+    y_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[1])
+    x, y = np.meshgrid(x_range, y_range)
+    dx = sdf_data.gradient[::subsample, ::subsample, 0]
+    dy = sdf_data.gradient[::subsample, ::subsample, 1]
+    plt.quiver(x, y, dx, dy, units='x', scale=5, headwidth=2, headlength=4)
 
     grid_fig = plt.figure()
-    plt.imshow(np.flipud(grid_world.T), extent=[0, args.w, 0, args.h])
+    plt.imshow(np.flipud(grid_world.T) > threshold, extent=sdf_data.extent)
 
-    for rope_configuration, constraint_label in zip(rope_configurations, constraint_labels):
+    for rope_configuration, constraint_label in zip(rope_configurations[:1000], constraint_labels[:1000]):
         xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
         ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
         plt.plot(xs, ys, linewidth=1, zorder=2)
@@ -33,19 +34,17 @@ def plot(args, grid_world, sdf, sdf_gradient, rope_configurations, constraint_la
         color = 'r' if constraint_label else 'g'
         plt.scatter(rope_configuration[4], rope_configuration[5], s=32, c=color, zorder=1)
 
-    return grid_fig, sdf_fig, grad_fig
-
 
 def generate(args):
     np.random.seed(args.seed)
 
-    sdf_origin = np.array([0.0, 0.0], dtype=np.int32)
-    res_arr = np.array([args.res, args.res], dtype=np.float32)
+    sdf_resolution = np.array([args.res, args.res], dtype=np.float32)
 
     n_rows = int(args.h / args.res)
     n_cols = int(args.w / args.res)
     n_cells = n_rows * n_cols
 
+    sdf_origin = np.array([n_rows // 2, n_cols // 2], dtype=np.int32)
     grid_world = np.zeros((n_rows, n_cols))
     occupied_cells = np.random.choice(n_cells, size=args.n_obstacles)
     occupied_cells_row, occupied_cells_col = np.unravel_index(occupied_cells, [n_rows, n_cols])
@@ -58,6 +57,7 @@ def generate(args):
 
     # create a signed distance field from the grid
     sdf, sdf_gradient = sdf_tools.compute_2d_sdf_and_gradient(grid_world, args.res, sdf_origin)
+    sdf_extent = link_bot_pycommon.sdf_bounds(sdf, sdf_resolution, sdf_origin)
 
     # create random rope configurations
     rope_configurations = np.ndarray((args.n, 6), dtype=np.float32)
@@ -65,10 +65,10 @@ def generate(args):
     for i in range(args.n):
         theta_1 = np.random.uniform(-np.pi, np.pi)
         theta_2 = np.random.uniform(-np.pi, np.pi)
-        head_x = np.random.uniform(2, args.w - 2)
-        head_y = np.random.uniform(2, args.h - 2)
+        head_x = np.random.uniform(sdf_extent[0] + 2, sdf_extent[1] - 2)
+        head_y = np.random.uniform(sdf_extent[2] + 2, sdf_extent[3] - 2)
         rope_configurations[i] = link_bot_pycommon.make_rope_configuration(head_x, head_y, theta_1, theta_2)
-        row, col = link_bot_pycommon.point_to_sdf_idx(head_x, head_y, res_arr, sdf_origin)
+        row, col = link_bot_pycommon.point_to_sdf_idx(head_x, head_y, sdf_resolution, sdf_origin)
         constraint_labels[i] = sdf[row, col] < args.distance_constraint_threshold
 
     n_positive = np.count_nonzero(constraint_labels)
@@ -85,10 +85,11 @@ def generate(args):
                  sdf=sdf,
                  sdf_gradient=sdf_gradient,
                  sdf_origin=sdf_origin,
-                 sdf_resolution=res_arr)
+                 sdf_resolution=sdf_resolution)
 
     if args.plot:
-        plot(args, grid_world, sdf, sdf_gradient, rope_configurations, constraint_labels)
+        sdf_data = link_bot_pycommon.SDF(sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, None)
+        plot(args, grid_world, sdf_data, args.distance_constraint_threshold, rope_configurations, constraint_labels)
 
         plt.show()
 
@@ -99,12 +100,9 @@ def plot_main(args):
     rope_configurations = data['rope_configurations']
     constraint_labels = data['constraints']
 
-    sdf, sdf_gradient, sdf_resolution, sf_origin = link_bot_pycommon.load_sdf(args.sdf)
+    sdf_data = link_bot_pycommon.load_sdf_data(args.sdf)
 
-    args.h = sdf_resolution[0] * sdf.shape[0]
-    args.w = sdf_resolution[1] * sdf.shape[1]
-    args.res = sdf_resolution[0]
-    plot(args, grid_world, sdf, sdf_gradient, rope_configurations, constraint_labels)
+    plot(args, grid_world, sdf_data, args.distance_constraint_threshold, rope_configurations, constraint_labels)
 
     plt.show()
 
@@ -130,6 +128,7 @@ def main():
     plot_parser.set_defaults(func=plot_main)
     plot_parser.add_argument('data', help='generated file, npz')
     plot_parser.add_argument('sdf', help='generated file, npz')
+    plot_parser.add_argument('--distance-constraint-threshold', type=np.float32, default=0.0, help='constraint threshold')
 
     args = parser.parse_args()
 

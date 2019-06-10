@@ -106,6 +106,8 @@ class BaseModel:
                 train_feed_dict = self.build_feed_dict(train_x_batch, train_y_batch, **kwargs)
                 validation_feed_dict = self.build_feed_dict(validation_x, validation_y, **kwargs)
 
+                print(self.sess.run([self.out_of_bounds], feed_dict=train_feed_dict))
+
                 step, train_summary, train_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
                 validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
 

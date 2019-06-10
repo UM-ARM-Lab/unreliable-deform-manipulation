@@ -92,9 +92,6 @@ class ConstraintModel(BaseModel):
         #######################################################
 
         self.sdfs = sdf_func(sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin, self.hat_latent_k, 2)
-        # because the sigmoid is not very sharp (since meters are very large in the domain of sigmoid),
-        # this doesn't give a very sharp boundary for the decision between in collision or not.
-        # The trade of is this might cause exploding/vanishing gradients
         self.sigmoid_scale = 1.0
         self.hat_k = self.sigmoid_scale * (self.threshold_k - self.sdfs)
         self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32, name="hat_k_violated")
@@ -109,8 +106,21 @@ class ConstraintModel(BaseModel):
             self.constraint_prediction_loss = tf.reduce_mean(self.constraint_prediction_error,
                                                              name="constraint_prediction_loss")
 
+            sdf_origin_meters = link_bot_pycommon.sdf_idx_to_point(sdf_data.origin[0], sdf_data.origin[1], sdf_data.resolution,
+                                                                   sdf_data.origin)
+            self.distances_to_origin = tf.norm(self.hat_latent_k - sdf_origin_meters, axis=1)
+            oob_left = self.hat_latent_k[:, 0] <= sdf_data.extent[0]
+            oob_right = self.hat_latent_k[:, 0] >= sdf_data.extent[1]
+            oob_up = self.hat_latent_k[:, 1] <= sdf_data.extent[2]
+            oob_down = self.hat_latent_k[:, 1] >= sdf_data.extent[3]
+            self.out_of_bounds = tf.math.reduce_any(tf.stack((oob_up, oob_down, oob_left, oob_right), axis=1), axis=1, name='oob')
+            self.in_bounds_value = tf.ones_like(self.distances_to_origin) * 0.0
+            self.distances_out_of_bounds = tf.where(self.out_of_bounds, self.distances_to_origin, self.in_bounds_value, name='distance_oob')
+            self.out_of_bounds_loss = tf.reduce_mean(self.distances_to_origin, name='out_of_bounds_loss')
+
             self.loss = tf.add_n([
-                self.constraint_prediction_loss,
+                # self.constraint_prediction_loss,
+                self.out_of_bounds_loss,
             ], name='loss')
 
             self.global_step = tf.get_variable("global_step", initializer=0, trainable=False)
@@ -129,6 +139,8 @@ class ConstraintModel(BaseModel):
             tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy,
                               collections=['train'])
             tf.summary.scalar("k_threshold_summary", self.threshold_k, collections=['train'])
+            tf.summary.scalar("out_of_bounds_loss_summary", self.out_of_bounds_loss,
+                              collections=['train'])
             tf.summary.scalar("constraint_prediction_loss_summary", self.constraint_prediction_loss,
                               collections=['train'])
             tf.summary.scalar("loss_summary", self.loss,
@@ -138,6 +150,8 @@ class ConstraintModel(BaseModel):
             tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy,
                               collections=['validation'])
             tf.summary.scalar("k_threshold_summary", self.threshold_k, collections=['validation'])
+            tf.summary.scalar("out_of_bounds_loss_summary", self.out_of_bounds_loss,
+                              collections=['validation'])
             tf.summary.scalar("constraint_prediction_loss_summary", self.constraint_prediction_loss,
                               collections=['validation'])
             tf.summary.scalar("loss_summary", self.loss,
@@ -183,7 +197,7 @@ class ConstraintModel(BaseModel):
         ops = [self.threshold_k, self.constraint_prediction_loss, self.loss, self.constraint_prediction_accuracy]
         threshold_k, k_loss, loss, k_accuracy = self.sess.run(ops, feed_dict=feed_dict)
 
-        plotting.plot_examples_2(self.sdf_data, observations[::10], threshold_k, self)
+        plotting.plot_examples_2(self.sdf_data, observations[::100], threshold_k, self)
         plt.show()
 
         if display:

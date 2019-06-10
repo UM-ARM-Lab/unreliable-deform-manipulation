@@ -3,7 +3,6 @@ from enum import auto
 import numpy as np
 from link_bot_models import constraint_model
 import matplotlib.pyplot as plt
-from PIL import ImageEnhance
 from matplotlib import animation
 from matplotlib.animation import FuncAnimation
 from matplotlib.lines import Line2D
@@ -98,7 +97,7 @@ def plot_single_example(sdf_image, extent, result):
 def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
     fig = plt.figure()
     plt.title(title)
-    plt.imshow(sdf_image, extent=sdf_data.sdf_extent)
+    plt.imshow(sdf_image, extent=sdf_data.extent)
 
     head_xs = np.linspace(-4.95, 4.95, 25)
     head_ys = np.linspace(-4.95, 4.95, 25)
@@ -151,12 +150,11 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
     return SavableAnimationWrapper(anim, writer)
 
 
-def animate_contours(sdf_data, sdf_image, model):
+def animate_contours(sdf_data, model, threshold):
     fig = plt.figure()
     plt.title('level sets')
-    enhancer = ImageEnhance.Brightness(sdf_image)
-    brightened_sdf_image = enhancer.enhance(5.0)
-    plt.imshow(brightened_sdf_image, extent=sdf_data.extent)
+    binary_image = np.asarray(sdf_data.image) > threshold
+    plt.imshow(binary_image, extent=sdf_data.extent)
 
     xmin, xmax, ymin, ymax = sdf_data.extent
     contour_spacing_y = 4
@@ -210,12 +208,11 @@ def animate_contours(sdf_data, sdf_image, model):
     return SavableAnimationWrapper(anim, writer)
 
 
-def plot_contours(sdf_data, sdf_image, model):
+def plot_contours(sdf_data, model, threshold):
     fig = plt.figure()
     plt.title('level sets')
-    enhancer = ImageEnhance.Brightness(sdf_image)
-    brightened_sdf_image = enhancer.enhance(5.0)
-    plt.imshow(brightened_sdf_image, extent=sdf_data.extent)
+    binary_image = np.asarray(sdf_data.image) > threshold
+    plt.imshow(binary_image, extent=sdf_data.extent)
 
     x_min, x_max, y_min, y_max = sdf_data.extent
     contour_spacing_y = 1000
