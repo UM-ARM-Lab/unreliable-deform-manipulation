@@ -52,3 +52,13 @@ class ArgsEnum(Enum):
         except KeyError:
             raise ValueError()
 
+
+def make_rope_configuration(head_x, head_y, theta_1, theta_2):
+    rope_configuration = np.zeros(6)
+    rope_configuration[4] = head_x
+    rope_configuration[5] = head_y
+    rope_configuration[2] = rope_configuration[4] + np.cos(theta_1)
+    rope_configuration[3] = rope_configuration[5] + np.sin(theta_1)
+    rope_configuration[0] = rope_configuration[2] + np.cos(theta_2)
+    rope_configuration[1] = rope_configuration[3] + np.sin(theta_2)
+    return rope_configuration

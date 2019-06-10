@@ -65,17 +65,6 @@ class SavableFigure:
         self.figure.savefig(filename)
 
 
-def make_rope_configuration(head_x, head_y, theta_1, theta_2):
-    rope_configuration = np.zeros(6)
-    rope_configuration[4] = head_x
-    rope_configuration[5] = head_y
-    rope_configuration[2] = rope_configuration[4] + np.cos(theta_1)
-    rope_configuration[3] = rope_configuration[5] + np.sin(theta_1)
-    rope_configuration[0] = rope_configuration[2] + np.cos(theta_2)
-    rope_configuration[1] = rope_configuration[3] + np.sin(theta_2)
-    return rope_configuration
-
-
 def get_rope_configurations(args):
     if args.dataset:
         data = np.load(args.dataset)
@@ -84,14 +73,14 @@ def get_rope_configurations(args):
         assert N == 6
         rope_configurations = states.reshape(-1, N)
     else:
-        m = 1000
+        m = 10000
         rope_configurations = np.ndarray((m, 6))
         for i in range(m):
             theta_1 = np.random.uniform(-np.pi, np.pi)
             theta_2 = np.random.uniform(-np.pi, np.pi)
             head_x = np.random.uniform(-5, 5)
             head_y = np.random.uniform(-5, 5)
-            rope_configurations[i] = make_rope_configuration(head_x, head_y, theta_1, theta_2)
+            rope_configurations[i] = link_bot_pycommon.make_rope_configuration(head_x, head_y, theta_1, theta_2)
     return rope_configurations
 
 
@@ -129,7 +118,7 @@ def plot_examples(sdf_image, results, subsample=10, title=''):
     head_xs = [result.rope_configuration[4] for result in results[::subsample]]
     head_ys = [result.rope_configuration[5] for result in results[::subsample]]
 
-    plt.scatter(predicted_xs, predicted_ys, s=5, c='r', label='predicted', zorder=2)
+    plt.scatter(predicted_xs, predicted_ys, s=5, c='r', label='predicted', zorder=3)
     plt.scatter(head_xs, head_ys, s=5, c='b', label='true', zorder=2)
 
     for result in results[::subsample]:
@@ -174,7 +163,7 @@ def plot_interpolate(sdf, sdf_resolution, sdf_origin, sdf_image, model, threshol
     grid = np.meshgrid(head_xs, head_ys, theta_1s, theta_2s)
     grid = [g.reshape(-1) for g in grid]
     rope_params = np.vstack(grid).T
-    rope_configuration_0 = make_rope_configuration(*rope_params[0])
+    rope_configuration_0 = link_bot_pycommon.make_rope_configuration(*rope_params[0])
 
     result_0 = evaluate_single(sdf, sdf_resolution, sdf_origin, model, threshold, rope_configuration_0)
     head_scatter = plt.scatter(result_0.rope_configuration[4], result_0.rope_configuration[5], s=50, c='b', zorder=2)
@@ -196,7 +185,7 @@ def plot_interpolate(sdf, sdf_resolution, sdf_origin, sdf_image, model, threshol
     plt.legend(custom_lines, ['pred', 'true'])
 
     def update(t):
-        rope_configuration = make_rope_configuration(*rope_params[t])
+        rope_configuration = link_bot_pycommon.make_rope_configuration(*rope_params[t])
         result = evaluate_single(sdf, sdf_resolution, sdf_origin, model, threshold, rope_configuration)
 
         head_scatter.set_offsets(rope_configuration[4:6])
@@ -241,11 +230,11 @@ def plot(args, sdf, sdf_resolution, sdf_origin, model, threshold, results, true_
         return savable
 
     elif args.plot_type == PlotType.true_positives:
-        savable = plot_examples(sdf_image, true_positives, subsample=5, title='true positives')
+        savable = plot_examples(sdf_image, true_positives, subsample=1, title='true positives')
         return savable
 
     elif args.plot_type == PlotType.true_negatives:
-        savable = plot_examples(sdf_image, true_negatives, subsample=5, title='true negatives')
+        savable = plot_examples(sdf_image, true_negatives, subsample=1, title='true negatives')
         return savable
 
     elif args.plot_type == PlotType.false_positives:
