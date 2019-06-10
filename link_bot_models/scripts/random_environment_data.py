@@ -7,21 +7,21 @@ from link_bot_pycommon import link_bot_pycommon
 import sdf_tools
 
 
-def plot(grid_world, sdf, sdf_gradient, rope_configurations):
+def plot(args, grid_world, sdf, sdf_gradient, rope_configurations):
     sdf_fig = plt.figure()
-    plt.imshow(sdf)
+    plt.imshow(sdf, extent=[0, args.w, 0, args.h])
 
     grad_fig = plt.figure()
-    plt.imshow(sdf)
+    plt.imshow(sdf, extent=[0, args.w, 0, args.h])
     n_rows, n_cols = sdf.shape
     subsample = 16
     x, y = np.meshgrid(range(0, n_rows, subsample), range(0, n_cols, subsample))
     dx = sdf_gradient[::subsample, ::subsample, 0]
     dy = sdf_gradient[::subsample, ::subsample, 1]
-    plt.quiver(x, y, dx, dy, units='x', scale=0.1, headwidth=1, headlength=3)
+    plt.quiver(x * args.res, y * args.res, dx, dy, units='x', scale=5, headwidth=2, headlength=4)
 
     grid_fig = plt.figure()
-    plt.imshow(grid_world)
+    plt.imshow(grid_world, extent=[0, args.w, 0, args.h])
 
     for rope_configuration in rope_configurations:
         xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
@@ -29,10 +29,11 @@ def plot(grid_world, sdf, sdf_gradient, rope_configurations):
         plt.plot(xs, ys, linewidth=1, zorder=1)
         plt.scatter(rope_configuration[4], rope_configuration[5], s=4, zorder=2)
 
-    return (grid_fig, sdf_fig, grad_fig)
+    return grid_fig, sdf_fig, grad_fig
 
 
 def generate(args):
+    np.random.seed(args.seed)
     n_rows = int(args.h / args.res)
     n_cols = int(args.w / args.res)
     n_cells = n_rows * n_cols
@@ -62,6 +63,7 @@ def generate(args):
     if args.outfile:
         res_arr = np.array([args.res, args.res])
         np.savez(args.outfile,
+                 rope_configurations=rope_configurations,
                  grid_world=grid_world,
                  sdf=sdf,
                  sdf_gradient=sdf_gradient,
@@ -69,7 +71,7 @@ def generate(args):
                  sdf_resolution=res_arr)
 
     if args.plot:
-        plot(grid_world, sdf, sdf_gradient, rope_configurations)
+        plot(args, grid_world, sdf, sdf_gradient, rope_configurations)
 
         plt.show()
 
@@ -78,8 +80,14 @@ def plot_main(args):
     data = np.load(args.data)
     grid_world = data['grid_world']
     rope_configurations = data['rope_configurations']
+    sdf = data['sdf']
+    sdf_gradient = data['sdf_gradient']
+    sdf_resolution = data['sdf_resolution']
 
-    plot(grid_world, rope_configurations)
+    args.h = sdf_resolution[0] * sdf.shape[0]
+    args.w = sdf_resolution[1] * sdf.shape[1]
+    args.res = sdf_resolution[0]
+    plot(args, grid_world, sdf, sdf_gradient, rope_configurations)
 
     plt.show()
 
@@ -90,12 +98,13 @@ def main():
 
     generate_parser = subparsers.add_parser('generate')
     generate_parser.set_defaults(func=generate)
-    generate_parser.add_argument('n', type=int, default=1000, help='number of data points')
-    generate_parser.add_argument('w', type=int, default=10, help='environment with in meters (int)')
-    generate_parser.add_argument('h', type=int, default=10, help='environment with in meters (int)')
+    generate_parser.add_argument('n', type=int, help='number of data points')
+    generate_parser.add_argument('w', type=int, help='environment with in meters (int)')
+    generate_parser.add_argument('h', type=int, help='environment with in meters (int)')
+    generate_parser.add_argument('--seed', type=int, default=2, help='random seed')
     generate_parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
-    generate_parser.add_argument('--n-obstacles', type=int, default=10, help='size of obstacles in cells')
-    generate_parser.add_argument('--obstacle-size', type=int, default=10, help='size of obstacles in cells')
+    generate_parser.add_argument('--n-obstacles', type=int, default=50, help='size of obstacles in cells')
+    generate_parser.add_argument('--obstacle-size', type=int, default=50, help='size of obstacles in cells')
     generate_parser.add_argument('--plot', action='store_true')
     generate_parser.add_argument('--outfile')
 
@@ -104,6 +113,7 @@ def main():
     plot_parser.add_argument('data', help='generated file, npz')
 
     args = parser.parse_args()
+
     if args == argparse.Namespace():
         parser.print_usage()
     else:
