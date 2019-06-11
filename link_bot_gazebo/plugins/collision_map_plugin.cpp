@@ -79,6 +79,7 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
   Eigen::Isometry3d origin_transform = Eigen::Isometry3d::Identity();
   origin_transform.translation() =
       Eigen::Vector3d{msg->center.x - msg->x_width / 2, msg->center.y - msg->y_height / 2, 0};
+  std::vector<double> origin_vec{msg->center.x - msg->x_width / 2, msg->center.y - msg->y_height / 2};
   // hard coded for 1-cell in Z
   sdf_tools::CollisionMapGrid grid{origin_transform, "/gazebo_world", msg->resolution, msg->x_width,
                                    msg->y_height,    msg->resolution, oob_value};
@@ -157,6 +158,7 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
   cnpy::npz_save(msg->filename, "sdf", &sdf_.GetImmutableRawData()[0], shape, "w");
   cnpy::npz_save(msg->filename, "sdf_gradient", &sdf_gradient_flat[0], gradient_shape, "a");
   cnpy::npz_save(msg->filename, "sdf_resolution", &resolutions[0], {2}, "a");
+  cnpy::npz_save(msg->filename, "sdf_origin", &origin_vec[0], {2}, "a");
 
   ready_ = true;
 }
