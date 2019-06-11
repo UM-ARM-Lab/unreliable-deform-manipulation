@@ -99,8 +99,8 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
     plt.title(title)
     plt.imshow(sdf_image, extent=sdf_data.extent)
 
-    head_xs = np.linspace(-4.95, 4.95, 25)
-    head_ys = np.linspace(-4.95, 4.95, 25)
+    head_xs = np.linspace(sdf_data.extent[0] + 2, sdf_data.extent[1] - 2, 25)
+    head_ys = np.linspace(sdf_data.extent[2] + 2, sdf_data.extent[3] - 2, 25)
     theta_1s = np.linspace(-np.pi, np.pi, 2)
     theta_2s = np.linspace(-np.pi, np.pi, 2)
     grid = np.meshgrid(head_xs, head_ys, theta_1s, theta_2s)
@@ -159,9 +159,9 @@ def animate_contours(sdf_data, model, threshold):
     xmin, xmax, ymin, ymax = sdf_data.extent
     contour_spacing_y = 4
     contour_spacing_x = 1
-    y_range = np.arange(ymin, ymax + sdf_data.resolution[0], sdf_data.resolution[0] * contour_spacing_y)
+    y_range = np.arange(ymin + 2, ymax + sdf_data.resolution[0] - 2, sdf_data.resolution[0] * contour_spacing_y)
     y = y_range[0]
-    head_xs_flat = np.arange(xmin, xmax + sdf_data.resolution[1], sdf_data.resolution[1] * contour_spacing_x)
+    head_xs_flat = np.arange(xmin + 2, xmax + sdf_data.resolution[1] - 2, sdf_data.resolution[1] * contour_spacing_x)
     head_ys_flat = np.ones_like(head_xs_flat) * y
 
     zeros = np.zeros_like(head_xs_flat)
@@ -183,7 +183,6 @@ def animate_contours(sdf_data, model, threshold):
 
     def update(t):
         y = y_range[t]
-        head_xs_flat = np.arange(xmin, xmax + sdf_data.resolution[1], sdf_data.resolution[1] * contour_spacing_x)
         head_ys_flat = np.ones_like(head_xs_flat) * y
 
         rope_configurations = link_bot_pycommon.make_rope_configurations(head_xs_flat, head_ys_flat, zeros, zeros)

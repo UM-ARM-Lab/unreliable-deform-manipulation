@@ -14,7 +14,7 @@ from link_bot_models.constraint_model import ConstraintModel, ConstraintModelTyp
 from link_bot_pycommon import link_bot_pycommon
 
 
-def get_rope_configurations(args):
+def get_rope_configurations(args, sdf_data):
     if args.dataset:
         data = np.load(args.dataset)
         states = data['states']
@@ -27,8 +27,9 @@ def get_rope_configurations(args):
         for i in range(m):
             theta_1 = np.random.uniform(-np.pi, np.pi)
             theta_2 = np.random.uniform(-np.pi, np.pi)
-            head_x = np.random.uniform(-5, 5)
-            head_y = np.random.uniform(-5, 5)
+            # don't put the head so close to the edge that the tail could be off the map
+            head_x = np.random.uniform(sdf_data.extent[0] + 2, sdf_data.extent[1] - 2)
+            head_y = np.random.uniform(sdf_data.extent[2] + 2, sdf_data.extent[3] - 2)
             rope_configurations[i] = link_bot_pycommon.make_rope_configuration(head_x, head_y, theta_1, theta_2)
     return rope_configurations
 
@@ -108,7 +109,7 @@ def main():
     model.setup()
 
     # get the rope configurations we're going to evaluate
-    rope_configurations = get_rope_configurations(args)
+    rope_configurations = get_rope_configurations(args, sdf_data)
     m = rope_configurations.shape[0]
 
     # evaluate the rope configurations
