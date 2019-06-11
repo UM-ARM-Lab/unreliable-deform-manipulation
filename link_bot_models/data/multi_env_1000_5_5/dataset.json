@@ -1,0 +1,44 @@
+{
+    "filename_pairs": [
+        [
+            "./data/multi_env_1000_5_5/sdf_data_0.npz", 
+            "./data/multi_env_1000_5_5/rope_data_0.npz"
+        ], 
+        [
+            "./data/multi_env_1000_5_5/sdf_data_1.npz", 
+            "./data/multi_env_1000_5_5/rope_data_1.npz"
+        ], 
+        [
+            "./data/multi_env_1000_5_5/sdf_data_2.npz", 
+            "./data/multi_env_1000_5_5/rope_data_2.npz"
+        ], 
+        [
+            "./data/multi_env_1000_5_5/sdf_data_3.npz", 
+            "./data/multi_env_1000_5_5/rope_data_3.npz"
+        ], 
+        [
+            "./data/multi_env_1000_5_5/sdf_data_4.npz", 
+            "./data/multi_env_1000_5_5/rope_data_4.npz"
+        ], 
+        [
+            "./data/multi_env_1000_5_5/sdf_data_5.npz", 
+            "./data/multi_env_1000_5_5/rope_data_5.npz"
+        ], 
+        [
+            "./data/multi_env_1000_5_5/sdf_data_6.npz", 
+            "./data/multi_env_1000_5_5/rope_data_6.npz"
+        ], 
+        [
+            "./data/multi_env_1000_5_5/sdf_data_7.npz", 
+            "./data/multi_env_1000_5_5/rope_data_7.npz"
+        ], 
+        [
+            "./data/multi_env_1000_5_5/sdf_data_8.npz", 
+            "./data/multi_env_1000_5_5/rope_data_8.npz"
+        ], 
+        [
+            "./data/multi_env_1000_5_5/sdf_data_9.npz", 
+            "./data/multi_env_1000_5_5/rope_data_9.npz"
+        ]
+    ]
+}

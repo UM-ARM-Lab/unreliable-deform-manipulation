@@ -2,27 +2,27 @@
 from __future__ import print_function
 
 import argparse
-from colorama import Fore
-import sys
 import os
-import tensorflow as tf
-import numpy as np
+import sys
 
-from link_bot_models.constraint_model import ConstraintModelType, ConstraintModel
+import numpy as np
+import tensorflow as tf
+from colorama import Fore
+
+from link_bot_models.constraint_model import ConstraintModelType, ConstraintModel, split_dataset
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_pycommon import link_bot_pycommon, experiments_util
+from link_bot_pycommon import experiments_util
 
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
-    # sdf_data = link_bot_pycommon.load_sdf_data(args.sdf)
-    # data = np.load(args.dataset)
-    model = ConstraintModel(vars(args), dataset, args.N)
+    sdf_shape = dataset.sdf_shape
+    model = ConstraintModel(vars(args), sdf_shape, args.N)
 
     model.setup()
 
-    split_data = model.split_data(dataset)
+    split_data = split_dataset(dataset)
     train_observations, train_k, validation_observations, validation_k = split_data
     model.train(*split_data, args.epochs, log_path)
 
@@ -33,16 +33,9 @@ def train(args):
 
 
 def model_only(args):
-    W = 10
-    H = 20
-    fake_sdf = np.random.randn(W, H).astype(np.float32)
-    fake_sdf_grad = np.random.randn(W, H, 2).astype(np.float32)
-    fake_sdf_res = np.random.randn(2).astype(np.float32)
-    fake_sdf_origin = np.random.randn(2).astype(np.float32)
-    sdf_data = link_bot_pycommon.SDF(fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, None, None)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = ConstraintModel(args_dict, sdf_data, args.N)
+    model = ConstraintModel(args_dict, [10, 10], args.N)
 
     model.init()
 
@@ -56,31 +49,25 @@ def model_only(args):
 
 
 def evaluate(args):
-    sdf_data = link_bot_pycommon.load_sdf_data(args.sdf)
-    data = np.load(args.dataset)
+    dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
+    sdf_shape = dataset.sdf_shape
+
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = ConstraintModel(args_dict, sdf_data, args.N)
+    model = ConstraintModel(args_dict, sdf_shape, args.N)
     model.setup()
 
     # take all the data as validation data
-    split_data = model.split_data(data, fraction_validation=1.00)
+    split_data = split_dataset(dataset, n_validation_environments=1.00)
     train_observations, train_k, validation_observations, validation_k = split_data
 
     return model.evaluate(validation_observations, validation_k)
 
 
 def show(args):
-    W = 10
-    H = 20
-    fake_sdf = np.random.randn(W, H).astype(np.float32)
-    fake_sdf_grad = np.random.randn(W, H, 2).astype(np.float32)
-    fake_sdf_res = np.random.randn(2).astype(np.float32)
-    fake_sdf_origin = np.random.randn(2).astype(np.float32)
-    sdf_data = link_bot_pycommon.SDF(fake_sdf, fake_sdf_grad, fake_sdf_res, fake_sdf_origin, None, None)
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = ConstraintModel(args_dict, sdf_data, args.N)
+    model = ConstraintModel(args_dict, [10, 10], args.N)
     model.setup()
     print(model)
 
@@ -99,11 +86,9 @@ def main():
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
     train_subparser.add_argument("dataset", help="dataset (json file)")
-    # train_subparser.add_argument("dataset", help="dataset")
-    # train_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=128)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=50000)
+    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=100)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--print-period", "-p", type=int, default=100)
     train_subparser.add_argument("--save-period", type=int, default=1000)
@@ -112,7 +97,6 @@ def main():
 
     eval_subparser = subparsers.add_parser("eval")
     eval_subparser.add_argument("dataset", help="dataset (json file)")
-    # eval_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
     eval_subparser.set_defaults(func=evaluate)
 

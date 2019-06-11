@@ -241,7 +241,9 @@ def plot_contours(sdf_data, model, threshold):
     return SavableFigure(fig)
 
 
-def plot_examples_on_fig(fig, sdf_data, rope_configurations, constraint_labels, threshold, model, draw_correspondences=False):
+def plot_examples_on_fig(fig, x, constraint_labels, threshold, model, draw_correspondences=False):
+    sdf_data = x[0]
+    rope_configurations = x[1]
     binary_image = sdf_data.image > threshold
     plt.imshow(binary_image, extent=sdf_data.extent)
 

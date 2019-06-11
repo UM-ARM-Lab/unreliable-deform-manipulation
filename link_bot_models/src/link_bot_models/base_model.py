@@ -66,6 +66,17 @@ class BaseModel:
         self.sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
 
     def train(self, train_x, train_y, validation_x, validation_y, epochs, log_path, **kwargs):
+        """
+
+        :param train_x: a numpy ndarray where each row looks like [sdf_data, rope_configuration]
+        :param train_y: a 2d numpy array where each is binary indicating constraint violation
+        :param validation_x: ''
+        :param validation_y: ''
+        :param epochs: number of times to run through the full training set
+        :param log_path:
+        :param kwargs:
+        :return: whether the training process was interrupted early (by Ctrl+C)
+        """
         if not self.finish_setup_called:
             raise FinishSetupNotCalledInConstructor(type(self).__name__)
 
@@ -97,30 +108,33 @@ class BaseModel:
             if self.args_dict['log'] is not None:
                 self.save(full_log_path, self.args_dict['log'])
 
-            # FIXME: make epochs actually a full thing of the dataset, and batch exactly cover the dataset
-            # instead of the current method which is just randomly pick with replacement every time
-            for i in range(epochs):
+            step = 0
+            for epoch in range(epochs):
+                # shuffle indexes and then iterate over batches
+                batch_size = self.args_dict['batch_size']
+                indexes = np.arange(train_x.shape[0], dtype=np.int)
+                np.random.shuffle(indexes)
+                for batch_start in range(0, train_x.shape[0], batch_size):
+                    batch_indexes = indexes[batch_start:batch_start + batch_size]
+                    train_x_batch = train_x[batch_indexes]
+                    train_y_batch = train_y[batch_indexes]
 
-                batch_idx = np.random.choice(np.arange(train_x.shape[0]), size=self.args_dict['batch_size'])
-                train_x_batch = train_x[batch_idx]
-                train_y_batch = train_y[batch_idx]
+                    train_feed_dict = self.build_feed_dict(train_x_batch, train_y_batch, **kwargs)
+                    validation_feed_dict = self.build_feed_dict(validation_x, validation_y, **kwargs)
 
-                train_feed_dict = self.build_feed_dict(train_x_batch, train_y_batch, **kwargs)
-                validation_feed_dict = self.build_feed_dict(validation_x, validation_y, **kwargs)
+                    self.train_feed_hook(step, train_x_batch, train_y_batch)
 
-                self.train_feed_hook(i, train_x_batch, train_y_batch)
+                    step, train_summary, train_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
+                    validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
 
-                step, train_summary, train_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
-                validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
+                    if step % self.args_dict['save_period'] == 0 or step == 1:
+                        if self.args_dict['log'] is not None:
+                            writer.add_summary(train_summary, step)
+                            writer.add_summary(validation_summary, step)
+                            self.save(full_log_path, loss=validation_loss)
 
-                if step % self.args_dict['save_period'] == 0 or step == 1:
-                    if self.args_dict['log'] is not None:
-                        writer.add_summary(train_summary, step)
-                        writer.add_summary(validation_summary, step)
-                        self.save(full_log_path, loss=validation_loss)
-
-                if step % self.args_dict['print_period'] == 0 or step == 1:
-                    print('step: {:4d}, train loss: {:8.4f} val loss {:8.4f}'.format(step, train_loss, validation_loss))
+                    if step % self.args_dict['print_period'] == 0 or step == 1:
+                        print('step: {:4d}, train loss: {:8.4f} val loss {:8.4f}'.format(step, train_loss, validation_loss))
 
         except KeyboardInterrupt:
             print("stop!!!")

@@ -13,7 +13,7 @@ import ompl.util as ou
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon.link_bot_pycommon import SDF
 from link_bot_models import linear_constraint_model
 from link_bot_agent import agent, dual_lqr_action_selector
 
@@ -42,7 +42,8 @@ def common(args, goals, max_steps=1e6, verbose=False):
     batch_size = 1
     max_v = 1
     n_steps = 1
-    sdf_data = link_bot_pycommon.load_sdf_data(args.sdf)
+    sdf_data = SDF.load(args.sdf)
+
     tf_model = linear_constraint_model.LinearConstraintModel(vars(args), sdf_data, batch_size, args.N, args.M, args.L, args.P,
                                                              args.Q, dt, n_steps)
     tf_model.load()

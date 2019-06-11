@@ -12,6 +12,7 @@ from link_bot_models import constraint_model
 from link_bot_models import plotting
 from link_bot_models.constraint_model import ConstraintModel, ConstraintModelType
 from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon.link_bot_pycommon import SDF
 
 
 def get_rope_configurations(args, sdf_data):
@@ -103,7 +104,7 @@ def main():
 
     args = parser.parse_args()
 
-    sdf_data = link_bot_pycommon.load_sdf_data(args.sdf)
+    sdf_data = SDF.load(args.sdf)
     args_dict = vars(args)
     model = ConstraintModel(args_dict, sdf_data, args.N)
     model.setup()

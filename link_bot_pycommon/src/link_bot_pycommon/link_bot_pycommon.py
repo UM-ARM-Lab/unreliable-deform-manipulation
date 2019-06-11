@@ -37,28 +37,37 @@ def yaw_diff(a, b):
 
 class SDF:
 
-    def __init__(self, sdf, gradient, resolution, origin, extent, image):
+    def __init__(self, sdf, gradient, resolution, origin):
         self.sdf = sdf
         self.gradient = gradient
         self.resolution = resolution
         self.origin = origin
-        self.extent = extent
-        self.image = image
+        self.extent = sdf_bounds(sdf, resolution, origin)
+        self.image = np.flipud(sdf.T)
 
+    def save(self, sdf_filename):
+        np.savez(sdf_filename,
+                 sdf=self.sdf,
+                 sdf_gradient=self.gradient,
+                 sdf_resolution=self.resolution,
+                 sdf_origin=self.origin)
 
-def load_sdf_data(filename):
-    npz = np.load(filename)
-    sdf = npz['sdf']
-    grad = npz['sdf_gradient']
-    res = npz['sdf_resolution'].reshape(2)
-    if 'sdf_origin' in npz:
+    @staticmethod
+    def load(filename):
+        npz = np.load(filename)
+        sdf = npz['sdf']
+        grad = npz['sdf_gradient']
+        res = npz['sdf_resolution'].reshape(2)
         origin = npz['sdf_origin'].reshape(2)
-    else:
-        origin = np.array(sdf.shape, dtype=np.int32).reshape(2) // 2
-        print(Fore.YELLOW + "WARNING: sdf npz file does not specify its origin, assume origin {}".format(origin) + Fore.RESET)
-    extent = sdf_bounds(sdf, res, origin)
-    image = np.flipud(sdf.T)
-    return SDF(sdf=sdf, gradient=grad, resolution=res, origin=origin, extent=extent, image=image)
+        return SDF(sdf=sdf, gradient=grad, resolution=res, origin=origin)
+
+    def __repr__(self):
+        return "SDF: size={}x{} origin=({},{}) resolution=({},{})".format(self.sdf.shape[0],
+                                                                          self.sdf.shape[1],
+                                                                          self.origin[0],
+                                                                          self.origin[1],
+                                                                          self.resolution[0],
+                                                                          self.resolution[1])
 
 
 def load_sdf(filename):

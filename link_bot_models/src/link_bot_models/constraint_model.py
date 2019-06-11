@@ -12,6 +12,7 @@ from link_bot_models import plotting
 from link_bot_models.base_model import BaseModel
 from link_bot_models.tf_signed_distance_field_op import sdf_func
 from link_bot_pycommon import link_bot_pycommon
+from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 
 
 class ConstraintModelType(link_bot_pycommon.ArgsEnum):
@@ -20,20 +21,71 @@ class ConstraintModelType(link_bot_pycommon.ArgsEnum):
     FNN = auto()
 
 
+def split_dataset(dataset: MultiEnvironmentDataset, n_validation_environments=1):
+    """
+    :param dataset: paired sdf/rope data
+    :param n_validation_environments: how much of the data should be reserved for validation
+    :return: training and validation data and labels, will be passed to build_feed_dict
+             the data is a numpy array of [environment index, rope_configuration]
+    """
+    # full_inputs = dataset['rope_configurations'].reshape(-1, self.N)
+    # full_k = dataset['constraints'].reshape(-1, 1)
+
+    error_msg = "number of envs for validation {} must be <= total number of environments {}".format(
+        n_validation_environments, dataset.n_environments)
+
+    assert n_validation_environments <= dataset.n_environments, error_msg
+
+    end_train_idx = n_validation_environments
+
+    train_inputs = []
+    train_labels = []
+    for environment in dataset.environments[:end_train_idx]:
+        rope_configurations = environment.rope_data['rope_configurations']
+        constraint_labels = environment.rope_data['constraints']
+        for rope_configuration, constraint_label in zip(rope_configurations, constraint_labels):
+            train_datum = [environment.sdf_data, rope_configuration]
+            train_inputs.append(train_datum)
+            train_labels.append(constraint_label)
+
+    train_inputs = np.array(train_inputs, dtype=np.object)
+    train_labels = np.array(train_labels, dtype=np.object)
+
+    validation_inputs = []
+    validation_labels = []
+    for environment in dataset.environments[end_train_idx:]:
+        rope_configurations = environment.rope_data['rope_configurations']
+        constraint_labels = environment.rope_data['constraints']
+        for rope_configuration, constraint_label in zip(rope_configurations, constraint_labels):
+            validation_datum = [environment.sdf_data, rope_configuration]
+            validation_inputs.append(validation_datum)
+            validation_labels.append(constraint_label)
+
+    validation_inputs = np.array(validation_inputs, dtype=np.object)
+    validation_labels = np.array(validation_labels, dtype=np.object)
+
+    return train_inputs, train_labels, validation_inputs, validation_labels
+
+
 class ConstraintModel(BaseModel):
 
-    def __init__(self, args, sdf_data, N):
+    def __init__(self, args, sdf_shape, N):
         super(ConstraintModel, self).__init__(args, N)
 
         self.beta = 1e-8
 
-        self.observations = tf.placeholder(tf.float32, shape=(None, N), name="observations")
-        self.k_label = tf.placeholder(tf.float32, shape=(None, 1), name="k")
+        batch_dim = None
+        self.sdf = tf.placeholder(tf.float32, shape=[batch_dim, sdf_shape[0], sdf_shape[1]], name="sdf")
+        self.sdf_gradient = tf.placeholder(tf.float32, shape=[batch_dim, sdf_shape[0], sdf_shape[1], 2], name="sdf_gradient")
+        self.sdf_origin = tf.placeholder(tf.int32, shape=[batch_dim, 2], name="sdf_origin")
+        self.sdf_resolution = tf.placeholder(tf.float32, shape=[batch_dim, 2], name="sdf_resolution")
+        self.sdf_extent = tf.placeholder(tf.float32, shape=[batch_dim, 4], name="sdf_extent")
+
+        self.observations = tf.placeholder(tf.float32, shape=[batch_dim, N], name="observations")
+        self.k_label = tf.placeholder(tf.float32, shape=[batch_dim, 1], name="k")
         self.k_label_int = tf.cast(self.k_label, tf.int32)
         self.hidden_layer_dims = None
         self.fig = None
-
-        self.sdf_data = sdf_data
 
         model_type = self.args_dict['model_type']
         if model_type == ConstraintModelType.FullLinear:
@@ -91,8 +143,7 @@ class ConstraintModel(BaseModel):
         #                 End Model Definition                #
         #######################################################
 
-sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin
-        self.sdfs = sdf_func(sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin, self.hat_latent_k, 2)
+        self.sdfs = sdf_func(self.sdf, self.sdf_gradient, self.sdf_resolution, self.sdf_origin, self.hat_latent_k, 2)
         self.sigmoid_scale = 1.0
         self.hat_k = self.sigmoid_scale * (self.threshold_k - self.sdfs)
         self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32, name="hat_k_violated")
@@ -107,13 +158,12 @@ sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin
             self.constraint_prediction_loss = tf.reduce_mean(self.constraint_prediction_error,
                                                              name="constraint_prediction_loss")
 
-            sdf_origin_meters = link_bot_pycommon.sdf_idx_to_point(sdf_data.origin[0], sdf_data.origin[1], sdf_data.resolution,
-                                                                   sdf_data.origin)
-            self.distances_to_origin = tf.norm(self.hat_latent_k - sdf_origin_meters, axis=1)
-            oob_left = self.hat_latent_k[:, 0] <= sdf_data.extent[0]
-            oob_right = self.hat_latent_k[:, 0] >= sdf_data.extent[1]
-            oob_up = self.hat_latent_k[:, 1] <= sdf_data.extent[2]
-            oob_down = self.hat_latent_k[:, 1] >= sdf_data.extent[3]
+            # FIXME: this assumes that the physical world coordinates (0,0) in meters is the origin/center of the SDF
+            self.distances_to_origin = tf.norm(self.hat_latent_k, axis=1)
+            oob_left = self.hat_latent_k[:, 0] <= self.sdf_extent[:, 0]
+            oob_right = self.hat_latent_k[:, 0] >= self.sdf_extent[:, 1]
+            oob_up = self.hat_latent_k[:, 1] <= self.sdf_extent[:, 2]
+            oob_down = self.hat_latent_k[:, 1] >= self.sdf_extent[:, 3]
             self.out_of_bounds = tf.math.reduce_any(tf.stack((oob_up, oob_down, oob_left, oob_right), axis=1), axis=1, name='oob')
             self.in_bounds_value = tf.ones_like(self.distances_to_origin) * 0.0
             self.distances_out_of_bounds = tf.where(self.out_of_bounds, self.distances_to_origin, self.in_bounds_value)
@@ -160,20 +210,6 @@ sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin
 
         self.finish_setup()
 
-    def split_data(self, full_x, fraction_validation=0.10):
-        full_observations = full_x['states'].reshape(-1, self.N)
-        full_k = full_x['constraints'].reshape(-1, 1)
-
-        end_train_idx = int(full_observations.shape[0] * (1 - fraction_validation))
-        shuffled_idx = np.random.permutation(full_observations.shape[0])
-        full_observations = full_observations[shuffled_idx]
-        full_k = full_k[shuffled_idx]
-        train_observations = full_observations[:end_train_idx]
-        validation_observations = full_observations[end_train_idx:]
-        train_k = full_k[:end_train_idx]
-        validation_k = full_k[end_train_idx:]
-        return train_observations, train_k, validation_observations, validation_k
-
     def metadata(self):
         metadata = {
             'tf_version': str(tf.__version__),
@@ -188,8 +224,26 @@ sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin
         }
         return metadata
 
-    def build_feed_dict(self, x, y, **kwargs):
-        return {self.observations: x,
+    def build_feed_dict(self, x, y: np.ndarray, **kwargs):
+        """
+
+        :param x: j
+        :param y: a
+        :param kwargs:
+        :return:
+        """
+        observations = np.array([xi[1] for xi in x], dtype=np.float32)
+        sdfs = np.array([xi[0].sdf for xi in x], dtype=np.float32)
+        sdf_gradients = np.array([xi[0].gradient for xi in x], dtype=np.float32)
+        sdf_origins = np.array([xi[0].origin for xi in x], dtype=np.int32)
+        sdf_resolutions = np.array([xi[0].resolution for xi in x], dtype=np.float32)
+        sdf_extents = np.array([xi[0].extent for xi in x], dtype=np.float32)
+        return {self.observations: observations,
+                self.sdf: sdfs,
+                self.sdf_gradient: sdf_gradients,
+                self.sdf_origin: sdf_origins,
+                self.sdf_resolution: sdf_resolutions,
+                self.sdf_extent: sdf_extents,
                 self.k_label: y}
 
     def evaluate(self, observations, k, display=True):
@@ -210,12 +264,14 @@ sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin
         self.fig = plt.figure()
 
     def train_feed_hook(self, iteration, train_x_batch, train_y_batch):
-        pass
-        # if iteration % 1 == 0:
-        #     threshold_k = self.sess.run(self.threshold_k)
-        #     self.fig.clf()
-        #     plotting.plot_examples_on_fig(self.fig, self.sdf_data, train_x_batch[::10], train_y_batch[::10], threshold_k, self, draw_correspondences=True)
-        #     plt.pause(5)
+        if 'plot_gradient_descent' in self.args_dict:
+            if iteration % 10 == 0:
+                threshold_k = self.sess.run(self.threshold_k)
+                self.fig.clf()
+                x = train_x_batch[::10]
+                y = train_y_batch[::10]
+                plotting.plot_examples_on_fig(self.fig, x, y, threshold_k, self)
+                plt.pause(5)
 
     def violated(self, observations, sdf=None, sdf_resolution=None, sdf_origin=None):
         # unused parameters
@@ -225,7 +281,7 @@ sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin
         return np.any(violated, axis=1), pt
 
     def constraint_violated(self, latent_k):
-        full_latent_k = np.ndarray((1, self.P))
+        full_latent_k = np.ndarray((1, 2))
         full_latent_k[0, 0] = latent_k
         feed_dict = {self.hat_latent_k: full_latent_k}
         ops = [self.hat_k_violated]
@@ -260,10 +316,10 @@ def evaluate_single(sdf_data, model, threshold, rope_configuration):
     return result
 
 
-def evaluate(sdf_data, model, threshold, states_flat):
-    m = states_flat.shape[0]
+def evaluate(sdf_data, model, threshold, rope_configurations):
+    m = rope_configurations.shape[0]
     results = np.ndarray([m], dtype=EvaluateResult)
-    for i, rope_configuration in enumerate(states_flat):
+    for i, rope_configuration in enumerate(rope_configurations):
         rope_configuration = np.atleast_2d(rope_configuration)
         result = evaluate_single(sdf_data, model, threshold, rope_configuration)
         results[i] = result
