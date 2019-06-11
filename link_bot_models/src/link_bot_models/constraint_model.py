@@ -91,6 +91,7 @@ class ConstraintModel(BaseModel):
         #                 End Model Definition                #
         #######################################################
 
+sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin
         self.sdfs = sdf_func(sdf_data.sdf, sdf_data.gradient, sdf_data.resolution, sdf_data.origin, self.hat_latent_k, 2)
         self.sigmoid_scale = 1.0
         self.hat_k = self.sigmoid_scale * (self.threshold_k - self.sdfs)

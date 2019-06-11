@@ -9,18 +9,20 @@ import tensorflow as tf
 import numpy as np
 
 from link_bot_models.constraint_model import ConstraintModelType, ConstraintModel
+from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import link_bot_pycommon, experiments_util
 
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
-    sdf_data = link_bot_pycommon.load_sdf_data(args.sdf)
-    data = np.load(args.dataset)
-    model = ConstraintModel(vars(args), sdf_data, args.N)
+    dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
+    # sdf_data = link_bot_pycommon.load_sdf_data(args.sdf)
+    # data = np.load(args.dataset)
+    model = ConstraintModel(vars(args), dataset, args.N)
 
     model.setup()
 
-    split_data = model.split_data(data)
+    split_data = model.split_data(dataset)
     train_observations, train_k, validation_observations, validation_k = split_data
     model.train(*split_data, args.epochs, log_path)
 
@@ -96,8 +98,9 @@ def main():
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
-    train_subparser.add_argument("dataset", help="dataset (txt file)")
-    train_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
+    train_subparser.add_argument("dataset", help="dataset (json file)")
+    # train_subparser.add_argument("dataset", help="dataset")
+    # train_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=128)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=50000)
@@ -108,8 +111,8 @@ def main():
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")
-    eval_subparser.add_argument("dataset", help="dataset (txt file)")
-    eval_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
+    eval_subparser.add_argument("dataset", help="dataset (json file)")
+    # eval_subparser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
     eval_subparser.set_defaults(func=evaluate)
 
