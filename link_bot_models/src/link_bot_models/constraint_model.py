@@ -120,7 +120,7 @@ class ConstraintModel(BaseModel):
 
             self.loss = tf.add_n([
                 self.constraint_prediction_loss,
-                self.out_of_bounds_loss,
+                # self.out_of_bounds_loss,
             ], name='loss')
 
             self.global_step = tf.get_variable("global_step", initializer=0, trainable=False)
