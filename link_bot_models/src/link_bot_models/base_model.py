@@ -34,7 +34,7 @@ class BaseModel:
         # add some default arguments
         # FIXME: add these to the command line parsers
         if 'gpu_memory_fraction' not in self.args_dict:
-            self.args_dict['gpu_memory_fraction'] = 0.1
+            self.args_dict['gpu_memory_fraction'] = 0.2
 
         self.seed = self.args_dict['seed']
         np.random.seed(self.seed)
@@ -108,33 +108,48 @@ class BaseModel:
             if self.args_dict['log'] is not None:
                 self.save(full_log_path, self.args_dict['log'])
 
-            step = 0
+            # validation sets could be too big, so we randomly choose 1000 examples
+            print(validation_x.shape[0])
+            validation_indexes = np.random.choice(validation_x.shape[0], size=100)
+            validation_x_sample = validation_x[validation_indexes]
+            validation_y_sample = validation_y[validation_indexes]
+
+            step = self.sess.run(self.global_step)
             for epoch in range(epochs):
                 # shuffle indexes and then iterate over batches
                 batch_size = self.args_dict['batch_size']
                 indexes = np.arange(train_x.shape[0], dtype=np.int)
                 np.random.shuffle(indexes)
+
                 for batch_start in range(0, train_x.shape[0], batch_size):
                     batch_indexes = indexes[batch_start:batch_start + batch_size]
                     train_x_batch = train_x[batch_indexes]
                     train_y_batch = train_y[batch_indexes]
 
                     train_feed_dict = self.build_feed_dict(train_x_batch, train_y_batch, **kwargs)
-                    validation_feed_dict = self.build_feed_dict(validation_x, validation_y, **kwargs)
 
                     self.train_feed_hook(step, train_x_batch, train_y_batch)
 
                     step, train_summary, train_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
-                    validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
 
-                    if step % self.args_dict['save_period'] == 0 or step == 1:
+                    if step % self.args_dict['log_period'] == 0 or step == 1:
                         if self.args_dict['log'] is not None:
                             writer.add_summary(train_summary, step)
-                            writer.add_summary(validation_summary, step)
-                            self.save(full_log_path, loss=validation_loss)
 
                     if step % self.args_dict['print_period'] == 0 or step == 1:
-                        print('step: {:4d}, train loss: {:8.4f} val loss {:8.4f}'.format(step, train_loss, validation_loss))
+                        print('epoch {:4d}, step: {:4d}, train loss: {:8.4f}'.format(epoch, step, train_loss))
+
+                if epoch % self.args_dict['val_period'] == 0 or epoch == 0:
+                    validation_feed_dict = self.build_feed_dict(validation_x_sample, validation_y_sample, **kwargs)
+                    validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
+
+                    print('epoch {:4d}, step: {:4d}, validation loss: {:8.4f}'.format(epoch, step, validation_loss))
+                    if self.args_dict['log'] is not None:
+                        writer.add_summary(validation_summary, step)
+
+                if epoch % self.args_dict['save_period'] == 0 and epoch > 0:
+                    if self.args_dict['log'] is not None:
+                        self.save(full_log_path, loss=validation_loss)
 
         except KeyboardInterrupt:
             print("stop!!!")

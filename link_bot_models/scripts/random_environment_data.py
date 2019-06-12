@@ -6,7 +6,6 @@ from colorama import Fore
 import numpy as np
 import argparse
 from link_bot_pycommon import link_bot_pycommon
-from link_bot_pycommon.link_bot_pycommon import SDF
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 import sdf_tools
 
@@ -36,10 +35,9 @@ def plot(args, sdf_data, threshold, rope_configurations, constraint_labels):
         constraint_label = constraint_labels[idx]
         xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
         ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
-        plt.plot(xs, ys, linewidth=1, zorder=2)
-        plt.scatter(rope_configuration[4], rope_configuration[5], s=4, zorder=3)
+        plt.plot(xs, ys, linewidth=0.5, zorder=1, alpha=0.1)
         color = 'r' if constraint_label else 'g'
-        plt.scatter(rope_configuration[4], rope_configuration[5], s=32, c=color, zorder=1)
+        plt.scatter(rope_configuration[4], rope_configuration[5], s=16, c=color, zorder=2)
 
 
 def generate_env(args):
@@ -116,13 +114,13 @@ def generate(args):
             sdf_data.save(sdf_filename)
 
     dataset_filename = os.path.join(args.outdir, 'dataset.json')
-    dataset = MultiEnvironmentDataset(filename_pairs)
+    dataset = MultiEnvironmentDataset(filename_pairs, n_obstacles=args.n_obstacles, obstacle_size=args.obstacle_size, threshold=args.distance_constraint_threshold)
     dataset.save(dataset_filename)
 
 
 def plot_main(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
-    for environment in dataset.environments:
+    for environment in dataset.environments[:args.n]:
         rope_configurations = environment.rope_data['rope_configurations']
         threshold = environment.rope_data['threshold']
         constraint_labels = environment.rope_data['constraints']
@@ -143,9 +141,9 @@ def main():
     generate_parser.add_argument('w', type=int, help='environment with in meters (int)')
     generate_parser.add_argument('h', type=int, help='environment with in meters (int)')
     generate_parser.add_argument('--seed', type=int, default=2, help='random seed')
-    generate_parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
+    generate_parser.add_argument('--res', '-r', type=float, default=0.05, help='size of cells in meters')
     generate_parser.add_argument('--n-obstacles', type=int, default=69, help='size of obstacles in cells')
-    generate_parser.add_argument('--obstacle-size', type=int, default=50, help='size of obstacles in cells')
+    generate_parser.add_argument('--obstacle-size', type=int, default=10, help='size of obstacles in cells')
     generate_parser.add_argument('--distance-constraint-threshold', type=np.float32, default=0.0, help='constraint threshold')
     generate_parser.add_argument('--plot', action='store_true')
     generate_parser.add_argument('--outdir')
@@ -153,6 +151,7 @@ def main():
     plot_parser = subparsers.add_parser('plot')
     plot_parser.set_defaults(func=plot_main)
     plot_parser.add_argument('dataset', help='json dataset file')
+    plot_parser.add_argument('n', type=int, help='number of environments to plot')
 
     args = parser.parse_args()
 

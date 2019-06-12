@@ -2,6 +2,7 @@
 from __future__ import division, print_function, absolute_import
 
 from enum import auto
+from time import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,16 +32,15 @@ def split_dataset(dataset: MultiEnvironmentDataset, n_validation_environments=1)
     # full_inputs = dataset['rope_configurations'].reshape(-1, self.N)
     # full_k = dataset['constraints'].reshape(-1, 1)
 
-    error_msg = "number of envs for validation {} must be <= total number of environments {}".format(
-        n_validation_environments, dataset.n_environments)
-
+    error_msg = "number of envs for validation {} must be <= total number of environments {}".format(n_validation_environments,
+                                                                                                     dataset.n_environments)
     assert n_validation_environments <= dataset.n_environments, error_msg
 
     end_train_idx = n_validation_environments
 
     train_inputs = []
     train_labels = []
-    for environment in dataset.environments[:end_train_idx]:
+    for environment in dataset.environments[:1]:
         rope_configurations = environment.rope_data['rope_configurations']
         constraint_labels = environment.rope_data['constraints']
         for rope_configuration, constraint_label in zip(rope_configurations, constraint_labels):
@@ -53,7 +53,7 @@ def split_dataset(dataset: MultiEnvironmentDataset, n_validation_environments=1)
 
     validation_inputs = []
     validation_labels = []
-    for environment in dataset.environments[end_train_idx:]:
+    for environment in dataset.environments[:1]:
         rope_configurations = environment.rope_data['rope_configurations']
         constraint_labels = environment.rope_data['constraints']
         for rope_configuration, constraint_label in zip(rope_configurations, constraint_labels):
@@ -209,6 +209,7 @@ class ConstraintModel(BaseModel):
                               collections=['validation'])
 
         self.finish_setup()
+        self.dts = []
 
     def metadata(self):
         metadata = {
@@ -225,19 +226,15 @@ class ConstraintModel(BaseModel):
         return metadata
 
     def build_feed_dict(self, x, y: np.ndarray, **kwargs):
-        """
-
-        :param x: j
-        :param y: a
-        :param kwargs:
-        :return:
-        """
+        t0 = time()
         observations = np.array([xi[1] for xi in x], dtype=np.float32)
         sdfs = np.array([xi[0].sdf for xi in x], dtype=np.float32)
         sdf_gradients = np.array([xi[0].gradient for xi in x], dtype=np.float32)
         sdf_origins = np.array([xi[0].origin for xi in x], dtype=np.int32)
         sdf_resolutions = np.array([xi[0].resolution for xi in x], dtype=np.float32)
         sdf_extents = np.array([xi[0].extent for xi in x], dtype=np.float32)
+        self.dts.append(time() - t0)
+
         return {self.observations: observations,
                 self.sdf: sdfs,
                 self.sdf_gradient: sdf_gradients,
@@ -246,9 +243,8 @@ class ConstraintModel(BaseModel):
                 self.sdf_extent: sdf_extents,
                 self.k_label: y}
 
-    def evaluate(self, observations, k, display=True):
-        feed_dict = {self.observations: observations,
-                     self.k_label: k}
+    def evaluate(self, eval_x, eval_y, display=True):
+        feed_dict = self.build_feed_dict(eval_x, eval_y)
         ops = [self.threshold_k, self.constraint_prediction_loss, self.loss, self.constraint_prediction_accuracy]
         threshold_k, k_loss, loss, k_accuracy = self.sess.run(ops, feed_dict=feed_dict)
 

@@ -26,9 +26,14 @@ def train(args):
     train_observations, train_k, validation_observations, validation_k = split_data
     model.train(*split_data, args.epochs, log_path)
 
+    print(np.min(model.dts))
+    print(np.max(model.dts))
+    print(np.mean(model.dts))
+    print(np.median(model.dts))
+
     print(Fore.GREEN + "\nTrain Evaluation" + Fore.RESET)
     model.evaluate(train_observations, train_k)
-    print(Fore.GREEN + "\nTest Evaluation" + Fore.RESET)
+    print(Fore.GREEN + "\nValidation Evaluation" + Fore.RESET)
     model.evaluate(validation_observations, validation_k)
 
 
@@ -90,7 +95,9 @@ def main():
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=100)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
-    train_subparser.add_argument("--print-period", "-p", type=int, default=100)
+    train_subparser.add_argument("--log-period", type=int, default=100)
+    train_subparser.add_argument("--print-period", type=int, default=100)
+    train_subparser.add_argument("--val-period", type=int, default=25, help='run validation every so many epochs')
     train_subparser.add_argument("--save-period", type=int, default=1000)
     train_subparser.add_argument("--random-init", action='store_true')
     train_subparser.set_defaults(func=train)
