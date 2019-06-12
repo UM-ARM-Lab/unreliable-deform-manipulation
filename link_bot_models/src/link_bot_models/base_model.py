@@ -83,7 +83,6 @@ class BaseModel:
         interrupted = False
 
         writer = None
-        loss = None
         full_log_path = None
         if self.args_dict['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
@@ -158,8 +157,8 @@ class BaseModel:
             interrupted = True
             pass
         finally:
-            if self.args_dict['verbose']:
-                print("Loss: {}".format(loss))
+            if self.args_dict['log'] is not None:
+                self.save(full_log_path)
 
         return interrupted
 

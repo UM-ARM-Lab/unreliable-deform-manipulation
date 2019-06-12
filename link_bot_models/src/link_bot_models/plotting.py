@@ -165,11 +165,11 @@ def animate_contours(sdf_data, model, threshold):
     plt.imshow(binary_image, extent=sdf_data.extent)
 
     xmin, xmax, ymin, ymax = sdf_data.extent
-    contour_spacing_y = 4
-    contour_spacing_x = 1
-    y_range = np.arange(ymin + 1, ymax + sdf_data.resolution[0] - 1, sdf_data.resolution[0] * contour_spacing_y)
+    contour_spacing_y = 0.5
+    contour_spacing_x = 0.5
+    y_range = np.arange(ymin + 0.1, ymax + sdf_data.resolution[0] - 0.1, sdf_data.resolution[0] * contour_spacing_y)
     y = y_range[0]
-    head_xs_flat = np.arange(xmin + 1, xmax + sdf_data.resolution[1] - 1, sdf_data.resolution[1] * contour_spacing_x)
+    head_xs_flat = np.arange(xmin + 0.1, xmax + sdf_data.resolution[1] - 0.1, sdf_data.resolution[1] * contour_spacing_x)
     head_ys_flat = np.ones_like(head_xs_flat) * y
 
     zeros = np.zeros_like(head_xs_flat)
