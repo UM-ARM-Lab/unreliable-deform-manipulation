@@ -1,5 +1,7 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
+import sys
 import os
 import matplotlib.pyplot as plt
 from colorama import Fore
@@ -11,11 +13,6 @@ import sdf_tools
 
 
 def plot(args, sdf_data, threshold, rope_configurations, constraint_labels):
-    plt.figure()
-    # Note: images should always be flipped and transposed because of how image coordinates work.
-    #       however, we do not flip/transpose when indexing into the SDF, this is just needed when plotting.
-    plt.imshow(np.flipud(sdf_data.sdf.T), extent=sdf_data.extent, interpolation=None)
-
     plt.figure()
     plt.imshow(np.flipud(sdf_data.sdf.T), extent=sdf_data.extent)
     subsample = 16
@@ -35,7 +32,7 @@ def plot(args, sdf_data, threshold, rope_configurations, constraint_labels):
         constraint_label = constraint_labels[idx]
         xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
         ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
-        plt.plot(xs, ys, linewidth=0.5, zorder=1, alpha=0.1)
+        plt.plot(xs, ys, linewidth=0.5, zorder=1, alpha=0.5)
         color = 'r' if constraint_label else 'g'
         plt.scatter(rope_configuration[4], rope_configuration[5], s=16, c=color, zorder=2)
 
@@ -66,24 +63,21 @@ def generate_env(args):
     rope_configurations = np.ndarray((args.n, 6), dtype=np.float32)
     constraint_labels = np.ndarray((args.n, 1), dtype=np.float32)
     for i in range(args.n):
-        theta_1 = np.random.uniform(-np.pi, np.pi)
-        theta_2 = np.random.uniform(-np.pi, np.pi)
-        head_x = np.random.uniform(sdf_data.extent[0] + 2, sdf_data.extent[1] - 2)
-        head_y = np.random.uniform(sdf_data.extent[2] + 2, sdf_data.extent[3] - 2)
-        rope_configurations[i] = link_bot_pycommon.make_rope_configuration(head_x, head_y, theta_1, theta_2)
+        rope_configurations[i] = link_bot_pycommon.make_random_rope_configuration(sdf_data.extent)
+        head_x = rope_configurations[i, 4]
+        head_y = rope_configurations[i, 5]
         row, col = link_bot_pycommon.point_to_sdf_idx(head_x, head_y, sdf_resolution, sdf_origin)
         constraint_labels[i] = sdf[row, col] < args.distance_constraint_threshold
 
     n_positive = np.count_nonzero(constraint_labels)
     percentage_positive = n_positive * 100.0 / args.n
-    print("% positive examples: {}".format(percentage_positive))
 
     if args.plot:
         plot(args, sdf_data, args.distance_constraint_threshold, rope_configurations, constraint_labels)
 
         plt.show()
 
-    return rope_configurations, constraint_labels, sdf_data
+    return rope_configurations, constraint_labels, sdf_data, percentage_positive
 
 
 def generate(args):
@@ -96,8 +90,10 @@ def generate(args):
     np.random.seed(args.seed)
 
     filename_pairs = []
+    percentages_positive = []
     for i in range(args.m):
-        rope_configurations, constraint_labels, sdf_data = generate_env(args)
+        rope_configurations, constraint_labels, sdf_data, percentage_violation = generate_env(args)
+        percentages_positive.append(percentage_violation)
         if args.outdir:
             rope_data_filename = os.path.join(args.outdir, 'rope_data_{:d}.npz'.format(i))
             sdf_filename = os.path.join(args.outdir, 'sdf_data_{:d}.npz'.format(i))
@@ -112,9 +108,16 @@ def generate(args):
                      # this value should not be used for training, that would be cheating!
                      threshold=args.distance_constraint_threshold)
             sdf_data.save(sdf_filename)
+        print(".", end='')
+        sys.stdout.flush()
+    print("done")
+
+    mean_percentage_positive = np.mean(percentages_positive)
+    print("Class balance: mean % positive: {}".format(mean_percentage_positive))
 
     dataset_filename = os.path.join(args.outdir, 'dataset.json')
-    dataset = MultiEnvironmentDataset(filename_pairs, n_obstacles=args.n_obstacles, obstacle_size=args.obstacle_size, threshold=args.distance_constraint_threshold)
+    dataset = MultiEnvironmentDataset(filename_pairs, n_obstacles=args.n_obstacles, obstacle_size=args.obstacle_size,
+                                      threshold=args.distance_constraint_threshold)
     dataset.save(dataset_filename)
 
 
