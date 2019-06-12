@@ -14,6 +14,7 @@ from link_bot_models.base_model import BaseModel
 from link_bot_models.tf_signed_distance_field_op import sdf_func
 from link_bot_pycommon import link_bot_pycommon
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_models import multi_environment_datasets
 
 
 class ConstraintModelType(link_bot_pycommon.ArgsEnum):
@@ -29,40 +30,14 @@ def split_dataset(dataset: MultiEnvironmentDataset, n_validation_environments=1)
     :return: training and validation data and labels, will be passed to build_feed_dict
              the data is a numpy array of [environment index, rope_configuration]
     """
-    # full_inputs = dataset['rope_configurations'].reshape(-1, self.N)
-    # full_k = dataset['constraints'].reshape(-1, 1)
-
     error_msg = "number of envs for validation {} must be <= total number of environments {}".format(n_validation_environments,
                                                                                                      dataset.n_environments)
     assert n_validation_environments <= dataset.n_environments, error_msg
 
     end_train_idx = n_validation_environments
 
-    train_inputs = []
-    train_labels = []
-    for environment in dataset.environments[:1]:
-        rope_configurations = environment.rope_data['rope_configurations']
-        constraint_labels = environment.rope_data['constraints']
-        for rope_configuration, constraint_label in zip(rope_configurations, constraint_labels):
-            train_datum = [environment.sdf_data, rope_configuration]
-            train_inputs.append(train_datum)
-            train_labels.append(constraint_label)
-
-    train_inputs = np.array(train_inputs, dtype=np.object)
-    train_labels = np.array(train_labels, dtype=np.object)
-
-    validation_inputs = []
-    validation_labels = []
-    for environment in dataset.environments[:1]:
-        rope_configurations = environment.rope_data['rope_configurations']
-        constraint_labels = environment.rope_data['constraints']
-        for rope_configuration, constraint_label in zip(rope_configurations, constraint_labels):
-            validation_datum = [environment.sdf_data, rope_configuration]
-            validation_inputs.append(validation_datum)
-            validation_labels.append(constraint_label)
-
-    validation_inputs = np.array(validation_inputs, dtype=np.object)
-    validation_labels = np.array(validation_labels, dtype=np.object)
+    train_inputs, train_labels = multi_environment_datasets.make_inputs_and_labels(dataset.environments[:end_train_idx])
+    validation_inputs, validation_labels = multi_environment_datasets.make_inputs_and_labels(dataset.environments[end_train_idx:])
 
     return train_inputs, train_labels, validation_inputs, validation_labels
 
@@ -209,7 +184,6 @@ class ConstraintModel(BaseModel):
                               collections=['validation'])
 
         self.finish_setup()
-        self.dts = []
 
     def metadata(self):
         metadata = {
@@ -226,22 +200,19 @@ class ConstraintModel(BaseModel):
         return metadata
 
     def build_feed_dict(self, x, y: np.ndarray, **kwargs):
-        t0 = time()
-        observations = np.array([xi[1] for xi in x], dtype=np.float32)
-        sdfs = np.array([xi[0].sdf for xi in x], dtype=np.float32)
-        sdf_gradients = np.array([xi[0].gradient for xi in x], dtype=np.float32)
-        sdf_origins = np.array([xi[0].origin for xi in x], dtype=np.int32)
-        sdf_resolutions = np.array([xi[0].resolution for xi in x], dtype=np.float32)
-        sdf_extents = np.array([xi[0].extent for xi in x], dtype=np.float32)
-        self.dts.append(time() - t0)
-
-        return {self.observations: observations,
-                self.sdf: sdfs,
-                self.sdf_gradient: sdf_gradients,
-                self.sdf_origin: sdf_origins,
-                self.sdf_resolution: sdf_resolutions,
-                self.sdf_extent: sdf_extents,
-                self.k_label: y}
+        """
+        :param x: first dim is type of input, second dim is batch, following dims are data
+        :param y: first dim is type of label, second dim is batch, following dims are labels
+        :param kwargs:
+        :return:
+        """
+        return {self.observations: x[0],
+                self.sdf: x[1],
+                self.sdf_gradient: x[2],
+                self.sdf_origin: x[3],
+                self.sdf_resolution: x[4],
+                self.sdf_extent: x[5],
+                self.k_label: y[0]}
 
     def evaluate(self, eval_x, eval_y, display=True):
         feed_dict = self.build_feed_dict(eval_x, eval_y)

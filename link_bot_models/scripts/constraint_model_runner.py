@@ -26,11 +26,6 @@ def train(args):
     train_observations, train_k, validation_observations, validation_k = split_data
     model.train(*split_data, args.epochs, log_path)
 
-    print(np.min(model.dts))
-    print(np.max(model.dts))
-    print(np.mean(model.dts))
-    print(np.median(model.dts))
-
     print(Fore.GREEN + "\nTrain Evaluation" + Fore.RESET)
     model.evaluate(train_observations, train_k)
     print(Fore.GREEN + "\nValidation Evaluation" + Fore.RESET)

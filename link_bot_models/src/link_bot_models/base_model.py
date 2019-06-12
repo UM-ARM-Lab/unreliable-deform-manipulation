@@ -68,8 +68,8 @@ class BaseModel:
     def train(self, train_x, train_y, validation_x, validation_y, epochs, log_path, **kwargs):
         """
 
-        :param train_x: a numpy ndarray where each row looks like [sdf_data, rope_configuration]
-        :param train_y: a 2d numpy array where each is binary indicating constraint violation
+        :param train_x: first dimension is each type of input and the second dimension is examples, following dims are the data
+        :param train_y: first dimension is type of label, second dimension is examples, following dims are the labels
         :param validation_x: ''
         :param validation_y: ''
         :param epochs: number of times to run through the full training set
@@ -108,23 +108,25 @@ class BaseModel:
             if self.args_dict['log'] is not None:
                 self.save(full_log_path, self.args_dict['log'])
 
-            # validation sets could be too big, so we randomly choose 1000 examples
-            print(validation_x.shape[0])
-            validation_indexes = np.random.choice(validation_x.shape[0], size=100)
-            validation_x_sample = validation_x[validation_indexes]
-            validation_y_sample = validation_y[validation_indexes]
+            # validation sets could be too big, so we randomly choose some examples
+            n_validation = len(validation_x)
+            n_validation_examples = min(n_validation, 1000)
+            validation_indexes = np.random.choice(n_validation, size=n_validation_examples)
+            validation_x_sample = validation_x[:, validation_indexes]
+            validation_y_sample = validation_y[:, validation_indexes]
 
             step = self.sess.run(self.global_step)
             for epoch in range(epochs):
                 # shuffle indexes and then iterate over batches
                 batch_size = self.args_dict['batch_size']
-                indexes = np.arange(train_x.shape[0], dtype=np.int)
+                n_train = len(train_x)
+                indexes = np.arange(n_train, dtype=np.int)
                 np.random.shuffle(indexes)
 
-                for batch_start in range(0, train_x.shape[0], batch_size):
+                for batch_start in range(0, n_train, batch_size):
                     batch_indexes = indexes[batch_start:batch_start + batch_size]
-                    train_x_batch = train_x[batch_indexes]
-                    train_y_batch = train_y[batch_indexes]
+                    train_x_batch = train_x[:, batch_indexes]
+                    train_y_batch = train_y[:, batch_indexes]
 
                     train_feed_dict = self.build_feed_dict(train_x_batch, train_y_batch, **kwargs)
 
