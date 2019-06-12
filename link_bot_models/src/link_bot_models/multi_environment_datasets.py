@@ -35,6 +35,7 @@ class FancyList:
 
 
 def make_inputs_and_labels(environments):
+    """ merges all the data and labels from the environments into a format suitable for batching into feed dicts """
     sdfs = []
     sdf_gradients = []
     sdf_origins = []

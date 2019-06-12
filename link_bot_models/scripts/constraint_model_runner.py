@@ -9,27 +9,31 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_models.constraint_model import ConstraintModelType, ConstraintModel, split_dataset
+from link_bot_models import multi_environment_datasets
+from link_bot_models.constraint_model import ConstraintModelType, ConstraintModel
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
-    dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
-    sdf_shape = dataset.sdf_shape
+    train_dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
+    validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
+    sdf_shape = train_dataset.sdf_shape
     model = ConstraintModel(vars(args), sdf_shape, args.N)
 
     model.setup()
 
-    split_data = split_dataset(dataset)
-    train_observations, train_k, validation_observations, validation_k = split_data
-    model.train(*split_data, args.epochs, log_path)
+    train_inputs, train_labels = multi_environment_datasets.make_inputs_and_labels(train_dataset.environments)
+
+    validation_inputs, validation_labels = multi_environment_datasets.make_inputs_and_labels(validation_dataset.environments)
+
+    model.train(train_inputs, train_labels, validation_inputs, validation_labels, args.epochs, log_path)
 
     print(Fore.GREEN + "\nTrain Evaluation" + Fore.RESET)
-    model.evaluate(train_observations, train_k)
+    model.evaluate(train_inputs, train_labels)
     print(Fore.GREEN + "\nValidation Evaluation" + Fore.RESET)
-    model.evaluate(validation_observations, validation_k)
+    model.evaluate(validation_inputs, validation_labels)
 
 
 def model_only(args):
@@ -58,10 +62,9 @@ def evaluate(args):
     model.setup()
 
     # take all the data as validation data
-    split_data = split_dataset(dataset, n_validation_environments=1.00)
-    train_observations, train_k, validation_observations, validation_k = split_data
+    validation_inputs, validation_labels = multi_environment_datasets.make_inputs_and_labels(dataset.environments)
 
-    return model.evaluate(validation_observations, validation_k)
+    return model.evaluate(validation_inputs, validation_labels)
 
 
 def show(args):
@@ -85,15 +88,16 @@ def main():
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
-    train_subparser.add_argument("dataset", help="dataset (json file)")
+    train_subparser.add_argument("train_dataset", help="dataset (json file)")
+    train_subparser.add_argument("validation_dataset", help="dataset (json file)")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=128)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=100)
+    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=500)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--log-period", type=int, default=100)
     train_subparser.add_argument("--print-period", type=int, default=100)
-    train_subparser.add_argument("--val-period", type=int, default=25, help='run validation every so many epochs')
-    train_subparser.add_argument("--save-period", type=int, default=1000)
+    train_subparser.add_argument("--val-period", type=int, default=20, help='run validation every so many epochs')
+    train_subparser.add_argument("--save-period", type=int, default=50)
     train_subparser.add_argument("--random-init", action='store_true')
     train_subparser.set_defaults(func=train)
 

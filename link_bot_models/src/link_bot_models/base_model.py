@@ -110,7 +110,7 @@ class BaseModel:
 
             # validation sets could be too big, so we randomly choose some examples
             n_validation = len(validation_x)
-            n_validation_examples = min(n_validation, 1000)
+            n_validation_examples = min(n_validation, 5000)
             validation_indexes = np.random.choice(n_validation, size=n_validation_examples)
             validation_x_sample = validation_x[:, validation_indexes]
             validation_y_sample = validation_y[:, validation_indexes]
@@ -151,7 +151,7 @@ class BaseModel:
 
                 if epoch % self.args_dict['save_period'] == 0 and epoch > 0:
                     if self.args_dict['log'] is not None:
-                        self.save(full_log_path, loss=validation_loss)
+                        self.save(full_log_path)
 
         except KeyboardInterrupt:
             print("stop!!!")

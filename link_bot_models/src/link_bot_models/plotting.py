@@ -99,8 +99,8 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
     plt.title(title)
     plt.imshow(sdf_image, extent=sdf_data.extent)
 
-    head_xs = np.linspace(sdf_data.extent[0] + 2, sdf_data.extent[1] - 2, 25)
-    head_ys = np.linspace(sdf_data.extent[2] + 2, sdf_data.extent[3] - 2, 25)
+    head_xs = np.linspace(sdf_data.extent[0] + 1, sdf_data.extent[1] - 1, 25)
+    head_ys = np.linspace(sdf_data.extent[2] + 1, sdf_data.extent[3] - 1, 25)
     theta_1s = np.linspace(-np.pi, np.pi, 2)
     theta_2s = np.linspace(-np.pi, np.pi, 2)
     grid = np.meshgrid(head_xs, head_ys, theta_1s, theta_2s)
@@ -109,8 +109,13 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
     rope_configuration_0 = link_bot_pycommon.make_rope_configuration(*rope_params[0])
 
     result_0 = constraint_model.evaluate_single(sdf_data, model, threshold, rope_configuration_0)
-    head_scatter = plt.scatter(result_0.rope_configuration[4], result_0.rope_configuration[5], s=50, c='b', zorder=2)
-    prediction_scatter = plt.scatter(result_0.predicted_point[0], result_0.predicted_point[1], s=10, c='r', zorder=2)
+    red_arr = np.array([[0.9, 0.2, 0.2]])
+    green_arr = np.array([[0.2, 0.9, 0.2]])
+    small_arr = np.array([25])
+    big_arr = np.array([100])
+    color_0 = green_arr if result_0.true_violated == result_0.predicted_violated else red_arr
+    head_scatter = plt.scatter(result_0.rope_configuration[4], result_0.rope_configuration[5], s=50, c=color_0, zorder=2)
+    prediction_scatter = plt.scatter(result_0.predicted_point[0], result_0.predicted_point[1], s=50, c=color_0, zorder=2)
 
     xs_0 = [rope_configuration_0[0], rope_configuration_0[2], rope_configuration_0[4]]
     ys_0 = [rope_configuration_0[1], rope_configuration_0[3], rope_configuration_0[5]]
@@ -118,8 +123,6 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
 
     plt.xlabel("x (m)")
     plt.ylabel("y (m)")
-    plt.xlim([-5.1, 5.1])
-    plt.ylim([-5.1, 5.1])
 
     custom_lines = [
         Line2D([0], [0], color='r', lw=1),
@@ -130,10 +133,16 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
     def update(t):
         rope_configuration = link_bot_pycommon.make_rope_configuration(*rope_params[t])
         result = constraint_model.evaluate_single(sdf_data, model, threshold, rope_configuration)
+        color = green_arr if result.true_violated == result.predicted_violated else red_arr
+        sizes = small_arr if result.true_violated == result.predicted_violated else big_arr
 
         head_scatter.set_offsets(rope_configuration[4:6])
+        head_scatter.set_color(color)
+        head_scatter.set_sizes(sizes)
 
         prediction_scatter.set_offsets(result.predicted_point)
+        prediction_scatter.set_color(color)
+        prediction_scatter.set_sizes(sizes)
 
         xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
         ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
@@ -141,9 +150,8 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
         line.set_ydata(ys)
 
     fps = 100
-    duration_s = 30
     T = rope_params.shape[0]
-    interval_ms = int(duration_s * 1000 / T)
+    interval_ms = 10
     anim = FuncAnimation(fig, update, frames=T, interval=interval_ms)
     Writer = animation.writers['ffmpeg']
     writer = Writer(fps=fps, bitrate=1800)
@@ -159,15 +167,15 @@ def animate_contours(sdf_data, model, threshold):
     xmin, xmax, ymin, ymax = sdf_data.extent
     contour_spacing_y = 4
     contour_spacing_x = 1
-    y_range = np.arange(ymin + 2, ymax + sdf_data.resolution[0] - 2, sdf_data.resolution[0] * contour_spacing_y)
+    y_range = np.arange(ymin + 1, ymax + sdf_data.resolution[0] - 1, sdf_data.resolution[0] * contour_spacing_y)
     y = y_range[0]
-    head_xs_flat = np.arange(xmin + 2, xmax + sdf_data.resolution[1] - 2, sdf_data.resolution[1] * contour_spacing_x)
+    head_xs_flat = np.arange(xmin + 1, xmax + sdf_data.resolution[1] - 1, sdf_data.resolution[1] * contour_spacing_x)
     head_ys_flat = np.ones_like(head_xs_flat) * y
 
     zeros = np.zeros_like(head_xs_flat)
     rope_configurations = link_bot_pycommon.make_rope_configurations(head_xs_flat, head_ys_flat, zeros, zeros)
 
-    _, predicted_points = model.violated(rope_configurations)
+    _, predicted_points = model.violated(rope_configurations, sdf_data)
 
     predicted_xs = predicted_points[:, 0]
     predicted_ys = predicted_points[:, 1]
@@ -187,7 +195,7 @@ def animate_contours(sdf_data, model, threshold):
 
         rope_configurations = link_bot_pycommon.make_rope_configurations(head_xs_flat, head_ys_flat, zeros, zeros)
 
-        _, predicted_points = model.violated(rope_configurations)
+        _, predicted_points = model.violated(rope_configurations, sdf_data)
 
         predicted_xs = predicted_points[:, 0]
         predicted_ys = predicted_points[:, 1]
@@ -224,7 +232,7 @@ def plot_contours(sdf_data, model, threshold):
         zeros = np.zeros_like(head_xs_flat)
         rope_configurations = link_bot_pycommon.make_rope_configurations(head_xs_flat, head_ys_flat, zeros, zeros)
 
-        _, predicted_points = model.violated(rope_configurations)
+        _, predicted_points = model.violated(rope_configurations, sdf_data)
 
         predicted_xs = predicted_points[:, 0]
         predicted_ys = predicted_points[:, 1]
@@ -249,7 +257,7 @@ def plot_examples_on_fig(fig, x, constraint_labels, threshold, model, draw_corre
 
     ax = fig.gca()
 
-    violated, predicted_points = model.violated(rope_configurations)
+    violated, predicted_points = model.violated(rope_configurations, sdf_data)
     for rope_configuration, predicted_point, constraint_label in zip(rope_configurations, predicted_points, constraint_labels):
         color = 'r' if constraint_label else 'g'
         ax.scatter(rope_configuration[4], rope_configuration[5], c=color, s=10, zorder=3)

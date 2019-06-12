@@ -2,7 +2,6 @@
 from __future__ import division, print_function, absolute_import
 
 from enum import auto
-from time import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,8 +12,6 @@ from link_bot_models import plotting
 from link_bot_models.base_model import BaseModel
 from link_bot_models.tf_signed_distance_field_op import sdf_func
 from link_bot_pycommon import link_bot_pycommon
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_models import multi_environment_datasets
 
 
 class ConstraintModelType(link_bot_pycommon.ArgsEnum):
@@ -23,31 +20,12 @@ class ConstraintModelType(link_bot_pycommon.ArgsEnum):
     FNN = auto()
 
 
-def split_dataset(dataset: MultiEnvironmentDataset, n_validation_environments=1):
-    """
-    :param dataset: paired sdf/rope data
-    :param n_validation_environments: how much of the data should be reserved for validation
-    :return: training and validation data and labels, will be passed to build_feed_dict
-             the data is a numpy array of [environment index, rope_configuration]
-    """
-    error_msg = "number of envs for validation {} must be <= total number of environments {}".format(n_validation_environments,
-                                                                                                     dataset.n_environments)
-    assert n_validation_environments <= dataset.n_environments, error_msg
-
-    end_train_idx = n_validation_environments
-
-    train_inputs, train_labels = multi_environment_datasets.make_inputs_and_labels(dataset.environments[:end_train_idx])
-    validation_inputs, validation_labels = multi_environment_datasets.make_inputs_and_labels(dataset.environments[end_train_idx:])
-
-    return train_inputs, train_labels, validation_inputs, validation_labels
-
-
 class ConstraintModel(BaseModel):
 
     def __init__(self, args, sdf_shape, N):
         super(ConstraintModel, self).__init__(args, N)
 
-        self.beta = 1e-8
+        self.beta = 1e-2
 
         batch_dim = None
         self.sdf = tf.placeholder(tf.float32, shape=[batch_dim, sdf_shape[0], sdf_shape[1]], name="sdf")
@@ -146,7 +124,7 @@ class ConstraintModel(BaseModel):
 
             self.loss = tf.add_n([
                 self.constraint_prediction_loss,
-                # self.out_of_bounds_loss,
+                self.beta * self.out_of_bounds_loss,
             ], name='loss')
 
             self.global_step = tf.get_variable("global_step", initializer=0, trainable=False)
@@ -164,7 +142,7 @@ class ConstraintModel(BaseModel):
 
             tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy,
                               collections=['train'])
-            tf.summary.scalar("k_threshold_summary", self.threshold_k, collections=['train'])
+            # tf.summary.scalar("k_threshold_summary", self.threshold_k, collections=['train'])
             tf.summary.scalar("out_of_bounds_loss_summary", self.out_of_bounds_loss,
                               collections=['train'])
             tf.summary.scalar("constraint_prediction_loss_summary", self.constraint_prediction_loss,
@@ -175,7 +153,7 @@ class ConstraintModel(BaseModel):
         with tf.name_scope("validation"):
             tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy,
                               collections=['validation'])
-            tf.summary.scalar("k_threshold_summary", self.threshold_k, collections=['validation'])
+            # tf.summary.scalar("k_threshold_summary", self.threshold_k, collections=['validation'])
             tf.summary.scalar("out_of_bounds_loss_summary", self.out_of_bounds_loss,
                               collections=['validation'])
             tf.summary.scalar("constraint_prediction_loss_summary", self.constraint_prediction_loss,
@@ -240,12 +218,21 @@ class ConstraintModel(BaseModel):
                 plotting.plot_examples_on_fig(self.fig, x, y, threshold_k, self)
                 plt.pause(5)
 
-    def violated(self, observations, sdf=None, sdf_resolution=None, sdf_origin=None):
-        # unused parameters
-        del sdf, sdf_resolution, sdf_origin
-        feed_dict = {self.observations: np.atleast_2d(observations)}
-        violated, pt = self.sess.run([self.hat_k_violated, self.hat_latent_k], feed_dict=feed_dict)
-        return np.any(violated, axis=1), pt
+    def violated(self, observations, sdf_data):
+        n_observations = observations.shape[0]
+        sdfs = np.tile(sdf_data.sdf, [n_observations, 1, 1])
+        sdf_origins = np.tile(sdf_data.origin, [n_observations, 1])
+        sdf_resolutions = np.tile(sdf_data.resolution, [n_observations, 1])
+        sdf_extents = np.tile(sdf_data.extent, [n_observations, 1])
+        feed_dict = {
+            self.observations: observations,
+            self.sdf: sdfs,
+            self.sdf_origin: sdf_origins,
+            self.sdf_resolution: sdf_resolutions,
+            self.sdf_extent: sdf_extents,
+        }
+        predicted_violated, pt = self.sess.run([self.hat_k_violated, self.hat_latent_k], feed_dict=feed_dict)
+        return np.any(predicted_violated, axis=1), pt
 
     def constraint_violated(self, latent_k):
         full_latent_k = np.ndarray((1, 2))
@@ -271,7 +258,8 @@ class EvaluateResult:
 
 
 def evaluate_single(sdf_data, model, threshold, rope_configuration):
-    predicted_violated, predicted_point = model.violated(rope_configuration)
+    rope_configuration = rope_configuration.reshape(-1, 6)
+    predicted_violated, predicted_point = model.violated(rope_configuration, sdf_data)
     predicted_point = predicted_point.squeeze()
     rope_configuration = rope_configuration.squeeze()
     head_x = rope_configuration[4]
@@ -283,12 +271,19 @@ def evaluate_single(sdf_data, model, threshold, rope_configuration):
     return result
 
 
-def evaluate(sdf_data, model, threshold, rope_configurations):
+def evaluate(model, environment):
+    rope_configurations = environment.rope_data['rope_configurations']
+    constraint_labels = environment.rope_data['constraints']
+
+    predicted_violateds, predicted_points = model.violated(rope_configurations, environment.sdf_data)
+
     m = rope_configurations.shape[0]
     results = np.ndarray([m], dtype=EvaluateResult)
-    for i, rope_configuration in enumerate(rope_configurations):
-        rope_configuration = np.atleast_2d(rope_configuration)
-        result = evaluate_single(sdf_data, model, threshold, rope_configuration)
+    for i in range(m):
+        rope_configuration = rope_configurations[i]
+        predicted_point = predicted_points[i]
+        predicted_violated = predicted_violateds[i]
+        constraint_label = constraint_labels[i]
+        result = EvaluateResult(rope_configuration, predicted_point, predicted_violated, constraint_label)
         results[i] = result
-
     return results
