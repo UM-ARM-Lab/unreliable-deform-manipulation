@@ -1,16 +1,16 @@
 from __future__ import division, print_function, absolute_import
 
 import json
-import os
+import numpy as np
 
 import keras
-import numpy as np
+import os
 import tensorflow as tf
 from colorama import Fore
-from keras.backend.tensorflow_backend import set_session
-from keras.layers import Input, Dense, Conv2D, Flatten
-from keras.models import Model
 from keras.models import load_model
+from keras.layers import Input, Dense, Conv2D, Flatten
+from keras.backend.tensorflow_backend import set_session
+from keras.models import Model
 
 from link_bot_pycommon import experiments_util
 
@@ -25,8 +25,7 @@ class ConstraintCNN:
         config.gpu_options.per_process_gpu_memory_fraction = 0.3
         set_session(tf.Session(config=config))
 
-        sdf_input = Input(shape=(sdf_shape[0], sdf_shape[0], 1), dtype='float32', name='sdf_input')
-        rope_input = Input(shape=(N,), dtype='float32', name='rope_input')
+        input = Input(shape=(sdf_shape[0], sdf_shape[0], 2), dtype='float32', name='input')
 
         self.conv_filters = [
             (32, (3, 3)),
@@ -39,22 +38,21 @@ class ConstraintCNN:
             64,
         ]
 
-        conv_h = sdf_input
+        conv_h = input
         for conv_filter in self.conv_filters:
             n_filters = conv_filter[0]
             filter_size = conv_filter[1]
             conv_h = Conv2D(n_filters, filter_size)(conv_h)
         conv_output = Flatten()(conv_h)
 
-        concat = keras.layers.concatenate([conv_output, rope_input])
-        fc_h = concat
+        fc_h = conv_output
         for fc_layer_size in self.fc_layer_sizes:
             fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
         predictions = Dense(1, activation='sigmoid')(fc_h)
 
         # This creates a model that includes
         # the Input layer and three Dense layers
-        self.keras_model = Model(inputs=[sdf_input, rope_input], outputs=predictions)
+        self.keras_model = Model(inputs=input, outputs=predictions)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
     def metadata(self):
@@ -83,13 +81,24 @@ class ConstraintCNN:
         :param kwargs:
         :return: whether the training process was interrupted early (by Ctrl+C)
         """
+        m = len(train_x)
         train_rope_inputs = train_x[0]
-        train_sdf_inputs = np.expand_dims(train_x[1], axis=3)
+        train_sdf = np.expand_dims(train_x[1], axis=3)
+        train_rope_img = np.zeros_like(train_sdf)
+        train_rope_img[train_rope_inputs[:, 0], train_rope_inputs[:, 1]] = 1
+        train_rope_img[train_rope_inputs[:, 2], train_rope_inputs[:, 3]] = 1
+        train_rope_img[train_rope_inputs[:, 4], train_rope_inputs[:, 5]] = 1
+        train_inputs = np.concatenate((train_sdf, train_rope_img))
         train_labels = train_y[0]
+
         validation_rope_inputs = validation_x[0]
-        validation_sdf_inputs = np.expand_dims(validation_x[1], axis=3)
+        validation_sdf = np.expand_dims(validation_x[1], axis=3)
+        validation_rope_img = np.zeros_like(validation_sdf)
+        validation_rope_img[validation_rope_inputs[:, 0], validation_rope_inputs[:, 1]] = 1
+        validation_rope_img[validation_rope_inputs[:, 2], validation_rope_inputs[:, 3]] = 1
+        validation_rope_img[validation_rope_inputs[:, 4], validation_rope_inputs[:, 5]] = 1
+        validation_inputs = np.concatenate((validation_sdf, validation_rope_img))
         validation_labels = validation_y[0]
-        validation_inputs = {'sdf_input': validation_sdf_inputs, 'rope_input': validation_rope_inputs}
 
         callbacks = []
         if self.args_dict['log'] is not None:
@@ -111,7 +120,7 @@ class ConstraintCNN:
                                                                   period=1)
             callbacks.append(checkpoint_callback)
 
-        self.keras_model.fit(x={'sdf_input': train_sdf_inputs, 'rope_input': train_rope_inputs},
+        self.keras_model.fit(x=train_inputs,
                              y=train_labels,
                              callbacks=callbacks,
                              validation_data=(validation_inputs, validation_labels),
@@ -122,8 +131,7 @@ class ConstraintCNN:
     def evaluate(self, eval_x, eval_y, display=True):
         rope_inputs = eval_x[0]
         sdf_inputs = np.expand_dims(eval_x[1], axis=3)
-        eval_labels = eval_y[0]
-        loss, accuracy = self.keras_model.evaluate({'sdf_input': sdf_inputs, 'rope_input': rope_inputs}, eval_labels)
+        loss, accuracy = self.keras_model.evaluate({'sdf_input': sdf_inputs, 'rope_input': rope_inputs}, eval_y)
 
         if display:
             print("Overall Loss: {:0.3f}".format(float(loss)))

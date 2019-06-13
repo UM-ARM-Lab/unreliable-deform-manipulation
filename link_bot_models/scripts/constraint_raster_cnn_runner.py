@@ -40,7 +40,6 @@ def evaluate(args):
 
     args_dict = vars(args)
     model = ConstraintCNN(args_dict, sdf_shape, args.N)
-    model.load()
 
     # take all the data as validation data
     validation_inputs, validation_labels = multi_environment_datasets.make_inputs_and_labels(dataset.environments)

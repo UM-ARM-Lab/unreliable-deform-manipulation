@@ -13,6 +13,7 @@ import sdf_tools
 
 
 def plot(args, sdf_data, threshold, rope_configurations, constraint_labels):
+    del args  # unused
     plt.figure()
     plt.imshow(np.flipud(sdf_data.sdf.T), extent=sdf_data.extent)
     subsample = 16
