@@ -12,6 +12,7 @@ from keras.layers import Input, Dense, Conv2D, Flatten
 from keras.models import Model
 from keras.models import load_model
 
+from link_bot_models.multi_environment_datasets import LabelType
 from link_bot_pycommon import experiments_util
 
 
@@ -20,6 +21,14 @@ class ConstraintCNN:
     def __init__(self, args_dict, sdf_shape, N):
         self.args_dict = args_dict
         self.N = N
+
+        self.label_type = self.args_dict['label_type']
+        if self.label_type == LabelType.SDF:
+            self.label_mask = np.array([1, 0], dtype=np.int)
+        elif self.label_type == LabelType.Overstretching:
+            self.label_mask = np.array([0, 1], dtype=np.int)
+        elif self.label_type == LabelType.SDF_and_Overstretching:
+            self.label_mask = np.array([1, 1], dtype=np.int)
 
         config = tf.ConfigProto()
         config.gpu_options.per_process_gpu_memory_fraction = 0.3
@@ -64,10 +73,17 @@ class ConstraintCNN:
             'checkpoint': self.args_dict['checkpoint'],
             'N': self.N,
             'conv_filters': self.conv_filters,
+            'label_type': str(self.label_type),
             'fc_layer_sizes': self.fc_layer_sizes,
             'commandline': self.args_dict['commandline'],
         }
         return metadata
+
+    def prepare_data(self, x, y):
+        rope_inputs = x[0]
+        sdf_inputs = np.expand_dims(x[1], axis=3)
+        labels = np.any(y[0] * self.label_mask, axis=1).astype(np.float32)
+        return {'sdf_input': sdf_inputs, 'rope_input': rope_inputs}, labels
 
     def train(self, train_x, train_y, validation_x, validation_y, epochs, log_path, **kwargs):
         """
@@ -82,13 +98,8 @@ class ConstraintCNN:
         :param kwargs:
         :return: whether the training process was interrupted early (by Ctrl+C)
         """
-        train_rope_inputs = train_x[0]
-        train_sdf_inputs = np.expand_dims(train_x[1], axis=3)
-        train_labels = train_y[0]
-        validation_rope_inputs = validation_x[0]
-        validation_sdf_inputs = np.expand_dims(validation_x[1], axis=3)
-        validation_labels = validation_y[0]
-        validation_inputs = {'sdf_input': validation_sdf_inputs, 'rope_input': validation_rope_inputs}
+        train_inputs, train_labels = self.prepare_data(train_x, train_y)
+        validation_inputs, validation_labels = self.prepare_data(validation_x, validation_y)
 
         callbacks = []
         if self.args_dict['log'] is not None:
@@ -109,7 +120,7 @@ class ConstraintCNN:
                                                                   period=1)
             callbacks.append(checkpoint_callback)
 
-        self.keras_model.fit(x={'sdf_input': train_sdf_inputs, 'rope_input': train_rope_inputs},
+        self.keras_model.fit(x=train_inputs,
                              y=train_labels,
                              callbacks=callbacks,
                              validation_data=(validation_inputs, validation_labels),
@@ -118,10 +129,8 @@ class ConstraintCNN:
         self.evaluate(validation_x, validation_y)
 
     def evaluate(self, eval_x, eval_y, display=True):
-        rope_inputs = eval_x[0]
-        sdf_inputs = np.expand_dims(eval_x[1], axis=3)
-        eval_labels = eval_y[0]
-        loss, accuracy = self.keras_model.evaluate({'sdf_input': sdf_inputs, 'rope_input': rope_inputs}, eval_labels)
+        inputs, labels = self.prepare_data(eval_x, eval_y)
+        loss, accuracy = self.keras_model.evaluate(inputs, labels)
 
         if display:
             print("Overall Loss: {:0.3f}".format(float(loss)))

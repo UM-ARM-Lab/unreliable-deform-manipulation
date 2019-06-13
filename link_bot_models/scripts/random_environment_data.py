@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-import sys
-import os
-import matplotlib.pyplot as plt
-from colorama import Fore
-import numpy as np
 import argparse
-from link_bot_pycommon import link_bot_pycommon
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+import os
+import sys
+
+import matplotlib.pyplot as plt
+import numpy as np
+from colorama import Fore
+
 import sdf_tools
+from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_pycommon import link_bot_pycommon
 
 
 def plot(args, sdf_data, threshold, rope_configurations, constraint_labels):
@@ -102,6 +104,10 @@ def generate(args):
         elif not os.path.isdir(args.outdir):
             os.mkdir(args.outdir)
 
+    if not args.seed:
+        # I know this looks crazy, but the idea is that when we run the script multiple times we don't want to get the same output
+        # but we als do want to be able to recreate the output from a seed, so we generate a random seed if non is provided
+        args.seed = np.random.randint(0, 10000)
     np.random.seed(args.seed)
 
     filename_pairs = []
@@ -159,10 +165,10 @@ def main():
     generate_parser.add_argument('m', type=int, help='number of environments')
     generate_parser.add_argument('w', type=int, help='environment with in meters (int)')
     generate_parser.add_argument('h', type=int, help='environment with in meters (int)')
-    generate_parser.add_argument('--seed', type=int, default=2, help='random seed')
+    generate_parser.add_argument('--seed', type=int, help='random seed')
     generate_parser.add_argument('--res', '-r', type=float, default=0.05, help='size of cells in meters')
     generate_parser.add_argument('--n-obstacles', type=int, default=14, help='size of obstacles in cells')
-    generate_parser.add_argument('--obstacle-size', type=int, default=10, help='size of obstacles in cells')
+    generate_parser.add_argument('--obstacle-size', type=int, default=8, help='size of obstacles in cells')
     generate_parser.add_argument('--sdf-threshold', type=np.float32, default=0.0)
     generate_parser.add_argument('--overstretched-factor-threshold', type=np.float32, default=1.1)
     generate_parser.add_argument('--plot', action='store_true')

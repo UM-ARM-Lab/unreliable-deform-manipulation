@@ -1,9 +1,17 @@
 import json
 import os
+from enum import auto
 
 import numpy as np
 
+from link_bot_pycommon import link_bot_pycommon
 from link_bot_pycommon.link_bot_pycommon import SDF
+
+
+class LabelType(link_bot_pycommon.ArgsEnum):
+    SDF = auto()
+    Overstretching = auto()
+    SDF_and_Overstretching = auto()
 
 
 class FancyList:

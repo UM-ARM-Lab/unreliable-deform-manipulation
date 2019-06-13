@@ -1,4 +1,5 @@
 from __future__ import division
+
 from enum import Enum
 
 import numpy as np

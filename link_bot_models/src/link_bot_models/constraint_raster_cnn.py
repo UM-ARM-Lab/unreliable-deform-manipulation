@@ -1,17 +1,18 @@
 from __future__ import division, print_function, absolute_import
 
 import json
-import numpy as np
+import os
 
 import keras
-import os
+import numpy as np
 import tensorflow as tf
 from colorama import Fore
-from keras.models import load_model
-from keras.layers import Input, Dense, Conv2D, Flatten
 from keras.backend.tensorflow_backend import set_session
+from keras.layers import Input, Dense, Conv2D, Flatten
 from keras.models import Model
+from keras.models import load_model
 
+from link_bot_models.multi_environment_datasets import LabelType
 from link_bot_pycommon import experiments_util
 from link_bot_pycommon import link_bot_pycommon
 
@@ -21,6 +22,14 @@ class ConstraintRasterCNN:
     def __init__(self, args_dict, sdf_shape, N):
         self.args_dict = args_dict
         self.N = N
+
+        self.label_type = self.args_dict['label_type']
+        if self.label_type == LabelType.SDF:
+            self.label_mask = np.array([1, 0], dtype=np.int)
+        elif self.label_type == LabelType.Overstretching:
+            self.label_mask = np.array([0, 1], dtype=np.int)
+        elif self.label_type == LabelType.SDF_and_Overstretching:
+            self.label_mask = np.array([1, 1], dtype=np.int)
 
         config = tf.ConfigProto()
         config.gpu_options.per_process_gpu_memory_fraction = 0.3
@@ -63,6 +72,7 @@ class ConstraintRasterCNN:
             'N': self.N,
             'conv_filters': self.conv_filters,
             'fc_layer_sizes': self.fc_layer_sizes,
+            'label_type': str(self.label_type),
             'commandline': self.args_dict['commandline'],
         }
         return metadata
@@ -81,7 +91,7 @@ class ConstraintRasterCNN:
                 rope_img[i, row, col] = 1
 
         inputs = np.concatenate((sdf, rope_img), axis=3)
-        labels = y[0]
+        labels = np.any(y[0] * self.label_mask, axis=1).astype(np.float32)
         return inputs, labels
 
     def train(self, train_x, train_y, validation_x, validation_y, epochs, log_path, **kwargs):
@@ -110,14 +120,13 @@ class ConstraintRasterCNN:
             metadata_file = open(metadata_path, 'w')
             metadata = self.metadata()
             metadata['log path'] = full_log_path
-            print(metadata_path, metadata)
             metadata_file.write(json.dumps(metadata, indent=2))
 
             model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
 
             checkpoint_callback = keras.callbacks.ModelCheckpoint(model_filename, monitor='val_loss', verbose=0,
                                                                   save_best_only=False, save_weights_only=False, mode='auto',
-                                                                  period=1)
+                                                                  period=5)
             callbacks.append(checkpoint_callback)
 
         self.keras_model.fit(x=train_inputs,

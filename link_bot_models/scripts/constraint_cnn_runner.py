@@ -10,7 +10,7 @@ from colorama import Fore
 
 from link_bot_models import multi_environment_datasets
 from link_bot_models.constraint_cnn import ConstraintCNN
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset, LabelType
 from link_bot_pycommon import experiments_util
 
 
@@ -57,6 +57,7 @@ def main():
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("label_type", type=LabelType.from_string, choices=list(LabelType))
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
