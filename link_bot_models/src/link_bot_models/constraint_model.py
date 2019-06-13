@@ -88,8 +88,9 @@ class ConstraintModel(BaseModel):
             self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
             self.hidden_layer_dims = [6]
             h = self.observations
-            for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
-                h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, use_bias=False, name='hidden_layer_{}'.format(layer_idx))
+            for layer_idx, hidden_layer_dim in enumerate(selfehidden_layer_dims):
+                h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, use_bias=False,
+                                    name='hidden_layer_{}'.format(layer_idx))
             self.hat_latent_k = tf.layers.dense(h, 2, activation=None, use_bias=True, name='output_layer')
 
         #######################################################
@@ -101,7 +102,10 @@ class ConstraintModel(BaseModel):
         self.hat_k = self.sigmoid_scale * (self.threshold_k - self.sdfs)
         self.hat_k_violated = tf.cast(self.sdfs < self.threshold_k, dtype=tf.int32, name="hat_k_violated")
         _, self.constraint_prediction_accuracy = tf.metrics.accuracy(labels=self.k_label,
-                                                                     predictions=self.hat_k_violated)
+                                                                     predictions=self.hat_k_violated,
+                                                                     name="constraint_prediction_accuracy_metric")
+        self.accuracy_local_vars = tf.get_collection(tf.GraphKeys.LOCAL_VARIABLES, scope="constraint_prediction_accuracy_metric")
+        self.accuracy_local_vars_initializer = tf.variables_initializer(var_list=self.accuracy_local_vars)
 
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
@@ -200,13 +204,20 @@ class ConstraintModel(BaseModel):
         if display:
             print("Constraint Loss: {:0.3f}".format(float(k_loss)))
             print("Overall Loss: {:0.3f}".format(float(loss)))
-            print("threshold_k:\n{}".format(threshold_k))
             print("constraint prediction accuracy:\n{}".format(k_accuracy))
 
         return threshold_k, k_loss, loss
 
     def start_train_hook(self):
         self.fig = plt.figure()
+
+    def train_init_epoch_hook(self, epoch, step):
+        # reset at the start of each epoch we are computing accuracy for the training set but not all training history
+        self.sess.run(self.accuracy_local_vars_initializer)
+
+    def validation_init_hook(self, epoch, step):
+        # reset at the start of validation so we clear the metrics from training steps
+        self.sess.run(self.accuracy_local_vars_initializer)
 
     def train_feed_hook(self, iteration, train_x_batch, train_y_batch):
         if 'plot_gradient_descent' in self.args_dict:
@@ -245,8 +256,7 @@ class ConstraintModel(BaseModel):
         return constraint_violated
 
     def __str__(self):
-        ops = [self.threshold_k]
-        return "threshold_k:\n{}\n".format(*self.sess.run(ops, feed_dict={}))
+        return self.args_dict['model_type']
 
 
 @dataclass

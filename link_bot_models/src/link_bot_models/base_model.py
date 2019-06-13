@@ -122,6 +122,12 @@ class BaseModel:
                 indexes = np.arange(n_train, dtype=np.int)
                 np.random.shuffle(indexes)
 
+                #######################
+                # Start Training Loop #
+                #######################
+
+                self.train_init_epoch_hook(epoch, step)
+                
                 for batch_start in range(0, n_train, batch_size):
                     batch_indexes = indexes[batch_start:batch_start + batch_size]
                     train_x_batch = train_x[:, batch_indexes]
@@ -140,7 +146,12 @@ class BaseModel:
                     if step % self.args_dict['print_period'] == 0 or step == 1:
                         print('epoch {:4d}, step: {:4d}, train loss: {:8.4f}'.format(epoch, step, train_loss))
 
+                #####################
+                # End Training Loop #
+                #####################
+
                 if epoch % self.args_dict['val_period'] == 0 or epoch == 0:
+                    self.validation_init_hook(epoch, step)
                     validation_feed_dict = self.build_feed_dict(validation_x_sample, validation_y_sample, **kwargs)
                     validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
 
@@ -192,3 +203,9 @@ class BaseModel:
 
     def __str__(self):
         return "base_model"
+
+    def train_init_epoch_hook(self, epoch, step):
+        pass
+
+    def validation_init_hook(self, epoch, step):
+        pass

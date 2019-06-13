@@ -110,9 +110,9 @@ def main():
         accuracy = (n_true_positives + n_true_negatives) / m
         precision = n_true_positives / (n_true_positives + n_false_positives)
         recall = n_true_negatives / (n_true_negatives + n_false_negatives)
-        print('accuracy:', accuracy)
-        print('precision:', precision)
-        print('recall:', recall)
+        print("accuracy: {:7.4f}".format(accuracy))
+        print("precision: {:7.4f}".format(precision))
+        print("recall: {:7.4f}".format(recall))
 
         savable = plot(args, sdf_data, model, args.threshold, results, true_positives, true_negatives,
                        false_positives, false_negatives)
