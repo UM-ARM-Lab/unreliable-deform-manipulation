@@ -13,9 +13,10 @@ from keras.backend.tensorflow_backend import set_session
 from keras.models import Model
 
 from link_bot_pycommon import experiments_util
+from link_bot_pycommon import link_bot_pycommon
 
 
-class ConstraintCNN:
+class ConstraintRasterCNN:
 
     def __init__(self, args_dict, sdf_shape, N):
         self.args_dict = args_dict
@@ -28,14 +29,12 @@ class ConstraintCNN:
         input = Input(shape=(sdf_shape[0], sdf_shape[0], 2), dtype='float32', name='input')
 
         self.conv_filters = [
-            (32, (3, 3)),
-            (32, (3, 3)),
-            (32, (3, 3)),
+            (16, (3, 3)),
+            (16, (3, 3)),
         ]
 
         self.fc_layer_sizes = [
-            64,
-            64,
+            32,
         ]
 
         conv_h = input
@@ -68,6 +67,23 @@ class ConstraintCNN:
         }
         return metadata
 
+    def prepare_data(self, x, y):
+        rope_inputs = x[0]
+        sdf = np.expand_dims(x[1], axis=3)
+        sdf_origin = x[3]
+        sdf_resolution = x[4]
+        rope_img = np.zeros_like(sdf)
+        for i, (origin, resolution) in enumerate(zip(sdf_origin, sdf_resolution)):
+            for j in range(3):
+                px = rope_inputs[i, 2 * j]
+                py = rope_inputs[i, 2 * j + 1]
+                row, col = link_bot_pycommon.point_to_sdf_idx(px, py, resolution, origin)
+                rope_img[i, row, col] = 1
+
+        inputs = np.concatenate((sdf, rope_img), axis=3)
+        labels = y[0]
+        return inputs, labels
+
     def train(self, train_x, train_y, validation_x, validation_y, epochs, log_path, **kwargs):
         """
         Wrapper around model.fit
@@ -81,24 +97,8 @@ class ConstraintCNN:
         :param kwargs:
         :return: whether the training process was interrupted early (by Ctrl+C)
         """
-        m = len(train_x)
-        train_rope_inputs = train_x[0]
-        train_sdf = np.expand_dims(train_x[1], axis=3)
-        train_rope_img = np.zeros_like(train_sdf)
-        train_rope_img[train_rope_inputs[:, 0], train_rope_inputs[:, 1]] = 1
-        train_rope_img[train_rope_inputs[:, 2], train_rope_inputs[:, 3]] = 1
-        train_rope_img[train_rope_inputs[:, 4], train_rope_inputs[:, 5]] = 1
-        train_inputs = np.concatenate((train_sdf, train_rope_img))
-        train_labels = train_y[0]
-
-        validation_rope_inputs = validation_x[0]
-        validation_sdf = np.expand_dims(validation_x[1], axis=3)
-        validation_rope_img = np.zeros_like(validation_sdf)
-        validation_rope_img[validation_rope_inputs[:, 0], validation_rope_inputs[:, 1]] = 1
-        validation_rope_img[validation_rope_inputs[:, 2], validation_rope_inputs[:, 3]] = 1
-        validation_rope_img[validation_rope_inputs[:, 4], validation_rope_inputs[:, 5]] = 1
-        validation_inputs = np.concatenate((validation_sdf, validation_rope_img))
-        validation_labels = validation_y[0]
+        train_inputs, train_labels = self.prepare_data(train_x, train_y)
+        validation_inputs, validation_labels = self.prepare_data(validation_x, validation_y)
 
         callbacks = []
         if self.args_dict['log'] is not None:
@@ -129,9 +129,8 @@ class ConstraintCNN:
         self.evaluate(validation_x, validation_y)
 
     def evaluate(self, eval_x, eval_y, display=True):
-        rope_inputs = eval_x[0]
-        sdf_inputs = np.expand_dims(eval_x[1], axis=3)
-        loss, accuracy = self.keras_model.evaluate({'sdf_input': sdf_inputs, 'rope_input': rope_inputs}, eval_y)
+        inputs, labels = self.prepare_data(eval_x, eval_y)
+        loss, accuracy = self.keras_model.evaluate(inputs, labels)
 
         if display:
             print("Overall Loss: {:0.3f}".format(float(loss)))

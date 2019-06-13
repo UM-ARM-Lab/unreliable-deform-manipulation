@@ -9,7 +9,7 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_models import multi_environment_datasets
-from link_bot_models.constraint_cnn import ConstraintCNN
+from link_bot_models.constraint_raster_cnn import ConstraintRasterCNN
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
@@ -19,7 +19,7 @@ def train(args):
     train_dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
     validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
     sdf_shape = train_dataset.sdf_shape
-    model = ConstraintCNN(vars(args), sdf_shape, args.N)
+    model = ConstraintRasterCNN(vars(args), sdf_shape, args.N)
 
     # convert data into two "lists" of numpy arrays
     train_inputs, train_labels = multi_environment_datasets.make_inputs_and_labels(train_dataset.environments)
@@ -39,7 +39,8 @@ def evaluate(args):
     sdf_shape = dataset.sdf_shape
 
     args_dict = vars(args)
-    model = ConstraintCNN(args_dict, sdf_shape, args.N)
+    model = ConstraintRasterCNN(args_dict, sdf_shape, args.N)
+    model.load()
 
     # take all the data as validation data
     validation_inputs, validation_labels = multi_environment_datasets.make_inputs_and_labels(dataset.environments)
@@ -63,7 +64,7 @@ def main():
     train_subparser.add_argument("validation_dataset", help="dataset (json file)")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=128)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=250)
+    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=125)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.set_defaults(func=train)
 
@@ -71,6 +72,7 @@ def main():
     eval_subparser.add_argument("dataset", help="dataset (json file)")
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
     eval_subparser.set_defaults(func=evaluate)
+
     args = parser.parse_args()
     commandline = ' '.join(sys.argv)
     args.commandline = commandline

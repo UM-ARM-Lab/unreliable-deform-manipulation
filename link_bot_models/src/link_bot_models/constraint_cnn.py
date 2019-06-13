@@ -29,14 +29,13 @@ class ConstraintCNN:
         rope_input = Input(shape=(N,), dtype='float32', name='rope_input')
 
         self.conv_filters = [
-            (32, (3, 3)),
-            (32, (3, 3)),
-            (32, (3, 3)),
+            (16, (3, 3)),
+            (16, (3, 3)),
         ]
 
         self.fc_layer_sizes = [
-            64,
-            64,
+            16,
+            8,
         ]
 
         conv_h = sdf_input
@@ -101,7 +100,6 @@ class ConstraintCNN:
             metadata_file = open(metadata_path, 'w')
             metadata = self.metadata()
             metadata['log path'] = full_log_path
-            print(metadata_path, metadata)
             metadata_file.write(json.dumps(metadata, indent=2))
 
             model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
