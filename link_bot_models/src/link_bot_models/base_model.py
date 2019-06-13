@@ -127,7 +127,7 @@ class BaseModel:
                 #######################
 
                 self.train_init_epoch_hook(epoch, step)
-                
+
                 for batch_start in range(0, n_train, batch_size):
                     batch_indexes = indexes[batch_start:batch_start + batch_size]
                     train_x_batch = train_x[:, batch_indexes]
@@ -154,8 +154,8 @@ class BaseModel:
                     self.validation_init_hook(epoch, step)
                     validation_feed_dict = self.build_feed_dict(validation_x_sample, validation_y_sample, **kwargs)
                     validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
-
-                    print('epoch {:4d}, step: {:4d}, validation loss: {:8.4f}'.format(epoch, step, validation_loss))
+                    validation_log_msg = 'epoch {:4d}, step: {:4d}, validation loss: {:8.4f}'.format(epoch, step, validation_loss)
+                    print(Fore.YELLOW + validation_log_msg + Fore.RESET)
                     if self.args_dict['log'] is not None:
                         writer.add_summary(validation_summary, step)
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from __future__ import division, print_function, absolute_import
 
 from enum import auto
@@ -88,7 +87,7 @@ class ConstraintModel(BaseModel):
             self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
             self.hidden_layer_dims = [6]
             h = self.observations
-            for layer_idx, hidden_layer_dim in enumerate(selfehidden_layer_dims):
+            for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
                 h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, use_bias=False,
                                     name='hidden_layer_{}'.format(layer_idx))
             self.hat_latent_k = tf.layers.dense(h, 2, activation=None, use_bias=True, name='output_layer')
@@ -244,16 +243,6 @@ class ConstraintModel(BaseModel):
         }
         predicted_violated, pt = self.sess.run([self.hat_k_violated, self.hat_latent_k], feed_dict=feed_dict)
         return np.any(predicted_violated, axis=1), pt
-
-    def constraint_violated(self, latent_k):
-        full_latent_k = np.ndarray((1, 2))
-        full_latent_k[0, 0] = latent_k
-        feed_dict = {self.hat_latent_k: full_latent_k}
-        ops = [self.hat_k_violated]
-        constraint_violated = self.sess.run(ops, feed_dict=feed_dict)
-        # take the first op from the list, then take the first batch and first time step from that
-        constraint_violated = constraint_violated[0, 0]
-        return constraint_violated
 
     def __str__(self):
         return self.args_dict['model_type']

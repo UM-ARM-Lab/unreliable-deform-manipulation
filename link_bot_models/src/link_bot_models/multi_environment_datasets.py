@@ -80,10 +80,11 @@ class Environment:
 
 class MultiEnvironmentDataset:
 
-    def __init__(self, filename_pairs, n_obstacles, obstacle_size, threshold):
+    def __init__(self, filename_pairs, n_obstacles, obstacle_size, threshold, seed):
         self.n_obstacles = n_obstacles
         self.obstacle_size = obstacle_size
         self.threshold = threshold
+        self.seed = seed
 
         self.abs_filename_pairs = []
         for filename_pair in filename_pairs:
@@ -114,13 +115,15 @@ class MultiEnvironmentDataset:
         n_obstacles = dataset_dict['n_obstacles']
         obstacle_size = dataset_dict['obstacle_size']
         threshold = dataset_dict['threshold']
+        seed = dataset_dict['seed']
         dataset = MultiEnvironmentDataset(filename_pairs, n_obstacles=n_obstacles, obstacle_size=obstacle_size,
-                                          threshold=threshold)
+                                          threshold=threshold, seed=seed)
         return dataset
 
     def save(self, dataset_filename):
         dataset_dict = {
             'n_environments': len(self.abs_filename_pairs),
+            'seed': self.seed,
             'sdf_shape': self.sdf_shape,
             'sdf_resolution': self.sdf_resolution,
             'n_rope_configurations_per_env': self.rope_configurations_per_env,

@@ -117,7 +117,7 @@ def generate(args):
 
     dataset_filename = os.path.join(args.outdir, 'dataset.json')
     dataset = MultiEnvironmentDataset(filename_pairs, n_obstacles=args.n_obstacles, obstacle_size=args.obstacle_size,
-                                      threshold=args.distance_constraint_threshold)
+                                      threshold=args.distance_constraint_threshold, seed=args.seed)
     dataset.save(dataset_filename)
 
 
@@ -145,7 +145,7 @@ def main():
     generate_parser.add_argument('h', type=int, help='environment with in meters (int)')
     generate_parser.add_argument('--seed', type=int, default=2, help='random seed')
     generate_parser.add_argument('--res', '-r', type=float, default=0.05, help='size of cells in meters')
-    generate_parser.add_argument('--n-obstacles', type=int, default=69, help='size of obstacles in cells')
+    generate_parser.add_argument('--n-obstacles', type=int, default=14, help='size of obstacles in cells')
     generate_parser.add_argument('--obstacle-size', type=int, default=10, help='size of obstacles in cells')
     generate_parser.add_argument('--distance-constraint-threshold', type=np.float32, default=0.0, help='constraint threshold')
     generate_parser.add_argument('--plot', action='store_true')
