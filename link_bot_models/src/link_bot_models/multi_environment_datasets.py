@@ -71,7 +71,7 @@ def make_inputs_and_labels(environments):
     return inputs, labels
 
 
-class Environment:
+class EnvironmentData:
 
     def __init__(self, sdf_data, rope_data):
         self.sdf_data = sdf_data
@@ -105,7 +105,7 @@ class MultiEnvironmentDataset:
             error_msg = "SDFs shape {} doesn't match shape {}".format(self.sdf_shape, sdf_data.sdf.shape)
             assert self.sdf_shape == sdf_data.sdf.shape, error_msg
 
-            env = Environment(sdf_data, rope_data)
+            env = EnvironmentData(sdf_data, rope_data)
             self.environments[i] = env
 
     @staticmethod

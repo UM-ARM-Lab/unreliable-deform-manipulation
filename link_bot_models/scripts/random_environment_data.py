@@ -15,16 +15,6 @@ import sdf_tools
 def plot(args, sdf_data, threshold, rope_configurations, constraint_labels):
     del args  # unused
     plt.figure()
-    plt.imshow(np.flipud(sdf_data.sdf.T), extent=sdf_data.extent)
-    subsample = 16
-    x_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[0])
-    y_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[1])
-    y, x = np.meshgrid(y_range, x_range)
-    dx = sdf_data.gradient[::subsample, ::subsample, 0]
-    dy = sdf_data.gradient[::subsample, ::subsample, 1]
-    plt.quiver(x, y, dx, dy, units='x', scale=5, headwidth=2, headlength=4)
-
-    plt.figure()
     binary = (sdf_data.sdf < threshold).astype(np.uint8)
     plt.imshow(np.flipud(binary.T), extent=sdf_data.extent)
 
@@ -33,9 +23,20 @@ def plot(args, sdf_data, threshold, rope_configurations, constraint_labels):
         constraint_label = constraint_labels[idx]
         xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
         ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
-        plt.plot(xs, ys, linewidth=0.5, zorder=1, alpha=0.5)
-        color = 'r' if constraint_label else 'g'
-        plt.scatter(rope_configuration[4], rope_configuration[5], s=16, c=color, zorder=2)
+        sdf_constraint_color = 'r' if constraint_label[0] else 'g'
+        overstretched_constraint_color = 'r' if constraint_label[1] else 'g'
+        plt.plot(xs, ys, linewidth=0.5, zorder=1, c=overstretched_constraint_color)
+        plt.scatter(rope_configuration[4], rope_configuration[5], s=16, c=sdf_constraint_color, zorder=2)
+
+    plt.figure()
+    plt.imshow(np.flipud(sdf_data.sdf.T), extent=sdf_data.extent)
+    subsample = 2
+    x_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[0])
+    y_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[1])
+    y, x = np.meshgrid(y_range, x_range)
+    dx = sdf_data.gradient[::subsample, ::subsample, 0]
+    dy = sdf_data.gradient[::subsample, ::subsample, 1]
+    plt.quiver(x, y, dx, dy, units='x', scale=10)
 
 
 def generate_env(args):
@@ -45,15 +46,16 @@ def generate_env(args):
     n_cols = int(args.w / args.res)
     n_cells = n_rows * n_cols
 
+    # pick random locations to place obstacles on a grid
     sdf_origin = np.array([n_rows // 2, n_cols // 2], dtype=np.int32)
     grid_world = np.zeros((n_rows, n_cols))
     occupied_cells = np.random.choice(n_cells, size=args.n_obstacles)
     occupied_cells_row, occupied_cells_col = np.unravel_index(occupied_cells, [n_rows, n_cols])
     for obstacle_row, obstacle_col in zip(occupied_cells_row, occupied_cells_col):
-        for drow in range(-args.obstacle_size, args.obstacle_size + 1):
-            for dcol in range(-args.obstacle_size, args.obstacle_size + 1):
-                r = (obstacle_row + int(drow)) % n_rows
-                c = (obstacle_col + int(dcol)) % n_cols
+        for delta_row in range(-args.obstacle_size, args.obstacle_size + 1):
+            for delta_col in range(-args.obstacle_size, args.obstacle_size + 1):
+                r = (obstacle_row + int(delta_row)) % n_rows
+                c = (obstacle_col + int(delta_col)) % n_cols
                 grid_world[r, c] = 1
 
     # create a signed distance field from the grid
@@ -62,19 +64,30 @@ def generate_env(args):
 
     # create random rope configurations
     rope_configurations = np.ndarray((args.n, 6), dtype=np.float32)
-    constraint_labels = np.ndarray((args.n, 1), dtype=np.float32)
+    constraint_labels = np.ndarray((args.n, 2), dtype=np.float32)
+    nominal_link_length = 0.5
+    overstretched_threshold = nominal_link_length * args.overstretched_factor_threshold
     for i in range(args.n):
-        rope_configurations[i] = link_bot_pycommon.make_random_rope_configuration(sdf_data.extent)
+        # half gaussian with variance such that ~20% of ropes will be overstretched
+        length = abs(np.random.randn()) * 0.039 + nominal_link_length
+        rope_configurations[i] = link_bot_pycommon.make_random_rope_configuration(sdf_data.extent, length=length)
+        tail_x = rope_configurations[i, 0]
+        tail_y = rope_configurations[i, 1]
+        mid_x = rope_configurations[i, 2]
+        mid_y = rope_configurations[i, 3]
         head_x = rope_configurations[i, 4]
         head_y = rope_configurations[i, 5]
         row, col = link_bot_pycommon.point_to_sdf_idx(head_x, head_y, sdf_resolution, sdf_origin)
-        constraint_labels[i] = sdf[row, col] < args.distance_constraint_threshold
+        constraint_labels[i, 0] = sdf[row, col] < args.sdf_threshold
+        tail_mid_overstretched = np.hypot(tail_x - mid_x, tail_y - mid_y) > overstretched_threshold
+        mid_head_overstretched = np.hypot(mid_x - head_x, mid_y - head_y) > overstretched_threshold
+        constraint_labels[i, 1] = tail_mid_overstretched or mid_head_overstretched
 
-    n_positive = np.count_nonzero(constraint_labels)
-    percentage_positive = n_positive * 100.0 / args.n
+    n_positive = np.count_nonzero(np.any(constraint_labels, axis=1))
+    percentage_positive = n_positive * 100.0 / constraint_labels.shape[0]
 
     if args.plot:
-        plot(args, sdf_data, args.distance_constraint_threshold, rope_configurations, constraint_labels)
+        plot(args, sdf_data, args.sdf_threshold, rope_configurations, constraint_labels)
 
         plt.show()
 
@@ -82,11 +95,12 @@ def generate_env(args):
 
 
 def generate(args):
-    if os.path.isfile(args.outdir):
-        print(Fore.RED + "argument outdir is an existing file, aborting." + Fore.RESET)
-        return
-    elif not os.path.isdir(args.outdir):
-        os.mkdir(args.outdir)
+    if args.outdir:
+        if os.path.isfile(args.outdir):
+            print(Fore.RED + "argument outdir is an existing file, aborting." + Fore.RESET)
+            return
+        elif not os.path.isdir(args.outdir):
+            os.mkdir(args.outdir)
 
     np.random.seed(args.seed)
 
@@ -107,7 +121,7 @@ def generate(args):
                      constraints=constraint_labels,
                      # save this so we can visualize what the true constraint boundary is
                      # this value should not be used for training, that would be cheating!
-                     threshold=args.distance_constraint_threshold)
+                     threshold=args.sdf_threshold)
             sdf_data.save(sdf_filename)
         print(".", end='')
         sys.stdout.flush()
@@ -116,10 +130,11 @@ def generate(args):
     mean_percentage_positive = np.mean(percentages_positive)
     print("Class balance: mean % positive: {}".format(mean_percentage_positive))
 
-    dataset_filename = os.path.join(args.outdir, 'dataset.json')
-    dataset = MultiEnvironmentDataset(filename_pairs, n_obstacles=args.n_obstacles, obstacle_size=args.obstacle_size,
-                                      threshold=args.distance_constraint_threshold, seed=args.seed)
-    dataset.save(dataset_filename)
+    if args.outdir:
+        dataset_filename = os.path.join(args.outdir, 'dataset.json')
+        dataset = MultiEnvironmentDataset(filename_pairs, n_obstacles=args.n_obstacles, obstacle_size=args.obstacle_size,
+                                          threshold=args.sdf_threshold, seed=args.seed)
+        dataset.save(dataset_filename)
 
 
 def plot_main(args):
@@ -148,7 +163,8 @@ def main():
     generate_parser.add_argument('--res', '-r', type=float, default=0.05, help='size of cells in meters')
     generate_parser.add_argument('--n-obstacles', type=int, default=14, help='size of obstacles in cells')
     generate_parser.add_argument('--obstacle-size', type=int, default=10, help='size of obstacles in cells')
-    generate_parser.add_argument('--distance-constraint-threshold', type=np.float32, default=0.0, help='constraint threshold')
+    generate_parser.add_argument('--sdf-threshold', type=np.float32, default=0.0)
+    generate_parser.add_argument('--overstretched-factor-threshold', type=np.float32, default=1.1)
     generate_parser.add_argument('--plot', action='store_true')
     generate_parser.add_argument('--outdir')
 
