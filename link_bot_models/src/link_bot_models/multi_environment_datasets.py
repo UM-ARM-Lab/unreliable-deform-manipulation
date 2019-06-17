@@ -1,17 +1,10 @@
 import json
 import os
-from enum import auto
 
 import numpy as np
 
-from link_bot_pycommon import link_bot_pycommon
+from link_bot_models.label_types import LabelType
 from link_bot_pycommon.link_bot_pycommon import SDF
-
-
-class LabelType(link_bot_pycommon.ArgsEnum):
-    SDF = auto()
-    Overstretching = auto()
-    SDF_and_Overstretching = auto()
 
 
 class FancyList:
@@ -88,43 +81,59 @@ class EnvironmentData:
 
 class MultiEnvironmentDataset:
 
-    def __init__(self, filename_pairs, n_obstacles, obstacle_size, threshold, seed):
+    def __init__(self, filename_pairs, constraint_label_types, n_obstacles, obstacle_size, threshold, seed):
+        self.constraint_label_types = constraint_label_types
         self.n_obstacles = n_obstacles
         self.obstacle_size = obstacle_size
         self.threshold = threshold
         self.seed = seed
 
+        # convert all file paths to be absolute
         self.abs_filename_pairs = []
         for filename_pair in filename_pairs:
             self.abs_filename_pairs.append([os.path.abspath(filename) for filename in filename_pair])
 
-        # make sure all the SDFs have the same shape
+        # construct a flat list of training examples which are distributed in the files listed in the filename_pairs
+        self.example_information = []
         self.sdf_shape = None
         self.n_environments = len(filename_pairs)
-        self.environments = np.ndarray([self.n_environments], dtype=np.object)
+        example_id = 0
         for i, (sdf_filename, rope_data_filename) in enumerate(filename_pairs):
             sdf_data = SDF.load(sdf_filename)
             rope_data = np.load(rope_data_filename)
+            examples_in_env = rope_data['rope_configurations'].shape[0]
 
             if i == 0:
-                self.rope_configurations_per_env = rope_data['rope_configurations'].shape[0]
+                # store useful information about the dataset
+                self.rope_configurations_per_env = examples_in_env
                 self.sdf_shape = sdf_data.sdf.shape
                 self.sdf_resolution = sdf_data.resolution.tolist()
             error_msg = "SDFs shape {} doesn't match shape {}".format(self.sdf_shape, sdf_data.sdf.shape)
             assert self.sdf_shape == sdf_data.sdf.shape, error_msg
 
-            env = EnvironmentData(sdf_data, rope_data)
-            self.environments[i] = env
+            for j in range(examples_in_env):
+                self.example_information.append({
+                    'sdf_filename': sdf_filename,
+                    'rope_data_filename': rope_data_filename,
+                    'rope_data_index': j
+                })
+                example_id += 1
+        self.num_examples = example_id
+
+    def generator(self, batch_size):
+        return DatasetGenerator(self, self.constraint_label_types, batch_size)
 
     @staticmethod
     def load_dataset(dataset_filename):
         dataset_dict = json.load(open(dataset_filename, 'r'))
+        constraint_label_types = [LabelType[label_type] for label_type in dataset_dict['constraint_label_types']]
         filename_pairs = dataset_dict['filename_pairs']
         n_obstacles = dataset_dict['n_obstacles']
         obstacle_size = dataset_dict['obstacle_size']
         threshold = dataset_dict['threshold']
         seed = dataset_dict['seed']
-        dataset = MultiEnvironmentDataset(filename_pairs, n_obstacles=n_obstacles, obstacle_size=obstacle_size,
+        dataset = MultiEnvironmentDataset(filename_pairs, constraint_label_types=constraint_label_types, n_obstacles=n_obstacles,
+                                          obstacle_size=obstacle_size,
                                           threshold=threshold, seed=seed)
         return dataset
 
@@ -139,5 +148,62 @@ class MultiEnvironmentDataset:
             'obstacle_size': self.obstacle_size,
             'threshold': self.threshold,
             'filename_pairs': self.abs_filename_pairs,
+            'constraint_label_types': [label_type.name for label_type in self.constraint_label_types],
         }
         json.dump(dataset_dict, open(dataset_filename, 'w'), sort_keys=True, indent=4)
+
+
+class DatasetGenerator:
+
+    def __init__(self, dataset, label_types, batch_size):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        examples_ids = np.arange(0, self.dataset.num_examples)
+        np.random.shuffle(examples_ids)
+        self.batches = np.reshape(examples_ids, [-1, batch_size])
+        self.label_mask = LabelType.mask(label_types)
+
+    def __len__(self):
+        return self.batches.shape[0]
+
+    def __getitem__(self, index):
+        """
+        Generate one batch of data
+        :param index: an id number for which batch to load
+        :return: a batch of data (x, y) where x and y are numpy arrays
+        """
+        batch_indeces = self.batches[index]
+        x = {
+            'sdf': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1]]),
+            'sdf_gradient': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1], 2]),
+            'sdf_origin': np.ndarray([self.batch_size, 2]),
+            'sdf_resolution': np.ndarray([self.batch_size, 2]),
+            'sdf_extent': np.ndarray([self.batch_size, 4]),
+            'rope_configuration': np.ndarray([self.batch_size, 6])
+        }
+        y = {
+            'combined_output': np.ndarray([self.batch_size, 1]),
+            'all_output': np.ndarray([self.batch_size, self.label_mask.shape[0]]),
+        }
+
+        for i, example_id in enumerate(batch_indeces):
+            example_info = self.dataset.example_information[example_id]
+            sdf_data = SDF.load(example_info['sdf_filename'])
+            rope_data = np.load(example_info['rope_data_filename'])
+
+            rope_configuration = rope_data['rope_configurations'][example_info['rope_data_index']]
+
+            all_label = rope_data['constraints'][example_info['rope_data_index']].astype(np.float32)
+            combined_label = np.any(all_label * self.label_mask).astype(np.float32)
+
+            x['sdf'][i] = sdf_data.sdf
+            x['sdf_gradient'][i] = sdf_data.gradient
+            x['sdf_origin'][i] = sdf_data.origin
+            x['sdf_resolution'][i] = sdf_data.resolution
+            x['sdf_extent'][i] = sdf_data.extent
+            x['rope_configuration'][i] = rope_configuration
+
+            y['all_output'][i] = all_label
+            y['combined_output'][i] = combined_label
+
+        return x, y

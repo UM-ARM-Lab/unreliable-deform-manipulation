@@ -10,8 +10,9 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_models import multi_environment_datasets
-from link_bot_models.constraint_model import ConstraintModelType, ConstraintModel
+from link_bot_models.constraint_sdf import ConstraintSDF
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_models.label_types import LabelType
 from link_bot_pycommon import experiments_util
 
 
@@ -20,7 +21,7 @@ def train(args):
     train_dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
     validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
     sdf_shape = train_dataset.sdf_shape
-    model = ConstraintModel(vars(args), sdf_shape, args.N)
+    model = ConstraintSDF(vars(args), sdf_shape, args.N)
 
     model.setup()
 
@@ -39,7 +40,7 @@ def train(args):
 def model_only(args):
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = ConstraintModel(args_dict, [10, 10], args.N)
+    model = ConstraintSDF(args_dict, [10, 10], args.N)
 
     model.init()
 
@@ -58,7 +59,7 @@ def evaluate(args):
 
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = ConstraintModel(args_dict, sdf_shape, args.N)
+    model = ConstraintSDF(args_dict, sdf_shape, args.N)
     model.setup()
 
     # take all the data as validation data
@@ -70,7 +71,7 @@ def evaluate(args):
 def show(args):
     args_dict = vars(args)
     args_dict['random_init'] = False
-    model = ConstraintModel(args_dict, [10, 10], args.N)
+    model = ConstraintSDF(args_dict, [10, 10], args.N)
     model.setup()
     print(model)
 
@@ -84,7 +85,7 @@ def main():
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("model_type", type=ConstraintModelType.from_string, choices=list(ConstraintModelType))
+    parser.add_argument("label_type", type=LabelType.from_string, choices=list(LabelType))
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")

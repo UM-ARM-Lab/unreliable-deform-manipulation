@@ -5,20 +5,24 @@ import argparse
 from time import time
 
 import matplotlib.pyplot as plt
-from colorama import Fore
+from colorama import Fore, Style
 import numpy as np
 import tensorflow as tf
 
-from link_bot_models import constraint_model
+from link_bot_models import constraint_sdf
 from link_bot_models import plotting
-from link_bot_models.constraint_model import ConstraintModel, ConstraintModelType
+from link_bot_models.constraint_sdf import ConstraintSDF
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_models.label_types import LabelType
 
 
 def plot(args, sdf_data, model, threshold, results, true_positives, true_negatives, false_positives, false_negatives):
     n_examples = results.shape[0]
 
     sdf_data.image = (sdf_data.image < threshold).astype(np.uint8)
+
+    if args.plot_type == plotting.PlotType.none:
+        return None
 
     if args.plot_type == plotting.PlotType.random_individual:
         random_indexes = np.random.choice(n_examples, size=10, replace=False)
@@ -69,10 +73,10 @@ def main():
     tf.logging.set_verbosity(tf.logging.ERROR)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("model_type", type=ConstraintModelType.from_string, choices=list(ConstraintModelType))
     parser.add_argument("dataset", help='use this dataset instead of random rope configurations')
     parser.add_argument("checkpoint", help="eval the *.ckpt name")
     parser.add_argument("threshold", type=float)
+    parser.add_argument("label_type", type=LabelType.from_string, choices=list(LabelType))
     parser.add_argument("plot_type", type=plotting.PlotType.from_string, choices=list(plotting.PlotType))
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--save", action='store_true')
@@ -87,38 +91,46 @@ def main():
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
 
     args_dict = vars(args)
-    model = ConstraintModel(args_dict, dataset.sdf_shape, args.N)
+    model = ConstraintSDF(args_dict, dataset.sdf_shape, args.N)
     model.setup()
 
     for env_idx, environment in enumerate(dataset.environments):
-        print(Fore.GREEN + "Environment {}".format(env_idx) + Fore.RESET)
+        print(Style.BRIGHT + Fore.GREEN + "Environment {}".format(env_idx) + Fore.RESET + Style.NORMAL)
 
         sdf_data = environment.sdf_data
 
-        results = constraint_model.evaluate(model, environment)
+        results = constraint_sdf.test_predictions(model, environment)
         m = results.shape[0]
 
-        true_positives = np.array([result for result in results if result.true_violated and result.predicted_violated])
+        n_positives = len([result for result in results if np.any(result.true_violated)])
+        n_negatives = len([result for result in results if not np.any(result.true_violated)])
+        print(n_positives, n_negatives)
+
+        true_positives = [result for result in results if np.any(result.true_violated) and result.predicted_violated]
+        true_positives = np.array(true_positives)
         n_true_positives = len(true_positives)
-        false_positives = np.array([result for result in results if result.true_violated and not result.predicted_violated])
+        false_positives = [result for result in results if np.any(result.true_violated) and not result.predicted_violated]
+        false_positives = np.array(false_positives)
         n_false_positives = len(false_positives)
-        true_negatives = np.array([result for result in results if not result.true_violated and not result.predicted_violated])
+        true_negatives = [result for result in results if not np.any(result.true_violated) and not result.predicted_violated]
+        true_negatives = np.array(true_negatives)
         n_true_negatives = len(true_negatives)
-        false_negatives = np.array([result for result in results if not result.true_violated and result.predicted_violated])
+        false_negatives = [result for result in results if not np.any(result.true_violated) and result.predicted_violated]
+        false_negatives = np.array(false_negatives)
         n_false_negatives = len(false_negatives)
 
-        accuracy = (n_true_positives + n_true_negatives) / m
-        precision = n_true_positives / (n_true_positives + n_false_positives)
-        recall = n_true_negatives / (n_true_negatives + n_false_negatives)
-        print("accuracy: {:7.4f}".format(accuracy))
-        print("precision: {:7.4f}".format(precision))
-        print("recall: {:7.4f}".format(recall))
+        accuracy = (n_true_positives + n_true_negatives) / m * 100
+        precision = n_true_positives / (n_true_positives + n_false_positives) * 100
+        recall = n_true_negatives / (n_true_negatives + n_false_negatives) * 100
+        print("precision: {:4.1f}%".format(precision))
+        print("recall: {:4.1f}%".format(recall))
+        print(Style.BRIGHT + "accuracy: {:4.1f}%".format(accuracy) + Style.NORMAL)
 
         savable = plot(args, sdf_data, model, args.threshold, results, true_positives, true_negatives,
                        false_positives, false_negatives)
 
         plt.show()
-        if args.save:
+        if args.save and savable:
             savable.save('plot_constraint_{}-{}'.format(args.plot_type.name, int(time())))
 
 

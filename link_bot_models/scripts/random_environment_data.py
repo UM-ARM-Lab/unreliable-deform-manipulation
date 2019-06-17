@@ -10,25 +10,24 @@ import numpy as np
 from colorama import Fore
 
 import sdf_tools
+from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon.link_bot_pycommon import SDF
 
 
-def plot(args, sdf_data, threshold, rope_configurations, constraint_labels):
+def plot(args, sdf_data, threshold, rope_configuration, constraint_labels):
     del args  # unused
     plt.figure()
     binary = (sdf_data.sdf < threshold).astype(np.uint8)
     plt.imshow(np.flipud(binary.T), extent=sdf_data.extent)
 
-    for idx in np.random.choice(rope_configurations.shape[0], size=1000):
-        rope_configuration = rope_configurations[idx]
-        constraint_label = constraint_labels[idx]
-        xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
-        ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
-        sdf_constraint_color = 'r' if constraint_label[0] else 'g'
-        overstretched_constraint_color = 'r' if constraint_label[1] else 'g'
-        plt.plot(xs, ys, linewidth=0.5, zorder=1, c=overstretched_constraint_color)
-        plt.scatter(rope_configuration[4], rope_configuration[5], s=16, c=sdf_constraint_color, zorder=2)
+    xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
+    ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
+    sdf_constraint_color = 'r' if constraint_labels[0] else 'g'
+    overstretched_constraint_color = 'r' if constraint_labels[1] else 'g'
+    plt.plot(xs, ys, linewidth=0.5, zorder=1, c=overstretched_constraint_color)
+    plt.scatter(rope_configuration[4], rope_configuration[5], s=16, c=sdf_constraint_color, zorder=2)
 
     plt.figure()
     plt.imshow(np.flipud(sdf_data.sdf.T), extent=sdf_data.extent)
@@ -88,8 +87,9 @@ def generate_env(args):
     n_positive = np.count_nonzero(np.any(constraint_labels, axis=1))
     percentage_positive = n_positive * 100.0 / constraint_labels.shape[0]
 
-    if args.plot:
-        plot(args, sdf_data, args.sdf_threshold, rope_configurations, constraint_labels)
+    if args.n_plots and args.n_plots > 0:
+        for i in np.random.choice(rope_configurations.shape[0], size=args.n_plots):
+            plot(args, sdf_data, args.sdf_threshold, rope_configurations[i], constraint_labels[i])
 
         plt.show()
 
@@ -109,6 +109,9 @@ def generate(args):
         # but we als do want to be able to recreate the output from a seed, so we generate a random seed if non is provided
         args.seed = np.random.randint(0, 10000)
     np.random.seed(args.seed)
+
+    # Define what kinds of labels are contained in this dataset
+    constraint_label_types = [LabelType.SDF, LabelType.Overstretching]
 
     filename_pairs = []
     percentages_positive = []
@@ -138,19 +141,25 @@ def generate(args):
 
     if args.outdir:
         dataset_filename = os.path.join(args.outdir, 'dataset.json')
-        dataset = MultiEnvironmentDataset(filename_pairs, n_obstacles=args.n_obstacles, obstacle_size=args.obstacle_size,
+        dataset = MultiEnvironmentDataset(filename_pairs, constraint_label_types=constraint_label_types,
+                                          n_obstacles=args.n_obstacles, obstacle_size=args.obstacle_size,
                                           threshold=args.sdf_threshold, seed=args.seed)
         dataset.save(dataset_filename)
 
 
 def plot_main(args):
+    np.random.seed(args.seed)
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
-    for environment in dataset.environments[:args.n]:
-        rope_configurations = environment.rope_data['rope_configurations']
-        threshold = environment.rope_data['threshold']
-        constraint_labels = environment.rope_data['constraints']
-
-        plot(args, environment.sdf_data, threshold, rope_configurations, constraint_labels)
+    generator = dataset.generator(args.n)
+    xs, ys = generator[0]
+    for i in range(args.n):
+        sdf_data = SDF(sdf=xs['sdf'][i],
+                       gradient=xs['sdf_gradient'][i],
+                       resolution=xs['sdf_resolution'][i],
+                       origin=xs['sdf_origin'][i])
+        rope_configuration = xs['rope_configuration'][i]
+        constraint_labels = ys['all_output'][i]
+        plot(args, sdf_data, dataset.threshold, rope_configuration, constraint_labels)
 
     plt.show()
 
@@ -171,13 +180,14 @@ def main():
     generate_parser.add_argument('--obstacle-size', type=int, default=8, help='size of obstacles in cells')
     generate_parser.add_argument('--sdf-threshold', type=np.float32, default=0.0)
     generate_parser.add_argument('--overstretched-factor-threshold', type=np.float32, default=1.1)
-    generate_parser.add_argument('--plot', action='store_true')
+    generate_parser.add_argument('--n-plots', type=int, help='number of examples to plot')
     generate_parser.add_argument('--outdir')
 
     plot_parser = subparsers.add_parser('plot')
     plot_parser.set_defaults(func=plot_main)
     plot_parser.add_argument('dataset', help='json dataset file')
-    plot_parser.add_argument('n', type=int, help='number of environments to plot')
+    plot_parser.add_argument('n', type=int, help='number of examples to plot')
+    plot_parser.add_argument('--seed', type=int, help='random seed')
 
     args = parser.parse_args()
 

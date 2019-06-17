@@ -6,11 +6,11 @@ import sys
 
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
 
 from link_bot_models import multi_environment_datasets
 from link_bot_models.constraint_cnn import ConstraintCNN
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset, LabelType
+from link_bot_models.label_types import LabelType
+from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
 
@@ -20,18 +20,8 @@ def train(args):
     validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
     sdf_shape = train_dataset.sdf_shape
     model = ConstraintCNN(vars(args), sdf_shape, args.N)
-
-    # convert data into two "lists" of numpy arrays
-    train_inputs, train_labels = multi_environment_datasets.make_inputs_and_labels(train_dataset.environments)
-
-    validation_inputs, validation_labels = multi_environment_datasets.make_inputs_and_labels(validation_dataset.environments)
-
-    model.train(train_inputs, train_labels, validation_inputs, validation_labels, args.epochs, log_path)
-
-    print(Fore.GREEN + "\nTrain Evaluation" + Fore.RESET)
-    model.evaluate(train_inputs, train_labels)
-    print(Fore.GREEN + "\nValidation Evaluation" + Fore.RESET)
-    model.evaluate(validation_inputs, validation_labels)
+    model.train(train_dataset, validation_dataset, args.epochs, log_path)
+    model.evaluate(validation_dataset)
 
 
 def evaluate(args):

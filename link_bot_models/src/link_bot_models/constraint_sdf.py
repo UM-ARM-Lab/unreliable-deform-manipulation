@@ -1,28 +1,30 @@
 from __future__ import division, print_function, absolute_import
 
-from enum import auto
-
 import matplotlib.pyplot as plt
 import numpy as np
+from colorama import Style
 import tensorflow as tf
 from attr import dataclass
 
 from link_bot_models import plotting
 from link_bot_models.base_model import BaseModel
+from link_bot_models.label_types import LabelType
 from link_bot_models.tf_signed_distance_field_op import sdf_func
 from link_bot_pycommon import link_bot_pycommon
 
 
-class ConstraintModelType(link_bot_pycommon.ArgsEnum):
-    FullLinear = auto()
-    LinearCombination = auto()
-    FNN = auto()
-
-
-class ConstraintModel(BaseModel):
+class ConstraintSDF(BaseModel):
 
     def __init__(self, args, sdf_shape, N):
-        super(ConstraintModel, self).__init__(args, N)
+        super(ConstraintSDF, self).__init__(args, N)
+
+        self.label_type = self.args_dict['label_type']
+        if self.label_type == LabelType.SDF:
+            self.label_mask = np.array([1, 0], dtype=np.int)
+        elif self.label_type == LabelType.Overstretching:
+            self.label_mask = np.array([0, 1], dtype=np.int)
+        elif self.label_type == LabelType.SDF_and_Overstretching:
+            self.label_mask = np.array([1, 1], dtype=np.int)
 
         self.beta = 1e-2
 
@@ -63,8 +65,19 @@ class ConstraintModel(BaseModel):
         _, self.constraint_prediction_accuracy = tf.metrics.accuracy(labels=self.k_label,
                                                                      predictions=self.hat_k_violated,
                                                                      name="constraint_prediction_accuracy_metric")
+        _, self.constraint_prediction_precision = tf.metrics.precision(labels=self.k_label,
+                                                                       predictions=self.hat_k_violated,
+                                                                       name="constraint_prediction_precision_metric")
+        _, self.constraint_prediction_recall = tf.metrics.recall(labels=self.k_label,
+                                                                 predictions=self.hat_k_violated,
+                                                                 name="constraint_prediction_recall_metric")
         self.accuracy_local_vars = tf.get_collection(tf.GraphKeys.LOCAL_VARIABLES, scope="constraint_prediction_accuracy_metric")
         self.accuracy_local_vars_initializer = tf.variables_initializer(var_list=self.accuracy_local_vars)
+        self.precision_local_vars = tf.get_collection(tf.GraphKeys.LOCAL_VARIABLES,
+                                                      scope="constraint_prediction_precision_metric")
+        self.precision_local_vars_initializer = tf.variables_initializer(var_list=self.precision_local_vars)
+        self.recall_local_vars = tf.get_collection(tf.GraphKeys.LOCAL_VARIABLES, scope="constraint_prediction_recall_metric")
+        self.recall_local_vars_initializer = tf.variables_initializer(var_list=self.recall_local_vars)
 
         with tf.name_scope("train"):
             # sum of squared errors in latent space at each time step
@@ -105,6 +118,10 @@ class ConstraintModel(BaseModel):
 
             tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy,
                               collections=['train'])
+            tf.summary.scalar("constraint_prediction_precision_summary", self.constraint_prediction_precision,
+                              collections=['train'])
+            tf.summary.scalar("constraint_prediction_recall_summary", self.constraint_prediction_recall,
+                              collections=['train'])
             # tf.summary.scalar("k_threshold_summary", self.threshold_k, collections=['train'])
             tf.summary.scalar("out_of_bounds_loss_summary", self.out_of_bounds_loss,
                               collections=['train'])
@@ -115,6 +132,10 @@ class ConstraintModel(BaseModel):
 
         with tf.name_scope("validation"):
             tf.summary.scalar("constraint_prediction_accuracy_summary", self.constraint_prediction_accuracy,
+                              collections=['validation'])
+            tf.summary.scalar("constraint_prediction_precision_summary", self.constraint_prediction_precision,
+                              collections=['validation'])
+            tf.summary.scalar("constraint_prediction_recall_summary", self.constraint_prediction_recall,
                               collections=['validation'])
             # tf.summary.scalar("k_threshold_summary", self.threshold_k, collections=['validation'])
             tf.summary.scalar("out_of_bounds_loss_summary", self.out_of_bounds_loss,
@@ -134,9 +155,9 @@ class ConstraintModel(BaseModel):
             'N': self.N,
             'beta': self.beta,
             'sigmoid_scale': self.sigmoid_scale,
+            'label_type': str(self.label_type),
             'commandline': self.args_dict['commandline'],
             'hidden_layer_dims': self.hidden_layer_dims,
-            'model_type': str(self.args_dict['model_type']),
         }
         return metadata
 
@@ -147,25 +168,29 @@ class ConstraintModel(BaseModel):
         :param kwargs:
         :return:
         """
+        labels = np.any(y[0] * self.label_mask, axis=1, keepdims=True).astype(np.float32)
         return {self.observations: x[0],
                 self.sdf: x[1],
                 self.sdf_gradient: x[2],
                 self.sdf_origin: x[3],
                 self.sdf_resolution: x[4],
                 self.sdf_extent: x[5],
-                self.k_label: y[0]}
+                self.k_label: labels}
 
     def evaluate(self, eval_x, eval_y, display=True):
         feed_dict = self.build_feed_dict(eval_x, eval_y)
-        ops = [self.threshold_k, self.constraint_prediction_loss, self.loss, self.constraint_prediction_accuracy]
-        threshold_k, k_loss, loss, k_accuracy = self.sess.run(ops, feed_dict=feed_dict)
+        ops = [self.threshold_k, self.constraint_prediction_loss, self.loss, self.constraint_prediction_accuracy,
+               self.constraint_prediction_precision, self.constraint_prediction_recall]
+        threshold, k_loss, loss, accuracy, precision, recall = self.sess.run(ops, feed_dict=feed_dict)
 
         if display:
             print("Constraint Loss: {:0.3f}".format(float(k_loss)))
             print("Overall Loss: {:0.3f}".format(float(loss)))
-            print("constraint prediction accuracy:\n{}".format(k_accuracy))
+            print("Precision: {:4.1f}%".format(precision * 100))
+            print("Recall: {:4.1f}%".format(recall * 100))
+            print(Style.BRIGHT + "Accuracy: {:4.1f}%".format(accuracy * 100) + Style.NORMAL)
 
-        return threshold_k, k_loss, loss
+        return threshold, k_loss, loss
 
     def start_train_hook(self):
         self.fig = plt.figure()
@@ -205,7 +230,7 @@ class ConstraintModel(BaseModel):
         return np.any(predicted_violated, axis=1), pt
 
     def __str__(self):
-        return self.args_dict['model_type']
+        return "sdf model"
 
 
 @dataclass
@@ -216,7 +241,7 @@ class EvaluateResult:
     true_violated: bool
 
 
-def evaluate_single(sdf_data, model, threshold, rope_configuration):
+def test_single_prediction(sdf_data, model, threshold, rope_configuration):
     rope_configuration = rope_configuration.reshape(-1, 6)
     predicted_violated, predicted_point = model.violated(rope_configuration, sdf_data)
     predicted_point = predicted_point.squeeze()
@@ -230,7 +255,7 @@ def evaluate_single(sdf_data, model, threshold, rope_configuration):
     return result
 
 
-def evaluate(model, environment):
+def test_predictions(model, environment):
     rope_configurations = environment.rope_data['rope_configurations']
     constraint_labels = environment.rope_data['constraints']
 

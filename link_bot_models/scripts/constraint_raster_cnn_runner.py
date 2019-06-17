@@ -10,7 +10,8 @@ from colorama import Fore
 
 from link_bot_models import multi_environment_datasets
 from link_bot_models.constraint_raster_cnn import ConstraintRasterCNN
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset, LabelType
+from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_models.label_types import LabelType
 from link_bot_pycommon import experiments_util
 
 

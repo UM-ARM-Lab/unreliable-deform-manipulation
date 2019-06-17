@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_models import constraint_model as m
+from link_bot_models import constraint_sdf as m
 from link_bot_pycommon import link_bot_pycommon, experiments_util
 
 
@@ -36,7 +36,7 @@ def train(args):
         # initialize the weights
         tf.reset_default_graph()
         args['seed'] = i
-        model = m.ConstraintModel(args, sdf, sdf_gradient, sdf_resolution, N)
+        model = m.ConstraintSDF(args, sdf, sdf_gradient, sdf_resolution, N)
         model.setup()
 
         # train

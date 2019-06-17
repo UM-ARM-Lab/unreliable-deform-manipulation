@@ -12,7 +12,7 @@ from keras.layers import Input, Dense, Conv2D, Flatten
 from keras.models import Model
 from keras.models import load_model
 
-from link_bot_models.multi_environment_datasets import LabelType
+from link_bot_models.label_types import LabelType
 from link_bot_pycommon import experiments_util
 
 
@@ -34,8 +34,8 @@ class ConstraintCNN:
         config.gpu_options.per_process_gpu_memory_fraction = 0.3
         set_session(tf.Session(config=config))
 
-        sdf_input = Input(shape=(sdf_shape[0], sdf_shape[0], 1), dtype='float32', name='sdf_input')
-        rope_input = Input(shape=(N,), dtype='float32', name='rope_input')
+        sdf_input = Input(shape=(sdf_shape[0], sdf_shape[0], 1), dtype='float32', name='sdf')
+        rope_input = Input(shape=(N,), dtype='float32', name='rope_configuration')
 
         self.conv_filters = [
             (16, (3, 3)),
@@ -58,7 +58,7 @@ class ConstraintCNN:
         fc_h = concat
         for fc_layer_size in self.fc_layer_sizes:
             fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
-        predictions = Dense(1, activation='sigmoid')(fc_h)
+        predictions = Dense(1, activation='sigmoid', name='combined_output')(fc_h)
 
         # This creates a model that includes
         # the Input layer and three Dense layers
@@ -79,28 +79,16 @@ class ConstraintCNN:
         }
         return metadata
 
-    def prepare_data(self, x, y):
-        rope_inputs = x[0]
-        sdf_inputs = np.expand_dims(x[1], axis=3)
-        labels = np.any(y[0] * self.label_mask, axis=1).astype(np.float32)
-        return {'sdf_input': sdf_inputs, 'rope_input': rope_inputs}, labels
-
-    def train(self, train_x, train_y, validation_x, validation_y, epochs, log_path, **kwargs):
+    def train(self, train_dataset, validation_dataset, epochs, log_path):
         """
         Wrapper around model.fit
 
-        :param train_x: first dimension is each type of input and the second dimension is examples, following dims are the data
-        :param train_y: first dimension is type of label, second dimension is examples, following dims are the labels
-        :param validation_x: ''
-        :param validation_y: ''
+        :param validation_dataset:
+        :param train_dataset:
         :param epochs: number of times to run through the full training set
         :param log_path:
-        :param kwargs:
         :return: whether the training process was interrupted early (by Ctrl+C)
         """
-        train_inputs, train_labels = self.prepare_data(train_x, train_y)
-        validation_inputs, validation_labels = self.prepare_data(validation_x, validation_y)
-
         callbacks = []
         if self.args_dict['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
@@ -120,13 +108,12 @@ class ConstraintCNN:
                                                                   period=1)
             callbacks.append(checkpoint_callback)
 
-        self.keras_model.fit(x=train_inputs,
-                             y=train_labels,
-                             callbacks=callbacks,
-                             validation_data=(validation_inputs, validation_labels),
-                             batch_size=self.args_dict['batch_size'],
-                             epochs=epochs)
-        self.evaluate(validation_x, validation_y)
+        self.keras_model.fit_generator(train_dataset.generator(self.prepare_data, self.args_dict['batch_size']),
+                                       callbacks=callbacks,
+                                       validation_data=validation_dataset.generator(self.args_dict['batch_size']),
+                                       workers=4,
+                                       epochs=epochs)
+        self.evaluate(validation_dataset)
 
     def evaluate(self, eval_x, eval_y, display=True):
         inputs, labels = self.prepare_data(eval_x, eval_y)
@@ -149,6 +136,3 @@ class ConstraintCNN:
 
     def __str__(self):
         return "keras constraint cnn"
-
-    def build_feed_dict(self, x, y, **kwargs):
-        raise NotImplementedError("keras based models don't use this method")
