@@ -1,75 +1,11 @@
 import json
 import os
+import keras
 
 import numpy as np
 
 from link_bot_models.label_types import LabelType
 from link_bot_pycommon.link_bot_pycommon import SDF
-
-
-class FancyList:
-
-    def __init__(self, items):
-        self.items = items
-
-    def __len__(self):
-        return self.items[0].shape[0]
-
-    def __getitem__(self, index):
-        if isinstance(index, int):
-            return self.items[index]
-        elif isinstance(index, list):
-            return [self.items[i] for i in index]
-        elif isinstance(index, slice):
-            return self.items[index]
-        elif isinstance(index, tuple):
-            if isinstance(index[0], slice) and isinstance(index[1], int):
-                return [item[index[1]] for item in self.items[index[0]]]
-            elif isinstance(index[0], slice) and isinstance(index[1], list):
-                return [[item[j] for j in index[1]] for item in self.items[index[0]]]
-            elif isinstance(index[0], slice) and isinstance(index[1], np.ndarray) and len(index[1].shape) == 1:
-                return [[item[j] for j in index[1]] for item in self.items[index[0]]]
-            else:
-                raise ValueError("unsupported types for index: (" + ', '.join([str(type(i)) for i in index]) + ")")
-        else:
-            raise ValueError("unsupported type for index {}".format(type(index)))
-
-
-def make_inputs_and_labels(environments):
-    """ merges all the data and labels from the environments into a format suitable for batching into feed dicts """
-    sdfs = []
-    sdf_gradients = []
-    sdf_origins = []
-    sdf_resolutions = []
-    sdf_extents = []
-    rope_configurations = []
-    constraint_labels = []
-    for environment in environments:
-        # environment is a multi_environment_datasets.Environment
-        env_rope_configurations = environment.rope_data['rope_configurations']
-        env_constraint_labels = environment.rope_data['constraints']
-        for rope_configuration, constraint_label in zip(env_rope_configurations, env_constraint_labels):
-            sdfs.append(environment.sdf_data.sdf)
-            sdf_gradients.append(environment.sdf_data.gradient)
-            sdf_origins.append(environment.sdf_data.origin)
-            sdf_resolutions.append(environment.sdf_data.resolution)
-            sdf_extents.append(environment.sdf_data.extent)
-            rope_configurations.append(rope_configuration)
-            constraint_labels.append(constraint_label)
-
-    inputs = FancyList([
-        np.array(rope_configurations),
-        np.array(sdfs),
-        np.array(sdf_gradients),
-        np.array(sdf_origins),
-        np.array(sdf_resolutions),
-        np.array(sdf_extents),
-    ])
-    labels = FancyList([
-        np.array(constraint_labels),
-    ])
-
-    return inputs, labels
 
 
 class EnvironmentData:
@@ -97,9 +33,10 @@ class MultiEnvironmentDataset:
         self.example_information = []
         self.sdf_shape = None
         self.n_environments = len(filename_pairs)
+        self.environments = np.ndarray([self.n_environments], dtype=np.object)
         example_id = 0
-        for i, (sdf_filename, rope_data_filename) in enumerate(filename_pairs):
-            sdf_data = SDF.load(sdf_filename)
+        for i, (sdf_data_filename, rope_data_filename) in enumerate(filename_pairs):
+            sdf_data = SDF.load(sdf_data_filename)
             rope_data = np.load(rope_data_filename)
             examples_in_env = rope_data['rope_configurations'].shape[0]
 
@@ -111,9 +48,12 @@ class MultiEnvironmentDataset:
             error_msg = "SDFs shape {} doesn't match shape {}".format(self.sdf_shape, sdf_data.sdf.shape)
             assert self.sdf_shape == sdf_data.sdf.shape, error_msg
 
+            env = EnvironmentData(sdf_data, rope_data)
+            self.environments[i] = env
+
             for j in range(examples_in_env):
                 self.example_information.append({
-                    'sdf_filename': sdf_filename,
+                    'sdf_data_filename': sdf_data_filename,
                     'rope_data_filename': rope_data_filename,
                     'rope_data_index': j
                 })
@@ -121,7 +61,11 @@ class MultiEnvironmentDataset:
         self.num_examples = example_id
 
     def generator(self, batch_size):
-        return DatasetGenerator(self, self.constraint_label_types, batch_size)
+        return self.generator_specific_labels(self.constraint_label_types, batch_size)
+
+    def generator_specific_labels(self, constraint_label_types, batch_size):
+        """ allows you to test with just some of the labels """
+        return DatasetGenerator(self, constraint_label_types, batch_size)
 
     @staticmethod
     def load_dataset(dataset_filename):
@@ -152,14 +96,21 @@ class MultiEnvironmentDataset:
         }
         json.dump(dataset_dict, open(dataset_filename, 'w'), sort_keys=True, indent=4)
 
+    def __len__(self):
+        return self.num_examples
 
-class DatasetGenerator:
 
-    def __init__(self, dataset, label_types, batch_size):
+class DatasetGenerator(keras.utils.Sequence):
+
+    def __init__(self, dataset, label_types, batch_size, shuffle=True):
+        batch_size_err_msg = "Batch size {} must even divide the dataset size {}".format(batch_size, len(dataset))
+        assert len(dataset) % batch_size == 0, batch_size_err_msg
+
         self.dataset = dataset
         self.batch_size = batch_size
         examples_ids = np.arange(0, self.dataset.num_examples)
-        np.random.shuffle(examples_ids)
+        if shuffle:
+            np.random.shuffle(examples_ids)
         self.batches = np.reshape(examples_ids, [-1, batch_size])
         self.label_mask = LabelType.mask(label_types)
 
@@ -174,7 +125,7 @@ class DatasetGenerator:
         """
         batch_indeces = self.batches[index]
         x = {
-            'sdf': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1]]),
+            'sdf': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1], 1]),
             'sdf_gradient': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1], 2]),
             'sdf_origin': np.ndarray([self.batch_size, 2]),
             'sdf_resolution': np.ndarray([self.batch_size, 2]),
@@ -186,17 +137,31 @@ class DatasetGenerator:
             'all_output': np.ndarray([self.batch_size, self.label_mask.shape[0]]),
         }
 
+        loaded_data_cache = {}
         for i, example_id in enumerate(batch_indeces):
             example_info = self.dataset.example_information[example_id]
-            sdf_data = SDF.load(example_info['sdf_filename'])
-            rope_data = np.load(example_info['rope_data_filename'])
+
+            sdf_data_filename = example_info['sdf_data_filename']
+            rope_data_filename = example_info['rope_data_filename']
+
+            if sdf_data_filename in loaded_data_cache:
+                sdf_data = loaded_data_cache[sdf_data_filename]
+            else:
+                sdf_data = SDF.load(sdf_data_filename)
+                loaded_data_cache[sdf_data_filename] = sdf_data
+
+            if rope_data_filename in loaded_data_cache:
+                rope_data = loaded_data_cache[rope_data_filename]
+            else:
+                rope_data = np.load(rope_data_filename)
+                loaded_data_cache[rope_data_filename] = rope_data
 
             rope_configuration = rope_data['rope_configurations'][example_info['rope_data_index']]
 
             all_label = rope_data['constraints'][example_info['rope_data_index']].astype(np.float32)
             combined_label = np.any(all_label * self.label_mask).astype(np.float32)
 
-            x['sdf'][i] = sdf_data.sdf
+            x['sdf'][i] = np.atleast_3d(sdf_data.sdf)
             x['sdf_gradient'][i] = sdf_data.gradient
             x['sdf_origin'][i] = sdf_data.origin
             x['sdf_resolution'][i] = sdf_data.resolution

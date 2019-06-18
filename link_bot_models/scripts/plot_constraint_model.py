@@ -13,7 +13,6 @@ from link_bot_models import constraint_sdf
 from link_bot_models import plotting
 from link_bot_models.constraint_sdf import ConstraintSDF
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_models.label_types import LabelType
 
 
 def plot(args, sdf_data, model, threshold, results, true_positives, true_negatives, false_positives, false_negatives):
@@ -76,7 +75,7 @@ def main():
     parser.add_argument("dataset", help='use this dataset instead of random rope configurations')
     parser.add_argument("checkpoint", help="eval the *.ckpt name")
     parser.add_argument("threshold", type=float)
-    parser.add_argument("label_type", type=LabelType.from_string, choices=list(LabelType))
+    # parser.add_argument("label_type", type=LabelType.from_string, choices=list(LabelType))
     parser.add_argument("plot_type", type=plotting.PlotType.from_string, choices=list(plotting.PlotType))
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--save", action='store_true')
@@ -102,26 +101,23 @@ def main():
         results = constraint_sdf.test_predictions(model, environment)
         m = results.shape[0]
 
-        n_positives = len([result for result in results if np.any(result.true_violated)])
-        n_negatives = len([result for result in results if not np.any(result.true_violated)])
-        print(n_positives, n_negatives)
-
-        true_positives = [result for result in results if np.any(result.true_violated) and result.predicted_violated]
+        label_mask = np.array([1, 0])
+        true_positives = [result for result in results if label_mask @ result.true_violated and result.predicted_violated]
         true_positives = np.array(true_positives)
         n_true_positives = len(true_positives)
-        false_positives = [result for result in results if np.any(result.true_violated) and not result.predicted_violated]
+        false_positives = [result for result in results if not label_mask @ result.true_violated and result.predicted_violated]
         false_positives = np.array(false_positives)
         n_false_positives = len(false_positives)
-        true_negatives = [result for result in results if not np.any(result.true_violated) and not result.predicted_violated]
+        true_negatives = [result for result in results if not label_mask @ result.true_violated and not result.predicted_violated]
         true_negatives = np.array(true_negatives)
         n_true_negatives = len(true_negatives)
-        false_negatives = [result for result in results if not np.any(result.true_violated) and result.predicted_violated]
+        false_negatives = [result for result in results if label_mask @ result.true_violated and not result.predicted_violated]
         false_negatives = np.array(false_negatives)
         n_false_negatives = len(false_negatives)
 
         accuracy = (n_true_positives + n_true_negatives) / m * 100
         precision = n_true_positives / (n_true_positives + n_false_positives) * 100
-        recall = n_true_negatives / (n_true_negatives + n_false_negatives) * 100
+        recall = n_true_positives / (n_true_positives + n_false_negatives) * 100
         print("precision: {:4.1f}%".format(precision))
         print("recall: {:4.1f}%".format(recall))
         print(Style.BRIGHT + "accuracy: {:4.1f}%".format(accuracy) + Style.NORMAL)

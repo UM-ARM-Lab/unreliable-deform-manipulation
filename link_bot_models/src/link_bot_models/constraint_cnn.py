@@ -4,15 +4,13 @@ import json
 import os
 
 import keras
-import numpy as np
 import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
-from keras.layers import Input, Dense, Conv2D, Flatten
+from keras.layers import Input, Dense, Conv2D, Flatten, MaxPool2D
 from keras.models import Model
 from keras.models import load_model
 
-from link_bot_models.label_types import LabelType
 from link_bot_pycommon import experiments_util
 
 
@@ -22,14 +20,6 @@ class ConstraintCNN:
         self.args_dict = args_dict
         self.N = N
 
-        self.label_type = self.args_dict['label_type']
-        if self.label_type == LabelType.SDF:
-            self.label_mask = np.array([1, 0], dtype=np.int)
-        elif self.label_type == LabelType.Overstretching:
-            self.label_mask = np.array([0, 1], dtype=np.int)
-        elif self.label_type == LabelType.SDF_and_Overstretching:
-            self.label_mask = np.array([1, 1], dtype=np.int)
-
         config = tf.ConfigProto()
         config.gpu_options.per_process_gpu_memory_fraction = 0.3
         set_session(tf.Session(config=config))
@@ -38,20 +28,21 @@ class ConstraintCNN:
         rope_input = Input(shape=(N,), dtype='float32', name='rope_configuration')
 
         self.conv_filters = [
-            (16, (3, 3)),
-            (16, (3, 3)),
+            (64, (3, 3)),
+            (64, (3, 3)),
         ]
 
         self.fc_layer_sizes = [
-            16,
-            8,
+            128,
+            128,
         ]
 
         conv_h = sdf_input
         for conv_filter in self.conv_filters:
             n_filters = conv_filter[0]
             filter_size = conv_filter[1]
-            conv_h = Conv2D(n_filters, filter_size)(conv_h)
+            conv_z = Conv2D(n_filters, filter_size)(conv_h)
+            conv_h = MaxPool2D(2)(conv_z)
         conv_output = Flatten()(conv_h)
 
         concat = keras.layers.concatenate([conv_output, rope_input])
@@ -65,7 +56,7 @@ class ConstraintCNN:
         self.keras_model = Model(inputs=[sdf_input, rope_input], outputs=predictions)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-    def metadata(self):
+    def metadata(self, label_types):
         metadata = {
             'tf_version': str(tf.__version__),
             'keras_version': str(keras.__version__),
@@ -73,13 +64,13 @@ class ConstraintCNN:
             'checkpoint': self.args_dict['checkpoint'],
             'N': self.N,
             'conv_filters': self.conv_filters,
-            'label_type': str(self.label_type),
+            'label_type': [label_type.name for label_type in label_types],
             'fc_layer_sizes': self.fc_layer_sizes,
             'commandline': self.args_dict['commandline'],
         }
         return metadata
 
-    def train(self, train_dataset, validation_dataset, epochs, log_path):
+    def train(self, train_dataset, validation_dataset, label_types, epochs, log_path):
         """
         Wrapper around model.fit
 
@@ -97,7 +88,7 @@ class ConstraintCNN:
 
             metadata_path = os.path.join(full_log_path, "metadata.json")
             metadata_file = open(metadata_path, 'w')
-            metadata = self.metadata()
+            metadata = self.metadata(label_types)
             metadata['log path'] = full_log_path
             metadata_file.write(json.dumps(metadata, indent=2))
 
@@ -108,20 +99,18 @@ class ConstraintCNN:
                                                                   period=1)
             callbacks.append(checkpoint_callback)
 
-        self.keras_model.fit_generator(train_dataset.generator(self.prepare_data, self.args_dict['batch_size']),
-                                       callbacks=callbacks,
-                                       validation_data=validation_dataset.generator(self.args_dict['batch_size']),
-                                       workers=4,
-                                       epochs=epochs)
+        train_generator = train_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
+        validation_generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
+        self.keras_model.fit_generator(train_generator, callbacks=callbacks, validation_data=validation_generator, epochs=epochs)
         self.evaluate(validation_dataset)
 
-    def evaluate(self, eval_x, eval_y, display=True):
-        inputs, labels = self.prepare_data(eval_x, eval_y)
-        loss, accuracy = self.keras_model.evaluate(inputs, labels)
+    def evaluate(self, validation_dataset, label_types, display=True):
+        generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
+        loss, accuracy = self.keras_model.evaluate_generator(generator)
 
         if display:
             print("Overall Loss: {:0.3f}".format(float(loss)))
-            print("constraint prediction accuracy:\n{}".format(accuracy))
+        print("constraint prediction accuracy:\n{}".format(accuracy))
 
         return loss, accuracy
 

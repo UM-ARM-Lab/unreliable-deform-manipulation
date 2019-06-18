@@ -1,5 +1,6 @@
 import json
 import os
+from time import time
 
 import numpy as np
 import tensorflow as tf
@@ -65,18 +66,7 @@ class BaseModel:
     def init(self):
         self.sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
 
-    def train(self, train_x, train_y, validation_x, validation_y, epochs, log_path, **kwargs):
-        """
-
-        :param train_x: first dimension is each type of input and the second dimension is examples, following dims are the data
-        :param train_y: first dimension is type of label, second dimension is examples, following dims are the labels
-        :param validation_x: ''
-        :param validation_y: ''
-        :param epochs: number of times to run through the full training set
-        :param log_path:
-        :param kwargs:
-        :return: whether the training process was interrupted early (by Ctrl+C)
-        """
+    def train(self, train_dataset, validation_dataset, label_types, epochs, log_path, **kwargs):
         if not self.finish_setup_called:
             raise FinishSetupNotCalledInConstructor(type(self).__name__)
 
@@ -107,57 +97,56 @@ class BaseModel:
             if self.args_dict['log'] is not None:
                 self.save(full_log_path, self.args_dict['log'])
 
-            # validation sets could be too big, so we randomly choose some examples
-            n_validation = len(validation_x)
-            n_validation_examples = min(n_validation, 5000)
-            validation_indexes = np.random.choice(n_validation, size=n_validation_examples)
-            validation_x_sample = validation_x[:, validation_indexes]
-            validation_y_sample = validation_y[:, validation_indexes]
+            train_generator = train_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
+            validation_generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
 
             step = self.sess.run(self.global_step)
             for epoch in range(epochs):
-                # shuffle indexes and then iterate over batches
-                batch_size = self.args_dict['batch_size']
-                n_train = len(train_x)
-                indexes = np.arange(n_train, dtype=np.int)
-                np.random.shuffle(indexes)
-
-                #######################
-                # Start Training Loop #
-                #######################
+                ############
+                # Training #
+                ############
 
                 self.train_init_epoch_hook(epoch, step)
 
-                for batch_start in range(0, n_train, batch_size):
-                    batch_indexes = indexes[batch_start:batch_start + batch_size]
-                    train_x_batch = train_x[:, batch_indexes]
-                    train_y_batch = train_y[:, batch_indexes]
+                for train_batch_x, train_batch_y in train_generator:
+                    train_feed_dict = self.build_feed_dict(train_batch_x, train_batch_y, **kwargs)
 
-                    train_feed_dict = self.build_feed_dict(train_x_batch, train_y_batch, **kwargs)
+                    self.train_feed_hook(step, train_batch_x, train_batch_y)
 
-                    self.train_feed_hook(step, train_x_batch, train_y_batch)
-
-                    step, train_summary, train_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
+                    step, train_summary, train_batch_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
 
                     if step % self.args_dict['log_period'] == 0 or step == 1:
                         if self.args_dict['log'] is not None:
                             writer.add_summary(train_summary, step)
 
                     if step % self.args_dict['print_period'] == 0 or step == 1:
-                        print('epoch {:4d}, step: {:4d}, train loss: {:8.4f}'.format(epoch, step, train_loss))
+                        print('epoch {:4d}, step: {:4d}, batch loss: {:8.4f}'.format(epoch, step, train_batch_loss))
 
-                #####################
-                # End Training Loop #
-                #####################
+                ##############
+                # Validation #
+                ##############
 
                 if epoch % self.args_dict['val_period'] == 0 or epoch == 0:
+
                     self.validation_init_hook(epoch, step)
-                    validation_feed_dict = self.build_feed_dict(validation_x_sample, validation_y_sample, **kwargs)
-                    validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
-                    validation_log_msg = 'epoch {:4d}, step: {:4d}, validation loss: {:8.4f}'.format(epoch, step, validation_loss)
+
+                    val_loss_sum = 0
+                    for validation_batch_x, validation_batch_y in validation_generator:
+                        validation_feed_dict = self.build_feed_dict(validation_batch_x, validation_batch_y, **kwargs)
+                        validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
+                        val_loss_sum += validation_loss
+
+                        if self.args_dict['log'] is not None:
+                            writer.add_summary(validation_summary, step)
+
+                    val_loss_mean = val_loss_sum / len(validation_generator)
+
+                    validation_log_msg = 'epoch {:4d}, step: {:4d} loss: {:8.4f}'.format(epoch, step, val_loss_mean)
                     print(Fore.YELLOW + validation_log_msg + Fore.RESET)
-                    if self.args_dict['log'] is not None:
-                        writer.add_summary(validation_summary, step)
+
+                ##########
+                # Saving #
+                ##########
 
                 if epoch % self.args_dict['save_period'] == 0 and epoch > 0:
                     if self.args_dict['log'] is not None:
