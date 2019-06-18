@@ -1,6 +1,5 @@
 import json
 import os
-from time import time
 
 import numpy as np
 import tensorflow as tf
@@ -115,12 +114,12 @@ class BaseModel:
 
                     step, train_summary, train_batch_loss, _ = self.sess.run(train_ops, feed_dict=train_feed_dict)
 
-                    if step % self.args_dict['log_period'] == 0 or step == 1:
-                        if self.args_dict['log'] is not None:
-                            writer.add_summary(train_summary, step)
+                if step % self.args_dict['log_period'] == 0 or step == 1:
+                    if self.args_dict['log'] is not None:
+                        writer.add_summary(train_summary, step)
 
-                    if step % self.args_dict['print_period'] == 0 or step == 1:
-                        print('epoch {:4d}, step: {:4d}, batch loss: {:8.4f}'.format(epoch, step, train_batch_loss))
+                if step % self.args_dict['print_period'] == 0 or step == 1:
+                    print('epoch {:4d}, step: {:4d}, batch loss: {:8.4f}'.format(epoch, step, train_batch_loss))
 
                 ##############
                 # Validation #
@@ -133,11 +132,11 @@ class BaseModel:
                     val_loss_sum = 0
                     for validation_batch_x, validation_batch_y in validation_generator:
                         validation_feed_dict = self.build_feed_dict(validation_batch_x, validation_batch_y, **kwargs)
-                        validation_summary, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
+                        _, validation_loss = self.sess.run(validation_ops, feed_dict=validation_feed_dict)
                         val_loss_sum += validation_loss
 
-                        if self.args_dict['log'] is not None:
-                            writer.add_summary(validation_summary, step)
+                    if self.args_dict['log'] is not None:
+                        writer.add_summary(, step)
 
                     val_loss_mean = val_loss_sum / len(validation_generator)
 

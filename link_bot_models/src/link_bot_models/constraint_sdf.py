@@ -37,12 +37,12 @@ class ConstraintSDF(BaseModel):
 
         k_threshold_init = 0.0
         self.threshold_k = tf.get_variable("threshold_k", initializer=k_threshold_init, trainable=False)
-        self.hidden_layer_dims = [6]
+        self.hidden_layer_dims = [16, 16]
         h = self.rope_configuration
         for layer_idx, hidden_layer_dim in enumerate(self.hidden_layer_dims):
-            h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, use_bias=False,
+            h = tf.layers.dense(h, hidden_layer_dim, activation=tf.nn.relu, use_bias=True,
                                 name='hidden_layer_{}'.format(layer_idx))
-        self.sdf_input = tf.layers.dense(h, 2, activation=None, use_bias=False, name='output_layer')
+        self.sdf_input = tf.layers.dense(h, 2, activation=None, use_bias=True, name='output_layer')
 
         #######################################################
         #                 End Model Definition                #
@@ -87,32 +87,32 @@ class ConstraintSDF(BaseModel):
             ], name='loss')
 
             self.global_step = tf.get_variable("global_step", initializer=0, trainable=False)
-            self.opt = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.loss, global_step=self.global_step)
+            self.opt = tf.train.AdamOptimizer().minimize(self.loss, global_step=self.global_step)
 
-            # trainable_vars = tf.trainable_variables()
-            # for var in trainable_vars:
-            #     name = var.name.replace(":", "_")
-            #     grads = tf.gradients(self.loss, var, name='dLoss_d{}'.format(name))
-            #     for grad in grads:
-            #         if grad is not None:
-            #             tf.summary.histogram(name + "/gradient", grad, collections=['train', 'validation'])
-            #         else:
-            #             print("Warning... there is no gradient of the loss with respect to {}".format(var.name))
+            trainable_vars = tf.trainable_variables()
+            for var in trainable_vars:
+                name = var.name.replace(":", "_")
+                grads = tf.gradients(self.loss, var, name='dLoss_d{}'.format(name))
+                for grad in grads:
+                    if grad is not None:
+                        tf.summary.histogram(name + "/gradient", grad, collections=['train'])
+                    else:
+                        print("Warning... there is no gradient of the loss with respect to {}".format(var.name))
 
-            tf.summary.scalar("constraint_prediction_accuracy_summary", self.update_accuracy, collections=['train'])
-            tf.summary.scalar("constraint_prediction_precision_summary", self.update_precision, collections=['train'])
-            tf.summary.scalar("constraint_prediction_recall_summary", self.update_recall, collections=['train'])
-            tf.summary.scalar("out_of_bounds_loss_summary", self.out_of_bounds_loss, collections=['train'])
-            tf.summary.scalar("constraint_prediction_loss_summary", self.prediction_loss, collections=['train'])
-            tf.summary.scalar("loss_summary", self.loss, collections=['train'])
+            tf.summary.scalar("train_accuracy_summary", self.update_accuracy, collections=['train'])
+            tf.summary.scalar("train_precision_summary", self.update_precision, collections=['train'])
+            tf.summary.scalar("train_recall_summary", self.update_recall, collections=['train'])
+            tf.summary.scalar("train_out_of_bounds_loss_summary", self.out_of_bounds_loss, collections=['train'])
+            tf.summary.scalar("train_prediction_loss_summary", self.prediction_loss, collections=['train'])
+            tf.summary.scalar("train_loss_summary", self.loss, collections=['train'])
 
         with tf.name_scope("validation"):
-            tf.summary.scalar("constraint_prediction_accuracy_summary", self.update_accuracy, collections=['validation'])
-            tf.summary.scalar("constraint_prediction_precision_summary", self.update_precision, collections=['validation'])
-            tf.summary.scalar("constraint_prediction_recall_summary", self.update_recall, collections=['validation'])
-            tf.summary.scalar("out_of_bounds_loss_summary", self.out_of_bounds_loss, collections=['validation'])
-            tf.summary.scalar("constraint_prediction_loss_summary", self.prediction_loss, collections=['validation'])
-            tf.summary.scalar("loss_summary", self.loss, collections=['validation'])
+            tf.summary.scalar("validation_accuracy_summary", self.update_accuracy, collections=['validation'])
+            tf.summary.scalar("validation_precision_summary", self.update_precision, collections=['validation'])
+            tf.summary.scalar("validation_recall_summary", self.update_recall, collections=['validation'])
+            tf.summary.scalar("validation_out_of_bounds_loss_summary", self.out_of_bounds_loss, collections=['validation'])
+            tf.summary.scalar("validation_prediction_loss_summary", self.prediction_loss, collections=['validation'])
+            tf.summary.scalar("validation_loss_summary", self.loss, collections=['validation'])
 
         self.finish_setup()
 
@@ -186,6 +186,10 @@ class ConstraintSDF(BaseModel):
         self.sess.run(self.recall_local_vars_initializer)
 
     def train_feed_hook(self, iteration, train_x_batch, train_y_batch):
+        self.sess.run(self.accuracy_local_vars_initializer)
+        self.sess.run(self.precision_local_vars_initializer)
+        self.sess.run(self.recall_local_vars_initializer)
+
         if 'plot_gradient_descent' in self.args_dict:
             if iteration % 10 == 0:
                 threshold_k = self.sess.run(self.threshold_k)
@@ -195,14 +199,14 @@ class ConstraintSDF(BaseModel):
                 plotting.plot_examples_on_fig(self.fig, x, y, threshold_k, self)
                 plt.pause(5)
 
-    def violated(self, observations, sdf_data):
-        n_observations = observations.shape[0]
-        sdfs = np.tile(sdf_data.sdf, [n_observations, 1, 1])
-        sdf_origins = np.tile(sdf_data.origin, [n_observations, 1])
-        sdf_resolutions = np.tile(sdf_data.resolution, [n_observations, 1])
-        sdf_extents = np.tile(sdf_data.extent, [n_observations, 1])
+    def violated(self, rope_configurations, sdf_data):
+        n_rope_configurations = rope_configurations.shape[0]
+        sdfs = np.tile(sdf_data.sdf, [n_rope_configurations, 1, 1])
+        sdf_origins = np.tile(sdf_data.origin, [n_rope_configurations, 1])
+        sdf_resolutions = np.tile(sdf_data.resolution, [n_rope_configurations, 1])
+        sdf_extents = np.tile(sdf_data.extent, [n_rope_configurations, 1])
         feed_dict = {
-            self.rope_configuration: observations,
+            self.rope_configuration: rope_configurations,
             self.sdf: sdfs,
             self.sdf_origin: sdf_origins,
             self.sdf_resolution: sdf_resolutions,

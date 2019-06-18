@@ -12,6 +12,7 @@ import tensorflow as tf
 from link_bot_models import constraint_sdf
 from link_bot_models import plotting
 from link_bot_models.constraint_sdf import ConstraintSDF
+from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 
 
@@ -86,6 +87,9 @@ def main():
 
     args = parser.parse_args()
 
+    label_types = [LabelType.SDF]
+    label_mask = LabelType.mask(label_types)
+
     # get the rope configurations we're going to evaluate
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
 
@@ -101,7 +105,6 @@ def main():
         results = constraint_sdf.test_predictions(model, environment)
         m = results.shape[0]
 
-        label_mask = np.array([1, 0])
         true_positives = [result for result in results if label_mask @ result.true_violated and result.predicted_violated]
         true_positives = np.array(true_positives)
         n_true_positives = len(true_positives)
