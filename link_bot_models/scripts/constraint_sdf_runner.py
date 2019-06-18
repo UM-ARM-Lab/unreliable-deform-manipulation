@@ -37,8 +37,8 @@ def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
     sdf_shape = dataset.sdf_shape
 
-    keras_model = ConstraintSDF.load(vars(args))
     model = ConstraintSDF(vars(args), sdf_shape, args.N)
+    keras_model = ConstraintSDF.load(vars(args))
     model.keras_model = keras_model
 
     return model.evaluate(dataset, label_types)

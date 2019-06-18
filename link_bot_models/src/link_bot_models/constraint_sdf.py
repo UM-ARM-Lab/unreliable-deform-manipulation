@@ -100,7 +100,7 @@ class ConstraintSDF:
 
             model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
 
-            checkpoint_callback = ModelCheckpoint(model_filename, monitor='val_loss', verbose=0, save_best_only=False,
+            checkpoint_callback = ModelCheckpoint(model_filename, monitor='loss', verbose=0, save_best_only=False,
                                                   save_weights_only=False, mode='auto', period=1)
             tensorboard = TensorBoard(log_dir=full_log_path)
 
