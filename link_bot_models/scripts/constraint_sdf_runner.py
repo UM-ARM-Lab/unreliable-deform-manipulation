@@ -24,46 +24,24 @@ def train(args):
     sdf_shape = train_dataset.sdf_shape
 
     model = ConstraintSDF(vars(args), sdf_shape, args.N)
-    model.setup()
+
+    if args.checkpoint:
+        keras_model = ConstraintSDF.load(vars(args))
+        model.keras_model = keras_model
+
     model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
-
     model.evaluate(validation_dataset, label_types)
-
-
-def model_only(args):
-    args_dict = vars(args)
-    args_dict['random_init'] = False
-    model = ConstraintSDF(args_dict, [10, 10], args.N)
-
-    model.init()
-
-    if args.log:
-        log_path = experiments_util.experiment_name(args.log)
-        experiments_util.make_log_dir(log_path)
-        full_log_path = os.path.join(os.getcwd(), "log_data", log_path)
-        model.save(full_log_path)
-
-    print(model)
 
 
 def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
     sdf_shape = dataset.sdf_shape
 
-    args_dict = vars(args)
-    args_dict['random_init'] = False
-    model = ConstraintSDF(args_dict, sdf_shape, args.N)
-    model.setup()
+    keras_model = ConstraintSDF.load(vars(args))
+    model = ConstraintSDF(vars(args), sdf_shape, args.N)
+    model.keras_model = keras_model
 
     return model.evaluate(dataset, label_types)
-
-
-def show(args):
-    args_dict = vars(args)
-    args_dict['random_init'] = False
-    model = ConstraintSDF(args_dict, [10, 10], args.N)
-    model.setup()
-    print(model)
 
 
 def main():
@@ -85,10 +63,6 @@ def main():
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=250)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
-    train_subparser.add_argument("--log-period", type=int, default=1)
-    train_subparser.add_argument("--print-period", type=int, default=1)
-    train_subparser.add_argument("--val-period", type=int, default=5, help='run validation every so many epochs')
-    train_subparser.add_argument("--save-period", type=int, default=5, help='save every so many epochs')
     train_subparser.add_argument("--random-init", action='store_true')
     train_subparser.set_defaults(func=train)
 
@@ -97,14 +71,6 @@ def main():
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
     eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
     eval_subparser.set_defaults(func=evaluate)
-
-    show_subparser = subparsers.add_parser("show")
-    show_subparser.add_argument("checkpoint", help="restart from this *.ckpt name")
-    show_subparser.set_defaults(func=show)
-
-    model_only_subparser = subparsers.add_parser("model_only")
-    model_only_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    model_only_subparser.set_defaults(func=model_only)
 
     args = parser.parse_args()
     commandline = ' '.join(sys.argv)

@@ -35,7 +35,7 @@ class ConstraintRasterCNN:
         config.gpu_options.per_process_gpu_memory_fraction = 0.8
         set_session(tf.Session(config=config))
 
-        input = Input(shape=(sdf_shape[0], sdf_shape[0], 4), dtype='float32', name='input')
+        input = Input(shape=(sdf_shape[0], sdf_shape[1], 4), dtype='float32', name='input')
 
         self.conv_filters = [
             (16, (3, 3)),
@@ -59,10 +59,8 @@ class ConstraintRasterCNN:
         fc_h = conv_output
         for fc_layer_size in self.fc_layer_sizes:
             fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
-        predictions = Dense(1, activation='sigmoid')(fc_h)
+        predictions = Dense(1, activation='combined_output')(fc_h)
 
-        # This creates a model that includes
-        # the Input layer and three Dense layers
         self.keras_model = Model(inputs=input, outputs=predictions)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
