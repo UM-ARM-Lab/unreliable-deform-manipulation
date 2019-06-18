@@ -84,7 +84,7 @@ class ConstraintCNN:
 
             model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
 
-            checkpoint_callback = keras.callbacks.ModelCheckpoint(model_filename, monitor='loss', verbose=1,
+            checkpoint_callback = keras.callbacks.ModelCheckpoint(model_filename, monitor='loss', verbose=0,
                                                                   save_best_only=False, save_weights_only=False, mode='auto',
                                                                   period=1)
             callbacks.append(checkpoint_callback)
