@@ -4,6 +4,7 @@ import json
 import os
 
 import keras
+import numpy as np
 import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
@@ -52,7 +53,8 @@ class ConstraintCNN:
         predictions = Dense(1, activation='sigmoid', name='combined_output')(fc_h)
 
         # This creates a model that includes
-        self.keras_model = Model(inputs=[sdf_input, rope_input], outputs=predictions)
+        self.model_inputs = [sdf_input, rope_input]
+        self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
     def metadata(self, label_types):
@@ -105,8 +107,23 @@ class ConstraintCNN:
         return loss, accuracy
 
     def violated(self, observations, sdf_data):
-        x = [observations, sdf_data]
-        predicted_violated = self.keras_model.predict(x)
+        m = observations.shape[0]
+        rope_configuration = observations
+        sdf = np.tile(np.expand_dims(sdf_data.sdf, axis=2), [m, 1, 1, 1])
+        sdf_gradient = np.tile(sdf_data.gradient, [m, 1, 1, 1])
+        sdf_origin = np.tile(sdf_data.origin, [m, 1])
+        sdf_resolution = np.tile(sdf_data.resolution, [m, 1])
+        sdf_extent = np.tile(sdf_data.extent, [m, 1])
+        inputs_dict = {
+            'rope_configuration': rope_configuration,
+            'sdf': sdf,
+            'sdf_gradient': sdf_gradient,
+            'sdf_origin': sdf_origin,
+            'sdf_resolution': sdf_resolution,
+            'sdf_extent': sdf_extent
+        }
+
+        predicted_violated = (self.keras_model.predict(inputs_dict) > 0.5).astype(np.bool)
         return predicted_violated
 
     @staticmethod

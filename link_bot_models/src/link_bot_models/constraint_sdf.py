@@ -59,9 +59,7 @@ class ConstraintSDF:
         self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-        self.sdf_input_model = Model(inputs=self.model_inputs,
-                                         outputs=self.sdf_input_layer.output)
-        self.sdf_input_model.compile(loss='mse', optimizer='adam')  # this is useless
+        self.sdf_input_model = Model(inputs=self.model_inputs, outputs=self.sdf_input_layer.output)
 
         self.beta = 1e-2
 

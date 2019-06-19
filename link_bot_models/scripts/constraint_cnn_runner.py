@@ -28,7 +28,7 @@ def train(args):
         keras_model = ConstraintCNN.load(vars(args))
         model.keras_model = keras_model
 
-    # model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
+    model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
     model.evaluate(validation_dataset, label_types)
 
 
@@ -66,8 +66,9 @@ def main():
     eval_subparser = subparsers.add_parser("eval")
     eval_subparser.add_argument("dataset", help="dataset (json file)")
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
-    eval_subparser.set_defaults(func=evaluate)
     eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
+    eval_subparser.set_defaults(func=evaluate)
+
     args = parser.parse_args()
     commandline = ' '.join(sys.argv)
     args.commandline = commandline

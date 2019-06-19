@@ -5,6 +5,7 @@ import keras
 import numpy as np
 
 from link_bot_models.label_types import LabelType
+from link_bot_pycommon import link_bot_pycommon
 from link_bot_pycommon.link_bot_pycommon import SDF
 
 
@@ -23,6 +24,7 @@ class MultiEnvironmentDataset:
         self.obstacle_size = obstacle_size
         self.threshold = threshold
         self.seed = seed
+        self.N = 0
 
         # convert all file paths to be absolute
         self.abs_filename_pairs = []
@@ -38,11 +40,12 @@ class MultiEnvironmentDataset:
         for i, (sdf_data_filename, rope_data_filename) in enumerate(filename_pairs):
             sdf_data = SDF.load(sdf_data_filename)
             rope_data = np.load(rope_data_filename)
-            examples_in_env = rope_data['rope_configurations'].shape[0]
+            examples_in_env, N = rope_data['rope_configurations'].shape
 
             if i == 0:
                 # store useful information about the dataset
                 self.rope_configurations_per_env = examples_in_env
+                self.N = N
                 self.sdf_shape = sdf_data.sdf.shape
                 self.sdf_resolution = sdf_data.resolution.tolist()
             error_msg = "SDFs shape {} doesn't match shape {}".format(self.sdf_shape, sdf_data.sdf.shape)
@@ -124,13 +127,15 @@ class DatasetGenerator(keras.utils.Sequence):
         :return: a batch of data (x, y) where x and y are numpy arrays
         """
         batch_indeces = self.batches[index]
+        n_rope_points = int(self.dataset.N // 2)
         x = {
             'sdf': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1], 1]),
             'sdf_gradient': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1], 2]),
             'sdf_origin': np.ndarray([self.batch_size, 2]),
             'sdf_resolution': np.ndarray([self.batch_size, 2]),
             'sdf_extent': np.ndarray([self.batch_size, 4]),
-            'rope_configuration': np.ndarray([self.batch_size, 6])
+            'rope_configuration': np.ndarray([self.batch_size, self.dataset.N]),
+            'rope_image': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1], n_rope_points]),
         }
         y = {
             'combined_output': np.ndarray([self.batch_size, 1]),
@@ -158,6 +163,13 @@ class DatasetGenerator(keras.utils.Sequence):
 
             rope_configuration = rope_data['rope_configurations'][example_info['rope_data_index']]
 
+            rope_image = np.zeros([sdf_data.sdf.shape[0], sdf_data.sdf.shape[1], n_rope_points])
+            for j in range(n_rope_points):
+                px = rope_configuration[2 * j]
+                py = rope_configuration[2 * j + 1]
+                row, col = link_bot_pycommon.point_to_sdf_idx(px, py, sdf_data.resolution, sdf_data.origin)
+                rope_image[row, col, j] = 1
+
             all_label = rope_data['constraints'][example_info['rope_data_index']].astype(np.float32)
             combined_label = np.any(all_label * self.label_mask).astype(np.float32)
 
@@ -167,6 +179,7 @@ class DatasetGenerator(keras.utils.Sequence):
             x['sdf_resolution'][i] = sdf_data.resolution
             x['sdf_extent'][i] = sdf_data.extent
             x['rope_configuration'][i] = rope_configuration
+            x['rope_image'][i] = rope_image
 
             y['all_output'][i] = all_label
             y['combined_output'][i] = combined_label

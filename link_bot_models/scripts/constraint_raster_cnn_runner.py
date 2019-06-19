@@ -6,47 +6,41 @@ import sys
 
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
 
-from link_bot_models import multi_environment_datasets
 from link_bot_models.constraint_raster_cnn import ConstraintRasterCNN
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_models.label_types import LabelType
+from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
+
+label_types = [LabelType.SDF]
 
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
+
     train_dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
     validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
     sdf_shape = train_dataset.sdf_shape
+
     model = ConstraintRasterCNN(vars(args), sdf_shape, args.N)
 
-    # convert data into two "lists" of numpy arrays
-    train_inputs, train_labels = multi_environment_datasets.make_inputs_and_labels(train_dataset.environments)
+    if args.checkpoint:
+        keras_model = ConstraintRasterCNN.load(vars(args))
+        model.keras_model = keras_model
 
-    validation_inputs, validation_labels = multi_environment_datasets.make_inputs_and_labels(validation_dataset.environments)
-
-    model.train(train_inputs, train_labels, validation_inputs, validation_labels, args.epochs, log_path)
-
-    print(Fore.GREEN + "\nTrain Evaluation" + Fore.RESET)
-    model.evaluate(train_inputs, train_labels)
-    print(Fore.GREEN + "\nValidation Evaluation" + Fore.RESET)
-    model.evaluate(validation_inputs, validation_labels)
+    model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
+    model.evaluate(validation_dataset, label_types)
 
 
 def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
     sdf_shape = dataset.sdf_shape
 
-    args_dict = vars(args)
-    model = ConstraintRasterCNN(args_dict, sdf_shape, args.N)
-    model.load()
+    model = ConstraintRasterCNN(vars(args), sdf_shape, args.N)
+    keras_model = ConstraintRasterCNN.load(vars(args))
+    model.keras_model = keras_model
 
-    # take all the data as validation data
-    validation_inputs, validation_labels = multi_environment_datasets.make_inputs_and_labels(dataset.environments)
-
-    return model.evaluate(validation_inputs, validation_labels)
+    return model.evaluate(dataset, label_types)
 
 
 def main():
@@ -58,7 +52,6 @@ def main():
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("label_type", type=LabelType.from_string, choices=list(LabelType))
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
@@ -73,6 +66,7 @@ def main():
     eval_subparser = subparsers.add_parser("eval")
     eval_subparser.add_argument("dataset", help="dataset (json file)")
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
+    eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
     eval_subparser.set_defaults(func=evaluate)
 
     args = parser.parse_args()
