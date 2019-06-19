@@ -3,10 +3,10 @@ from __future__ import division, print_function, absolute_import
 import json
 import os
 
-import keras
 import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
+from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.models import load_model
 
 from link_bot_pycommon import experiments_util
@@ -20,7 +20,7 @@ class BaseModel:
         self.N = N
 
         config = tf.ConfigProto()
-        config.gpu_options.per_process_gpu_memory_fraction = 0.8
+        config.gpu_options.per_process_gpu_memory_fraction = 0.2
         set_session(tf.Session(config=config))
 
         self.keras_model = None
@@ -33,6 +33,8 @@ class BaseModel:
         if self.args_dict['log'] is not None:
             full_log_path = os.path.join("log_data", log_path)
 
+            print(Fore.CYAN + "Logging to {}".format(full_log_path) + Fore.RESET)
+
             experiments_util.make_log_dir(full_log_path)
 
             metadata_path = os.path.join(full_log_path, "metadata.json")
@@ -43,10 +45,12 @@ class BaseModel:
 
             model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
 
-            checkpoint_callback = keras.callbacks.ModelCheckpoint(model_filename, monitor='loss', verbose=0,
-                                                                  save_best_only=False, save_weights_only=False, mode='auto',
-                                                                  period=1)
+            checkpoint_callback = ModelCheckpoint(model_filename, monitor='loss', verbose=0,
+                                                  save_best_only=False, save_weights_only=False, mode='auto',
+                                                  period=1)
+            tensorboard = TensorBoard(log_dir=full_log_path)
             callbacks.append(checkpoint_callback)
+            callbacks.append(tensorboard)
 
         train_generator = train_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
         validation_generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])

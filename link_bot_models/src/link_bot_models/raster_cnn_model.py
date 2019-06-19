@@ -24,8 +24,9 @@ class RasterCNNModel(BaseModel):
         ]
 
         self.fc_layer_sizes = [
-            16,
-            16,
+            256,
+            256,
+            256,
         ]
 
         conv_h = combined_image

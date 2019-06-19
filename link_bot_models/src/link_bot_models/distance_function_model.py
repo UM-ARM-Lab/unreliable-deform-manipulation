@@ -1,67 +1,48 @@
 from __future__ import division, print_function, absolute_import
 
 import numpy as np
+import keras.backend as K
 import tensorflow as tf
 from attr import dataclass
-from keras.layers import Input, Dense, Lambda, Concatenate, Reshape, Activation
+from keras.layers import Input, Conv2D, Lambda, Activation
 from keras.models import Model
+from keras.initializers import Constant
 
 from link_bot_models.base_model import BaseModel
-from link_bot_models.tf_signed_distance_field_op import SDFLookup
+from link_bot_models.ops.distance_matrix_layer import DistanceMatrix
 from link_bot_pycommon import link_bot_pycommon
 
 
-class SDFFunctionModel(BaseModel):
+class DistanceFunctionModel(BaseModel):
 
     def __init__(self, args_dict, sdf_shape, N):
-        super(SDFFunctionModel, self).__init__(args_dict, sdf_shape, N)
+        super(DistanceFunctionModel, self).__init__(args_dict, sdf_shape, N)
 
         # we have to flatten everything in order to pass it around and I don't understand why
-        sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf')
-        sdf_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1]])(sdf)
-        sdf_gradient = Input(shape=[self.sdf_shape[0], self.sdf_shape[0], 2], dtype='float32', name='sdf_gradient')
-        sdf_gradient_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1] * 2])(sdf_gradient)
-        sdf_resolution = Input(shape=[2], dtype='float32', name='sdf_resolution')
-        sdf_origin = Input(shape=[2], dtype='float32', name='sdf_origin')  # will be converted to int32 in SDF layer
-        sdf_extent = Input(shape=[4], dtype='float32', name='sdf_extent')
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
-        self.fc_layer_sizes = [
-            6,
-        ]
+        threshold = 0.5
 
-        threshold_k = 0.0
+        distances = DistanceMatrix()(rope_input)
+        n_points = distances.shape[1]
+        kernel_init_np = np.zeros((3, 3), dtype=np.float32)
+        kernel_init_np[0, 1] = 1.0
+        kernel_init_np[0, 2] = 1.0
+        kernel_init = Constant(value=kernel_init_np)
+        z = Conv2D(1, (n_points, n_points), activation=None, use_bias=False, kernel_initializer=kernel_init)(distances)
+        z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze1')(z)
+        z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze2')(z)
+        # z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze3')(z)
 
-        fc_h = rope_input
-        for fc_layer_size in self.fc_layer_sizes:
-            fc_h = Dense(fc_layer_size, activation='relu', use_bias=False)(fc_h)
-        self.sdf_input_layer = Dense(2, activation=None, use_bias=True, name='sdf_input')
-        sdf_input = self.sdf_input_layer(fc_h)
-
-        sdf_func_inputs = Concatenate()([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, sdf_input])
-
-        signed_distance = SDFLookup(self.sdf_shape)(sdf_func_inputs)
-        logits = Lambda(lambda d: threshold_k - d, name='logits')(signed_distance)
+        logits = Lambda(lambda d: threshold - d, name='logits')(z)
+        print(logits.shape)
         predictions = Activation('sigmoid', name='combined_output')(logits)
 
-        self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
+        self.model_inputs = [rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-        self.sdf_input_model = Model(inputs=self.model_inputs, outputs=self.sdf_input_layer.output)
-
         self.beta = 1e-2
-
-        #     # FIXME: this assumes that the physical world coordinates (0,0) in meters is the origin/center of the SDF
-        #     self.distances_to_origin = tf.norm(self.sdf_input, axis=1)
-        #     oob_left = self.sdf_input[:, 0] <= self.sdf_extent[:, 0]
-        #     oob_right = self.sdf_input[:, 0] >= self.sdf_extent[:, 1]
-        #     oob_up = self.sdf_input[:, 1] <= self.sdf_extent[:, 2]
-        #     oob_down = self.sdf_input[:, 1] >= self.sdf_extent[:, 3]
-        #     self.out_of_bounds = tf.math.reduce_any(tf.stack((oob_up, oob_down, oob_left, oob_right), axis=1), axis=1, name='oob')
-        #     self.in_bounds_value = tf.ones_like(self.distances_to_origin) * 0.0
-        #     self.distances_out_of_bounds = tf.where(self.out_of_bounds, self.distances_to_origin, self.in_bounds_value)
-        #     self.out_of_bounds_loss = tf.reduce_mean(self.distances_out_of_bounds, name='out_of_bounds_loss')
 
     def metadata(self, label_types):
         metadata = {
@@ -72,7 +53,6 @@ class SDFFunctionModel(BaseModel):
             'beta': self.beta,
             'label_type': [label_type.name for label_type in label_types],
             'commandline': self.args_dict['commandline'],
-            'hidden_layer_dims': self.fc_layer_sizes,
         }
         return metadata
 

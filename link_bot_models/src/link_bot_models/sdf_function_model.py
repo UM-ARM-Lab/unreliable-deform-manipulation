@@ -7,14 +7,14 @@ from keras.layers import Input, Dense, Lambda, Concatenate, Reshape, Activation
 from keras.models import Model
 
 from link_bot_models.base_model import BaseModel
-from link_bot_models.tf_signed_distance_field_op import SDFLookup
+from link_bot_models.ops.tf_signed_distance_field_op import SDFLookup
 from link_bot_pycommon import link_bot_pycommon
 
 
-class ConstraintSDF(BaseModel):
+class SDFFuncationModel(BaseModel):
 
     def __init__(self, args_dict, sdf_shape, N):
-        super(ConstraintSDF, self).__init__(args_dict, sdf_shape, N)
+        super(SDFFuncationModel, self).__init__(args_dict, sdf_shape, N)
 
         # we have to flatten everything in order to pass it around and I don't understand why
         sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf')
@@ -30,7 +30,7 @@ class ConstraintSDF(BaseModel):
             6,
         ]
 
-        threshold_k = 0.0
+        threshold = 0.0
 
         fc_h = rope_input
         for fc_layer_size in self.fc_layer_sizes:
@@ -41,7 +41,7 @@ class ConstraintSDF(BaseModel):
         sdf_func_inputs = Concatenate()([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, sdf_input])
 
         signed_distance = SDFLookup(self.sdf_shape)(sdf_func_inputs)
-        logits = Lambda(lambda d: threshold_k - d, name='logits')(signed_distance)
+        logits = Lambda(lambda d: threshold - d, name='logits')(signed_distance)
         predictions = Activation('sigmoid', name='combined_output')(logits)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]

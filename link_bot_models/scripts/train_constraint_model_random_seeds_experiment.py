@@ -36,7 +36,7 @@ def train(args):
         # initialize the weights
         tf.reset_default_graph()
         args['seed'] = i
-        model = m.ConstraintSDF(args, sdf, sdf_gradient, sdf_resolution, N)
+        model = m.SDFFuncationModel(args, sdf, sdf_gradient, sdf_resolution, N)
         model.setup()
 
         # train

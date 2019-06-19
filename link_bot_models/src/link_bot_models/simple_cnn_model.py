@@ -18,13 +18,15 @@ class SimpleCNNModel(BaseModel):
         rope_input = Input(shape=(N,), dtype='float32', name='rope_configuration')
 
         self.conv_filters = [
-            (64, (3, 3)),
-            (64, (3, 3)),
+            (64, (7, 7)),
+            (32, (5, 5)),
+            (16, (3, 3)),
+            (16, (3, 3)),
         ]
 
         self.fc_layer_sizes = [
-            128,
-            128,
+            256,
+            32,
         ]
 
         conv_h = sdf_input

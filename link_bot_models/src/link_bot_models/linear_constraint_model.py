@@ -8,7 +8,7 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_models import base_model
-from link_bot_models.tf_signed_distance_field_op import sdf_func
+from link_bot_models.ops.tf_signed_distance_field_op import sdf_func
 
 
 def make_constraint_mask(arr, axis=1):

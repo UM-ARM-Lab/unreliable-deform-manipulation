@@ -7,12 +7,12 @@ import sys
 import numpy as np
 import tensorflow as tf
 
+from link_bot_models.distance_function_model import DistanceFunctionModel
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_models.sdf_function_model import SDFFuncationModel
 from link_bot_pycommon import experiments_util
 
-label_types = [LabelType.Overstretching]
+label_types = [LabelType.SDF]
 
 
 def train(args):
@@ -22,23 +22,22 @@ def train(args):
     validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
     sdf_shape = train_dataset.sdf_shape
 
-    model = SDFFuncationModel(vars(args), sdf_shape, args.N)
+    model = DistanceFunctionModel(vars(args), sdf_shape, args.N)
 
     if args.checkpoint:
-        keras_model = SDFFuncationModel.load(vars(args))
+        keras_model = DistanceFunctionModel.load(vars(args))
         model.keras_model = keras_model
 
     model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
     model.evaluate(validation_dataset, label_types)
-    print(model.keras_model.get_weights())
 
 
 def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
     sdf_shape = dataset.sdf_shape
 
-    model = SDFFuncationModel(vars(args), sdf_shape, args.N)
-    keras_model = SDFFuncationModel.load(vars(args))
+    model = DistanceFunctionModel(vars(args), sdf_shape, args.N)
+    keras_model = DistanceFunctionModel.load(vars(args))
     model.keras_model = keras_model
 
     return model.evaluate(dataset, label_types)
