@@ -75,9 +75,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset", help='use this dataset instead of random rope configurations')
     parser.add_argument("checkpoint", help="eval the *.ckpt name")
-    parser.add_argument("threshold", type=float)
     # parser.add_argument("label_type", type=LabelType.from_string, choices=list(LabelType))
     parser.add_argument("plot_type", type=plotting.PlotType.from_string, choices=list(plotting.PlotType))
+    parser.add_argument("--threshold", type=float, default=0.0)
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--save", action='store_true')
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
@@ -93,9 +93,9 @@ def main():
     # get the rope configurations we're going to evaluate
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
 
-    args_dict = vars(args)
-    model = ConstraintSDF(args_dict, dataset.sdf_shape, args.N)
-    model.setup()
+    model = ConstraintSDF(vars(args), dataset.sdf_shape, args.N)
+    keras_model = ConstraintSDF.load(vars(args))
+    model.keras_model = keras_model
 
     for env_idx, environment in enumerate(dataset.environments):
         print(Style.BRIGHT + Fore.GREEN + "Environment {}".format(env_idx) + Fore.RESET + Style.NORMAL)

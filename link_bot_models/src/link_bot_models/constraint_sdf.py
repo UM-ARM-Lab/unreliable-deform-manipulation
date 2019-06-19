@@ -5,6 +5,7 @@ import os
 
 from keras.callbacks import TensorBoard, ModelCheckpoint
 import numpy as np
+import keras.backend as K
 import tensorflow as tf
 from attr import dataclass
 from colorama import Fore
@@ -47,7 +48,8 @@ class ConstraintSDF:
         fc_h = rope_input
         for fc_layer_size in self.fc_layer_sizes:
             fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
-        sdf_input = Dense(2, activation=None, use_bias=True)(fc_h)
+        self.sdf_input_layer = Dense(2, activation=None, use_bias=True, name='sdf_input')
+        sdf_input = self.sdf_input_layer(fc_h)
 
         sdf_func_inputs = Concatenate()([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, sdf_input])
 
@@ -123,9 +125,28 @@ class ConstraintSDF:
         return loss, accuracy
 
     def violated(self, observations, sdf_data):
-        x = [observations, sdf_data]
-        predicted_violated = self.keras_model.predict(x)
-        return predicted_violated
+        rope_configuration = observations
+        sdf = sdf_data.sdf[np.newaxis, :, :, np.newaxis]
+        sdf_gradient = np.expand_dims(sdf_data.gradient, axis=0)
+        sdf_origin = np.expand_dims(sdf_data.origin, axis=0)
+        sdf_resolution = np.expand_dims(sdf_data.resolution, axis=0)
+        inputs_dict = {
+            'rope_configuration': rope_configuration,
+            'sdf': sdf,
+            'sdf_gradient': sdf_gradient,
+            'sdf_origin': sdf_origin,
+            'sdf_resolution': sdf_resolution,
+        }
+
+        predicted_violated = bool(self.keras_model.predict(inputs_dict) > 0.5)
+        print(predicted_violated)
+
+        intermediate_layer_model = Model(inputs=self.keras_model.inputs,
+                                         outputs=self.sdf_input_layer.output)
+        # intermediate_layer_model.compile()
+        get_predicted_point = intermediate_layer_model.predict(inputs_dict)
+
+        return predicted_violated, predicted_pt
 
     @staticmethod
     def load(args_dict):
@@ -133,23 +154,6 @@ class ConstraintSDF:
                                  custom_objects={'SDFLookup': SDFLookup})
         print(Fore.CYAN + "Restored keras model {}".format(args_dict['checkpoint']) + Fore.RESET)
         return keras_model
-
-    def violated(self, rope_configurations, sdf_data):
-        n_rope_configurations = rope_configurations.shape[0]
-        sdfs = np.tile(sdf_data.sdf, [n_rope_configurations, 1, 1])
-        sdf_origins = np.tile(sdf_data.origin, [n_rope_configurations, 1])
-        sdf_resolutions = np.tile(sdf_data.resolution, [n_rope_configurations, 1])
-        sdf_extents = np.tile(sdf_data.extent, [n_rope_configurations, 1])
-        feed_dict = {
-            self.rope_configuration: rope_configurations,
-            self.sdf: sdfs,
-            self.sdf_origin: sdf_origins,
-            self.sdf_resolution: sdf_resolutions,
-            self.sdf_extent: sdf_extents,
-        }
-        predicted_violated, pt = self.sess.run([self.hat_k_violated, self.sdf_input], feed_dict=feed_dict)
-        return np.any(predicted_violated, axis=1), pt
-
 
     def __str__(self):
         return "sdf model"
