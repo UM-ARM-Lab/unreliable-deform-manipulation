@@ -5,7 +5,6 @@ import os
 
 from keras.callbacks import TensorBoard, ModelCheckpoint
 import numpy as np
-import keras.backend as K
 import tensorflow as tf
 from attr import dataclass
 from colorama import Fore
@@ -39,15 +38,14 @@ class ConstraintSDF:
         rope_input = Input(shape=[N], dtype='float32', name='rope_configuration')
 
         self.fc_layer_sizes = [
-            16,
-            16
+            6,
         ]
 
         threshold_k = 0.0
 
         fc_h = rope_input
         for fc_layer_size in self.fc_layer_sizes:
-            fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
+            fc_h = Dense(fc_layer_size, activation='relu', use_bias=False)(fc_h)
         self.sdf_input_layer = Dense(2, activation=None, use_bias=True, name='sdf_input')
         sdf_input = self.sdf_input_layer(fc_h)
 
@@ -60,6 +58,10 @@ class ConstraintSDF:
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+        self.sdf_input_model = Model(inputs=self.model_inputs,
+                                         outputs=self.sdf_input_layer.output)
+        self.sdf_input_model.compile(loss='mse', optimizer='adam')  # this is useless
 
         self.beta = 1e-2
 
@@ -143,11 +145,8 @@ class ConstraintSDF:
 
         predicted_violated = (self.keras_model.predict(inputs_dict) > 0.5).astype(np.bool)
 
-        intermediate_layer_model = Model(inputs=self.model_inputs,
-                                         outputs=self.sdf_input_layer.output)
-        intermediate_layer_model.compile(loss='mse', optimizer='adam')  # this is useless
-        intermediate_layer_model.set_weights(self.keras_model.get_weights())
-        predicted_point = intermediate_layer_model.predict(inputs_dict)
+        self.sdf_input_model.set_weights(self.keras_model.get_weights())
+        predicted_point = self.sdf_input_model.predict(inputs_dict)
 
         return predicted_violated, predicted_point
 
