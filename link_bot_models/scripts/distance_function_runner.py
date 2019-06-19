@@ -12,7 +12,7 @@ from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
-label_types = [LabelType.SDF]
+label_types = [LabelType.Overstretching]
 
 
 def train(args):
