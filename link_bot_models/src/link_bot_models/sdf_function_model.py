@@ -3,6 +3,7 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 import tensorflow as tf
 from attr import dataclass
+
 from keras.layers import Input, Dense, Lambda, Concatenate, Reshape, Activation
 from keras.models import Model
 
@@ -31,12 +32,27 @@ class SDFFuncationModel(BaseModel):
             16,
         ]
 
+        self.beta = 1e-2
+
+        def oob_regularization(sdf_input_points):
+            # FIXME: this assumes that the physical world coordinates (0,0) in meters is the origin/center of the SDF
+            distances_to_origin = tf.norm(sdf_input_points, axis=1)
+            oob_left = sdf_input_points[:, 0] <= sdf_extent[:, 0]
+            oob_right = sdf_input_points[:, 0] >= sdf_extent[:, 1]
+            oob_up = sdf_input_points[:, 1] <= sdf_extent[:, 2]
+            oob_down = sdf_input_points[:, 1] >= sdf_extent[:, 3]
+            out_of_bounds = tf.math.reduce_any(tf.stack((oob_up, oob_down, oob_left, oob_right), axis=1), axis=1, name='oob')
+            in_bounds_value = tf.ones_like(distances_to_origin) * 0.0
+            distances_out_of_bounds = tf.where(out_of_bounds, distances_to_origin, in_bounds_value)
+            out_of_bounds_loss = tf.reduce_mean(distances_out_of_bounds, name='out_of_bounds_loss')
+            return tf.norm(out_of_bounds_loss) * self.beta
+
         threshold = 0.0
 
         fc_h = rope_input
         for fc_layer_size in self.fc_layer_sizes:
-            fc_h = Dense(fc_layer_size, activation='relu', use_bias=True)(fc_h)
-        self.sdf_input_layer = Dense(2, activation=None, use_bias=True, name='sdf_input')
+            fc_h = Dense(fc_layer_size, activation='relu', use_bias=False)(fc_h)
+        self.sdf_input_layer = Dense(2, activation=None, use_bias=True, name='sdf_input', activity_regularizer=None)
         sdf_input = self.sdf_input_layer(fc_h)
 
         sdf_func_inputs = Concatenate()([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, sdf_input])
@@ -50,19 +66,6 @@ class SDFFuncationModel(BaseModel):
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
         self.sdf_input_model = Model(inputs=self.model_inputs, outputs=self.sdf_input_layer.output)
-
-        self.beta = 1e-2
-
-        #     # FIXME: this assumes that the physical world coordinates (0,0) in meters is the origin/center of the SDF
-        #     self.distances_to_origin = tf.norm(self.sdf_input, axis=1)
-        #     oob_left = self.sdf_input[:, 0] <= self.sdf_extent[:, 0]
-        #     oob_right = self.sdf_input[:, 0] >= self.sdf_extent[:, 1]
-        #     oob_up = self.sdf_input[:, 1] <= self.sdf_extent[:, 2]
-        #     oob_down = self.sdf_input[:, 1] >= self.sdf_extent[:, 3]
-        #     self.out_of_bounds = tf.math.reduce_any(tf.stack((oob_up, oob_down, oob_left, oob_right), axis=1), axis=1, name='oob')
-        #     self.in_bounds_value = tf.ones_like(self.distances_to_origin) * 0.0
-        #     self.distances_out_of_bounds = tf.where(self.out_of_bounds, self.distances_to_origin, self.in_bounds_value)
-        #     self.out_of_bounds_loss = tf.reduce_mean(self.distances_out_of_bounds, name='out_of_bounds_loss')
 
     def metadata(self, label_types):
         metadata = {

@@ -17,10 +17,10 @@ def main():
     for sdf_file in args.sdf_files:
         sdf_data = SDF.load(sdf_file)
 
-        binary_image = np.asarray(sdf_data.image) > args.threshold
+        binary_image = sdf_data.sdf > args.threshold
         plt.figure()
         plt.title(sdf_file)
-        plt.imshow(binary_image, extent=sdf_data.extent)
+        plt.imshow(np.flipud(binary_image.T), extent=sdf_data.extent)
 
     plt.show()
 

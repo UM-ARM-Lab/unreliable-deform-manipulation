@@ -10,6 +10,13 @@ from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.models import load_model
 
 from link_bot_pycommon import experiments_util
+from link_bot_models.ops.tf_signed_distance_field_op import SDFLookup
+from link_bot_models.ops.distance_matrix_layer import DistanceMatrix
+
+custom_objects = {
+    'SDFLookup': SDFLookup,
+    'DistanceMatrix': DistanceMatrix
+}
 
 
 class BaseModel:
@@ -69,7 +76,7 @@ class BaseModel:
 
     @staticmethod
     def load(args_dict):
-        keras_model = load_model(args_dict['checkpoint'])
+        keras_model = load_model(args_dict['checkpoint'], custom_objects=custom_objects)
         print(Fore.CYAN + "Restored keras model {}".format(args_dict['checkpoint']) + Fore.RESET)
         return keras_model
 

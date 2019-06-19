@@ -19,7 +19,7 @@ from link_bot_pycommon.link_bot_pycommon import SDF
 def plot(args, sdf_data, threshold, rope_configuration, constraint_labels):
     del args  # unused
     plt.figure()
-    binary = (sdf_data.sdf < threshold).astype(np.uint8)
+    binary = sdf_data.sdf < threshold
     plt.imshow(np.flipud(binary.T), extent=sdf_data.extent)
 
     xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
@@ -153,7 +153,7 @@ def plot_main(args):
     generator = dataset.generator(args.n)
     xs, ys = generator[0]
     for i in range(args.n):
-        sdf_data = SDF(sdf=xs['sdf'][i],
+        sdf_data = SDF(sdf=np.squeeze(xs['sdf'][i]),
                        gradient=xs['sdf_gradient'][i],
                        resolution=xs['sdf_resolution'][i],
                        origin=xs['sdf_origin'][i])
