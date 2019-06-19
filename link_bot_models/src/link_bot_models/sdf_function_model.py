@@ -27,14 +27,15 @@ class SDFFuncationModel(BaseModel):
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
         self.fc_layer_sizes = [
-            6,
+            16,
+            16,
         ]
 
         threshold = 0.0
 
         fc_h = rope_input
         for fc_layer_size in self.fc_layer_sizes:
-            fc_h = Dense(fc_layer_size, activation='relu', use_bias=False)(fc_h)
+            fc_h = Dense(fc_layer_size, activation='relu', use_bias=True)(fc_h)
         self.sdf_input_layer = Dense(2, activation=None, use_bias=True, name='sdf_input')
         sdf_input = self.sdf_input_layer(fc_h)
 

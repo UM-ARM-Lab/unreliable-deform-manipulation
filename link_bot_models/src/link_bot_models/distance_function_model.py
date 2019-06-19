@@ -32,10 +32,8 @@ class DistanceFunctionModel(BaseModel):
         z = Conv2D(1, (n_points, n_points), activation=None, use_bias=False, kernel_initializer=kernel_init)(distances)
         z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze1')(z)
         z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze2')(z)
-        # z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze3')(z)
 
         logits = Lambda(lambda d: threshold - d, name='logits')(z)
-        print(logits.shape)
         predictions = Activation('sigmoid', name='combined_output')(logits)
 
         self.model_inputs = [rope_input]

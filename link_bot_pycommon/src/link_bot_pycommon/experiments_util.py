@@ -11,7 +11,10 @@ def experiment_name(nickname='', additional_attribute=''):
     sha = repo.head.object.hexsha[:10]
     stamp = "{:%B_%d_%H-%M-%S}".format(datetime.now())
     nickname = "" if nickname is None else nickname.replace(" ", "_")
-    log_path = os.path.join(nickname, "{}__{}__{}".format(stamp, sha, additional_attribute))
+    if additional_attribute:
+        log_path = os.path.join(nickname, "{}__{}__{}".format(stamp, sha, additional_attribute))
+    else:
+        log_path = os.path.join(nickname, "{}__{}".format(stamp, sha))
     return log_path
 
 
