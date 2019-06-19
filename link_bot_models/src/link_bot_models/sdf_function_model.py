@@ -19,9 +19,7 @@ class SDFFuncationModel(BaseModel):
 
         # we have to flatten everything in order to pass it around and I don't understand why
         sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf')
-        sdf_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1]])(sdf)
         sdf_gradient = Input(shape=[self.sdf_shape[0], self.sdf_shape[0], 2], dtype='float32', name='sdf_gradient')
-        sdf_gradient_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1] * 2])(sdf_gradient)
         sdf_resolution = Input(shape=[2], dtype='float32', name='sdf_resolution')
         sdf_origin = Input(shape=[2], dtype='float32', name='sdf_origin')  # will be converted to int32 in SDF layer
         sdf_extent = Input(shape=[4], dtype='float32', name='sdf_extent')
@@ -49,9 +47,12 @@ class SDFFuncationModel(BaseModel):
 
         threshold = 0.0
 
+        sdf_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1]])(sdf)
+        sdf_gradient_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1] * 2])(sdf_gradient)
+
         fc_h = rope_input
         for fc_layer_size in self.fc_layer_sizes:
-            fc_h = Dense(fc_layer_size, activation='relu', use_bias=False)(fc_h)
+            fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
         self.sdf_input_layer = Dense(2, activation=None, use_bias=True, name='sdf_input', activity_regularizer=None)
         sdf_input = self.sdf_input_layer(fc_h)
 
