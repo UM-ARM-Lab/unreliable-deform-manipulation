@@ -57,8 +57,8 @@ class ConstraintSDF:
         logits = Lambda(lambda d: threshold_k - d, name='logits')(signed_distance)
         predictions = Activation('sigmoid', name='combined_output')(logits)
 
-        model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
-        self.keras_model = Model(inputs=model_inputs, outputs=predictions)
+        self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
+        self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
         self.beta = 1e-2
@@ -125,28 +125,31 @@ class ConstraintSDF:
         return loss, accuracy
 
     def violated(self, observations, sdf_data):
+        m = observations.shape[0]
         rope_configuration = observations
-        sdf = sdf_data.sdf[np.newaxis, :, :, np.newaxis]
-        sdf_gradient = np.expand_dims(sdf_data.gradient, axis=0)
-        sdf_origin = np.expand_dims(sdf_data.origin, axis=0)
-        sdf_resolution = np.expand_dims(sdf_data.resolution, axis=0)
+        sdf = np.tile(np.expand_dims(sdf_data.sdf, axis=2), [m, 1, 1, 1])
+        sdf_gradient = np.tile(sdf_data.gradient, [m, 1, 1, 1])
+        sdf_origin = np.tile(sdf_data.origin, [m, 1])
+        sdf_resolution = np.tile(sdf_data.resolution, [m, 1])
+        sdf_extent = np.tile(sdf_data.extent, [m, 1])
         inputs_dict = {
             'rope_configuration': rope_configuration,
             'sdf': sdf,
             'sdf_gradient': sdf_gradient,
             'sdf_origin': sdf_origin,
             'sdf_resolution': sdf_resolution,
+            'sdf_extent': sdf_extent
         }
 
-        predicted_violated = bool(self.keras_model.predict(inputs_dict) > 0.5)
-        print(predicted_violated)
+        predicted_violated = (self.keras_model.predict(inputs_dict) > 0.5).astype(np.bool)
 
-        intermediate_layer_model = Model(inputs=self.keras_model.inputs,
+        intermediate_layer_model = Model(inputs=self.model_inputs,
                                          outputs=self.sdf_input_layer.output)
-        # intermediate_layer_model.compile()
-        get_predicted_point = intermediate_layer_model.predict(inputs_dict)
+        intermediate_layer_model.compile(loss='mse', optimizer='adam')  # this is useless
+        intermediate_layer_model.set_weights(self.keras_model.get_weights())
+        predicted_point = intermediate_layer_model.predict(inputs_dict)
 
-        return predicted_violated, predicted_pt
+        return predicted_violated, predicted_point
 
     @staticmethod
     def load(args_dict):
