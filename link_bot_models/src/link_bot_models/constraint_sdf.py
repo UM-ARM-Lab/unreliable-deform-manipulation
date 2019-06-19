@@ -122,7 +122,7 @@ class ConstraintSDF:
 
         if display:
             print("Overall Loss: {:0.3f}".format(float(loss)))
-        print("constraint prediction accuracy:\n{}".format(accuracy))
+        print("constraint prediction accuracy: {:4.1f}%".format(accuracy * 100))
 
         return loss, accuracy
 
