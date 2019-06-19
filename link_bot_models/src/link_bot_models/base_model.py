@@ -25,8 +25,6 @@ class BaseModel:
 
         self.keras_model = None
 
-        self.define_model()
-
     def metadata(self, label_types):
         raise NotImplementedError()
 
@@ -72,7 +70,4 @@ class BaseModel:
         return keras_model
 
     def __str__(self):
-        raise NotImplementedError()
-
-    def define_model(self):
         raise NotImplementedError()

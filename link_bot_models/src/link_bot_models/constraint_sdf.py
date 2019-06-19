@@ -1,41 +1,30 @@
 from __future__ import division, print_function, absolute_import
 
-import json
-import os
-
-from keras.callbacks import TensorBoard, ModelCheckpoint
 import numpy as np
 import tensorflow as tf
 from attr import dataclass
-from colorama import Fore
-from keras.backend.tensorflow_backend import set_session
 from keras.layers import Input, Dense, Lambda, Concatenate, Reshape, Activation
 from keras.models import Model
-from keras.models import load_model
 
+from link_bot_models.base_model import BaseModel
 from link_bot_models.tf_signed_distance_field_op import SDFLookup
-from link_bot_pycommon import link_bot_pycommon, experiments_util
+from link_bot_pycommon import link_bot_pycommon
 
 
-class ConstraintSDF:
+class ConstraintSDF(BaseModel):
 
     def __init__(self, args_dict, sdf_shape, N):
-        self.args_dict = args_dict
-        self.N = N
-
-        config = tf.ConfigProto()
-        config.gpu_options.per_process_gpu_memory_fraction = 0.3
-        set_session(tf.Session(config=config))
+        super(ConstraintSDF, self).__init__(args_dict, sdf_shape, N)
 
         # we have to flatten everything in order to pass it around and I don't understand why
-        sdf = Input(shape=[sdf_shape[0], sdf_shape[1], 1], dtype='float32', name='sdf')
-        sdf_flat = Reshape(target_shape=[sdf_shape[0] * sdf_shape[1]])(sdf)
-        sdf_gradient = Input(shape=[sdf_shape[0], sdf_shape[0], 2], dtype='float32', name='sdf_gradient')
-        sdf_gradient_flat = Reshape(target_shape=[sdf_shape[0] * sdf_shape[1] * 2])(sdf_gradient)
+        sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf')
+        sdf_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1]])(sdf)
+        sdf_gradient = Input(shape=[self.sdf_shape[0], self.sdf_shape[0], 2], dtype='float32', name='sdf_gradient')
+        sdf_gradient_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1] * 2])(sdf_gradient)
         sdf_resolution = Input(shape=[2], dtype='float32', name='sdf_resolution')
         sdf_origin = Input(shape=[2], dtype='float32', name='sdf_origin')  # will be converted to int32 in SDF layer
         sdf_extent = Input(shape=[4], dtype='float32', name='sdf_extent')
-        rope_input = Input(shape=[N], dtype='float32', name='rope_configuration')
+        rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
         self.fc_layer_sizes = [
             6,
@@ -51,7 +40,7 @@ class ConstraintSDF:
 
         sdf_func_inputs = Concatenate()([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, sdf_input])
 
-        signed_distance = SDFLookup(sdf_shape)(sdf_func_inputs)
+        signed_distance = SDFLookup(self.sdf_shape)(sdf_func_inputs)
         logits = Lambda(lambda d: threshold_k - d, name='logits')(signed_distance)
         predictions = Activation('sigmoid', name='combined_output')(logits)
 
@@ -87,43 +76,6 @@ class ConstraintSDF:
         }
         return metadata
 
-    def train(self, train_dataset, validation_dataset, label_types, epochs, log_path):
-        callbacks = []
-        if self.args_dict['log'] is not None:
-            full_log_path = os.path.join("log_data", log_path)
-
-            experiments_util.make_log_dir(full_log_path)
-
-            metadata_path = os.path.join(full_log_path, "metadata.json")
-            metadata_file = open(metadata_path, 'w')
-            metadata = self.metadata(label_types)
-            metadata['log path'] = full_log_path
-            metadata_file.write(json.dumps(metadata, indent=2))
-
-            model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
-
-            checkpoint_callback = ModelCheckpoint(model_filename, monitor='loss', verbose=0, save_best_only=False,
-                                                  save_weights_only=False, mode='auto', period=1)
-            tensorboard = TensorBoard(log_dir=full_log_path)
-
-            callbacks.append(checkpoint_callback)
-            callbacks.append(tensorboard)
-
-        train_generator = train_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
-        validation_generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
-        self.keras_model.fit_generator(train_generator, callbacks=callbacks, validation_data=validation_generator, epochs=epochs)
-        self.evaluate(validation_dataset, label_types)
-
-    def evaluate(self, validation_dataset, label_types, display=True):
-        generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
-        loss, accuracy = self.keras_model.evaluate_generator(generator)
-
-        if display:
-            print("Overall Loss: {:0.3f}".format(float(loss)))
-        print("constraint prediction accuracy: {:4.1f}%".format(accuracy * 100))
-
-        return loss, accuracy
-
     def violated(self, observations, sdf_data):
         m = observations.shape[0]
         rope_configuration = observations
@@ -147,13 +99,6 @@ class ConstraintSDF:
         predicted_point = self.sdf_input_model.predict(inputs_dict)
 
         return predicted_violated, predicted_point
-
-    @staticmethod
-    def load(args_dict):
-        keras_model = load_model(args_dict['checkpoint'],
-                                 custom_objects={'SDFLookup': SDFLookup})
-        print(Fore.CYAN + "Restored keras model {}".format(args_dict['checkpoint']) + Fore.RESET)
-        return keras_model
 
     def __str__(self):
         return "sdf model"
