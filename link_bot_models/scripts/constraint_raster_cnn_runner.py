@@ -57,9 +57,9 @@ def main():
     train_subparser = subparsers.add_parser("train")
     train_subparser.add_argument("train_dataset", help="dataset (json file)")
     train_subparser.add_argument("validation_dataset", help="dataset (json file)")
-    train_subparser.add_argument("--batch-size", "-b", type=int, default=128)
+    train_subparser.add_argument("--batch-size", "-b", type=int, default=100)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=125)
+    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=250)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.set_defaults(func=train)
 

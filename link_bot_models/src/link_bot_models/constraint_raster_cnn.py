@@ -25,9 +25,9 @@ class ConstraintRasterCNN:
         config.gpu_options.per_process_gpu_memory_fraction = 0.8
         set_session(tf.Session(config=config))
 
-        sdf = Input(shape=(sdf_shape[0], sdf_shape[1], 4), dtype='float32', name='sdf')
-        rope_image = Input(shape=(sdf_shape[0], sdf_shape[1], 4), dtype='float32', name='rope_image')
-        combined_image = Concatenate()[sdf, rope_image]
+        sdf = Input(shape=(sdf_shape[0], sdf_shape[1], 1), dtype='float32', name='sdf')
+        rope_image = Input(shape=(sdf_shape[0], sdf_shape[1], 3), dtype='float32', name='rope_image')
+        combined_image = Concatenate()([sdf, rope_image])
 
         self.conv_filters = [
             (16, (3, 3)),
@@ -51,9 +51,9 @@ class ConstraintRasterCNN:
         fc_h = conv_output
         for fc_layer_size in self.fc_layer_sizes:
             fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
-        predictions = Dense(1, activation='combined_output')(fc_h)
+        predictions = Dense(1, activation='sigmoid', name='combined_output')(fc_h)
 
-        self.model_inputs = [rope_image]
+        self.model_inputs = [sdf, rope_image]
         self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
