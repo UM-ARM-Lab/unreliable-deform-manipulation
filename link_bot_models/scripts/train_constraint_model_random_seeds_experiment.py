@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_models import constraint_sdf as m
+from link_bot_models import sdf_function_model as m
 from link_bot_pycommon import link_bot_pycommon, experiments_util
 
 

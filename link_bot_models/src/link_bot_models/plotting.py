@@ -1,7 +1,7 @@
 from enum import auto
 
 import numpy as np
-from link_bot_models import constraint_sdf
+from link_bot_models import sdf_function_model
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from matplotlib.animation import FuncAnimation
@@ -109,7 +109,7 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
     rope_params = np.vstack(grid).T
     rope_configuration_0 = link_bot_pycommon.make_rope_configuration(*rope_params[0])
 
-    result_0 = constraint_sdf.test_single_prediction(sdf_data, model, threshold, rope_configuration_0)
+    result_0 = sdf_function_model.test_single_prediction(sdf_data, model, threshold, rope_configuration_0)
     red_arr = np.array([[0.9, 0.2, 0.2]])
     green_arr = np.array([[0.2, 0.9, 0.2]])
     small_arr = np.array([25])
@@ -133,7 +133,7 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
 
     def update(t):
         rope_configuration = link_bot_pycommon.make_rope_configuration(*rope_params[t])
-        result = constraint_sdf.test_single_prediction(sdf_data, model, threshold, rope_configuration)
+        result = sdf_function_model.test_single_prediction(sdf_data, model, threshold, rope_configuration)
         color = green_arr if result.true_violated == result.predicted_violated else red_arr
         sizes = small_arr if result.true_violated == result.predicted_violated else big_arr
 

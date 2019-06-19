@@ -7,7 +7,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 
-from link_bot_models.constraint_raster_cnn import ConstraintRasterCNN
+from link_bot_models.simple_cnn_model import SimpleCNNModel
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
@@ -22,10 +22,10 @@ def train(args):
     validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
     sdf_shape = train_dataset.sdf_shape
 
-    model = ConstraintRasterCNN(vars(args), sdf_shape, args.N)
+    model = SimpleCNNModel(vars(args), sdf_shape, args.N)
 
     if args.checkpoint:
-        keras_model = ConstraintRasterCNN.load(vars(args))
+        keras_model = SimpleCNNModel.load(vars(args))
         model.keras_model = keras_model
 
     model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
@@ -36,8 +36,8 @@ def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
     sdf_shape = dataset.sdf_shape
 
-    model = ConstraintRasterCNN(vars(args), sdf_shape, args.N)
-    keras_model = ConstraintRasterCNN.load(vars(args))
+    model = SimpleCNNModel(vars(args), sdf_shape, args.N)
+    keras_model = SimpleCNNModel.load(vars(args))
     model.keras_model = keras_model
 
     return model.evaluate(dataset, label_types)

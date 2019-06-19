@@ -9,10 +9,10 @@ from keras.models import Model
 from link_bot_models.base_model import BaseModel
 
 
-class ConstraintCNN(BaseModel):
+class SimpleCNNModel(BaseModel):
 
     def __init__(self, args_dict, sdf_shape, N):
-        super(ConstraintCNN, self).__init__(args_dict, sdf_shape, N)
+        super(SimpleCNNModel, self).__init__(args_dict, sdf_shape, N)
 
         sdf_input = Input(shape=(sdf_shape[0], sdf_shape[1], 1), dtype='float32', name='sdf')
         rope_input = Input(shape=(N,), dtype='float32', name='rope_configuration')

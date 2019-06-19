@@ -9,9 +9,9 @@ from colorama import Fore, Style
 import numpy as np
 import tensorflow as tf
 
-from link_bot_models import constraint_sdf
+from link_bot_models import sdf_function_model
 from link_bot_models import plotting
-from link_bot_models.constraint_sdf import ConstraintSDF
+from link_bot_models.sdf_function_model import ConstraintSDF
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 
@@ -102,7 +102,7 @@ def main():
 
         sdf_data = environment.sdf_data
 
-        results = constraint_sdf.test_predictions(model, environment)
+        results = sdf_function_model.test_predictions(model, environment)
         m = results.shape[0]
 
         true_positives = [result for result in results if label_mask @ result.true_violated and result.predicted_violated]
