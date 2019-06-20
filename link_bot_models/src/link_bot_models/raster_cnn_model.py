@@ -2,6 +2,7 @@ from __future__ import division, print_function, absolute_import
 
 import keras
 import numpy as np
+from keras.utils import multi_gpu_model
 import tensorflow as tf
 from keras.layers import Input, Dense, Conv2D, Flatten, MaxPool2D, Concatenate
 from keras.models import Model
@@ -46,8 +47,10 @@ class RasterCNNModel(BaseModel):
         predictions = Dense(1, activation='sigmoid', name='combined_output')(fc_h)
 
         self.model_inputs = [sdf, rope_image]
-        self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
-        self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        keras_model = Model(inputs=self.model_inputs, outputs=predictions)
+        keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+        self.keras_model = multi_gpu_model(keras_model, gpus=args_dict['num_gpus'])
 
     def metadata(self, label_types):
         metadata = {
