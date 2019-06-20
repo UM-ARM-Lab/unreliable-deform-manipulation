@@ -2,7 +2,6 @@ from __future__ import division, print_function, absolute_import
 
 import numpy as np
 import tensorflow as tf
-from attr import dataclass
 
 from keras.layers import Input, Dense, Lambda, Concatenate, Reshape, Activation
 from keras.models import Model
@@ -110,12 +109,13 @@ class SDFFuncationModel(BaseModel):
         return "sdf model"
 
 
-@dataclass
 class EvaluateResult:
-    rope_configuration: np.ndarray
-    predicted_point: np.ndarray
-    predicted_violated: bool
-    true_violated: bool
+
+    def __init__(self, rope_configuration, predicted_point, predicted_violated, true_violated):
+        self.rope_configuration = rope_configuration
+        self.predicted_point = predicted_point
+        self.predicted_violated = predicted_violated
+        self.true_violated = true_violated
 
 
 def test_single_prediction(sdf_data, model, threshold, rope_configuration):
