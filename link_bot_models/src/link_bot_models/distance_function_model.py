@@ -3,6 +3,7 @@ from __future__ import division, print_function, absolute_import
 import keras.backend as K
 import numpy as np
 import tensorflow as tf
+import keras
 from attr import dataclass
 from keras.layers import Input, Conv2D, Lambda, Activation
 from keras.models import Model
@@ -22,7 +23,9 @@ class DistanceFunctionModel(BaseModel):
 
         distances = DistanceMatrix()(rope_input)
         n_points = int(self.N / 2)
-        conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True)
+        kinit = keras.initializers.Constant(value=[[0, 1, 0], [0, 0, 1], [0, 0, 1]])
+        binit = keras.initializers.Constant(value=-1.1)
+        conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True, kernel_initializer=kinit, bias_initializer=binit)
         z = conv(distances)
         z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze1')(z)
         logits = Lambda(lambda x: K.squeeze(x, 1), name='squeeze2')(z)
