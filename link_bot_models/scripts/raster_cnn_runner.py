@@ -22,11 +22,10 @@ def train(args):
     validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
     sdf_shape = train_dataset.sdf_shape
 
-    model = RasterCNNModel(vars(args), sdf_shape, args.N)
-
     if args.checkpoint:
-        keras_model = RasterCNNModel.load(vars(args))
-        model.keras_model = keras_model
+        model = RasterCNNModel.load(vars(args), sdf_shape, args.N)
+    else:
+        model = RasterCNNModel(vars(args), sdf_shape, args.N)
 
     model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
     model.evaluate(validation_dataset, label_types)
@@ -36,9 +35,7 @@ def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
     sdf_shape = dataset.sdf_shape
 
-    model = RasterCNNModel(vars(args), sdf_shape, args.N)
-    keras_model = RasterCNNModel.load(vars(args))
-    model.keras_model = keras_model
+    model = RasterCNNModel.load(vars(args), sdf_shape, args.N)
 
     return model.evaluate(dataset, label_types)
 
