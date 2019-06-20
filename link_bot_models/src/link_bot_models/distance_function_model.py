@@ -23,19 +23,25 @@ class DistanceFunctionModel(BaseModel):
 
         distances = DistanceMatrix()(rope_input)
         n_points = int(self.N / 2)
-        kinit = keras.initializers.Constant(value=[[0, 1, 0], [0, 0, 1], [0, 0, 1]])
-        binit = keras.initializers.Constant(value=-1.1)
-        conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True, kernel_initializer=kinit, bias_initializer=binit)
+        # kinit = keras.initializers.Constant(value=[[0, 1, 0], [0, 0, 1], [0, 0, 1]])
+        # binit = keras.initializers.Constant(value=-1.1)
+        # conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True, kernel_initializer=kinit, bias_initializer=binit)
+        self.l2reg = 1.0
+        l2reg = self.l2reg
+        conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True,
+                      activity_regularizer=keras.regularizers.l2(l2reg))
         z = conv(distances)
+        self.sigmoid_scale = 100
+        sigmoid_scale = self.sigmoid_scale
         z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze1')(z)
-        logits = Lambda(lambda x: K.squeeze(x, 1), name='squeeze2')(z)
+        logits = Lambda(lambda x: sigmoid_scale * K.squeeze(x, 1), name='squeeze2')(z)
 
         # TODO: this model doesn't handle "or" like conditions on the distances, since it's doing a linear combination
         predictions = Activation('sigmoid', name='combined_output')(logits)
 
         self.model_inputs = [rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
-        self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
 
         self.temp_model = Model(inputs=self.model_inputs, outputs=conv.output)
 
@@ -45,6 +51,8 @@ class DistanceFunctionModel(BaseModel):
             'seed': self.args_dict['seed'],
             'checkpoint': self.args_dict['checkpoint'],
             'N': self.N,
+            'l2deg': self.l2reg,
+            'sigmoid_scale': self.sigmoid_scale,
             'label_type': [label_type.name for label_type in label_types],
             'commandline': self.args_dict['commandline'],
         }

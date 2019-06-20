@@ -75,6 +75,9 @@ def main():
     commandline = ' '.join(sys.argv)
     args.commandline = commandline
 
+    np.random.seed(args.seed)
+    tf.random.set_random_seed(args.seed)
+
     if args == argparse.Namespace():
         parser.print_usage()
     else:

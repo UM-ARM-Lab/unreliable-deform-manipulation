@@ -3,6 +3,7 @@ from __future__ import division, print_function, absolute_import
 import json
 import os
 
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
@@ -61,8 +62,20 @@ class BaseModel:
 
         train_generator = train_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
         validation_generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
-        self.keras_model.fit_generator(train_generator, callbacks=callbacks, validation_data=validation_generator, epochs=epochs)
+        history = self.keras_model.fit_generator(train_generator,
+                                                 callbacks=callbacks,
+                                                 validation_data=validation_generator,
+                                                 epochs=epochs)
         self.evaluate(validation_dataset, label_types)
+
+        if self.args_dict['plot']:
+            plt.figure()
+            plt.title("Loss")
+            plt.plot(history.history['loss'])
+
+            plt.figure()
+            plt.title("Accuracy")
+            plt.plot(history.history['acc'])
 
     def evaluate(self, validation_dataset, label_types, display=True):
         generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
