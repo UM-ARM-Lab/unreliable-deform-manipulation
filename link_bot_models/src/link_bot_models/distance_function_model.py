@@ -1,12 +1,11 @@
 from __future__ import division, print_function, absolute_import
 
-import numpy as np
 import keras.backend as K
+import numpy as np
 import tensorflow as tf
 from attr import dataclass
 from keras.layers import Input, Conv2D, Lambda, Activation
 from keras.models import Model
-from keras.initializers import Constant
 
 from link_bot_models.base_model import BaseModel
 from link_bot_models.ops.distance_matrix_layer import DistanceMatrix
@@ -21,26 +20,21 @@ class DistanceFunctionModel(BaseModel):
         # we have to flatten everything in order to pass it around and I don't understand why
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
-        threshold = 0.5
-
         distances = DistanceMatrix()(rope_input)
-        n_points = distances.shape[1]
-        kernel_init_np = np.zeros((3, 3), dtype=np.float32)
-        kernel_init_np[0, 1] = 1.0
-        kernel_init_np[0, 2] = 1.0
-        kernel_init = Constant(value=kernel_init_np)
-        z = Conv2D(1, (n_points, n_points), activation=None, use_bias=False, kernel_initializer=kernel_init)(distances)
+        n_points = int(self.N / 2)
+        conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True)
+        z = conv(distances)
         z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze1')(z)
-        z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze2')(z)
+        logits = Lambda(lambda x: K.squeeze(x, 1), name='squeeze2')(z)
 
-        logits = Lambda(lambda d: threshold - d, name='logits')(z)
+        # TODO: this model doesn't handle "or" like conditions on the distances, since it's doing a linear combination
         predictions = Activation('sigmoid', name='combined_output')(logits)
 
         self.model_inputs = [rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-        self.beta = 1e-2
+        self.temp_model = Model(inputs=self.model_inputs, outputs=conv.output)
 
     def metadata(self, label_types):
         metadata = {
@@ -48,7 +42,6 @@ class DistanceFunctionModel(BaseModel):
             'seed': self.args_dict['seed'],
             'checkpoint': self.args_dict['checkpoint'],
             'N': self.N,
-            'beta': self.beta,
             'label_type': [label_type.name for label_type in label_types],
             'commandline': self.args_dict['commandline'],
         }
@@ -73,8 +66,8 @@ class DistanceFunctionModel(BaseModel):
 
         predicted_violated = (self.keras_model.predict(inputs_dict) > 0.5).astype(np.bool)
 
-        self.sdf_input_model.set_weights(self.keras_model.get_weights())
-        predicted_point = self.sdf_input_model.predict(inputs_dict)
+        self.temp_model.set_weights(self.keras_model.get_weights())
+        predicted_point = self.temp_model.predict(inputs_dict)
 
         return predicted_violated, predicted_point
 

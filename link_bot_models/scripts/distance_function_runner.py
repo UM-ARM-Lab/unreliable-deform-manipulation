@@ -52,7 +52,6 @@ def main():
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
     parser.add_argument("--seed", type=int, default=0)
-    # parser.add_argument("label_type", type=LabelType.from_string, choices=list(LabelType))
 
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
@@ -60,7 +59,7 @@ def main():
     train_subparser.add_argument("validation_dataset", help="dataset (json file)")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=100)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=250)
+    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=50)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--random-init", action='store_true')
     train_subparser.set_defaults(func=train)

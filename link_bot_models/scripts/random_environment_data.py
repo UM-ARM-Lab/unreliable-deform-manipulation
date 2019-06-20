@@ -69,8 +69,8 @@ def generate_env(args):
     nominal_link_length = 0.5
     overstretched_threshold = nominal_link_length * args.overstretched_factor_threshold
     for i in range(args.n):
-        # half gaussian with variance such that ~20% of ropes will be overstretched
-        length = abs(np.random.randn()) * 0.039 + nominal_link_length
+        # half gaussian with variance such that ~50% of ropes will be overstretched
+        length = abs(np.random.randn()) * 0.042 + nominal_link_length
         rope_configurations[i] = link_bot_pycommon.make_random_rope_configuration(sdf_data.extent, length=length)
         tail_x = rope_configurations[i, 0]
         tail_y = rope_configurations[i, 1]
