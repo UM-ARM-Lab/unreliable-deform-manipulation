@@ -71,6 +71,7 @@ def main():
     train_subparser.add_argument("--plot", action='store_true')
     train_subparser.add_argument("--sigmoid-scale", "-s", type=float, default=100)
     train_subparser.add_argument("--val-acc-threshold", type=float, default=None)
+    train_subparser.add_argument("--early-stopping", action='store_true')
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")
