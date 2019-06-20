@@ -23,7 +23,7 @@ class DistanceFunctionModel(BaseModel):
 
         distances = DistanceMatrix()(rope_input)
         n_points = int(self.N / 2)
-        self.l2reg = 1.0
+        self.l2reg = 0.0
         l2reg = self.l2reg
         conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True,
                       activity_regularizer=keras.regularizers.l2(l2reg))
