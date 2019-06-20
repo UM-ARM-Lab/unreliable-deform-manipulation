@@ -12,7 +12,8 @@ from link_bot_models.base_model import BaseModel
 class RasterCNNModel(BaseModel):
 
     def __init__(self, args_dict, sdf_shape, N):
-        super(RasterCNNModel, self).__init__(args_dict, sdf_shape, N)
+        super(RasterCNNModel, self).__init__(args_dict, N)
+        self.sdf_shape = sdf_shape
 
         sdf = Input(shape=(sdf_shape[0], sdf_shape[1], 1), dtype='float32', name='sdf')
         rope_image = Input(shape=(sdf_shape[0], sdf_shape[1], 3), dtype='float32', name='rope_image')
