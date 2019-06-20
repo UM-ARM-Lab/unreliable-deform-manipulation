@@ -23,9 +23,6 @@ class DistanceFunctionModel(BaseModel):
 
         distances = DistanceMatrix()(rope_input)
         n_points = int(self.N / 2)
-        # kinit = keras.initializers.Constant(value=[[0, 1, 0], [0, 0, 1], [0, 0, 1]])
-        # binit = keras.initializers.Constant(value=-1.1)
-        # conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True, kernel_initializer=kinit, bias_initializer=binit)
         self.l2reg = 1.0
         l2reg = self.l2reg
         conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True,
