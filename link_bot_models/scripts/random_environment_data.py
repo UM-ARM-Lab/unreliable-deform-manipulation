@@ -97,12 +97,13 @@ def generate_env(args):
 
 
 def generate(args):
+    full_output_directory = '{}_{}_{}'.format(args.outdir, args.m, args.n)
     if args.outdir:
-        if os.path.isfile(args.outdir):
+        if os.path.isfile(full_output_directory):
             print(Fore.RED + "argument outdir is an existing file, aborting." + Fore.RESET)
             return
-        elif not os.path.isdir(args.outdir):
-            os.mkdir(args.outdir)
+        elif not os.path.isdir(full_output_directory):
+            os.mkdir(full_output_directory)
 
     if not args.seed:
         # I know this looks crazy, but the idea is that when we run the script multiple times we don't want to get the same output
@@ -119,8 +120,8 @@ def generate(args):
         rope_configurations, constraint_labels, sdf_data, percentage_violation = generate_env(args)
         percentages_positive.append(percentage_violation)
         if args.outdir:
-            rope_data_filename = os.path.join(args.outdir, 'rope_data_{:d}.npz'.format(i))
-            sdf_filename = os.path.join(args.outdir, 'sdf_data_{:d}.npz'.format(i))
+            rope_data_filename = os.path.join(full_output_directory, 'rope_data_{:d}.npz'.format(i))
+            sdf_filename = os.path.join(full_output_directory, 'sdf_data_{:d}.npz'.format(i))
 
             # FIXME: order matters
             filename_pairs.append([sdf_filename, rope_data_filename])
@@ -140,7 +141,7 @@ def generate(args):
     print("Class balance: mean % positive: {}".format(mean_percentage_positive))
 
     if args.outdir:
-        dataset_filename = os.path.join(args.outdir, 'dataset.json')
+        dataset_filename = os.path.join(full_output_directory, 'dataset.json')
         dataset = MultiEnvironmentDataset(filename_pairs, constraint_label_types=constraint_label_types,
                                           n_obstacles=args.n_obstacles, obstacle_size=args.obstacle_size,
                                           threshold=args.sdf_threshold, seed=args.seed)

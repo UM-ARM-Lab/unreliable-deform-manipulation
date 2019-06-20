@@ -58,6 +58,7 @@ def main():
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=250)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--plot", action="store_true")
+    train_subparser.add_argument("--val-acc-threshold", type=float, default=None)
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")

@@ -7,9 +7,10 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
-from keras.callbacks import TensorBoard, ModelCheckpoint
+from keras.callbacks import TensorBoard, ModelCheckpoint, LambdaCallback, EarlyStopping
 from keras.models import load_model
 
+from link_bot_models.callbacks import StopAtAccuracy
 from link_bot_pycommon import experiments_util
 from link_bot_models.ops.tf_signed_distance_field_op import SDFLookup
 from link_bot_models.ops.distance_matrix_layer import DistanceMatrix
@@ -53,15 +54,33 @@ class BaseModel:
 
             model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
 
-            checkpoint_callback = ModelCheckpoint(model_filename, monitor='loss', verbose=0,
-                                                  save_best_only=False, save_weights_only=False, mode='auto',
-                                                  period=1)
-            tensorboard = TensorBoard(log_dir=full_log_path)
+            checkpoint_callback = ModelCheckpoint(model_filename, monitor='loss')
             callbacks.append(checkpoint_callback)
+
+            tensorboard = TensorBoard(log_dir=full_log_path)
             callbacks.append(tensorboard)
 
+            val_acc_threshold = self.args_dict['val_acc_threshold']
+            if val_acc_threshold is not None:
+                if validation_dataset is None:
+                    ValueError("Validation dataset must be provided in order to use this monitor")
+                if val_acc_threshold < 0 or val_acc_threshold > 1:
+                    raise ValueError("val_acc_threshold {} must be between 0 and 1 inclusive".format(val_acc_threshold))
+                stop_at_accuracy = StopAtAccuracy(val_acc_threshold)
+                callbacks.append(stop_at_accuracy)
+
+            if self.args_dict['early_stopping']:
+                early_stopping = EarlyStopping(monitor='val_acc', patience=5, min_delta=0.001, verbose=True)
+                callbacks.append(early_stopping)
+
+
         train_generator = train_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
-        validation_generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
+
+        if not self.args_dict['skip_validation']:
+            validation_generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
+        else:
+            validation_generator = None
+
         history = self.keras_model.fit_generator(train_generator,
                                                  callbacks=callbacks,
                                                  validation_data=validation_generator,
