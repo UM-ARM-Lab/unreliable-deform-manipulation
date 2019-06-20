@@ -56,7 +56,7 @@ def main():
     train_subparser.add_argument("validation_dataset", help="dataset (json file)")
     train_subparser.add_argument("--batch-size", "-b", type=int, default=100)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=250)
+    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=10)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--n-gpus", type=int, help="number of GPUs", default=1)
     train_subparser.set_defaults(func=train)
