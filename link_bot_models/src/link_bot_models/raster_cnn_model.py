@@ -50,7 +50,8 @@ class RasterCNNModel(BaseModel):
         keras_model = Model(inputs=self.model_inputs, outputs=predictions)
         keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-        self.keras_model = multi_gpu_model(keras_model, gpus=args_dict['num_gpus'])
+        #self.keras_model = multi_gpu_model(keras_model, gpus=args_dict['n_gpus'])
+        self.keras_model = keras_model
 
     def metadata(self, label_types):
         metadata = {
