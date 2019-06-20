@@ -22,10 +22,10 @@ custom_objects = {
 
 class BaseModel:
 
-    def __init__(self, args_dict, sdf_shape, N):
+    def __init__(self, args_dict, N):
         self.args_dict = args_dict
-        self.sdf_shape = sdf_shape
         self.N = N
+        self.initial_epoch = 0
 
         config = tf.ConfigProto()
         config.gpu_options.per_process_gpu_memory_fraction = 0.2
@@ -65,8 +65,8 @@ class BaseModel:
         history = self.keras_model.fit_generator(train_generator,
                                                  callbacks=callbacks,
                                                  validation_data=validation_generator,
+                                                 initial_epoch=self.initial_epoch,
                                                  epochs=epochs)
-        self.evaluate(validation_dataset, label_types)
 
         if self.args_dict['plot']:
             plt.figure()
@@ -82,16 +82,23 @@ class BaseModel:
         loss, accuracy = self.keras_model.evaluate_generator(generator)
 
         if display:
+            print("Validation:")
             print("Overall Loss: {:0.3f}".format(float(loss)))
-        print("constraint prediction accuracy:\n{}".format(accuracy))
+            print("constraint prediction accuracy:\n{}".format(accuracy))
 
         return loss, accuracy
 
-    @staticmethod
-    def load(args_dict):
+    @classmethod
+    def load(cls, args_dict, *args):
+        model = cls(args_dict, *args)
+
+        basename = os.path.basename(os.path.splitext(args_dict['checkpoint'])[0])
+        initial_epoch = int(basename[3:])
         keras_model = load_model(args_dict['checkpoint'], custom_objects=custom_objects)
+        model.keras_model = keras_model
+        model.initial_epoch = initial_epoch
         print(Fore.CYAN + "Restored keras model {}".format(args_dict['checkpoint']) + Fore.RESET)
-        return keras_model
+        return model
 
     def __str__(self):
         raise NotImplementedError()

@@ -20,25 +20,31 @@ def train(args):
 
     train_dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
     validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
-    sdf_shape = train_dataset.sdf_shape
-
-    model = DistanceFunctionModel(vars(args), sdf_shape, args.N)
 
     if args.checkpoint:
-        keras_model = DistanceFunctionModel.load(vars(args))
-        model.keras_model = keras_model
+        model = DistanceFunctionModel.load(vars(args), args.N)
+    else:
+        model = DistanceFunctionModel(vars(args), args.N)
 
     model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
-    model.evaluate(validation_dataset, label_types)
 
 
 def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
-    sdf_shape = dataset.sdf_shape
 
-    model = DistanceFunctionModel(vars(args), sdf_shape, args.N)
-    keras_model = DistanceFunctionModel.load(vars(args))
-    model.keras_model = keras_model
+    model = DistanceFunctionModel.load(vars(args), args.N)
+
+    weights = model.keras_model.get_weights()
+    conv_kernel = np.squeeze(weights[0])
+    conv_bias = np.squeeze(weights[1])
+    print(conv_kernel)
+    print(conv_bias)
+    print(conv_kernel[0, 2] + conv_kernel[2, 0])
+    print(conv_kernel[0, 1] + conv_kernel[1, 0] + conv_kernel[1, 2] + conv_kernel[2, 1])
+
+    # x = dataset.environments[0].rope_data['rope_configurations'][:1]
+    # d = model.distance_matrix_model.predict(x)
+    # print(np.squeeze(d))
 
     return model.evaluate(dataset, label_types)
 

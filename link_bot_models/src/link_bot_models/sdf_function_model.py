@@ -15,7 +15,8 @@ from link_bot_pycommon import link_bot_pycommon
 class SDFFuncationModel(BaseModel):
 
     def __init__(self, args_dict, sdf_shape, N):
-        super(SDFFuncationModel, self).__init__(args_dict, sdf_shape, N)
+        super(SDFFuncationModel, self).__init__(args_dict, N)
+        self.sdf_shape = sdf_shape
 
         # we have to flatten everything in order to pass it around and I don't understand why
         sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf')
