@@ -21,8 +21,7 @@ class DistanceFunctionModel(BaseModel):
         n_points = int(self.N / 2)
         conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True)
         z = conv(distances)
-        self.sigmoid_scale = 1
-        sigmoid_scale = self.sigmoid_scale
+        sigmoid_scale = args_dict['sigmoid_scale']
         z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze1')(z)
         logits = Lambda(lambda x: sigmoid_scale * K.squeeze(x, 1), name='squeeze2')(z)
 
@@ -41,7 +40,7 @@ class DistanceFunctionModel(BaseModel):
             'seed': self.args_dict['seed'],
             'checkpoint': self.args_dict['checkpoint'],
             'N': self.N,
-            'sigmoid_scale': self.sigmoid_scale,
+            'sigmoid_scale': self.args_dict['sigmoid_scale'],
             'label_type': [label_type.name for label_type in label_types],
             'commandline': self.args_dict['commandline'],
         }
