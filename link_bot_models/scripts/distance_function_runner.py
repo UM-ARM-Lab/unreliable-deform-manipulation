@@ -77,6 +77,8 @@ def main():
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
     eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
     eval_subparser.set_defaults(func=evaluate)
+    # FIXME: make hyper parameters loaded from metadata
+    eval_subparser.add_argument("--sigmoid-scale", "-s", type=float, default=100)
 
     args = parser.parse_args()
     commandline = ' '.join(sys.argv)
