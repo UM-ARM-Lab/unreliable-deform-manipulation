@@ -34,13 +34,13 @@ def evaluate(args):
 
     model = DistanceFunctionModel.load(vars(args), args.N)
 
-    weights = model.keras_model.get_weights()
-    conv_kernel = np.squeeze(weights[0])
-    conv_bias = np.squeeze(weights[1])
-    print(conv_kernel)
-    print(conv_bias)
-    print(conv_kernel[0, 2] + conv_kernel[2, 0])
-    print(conv_kernel[0, 1] + conv_kernel[1, 0] + conv_kernel[1, 2] + conv_kernel[2, 1])
+    # weights = model.keras_model.get_weights()
+    # conv_kernel = np.squeeze(weights[0])
+    # conv_bias = np.squeeze(weights[1])
+    # print(conv_kernel)
+    # print(conv_bias)
+    # print(conv_kernel[0, 2] + conv_kernel[2, 0])
+    # print(conv_kernel[0, 1] + conv_kernel[1, 0] + conv_kernel[1, 2] + conv_kernel[2, 1])
 
     # x = dataset.environments[0].rope_data['rope_configurations'][:1]
     # d = model.distance_matrix_model.predict(x)

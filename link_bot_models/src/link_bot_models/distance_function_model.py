@@ -21,7 +21,7 @@ class DistanceFunctionModel(BaseModel):
         n_points = int(self.N / 2)
         conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True)
         z = conv(distances)
-        self.sigmoid_scale = 75
+        self.sigmoid_scale = 1
         sigmoid_scale = self.sigmoid_scale
         z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze1')(z)
         logits = Lambda(lambda x: sigmoid_scale * K.squeeze(x, 1), name='squeeze2')(z)

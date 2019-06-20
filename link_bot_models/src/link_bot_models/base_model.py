@@ -84,7 +84,7 @@ class BaseModel:
         if display:
             print("Validation:")
             print("Overall Loss: {:0.3f}".format(float(loss)))
-            print("constraint prediction accuracy:\n{}".format(accuracy))
+            print("constraint prediction accuracy:\n{:5.2f}".format(accuracy * 100))
 
         return loss, accuracy
 
