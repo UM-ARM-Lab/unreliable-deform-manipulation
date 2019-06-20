@@ -19,12 +19,13 @@ class RasterCNNModel(BaseModel):
         combined_image = Concatenate()([sdf, rope_image])
 
         self.conv_filters = [
+            (32, (5, 5)),
+            (32, (5, 5)),
             (16, (3, 3)),
             (16, (3, 3)),
         ]
 
         self.fc_layer_sizes = [
-            256,
             256,
             256,
         ]
