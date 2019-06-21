@@ -1,6 +1,7 @@
 import json
 import os
 import keras
+import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -163,12 +164,7 @@ class DatasetGenerator(keras.utils.Sequence):
 
             rope_configuration = rope_data['rope_configurations'][example_info['rope_data_index']]
 
-            rope_image = np.zeros([sdf_data.sdf.shape[0], sdf_data.sdf.shape[1], n_rope_points])
-            for j in range(n_rope_points):
-                px = rope_configuration[2 * j]
-                py = rope_configuration[2 * j + 1]
-                row, col = link_bot_pycommon.point_to_sdf_idx(px, py, sdf_data.resolution, sdf_data.origin)
-                rope_image[row, col, j] = 1
+            rope_image = link_bot_pycommon.make_rope_images(sdf_data, rope_configuration)
 
             all_label = rope_data['constraints'][example_info['rope_data_index']].astype(np.float32)
             combined_label = np.any(all_label * self.label_mask).astype(np.float32)

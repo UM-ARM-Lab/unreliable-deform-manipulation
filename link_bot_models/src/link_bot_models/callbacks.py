@@ -12,3 +12,4 @@ class StopAtAccuracy(Callback):
         if val_acc > self.validation_accuracy_threshold:
             print("Validation accuracy reached! {:4.1f} > {:4.1f}".format(val_acc, self.validation_accuracy_threshold))
             self.model.stop_training = True
+

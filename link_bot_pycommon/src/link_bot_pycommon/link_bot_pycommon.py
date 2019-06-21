@@ -6,6 +6,20 @@ import numpy as np
 from colorama import Fore
 
 
+def make_rope_images(sdf_data, rope_configurations):
+    rope_configurations = np.atleast_2d(rope_configurations)
+    m, N = rope_configurations.shape
+    n_rope_points = int(N / 2)
+    rope_images = np.zeros([m, sdf_data.sdf.shape[0], sdf_data.sdf.shape[1], n_rope_points])
+    for i in range(m):
+        for j in range(n_rope_points):
+            px = rope_configurations[i, 2 * j]
+            py = rope_configurations[i, 2 * j + 1]
+            row, col = point_to_sdf_idx(px, py, sdf_data.resolution, sdf_data.origin)
+            rope_images[i, row, col, j] = 1
+    return rope_images
+
+
 def sdf_indeces_to_point(rowcols, resolution, origin):
     return (rowcols - origin) * resolution
 
