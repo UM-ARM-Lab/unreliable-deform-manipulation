@@ -12,8 +12,8 @@ from keras.models import load_model
 
 from link_bot_models.callbacks import StopAtAccuracy
 from link_bot_pycommon import experiments_util
-from link_bot_models.ops.tf_signed_distance_field_op import SDFLookup
-from link_bot_models.ops.distance_matrix_layer import DistanceMatrix
+from link_bot_models.layers.tf_signed_distance_field_op import SDFLookup
+from link_bot_models.layers.distance_matrix_layer import DistanceMatrix
 
 custom_objects = {
     'SDFLookup': SDFLookup,

@@ -7,7 +7,8 @@ from keras.layers import Input, Dense, Lambda, Concatenate, Reshape, Activation
 from keras.models import Model
 
 from link_bot_models.base_model import BaseModel
-from link_bot_models.ops.tf_signed_distance_field_op import SDFLookup
+from link_bot_models.layers.tf_signed_distance_field_op import SDFLookup
+from link_bot_models.layers.bias_layer import BiasLayer
 from link_bot_pycommon import link_bot_pycommon
 
 
@@ -58,7 +59,8 @@ class SDFFuncationModel(BaseModel):
 
         signed_distance = SDFLookup(self.sdf_shape)(sdf_func_inputs)
         sigmoid_scale = args_dict['sigmoid_scale']
-        logits = Lambda(lambda x: sigmoid_scale * x)(signed_distance)
+        bias = BiasLayer()(signed_distance)
+        logits = Lambda(lambda x: sigmoid_scale * x)(bias)
         predictions = Activation('sigmoid', name='combined_output')(logits)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]

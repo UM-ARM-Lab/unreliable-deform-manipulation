@@ -3,11 +3,11 @@ from __future__ import division, print_function, absolute_import
 import keras.backend as K
 import numpy as np
 import tensorflow as tf
-from keras.layers import Input, Conv2D, Lambda, Activation, Dense, Reshape
+from keras.layers import Input, Conv2D, Lambda, Activation, Dense
 from keras.models import Model
 
 from link_bot_models.base_model import BaseModel
-from link_bot_models.ops.distance_matrix_layer import DistanceMatrix
+from link_bot_models.layers.distance_matrix_layer import DistanceMatrix
 
 
 class DistanceFunctionModel(BaseModel):
@@ -17,19 +17,19 @@ class DistanceFunctionModel(BaseModel):
 
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
-        self.fc_layer_sizes = [
-            128,
-            128,
-        ]
-
-        n_points = int(self.fc_layer_sizes[-1] / 2)
-
-        fc_h = rope_input
-        for fc_layer_size in self.fc_layer_sizes:
-            fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
-
-        points = fc_h
-        distances = DistanceMatrix()(points)
+        # self.fc_layer_sizes = [
+        #     128,
+        #     128,
+        # ]
+        #
+        # fc_h = rope_input
+        # for fc_layer_size in self.fc_layer_sizes:
+        #     fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
+        #
+        # points = fc_h
+        # n_points = int(self.fc_layer_sizes[-1] / 2)
+        n_points = 3
+        distances = DistanceMatrix()(rope_input)
         conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True)
         z = conv(distances)
         sigmoid_scale = args_dict['sigmoid_scale']
