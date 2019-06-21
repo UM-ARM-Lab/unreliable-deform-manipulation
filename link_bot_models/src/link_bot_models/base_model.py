@@ -62,17 +62,18 @@ class BaseModel:
 
             val_acc_threshold = self.args_dict['val_acc_threshold']
             if val_acc_threshold is not None:
-                if validation_dataset is None:
-                    ValueError("Validation dataset must be provided in order to use this monitor")
+                if self.args_dict['skip_validation']:
+                    raise ValueError("Validation dataset must be provided in order to use this monitor")
                 if val_acc_threshold < 0 or val_acc_threshold > 1:
                     raise ValueError("val_acc_threshold {} must be between 0 and 1 inclusive".format(val_acc_threshold))
                 stop_at_accuracy = StopAtAccuracy(val_acc_threshold)
                 callbacks.append(stop_at_accuracy)
 
             if self.args_dict['early_stopping']:
+                if self.args_dict['skip_validation']:
+                    raise ValueError("Validation dataset must be provided in order to use this monitor")
                 early_stopping = EarlyStopping(monitor='val_acc', patience=5, min_delta=0.001, verbose=True)
                 callbacks.append(early_stopping)
-
 
         train_generator = train_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
 
@@ -95,6 +96,9 @@ class BaseModel:
             plt.figure()
             plt.title("Accuracy")
             plt.plot(history.history['acc'])
+
+        if self.args_dict['skip_validation']:
+            self.evaluate(validation_dataset, label_types)
 
     def evaluate(self, validation_dataset, label_types, display=True):
         generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
