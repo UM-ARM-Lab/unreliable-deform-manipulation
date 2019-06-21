@@ -39,13 +39,11 @@ class SDFFuncationModel(BaseModel):
             oob_right = sdf_input_points[:, 0] >= sdf_extent[:, 1]
             oob_up = sdf_input_points[:, 1] <= sdf_extent[:, 2]
             oob_down = sdf_input_points[:, 1] >= sdf_extent[:, 3]
-            out_of_bounds = tf.math.reduce_any(tf.stack((oob_up, oob_down, oob_left, oob_right), axis=1), axis=1, name='oob')
+            out_of_bounds = tf.math.reduce_any(tf.stack((oob_up, oob_down, oob_left, oob_right), axis=1), axis=1)
             in_bounds_value = tf.ones_like(distances_to_origin) * 0.0
             distances_out_of_bounds = tf.where(out_of_bounds, distances_to_origin, in_bounds_value)
-            out_of_bounds_loss = tf.reduce_mean(distances_out_of_bounds, name='out_of_bounds_loss')
+            out_of_bounds_loss = tf.reduce_mean(distances_out_of_bounds)
             return tf.norm(out_of_bounds_loss) * self.beta
-
-        threshold = 0.0
 
         sdf_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1]])(sdf)
         sdf_gradient_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1] * 2])(sdf_gradient)
@@ -53,13 +51,14 @@ class SDFFuncationModel(BaseModel):
         fc_h = rope_input
         for fc_layer_size in self.fc_layer_sizes:
             fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
-        self.sdf_input_layer = Dense(2, activation=None, use_bias=True, name='sdf_input', activity_regularizer=None)
+        self.sdf_input_layer = Dense(2, activation=None, use_bias=True, activity_regularizer=oob_regularization)
         sdf_input = self.sdf_input_layer(fc_h)
 
         sdf_func_inputs = Concatenate()([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, sdf_input])
 
         signed_distance = SDFLookup(self.sdf_shape)(sdf_func_inputs)
-        logits = Lambda(lambda d: threshold - d, name='logits')(signed_distance)
+        sigmoid_scale = args_dict['sigmoid_scale']
+        logits = Lambda(lambda x: sigmoid_scale * x)(signed_distance)
         predictions = Activation('sigmoid', name='combined_output')(logits)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
@@ -77,6 +76,7 @@ class SDFFuncationModel(BaseModel):
             'beta': self.beta,
             'label_type': [label_type.name for label_type in label_types],
             'commandline': self.args_dict['commandline'],
+            'sigmoid_scale': self.args_dict['sigmoid_scale'],
             'hidden_layer_dims': self.fc_layer_sizes,
         }
         return metadata
