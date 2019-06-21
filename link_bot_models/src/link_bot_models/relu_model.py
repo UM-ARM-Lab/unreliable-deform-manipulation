@@ -17,10 +17,9 @@ class ReluModel(BaseModel):
         rope_input = Input(shape=(N,), dtype='float32', name='rope_configuration')
 
         self.fc_layer_sizes = [
-            1024,
-            1024,
-            1024,
-            1024,
+            4096,
+            4096,
+            4096,
         ]
 
         fc_h = rope_input
