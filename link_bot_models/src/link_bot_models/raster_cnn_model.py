@@ -4,7 +4,7 @@ import keras
 import numpy as np
 from keras.utils import multi_gpu_model
 import tensorflow as tf
-from keras.layers import Input, Dense, Conv2D, Flatten, MaxPool2D, Concatenate
+from keras.layers import Input, Dense, Conv2D, Flatten, MaxPool2D, Concatenate, Dropout
 from keras.models import Model
 
 from link_bot_models.base_model import BaseModel
@@ -37,13 +37,15 @@ class RasterCNNModel(BaseModel):
             n_filters = conv_filter[0]
             filter_size = conv_filter[1]
             conv_z = Conv2D(n_filters, filter_size)(conv_h)
-            conv_h = MaxPool2D(2)(conv_z)
+            conv_a = MaxPool2D(2)(conv_z)
+            conv_h = Dropout(0.1)(conv_a)
 
         conv_output = Flatten()(conv_h)
 
         fc_h = conv_output
         for fc_layer_size in self.fc_layer_sizes:
-            fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
+            fc_z = Dense(fc_layer_size, activation='relu')(fc_h)
+            fc_h = Dropout(0.1)(fc_z)
         predictions = Dense(1, activation='sigmoid', name='combined_output')(fc_h)
 
         self.model_inputs = [sdf, rope_image]
