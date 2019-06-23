@@ -51,8 +51,8 @@ class SDFFuncationModel(BaseModel):
 
         fc_h = rope_input
         for fc_layer_size in self.fc_layer_sizes:
-            fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
-        self.sdf_input_layer = Dense(2, activation=None, use_bias=True, activity_regularizer=oob_regularization)
+            fc_h = Dense(fc_layer_size, activation='tanh')(fc_h)
+        self.sdf_input_layer = Dense(2, activation=None, activity_regularizer=oob_regularization)
         sdf_input = self.sdf_input_layer(fc_h)
 
         sdf_func_inputs = Concatenate()([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, sdf_input])

@@ -34,7 +34,7 @@ class OverstretchingCNNModel(BaseModel):
         for conv_filter in self.conv_filters:
             n_filters = conv_filter[0]
             filter_size = conv_filter[1]
-            conv_z = Conv2D(n_filters, filter_size)(conv_h)
+            conv_z = Conv2D(n_filters, filter_size, activation='relu')(conv_h)
             conv_h = MaxPool2D(2)(conv_z)
 
         conv_output = Flatten()(conv_h)
