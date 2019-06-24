@@ -70,7 +70,7 @@ def generate_env(args):
     overstretched_threshold = nominal_link_length * args.overstretched_factor_threshold
     for i in range(args.n):
         # half gaussian with variance such that ~50% of ropes will be overstretched
-        length = abs(np.random.randn()) * 0.042 + nominal_link_length
+        length = abs(np.random.randn()) * 0.37 + nominal_link_length
         rope_configurations[i] = link_bot_pycommon.make_random_rope_configuration(sdf_data.extent, length=length)
         tail_x = rope_configurations[i, 0]
         tail_y = rope_configurations[i, 1]
@@ -180,7 +180,7 @@ def main():
     generate_parser.add_argument('--n-obstacles', type=int, default=14, help='size of obstacles in cells')
     generate_parser.add_argument('--obstacle-size', type=int, default=8, help='size of obstacles in cells')
     generate_parser.add_argument('--sdf-threshold', type=np.float32, default=0.0)
-    generate_parser.add_argument('--overstretched-factor-threshold', type=np.float32, default=1.1)
+    generate_parser.add_argument('--overstretched-factor-threshold', type=np.float32, default=1.5)
     generate_parser.add_argument('--n-plots', type=int, help='number of examples to plot')
     generate_parser.add_argument('--outdir')
 

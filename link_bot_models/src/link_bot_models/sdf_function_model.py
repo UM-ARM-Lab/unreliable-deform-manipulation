@@ -7,15 +7,16 @@ from keras.layers import Input, Dense, Lambda, Concatenate, Reshape, Activation
 from keras.models import Model
 
 from link_bot_models.base_model import BaseModel
+from link_bot_models.layers.out_of_bounds_regularization import OutOfBoundsRegularizer
 from link_bot_models.layers.tf_signed_distance_field_op import SDFLookup
 from link_bot_models.layers.bias_layer import BiasLayer
 from link_bot_pycommon import link_bot_pycommon
 
 
-class SDFFuncationModel(BaseModel):
+class SDFFunctionModel(BaseModel):
 
     def __init__(self, args_dict, sdf_shape, N):
-        super(SDFFuncationModel, self).__init__(args_dict, N)
+        super(SDFFunctionModel, self).__init__(args_dict, N)
         self.sdf_shape = sdf_shape
 
         # we have to flatten everything in order to pass it around and I don't understand why
@@ -33,26 +34,14 @@ class SDFFuncationModel(BaseModel):
 
         self.beta = 1e-2
 
-        def oob_regularization(sdf_input_points):
-            # FIXME: this assumes that the physical world coordinates (0,0) in meters is the origin/center of the SDF
-            distances_to_origin = tf.norm(sdf_input_points, axis=1)
-            oob_left = sdf_input_points[:, 0] <= sdf_extent[:, 0]
-            oob_right = sdf_input_points[:, 0] >= sdf_extent[:, 1]
-            oob_up = sdf_input_points[:, 1] <= sdf_extent[:, 2]
-            oob_down = sdf_input_points[:, 1] >= sdf_extent[:, 3]
-            out_of_bounds = tf.math.reduce_any(tf.stack((oob_up, oob_down, oob_left, oob_right), axis=1), axis=1)
-            in_bounds_value = tf.ones_like(distances_to_origin) * 0.0
-            distances_out_of_bounds = tf.where(out_of_bounds, distances_to_origin, in_bounds_value)
-            out_of_bounds_loss = tf.reduce_mean(distances_out_of_bounds)
-            return tf.norm(out_of_bounds_loss) * self.beta
-
         sdf_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1]])(sdf)
         sdf_gradient_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1] * 2])(sdf_gradient)
 
         fc_h = rope_input
         for fc_layer_size in self.fc_layer_sizes:
             fc_h = Dense(fc_layer_size, activation='tanh')(fc_h)
-        self.sdf_input_layer = Dense(2, activation=None, activity_regularizer=oob_regularization)
+        regularizer = OutOfBoundsRegularizer(sdf_extent, self.beta)
+        self.sdf_input_layer = Dense(2, activation=None, activity_regularizer=regularizer)
         sdf_input = self.sdf_input_layer(fc_h)
 
         sdf_func_inputs = Concatenate()([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, sdf_input])

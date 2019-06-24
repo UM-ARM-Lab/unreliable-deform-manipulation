@@ -120,8 +120,8 @@ def make_random_rope_configuration(extent, length=0.5):
     theta_1 = np.random.uniform(-np.pi, np.pi)
     theta_2 = np.random.uniform(-np.pi, np.pi)
     # don't put the head so close to the edge that the tail could be off the map
-    head_x = np.random.uniform(extent[0] + 2 * length, extent[1] - 2 * length)
-    head_y = np.random.uniform(extent[2] + 2 * length, extent[3] - 2 * length)
+    head_x = np.random.uniform(extent[0] + 2.5 * length, extent[1] - 2.5 * length)
+    head_y = np.random.uniform(extent[2] + 2.5 * length, extent[3] - 2.5 * length)
 
     rope_configuration = np.zeros(6)
     rope_configuration[4] = head_x

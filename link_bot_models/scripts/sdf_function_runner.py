@@ -9,7 +9,7 @@ import tensorflow as tf
 
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_models.sdf_function_model import SDFFuncationModel
+from link_bot_models.sdf_function_model import SDFFunctionModel
 from link_bot_pycommon import experiments_util
 
 label_types = [LabelType.SDF]
@@ -23,9 +23,9 @@ def train(args):
     sdf_shape = train_dataset.sdf_shape
 
     if args.checkpoint:
-        model = SDFFuncationModel.load(vars(args), sdf_shape, args.N)
+        model = SDFFunctionModel.load(vars(args), sdf_shape, args.N)
     else:
-        model = SDFFuncationModel(vars(args), sdf_shape, args.N)
+        model = SDFFunctionModel(vars(args), sdf_shape, args.N)
 
     model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
     model.evaluate(validation_dataset, label_types)
@@ -35,7 +35,7 @@ def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
     sdf_shape = dataset.sdf_shape
 
-    model = SDFFuncationModel.load(vars(args), sdf_shape, args.N)
+    model = SDFFunctionModel.load(vars(args), sdf_shape, args.N)
 
     return model.evaluate(dataset, label_types)
 
