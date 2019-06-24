@@ -26,8 +26,8 @@ class OverstretchingCNNModel(BaseModel):
         ]
 
         self.fc_layer_sizes = [
-            48,
-            48,
+            64,
+            64,
         ]
 
         conv_h = rope_image
