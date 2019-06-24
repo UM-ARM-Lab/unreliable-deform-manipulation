@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
-from keras.callbacks import TensorBoard, ModelCheckpoint, LambdaCallback, EarlyStopping
+from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
 from keras.models import load_model
 
 from link_bot_models.callbacks import StopAtAccuracy
-from link_bot_pycommon import experiments_util
-from link_bot_models.layers.tf_signed_distance_field_op import SDFLookup
 from link_bot_models.layers.distance_matrix_layer import DistanceMatrix
+from link_bot_models.layers.tf_signed_distance_field_op import SDFLookup
+from link_bot_pycommon import experiments_util
 
 custom_objects = {
     'SDFLookup': SDFLookup,
