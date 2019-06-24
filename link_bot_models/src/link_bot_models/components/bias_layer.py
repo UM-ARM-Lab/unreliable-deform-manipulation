@@ -17,5 +17,11 @@ class BiasLayer(Layer):
     def call(self, x, **kwargs):
         return x + self.bias
 
+    def get_config(self):
+        config = {
+        }
+        base_config = super(BiasLayer, self).get_config()
+        return base_config.update(config)
+
     def compute_output_shape(self, input_shape):
         return input_shape

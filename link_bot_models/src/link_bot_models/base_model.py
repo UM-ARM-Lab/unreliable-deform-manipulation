@@ -11,10 +11,10 @@ from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
 from keras.models import load_model
 
 from link_bot_models.callbacks import StopAtAccuracy
-from link_bot_models.layers.distance_matrix_layer import DistanceMatrix
-from link_bot_models.layers.out_of_bounds_regularization import OutOfBoundsRegularizer
-from link_bot_models.layers.bias_layer import BiasLayer
-from link_bot_models.layers.tf_signed_distance_field_op import SDFLookup
+from link_bot_models.components.distance_matrix_layer import DistanceMatrix
+from link_bot_models.components.out_of_bounds_regularization import OutOfBoundsRegularizer
+from link_bot_models.components.bias_layer import BiasLayer
+from link_bot_models.components.sdf_lookup import SDFLookup
 from link_bot_pycommon import experiments_util
 
 custom_objects = {
@@ -39,7 +39,16 @@ class BaseModel:
         self.keras_model = None
 
     def metadata(self, label_types):
-        raise NotImplementedError()
+        metadata = {
+            'tf_version': str(tf.__version__),
+            'seed': self.args_dict['seed'],
+            'checkpoint': self.args_dict['checkpoint'],
+            'N': self.N,
+            'label_type': [label_type.name for label_type in label_types],
+            'commandline': self.args_dict['commandline'],
+        }
+
+        return metadata
 
     def train(self, train_dataset, validation_dataset, label_types, epochs, log_path):
         callbacks = []

@@ -1,13 +1,11 @@
 from __future__ import division, print_function, absolute_import
 
-import keras.backend as K
 import numpy as np
-import tensorflow as tf
-from keras.layers import Input, Conv2D, Lambda, Activation, Dense
-from keras.models import Model
+from keras import Model
+from keras.layers import Input, Lambda
 
 from link_bot_models.base_model import BaseModel
-from link_bot_models.layers.distance_matrix_layer import DistanceMatrix
+from link_bot_models.components.distance_function_layer import DistanceFunctionLayer
 
 
 class DistanceFunctionModel(BaseModel):
@@ -17,45 +15,22 @@ class DistanceFunctionModel(BaseModel):
 
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
-        # self.fc_layer_sizes = [
-        #     128,
-        #     128,
-        # ]
-        #
-        # fc_h = rope_input
-        # for fc_layer_size in self.fc_layer_sizes:
-        #     fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
-        #
-        # points = fc_h
-        # n_points = int(self.fc_layer_sizes[-1] / 2)
-        n_points = 3
-        distances = DistanceMatrix()(rope_input)
-        conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True)
-        z = conv(distances)
-        sigmoid_scale = args_dict['sigmoid_scale']
-        z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze1')(z)
-        logits = Lambda(lambda x: sigmoid_scale * K.squeeze(x, 1), name='squeeze2')(z)
-
-        # TODO: this model doesn't handle "or" like conditions on the distances, since it's doing a linear combination
-        predictions = Activation('sigmoid', name='combined_output')(logits)
+        layer = DistanceFunctionLayer(args_dict['sigmoid_scale'])
+        prediction = layer([rope_input])
+        prediction = Lambda(lambda x: x, name='combined_output')(prediction)
 
         self.model_inputs = [rope_input]
-        self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
+        self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
+        sdf_input = self.keras_model.layers[-2].distance_matrix_layer.output
+        self.distance_matrix_model = Model(inputs=self.model_inputs, outputs=sdf_input)
+
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
 
-        self.distance_matrix_model = Model(inputs=self.model_inputs, outputs=conv.input)
-
     def metadata(self, label_types):
-        metadata = {
-            'tf_version': str(tf.__version__),
-            'seed': self.args_dict['seed'],
-            'checkpoint': self.args_dict['checkpoint'],
-            'N': self.N,
+        extra_metadata = {
             'sigmoid_scale': self.args_dict['sigmoid_scale'],
-            'label_type': [label_type.name for label_type in label_types],
-            'commandline': self.args_dict['commandline'],
         }
-        return metadata
+        return super().metadata(label_types).update(extra_metadata)
 
     def violated(self, observations):
         rope_configuration = observations

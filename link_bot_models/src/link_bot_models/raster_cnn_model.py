@@ -50,22 +50,16 @@ class RasterCNNModel(BaseModel):
         keras_model = Model(inputs=self.model_inputs, outputs=predictions)
         keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-        #self.keras_model = multi_gpu_model(keras_model, gpus=args_dict['n_gpus'])
+        # self.keras_model = multi_gpu_model(keras_model, gpus=args_dict['n_gpus'])
         self.keras_model = keras_model
 
     def metadata(self, label_types):
-        metadata = {
-            'tf_version': str(tf.__version__),
-            'keras_version': str(keras.__version__),
-            'seed': self.args_dict['seed'],
-            'checkpoint': self.args_dict['checkpoint'],
-            'label_type': [label_type.name for label_type in label_types],
-            'N': self.N,
+        extra_metadata = {
             'conv_filters': self.conv_filters,
             'fc_layer_sizes': self.fc_layer_sizes,
-            'commandline': self.args_dict['commandline'],
+            'sdf_shape': self.sdf_shape,
         }
-        return metadata
+        return super().metadata(label_types).update(extra_metadata)
 
     def violated(self, observations, sdf_data):
         m = observations.shape[0]

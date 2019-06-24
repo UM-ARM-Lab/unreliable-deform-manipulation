@@ -1,15 +1,12 @@
 from __future__ import division, print_function, absolute_import
 
+import keras
 import numpy as np
-import tensorflow as tf
-
-from keras.layers import Input, Dense, Lambda, Concatenate, Reshape, Activation
+from keras.layers import Input, Reshape, Lambda
 from keras.models import Model
 
 from link_bot_models.base_model import BaseModel
-from link_bot_models.layers.out_of_bounds_regularization import OutOfBoundsRegularizer
-from link_bot_models.layers.tf_signed_distance_field_op import SDFLookup
-from link_bot_models.layers.bias_layer import BiasLayer
+from link_bot_models.components.sdf_function_layer import SDFFunctionLayer
 from link_bot_pycommon import link_bot_pycommon
 
 
@@ -19,13 +16,16 @@ class SDFFunctionModel(BaseModel):
         super(SDFFunctionModel, self).__init__(args_dict, N)
         self.sdf_shape = sdf_shape
 
-        # we have to flatten everything in order to pass it around and I don't understand why
         sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf')
         sdf_gradient = Input(shape=[self.sdf_shape[0], self.sdf_shape[0], 2], dtype='float32', name='sdf_gradient')
         sdf_resolution = Input(shape=[2], dtype='float32', name='sdf_resolution')
         sdf_origin = Input(shape=[2], dtype='float32', name='sdf_origin')  # will be converted to int32 in SDF layer
         sdf_extent = Input(shape=[4], dtype='float32', name='sdf_extent')
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
+
+        # we have to flatten everything in order to pass it around and I don't understand why
+        sdf_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1]])(sdf)
+        sdf_gradient_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1] * 2])(sdf_gradient)
 
         self.fc_layer_sizes = [
             16,
@@ -34,49 +34,26 @@ class SDFFunctionModel(BaseModel):
 
         self.beta = 1e-2
 
-        sdf_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1]])(sdf)
-        sdf_gradient_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1] * 2])(sdf_gradient)
-
-        fc_h = rope_input
-        for fc_layer_size in self.fc_layer_sizes:
-            fc_h = Dense(fc_layer_size, activation='tanh')(fc_h)
-        # FIXME: sdf extent is a tensor which keras won't serialize correctly, and so the model 
-        # can't save/load correctly. Not sure how to work around this so I'm just hard coding this for now
-        sdf_extent_cheating = np.array([-2.5, 2.5, -2.5, 2.5])
-        regularizer = OutOfBoundsRegularizer(sdf_extent_cheating, self.beta)
-        self.sdf_input_layer = Dense(2, activation=None, activity_regularizer=regularizer)
-        sdf_input = self.sdf_input_layer(fc_h)
-
-        sdf_func_inputs = Concatenate()([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, sdf_input])
-
-        signed_distance = SDFLookup(self.sdf_shape)(sdf_func_inputs)
-        negative_signed_distance = Lambda(lambda x: -x)(signed_distance)
-        sigmoid_scale = args_dict['sigmoid_scale']
-        bias = BiasLayer()(negative_signed_distance)
-        logits = Lambda(lambda x: sigmoid_scale * x)(bias)
-        # threshold = 0.0
-        # logits = Lambda(lambda x: threshold - x)(signed_distance)
-        predictions = Activation('sigmoid', name='combined_output')(logits)
+        layer = SDFFunctionLayer(self.sdf_shape, self.fc_layer_sizes, self.beta, args_dict['sigmoid_scale'])
+        prediction = layer([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, rope_input])
+        prediction = Lambda(lambda x: x, name='combined_output')(prediction)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
-        self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
+        self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
+        sdf_input = self.keras_model.layers[-2].sdf_input_layer.output
+        self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input)
+
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-        self.sdf_input_model = Model(inputs=self.model_inputs, outputs=self.sdf_input_layer.output)
-
     def metadata(self, label_types):
-        metadata = {
-            'tf_version': str(tf.__version__),
-            'seed': self.args_dict['seed'],
-            'checkpoint': self.args_dict['checkpoint'],
-            'N': self.N,
+        extra_metadata = {
             'beta': self.beta,
-            'label_type': [label_type.name for label_type in label_types],
-            'commandline': self.args_dict['commandline'],
+            'sdf_shape': self.sdf_shape,
+            'keras_version': str(keras.__version__),
             'sigmoid_scale': self.args_dict['sigmoid_scale'],
             'hidden_layer_dims': self.fc_layer_sizes,
         }
-        return metadata
+        return super().metadata(label_types).update(extra_metadata)
 
     def violated(self, observations, sdf_data):
         m = observations.shape[0]

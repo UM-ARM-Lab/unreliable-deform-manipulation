@@ -76,7 +76,7 @@ class SDFLookup(Layer):
     def get_config(self):
         config = {'sdf_shape': self.sdf_shape}
         base_config = super(SDFLookup, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
+        return base_config.update(config)
 
     def compute_output_shape(self, input_shape):
         return input_shape[0], 1
