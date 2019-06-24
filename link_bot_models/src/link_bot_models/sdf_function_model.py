@@ -58,9 +58,12 @@ class SDFFuncationModel(BaseModel):
         sdf_func_inputs = Concatenate()([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, sdf_input])
 
         signed_distance = SDFLookup(self.sdf_shape)(sdf_func_inputs)
+        negative_signed_distance = Lambda(lambda x: -x)(signed_distance)
         sigmoid_scale = args_dict['sigmoid_scale']
-        bias = BiasLayer()(signed_distance)
+        bias = BiasLayer()(negative_signed_distance)
         logits = Lambda(lambda x: sigmoid_scale * x)(bias)
+        # threshold = 0.0
+        # logits = Lambda(lambda x: threshold - x)(signed_distance)
         predictions = Activation('sigmoid', name='combined_output')(logits)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
