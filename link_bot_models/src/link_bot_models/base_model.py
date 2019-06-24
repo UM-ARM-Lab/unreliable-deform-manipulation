@@ -13,10 +13,12 @@ from keras.models import load_model
 from link_bot_models.callbacks import StopAtAccuracy
 from link_bot_models.layers.distance_matrix_layer import DistanceMatrix
 from link_bot_models.layers.out_of_bounds_regularization import OutOfBoundsRegularizer
+from link_bot_models.layers.bias_layer import BiasLayer
 from link_bot_models.layers.tf_signed_distance_field_op import SDFLookup
 from link_bot_pycommon import experiments_util
 
 custom_objects = {
+    'BiasLayer': BiasLayer,
     'SDFLookup': SDFLookup,
     'DistanceMatrix': DistanceMatrix,
     'OutOfBoundsRegularizer': OutOfBoundsRegularizer

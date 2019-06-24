@@ -40,7 +40,10 @@ class SDFFunctionModel(BaseModel):
         fc_h = rope_input
         for fc_layer_size in self.fc_layer_sizes:
             fc_h = Dense(fc_layer_size, activation='tanh')(fc_h)
-        regularizer = OutOfBoundsRegularizer(sdf_extent, self.beta)
+        # FIXME: sdf extent is a tensor which keras won't serialize correctly, and so the model 
+        # can't save/load correctly. Not sure how to work around this so I'm just hard coding this for now
+        sdf_extent_cheating = np.array([-2.5, 2.5, -2.5, 2.5])
+        regularizer = OutOfBoundsRegularizer(sdf_extent_cheating, self.beta)
         self.sdf_input_layer = Dense(2, activation=None, activity_regularizer=regularizer)
         sdf_input = self.sdf_input_layer(fc_h)
 
