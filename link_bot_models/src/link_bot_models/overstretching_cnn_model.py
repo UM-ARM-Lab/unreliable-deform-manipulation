@@ -4,7 +4,7 @@ import keras
 import numpy as np
 from keras.utils import multi_gpu_model
 import tensorflow as tf
-from keras.layers import Input, Dense, Conv2D, Flatten, MaxPool2D, Concatenate
+from keras.layers import Input, Dense, Conv2D, Flatten, MaxPool2D
 from keras.models import Model
 
 from link_bot_models.base_model import BaseModel
