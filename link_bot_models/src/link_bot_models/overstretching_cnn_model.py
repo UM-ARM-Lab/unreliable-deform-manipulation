@@ -20,13 +20,14 @@ class OverstretchingCNNModel(BaseModel):
         rope_image = Input(shape=(sdf_shape[0], sdf_shape[1], 3), dtype='float32', name='rope_image')
 
         self.conv_filters = [
-            (32, (7, 7)),
+            (32, (5, 5)),
             (16, (5, 5)),
+            (16, (3, 3)),
         ]
 
         self.fc_layer_sizes = [
-            32,
-            32,
+            48,
+            48,
         ]
 
         conv_h = rope_image
