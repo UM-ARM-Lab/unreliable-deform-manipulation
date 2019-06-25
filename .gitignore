@@ -1,5 +1,6 @@
 *.swp
 *.pyc
 log_data
+old_log_data
 logdata
 __pycache__
