@@ -7,10 +7,10 @@ from link_bot_models.components.out_of_bounds_regularization import OutOfBoundsR
 from link_bot_models.components.sdf_lookup import SDFLookup
 
 
-class SDFFunctionLayer(Model):
+class SDFFunctionModel(Model):
 
     def __init__(self, sdf_shape, fc_layer_sizes, beta, sigmoid_scale, **kwargs):
-        super(SDFFunctionLayer, self).__init__(**kwargs)
+        super(SDFFunctionModel, self).__init__(**kwargs)
         self.sdf_shape = sdf_shape
         self.fc_layer_sizes = fc_layer_sizes
         self.beta = beta
@@ -53,7 +53,7 @@ class SDFFunctionLayer(Model):
             'beta': self.beta,
             'sigmoid_scale': self.sigmoid_scale,
         }
-        base_config = super(SDFFunctionLayer, self).get_config()
+        base_config = super(SDFFunctionModel, self).get_config()
         return base_config.update(config)
 
     def compute_output_shape(self, input_shape):

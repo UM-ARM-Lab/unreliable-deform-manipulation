@@ -6,13 +6,55 @@ import sys
 
 import numpy as np
 import tensorflow as tf
+from keras import Model
+from keras.layers import Lambda, Input
 
-from link_bot_models.distance_function_model import DistanceFunctionModel
+from link_bot_models.base_model import BaseModel
+from link_bot_models.components.distance_function_model import DistanceFunctionModel
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
-label_types = [LabelType.Overstretching]
+distance_function_label_types = [LabelType.Overstretching]
+
+
+class DistanceFunctionModelRunner(BaseModel):
+
+    def __init__(self, args_dict, N):
+        super(DistanceFunctionModelRunner, self).__init__(args_dict, N)
+
+        rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
+
+        layer = DistanceFunctionModel(args_dict['sigmoid_scale'])
+        prediction1 = layer(rope_input)
+        prediction = Lambda(lambda x: x, name='combined_output')(prediction1)
+
+        self.model_inputs = [rope_input]
+        self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
+        self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
+
+        distance_matrix = self.keras_model.layers[-2].distance_matrix_layer.output
+        self.distance_matrix_model = Model(inputs=self.model_inputs, outputs=distance_matrix)
+
+    def metadata(self, label_types):
+        metadata = {
+            'sigmoid_scale': self.args_dict['sigmoid_scale'],
+        }
+        metadata.update(super(DistanceFunctionModelRunner, self).metadata(label_types))
+        return metadata
+
+    def violated(self, observations):
+        rope_configuration = observations
+        inputs_dict = {
+            'rope_configuration': rope_configuration,
+        }
+
+        predicted_violated = (self.keras_model.predict(inputs_dict) > 0.5).astype(np.bool)
+
+        self.distance_matrix_model.set_weights(self.keras_model.get_weights())
+        predicted_point = self.distance_matrix_model.predict(inputs_dict)
+
+        return predicted_violated, predicted_point
 
 
 def train(args):
@@ -22,17 +64,17 @@ def train(args):
     validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
 
     if args.checkpoint:
-        model = DistanceFunctionModel.load(vars(args), args.N)
+        model = DistanceFunctionModelRunner.load(vars(args), args.N)
     else:
-        model = DistanceFunctionModel(vars(args), args.N)
+        model = DistanceFunctionModelRunner(vars(args), args.N)
 
-    model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
+    model.train(train_dataset, validation_dataset, distance_function_label_types, args.epochs, log_path)
 
 
 def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
 
-    model = DistanceFunctionModel.load(vars(args), args.N)
+    model = DistanceFunctionModelRunner.load(vars(args), args.N)
 
     # weights = model.keras_model.get_weights()
     # conv_kernel = np.squeeze(weights[0])
@@ -46,7 +88,7 @@ def evaluate(args):
     # d = model.distance_matrix_model.predict(x)
     # print(np.squeeze(d))
 
-    return model.evaluate(dataset, label_types)
+    return model.evaluate(dataset, distance_function_label_types)
 
 
 def main():

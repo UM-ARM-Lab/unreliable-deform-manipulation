@@ -6,13 +6,62 @@ import sys
 
 import numpy as np
 import tensorflow as tf
+from keras import Model
+from keras.layers import Input, Lambda
 
-from link_bot_models.overstretching_cnn_model import OverstretchingCNNModel
+from link_bot_models.base_model import BaseModel
+from link_bot_models.components.simple_cnn_model import SimpleCNNModel
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_pycommon import experiments_util
+from link_bot_pycommon import experiments_util, link_bot_pycommon
 
-label_types = [LabelType.Overstretching]
+overstretching_label_types = [LabelType.Overstretching]
+
+
+class OverstretchingCNNModel(BaseModel):
+
+    def __init__(self, args_dict, sdf_shape, N):
+        super(OverstretchingCNNModel, self).__init__(args_dict, N)
+        self.sdf_shape = sdf_shape
+
+        rope_image = Input(shape=(sdf_shape[0], sdf_shape[1], 3), dtype='float32', name='rope_image')
+
+        self.conv_filters = [
+            (32, (7, 7)),
+            (16, (5, 5)),
+        ]
+
+        self.fc_layer_sizes = [
+            32,
+            32,
+        ]
+
+        layer = SimpleCNNModel(self.conv_filters, self.fc_layer_sizes)
+        cnn_output = layer(rope_image)
+        predictions = Lambda(lambda x: x, name='combined_output')(cnn_output)
+
+        self.model_inputs = [rope_image]
+        self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
+        self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+    def metadata(self, label_types):
+        extra_metadata = {
+            'conv_filters': self.conv_filters,
+            'fc_layer_sizes': self.fc_layer_sizes,
+            'sdf_shape': self.sdf_shape,
+        }
+        extra_metadata.update(super(OverstretchingCNNModel, self).metadata(label_types))
+        return extra_metadata
+
+    def violated(self, observations, sdf_data):
+        rope_configurations = observations
+        rope_images = link_bot_pycommon.make_rope_images(sdf_data, rope_configurations)
+        inputs_dict = {
+            'rope_image': rope_images,
+        }
+
+        predicted_violated = (self.keras_model.predict(inputs_dict) > 0.5).astype(np.bool)
+        return predicted_violated
 
 
 def train(args):
@@ -27,8 +76,8 @@ def train(args):
     else:
         model = OverstretchingCNNModel(vars(args), sdf_shape, args.N)
 
-    model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
-    model.evaluate(validation_dataset, label_types)
+    model.train(train_dataset, validation_dataset, overstretching_label_types, args.epochs, log_path)
+    model.evaluate(validation_dataset, overstretching_label_types)
 
 
 def evaluate(args):
@@ -37,7 +86,7 @@ def evaluate(args):
 
     model = OverstretchingCNNModel.load(vars(args), sdf_shape, args.N)
 
-    return model.evaluate(dataset, label_types)
+    return model.evaluate(dataset, overstretching_label_types)
 
 
 def main():

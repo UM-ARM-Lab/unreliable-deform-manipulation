@@ -135,6 +135,3 @@ class BaseModel:
         model.initial_epoch = initial_epoch
         print(Fore.CYAN + "Restored keras model {}".format(args_dict['checkpoint']) + Fore.RESET)
         return model
-
-    def __str__(self):
-        raise NotImplementedError()
