@@ -13,3 +13,8 @@ class StopAtAccuracy(Callback):
             print("Validation accuracy reached! {:4.1f} > {:4.1f}".format(val_acc, self.validation_accuracy_threshold))
             self.model.stop_training = True
 
+
+class DebugCallback(Callback):
+
+    def on_epoch_end(self, epoch, logs=None):
+        print(self.model.get_weights())

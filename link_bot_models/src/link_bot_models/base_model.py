@@ -7,21 +7,27 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
-from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
+from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping, LambdaCallback
 from keras.models import load_model
 
 from link_bot_models.callbacks import StopAtAccuracy
+from link_bot_models.components.distance_function_model import DistanceFunctionModel
 from link_bot_models.components.distance_matrix_layer import DistanceMatrix
 from link_bot_models.components.out_of_bounds_regularization import OutOfBoundsRegularizer
 from link_bot_models.components.bias_layer import BiasLayer
+from link_bot_models.components.sdf_function_model import SDFFunctionModel
 from link_bot_models.components.sdf_lookup import SDFLookup
+from link_bot_models.components.simple_cnn_model import SimpleCNNModel
 from link_bot_pycommon import experiments_util
 
 custom_objects = {
     'BiasLayer': BiasLayer,
     'SDFLookup': SDFLookup,
     'DistanceMatrix': DistanceMatrix,
-    'OutOfBoundsRegularizer': OutOfBoundsRegularizer
+    'OutOfBoundsRegularizer': OutOfBoundsRegularizer,
+    'DistanceFunctionModel': DistanceFunctionModel,
+    'SDFFunctionModel': SDFFunctionModel,
+    'SimpleCNNModel': SimpleCNNModel,
 }
 
 
@@ -87,6 +93,8 @@ class BaseModel:
                     raise ValueError("Validation dataset must be provided in order to use this monitor")
                 early_stopping = EarlyStopping(monitor='val_acc', patience=5, min_delta=0.001, verbose=True)
                 callbacks.append(early_stopping)
+
+            # callbacks.append(DebugCallback())
 
         train_generator = train_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
 
