@@ -53,8 +53,7 @@ class SDFFunctionModel(Model):
             'beta': self.beta,
             'sigmoid_scale': self.sigmoid_scale,
         }
-        base_config = super(SDFFunctionModel, self).get_config()
-        return base_config.update(config)
+        return config
 
     def compute_output_shape(self, input_shape):
         return input_shape[0][0], 1
