@@ -4,15 +4,103 @@ from __future__ import print_function
 import argparse
 import sys
 
+import keras.backend as K
 import numpy as np
 import tensorflow as tf
+from keras.layers import Input, Lambda, Dense, Concatenate, Activation
+from keras.models import Model
 
+from link_bot_models.base_model import BaseModel
 from link_bot_models.label_types import LabelType
-from link_bot_models.multi_constraint_model import MultiConstraintModel
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_models.components.sdf_function_layer import sdf_function_layer
+from link_bot_models.components.distance_function_layer import distance_function_layer
+from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
 from link_bot_pycommon import experiments_util
 
-label_types = [LabelType.SDF, LabelType.Overstretching]
+multi_constraint_label_types = [LabelType.SDF, LabelType.Overstretching]
+
+
+class MultiConstraintModelRunner(BaseModel):
+    def __init__(self, args_dict, sdf_shape, N):
+        super(MultiConstraintModelRunner, self).__init__(args_dict, N)
+        self.sdf_shape = sdf_shape
+
+        sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf')
+        sdf_gradient = Input(shape=[self.sdf_shape[0], self.sdf_shape[0], 2], dtype='float32', name='sdf_gradient')
+        sdf_resolution = Input(shape=[2], dtype='float32', name='sdf_resolution')
+        sdf_origin = Input(shape=[2], dtype='float32', name='sdf_origin')  # will be converted to int32 in SDF layer
+        sdf_extent = Input(shape=[4], dtype='float32', name='sdf_extent')
+        rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
+
+        #####################
+        # Distance Function #
+        #####################
+        n_points = int(N / 2)
+        distance_matrix_layer, layer = distance_function_layer(args_dict['sigmoid_scale'], n_points)
+        distance_prediction = layer(rope_input)
+
+        ################
+        # SDF Function #
+        ################
+        self.fc_layer_sizes = [
+            16,
+            16,
+        ]
+
+        self.beta = 1e-2
+        sdf_input_layer, sdf_function = sdf_function_layer(sdf_shape, self.fc_layer_sizes, self.beta, args_dict['sigmoid_scale'])
+        sdf_function_prediction = sdf_function([sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input])
+
+        ###########
+        # Combine #
+        ###########
+        concat_predictions = Concatenate()([sdf_function_prediction, distance_prediction])
+
+        prediction_weights = Activation('softmax', name='combined_prediction')(concat_predictions)
+        prediction = Lambda(lambda p: K.dot(prediction_weights, p), name='combined_prediction')(concat_predictions)
+
+        self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
+        self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
+        self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
+
+        print(self.keras_model.summary())
+
+        self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+    def metadata(self, label_types):
+        extra_metadata = {
+            'beta': self.beta,
+            'sdf_shape': self.sdf_shape,
+            'sigmoid_scale': self.args_dict['sigmoid_scale'],
+            'hidden_layer_dims': self.fc_layer_sizes,
+        }
+        extra_metadata.update(super(MultiConstraintModelRunner, self).metadata(label_types))
+        return extra_metadata
+
+    def violated(self, observations, sdf_data):
+        m = observations.shape[0]
+        rope_configuration = observations
+        sdf = np.tile(np.expand_dims(sdf_data.sdf, axis=2), [m, 1, 1, 1])
+        sdf_gradient = np.tile(sdf_data.gradient, [m, 1, 1, 1])
+        sdf_origin = np.tile(sdf_data.origin, [m, 1])
+        sdf_resolution = np.tile(sdf_data.resolution, [m, 1])
+        sdf_extent = np.tile(sdf_data.extent, [m, 1])
+        inputs_dict = {
+            'rope_configuration': rope_configuration,
+            'sdf': sdf,
+            'sdf_gradient': sdf_gradient,
+            'sdf_origin': sdf_origin,
+            'sdf_resolution': sdf_resolution,
+            'sdf_extent': sdf_extent
+        }
+
+        predicted_violated = (self.keras_model.predict(inputs_dict) > 0.5).astype(np.bool)
+
+        self.sdf_input_model.set_weights(self.keras_model.get_weights())
+        predicted_point = self.sdf_input_model.predict(inputs_dict)
+
+        return predicted_violated, predicted_point
 
 
 def train(args):
@@ -27,8 +115,8 @@ def train(args):
     else:
         model = MultiConstraintModel(vars(args), sdf_shape, args.N)
 
-    model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
-    model.evaluate(validation_dataset, label_types)
+    model.train(train_dataset, validation_dataset, multi_constraint_label_types, args.epochs, log_path)
+    model.evaluate(validation_dataset, multi_constraint_label_types)
 
 
 def evaluate(args):
@@ -37,7 +125,7 @@ def evaluate(args):
 
     model = MultiConstraintModel.load(vars(args), sdf_shape, args.N)
 
-    return model.evaluate(dataset, label_types)
+    return model.evaluate(dataset, multi_constraint_label_types)
 
 
 def main():

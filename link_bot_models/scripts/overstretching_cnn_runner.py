@@ -7,7 +7,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 from keras import Model
-from keras.layers import Input, Lambda, Dense
+from keras.layers import Input, Dense
 
 from link_bot_models.base_model import BaseModel
 from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
