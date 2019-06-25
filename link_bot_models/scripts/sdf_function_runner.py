@@ -41,9 +41,9 @@ class SDFFunctionModelRunner(BaseModel):
 
         self.beta = 1e-2
 
-        layer = SDFFunctionModel(self.sdf_shape, self.fc_layer_sizes, self.beta, args_dict['sigmoid_scale'])
-        prediction = layer([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, rope_input])
-        prediction = Lambda(lambda x: x, name='combined_output')(prediction)
+        sdf_function_model = SDFFunctionModel(self.sdf_shape, self.fc_layer_sizes, self.beta, args_dict['sigmoid_scale'])
+        sdf_function_prediction = sdf_function_model([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, rope_input])
+        prediction = Lambda(lambda x: x, name='combined_output')(sdf_function_prediction)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)

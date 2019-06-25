@@ -18,10 +18,10 @@ from link_bot_pycommon import experiments_util, link_bot_pycommon
 overstretching_label_types = [LabelType.Overstretching]
 
 
-class OverstretchingCNNModel(BaseModel):
+class OverstretchingCNNModelRunner(BaseModel):
 
     def __init__(self, args_dict, sdf_shape, N):
-        super(OverstretchingCNNModel, self).__init__(args_dict, N)
+        super(OverstretchingCNNModelRunner, self).__init__(args_dict, N)
         self.sdf_shape = sdf_shape
 
         rope_image = Input(shape=(sdf_shape[0], sdf_shape[1], 3), dtype='float32', name='rope_image')
@@ -50,7 +50,7 @@ class OverstretchingCNNModel(BaseModel):
             'fc_layer_sizes': self.fc_layer_sizes,
             'sdf_shape': self.sdf_shape,
         }
-        extra_metadata.update(super(OverstretchingCNNModel, self).metadata(label_types))
+        extra_metadata.update(super(OverstretchingCNNModelRunner, self).metadata(label_types))
         return extra_metadata
 
     def violated(self, observations, sdf_data):
@@ -72,9 +72,9 @@ def train(args):
     sdf_shape = train_dataset.sdf_shape
 
     if args.checkpoint:
-        model = OverstretchingCNNModel.load(vars(args), sdf_shape, args.N)
+        model = OverstretchingCNNModelRunner.load(vars(args), sdf_shape, args.N)
     else:
-        model = OverstretchingCNNModel(vars(args), sdf_shape, args.N)
+        model = OverstretchingCNNModelRunner(vars(args), sdf_shape, args.N)
 
     model.train(train_dataset, validation_dataset, overstretching_label_types, args.epochs, log_path)
     model.evaluate(validation_dataset, overstretching_label_types)
@@ -84,7 +84,7 @@ def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
     sdf_shape = dataset.sdf_shape
 
-    model = OverstretchingCNNModel.load(vars(args), sdf_shape, args.N)
+    model = OverstretchingCNNModelRunner.load(vars(args), sdf_shape, args.N)
 
     return model.evaluate(dataset, overstretching_label_types)
 

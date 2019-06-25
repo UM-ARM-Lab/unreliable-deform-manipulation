@@ -4,10 +4,11 @@ from keras.layers import Conv2D, MaxPool2D, Flatten, Dense
 
 class SimpleCNNModel(Model):
 
-    def __init__(self, conv_filters, fc_layer_sizes, **kwargs):
+    def __init__(self, conv_filters, fc_layer_sizes, output_dim, **kwargs):
         super(SimpleCNNModel, self).__init__(**kwargs)
         self.conv_filters = conv_filters
         self.fc_layer_sizes = fc_layer_sizes
+        self.output_dim = output_dim
 
     def call(self, input_image, **kwargs):
         conv_h = input_image
@@ -22,16 +23,17 @@ class SimpleCNNModel(Model):
         fc_h = conv_output
         for fc_layer_size in self.fc_layer_sizes:
             fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
-        outputs = Dense(1, activation='sigmoid')(fc_h)
+        outputs = Dense(self.output, activation='sigmoid')(fc_h)
         return outputs
 
     def get_config(self):
         config = {
             'conv_filters': self.conv_filters,
-            'fc_layer_sizes': self.fc_layer_sizes
+            'fc_layer_sizes': self.fc_layer_sizes,
+            'output_dim': self.output_dim
         }
         base_config = super(SimpleCNNModel, self).get_config()
         return base_config.update(config)
 
     def compute_output_shape(self, input_shape):
-        return input_shape[0], 1
+        return input_shape[0], self.output_dim

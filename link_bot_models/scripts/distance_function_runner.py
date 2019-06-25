@@ -25,9 +25,8 @@ class DistanceFunctionModelRunner(BaseModel):
 
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
-        layer = DistanceFunctionModel(args_dict['sigmoid_scale'])
-        prediction1 = layer(rope_input)
-        prediction = Lambda(lambda x: x, name='combined_output')(prediction1)
+        distance_prediction = DistanceFunctionModel(args_dict['sigmoid_scale'])(rope_input)
+        prediction = Lambda(lambda x: x, name='combined_output')(distance_prediction)
 
         self.model_inputs = [rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
