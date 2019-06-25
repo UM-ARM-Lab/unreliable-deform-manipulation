@@ -1,10 +1,11 @@
 import keras.backend as K
-from keras.layers import Layer, Lambda, Activation, Conv2D
+from keras import Model
+from keras.layers import Lambda, Activation, Conv2D
 
 from link_bot_models.components.distance_matrix_layer import DistanceMatrix
 
 
-class DistanceFunctionLayer(Layer):
+class DistanceFunctionLayer(Model):
 
     def __init__(self, sigmoid_scale, **kwargs):
         super(DistanceFunctionLayer, self).__init__(**kwargs)
@@ -20,12 +21,12 @@ class DistanceFunctionLayer(Layer):
         self.distance_matrix_layer = distances_layer
         self.conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True)
         z = self.conv(distances)
-        sigmoid_scale = self.sigmoid_scale
+        sigmoid_scale = self.sigmoid_scale  # necessary due to how Lambdas are serialized
         z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze1')(z)
         logits = Lambda(lambda x: sigmoid_scale * K.squeeze(x, 1), name='squeeze2')(z)
 
         # TODO: this model doesn't handle "or" like conditions on the distances, since it's doing a linear combination
-        predictions = Activation('sigmoid', name='combined_output')(logits)
+        predictions = Activation('sigmoid')(logits)
 
         return predictions
 

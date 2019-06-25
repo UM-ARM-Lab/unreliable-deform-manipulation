@@ -1,12 +1,13 @@
 import numpy as np
-from keras.layers import Layer, Dense, Concatenate, Lambda, Activation
+from keras import Model
+from keras.layers import Dense, Concatenate, Lambda, Activation
 
 from link_bot_models.components.bias_layer import BiasLayer
-from link_bot_models.components.sdf_lookup import SDFLookup
 from link_bot_models.components.out_of_bounds_regularization import OutOfBoundsRegularizer
+from link_bot_models.components.sdf_lookup import SDFLookup
 
 
-class SDFFunctionLayer(Layer):
+class SDFFunctionLayer(Model):
 
     def __init__(self, sdf_shape, fc_layer_sizes, beta, sigmoid_scale, **kwargs):
         super(SDFFunctionLayer, self).__init__(**kwargs)
