@@ -29,10 +29,11 @@ class DistanceFunctionModel(BaseModel):
         self.test_model = Model(inputs=self.model_inputs, outputs=layer.conv.output)
 
     def metadata(self, label_types):
-        extra_metadata = {
+        metadata = {
             'sigmoid_scale': self.args_dict['sigmoid_scale'],
         }
-        return super().metadata(label_types).update(extra_metadata)
+        metadata.update(super(DistanceFunctionModel, self).metadata(label_types))
+        return metadata
 
     def violated(self, observations):
         rope_configuration = observations

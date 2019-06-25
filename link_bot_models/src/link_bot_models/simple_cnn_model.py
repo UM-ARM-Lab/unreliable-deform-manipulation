@@ -55,7 +55,8 @@ class SimpleCNNModel(BaseModel):
             'fc_layer_sizes': self.fc_layer_sizes,
             'sdf_shape': self.sdf_shape,
         }
-        return super().metadata(label_types).update(extra_metadata)
+        extra_metadata.update(super(SimpleCNNModel, self).metadata(label_types))
+        return extra_metadata
 
     def violated(self, observations, sdf_data):
         m = observations.shape[0]

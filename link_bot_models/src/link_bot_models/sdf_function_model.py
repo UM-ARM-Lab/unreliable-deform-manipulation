@@ -49,11 +49,11 @@ class SDFFunctionModel(BaseModel):
         extra_metadata = {
             'beta': self.beta,
             'sdf_shape': self.sdf_shape,
-            'keras_version': str(keras.__version__),
             'sigmoid_scale': self.args_dict['sigmoid_scale'],
             'hidden_layer_dims': self.fc_layer_sizes,
         }
-        return super().metadata(label_types).update(extra_metadata)
+        extra_metadata.update(super(SDFFunctionModel, self).metadata(label_types))
+        return extra_metadata
 
     def violated(self, observations, sdf_data):
         m = observations.shape[0]

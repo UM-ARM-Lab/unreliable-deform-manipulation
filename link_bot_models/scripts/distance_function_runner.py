@@ -26,12 +26,6 @@ def train(args):
     else:
         model = DistanceFunctionModel(vars(args), args.N)
 
-    generator = train_dataset.generator(10)
-    x, y = generator[0]
-    print(x['rope_configuration'])
-    print(model.test_model.predict(x))
-    return
-
     model.train(train_dataset, validation_dataset, label_types, args.epochs, log_path)
 
 

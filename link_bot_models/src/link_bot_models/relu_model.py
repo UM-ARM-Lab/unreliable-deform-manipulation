@@ -36,18 +36,12 @@ class ReluModel(BaseModel):
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
     def metadata(self, label_types):
-        metadata = {
-            'tf_version': str(tf.__version__),
-            'keras_version': str(keras.__version__),
-            'seed': self.args_dict['seed'],
-            'checkpoint': self.args_dict['checkpoint'],
-            'N': self.N,
-            'label_type': [label_type.name for label_type in label_types],
+        extra_metadata = {
             'sigmoid_scale': self.args_dict['sigmoid_scale'],
             'fc_layer_sizes': self.fc_layer_sizes,
-            'commandline': self.args_dict['commandline'],
         }
-        return metadata
+        extra_metadata.update(super(ReluModel, self).metadata(label_types))
+        return extra_metadata
 
     def violated(self, observations):
         rope_configuration = observations
