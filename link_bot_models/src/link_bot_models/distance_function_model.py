@@ -21,10 +21,12 @@ class DistanceFunctionModel(BaseModel):
 
         self.model_inputs = [rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
-        sdf_input = self.keras_model.layers[-2].distance_matrix_layer.output
-        self.distance_matrix_model = Model(inputs=self.model_inputs, outputs=sdf_input)
-
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
+
+        distance_matrix = self.keras_model.layers[-2].distance_matrix_layer.output
+        self.distance_matrix_model = Model(inputs=self.model_inputs, outputs=distance_matrix)
+
+        self.test_model = Model(inputs=self.model_inputs, outputs=layer.conv.output)
 
     def metadata(self, label_types):
         extra_metadata = {

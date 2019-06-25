@@ -6,21 +6,20 @@ from link_bot_models.components.distance_matrix_layer import DistanceMatrix
 
 class DistanceFunctionLayer(Layer):
 
-    def __init__(self, sdf_shape, fc_layer_sizes, beta, sigmoid_scale, **kwargs):
+    def __init__(self, sigmoid_scale, **kwargs):
         super(DistanceFunctionLayer, self).__init__(**kwargs)
-        self.sdf_shape = sdf_shape
-        self.fc_layer_sizes = fc_layer_sizes
-        self.beta = beta
         self.sigmoid_scale = sigmoid_scale
         # TODO: figure out how to access this layer without storing it in self like this hack
         self.distance_matrix_layer = None
+        self.conv = None
 
     def call(self, rope_input, **kwargs):
         n_points = 3
-        distances = DistanceMatrix()(rope_input)
-        self.distance_matrix_layer = distances
-        conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True)
-        z = conv(distances)
+        distances_layer = DistanceMatrix()
+        distances = distances_layer(rope_input)
+        self.distance_matrix_layer = distances_layer
+        self.conv = Conv2D(1, (n_points, n_points), activation=None, use_bias=True)
+        z = self.conv(distances)
         sigmoid_scale = self.sigmoid_scale
         z = Lambda(lambda x: K.squeeze(x, 1), name='squeeze1')(z)
         logits = Lambda(lambda x: sigmoid_scale * K.squeeze(x, 1), name='squeeze2')(z)
@@ -38,4 +37,4 @@ class DistanceFunctionLayer(Layer):
         return base_config.update(config)
 
     def compute_output_shape(self, input_shape):
-        return input_shape[0][0], 1
+        return input_shape[0], 1
