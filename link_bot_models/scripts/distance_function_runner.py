@@ -10,7 +10,7 @@ from keras import Model
 from keras.layers import Lambda, Input
 
 from link_bot_models.base_model import BaseModel
-from link_bot_models.components.distance_function_model import DistanceFunctionModel
+from link_bot_models.components.distance_function_layer import distance_function_layer
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
@@ -25,15 +25,16 @@ class DistanceFunctionModelRunner(BaseModel):
 
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
-        distance_prediction = DistanceFunctionModel(args_dict['sigmoid_scale'])(rope_input)
+        n_points = int(N / 2)
+        distance_matrix_layer, layer = distance_function_layer(args_dict['sigmoid_scale'], n_points)
+        distance_prediction = layer(rope_input)
         prediction = Lambda(lambda x: x, name='combined_output')(distance_prediction)
 
         self.model_inputs = [rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
 
-        distance_matrix = self.keras_model.layers[-2].distance_matrix_layer.output
-        self.distance_matrix_model = Model(inputs=self.model_inputs, outputs=distance_matrix)
+        self.distance_matrix_model = Model(inputs=self.model_inputs, outputs=distance_matrix_layer.output)
 
     def metadata(self, label_types):
         metadata = {

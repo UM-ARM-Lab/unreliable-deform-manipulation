@@ -6,11 +6,11 @@ import sys
 
 import numpy as np
 import tensorflow as tf
-from keras.layers import Input, Reshape, Lambda
+from keras.layers import Input, Lambda
 from keras.models import Model
 
 from link_bot_models.base_model import BaseModel
-from link_bot_models.components.sdf_function_model import SDFFunctionModel
+from link_bot_models.components.sdf_function_layer import sdf_function_layer
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util, link_bot_pycommon
@@ -30,10 +30,6 @@ class SDFFunctionModelRunner(BaseModel):
         sdf_extent = Input(shape=[4], dtype='float32', name='sdf_extent')
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
-        # we have to flatten everything in order to pass it around and I don't understand why
-        sdf_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1]])(sdf)
-        sdf_gradient_flat = Reshape(target_shape=[self.sdf_shape[0] * self.sdf_shape[1] * 2])(sdf_gradient)
-
         self.fc_layer_sizes = [
             16,
             16,
@@ -41,14 +37,13 @@ class SDFFunctionModelRunner(BaseModel):
 
         self.beta = 1e-2
 
-        sdf_function_model = SDFFunctionModel(self.sdf_shape, self.fc_layer_sizes, self.beta, args_dict['sigmoid_scale'])
-        sdf_function_prediction = sdf_function_model([sdf_flat, sdf_gradient_flat, sdf_resolution, sdf_origin, rope_input])
+        sdf_input_layer, sdf_function = sdf_function_layer(sdf_shape, self.fc_layer_sizes, self.beta, args_dict['sigmoid_scale'])
+        sdf_function_prediction = sdf_function([sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input])
         prediction = Lambda(lambda x: x, name='combined_output')(sdf_function_prediction)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
-        sdf_input = self.keras_model.layers[-2].sdf_input_layer.output
-        self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input)
+        self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
 
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
@@ -85,9 +80,6 @@ class SDFFunctionModelRunner(BaseModel):
         predicted_point = self.sdf_input_model.predict(inputs_dict)
 
         return predicted_violated, predicted_point
-
-    def __str__(self):
-        return "sdf model"
 
 
 class EvaluateResult:

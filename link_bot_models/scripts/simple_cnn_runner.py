@@ -10,7 +10,7 @@ from keras.layers import Input, Concatenate, Dense
 from keras.models import Model
 
 from link_bot_models.base_model import BaseModel
-from link_bot_models.components.simple_cnn_model import SimpleCNNModel
+from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
@@ -35,11 +35,11 @@ class SimpleCNNModelRunner(BaseModel):
         ]
 
         self.fc_layer_sizes = [
-            256,
-            32,
+            128,
+            128,
         ]
 
-        cnn_output = SimpleCNNModel(self.conv_filters, [], output_dim=128)(sdf_input)
+        cnn_output = simple_cnn_layer(self.conv_filters, [])(sdf_input)
         concat = Concatenate()([cnn_output, rope_input])
 
         fc_h = concat

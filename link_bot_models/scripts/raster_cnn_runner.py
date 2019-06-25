@@ -6,11 +6,11 @@ import sys
 
 import numpy as np
 import tensorflow as tf
-from keras.layers import Input, Concatenate, Lambda
+from keras.layers import Input, Concatenate, Dense
 from keras.models import Model
 
 from link_bot_models.base_model import BaseModel
-from link_bot_models.components.simple_cnn_model import SimpleCNNModel
+from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
@@ -40,8 +40,8 @@ class RasterCNNModelRunner(BaseModel):
             256,
         ]
 
-        cnn_output = SimpleCNNModel(self.conv_filters, self.fc_layer_sizes)(combined_image)
-        predictions = Lambda(lambda x: x, name='combined_output')(cnn_output)
+        cnn_output = simple_cnn_layer(self.conv_filters, self.fc_layer_sizes)(combined_image)
+        predictions = Dense(1, activation='sigmoid', name='combined_output')(cnn_output)
 
         self.model_inputs = [sdf, rope_image]
         self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)

@@ -7,17 +7,14 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
-from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping, LambdaCallback
+from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
 from keras.models import load_model
 
 from link_bot_models.callbacks import StopAtAccuracy
-from link_bot_models.components.distance_function_model import DistanceFunctionModel
+from link_bot_models.components.bias_layer import BiasLayer
 from link_bot_models.components.distance_matrix_layer import DistanceMatrix
 from link_bot_models.components.out_of_bounds_regularization import OutOfBoundsRegularizer
-from link_bot_models.components.bias_layer import BiasLayer
-from link_bot_models.components.sdf_function_model import SDFFunctionModel
 from link_bot_models.components.sdf_lookup import SDFLookup
-from link_bot_models.components.simple_cnn_model import SimpleCNNModel
 from link_bot_pycommon import experiments_util
 
 custom_objects = {
@@ -25,9 +22,6 @@ custom_objects = {
     'SDFLookup': SDFLookup,
     'DistanceMatrix': DistanceMatrix,
     'OutOfBoundsRegularizer': OutOfBoundsRegularizer,
-    'DistanceFunctionModel': DistanceFunctionModel,
-    'SDFFunctionModel': SDFFunctionModel,
-    'SimpleCNNModel': SimpleCNNModel,
 }
 
 
