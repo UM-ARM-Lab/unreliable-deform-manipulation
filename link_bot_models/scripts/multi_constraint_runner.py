@@ -4,18 +4,17 @@ from __future__ import print_function
 import argparse
 import sys
 
-import keras.backend as K
+import keras
 import numpy as np
 import tensorflow as tf
-from keras.layers import Input, Lambda, Dense, Concatenate, Activation
+from keras.layers import Input, Concatenate, Dense, Dot
 from keras.models import Model
 
 from link_bot_models.base_model import BaseModel
+from link_bot_models.components.distance_function_layer import distance_function_layer
+from link_bot_models.components.sdf_function_layer import sdf_function_layer
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_models.components.sdf_function_layer import sdf_function_layer
-from link_bot_models.components.distance_function_layer import distance_function_layer
-from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
 from link_bot_pycommon import experiments_util
 
 multi_constraint_label_types = [LabelType.SDF, LabelType.Overstretching]
@@ -37,8 +36,8 @@ class MultiConstraintModelRunner(BaseModel):
         # Distance Function #
         #####################
         n_points = int(N / 2)
-        distance_matrix_layer, layer = distance_function_layer(args_dict['sigmoid_scale'], n_points)
-        distance_prediction = layer(rope_input)
+        distance_matrix_layer, distance_function = distance_function_layer(args_dict['sigmoid_scale'], n_points)
+        distance_prediction = distance_function(rope_input)
 
         ################
         # SDF Function #
@@ -50,21 +49,31 @@ class MultiConstraintModelRunner(BaseModel):
 
         self.beta = 1e-2
         sdf_input_layer, sdf_function = sdf_function_layer(sdf_shape, self.fc_layer_sizes, self.beta, args_dict['sigmoid_scale'])
-        sdf_function_prediction = sdf_function([sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input])
+        sdf_function_prediction = sdf_function(sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input)
 
         ###########
         # Combine #
         ###########
-        concat_predictions = Concatenate()([sdf_function_prediction, distance_prediction])
 
-        prediction_weights = Activation('softmax', name='combined_prediction')(concat_predictions)
-        prediction = Lambda(lambda p: K.dot(prediction_weights, p), name='combined_prediction')(concat_predictions)
+        self.decision_fc_layer_sizes = [
+            16,
+            16,
+        ]
+
+        decision_fc_h = rope_input
+        for fc_layer_size in self.decision_fc_layer_sizes:
+            decision_fc_h = Dense(fc_layer_size, activation='relu')(decision_fc_h)
+        prediction_weights = Dense(2, activation='softmax', name='prediction_weights')(decision_fc_h)
+
+        concat_predictions = Concatenate()([sdf_function_prediction, distance_prediction])
+        prediction = Dot(axes=1, name='combined_output')([prediction_weights, concat_predictions])
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
         self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
 
         print(self.keras_model.summary())
+        keras.utils.plot_model(self.keras_model)
 
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
@@ -74,6 +83,7 @@ class MultiConstraintModelRunner(BaseModel):
             'sdf_shape': self.sdf_shape,
             'sigmoid_scale': self.args_dict['sigmoid_scale'],
             'hidden_layer_dims': self.fc_layer_sizes,
+            'decision_hidden_layer_dims': self.decision_fc_layer_sizes,
         }
         extra_metadata.update(super(MultiConstraintModelRunner, self).metadata(label_types))
         return extra_metadata
@@ -111,9 +121,9 @@ def train(args):
     sdf_shape = train_dataset.sdf_shape
 
     if args.checkpoint:
-        model = MultiConstraintModel.load(vars(args), sdf_shape, args.N)
+        model = MultiConstraintModelRunner.load(vars(args), sdf_shape, args.N)
     else:
-        model = MultiConstraintModel(vars(args), sdf_shape, args.N)
+        model = MultiConstraintModelRunner(vars(args), sdf_shape, args.N)
 
     model.train(train_dataset, validation_dataset, multi_constraint_label_types, args.epochs, log_path)
     model.evaluate(validation_dataset, multi_constraint_label_types)
@@ -123,7 +133,7 @@ def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
     sdf_shape = dataset.sdf_shape
 
-    model = MultiConstraintModel.load(vars(args), sdf_shape, args.N)
+    model = MultiConstraintModelRunner.load(vars(args), sdf_shape, args.N)
 
     return model.evaluate(dataset, multi_constraint_label_types)
 

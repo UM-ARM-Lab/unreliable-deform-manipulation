@@ -18,10 +18,9 @@ class BiasLayer(Layer):
         return x + self.bias
 
     def get_config(self):
-        config = {
-        }
-        base_config = super(BiasLayer, self).get_config()
-        return base_config.update(config)
+        config = {}
+        config.update(super(BiasLayer, self).get_config())
+        return config
 
     def compute_output_shape(self, input_shape):
         return input_shape

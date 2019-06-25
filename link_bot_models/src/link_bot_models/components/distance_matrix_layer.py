@@ -25,8 +25,8 @@ class DistanceMatrix(Layer):
 
     def get_config(self):
         config = {}
-        base_config = super(DistanceMatrix, self).get_config()
-        return base_config.update(config)
+        config.update(super(DistanceMatrix, self).get_config())
+        return config
 
     def compute_output_shape(self, input_shape):
         return input_shape[0], self.n_points, self.n_points, 1
