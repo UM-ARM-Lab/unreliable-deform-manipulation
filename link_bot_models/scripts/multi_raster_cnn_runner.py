@@ -71,12 +71,9 @@ def train(args):
             'sdf_shape': sdf_shape,
             'conv_filters': [
                 (32, (5, 5)),
-                (32, (5, 5)),
-                (16, (3, 3)),
                 (16, (3, 3)),
             ],
             'fc_layer_sizes': [
-                32,
                 32,
             ],
             'N': train_dataset.N,
