@@ -224,5 +224,5 @@ class BaseModelRunner:
         print(model.keras_model.summary())
         path = pathlib.Path(args.checkpoint)
         names = [pathlib.Path(part).stem for part in path.parts if part != '/' and part != 'log_data']
-        image_filename = "~".join(names) + '.png'
-        keras.utils.plot_model(model.keras_model, to_file=image_filename)
+        image_filename = 'img~' + "~".join(names) + '.png'
+        keras.utils.plot_model(model.keras_model, to_file=image_filename, show_shapes=True)

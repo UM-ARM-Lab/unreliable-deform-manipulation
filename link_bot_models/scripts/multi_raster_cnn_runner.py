@@ -76,8 +76,8 @@ def train(args):
                 (16, (3, 3)),
             ],
             'fc_layer_sizes': [
-                256,
-                256,
+                32,
+                32,
             ],
             'N': train_dataset.N,
         }
