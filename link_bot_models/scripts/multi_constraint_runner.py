@@ -2,8 +2,9 @@
 from __future__ import print_function
 
 import numpy as np
+import keras.backend as K
 import tensorflow as tf
-from keras.layers import Input, Concatenate, Lambda
+from keras.layers import Input, Concatenate, Lambda, Activation, Add
 from keras.models import Model
 
 from link_bot_models import base_model
@@ -41,15 +42,16 @@ class MultiConstraintModelRunner(BaseModelRunner):
 
         # Combine
         concat_predictions = Concatenate(name='all_output')([sdf_function_prediction, overstretching_prediction])
-        prediction = Lambda(lambda x: tf.math.reduce_any(x, axis=1), name='combined_output')([concat_predictions])
+        prediction_distribution = Activation('softmax')(concat_predictions)
+        prediction = Lambda(lambda x: K.sum(x, axis=1, keepdims=True), name='combined_output')(prediction_distribution)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=[prediction, concat_predictions])
         self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
 
         losses = {
-            'combined_output': 'binary_crossentropy',
-            'all_output': 'categorical_crossentropy',
+            # 'combined_output': 'binary_crossentropy',
+            'all_output': 'binary_crossentropy',
         }
         self.keras_model.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
 
@@ -102,7 +104,7 @@ def train(args):
         args_dict.update(base_model.make_args_dict(args))
         model = MultiConstraintModelRunner(args_dict)
 
-    model.train(train_dataset, validation_dataset, args.label_types, args.epochs, log_path)
+    model.train(train_dataset, validation_dataset, args.label_types, log_path, args)
 
 
 def main():
