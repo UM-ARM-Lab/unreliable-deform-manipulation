@@ -3,14 +3,15 @@ from __future__ import division, print_function, absolute_import
 import argparse
 import json
 import os
+import pathlib
 
+import keras
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
 from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
 from keras.models import load_model
-import keras
 
 from link_bot_models.callbacks import StopAtAccuracy
 from link_bot_models.components.bias_layer import BiasLayer
@@ -25,6 +26,21 @@ custom_objects = {
     'DistanceMatrix': DistanceMatrix,
     'OutOfBoundsRegularizer': OutOfBoundsRegularizer,
 }
+
+
+def load_keras_model_only(args):
+    keras_model = load_model(args.checkpoint, custom_objects=custom_objects)
+    print(Fore.CYAN + "Restored keras model {}".format(args.checkpoint) + Fore.RESET)
+    return keras_model
+
+
+def show(args):
+    keras_model = load_keras_model_only(args)
+    print(keras_model.summary())
+    path = pathlib.Path(args.checkpoint)
+    names = [pathlib.Path(part).stem for part in path.parts if part != '/' and part != 'log_data']
+    image_filename = "~".join(names) + '.png'
+    keras.utils.plot_model(keras_model, to_file=image_filename)
 
 
 def base_parser():
@@ -55,7 +71,7 @@ def base_parser():
     eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
 
     show_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
-    show_subparser.add_argument("--image-filename", default='model.png')
+    show_subparser.set_defaults(func=show)
 
     return parser, train_subparser, eval_subparser, show_subparser
 
@@ -167,11 +183,6 @@ class BaseModel:
 
         return loss, accuracy
 
-    @staticmethod
-    def show(args, keras_model):
-        print(keras_model.summary())
-        keras.utils.plot_model(keras_model, to_file=args.image_filename)
-
     @classmethod
     def load(cls, args_dict, *args):
         model = cls(args_dict, *args)
@@ -183,10 +194,3 @@ class BaseModel:
         model.initial_epoch = initial_epoch
         print(Fore.CYAN + "Restored keras model {}".format(args_dict['checkpoint']) + Fore.RESET)
         return model
-
-    @staticmethod
-    def load_keras_model_only(args_dict):
-        basename = os.path.basename(os.path.splitext(args_dict['checkpoint'])[0])
-        keras_model = load_model(args_dict['checkpoint'], custom_objects=custom_objects)
-        print(Fore.CYAN + "Restored keras model {}".format(args_dict['checkpoint']) + Fore.RESET)
-        return keras_model

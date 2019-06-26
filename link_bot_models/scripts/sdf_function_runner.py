@@ -41,11 +41,6 @@ def evaluate(args):
     return model.evaluate(dataset, sdf_function_label_types)
 
 
-def show(args):
-    keras_model = SDFFunctionModel.load_keras_model_only(vars(args))
-    return base_model.BaseModel.show(args, keras_model)
-
-
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=220)
     tf.logging.set_verbosity(tf.logging.ERROR)
@@ -56,8 +51,6 @@ def main():
     train_subparser.set_defaults(func=train)
 
     eval_subparser.set_defaults(func=evaluate)
-
-    show_subparser.set_defaults(func=show)
 
     args = parser.parse_args()
     commandline = ' '.join(sys.argv)
