@@ -8,9 +8,9 @@ from link_bot_pycommon import link_bot_pycommon
 
 
 class SDFFunctionModel(BaseModel):
-    def __init__(self, args_dict, sdf_shape, N):
-        super(SDFFunctionModel, self).__init__(args_dict, N)
-        self.sdf_shape = sdf_shape
+    def __init__(self, args_dict):
+        super(SDFFunctionModel, self).__init__(args_dict)
+        self.sdf_shape = args_dict['sdf_shape']
 
         sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf')
         sdf_gradient = Input(shape=[self.sdf_shape[0], self.sdf_shape[0], 2], dtype='float32', name='sdf_gradient')
@@ -19,14 +19,12 @@ class SDFFunctionModel(BaseModel):
         sdf_extent = Input(shape=[4], dtype='float32', name='sdf_extent')
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
-        self.fc_layer_sizes = [
-            32,
-            32,
-        ]
+        self.fc_layer_sizes = args_dict['fc_layer_sizes']
 
-        self.beta = 1e-2
+        self.beta = args_dict['beta']
+        self.sigmoid_scale = args_dict['sigmoid_scale']
 
-        sdf_input_layer, sdf_function = sdf_function_layer(sdf_shape, self.fc_layer_sizes, self.beta, args_dict['sigmoid_scale'])
+        sdf_input_layer, sdf_function = sdf_function_layer(self.sdf_shape, self.fc_layer_sizes, self.beta, self.sigmoid_scale)
         sdf_function_prediction = sdf_function(sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input)
         prediction = Lambda(lambda x: x, name='combined_output')(sdf_function_prediction)
 
@@ -35,16 +33,6 @@ class SDFFunctionModel(BaseModel):
         self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
 
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-
-    def metadata(self, label_types):
-        extra_metadata = {
-            'beta': self.beta,
-            'sdf_shape': self.sdf_shape,
-            'sigmoid_scale': self.args_dict['sigmoid_scale'],
-            'hidden_layer_dims': self.fc_layer_sizes,
-        }
-        extra_metadata.update(super(SDFFunctionModel, self).metadata(label_types))
-        return extra_metadata
 
     def violated(self, observations, sdf_data):
         m = observations.shape[0]

@@ -24,20 +24,25 @@ def train(args):
     sdf_shape = train_dataset.sdf_shape
 
     if args.checkpoint:
-        model = SDFFunctionModel.load(vars(args), sdf_shape, args.N)
+        model = SDFFunctionModel.load(args.checkpoint)
     else:
-        model = SDFFunctionModel(vars(args), sdf_shape, args.N)
+        args_dict = {
+            'sdf_shape': sdf_shape,
+            'beta': 1e-2,
+            'fc_layer_sizes': [32, 32],
+            'sigmoid_scale': 100,
+            'N': train_dataset.N
+        }
+        args_dict.update(base_model.make_args_dict(args))
+        model = SDFFunctionModel(args_dict)
 
-    model.train(train_dataset, validation_dataset, sdf_function_label_types, args.epochs, log_path)
+    model.train(train_dataset, validation_dataset, sdf_function_label_types, log_path, args)
     model.evaluate(validation_dataset, sdf_function_label_types)
 
 
 def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
-    sdf_shape = dataset.sdf_shape
-
-    model = SDFFunctionModel.load(vars(args), sdf_shape, args.N)
-
+    model = SDFFunctionModel.load(args.checkpoint)
     return model.evaluate(dataset, sdf_function_label_types)
 
 
@@ -47,24 +52,11 @@ def main():
 
     parser, train_subparser, eval_subparser, show_subparser = base_model.base_parser()
 
-    train_subparser.add_argument("--sigmoid-scale", "-s", type=float, default=100)
     train_subparser.set_defaults(func=train)
+    eval_subparser.set_defaults(func=SDFFunctionModel.evaluate_main)
+    show_subparser.set_defaults(func=base_model.show)
 
-    eval_subparser.set_defaults(func=evaluate)
-    # FIXME: make hyper parameters loaded from metadata
-    eval_subparser.add_argument("--sigmoid-scale", "-s", type=float, default=100)
-
-    args = parser.parse_args()
-    commandline = ' '.join(sys.argv)
-    args.commandline = commandline
-
-    np.random.seed(args.seed)
-    tf.random.set_random_seed(args.seed)
-
-    if args == argparse.Namespace():
-        parser.print_usage()
-    else:
-        args.func(args)
+    parser.run()
 
 
 if __name__ == '__main__':

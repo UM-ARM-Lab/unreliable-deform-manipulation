@@ -16,13 +16,13 @@ from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
-raster_cnn_label_types = [LabelType.SDF]
+multi_raster_cnn_label_types = [LabelType.SDF, LabelType.Overstretching]
 
 
-class RasterCNNModelRunner(BaseModel):
+class MultiRasterCNNModelRunner(BaseModel):
 
     def __init__(self, args_dict, sdf_shape, N):
-        super(RasterCNNModelRunner, self).__init__(args_dict, N)
+        super(MultiRasterCNNModelRunner, self).__init__(args_dict, N)
         self.sdf_shape = sdf_shape
 
         sdf = Input(shape=(sdf_shape[0], sdf_shape[1], 1), dtype='float32', name='sdf')
@@ -54,7 +54,7 @@ class RasterCNNModelRunner(BaseModel):
             'fc_layer_sizes': self.fc_layer_sizes,
             'sdf_shape': self.sdf_shape,
         }
-        extra_metadata.update(super(RasterCNNModelRunner, self).metadata(label_types))
+        extra_metadata.update(super(MultiRasterCNNModelRunner, self).metadata(label_types))
         return extra_metadata
 
     def violated(self, observations, sdf_data):
@@ -86,22 +86,21 @@ def train(args):
     sdf_shape = train_dataset.sdf_shape
 
     if args.checkpoint:
-        model = RasterCNNModelRunner.load(args.checkpoint)
+        model = MultiRasterCNNModelRunner.load(vars(args), sdf_shape, args.N)
     else:
-        model = RasterCNNModelRunner(vars(args), sdf_shape, args.N)
+        model = MultiRasterCNNModelRunner(vars(args), sdf_shape, args.N)
 
-    model.train(train_dataset, validation_dataset, args.checkpoint, raster_cnn_label_types, args.commandline, args.epochs,
-                log_path)
-    model.evaluate(validation_dataset, raster_cnn_label_types)
+    model.train(train_dataset, validation_dataset, multi_raster_cnn_label_types, args.epochs, log_path)
+    model.evaluate(validation_dataset, multi_raster_cnn_label_types)
 
 
 def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
-    model_args = experiments_util.read_metadata(args.checkpoint)
+    sdf_shape = dataset.sdf_shape
 
-    model = RasterCNNModelRunner.load(args.checkpoint, model_args)
+    model = MultiRasterCNNModelRunner.load(vars(args), sdf_shape, args.N)
 
-    return model.evaluate(dataset, raster_cnn_label_types)
+    return model.evaluate(dataset, multi_raster_cnn_label_types)
 
 
 def main():

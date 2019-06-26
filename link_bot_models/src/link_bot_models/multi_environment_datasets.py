@@ -1,8 +1,7 @@
 import json
 import os
-import keras
-import matplotlib.pyplot as plt
 
+import keras
 import numpy as np
 
 from link_bot_models.label_types import LabelType
