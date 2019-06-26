@@ -25,6 +25,28 @@ custom_objects = {
 }
 
 
+def add_args(parser, train_subparser, eval_subparser):
+    parser.add_argument("--verbose", action='store_true')
+    parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
+    parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
+    parser.add_argument("--seed", type=int, default=0)
+
+    train_subparser.add_argument("train_dataset", help="dataset (json file)")
+    train_subparser.add_argument("validation_dataset", help="dataset (json file)")
+    train_subparser.add_argument("--batch-size", "-b", type=int, default=100)
+    train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
+    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=50)
+    train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
+    train_subparser.add_argument("--plot", action='store_true')
+    train_subparser.add_argument("--validation-steps", type=int, default=-1)
+    train_subparser.add_argument("--early-stopping", action='store_true')
+    train_subparser.add_argument("--val-acc-threshold", type=float, default=None)
+
+    eval_subparser.add_argument("dataset", help="dataset (json file)")
+    eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
+    eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
+
+
 class BaseModel:
 
     def __init__(self, args_dict, N):
@@ -75,7 +97,7 @@ class BaseModel:
 
             val_acc_threshold = self.args_dict['val_acc_threshold']
             if val_acc_threshold is not None:
-                if self.args_dict['skip_validation']:
+                if self.args_dict['validation_steps']:
                     raise ValueError("Validation dataset must be provided in order to use this monitor")
                 if val_acc_threshold < 0 or val_acc_threshold > 1:
                     raise ValueError("val_acc_threshold {} must be between 0 and 1 inclusive".format(val_acc_threshold))
@@ -83,7 +105,7 @@ class BaseModel:
                 callbacks.append(stop_at_accuracy)
 
             if self.args_dict['early_stopping']:
-                if self.args_dict['skip_validation']:
+                if self.args_dict['validation_steps']:
                     raise ValueError("Validation dataset must be provided in order to use this monitor")
                 early_stopping = EarlyStopping(monitor='val_acc', patience=5, min_delta=0.001, verbose=True)
                 callbacks.append(early_stopping)
@@ -118,7 +140,7 @@ class BaseModel:
             plt.title("Accuracy")
             plt.plot(history.history['acc'])
 
-        if self.args_dict['skip_validation']:
+        if self.args_dict['validation_steps']:
             self.evaluate(validation_dataset, label_types)
 
     def evaluate(self, validation_dataset, label_types, display=True):
