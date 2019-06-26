@@ -10,7 +10,7 @@ from keras.layers import Input, Concatenate, Dense
 from keras.models import Model
 
 from link_bot_models import base_model
-from link_bot_models.base_model import BaseModel
+from link_bot_models.base_model import BaseModelRunner
 from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
@@ -19,7 +19,7 @@ from link_bot_pycommon import experiments_util
 raster_cnn_label_types = [LabelType.SDF]
 
 
-class RasterCNNModelRunner(BaseModel):
+class RasterCNNModelRunner(BaseModelRunner):
 
     def __init__(self, args_dict, sdf_shape, N):
         super(RasterCNNModelRunner, self).__init__(args_dict, N)
@@ -92,7 +92,6 @@ def train(args):
 
     model.train(train_dataset, validation_dataset, args.checkpoint, raster_cnn_label_types, args.commandline, args.epochs,
                 log_path)
-    model.evaluate(validation_dataset, raster_cnn_label_types)
 
 
 def evaluate(args):

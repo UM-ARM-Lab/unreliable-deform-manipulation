@@ -10,7 +10,7 @@ from keras import Model
 from keras.layers import Input, Dense
 
 from link_bot_models import base_model
-from link_bot_models.base_model import BaseModel
+from link_bot_models.base_model import BaseModelRunner
 from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
@@ -19,7 +19,7 @@ from link_bot_pycommon import experiments_util, link_bot_pycommon
 overstretching_label_types = [LabelType.Overstretching]
 
 
-class OverstretchingCNNModelRunner(BaseModel):
+class OverstretchingCNNModelRunner(BaseModelRunner):
 
     def __init__(self, args_dict, sdf_shape, N):
         super(OverstretchingCNNModelRunner, self).__init__(args_dict, N)

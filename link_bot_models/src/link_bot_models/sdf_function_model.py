@@ -2,14 +2,14 @@ import numpy as np
 from keras.layers import Input, Lambda
 from keras.models import Model
 
-from link_bot_models.base_model import BaseModel
+from link_bot_models.base_model import BaseModelRunner
 from link_bot_models.components.sdf_function_layer import sdf_function_layer
 from link_bot_pycommon import link_bot_pycommon
 
 
-class SDFFunctionModel(BaseModel):
+class SDFFunctionModelRunner(BaseModelRunner):
     def __init__(self, args_dict):
-        super(SDFFunctionModel, self).__init__(args_dict)
+        super(SDFFunctionModelRunner, self).__init__(args_dict)
         self.sdf_shape = args_dict['sdf_shape']
 
         sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf')

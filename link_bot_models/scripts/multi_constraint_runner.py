@@ -11,7 +11,7 @@ from keras.layers import Input, Concatenate, Dense, Dot
 from keras.models import Model
 
 from link_bot_models import base_model
-from link_bot_models.base_model import BaseModel
+from link_bot_models.base_model import BaseModelRunner
 from link_bot_models.components.distance_function_layer import distance_function_layer
 from link_bot_models.components.sdf_function_layer import sdf_function_layer
 from link_bot_models.label_types import LabelType
@@ -21,7 +21,7 @@ from link_bot_pycommon import experiments_util
 multi_constraint_label_types = [LabelType.SDF, LabelType.Overstretching]
 
 
-class MultiConstraintModelRunner(BaseModel):
+class MultiConstraintModelRunner(BaseModelRunner):
     def __init__(self, args_dict, sdf_shape, N):
         super(MultiConstraintModelRunner, self).__init__(args_dict, N)
         self.sdf_shape = sdf_shape

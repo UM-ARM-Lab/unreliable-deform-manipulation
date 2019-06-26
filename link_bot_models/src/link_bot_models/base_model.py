@@ -32,21 +32,6 @@ custom_objects = {
 }
 
 
-def load_keras_model_only(args):
-    keras_model = load_model(args.checkpoint, custom_objects=custom_objects)
-    print(Fore.CYAN + "Restored keras model {}".format(args.checkpoint) + Fore.RESET)
-    return keras_model
-
-
-def show(args):
-    keras_model = load_keras_model_only(args)
-    print(keras_model.summary())
-    path = pathlib.Path(args.checkpoint)
-    names = [pathlib.Path(part).stem for part in path.parts if part != '/' and part != 'log_data']
-    image_filename = "~".join(names) + '.png'
-    keras.utils.plot_model(keras_model, to_file=image_filename)
-
-
 def base_parser():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
@@ -103,7 +88,7 @@ def make_args_dict(args):
     }
 
 
-class BaseModel:
+class BaseModelRunner:
 
     def __init__(self, args_dict):
         self.args_dict = args_dict
@@ -197,7 +182,7 @@ class BaseModel:
             plt.title("Accuracy")
             plt.plot(history.history['acc'])
 
-        if validation_steps == 0:
+        if args.validation_steps == 0:
             self.evaluate(validation_dataset, label_types)
 
     def evaluate(self, validation_dataset, label_types, display=True):
@@ -232,3 +217,12 @@ class BaseModel:
         dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
         model = cls.load(args.checkpoint)
         return model.evaluate(dataset, args.label_types)
+
+    @classmethod
+    def show(cls, args):
+        model = cls.load(args.checkpoint)
+        print(model.keras_model.summary())
+        path = pathlib.Path(args.checkpoint)
+        names = [pathlib.Path(part).stem for part in path.parts if part != '/' and part != 'log_data']
+        image_filename = "~".join(names) + '.png'
+        keras.utils.plot_model(model.keras_model, to_file=image_filename)

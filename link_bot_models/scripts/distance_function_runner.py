@@ -10,7 +10,7 @@ from keras import Model
 from keras.layers import Lambda, Input
 
 from link_bot_models import base_model
-from link_bot_models.base_model import BaseModel
+from link_bot_models.base_model import BaseModelRunner
 from link_bot_models.components.distance_function_layer import distance_function_layer
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
@@ -19,7 +19,7 @@ from link_bot_pycommon import experiments_util
 distance_function_label_types = [LabelType.Overstretching]
 
 
-class DistanceFunctionModelRunner(BaseModel):
+class DistanceFunctionModelRunner(BaseModelRunner):
 
     def __init__(self, args_dict, N):
         super(DistanceFunctionModelRunner, self).__init__(args_dict, N)

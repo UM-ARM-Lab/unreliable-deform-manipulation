@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_models import plotting
-from link_bot_models.sdf_function_model import test_predictions, SDFFunctionModel
+from link_bot_models.sdf_function_model import test_predictions, SDFFunctionModelRunner
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 
@@ -94,7 +94,7 @@ def main():
     # get the rope configurations we're going to evaluate
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
 
-    model = SDFFunctionModel.load(vars(args), [100, 100], 6)
+    model = SDFFunctionModelRunner.load(vars(args), [100, 100], 6)
 
     for env_idx, environment in enumerate(dataset.environments):
         print(Style.BRIGHT + Fore.GREEN + "Environment {}".format(env_idx) + Fore.RESET + Style.NORMAL)

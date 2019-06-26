@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-import argparse
-import sys
-
 import numpy as np
 import tensorflow as tf
 from keras.layers import Input, Concatenate, Dense
 from keras.models import Model
 
 from link_bot_models import base_model
-from link_bot_models.base_model import BaseModel
+from link_bot_models.base_model import BaseModelRunner
 from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
@@ -19,27 +16,18 @@ from link_bot_pycommon import experiments_util
 multi_raster_cnn_label_types = [LabelType.SDF, LabelType.Overstretching]
 
 
-class MultiRasterCNNModelRunner(BaseModel):
+class MultiRasterCNNModelRunner(BaseModelRunner):
 
-    def __init__(self, args_dict, sdf_shape, N):
-        super(MultiRasterCNNModelRunner, self).__init__(args_dict, N)
-        self.sdf_shape = sdf_shape
+    def __init__(self, args_dict):
+        super(MultiRasterCNNModelRunner, self).__init__(args_dict)
+        self.sdf_shape = args_dict['sdf_shape']
 
-        sdf = Input(shape=(sdf_shape[0], sdf_shape[1], 1), dtype='float32', name='sdf')
-        rope_image = Input(shape=(sdf_shape[0], sdf_shape[1], 3), dtype='float32', name='rope_image')
+        sdf = Input(shape=(self.sdf_shape[0], self.sdf_shape[1], 1), dtype='float32', name='sdf')
+        rope_image = Input(shape=(self.sdf_shape[0], self.sdf_shape[1], 3), dtype='float32', name='rope_image')
         combined_image = Concatenate()([sdf, rope_image])
 
-        self.conv_filters = [
-            (32, (5, 5)),
-            (32, (5, 5)),
-            (16, (3, 3)),
-            (16, (3, 3)),
-        ]
-
-        self.fc_layer_sizes = [
-            256,
-            256,
-        ]
+        self.conv_filters = args_dict['conv_filters']
+        self.fc_layer_sizes = args_dict['fc_layer_sizes']
 
         cnn_output = simple_cnn_layer(self.conv_filters, self.fc_layer_sizes)(combined_image)
         predictions = Dense(1, activation='sigmoid', name='combined_output')(cnn_output)
@@ -47,15 +35,6 @@ class MultiRasterCNNModelRunner(BaseModel):
         self.model_inputs = [sdf, rope_image]
         self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
         self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-
-    def metadata(self, label_types):
-        extra_metadata = {
-            'conv_filters': self.conv_filters,
-            'fc_layer_sizes': self.fc_layer_sizes,
-            'sdf_shape': self.sdf_shape,
-        }
-        extra_metadata.update(super(MultiRasterCNNModelRunner, self).metadata(label_types))
-        return extra_metadata
 
     def violated(self, observations, sdf_data):
         m = observations.shape[0]
@@ -86,21 +65,26 @@ def train(args):
     sdf_shape = train_dataset.sdf_shape
 
     if args.checkpoint:
-        model = MultiRasterCNNModelRunner.load(vars(args), sdf_shape, args.N)
+        model = MultiRasterCNNModelRunner.load(args.checkpoint)
     else:
-        model = MultiRasterCNNModelRunner(vars(args), sdf_shape, args.N)
+        args_dict = {
+            'sdf_shape': sdf_shape,
+            'conv_filters': [
+                (32, (5, 5)),
+                (32, (5, 5)),
+                (16, (3, 3)),
+                (16, (3, 3)),
+            ],
+            'fc_layer_sizes': [
+                256,
+                256,
+            ],
+            'N': train_dataset.N,
+        }
+        args_dict.update(base_model.make_args_dict(args))
+        model = MultiRasterCNNModelRunner(args_dict)
 
-    model.train(train_dataset, validation_dataset, multi_raster_cnn_label_types, args.epochs, log_path)
-    model.evaluate(validation_dataset, multi_raster_cnn_label_types)
-
-
-def evaluate(args):
-    dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
-    sdf_shape = dataset.sdf_shape
-
-    model = MultiRasterCNNModelRunner.load(vars(args), sdf_shape, args.N)
-
-    return model.evaluate(dataset, multi_raster_cnn_label_types)
+    model.train(train_dataset, validation_dataset, args.label_types, log_path, args)
 
 
 def main():
@@ -110,20 +94,10 @@ def main():
     parser, train_subparser, eval_subparser, show_subparser = base_model.base_parser()
 
     train_subparser.set_defaults(func=train)
+    eval_subparser.set_defaults(func=MultiRasterCNNModelRunner.evaluate_main)
+    show_subparser.set_defaults(func=MultiRasterCNNModelRunner.show)
 
-    eval_subparser.set_defaults(func=evaluate)
-
-    args = parser.parse_args()
-    commandline = ' '.join(sys.argv)
-    args.commandline = commandline
-
-    np.random.seed(args.seed)
-    tf.random.set_random_seed(args.seed)
-
-    if args == argparse.Namespace():
-        parser.print_usage()
-    else:
-        args.func(args)
+    parser.run()
 
 
 if __name__ == '__main__':
