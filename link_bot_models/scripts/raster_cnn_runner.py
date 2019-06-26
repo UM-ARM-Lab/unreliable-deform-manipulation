@@ -107,14 +107,10 @@ def main():
     np.set_printoptions(precision=6, suppress=True)
     tf.logging.set_verbosity(tf.logging.ERROR)
 
-    # Add arguments that all models need
     parser, train_subparser, eval_subparser, show_subparser = base_model.base_parser()
 
-    # Custom arguments for training
-    train_subparser.add_argument("--sigmoid-scale", "-s", type=float, default=100)
     train_subparser.set_defaults(func=train)
 
-    # Custom arguments for evaluation
     eval_subparser.set_defaults(func=evaluate)
 
     args = parser.parse_args()

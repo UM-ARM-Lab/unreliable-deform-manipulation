@@ -51,6 +51,8 @@ def main():
     train_subparser.set_defaults(func=train)
 
     eval_subparser.set_defaults(func=evaluate)
+    # FIXME: make hyper parameters loaded from metadata
+    eval_subparser.add_argument("--sigmoid-scale", "-s", type=float, default=100)
 
     args = parser.parse_args()
     commandline = ' '.join(sys.argv)

@@ -9,6 +9,7 @@ import tensorflow as tf
 from keras import Model
 from keras.layers import Lambda, Input
 
+from link_bot_models import base_model
 from link_bot_models.base_model import BaseModel
 from link_bot_models.components.distance_function_layer import distance_function_layer
 from link_bot_models.label_types import LabelType
@@ -95,32 +96,11 @@ def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=220)
     tf.logging.set_verbosity(tf.logging.ERROR)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--verbose", action='store_true')
-    parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
-    parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
-    parser.add_argument("--seed", type=int, default=0)
+    parser, train_subparser, eval_subparser, show_subparser = base_model.base_parser()
 
-    subparsers = parser.add_subparsers()
-    train_subparser = subparsers.add_parser("train")
-    train_subparser.add_argument("train_dataset", help="dataset (json file)")
-    train_subparser.add_argument("validation_dataset", help="dataset (json file)")
-    train_subparser.add_argument("--batch-size", "-b", type=int, default=100)
-    train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=25)
-    train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
-    train_subparser.add_argument("--random-init", action='store_true')
-    train_subparser.add_argument("--plot", action='store_true')
     train_subparser.add_argument("--sigmoid-scale", "-s", type=float, default=100)
-    train_subparser.add_argument("--val-acc-threshold", type=float, default=None)
-    train_subparser.add_argument("--skip-validation", action='store_true')
-    train_subparser.add_argument("--early-stopping", action='store_true')
     train_subparser.set_defaults(func=train)
 
-    eval_subparser = subparsers.add_parser("eval")
-    eval_subparser.add_argument("dataset", help="dataset (json file)")
-    eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
-    eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
     eval_subparser.set_defaults(func=evaluate)
     # FIXME: make hyper parameters loaded from metadata
     eval_subparser.add_argument("--sigmoid-scale", "-s", type=float, default=100)
