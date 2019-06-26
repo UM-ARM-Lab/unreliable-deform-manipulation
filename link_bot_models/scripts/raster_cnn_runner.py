@@ -9,6 +9,7 @@ import tensorflow as tf
 from keras.layers import Input, Concatenate, Dense
 from keras.models import Model
 
+from link_bot_models import base_model
 from link_bot_models.base_model import BaseModel
 from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
 from link_bot_models.label_types import LabelType
@@ -107,30 +108,18 @@ def main():
     tf.logging.set_verbosity(tf.logging.ERROR)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--verbose", action='store_true')
-    parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
-    parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
-    parser.add_argument("--seed", type=int, default=0)
-
     subparsers = parser.add_subparsers()
     train_subparser = subparsers.add_parser("train")
-    train_subparser.add_argument("train_dataset", help="dataset (json file)")
-    train_subparser.add_argument("validation_dataset", help="dataset (json file)")
-    train_subparser.add_argument("--batch-size", "-b", type=int, default=100)
-    train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=10)
-    train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
-    train_subparser.add_argument("--n-gpus", type=int, help="number of GPUs", default=1)
-    train_subparser.add_argument("--plot", action="store_true")
-    train_subparser.add_argument("--val-acc-threshold", type=float, default=None)
-    train_subparser.add_argument("--skip-validation", action='store_true')
-    train_subparser.add_argument("--early-stopping", action='store_true')
+    eval_subparser = subparsers.add_parser("eval")
+
+    # Add arguments that all models need
+    base_model.add_args(parser, train_subparser, eval_subparser)
+
+    # Custom arguments for training
+    train_subparser.add_argument("--sigmoid-scale", "-s", type=float, default=100)
     train_subparser.set_defaults(func=train)
 
-    eval_subparser = subparsers.add_parser("eval")
-    eval_subparser.add_argument("dataset", help="dataset (json file)")
-    eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
-    eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
+    # Custom arguments for evaluation
     eval_subparser.set_defaults(func=evaluate)
 
     args = parser.parse_args()
