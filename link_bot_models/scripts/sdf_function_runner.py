@@ -13,8 +13,6 @@ from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_models.sdf_function_model import SDFFunctionModel
 from link_bot_pycommon import experiments_util
 
-sdf_function_label_types = [LabelType.SDF]
-
 
 def train(args):
     log_path = experiments_util.experiment_name(args.log)
@@ -36,14 +34,8 @@ def train(args):
         args_dict.update(base_model.make_args_dict(args))
         model = SDFFunctionModel(args_dict)
 
-    model.train(train_dataset, validation_dataset, sdf_function_label_types, log_path, args)
-    model.evaluate(validation_dataset, sdf_function_label_types)
-
-
-def evaluate(args):
-    dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
-    model = SDFFunctionModel.load(args.checkpoint)
-    return model.evaluate(dataset, sdf_function_label_types)
+    model.train(train_dataset, validation_dataset, args.label_types, log_path, args)
+    model.evaluate(validation_dataset, args.label_types)
 
 
 def main():

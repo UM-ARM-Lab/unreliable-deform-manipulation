@@ -20,6 +20,7 @@ from link_bot_models.components.bias_layer import BiasLayer
 from link_bot_models.components.distance_matrix_layer import DistanceMatrix
 from link_bot_models.components.out_of_bounds_regularization import OutOfBoundsRegularizer
 from link_bot_models.components.sdf_lookup import SDFLookup
+from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
@@ -59,6 +60,7 @@ def base_parser():
 
     train_subparser.add_argument("train_dataset", help="dataset (json file)")
     train_subparser.add_argument("validation_dataset", help="dataset (json file)")
+    train_subparser.add_argument("label_types", nargs='+', type=LabelType.__getitem__)
     train_subparser.add_argument("--batch-size", "-b", type=int, default=100)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=50)
@@ -69,7 +71,8 @@ def base_parser():
     train_subparser.add_argument("--val-acc-threshold", type=float, default=None)
 
     eval_subparser.add_argument("dataset", help="dataset (json file)")
-    eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
+    eval_subparser.add_argument("checkpoint")
+    eval_subparser.add_argument("label_types", nargs='+', type=LabelType.__getitem__)
     eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
 
     show_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
@@ -214,7 +217,6 @@ class BaseModel:
         metadata_path = checkpoint_path.parent / 'metadata.json'
         metadata = json.load(open(metadata_path, 'r'))
         args_dict = metadata['args_dict']
-        print(args_dict)
         model = cls(args_dict)
 
         basename = os.path.basename(os.path.splitext(checkpoint)[0])
@@ -226,7 +228,7 @@ class BaseModel:
         return model
 
     @classmethod
-    def evaluate_main(cls, args, label_types):
+    def evaluate_main(cls, args):
         dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
         model = cls.load(args.checkpoint)
-        return model.evaluate(dataset, label_types)
+        return model.evaluate(dataset, args.label_types)
