@@ -20,8 +20,8 @@ class SDFFunctionModel(BaseModel):
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
         self.fc_layer_sizes = [
-            16,
-            16,
+            32,
+            32,
         ]
 
         self.beta = 1e-2

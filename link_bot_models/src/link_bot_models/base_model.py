@@ -1,5 +1,6 @@
 from __future__ import division, print_function, absolute_import
 
+import argparse
 import json
 import os
 
@@ -9,6 +10,7 @@ from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
 from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
 from keras.models import load_model
+import keras
 
 from link_bot_models.callbacks import StopAtAccuracy
 from link_bot_models.components.bias_layer import BiasLayer
@@ -25,7 +27,13 @@ custom_objects = {
 }
 
 
-def add_args(parser, train_subparser, eval_subparser):
+def base_parser():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
+    train_subparser = subparsers.add_parser("train")
+    eval_subparser = subparsers.add_parser("eval")
+    show_subparser = subparsers.add_parser("show")
+
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
@@ -45,6 +53,11 @@ def add_args(parser, train_subparser, eval_subparser):
     eval_subparser.add_argument("dataset", help="dataset (json file)")
     eval_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
     eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
+
+    show_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
+    show_subparser.add_argument("--image-filename", default='model.png')
+
+    return parser, train_subparser, eval_subparser, show_subparser
 
 
 class BaseModel:
@@ -154,6 +167,11 @@ class BaseModel:
 
         return loss, accuracy
 
+    @staticmethod
+    def show(args, keras_model):
+        print(keras_model.summary())
+        keras.utils.plot_model(keras_model, to_file=args.image_filename)
+
     @classmethod
     def load(cls, args_dict, *args):
         model = cls(args_dict, *args)
@@ -165,3 +183,10 @@ class BaseModel:
         model.initial_epoch = initial_epoch
         print(Fore.CYAN + "Restored keras model {}".format(args_dict['checkpoint']) + Fore.RESET)
         return model
+
+    @staticmethod
+    def load_keras_model_only(args_dict):
+        basename = os.path.basename(os.path.splitext(args_dict['checkpoint'])[0])
+        keras_model = load_model(args_dict['checkpoint'], custom_objects=custom_objects)
+        print(Fore.CYAN + "Restored keras model {}".format(args_dict['checkpoint']) + Fore.RESET)
+        return keras_model
