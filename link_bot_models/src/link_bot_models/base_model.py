@@ -92,15 +92,21 @@ class BaseModel:
 
         train_generator = train_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
 
-        if not self.args_dict['skip_validation']:
+        if self.args_dict['validation_steps'] == -1:
             validation_generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
+            validation_steps = None
+        elif self.args_dict['validation_steps'] > 0:
+            validation_generator = validation_dataset.generator_specific_labels(label_types, self.args_dict['batch_size'])
+            validation_steps = self.args_dict['validation_steps']
         else:
             validation_generator = None
+            validation_steps = None
 
         history = self.keras_model.fit_generator(train_generator,
                                                  callbacks=callbacks,
                                                  validation_data=validation_generator,
                                                  initial_epoch=self.initial_epoch,
+                                                 validation_steps=validation_steps,
                                                  epochs=epochs)
 
         if self.args_dict['plot']:

@@ -37,15 +37,12 @@ class MultiConstraintModelRunner(BaseModel):
         #####################
         n_points = int(N / 2)
         distance_matrix_layer, distance_function = distance_function_layer(args_dict['sigmoid_scale'], n_points)
-        distance_prediction = distance_function(rope_input)
+        overstretching_prediction = distance_function(rope_input)
 
         ################
         # SDF Function #
         ################
-        self.fc_layer_sizes = [
-            16,
-            16,
-        ]
+        self.fc_layer_sizes = [16, 16]
 
         self.beta = 1e-2
         sdf_input_layer, sdf_function = sdf_function_layer(sdf_shape, self.fc_layer_sizes, self.beta, args_dict['sigmoid_scale'])
@@ -54,28 +51,30 @@ class MultiConstraintModelRunner(BaseModel):
         ###########
         # Combine #
         ###########
-
-        self.decision_fc_layer_sizes = [
-            16,
-            16,
-        ]
+        self.decision_fc_layer_sizes = [16, 16]
 
         decision_fc_h = rope_input
         for fc_layer_size in self.decision_fc_layer_sizes:
             decision_fc_h = Dense(fc_layer_size, activation='relu')(decision_fc_h)
         prediction_weights = Dense(2, activation='softmax', name='prediction_weights')(decision_fc_h)
 
-        concat_predictions = Concatenate()([sdf_function_prediction, distance_prediction])
+        concat_predictions = Concatenate(name='all_output')([sdf_function_prediction, overstretching_prediction])
         prediction = Dot(axes=1, name='combined_output')([prediction_weights, concat_predictions])
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
-        self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
+        self.keras_model = Model(inputs=self.model_inputs, outputs=[prediction, concat_predictions])
         self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
+        self.decision_model = Model(inputs=self.model_inputs, outputs=prediction_weights)
 
-        print(self.keras_model.summary())
-        keras.utils.plot_model(self.keras_model)
+        if 'show_model' in args_dict and args_dict['show_model']:
+            print(self.keras_model.summary())
+            keras.utils.plot_model(self.keras_model)
 
-        self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        losses = {
+            'combined_output': 'binary_crossentropy',
+            'all_output': 'categorical_crossentropy',
+        }
+        self.keras_model.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
 
     def metadata(self, label_types):
         extra_metadata = {
@@ -162,6 +161,7 @@ def main():
     train_subparser.add_argument("--skip-validation", action='store_true')
     train_subparser.add_argument("--early-stopping", action='store_true')
     train_subparser.add_argument("--val-acc-threshold", type=float, default=None)
+    train_subparser.add_argument("--show-model", action='store_true')
     train_subparser.set_defaults(func=train)
 
     eval_subparser = subparsers.add_parser("eval")

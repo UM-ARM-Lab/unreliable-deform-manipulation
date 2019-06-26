@@ -9,9 +9,8 @@ from colorama import Fore, Style
 import numpy as np
 import tensorflow as tf
 
-from link_bot_models import sdf_function_model
 from link_bot_models import plotting
-from link_bot_models.sdf_function_model import SDFFunctionModel
+from link_bot_models.sdf_function_model import test_predictions, SDFFunctionModel
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 
@@ -83,6 +82,8 @@ def main():
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("--debug", help="enable TF Debugger", action='store_true')
     parser.add_argument("--seed", type=int, default=0)
+    # FIXME: load from metadata
+    parser.add_argument("--sigmoid-scale", type=float, default=100)
     parser.add_argument("--random_init", action='store_true')
 
     args = parser.parse_args()
@@ -93,16 +94,14 @@ def main():
     # get the rope configurations we're going to evaluate
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
 
-    model = SDFFunctionModel(vars(args), dataset.sdf_shape, args.N)
-    keras_model = SDFFunctionModel.load(vars(args))
-    model.keras_model = keras_model
+    model = SDFFunctionModel.load(vars(args), [100, 100], 6)
 
     for env_idx, environment in enumerate(dataset.environments):
         print(Style.BRIGHT + Fore.GREEN + "Environment {}".format(env_idx) + Fore.RESET + Style.NORMAL)
 
         sdf_data = environment.sdf_data
 
-        results = sdf_function_model.test_predictions(model, environment)
+        results = test_predictions(model, environment)
         m = results.shape[0]
 
         true_positives = [result for result in results if label_mask @ result.true_violated and result.predicted_violated]
