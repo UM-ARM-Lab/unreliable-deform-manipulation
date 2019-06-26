@@ -20,7 +20,6 @@ class SDFFunctionModelRunner(BaseModelRunner):
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
         self.fc_layer_sizes = args_dict['fc_layer_sizes']
-
         self.beta = args_dict['beta']
         self.sigmoid_scale = args_dict['sigmoid_scale']
 
