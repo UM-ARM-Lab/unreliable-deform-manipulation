@@ -4,7 +4,7 @@ from __future__ import print_function
 import numpy as np
 import keras.backend as K
 import tensorflow as tf
-from keras.layers import Input, Concatenate, Lambda, Activation, Add
+from keras.layers import Input, Concatenate, Lambda, Activation
 from keras.models import Model
 
 from link_bot_models import base_model
@@ -42,16 +42,15 @@ class MultiConstraintModelRunner(BaseModelRunner):
 
         # Combine
         concat_predictions = Concatenate(name='all_output')([sdf_function_prediction, overstretching_prediction])
-        prediction_distribution = Activation('softmax')(concat_predictions)
-        prediction = Lambda(lambda x: K.sum(x, axis=1, keepdims=True), name='combined_output')(prediction_distribution)
+        prediction = Lambda(lambda x: K.sum(x, axis=1, keepdims=True) - K.prod(x, axis=1, keepdims=True), name='combined_output')(concat_predictions)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=[prediction, concat_predictions])
         self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
 
         losses = {
-            # 'combined_output': 'binary_crossentropy',
-            'all_output': 'binary_crossentropy',
+            'combined_output': 'binary_crossentropy',
+            # 'all_output': 'binary_crossentropy',
         }
         self.keras_model.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
 

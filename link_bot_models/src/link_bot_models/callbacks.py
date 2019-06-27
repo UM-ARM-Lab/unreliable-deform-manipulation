@@ -16,5 +16,5 @@ class StopAtAccuracy(Callback):
 
 class DebugCallback(Callback):
 
-    def on_epoch_end(self, epoch, logs=None):
-        print(self.model.get_weights())
+    def on_batch_end(self, epoch, logs=None):
+        print(logs)

@@ -15,7 +15,7 @@ from keras.backend.tensorflow_backend import set_session
 from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
 from keras.models import load_model
 
-from link_bot_models.callbacks import StopAtAccuracy
+from link_bot_models.callbacks import StopAtAccuracy, DebugCallback
 from link_bot_models.components.bias_layer import BiasLayer
 from link_bot_models.components.distance_matrix_layer import DistanceMatrix
 from link_bot_models.components.out_of_bounds_regularization import OutOfBoundsRegularizer
@@ -51,6 +51,7 @@ def base_parser():
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=50)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_subparser.add_argument("--plot", action='store_true')
+    train_subparser.add_argument("--debug", action='store_true')
     train_subparser.add_argument("--validation-steps", type=int, default=-1)
     train_subparser.add_argument("--early-stopping", action='store_true')
     train_subparser.add_argument("--val-acc-threshold", type=float, default=None)
@@ -152,7 +153,8 @@ class BaseModelRunner:
                 early_stopping = EarlyStopping(monitor='val_acc', patience=5, min_delta=0.001, verbose=args.verbose)
                 callbacks.append(early_stopping)
 
-            # callbacks.append(DebugCallback())
+            if args.debug:
+                callbacks.append(DebugCallback())
 
         train_generator = train_dataset.generator_specific_labels(label_types, self.batch_size)
 
@@ -187,14 +189,13 @@ class BaseModelRunner:
 
     def evaluate(self, validation_dataset, label_types, display=True):
         generator = validation_dataset.generator_specific_labels(label_types, self.batch_size)
-        loss, accuracy = self.keras_model.evaluate_generator(generator)
-
+        metrics = self.keras_model.evaluate_generator(generator)
         if display:
             print("Validation:")
-            print("Overall Loss: {:0.3f}".format(float(loss)))
-            print("constraint prediction accuracy:\n{:5.2f}".format(accuracy * 100))
+            for name, metric in zip(self.keras_model.metrics_names, metrics):
+                print(name, metric)
 
-        return loss, accuracy
+        return self.keras_model.metrics_names, metrics
 
     @classmethod
     def load(cls, checkpoint):
