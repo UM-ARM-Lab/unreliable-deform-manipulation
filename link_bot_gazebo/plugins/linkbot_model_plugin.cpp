@@ -76,9 +76,8 @@ void LinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr co
   x_vel_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
   y_vel_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
 
-
-  contact_sensor_ = std::dynamic_pointer_cast<sensors::ContactSensor>(
-      sensors::SensorManager::Instance()->GetSensor("my_contact"));
+  contact_sensor_ =
+      std::dynamic_pointer_cast<sensors::ContactSensor>(sensors::SensorManager::Instance()->GetSensor("my_contact"));
 }
 
 void LinkBotModelPlugin::OnUpdate()
@@ -176,14 +175,29 @@ void LinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurationCo
 bool LinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req,
                                               link_bot_gazebo::LinkBotStateResponse &res)
 {
-  auto const &tail = model_->GetLink("tail");
-  auto const &mid = model_->GetLink("mid");
+  auto const &tail = model_->GetLink("link_0");
+  auto const &mid = model_->GetLink("link_4");
   auto const &head = model_->GetLink("head");
 
   auto contacts = contact_sensor_->Contacts();
-  auto const &tail_torque = tail->WorldTorque();
-  auto const &mid_torque = mid->WorldTorque();
-  auto const &head_torque = head->WorldTorque();
+  auto const &tail_torque = tail->RelativeTorque();
+  auto const &mid_torque = mid->RelativeTorque();
+  auto const &head_torque = head->RelativeTorque();
+
+  auto const head_in_contact = [&]() {
+    for (auto i{0u}; i < contacts.contact_size(); ++i) {
+      auto const &contact = contacts.contact(i);
+      if (contact.collision1() == "link_bot::head::head_collision" and
+          contact.collision2() != "ground_plane::link::collision") {
+        return true;
+      }
+      else if (contact.collision2() == "link_bot::head::head_collision" and
+               contact.collision1() != "ground_plane::link::collision") {
+        return true;
+      }
+    }
+    return false;
+  }();
 
   res.tail_x = tail->WorldPose().Pos().X();
   res.tail_y = tail->WorldPose().Pos().Y();
@@ -192,10 +206,16 @@ bool LinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateReque
   res.head_x = head->WorldPose().Pos().X();
   res.head_y = head->WorldPose().Pos().Y();
   res.tail_torque.x = tail_torque.X();
+  res.tail_torque.y = tail_torque.Y();
+  res.tail_torque.z = tail_torque.Z();
   res.mid_torque.x = mid_torque.X();
+  res.mid_torque.y = mid_torque.Y();
+  res.mid_torque.z = mid_torque.Z();
   res.head_torque.x = head_torque.X();
-  res.overstretched = 1;
-  res.head_in_contact = 1;
+  res.head_torque.y = head_torque.Y();
+  res.head_torque.z = head_torque.Z();
+  res.overstretched = 0;
+  res.head_in_contact = head_in_contact;
   return true;
 }
 

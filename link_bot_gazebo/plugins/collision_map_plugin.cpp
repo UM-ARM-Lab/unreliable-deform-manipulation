@@ -1,10 +1,11 @@
 #include <cnpy/cnpy.h>
-#include <link_bot_gazebo/WriteSDF.h>
 #include <link_bot_gazebo/QuerySDF.h>
+#include <link_bot_gazebo/WriteSDF.h>
 #include <std_msgs/ColorRGBA.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <arc_utilities/arc_helpers.hpp>
+#include <arc_utilities/serialization.hpp>
 #include <chrono>
 #include <experimental/filesystem>
 #include <functional>
@@ -29,7 +30,7 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     ros::init(argc, argv, "collision_map_plugin", ros::init_options::NoSigintHandler);
   }
 
-  auto cb = [&](link_bot_gazebo::QuerySDFRequest &req, link_bot_gazebo::QuerySDFResponse &res) {
+  auto query_sdf = [&](link_bot_gazebo::QuerySDFRequest &req, link_bot_gazebo::QuerySDFResponse &res) {
     if (not ready_) {
       std::cout << "sdf not generated yet, you must publish that message first\n";
       res.success = false;
@@ -48,6 +49,14 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     return true;
   };
 
+  auto get_sdf = [&](sdf_tools::ComputeSDFRequest &req, sdf_tools::ComputeSDFResponse &res) {
+    if (req.request_new) {
+      compute_sdf(req.x_width, req.y_height, req.center, req.resolution, req.robot_name, req.min_z, req.max_z);
+    }
+    res.is_valid = true;
+    res.sdf = sdf_tools::SignedDistanceField::GetMessageRepresentation(sdf_);
+    return true;
+  };
 
   ros_node_ = std::make_unique<ros::NodeHandle>("collision_map_plugin");
 
@@ -60,8 +69,15 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
   }
 
   {
-    auto so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::QuerySDF>("/sdf", cb, ros::VoidConstPtr(), &queue_);
-    service_ = ros_node_->advertiseService(so);
+    auto so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::QuerySDF>("/query_sdf", query_sdf,
+                                                                              ros::VoidConstPtr(), &queue_);
+    query_service_ = ros_node_->advertiseService(so);
+  }
+
+  {
+    auto so =
+        ros::AdvertiseServiceOptions::create<sdf_tools::ComputeSDF>("/sdf", get_sdf, ros::VoidConstPtr(), &queue_);
+    get_service_ = ros_node_->advertiseService(so);
   }
 
   ros_queue_thread_ = std::thread(std::bind(&CollisionMapPlugin::QueueThread, this));
@@ -76,60 +92,7 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
     return;
   }
 
-  Eigen::Isometry3d origin_transform = Eigen::Isometry3d::Identity();
-  origin_transform.translation() =
-      Eigen::Vector3d{msg->center.x - msg->x_width / 2, msg->center.y - msg->y_height / 2, 0};
-  std::vector<double> origin_vec{msg->center.x - msg->x_width / 2, msg->center.y - msg->y_height / 2};
-  // hard coded for 1-cell in Z
-  sdf_tools::CollisionMapGrid grid{origin_transform, "/gazebo_world", msg->resolution, msg->x_width,
-                                   msg->y_height,    msg->resolution, oob_value};
-  ignition::math::Vector3d start, end;
-  start.Z(msg->max_z);
-  end.Z(msg->min_z);
-
-  // parameters needed for the GetIntersection check
-  std::string entityName;
-  double dist;
-
-  auto const dont_draw_color = arc_helpers::GenerateUniqueColor<std_msgs::ColorRGBA>(0u);
-  auto const collision_color = arc_helpers::GenerateUniqueColor<std_msgs::ColorRGBA>(1u);
-
-  auto const t0 = std::chrono::steady_clock::now();
-
-  for (auto x_idx{0l}; x_idx < grid.GetNumXCells(); ++x_idx) {
-    for (auto y_idx{0l}; y_idx < grid.GetNumYCells(); ++y_idx) {
-      auto const grid_location = grid.GridIndexToLocation(x_idx, y_idx, 0);
-      start.X(grid_location(0));
-      end.X(grid_location(0));
-      start.Y(grid_location(1));
-      end.Y(grid_location(1));
-      ray->SetPoints(start, end);
-      ray->GetIntersection(dist, entityName);
-      if (not entityName.empty() and (msg->robot_name.empty() or entityName.find(msg->robot_name) != 0)) {
-        grid.SetValue(x_idx, y_idx, 0, occupied_value);
-      }
-    }
-  }
-
-  auto const t1 = std::chrono::steady_clock::now();
-  std::chrono::duration<double> const time_to_compute_occupancy_grid = t1 - t0;
-  std::cout << "Time to compute occupancy grid: " << time_to_compute_occupancy_grid.count() << std::endl;
-
-  sdf_ = grid.ExtractSignedDistanceField(oob_value.occupancy, false, false).first;
-
-  auto const t2 = std::chrono::steady_clock::now();
-  std::chrono::duration<double> const time_to_compute_sdf = t2 - t1;
-  std::cout << "Time to compute sdf: " << time_to_compute_sdf.count() << std::endl;
-
-  auto const map_marker_msg = grid.ExportSurfacesForDisplay(collision_color, dont_draw_color, dont_draw_color);
-
-  auto const t3 = std::chrono::steady_clock::now();
-  sdf_tools::SignedDistanceField::GradientFunction gradient_function = [&](const int64_t x_index, const int64_t y_index,
-                                                                           const int64_t z_index,
-                                                                           const bool enable_edge_gradients = false) {
-    return sdf_.GetGradient(x_index, y_index, z_index, enable_edge_gradients);
-  };
-  sdf_gradient_ = sdf_.GetFullGradient(gradient_function, true);
+  compute_sdf(msg->x_width, msg->y_height, msg->center, msg->resolution, msg->robot_name, msg->min_z, msg->max_z);
 
   auto const sdf_gradient_flat = [&]() {
     auto const &data = sdf_gradient_.GetImmutableRawData();
@@ -141,19 +104,20 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
     }
     return flat;
   }();
-  auto const t4 = std::chrono::steady_clock::now();
-  std::chrono::duration<double> const time_to_compute_sdf_gradient = t4 - t3;
-  std::cout << "Time to compute sdf gradient: " << time_to_compute_sdf_gradient.count() << std::endl;
 
   // publish to rviz
+  auto const dont_draw_color = arc_helpers::GenerateUniqueColor<std_msgs::ColorRGBA>(0u);
+  auto const collision_color = arc_helpers::GenerateUniqueColor<std_msgs::ColorRGBA>(1u);
+  auto const map_marker_msg = grid_.ExportSurfacesForDisplay(collision_color, dont_draw_color, dont_draw_color);
   gazebo_sdf_viz_pub_.publish(map_marker_msg);
 
   // save to a file
-  std::vector<size_t> shape{static_cast<unsigned long>(grid.GetNumXCells()),
-                            static_cast<unsigned long>(grid.GetNumYCells())};
-  std::vector<size_t> gradient_shape{static_cast<unsigned long>(grid.GetNumXCells()),
-                                     static_cast<unsigned long>(grid.GetNumYCells()), 2};
+  std::vector<size_t> shape{static_cast<unsigned long>(grid_.GetNumXCells()),
+                            static_cast<unsigned long>(grid_.GetNumYCells())};
+  std::vector<size_t> gradient_shape{static_cast<unsigned long>(grid_.GetNumXCells()),
+                                     static_cast<unsigned long>(grid_.GetNumYCells()), 2};
 
+  std::vector<double> origin_vec{msg->center.x - msg->x_width / 2, msg->center.y - msg->y_height / 2};
   std::vector<float> resolutions{msg->resolution, msg->resolution, msg->resolution};
   cnpy::npz_save(msg->filename, "sdf", &sdf_.GetImmutableRawData()[0], shape, "w");
   cnpy::npz_save(msg->filename, "sdf_gradient", &sdf_gradient_flat[0], gradient_shape, "a");
@@ -176,6 +140,63 @@ void CollisionMapPlugin::QueueThread()
   double constexpr timeout = 0.01;
   while (ros_node_->ok()) {
     queue_.callAvailable(ros::WallDuration(timeout));
+  }
+}
+
+void CollisionMapPlugin::compute_sdf(float x_width, float y_height, geometry_msgs::Point center, float resolution,
+                                     std::string const &robot_name, float min_z, float max_z, bool verbose)
+{
+  Eigen::Isometry3d origin_transform = Eigen::Isometry3d::Identity();
+  origin_transform.translation() = Eigen::Vector3d{center.x - x_width / 2, center.y - y_height / 2, 0};
+  // hard coded for 1-cell in Z
+  grid_ = sdf_tools::CollisionMapGrid(origin_transform, "/gazebo_world", resolution, x_width, y_height, resolution,
+                                      oob_value);
+  ignition::math::Vector3d start, end;
+  start.Z(max_z);
+  end.Z(min_z);
+
+  // parameters needed for the GetIntersection check
+  std::string entityName;
+  double dist;
+
+  auto const t0 = std::chrono::steady_clock::now();
+
+  for (auto x_idx{0l}; x_idx < grid_.GetNumXCells(); ++x_idx) {
+    for (auto y_idx{0l}; y_idx < grid_.GetNumYCells(); ++y_idx) {
+      auto const grid_location = grid_.GridIndexToLocation(x_idx, y_idx, 0);
+      start.X(grid_location(0));
+      end.X(grid_location(0));
+      start.Y(grid_location(1));
+      end.Y(grid_location(1));
+      ray->SetPoints(start, end);
+      ray->GetIntersection(dist, entityName);
+      if (not entityName.empty() and (robot_name.empty() or entityName.find(robot_name) != 0)) {
+        grid_.SetValue(x_idx, y_idx, 0, occupied_value);
+      }
+    }
+  }
+
+  auto const t1 = std::chrono::steady_clock::now();
+  std::chrono::duration<double> const time_to_compute_occupancy_grid = t1 - t0;
+  std::cout << "Time to compute occupancy grid_: " << time_to_compute_occupancy_grid.count() << std::endl;
+
+  sdf_ = grid_.ExtractSignedDistanceField(oob_value.occupancy, false, false).first;
+
+  auto const t2 = std::chrono::steady_clock::now();
+  std::chrono::duration<double> const time_to_compute_sdf = t2 - t1;
+  std::cout << "Time to compute sdf: " << time_to_compute_sdf.count() << std::endl;
+
+  auto const t3 = std::chrono::steady_clock::now();
+  sdf_tools::SignedDistanceField::GradientFunction gradient_function = [&](const int64_t x_index, const int64_t y_index,
+                                                                           const int64_t z_index,
+                                                                           const bool enable_edge_gradients = false) {
+    return sdf_.GetGradient(x_index, y_index, z_index, enable_edge_gradients);
+  };
+  sdf_gradient_ = sdf_.GetFullGradient(gradient_function, true);
+  auto const t4 = std::chrono::steady_clock::now();
+  if (verbose) {
+    std::chrono::duration<double> const time_to_compute_sdf_gradient = t4 - t3;
+    std::cout << "Time to compute sdf gradient: " << time_to_compute_sdf_gradient.count() << std::endl;
   }
 }
 

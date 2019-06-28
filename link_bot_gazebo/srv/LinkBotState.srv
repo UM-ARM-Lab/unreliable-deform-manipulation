@@ -5,8 +5,8 @@ float64 mid_x
 float64 mid_y
 float64 head_x
 float64 head_y
-int32 head_in_contact
-int32 overstretched
+bool head_in_contact
+bool overstretched
 geometry_msgs/Vector3 tail_torque
 geometry_msgs/Vector3 mid_torque
 geometry_msgs/Vector3 head_torque
