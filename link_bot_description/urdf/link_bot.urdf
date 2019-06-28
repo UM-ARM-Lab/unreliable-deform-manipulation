@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot name="link_bot">
-    <link name="link_0">
+    <link name="tail">
         <visual>
             <origin rpy="0 -1.5707 0" xyz="0.5 0 0"/>
             <geometry>
@@ -20,7 +20,7 @@
             <origin rpy="0 0 0" xyz="0.5 0 0"/>
         </inertial>
     </link>
-    <link name="link_1">
+    <link name="mid">
         <visual>
             <origin rpy="0 -1.5707 0" xyz="0.5 0 0"/>
             <geometry>
@@ -60,27 +60,27 @@
         </inertial>
     </link>
     <joint name="joint" type="revolute">
-        <parent link="link_0"/>
-        <child link="link_1"/>
+        <parent link="tail"/>
+        <child link="mid"/>
         <origin xyz="1 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="1"/>
         <dynamics damping="1.0" friction="0.0"/>
     </joint>
     <joint name="head_joint" type="revolute">
-        <parent link="link_1"/>
+        <parent link="mid"/>
         <child link="head"/>
         <origin xyz="1 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="1"/>
         <dynamics damping="1.0" friction="0.0"/>
     </joint>
-    <gazebo reference="link_0">
+    <gazebo reference="tail">
         <mu1>0.4</mu1>
         <mu2>0.4</mu2>
         <material>Gazebo/Gray</material>
     </gazebo>
-    <gazebo reference="link_1">
+    <gazebo reference="mid">
         <mu1>0.4</mu1>
         <mu2>0.4</mu2>
         <material>Gazebo/Green</material>

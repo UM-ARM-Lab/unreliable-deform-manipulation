@@ -1,0 +1,12 @@
+---
+float64 tail_x
+float64 tail_y
+float64 mid_x
+float64 mid_y
+float64 head_x
+float64 head_y
+int32 head_in_contact
+int32 overstretched
+geometry_msgs/Vector3 tail_torque
+geometry_msgs/Vector3 mid_torque
+geometry_msgs/Vector3 head_torque

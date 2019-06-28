@@ -28,10 +28,16 @@ void LinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr co
   auto config_bind = boost::bind(&LinkBotModelPlugin::OnConfiguration, this, _1);
   auto config_so = ros::SubscribeOptions::create<link_bot_gazebo::LinkBotConfiguration>(
       "/link_bot_configuration", 1, config_bind, ros::VoidPtr(), &queue_);
+  auto state_bind = boost::bind(&LinkBotModelPlugin::StateServiceCallback, this, _1, _2);
+  auto service_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotState>("/link_bot_state", state_bind,
+                                                                                        ros::VoidPtr(), &queue_);
+
   joy_sub_ = ros_node_->subscribe(joy_so);
   vel_cmd_sub_ = ros_node_->subscribe(vel_action_so);
   force_cmd_sub_ = ros_node_->subscribe(force_action_so);
   config_sub_ = ros_node_->subscribe(config_so);
+  state_service_ = ros_node_->advertiseService(service_so);
+
   ros_queue_thread_ = std::thread(std::bind(&LinkBotModelPlugin::QueueThread, this));
 
   if (!sdf->HasElement("kP")) {
@@ -69,15 +75,19 @@ void LinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr co
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(std::bind(&LinkBotModelPlugin::OnUpdate, this));
   x_vel_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
   y_vel_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
+
+
+  contact_sensor_ = std::dynamic_pointer_cast<sensors::ContactSensor>(
+      sensors::SensorManager::Instance()->GetSensor("my_contact"));
 }
 
 void LinkBotModelPlugin::OnUpdate()
 {
+  ignition::math::Vector3d force{};
   if (use_force_) {
     auto i{0u};
     auto const &links = model_->GetLinks();
     for (auto &link : links) {
-      ignition::math::Vector3d force{};
       force.X(wrenches_[i].force.x);
       force.Y(wrenches_[i].force.y);
       link->AddForce(force);
@@ -88,7 +98,6 @@ void LinkBotModelPlugin::OnUpdate()
     if (velocity_control_link_) {
       auto const current_linear_vel = velocity_control_link_->WorldLinearVel();
       auto const error = current_linear_vel - target_linear_vel_;
-      ignition::math::Vector3d force{};
       force.X(x_vel_pid_.Update(error.X(), 0.001));
       force.Y(y_vel_pid_.Update(error.Y(), 0.001));
       velocity_control_link_->AddForce(force);
@@ -162,6 +171,32 @@ void LinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurationCo
     joint->SetPosition(0, msg->joint_angles_rad[i]);
     joint->SetVelocity(0, 0);
   }
+}
+
+bool LinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req,
+                                              link_bot_gazebo::LinkBotStateResponse &res)
+{
+  auto const &tail = model_->GetLink("tail");
+  auto const &mid = model_->GetLink("mid");
+  auto const &head = model_->GetLink("head");
+
+  auto contacts = contact_sensor_->Contacts();
+  auto const &tail_torque = tail->WorldTorque();
+  auto const &mid_torque = mid->WorldTorque();
+  auto const &head_torque = head->WorldTorque();
+
+  res.tail_x = tail->WorldPose().Pos().X();
+  res.tail_y = tail->WorldPose().Pos().Y();
+  res.mid_x = mid->WorldPose().Pos().X();
+  res.mid_y = mid->WorldPose().Pos().Y();
+  res.head_x = head->WorldPose().Pos().X();
+  res.head_y = head->WorldPose().Pos().Y();
+  res.tail_torque.x = tail_torque.X();
+  res.mid_torque.x = mid_torque.X();
+  res.head_torque.x = head_torque.X();
+  res.overstretched = 1;
+  res.head_in_contact = 1;
+  return true;
 }
 
 void LinkBotModelPlugin::QueueThread()

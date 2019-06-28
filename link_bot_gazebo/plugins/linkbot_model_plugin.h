@@ -6,6 +6,7 @@
 #include <link_bot_gazebo/LinkBotConfiguration.h>
 #include <link_bot_gazebo/LinkBotForceAction.h>
 #include <link_bot_gazebo/LinkBotVelocityAction.h>
+#include <link_bot_gazebo/LinkBotState.h>
 #include <geometry_msgs/Wrench.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
@@ -14,6 +15,7 @@
 #include <gazebo/common/common.hh>
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
+#include <gazebo/sensors/sensors.hh>
 #include <ignition/math.hh>
 #include <sdf/sdf.hh>
 
@@ -34,12 +36,15 @@ class LinkBotModelPlugin : public ModelPlugin {
 
   void OnConfiguration(link_bot_gazebo::LinkBotConfigurationConstPtr msg);
 
+  bool StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req, link_bot_gazebo::LinkBotStateResponse &res);
+
  protected:
  private:
   void QueueThread();
 
   physics::ModelPtr model_;
   event::ConnectionPtr updateConnection_;
+  sensors::ContactSensorPtr contact_sensor_;
   double kP_{500};
   double kI_{0};
   double kD_{0};
@@ -54,6 +59,7 @@ class LinkBotModelPlugin : public ModelPlugin {
   ros::Subscriber vel_cmd_sub_;
   ros::Subscriber force_cmd_sub_;
   ros::Subscriber config_sub_;
+  ros::ServiceServer state_service_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
   double action_scale{1.0};

@@ -24,7 +24,6 @@ def main():
     np.set_printoptions(precision=4, suppress=True, linewidth=200)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("sdf", help='sdf npz file')
     parser.add_argument("outfile", help='filename to store data in')
     parser.add_argument("pulls", help='how many pulls to do', type=int)
     parser.add_argument("steps", help='how many time steps per pull', type=int)
@@ -42,7 +41,8 @@ def main():
 
     DT = 0.1  # seconds per time step
 
-    get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
+    # get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
+    get_state = rospy.ServiceProxy('/link_bot_state', tLinkState)
     action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
@@ -61,16 +61,6 @@ def main():
     world_control.call(step)  # this will block until stepping is complete
 
     sleep(0.5)
-
-    # load the SDF
-    sdf, sdf_gradient, sdf_resolution = link_bot_pycommon.load_sdf(args.sdf)
-    sdf_rows, sdf_cols = sdf.shape
-    sdf_origin_coordinate = np.array([sdf_rows / 2, sdf_cols / 2], dtype=np.int32)
-
-    def sdf_by_xy(x, y):
-        point = np.array([[x, y]])
-        indeces = (point / sdf_resolution).astype(np.int32) + sdf_origin_coordinate
-        return sdf[indeces[0, 0], indeces[0, 1]]
 
     def r():
         return np.random.uniform(-np.pi, np.pi)
@@ -92,16 +82,16 @@ def main():
         head_vy = np.sin(pull_yaw) * v
 
         time = 0
+        t = 1
         for t in range(args.steps):
             # save the state and action data
             links_state = agent.get_state(get_link_state)
             times[p, t] = [time]
             states[p, t] = links_state
             actions[p, t] = [head_vx, head_vy]
-            # The task-space constraint is that we stay at least 5cm away from obstacles.
-            sdf_at_head = sdf_by_xy(links_state[4], links_state[5])
-            distance_to_obstacle_constraint = 0.20
-            constraints[p, t] = [float(sdf_at_head < distance_to_obstacle_constraint)]
+
+            constraints[p, t, 0] = in_collision
+            constraints[p, t, 1] = overstretched
 
             # publish the pull command
             action_msg.vx = head_vx
@@ -113,6 +103,8 @@ def main():
             step.steps = int(DT / 0.001)  # assuming 0.001s per simulation step
             world_control.call(step)  # this will block until stepping is complete
 
+            # now get the last applied force and whether the object is in collision
+
             time += DT
 
         # save the final state
@@ -120,13 +112,12 @@ def main():
         links_state = agent.get_state(get_link_state)
         times[p, t] = [time]
         states[p, t] = links_state
-        sdf_at_head = sdf_by_xy(links_state[4], links_state[5])
         distance_to_obstacle_constraint = 0.20
-        constraints[p, t] = [float(sdf_at_head < distance_to_obstacle_constraint)]
+        constraints[p, t, 0] = ?
+        constraints[p, t, 1] = ?
 
         if p % args.save_frequency == 0:
             np.savez(args.outfile,
-                     sdf_path=args.sdf,
                      times=times,
                      states=states,
                      actions=actions,
@@ -134,7 +125,6 @@ def main():
             print(p, 'saving data...')
 
     np.savez(args.outfile,
-             sdf_path=args.sdf,
              times=times,
              states=states,
              actions=actions,
