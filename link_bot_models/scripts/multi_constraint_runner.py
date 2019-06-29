@@ -120,11 +120,13 @@ def evaluate(args):
     sdf_and_ovs_true_positive = 0
     neither_true_negative = 0
     either_true_positive = 0
+    either_true_negative = 0
     sdf_only_total = 0
     ovs_only_total = 0
     sdf_and_ovs_total = 0
     neither_total = 0
-    either_total = 0
+    either_pos_total = 0
+    either_neg_total = 0
     total = 0
     correct = 0
     sdf_label_generator = dataset.generator_specific_labels([LabelType.SDF], args.batch_size)
@@ -158,8 +160,11 @@ def evaluate(args):
             if yi_combined:
                 if yi_hat_combined:
                     either_true_positive += 1
-                either_total += 1
-            print(yi_combined.astype(np.int), yi_hat_combined)
+                either_pos_total += 1
+            elif not yi_combined:
+                if not yi_hat_combined:
+                    either_true_negative += 1
+                either_neg_total += 1
             if yi_combined.astype(np.int) == yi_hat_combined:
                 correct += 1
             total += 1
@@ -169,7 +174,8 @@ def evaluate(args):
     print("Overstretching Only True Positive: {:4.1f}%".format(ovs_only_true_positive / ovs_only_total * 100))
     print("Both True Positive: {:4.1f}%".format(sdf_and_ovs_true_positive / sdf_and_ovs_total * 100))
     print("Niether True Negative: {:4.1f}%".format(neither_true_negative / neither_total * 100))
-    print("Either True Postive: {:4.1f}%".format(either_true_positive / either_total * 100))
+    print("Either True Postive: {:4.1f}%".format(either_true_positive / either_pos_total * 100))
+    print("Either True Negative: {:4.1f}%".format(either_true_negative / either_neg_total * 100))
     print("Combined Accuracy: {:4.1f}%".format(correct / total * 100))
 
 
