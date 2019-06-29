@@ -4,10 +4,12 @@ from __future__ import print_function
 import numpy as np
 import keras.backend as K
 import tensorflow as tf
+from colorama import Fore, Style
 from keras.layers import Input, Concatenate, Lambda, Activation
 from keras.models import Model
 
 from link_bot_models import base_model
+from link_bot_models.label_types import LabelType
 from link_bot_models.base_model import BaseModelRunner
 from link_bot_models.components.distance_function_layer import distance_function_layer
 from link_bot_models.components.sdf_function_layer import sdf_function_layer
@@ -38,10 +40,10 @@ class MultiConstraintModelRunner(BaseModelRunner):
 
         # SDF Function
         sdf_input_layer, sdf_function = sdf_function_layer(self.sdf_shape, self.fc_layer_sizes, self.beta, self.sigmoid_scale)
-        sdf_function_prediction = sdf_function(sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input)
+        self.sdf_function_prediction = sdf_function(sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input)
 
         # Combine
-        concat_predictions = Concatenate(name='all_output')([sdf_function_prediction, overstretching_prediction])
+        concat_predictions = Concatenate(name='all_output')([self.sdf_function_prediction, overstretching_prediction])
         prediction = Lambda(lambda x: K.sum(x, axis=1, keepdims=True) - K.prod(x, axis=1, keepdims=True), name='combined_output')(concat_predictions)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
@@ -105,6 +107,71 @@ def train(args):
 
     model.train(train_dataset, validation_dataset, args.label_types, log_path, args)
 
+def evaluate(args):
+    dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
+    model = MultiConstraintModelRunner.load(args.checkpoint)
+
+    # normal evaluation
+    print(Style.BRIGHT + "Combined Model:" + Style.NORMAL)
+    model.evaluate(dataset, args.label_types)
+
+    sdf_only_true_positive = 0
+    ovs_only_true_positive = 0
+    sdf_and_ovs_true_positive = 0
+    neither_true_negative = 0
+    either_true_positive = 0
+    sdf_only_total = 0
+    ovs_only_total = 0
+    sdf_and_ovs_total = 0
+    neither_total = 0
+    either_total = 0
+    total = 0
+    correct = 0
+    sdf_label_generator = dataset.generator_specific_labels([LabelType.SDF], args.batch_size)
+    for batch_i in range(len(sdf_label_generator)):
+        x, y_true = sdf_label_generator[batch_i]
+        combined_predictions, all_output_predictions = model.keras_model.predict(x)
+        true_all_output = y_true['all_output']
+        true_combined  = y_true['combined_output']
+
+        for yi, yi_combined, yi_hat, yi_hat_combined in zip(true_all_output, true_combined, all_output_predictions, combined_predictions):
+            yi_hat = np.round(yi_hat).astype(np.int)
+            yi_hat_combined = np.round(yi_hat_combined).astype(np.int)
+
+            if np.all(yi == [1, 0]):
+                if np.all(yi_hat == [1, 0]):
+                    sdf_only_true_positive += 1
+                sdf_only_total += 1
+            elif np.all(yi == [0, 1]):
+                if np.all(yi_hat == [0, 1]):
+                    ovs_only_true_positive += 1
+                ovs_only_total += 1
+            elif np.all(yi == [1, 1]):
+                if np.all(yi_hat == [1, 1]):
+                    sdf_and_ovs_true_positive += 1
+                sdf_and_ovs_total += 1
+            elif np.all(yi == [0, 0]):
+                if np.all(yi_hat == [0, 0]):
+                    neither_true_negative += 1
+                neither_total += 1
+
+            if yi_combined:
+                if yi_hat_combined:
+                    either_true_positive += 1
+                either_total += 1
+            print(yi_combined.astype(np.int), yi_hat_combined)
+            if yi_combined.astype(np.int) == yi_hat_combined:
+                correct += 1
+            total += 1
+
+    print(Style.BRIGHT + "Custom Metrics:" + Style.NORMAL)
+    print("SDF Only True Positive: {:4.1f}%".format(sdf_only_true_positive / sdf_only_total * 100))
+    print("Overstretching Only True Positive: {:4.1f}%".format(ovs_only_true_positive / ovs_only_total * 100))
+    print("Both True Positive: {:4.1f}%".format(sdf_and_ovs_true_positive / sdf_and_ovs_total * 100))
+    print("Niether True Negative: {:4.1f}%".format(neither_true_negative / neither_total * 100))
+    print("Either True Postive: {:4.1f}%".format(either_true_positive / either_total * 100))
+    print("Combined Accuracy: {:4.1f}%".format(correct / total * 100))
+
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=220)
@@ -113,7 +180,7 @@ def main():
     parser, train_subparser, eval_subparser, show_subparser = base_model.base_parser()
 
     train_subparser.set_defaults(func=train)
-    eval_subparser.set_defaults(func=MultiConstraintModelRunner.evaluate_main)
+    eval_subparser.set_defaults(func=evaluate)
     show_subparser.set_defaults(func=MultiConstraintModelRunner.show)
 
     parser.run()

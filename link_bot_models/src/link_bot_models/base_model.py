@@ -193,7 +193,7 @@ class BaseModelRunner:
         if display:
             print("Validation:")
             for name, metric in zip(self.keras_model.metrics_names, metrics):
-                print(name, metric)
+                print("{}: {:4.4f}".format(name, metric))
 
         return self.keras_model.metrics_names, metrics
 
