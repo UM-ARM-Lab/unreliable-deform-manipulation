@@ -5,7 +5,7 @@ float64 mid_x
 float64 mid_y
 float64 head_x
 float64 head_y
-bool head_in_contact
+bool[] in_contact
 bool overstretched
 geometry_msgs/Vector3 tail_torque
 geometry_msgs/Vector3 mid_torque

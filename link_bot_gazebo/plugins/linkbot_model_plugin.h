@@ -44,7 +44,7 @@ class LinkBotModelPlugin : public ModelPlugin {
 
   physics::ModelPtr model_;
   event::ConnectionPtr updateConnection_;
-  sensors::ContactSensorPtr contact_sensor_;
+  sensors::ContactSensor_V contact_sensors_;
   double kP_{500};
   double kI_{0};
   double kD_{0};

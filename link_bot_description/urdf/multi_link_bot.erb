@@ -2,7 +2,7 @@
 <%mass = 2.0%>
 <%length = 1.0%>
 <%radius = 0.02%>
-<%link_length = length/num_links%>
+<%link_length = length/num_links - radius/2%>
 <%collision_link_length = link_length - radius%>
 <%link_mass = 10.0/num_links%>
 <?xml version="1.0"?>
@@ -15,7 +15,7 @@
                 <cylinder length="<%=link_length%>" radius="<%=radius%>"/>
             </geometry>
         </visual>
-        <collision>
+        <collision name="link_<%=i%>_collision">
             <origin rpy="0 -1.5707 0" xyz="<%=link_length / 2.0 - radius / 2.0%> 0 0"/>
             <geometry>
                 <box size="<%=radius*2%> <%=radius*2%> <%=collision_link_length%>"/>
@@ -26,6 +26,7 @@
                         <max_vel>0.00</max_vel>
                         <min_depth>0.01</min_depth>
                     </ode>
+                    <collide_bitmask>0x01</collide_bitmask>
                 </contact>
             </surface>
         </collision>
@@ -80,37 +81,24 @@
     <% for i in 0..num_links %>
     <gazebo reference="link_<%=i%>">
         <self_collide>true</self_collide>
+        <sensor name='link_<%=i%>_contact' type='contact'>
+            <contact>
+                <collision>link_<%=i%>_collision</collision>
+            </contact>
+        </sensor>
     </gazebo>
     <% end %>
+
     <gazebo reference="head">
         <self_collide>true</self_collide>
-    </gazebo>
-
-    <gazebo reference="tail">
-        <mu1>0.4</mu1>
-        <mu2>0.4</mu2>
-        <material>Gazebo/Gray</material>
-    </gazebo>
-    <gazebo reference="mid">
-        <mu1>0.4</mu1>
-        <mu2>0.4</mu2>
-        <material>Gazebo/Green</material>
-    </gazebo>
-    <gazebo reference="head">
-        <mu1>0.4</mu1>
-        <mu2>0.4</mu2>
         <material>Gazebo/Blue</material>
-        <sensor name='my_contact' type='contact'>
+        <sensor name='head_contact' type='contact'>
             <contact>
                 <collision>head_collision</collision>
             </contact>
-            <plugin name="head_gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
-                <alwaysOn>true</alwaysOn>
-                <updateRate>5</updateRate>
-                <bumperTopicName>head_contact</bumperTopicName>
-            </plugin>
         </sensor>
     </gazebo>
+
     <gazebo>
         <plugin name="linkbot_model_plugin" filename="liblinkbot_model_plugin.so">
             <kP>600.0</kP>

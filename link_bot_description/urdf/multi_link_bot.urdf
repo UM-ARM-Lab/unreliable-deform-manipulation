@@ -10,15 +10,15 @@
     
     <link name="link_0">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <cylinder length="0.14285714285714285" radius="0.02"/>
+                <cylinder length="0.13285714285714284" radius="0.02"/>
             </geometry>
         </visual>
-        <collision>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+        <collision name="link_0_collision">
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <box size="0.04 0.04 0.12285714285714285"/>
+                <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
             <surface>
                 <contact>
@@ -26,27 +26,28 @@
                         <max_vel>0.00</max_vel>
                         <min_depth>0.01</min_depth>
                     </ode>
+                    <collide_bitmask>0x01</collide_bitmask>
                 </contact>
             </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
             <inertia ixx="3.333" ixy="0" ixz="0" iyy="0" iyz="0" izz="3.333"/>
-            <origin rpy="0 0 0" xyz="0.13285714285714284 0 0"/>
+            <origin rpy="0 0 0" xyz="0.12285714285714285 0 0"/>
         </inertial>
     </link>
     
     <link name="link_1">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <cylinder length="0.14285714285714285" radius="0.02"/>
+                <cylinder length="0.13285714285714284" radius="0.02"/>
             </geometry>
         </visual>
-        <collision>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+        <collision name="link_1_collision">
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <box size="0.04 0.04 0.12285714285714285"/>
+                <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
             <surface>
                 <contact>
@@ -54,27 +55,28 @@
                         <max_vel>0.00</max_vel>
                         <min_depth>0.01</min_depth>
                     </ode>
+                    <collide_bitmask>0x01</collide_bitmask>
                 </contact>
             </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
             <inertia ixx="3.333" ixy="0" ixz="0" iyy="0" iyz="0" izz="3.333"/>
-            <origin rpy="0 0 0" xyz="0.13285714285714284 0 0"/>
+            <origin rpy="0 0 0" xyz="0.12285714285714285 0 0"/>
         </inertial>
     </link>
     
     <link name="link_2">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <cylinder length="0.14285714285714285" radius="0.02"/>
+                <cylinder length="0.13285714285714284" radius="0.02"/>
             </geometry>
         </visual>
-        <collision>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+        <collision name="link_2_collision">
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <box size="0.04 0.04 0.12285714285714285"/>
+                <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
             <surface>
                 <contact>
@@ -82,27 +84,28 @@
                         <max_vel>0.00</max_vel>
                         <min_depth>0.01</min_depth>
                     </ode>
+                    <collide_bitmask>0x01</collide_bitmask>
                 </contact>
             </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
             <inertia ixx="3.333" ixy="0" ixz="0" iyy="0" iyz="0" izz="3.333"/>
-            <origin rpy="0 0 0" xyz="0.13285714285714284 0 0"/>
+            <origin rpy="0 0 0" xyz="0.12285714285714285 0 0"/>
         </inertial>
     </link>
     
     <link name="link_3">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <cylinder length="0.14285714285714285" radius="0.02"/>
+                <cylinder length="0.13285714285714284" radius="0.02"/>
             </geometry>
         </visual>
-        <collision>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+        <collision name="link_3_collision">
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <box size="0.04 0.04 0.12285714285714285"/>
+                <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
             <surface>
                 <contact>
@@ -110,27 +113,28 @@
                         <max_vel>0.00</max_vel>
                         <min_depth>0.01</min_depth>
                     </ode>
+                    <collide_bitmask>0x01</collide_bitmask>
                 </contact>
             </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
             <inertia ixx="3.333" ixy="0" ixz="0" iyy="0" iyz="0" izz="3.333"/>
-            <origin rpy="0 0 0" xyz="0.13285714285714284 0 0"/>
+            <origin rpy="0 0 0" xyz="0.12285714285714285 0 0"/>
         </inertial>
     </link>
     
     <link name="link_4">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <cylinder length="0.14285714285714285" radius="0.02"/>
+                <cylinder length="0.13285714285714284" radius="0.02"/>
             </geometry>
         </visual>
-        <collision>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+        <collision name="link_4_collision">
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <box size="0.04 0.04 0.12285714285714285"/>
+                <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
             <surface>
                 <contact>
@@ -138,27 +142,28 @@
                         <max_vel>0.00</max_vel>
                         <min_depth>0.01</min_depth>
                     </ode>
+                    <collide_bitmask>0x01</collide_bitmask>
                 </contact>
             </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
             <inertia ixx="3.333" ixy="0" ixz="0" iyy="0" iyz="0" izz="3.333"/>
-            <origin rpy="0 0 0" xyz="0.13285714285714284 0 0"/>
+            <origin rpy="0 0 0" xyz="0.12285714285714285 0 0"/>
         </inertial>
     </link>
     
     <link name="link_5">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <cylinder length="0.14285714285714285" radius="0.02"/>
+                <cylinder length="0.13285714285714284" radius="0.02"/>
             </geometry>
         </visual>
-        <collision>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+        <collision name="link_5_collision">
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <box size="0.04 0.04 0.12285714285714285"/>
+                <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
             <surface>
                 <contact>
@@ -166,27 +171,28 @@
                         <max_vel>0.00</max_vel>
                         <min_depth>0.01</min_depth>
                     </ode>
+                    <collide_bitmask>0x01</collide_bitmask>
                 </contact>
             </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
             <inertia ixx="3.333" ixy="0" ixz="0" iyy="0" iyz="0" izz="3.333"/>
-            <origin rpy="0 0 0" xyz="0.13285714285714284 0 0"/>
+            <origin rpy="0 0 0" xyz="0.12285714285714285 0 0"/>
         </inertial>
     </link>
     
     <link name="link_6">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <cylinder length="0.14285714285714285" radius="0.02"/>
+                <cylinder length="0.13285714285714284" radius="0.02"/>
             </geometry>
         </visual>
-        <collision>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+        <collision name="link_6_collision">
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <box size="0.04 0.04 0.12285714285714285"/>
+                <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
             <surface>
                 <contact>
@@ -194,27 +200,28 @@
                         <max_vel>0.00</max_vel>
                         <min_depth>0.01</min_depth>
                     </ode>
+                    <collide_bitmask>0x01</collide_bitmask>
                 </contact>
             </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
             <inertia ixx="3.333" ixy="0" ixz="0" iyy="0" iyz="0" izz="3.333"/>
-            <origin rpy="0 0 0" xyz="0.13285714285714284 0 0"/>
+            <origin rpy="0 0 0" xyz="0.12285714285714285 0 0"/>
         </inertial>
     </link>
     
     <link name="link_7">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <cylinder length="0.14285714285714285" radius="0.02"/>
+                <cylinder length="0.13285714285714284" radius="0.02"/>
             </geometry>
         </visual>
-        <collision>
-            <origin rpy="0 -1.5707 0" xyz="0.06142857142857142 0 0"/>
+        <collision name="link_7_collision">
+            <origin rpy="0 -1.5707 0" xyz="0.05642857142857142 0 0"/>
             <geometry>
-                <box size="0.04 0.04 0.12285714285714285"/>
+                <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
             <surface>
                 <contact>
@@ -222,13 +229,14 @@
                         <max_vel>0.00</max_vel>
                         <min_depth>0.01</min_depth>
                     </ode>
+                    <collide_bitmask>0x01</collide_bitmask>
                 </contact>
             </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
             <inertia ixx="3.333" ixy="0" ixz="0" iyy="0" iyz="0" izz="3.333"/>
-            <origin rpy="0 0 0" xyz="0.13285714285714284 0 0"/>
+            <origin rpy="0 0 0" xyz="0.12285714285714285 0 0"/>
         </inertial>
     </link>
     
@@ -257,7 +265,7 @@
     <joint name="joint_0" type="revolute">
         <parent link="link_0"/>
         <child link="link_1"/>
-        <origin xyz="0.13285714285714284 0 0"/>
+        <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="1"/>
         <dynamics damping="1" friction="0.0"/>
@@ -266,7 +274,7 @@
     <joint name="joint_1" type="revolute">
         <parent link="link_1"/>
         <child link="link_2"/>
-        <origin xyz="0.13285714285714284 0 0"/>
+        <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="1"/>
         <dynamics damping="1" friction="0.0"/>
@@ -275,7 +283,7 @@
     <joint name="joint_2" type="revolute">
         <parent link="link_2"/>
         <child link="link_3"/>
-        <origin xyz="0.13285714285714284 0 0"/>
+        <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="1"/>
         <dynamics damping="1" friction="0.0"/>
@@ -284,7 +292,7 @@
     <joint name="joint_3" type="revolute">
         <parent link="link_3"/>
         <child link="link_4"/>
-        <origin xyz="0.13285714285714284 0 0"/>
+        <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="1"/>
         <dynamics damping="1" friction="0.0"/>
@@ -293,7 +301,7 @@
     <joint name="joint_4" type="revolute">
         <parent link="link_4"/>
         <child link="link_5"/>
-        <origin xyz="0.13285714285714284 0 0"/>
+        <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="1"/>
         <dynamics damping="1" friction="0.0"/>
@@ -302,7 +310,7 @@
     <joint name="joint_5" type="revolute">
         <parent link="link_5"/>
         <child link="link_6"/>
-        <origin xyz="0.13285714285714284 0 0"/>
+        <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="1"/>
         <dynamics damping="1" friction="0.0"/>
@@ -311,7 +319,7 @@
     <joint name="joint_6" type="revolute">
         <parent link="link_6"/>
         <child link="link_7"/>
-        <origin xyz="0.13285714285714284 0 0"/>
+        <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="1"/>
         <dynamics damping="1" friction="0.0"/>
@@ -321,7 +329,7 @@
     <joint name="head_joint" type="revolute">
         <parent link="link_7"/>
         <child link="head"/>
-        <origin xyz="0.13285714285714284 0 0"/>
+        <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="1"/>
         <dynamics damping="1.0" friction="0.0"/>
@@ -330,65 +338,87 @@
     
     <gazebo reference="link_0">
         <self_collide>true</self_collide>
+        <sensor name='link_0_contact' type='contact'>
+            <contact>
+                <collision>link_0_collision</collision>
+            </contact>
+        </sensor>
     </gazebo>
     
     <gazebo reference="link_1">
         <self_collide>true</self_collide>
+        <sensor name='link_1_contact' type='contact'>
+            <contact>
+                <collision>link_1_collision</collision>
+            </contact>
+        </sensor>
     </gazebo>
     
     <gazebo reference="link_2">
         <self_collide>true</self_collide>
+        <sensor name='link_2_contact' type='contact'>
+            <contact>
+                <collision>link_2_collision</collision>
+            </contact>
+        </sensor>
     </gazebo>
     
     <gazebo reference="link_3">
         <self_collide>true</self_collide>
+        <sensor name='link_3_contact' type='contact'>
+            <contact>
+                <collision>link_3_collision</collision>
+            </contact>
+        </sensor>
     </gazebo>
     
     <gazebo reference="link_4">
         <self_collide>true</self_collide>
+        <sensor name='link_4_contact' type='contact'>
+            <contact>
+                <collision>link_4_collision</collision>
+            </contact>
+        </sensor>
     </gazebo>
     
     <gazebo reference="link_5">
         <self_collide>true</self_collide>
+        <sensor name='link_5_contact' type='contact'>
+            <contact>
+                <collision>link_5_collision</collision>
+            </contact>
+        </sensor>
     </gazebo>
     
     <gazebo reference="link_6">
         <self_collide>true</self_collide>
+        <sensor name='link_6_contact' type='contact'>
+            <contact>
+                <collision>link_6_collision</collision>
+            </contact>
+        </sensor>
     </gazebo>
     
     <gazebo reference="link_7">
         <self_collide>true</self_collide>
+        <sensor name='link_7_contact' type='contact'>
+            <contact>
+                <collision>link_7_collision</collision>
+            </contact>
+        </sensor>
     </gazebo>
     
+
     <gazebo reference="head">
         <self_collide>true</self_collide>
-    </gazebo>
-
-    <gazebo reference="tail">
-        <mu1>0.4</mu1>
-        <mu2>0.4</mu2>
-        <material>Gazebo/Gray</material>
-    </gazebo>
-    <gazebo reference="mid">
-        <mu1>0.4</mu1>
-        <mu2>0.4</mu2>
-        <material>Gazebo/Green</material>
-    </gazebo>
-    <gazebo reference="head">
-        <mu1>0.4</mu1>
-        <mu2>0.4</mu2>
         <material>Gazebo/Blue</material>
-        <sensor name='my_contact' type='contact'>
+        <sensor name='head_contact' type='contact'>
             <contact>
                 <collision>head_collision</collision>
             </contact>
-            <plugin name="head_gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
-                <alwaysOn>true</alwaysOn>
-                <updateRate>5</updateRate>
-                <bumperTopicName>head_contact</bumperTopicName>
-            </plugin>
         </sensor>
     </gazebo>
+
     <gazebo>
         <plugin name="linkbot_model_plugin" filename="liblinkbot_model_plugin.so">
             <kP>600.0</kP>

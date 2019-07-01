@@ -5,6 +5,22 @@
 
 namespace gazebo {
 
+bool in_contact(msgs::Contacts const &contacts)
+{
+  for (auto i{0u}; i < contacts.contact_size(); ++i) {
+    auto const &contact = contacts.contact(i);
+    if (contact.collision1() == "link_bot::head::head_collision" and
+        contact.collision2() != "ground_plane::link::collision") {
+      return true;
+    }
+    if (contact.collision2() == "link_bot::head::head_collision" and
+        contact.collision1() != "ground_plane::link::collision") {
+      return true;
+    }
+  }
+  return false;
+}
+
 void LinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 {
   // Make sure the ROS node for Gazebo has already been initalized
@@ -76,8 +92,12 @@ void LinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr co
   x_vel_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
   y_vel_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
 
-  contact_sensor_ =
-      std::dynamic_pointer_cast<sensors::ContactSensor>(sensors::SensorManager::Instance()->GetSensor("my_contact"));
+  for (auto const &sensor : sensors::SensorManager::Instance()->GetSensors()) {
+    if (sensor->Type() == "contact") {
+      auto const contact_sensor = std::dynamic_pointer_cast<sensors::ContactSensor>(sensor);
+      contact_sensors_.emplace_back(contact_sensor);
+    }
+  }
 }
 
 void LinkBotModelPlugin::OnUpdate()
@@ -179,25 +199,13 @@ bool LinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateReque
   auto const &mid = model_->GetLink("link_4");
   auto const &head = model_->GetLink("head");
 
-  auto contacts = contact_sensor_->Contacts();
+  for (auto const contact_sensor : contact_sensors_) {
+    auto const &contacts = contact_sensor->Contacts();
+    res.in_contact.emplace_back(in_contact(contacts));
+  }
   auto const &tail_torque = tail->RelativeTorque();
   auto const &mid_torque = mid->RelativeTorque();
   auto const &head_torque = head->RelativeTorque();
-
-  auto const head_in_contact = [&]() {
-    for (auto i{0u}; i < contacts.contact_size(); ++i) {
-      auto const &contact = contacts.contact(i);
-      if (contact.collision1() == "link_bot::head::head_collision" and
-          contact.collision2() != "ground_plane::link::collision") {
-        return true;
-      }
-      else if (contact.collision2() == "link_bot::head::head_collision" and
-               contact.collision1() != "ground_plane::link::collision") {
-        return true;
-      }
-    }
-    return false;
-  }();
 
   res.tail_x = tail->WorldPose().Pos().X();
   res.tail_y = tail->WorldPose().Pos().Y();
@@ -215,7 +223,6 @@ bool LinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateReque
   res.head_torque.y = head_torque.Y();
   res.head_torque.z = head_torque.Z();
   res.overstretched = 0;
-  res.head_in_contact = head_in_contact;
   return true;
 }
 
