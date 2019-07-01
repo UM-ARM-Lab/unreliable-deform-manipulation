@@ -4,7 +4,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
-from link_bot_pycommon.link_bot_pycommon import SDF
+from link_bot_pycommon.link_bot_sdf_tools import SDF
 
 
 def main():

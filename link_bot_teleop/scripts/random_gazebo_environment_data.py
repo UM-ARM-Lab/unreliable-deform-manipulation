@@ -16,7 +16,7 @@ from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_pycommon import link_bot_pycommon, link_bot_sdf_tools
+from link_bot_pycommon import link_bot_sdf_tools
 from sdf_tools.srv import ComputeSDF
 
 DT = 0.1  # seconds per time step
@@ -108,9 +108,9 @@ def generate_env(args, config_pub, world_control, get_state, action_pub, spawn_m
             </link>
           </model>
         </sdf>
-        """.format(args.obstacle_size * args.res, name)
-        obstacle_msg.initial_pose.position.x = np.random.uniform(-5, 5)
-        obstacle_msg.initial_pose.position.y = np.random.uniform(-5, 5)
+        """.format(args.obstacle_size * args.res * 2, name)
+        obstacle_msg.initial_pose.position.x = np.random.uniform(-args.w / 2, args.w / 2)
+        obstacle_msg.initial_pose.position.y = np.random.uniform(-args.h / 2, args.h / 2)
         spawn_model.call(obstacle_msg)
 
     # Compute SDF Data
@@ -162,6 +162,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("envs", help='how many environments to generate', type=int)
     parser.add_argument("steps", help='how many steps to do', type=int)
+    parser.add_argument('w', type=int, help='environment with in meters (int)')
+    parser.add_argument('h', type=int, help='environment with in meters (int)')
     parser.add_argument("--outdir", help='directory dataset will go in')
     parser.add_argument('--res', '-r', type=float, default=0.05, help='size of cells in meters')
     parser.add_argument('--n-obstacles', type=int, default=14, help='size of obstacles in cells')

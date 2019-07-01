@@ -18,11 +18,13 @@ add_service_files(
         WorldControl.srv
         QuerySDF.srv
         LinkBotState.srv
+        ComputeSDF.srv
 )
 
 generate_messages(
         DEPENDENCIES
         geometry_msgs
+        sdf_tools
 )
 
 catkin_package(CATKIN_DEPENDS message_runtime)

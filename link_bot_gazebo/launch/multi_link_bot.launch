@@ -6,7 +6,7 @@
     <node name="joy_node" pkg="joy" type="joy_node"/>
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/arena.world"/>
+        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/no_arena.world"/>
         <arg name="verbose" default="true"/>
         <arg name="gui" value="$(arg gui)"/>
     </include>

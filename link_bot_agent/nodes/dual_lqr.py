@@ -13,7 +13,7 @@ import ompl.util as ou
 from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
-from link_bot_pycommon.link_bot_pycommon import SDF
+from link_bot_pycommon.link_bot_sdf_tools import SDF
 from link_bot_models import linear_constraint_model
 from link_bot_agent import agent, dual_lqr_action_selector
 

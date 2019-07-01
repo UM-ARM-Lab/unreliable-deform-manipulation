@@ -6,6 +6,8 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/serialization.hpp>
+#include <arc_utilities/voxel_grid.hpp>
+#include <arc_utilities/zlib_helpers.hpp>
 #include <chrono>
 #include <experimental/filesystem>
 #include <functional>
@@ -49,12 +51,17 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     return true;
   };
 
-  auto get_sdf = [&](sdf_tools::ComputeSDFRequest &req, sdf_tools::ComputeSDFResponse &res) {
+  auto get_sdf = [&](link_bot_gazebo::ComputeSDFRequest &req, link_bot_gazebo::ComputeSDFResponse &res) {
     if (req.request_new) {
       compute_sdf(req.x_width, req.y_height, req.center, req.resolution, req.robot_name, req.min_z, req.max_z);
     }
     res.is_valid = true;
     res.sdf = sdf_tools::SignedDistanceField::GetMessageRepresentation(sdf_);
+
+    std::vector<uint8_t> buffer;
+    auto f = arc_utilities::SerializeFixedSizePOD<std::vector<double>>;
+    sdf_gradient_.SerializeSelf(buffer, f);
+    res.compressed_sdf_gradient = ZlibHelpers::CompressBytes(buffer);
     return true;
   };
 
@@ -76,7 +83,7 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
 
   {
     auto so =
-        ros::AdvertiseServiceOptions::create<sdf_tools::ComputeSDF>("/sdf", get_sdf, ros::VoidConstPtr(), &queue_);
+        ros::AdvertiseServiceOptions::create<link_bot_gazebo::ComputeSDF>("/sdf", get_sdf, ros::VoidConstPtr(), &queue_);
     get_service_ = ros_node_->advertiseService(so);
   }
 

@@ -2,6 +2,7 @@ import numpy as np
 from keras.layers import Input, Lambda
 from keras.models import Model
 
+import link_bot_pycommon.link_bot_sdf_tools
 from link_bot_models.base_model import BaseModelRunner
 from link_bot_models.components.sdf_function_layer import sdf_function_layer
 from link_bot_pycommon import link_bot_pycommon
@@ -74,7 +75,7 @@ def test_single_prediction(sdf_data, model, threshold, rope_configuration):
     rope_configuration = rope_configuration.squeeze()
     head_x = rope_configuration[4]
     head_y = rope_configuration[5]
-    row_col = link_bot_pycommon.point_to_sdf_idx(head_x, head_y, sdf_data.resolution, sdf_data.origin)
+    row_col = link_bot_pycommon.link_bot_sdf_tools.point_to_sdf_idx(head_x, head_y, sdf_data.resolution, sdf_data.origin)
     true_violated = sdf_data.sdf[row_col] < threshold
 
     result = EvaluateResult(rope_configuration, predicted_point, predicted_violated, true_violated)

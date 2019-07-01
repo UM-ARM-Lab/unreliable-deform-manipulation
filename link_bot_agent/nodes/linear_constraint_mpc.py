@@ -10,6 +10,8 @@ import numpy as np
 import rospy
 from builtins import input
 from colorama import Fore
+
+import link_bot_pycommon.link_bot_sdf_tools
 from gazebo_msgs.msg import ContactsState
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
@@ -62,7 +64,7 @@ def common(args, start, max_steps=1e6):
     n_steps = 1
     n_steps_for_logging = 50
     if args.controller == 'ompl-dual-lqr':
-        sdf, sdf_gradient, sdf_resolution = link_bot_pycommon.load_sdf(args.sdf)
+        sdf, sdf_gradient, sdf_resolution = link_bot_pycommon.link_bot_sdf_tools.load_sdf(args.sdf)
         sdf_rows, sdf_cols = sdf.shape
         sdf_origin_coordinate = np.array([sdf_rows / 2, sdf_cols / 2], dtype=np.int32)
 

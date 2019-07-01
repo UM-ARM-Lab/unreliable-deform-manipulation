@@ -12,6 +12,8 @@ import tensorflow as tf
 from colorama import Fore
 
 import rospy
+
+import link_bot_pycommon.link_bot_sdf_tools
 from gazebo_msgs.msg import ContactsState
 from gazebo_msgs.srv import GetLinkState
 from ignition import markers
@@ -44,7 +46,7 @@ def common(args, start, max_steps=1e6):
     gpf.reset_default_session(config=config)
 
     max_v = 1
-    sdf, sdf_gradient, sdf_resolution, sdf_origin = link_bot_pycommon.load_sdf(args.sdf)
+    sdf, sdf_gradient, sdf_resolution, sdf_origin = link_bot_pycommon.link_bot_sdf_tools.load_sdf(args.sdf)
 
     args_dict = vars(args)
     args_dict['random_init'] = False
@@ -83,7 +85,7 @@ def common(args, start, max_steps=1e6):
         pt = np_state @ R_k
         x = pt[0, 0]
         y = pt[0, 1]
-        row_col = link_bot_pycommon.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
+        row_col = link_bot_pycommon.link_bot_sdf_tools.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
         violated = sdf[row_col] < args.sdf_threshold
         return violated
 

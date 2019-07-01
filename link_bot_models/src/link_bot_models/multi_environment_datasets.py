@@ -6,7 +6,7 @@ import numpy as np
 
 from link_bot_models.label_types import LabelType
 from link_bot_pycommon import link_bot_pycommon
-from link_bot_pycommon.link_bot_pycommon import SDF
+from link_bot_pycommon.link_bot_sdf_tools import SDF
 
 
 class EnvironmentData:

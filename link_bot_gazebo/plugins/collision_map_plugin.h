@@ -14,7 +14,7 @@
 #include <ignition/math/Vector3.hh>
 
 #include <link_bot_gazebo/WriteSDF.h>
-#include <sdf_tools/ComputeSDF.h>
+#include <link_bot_gazebo/ComputeSDF.h>
 #include <sdf_tools/SDF.h>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/voxel_grid.hpp>

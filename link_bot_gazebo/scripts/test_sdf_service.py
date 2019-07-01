@@ -3,14 +3,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import rospy
 
-from link_bot_pycommon import link_bot_pycommon
-from sdf_tools.srv import ComputeSDF
+from link_bot_pycommon import link_bot_sdf_tools
+from link_bot_gazebo.srv import ComputeSDF
 
 rospy.init_node("testing")
 
 s = rospy.ServiceProxy("/sdf", ComputeSDF)
 
-sdf_data = link_bot_pycommon.request_sdf_data(s)
+sdf_data = link_bot_sdf_tools.request_sdf_data(s)
 
 plt.figure()
 plt.imshow(sdf_data.image, extent=sdf_data.extent)
