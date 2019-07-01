@@ -112,10 +112,11 @@ def evaluate(args):
     model = MultiConstraintModelRunner.load(args.checkpoint)
 
     # normal evaluation
-    print(Style.BRIGHT + "Combined Model:" + Style.NORMAL)
-    model.evaluate(dataset, args.label_types)
+    #print(Style.BRIGHT + "Combined Model:" + Style.NORMAL)
+    #model.evaluate(dataset, args.label_types)
 
     sdf_only_true_positive = 0
+    sdf_only_true_negative = 0
     ovs_only_true_positive = 0
     sdf_and_ovs_true_positive = 0
     neither_true_negative = 0
@@ -127,8 +128,13 @@ def evaluate(args):
     neither_total = 0
     either_pos_total = 0
     either_neg_total = 0
+    sdf_only_negative_total = 1
     total = 0
+    sdf_correct = 0
+    ovs_correct = 0
     correct = 0
+    _correct = 0
+    xx = 0
     sdf_label_generator = dataset.generator_specific_labels([LabelType.SDF], args.batch_size)
     for batch_i in range(len(sdf_label_generator)):
         x, y_true = sdf_label_generator[batch_i]
@@ -138,7 +144,19 @@ def evaluate(args):
 
         for yi, yi_combined, yi_hat, yi_hat_combined in zip(true_all_output, true_combined, all_output_predictions, combined_predictions):
             yi_hat = np.round(yi_hat).astype(np.int)
-            yi_hat_combined = np.round(yi_hat_combined).astype(np.int)
+            yi_hat_combined = (yi_hat_combined > 0.9999).astype(np.int)
+
+            if yi[0] == yi_hat[0]:
+                sdf_correct += 1
+            if yi[1] == yi_hat[1]:
+                ovs_correct += 1
+            if np.any(yi) == np.any(yi_hat):
+                _correct += 1
+
+            if yi[0] == 0:
+                if yi_hat[0] == 0:
+                    sdf_only_true_negative += 1
+                sdf_only_negative_total += 1
 
             if np.all(yi == [1, 0]):
                 if np.all(yi_hat == [1, 0]):
@@ -170,13 +188,17 @@ def evaluate(args):
             total += 1
 
     print(Style.BRIGHT + "Custom Metrics:" + Style.NORMAL)
-    print("SDF Only True Positive: {:4.1f}%".format(sdf_only_true_positive / sdf_only_total * 100))
-    print("Overstretching Only True Positive: {:4.1f}%".format(ovs_only_true_positive / ovs_only_total * 100))
-    print("Both True Positive: {:4.1f}%".format(sdf_and_ovs_true_positive / sdf_and_ovs_total * 100))
-    print("Niether True Negative: {:4.1f}%".format(neither_true_negative / neither_total * 100))
-    print("Either True Postive: {:4.1f}%".format(either_true_positive / either_pos_total * 100))
-    print("Either True Negative: {:4.1f}%".format(either_true_negative / either_neg_total * 100))
-    print("Combined Accuracy: {:4.1f}%".format(correct / total * 100))
+    print("SDF Accuracy: {}/{}".format(sdf_correct, total))
+    print("Overstretching Accuracy: {}/{}".format(ovs_correct, total))
+    print("SDF Only True Positive: {}/{}".format(sdf_only_true_positive, sdf_only_total))
+    print("SDF Only True Negativ : {}/{}".format(sdf_only_true_negative, sdf_only_negative_total))
+    print("Overstretching Only True Positive: {}/{}".format(ovs_only_true_positive, ovs_only_total))
+    print("Both True Positive: {}/{}".format(sdf_and_ovs_true_positive, sdf_and_ovs_total))
+    print("Niether True Negative: {}/{}".format(neither_true_negative, neither_total))
+    print("Either True Postive: {}/{}".format(either_true_positive, either_pos_total))
+    print("Either True Negative: {}/{}".format(either_true_negative, either_neg_total))
+    print("Combined Accuracy: {}/{}".format(correct, total))
+    print("Combined Accuracy*: {}/{}".format(_correct, total))
 
 
 def main():

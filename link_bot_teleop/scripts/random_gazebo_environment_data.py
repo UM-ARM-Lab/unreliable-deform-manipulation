@@ -16,7 +16,7 @@ from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon import link_bot_pycommon, link_bot_sdf_tools
 from sdf_tools.srv import ComputeSDF
 
 DT = 0.1  # seconds per time step
@@ -114,7 +114,7 @@ def generate_env(args, config_pub, world_control, get_state, action_pub, spawn_m
         spawn_model.call(obstacle_msg)
 
     # Compute SDF Data
-    sdf_data = link_bot_pycommon.request_sdf_data(compute_sdf_service, res=args.res)
+    sdf_data = link_bot_sdf_tools.request_sdf_data(compute_sdf_service, res=args.res)
 
     # Create random rope configurations by picking a random location and applying forces to move the rope in that direction
     rope_configurations = np.ndarray((args.steps, 6), dtype=np.float32)
