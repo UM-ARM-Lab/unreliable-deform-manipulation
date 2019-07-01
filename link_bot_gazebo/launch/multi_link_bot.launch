@@ -1,13 +1,15 @@
 <launch>
+    <arg name="world_name" default="worlds/no_arena.world"/>
+    <arg name="verbose" default="true"/>
     <arg name="gui" default="true"/>
+
     <include file="$(find link_bot_description)/launch/link_bot_description.launch">
     </include>
 
-    <node name="joy_node" pkg="joy" type="joy_node"/>
-
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/no_arena.world"/>
-        <arg name="verbose" default="true"/>
+        <arg name="world_name" value="$(arg world_name)"/>
+        <arg name="verbose" default="$(arg verbose)"/>
+        <arg name="paused" default="true"/>
         <arg name="gui" value="$(arg gui)"/>
     </include>
 
