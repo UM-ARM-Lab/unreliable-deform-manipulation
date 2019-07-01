@@ -31,7 +31,7 @@ def request_sdf_data(get_sdf_service, res=0.05, robot_name='link_bot'):
     compute_sdf_request.max_z = 2  # must be higher than the highest obstacle
     compute_sdf_request.robot_name = robot_name
 
-    response = get_sdf_service.call(compute_sdf_request)
+    response = get_sdf_service(compute_sdf_request)
 
     sdf = sdf_tools.SignedDistanceField()
     sdf_ints = struct.unpack('<' + 'B' * len(response.sdf.serialized_sdf), response.sdf.serialized_sdf)
@@ -117,3 +117,17 @@ def load_sdf(filename):
         origin = np.array(sdf.shape, dtype=np.int32).reshape(2) // 2
         print(Fore.YELLOW + "WARNING: sdf npz file does not specify its origin, assume origin {}".format(origin) + Fore.RESET)
     return sdf, grad, res, origin
+
+
+def make_rope_images(sdf_data, rope_configurations):
+    rope_configurations = np.atleast_2d(rope_configurations)
+    m, N = rope_configurations.shape
+    n_rope_points = int(N / 2)
+    rope_images = np.zeros([m, sdf_data.sdf.shape[0], sdf_data.sdf.shape[1], n_rope_points])
+    for i in range(m):
+        for j in range(n_rope_points):
+            px = rope_configurations[i, 2 * j]
+            py = rope_configurations[i, 2 * j + 1]
+            row, col = link_bot_sdf_tools.point_to_sdf_idx(px, py, sdf_data.resolution, sdf_data.origin)
+            rope_images[i, row, col, j] = 1
+    return rope_images

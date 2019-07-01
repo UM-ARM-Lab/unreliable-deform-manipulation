@@ -1,6 +1,8 @@
 from enum import auto
 
 import numpy as np
+
+import link_bot_pycommon.args_enum
 from link_bot_models import sdf_function_model
 import matplotlib.pyplot as plt
 from matplotlib import animation
@@ -10,7 +12,7 @@ from matplotlib.lines import Line2D
 from link_bot_pycommon import link_bot_pycommon
 
 
-class PlotType(link_bot_pycommon.ArgsEnum):
+class PlotType(link_bot_pycommon.args_enum.ArgsEnum):
     none = auto()
     random_individual = auto()
     random_combined = auto()

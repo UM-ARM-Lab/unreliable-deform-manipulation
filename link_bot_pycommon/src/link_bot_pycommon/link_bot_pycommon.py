@@ -1,24 +1,6 @@
 from __future__ import division
 
-from enum import Enum
-
 import numpy as np
-
-from link_bot_pycommon.link_bot_sdf_tools import point_to_sdf_idx
-
-
-def make_rope_images(sdf_data, rope_configurations):
-    rope_configurations = np.atleast_2d(rope_configurations)
-    m, N = rope_configurations.shape
-    n_rope_points = int(N / 2)
-    rope_images = np.zeros([m, sdf_data.sdf.shape[0], sdf_data.sdf.shape[1], n_rope_points])
-    for i in range(m):
-        for j in range(n_rope_points):
-            px = rope_configurations[i, 2 * j]
-            py = rope_configurations[i, 2 * j + 1]
-            row, col = point_to_sdf_idx(px, py, sdf_data.resolution, sdf_data.origin)
-            rope_images[i, row, col, j] = 1
-    return rope_images
 
 
 def yaw_diff(a, b):
@@ -32,19 +14,6 @@ def yaw_diff(a, b):
 
 def state_cost(s, goal):
     return np.linalg.norm(s[0, 0:2] - goal[0, 0:2])
-
-
-class ArgsEnum(Enum):
-
-    def __str__(self):
-        return self.name
-
-    @classmethod
-    def from_string(cls, s):
-        try:
-            return cls[s]
-        except KeyError:
-            raise ValueError()
 
 
 def make_random_rope_configuration(extent, length=0.5):

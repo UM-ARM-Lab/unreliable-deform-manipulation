@@ -1,9 +1,9 @@
 import numpy as np
 
-from link_bot_pycommon import link_bot_pycommon
+import link_bot_pycommon.args_enum
 
 
-class LabelType(link_bot_pycommon.ArgsEnum):
+class LabelType(link_bot_pycommon.args_enum.ArgsEnum):
     SDF = 0
     Overstretching = 1
 

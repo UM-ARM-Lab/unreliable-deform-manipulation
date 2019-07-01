@@ -4,6 +4,7 @@ import os
 import keras
 import numpy as np
 
+import link_bot_pycommon.link_bot_sdf_tools
 from link_bot_models.label_types import LabelType
 from link_bot_pycommon import link_bot_pycommon
 from link_bot_pycommon.link_bot_sdf_tools import SDF
@@ -163,7 +164,7 @@ class DatasetGenerator(keras.utils.Sequence):
 
             rope_configuration = rope_data['rope_configurations'][example_info['rope_data_index']]
 
-            rope_image = link_bot_pycommon.make_rope_images(sdf_data, rope_configuration)
+            rope_image = link_bot_pycommon.link_bot_sdf_tools.make_rope_images(sdf_data, rope_configuration)
 
             all_label = rope_data['constraints'][example_info['rope_data_index']].astype(np.float32)
             combined_label = np.any(all_label * self.label_mask).astype(np.float32)

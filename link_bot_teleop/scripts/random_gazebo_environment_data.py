@@ -14,10 +14,10 @@ from colorama import Fore
 from gazebo_msgs.srv import SpawnModel, SpawnModelRequest, DeleteModel, DeleteModelRequest
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
+from link_bot_pycommon import link_bot_sdf_tools
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_pycommon import link_bot_sdf_tools
-from sdf_tools.srv import ComputeSDF
+from link_bot_gazebo.srv import ComputeSDF
 
 DT = 0.1  # seconds per time step
 
@@ -62,7 +62,7 @@ def generate_env(args, config_pub, world_control, get_state, action_pub, spawn_m
     # let the world step once
     step = WorldControlRequest()
     step.steps = int(DT / 0.001)  # assuming 0.001s per simulation step
-    world_control.call(step)  # this will block until stepping is complete
+    world_control(step)  # this will block until stepping is complete
 
     sleep(0.5)
 
@@ -75,7 +75,7 @@ def generate_env(args, config_pub, world_control, get_state, action_pub, spawn_m
         name = "box_{}".format(i)
         delete_request = DeleteModelRequest()
         delete_request.model_name = name
-        delete_response = delete_model.call(delete_request)
+        delete_response = delete_model(delete_request)
         if not delete_response.success:
             print("failed to delete model {}".format(name))
 
@@ -84,13 +84,14 @@ def generate_env(args, config_pub, world_control, get_state, action_pub, spawn_m
         obstacle_msg = SpawnModelRequest()
         name = "box_{}".format(i)
         obstacle_msg.model_name = name
+        box_size = args.obstacle_size * args.res * 2
         obstacle_msg.model_xml = """
         <?xml version="1.0" ?>
         <sdf version="1.5">
-          <model name="{1}">
+          <model name="{2}">
             <static>true</static>
             <link name="link_1">
-              <pose>0 0 0.5 0 0 0</pose>
+              <pose>0 0 {1} 0 0 0</pose>
               <visual name="visual">
                 <geometry>
                   <box>
@@ -108,10 +109,11 @@ def generate_env(args, config_pub, world_control, get_state, action_pub, spawn_m
             </link>
           </model>
         </sdf>
-        """.format(args.obstacle_size * args.res * 2, name)
+        """.format(box_size, box_size / 2, name)
         obstacle_msg.initial_pose.position.x = np.random.uniform(-args.w / 2, args.w / 2)
         obstacle_msg.initial_pose.position.y = np.random.uniform(-args.h / 2, args.h / 2)
-        spawn_model.call(obstacle_msg)
+        obstacle_msg.initial_pose.position.z = 0
+        spawn_model(obstacle_msg)
 
     # Compute SDF Data
     sdf_data = link_bot_sdf_tools.request_sdf_data(compute_sdf_service, res=args.res)
@@ -124,7 +126,7 @@ def generate_env(args, config_pub, world_control, get_state, action_pub, spawn_m
     head_vy = 0
     for t in range(args.steps):
         # save the state and action data
-        link_bot_state = get_state.call(state_req)
+        link_bot_state = get_state(state_req)
         rope_configurations[t] = np.array([link_bot_state.tail_x,
                                            link_bot_state.tail_y,
                                            link_bot_state.mid_x,
@@ -148,7 +150,7 @@ def generate_env(args, config_pub, world_control, get_state, action_pub, spawn_m
         # let the simulator run
         step = WorldControlRequest()
         step.steps = int(DT / 0.001)  # assuming 0.001s per simulation step
-        world_control.call(step)  # this will block until stepping is complete
+        world_control(step)  # this will block until stepping is complete
 
     n_positive = np.count_nonzero(np.any(constraint_labels, axis=1))
     percentage_positive = n_positive * 100.0 / constraint_labels.shape[0]
@@ -160,8 +162,8 @@ def main():
     np.set_printoptions(precision=4, suppress=True, linewidth=200)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("envs", help='how many environments to generate', type=int)
     parser.add_argument("steps", help='how many steps to do', type=int)
+    parser.add_argument("envs", help='how many environments to generate', type=int)
     parser.add_argument('w', type=int, help='environment with in meters (int)')
     parser.add_argument('h', type=int, help='environment with in meters (int)')
     parser.add_argument("--outdir", help='directory dataset will go in')

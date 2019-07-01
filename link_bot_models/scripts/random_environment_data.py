@@ -9,12 +9,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from colorama import Fore
 
-import link_bot_pycommon.link_bot_sdf_tools
 import sdf_tools
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import link_bot_pycommon
-from link_bot_pycommon.link_bot_sdf_tools import SDF
+from link_bot_pycommon import link_bot_sdf_tools
 
 
 def plot(args, sdf_data, threshold, rope_configuration, constraint_labels):
@@ -62,7 +61,7 @@ def generate_env(args):
 
     # create a signed distance field from the grid
     sdf, sdf_gradient = sdf_tools.compute_2d_sdf_and_gradient(grid_world, args.res, sdf_origin)
-    sdf_data = link_bot_pycommon.link_bot_sdf_tools.SDF(sdf, sdf_gradient, sdf_resolution, sdf_origin)
+    sdf_data = link_bot_sdf_tools.SDF(sdf, sdf_gradient, sdf_resolution, sdf_origin)
 
     # create random rope configurations
     rope_configurations = np.ndarray((args.n, 6), dtype=np.float32)
@@ -79,7 +78,7 @@ def generate_env(args):
         mid_y = rope_configurations[i, 3]
         head_x = rope_configurations[i, 4]
         head_y = rope_configurations[i, 5]
-        row, col = link_bot_pycommon.link_bot_sdf_tools.point_to_sdf_idx(head_x, head_y, sdf_resolution, sdf_origin)
+        row, col = link_bot_sdf_tools.point_to_sdf_idx(head_x, head_y, sdf_resolution, sdf_origin)
         constraint_labels[i, 0] = sdf[row, col] < args.sdf_threshold
         tail_mid_overstretched = np.hypot(tail_x - mid_x, tail_y - mid_y) > overstretched_threshold
         mid_head_overstretched = np.hypot(mid_x - head_x, mid_y - head_y) > overstretched_threshold
@@ -155,7 +154,7 @@ def plot_main(args):
     generator = dataset.generator(args.n)
     xs, ys = generator[0]
     for i in range(args.n):
-        sdf_data = SDF(sdf=np.squeeze(xs['sdf'][i]),
+        sdf_data = link_bot_sdf_tools.SDF(sdf=np.squeeze(xs['sdf'][i]),
                        gradient=xs['sdf_gradient'][i],
                        resolution=xs['sdf_resolution'][i],
                        origin=xs['sdf_origin'][i])

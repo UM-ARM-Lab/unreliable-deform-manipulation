@@ -6,6 +6,7 @@ import tensorflow as tf
 from keras import Model
 from keras.layers import Input, Dense
 
+import link_bot_pycommon.link_bot_sdf_tools
 from link_bot_models import base_model
 from link_bot_models.base_model import BaseModelRunner
 from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
@@ -33,7 +34,7 @@ class OverstretchingCNNModelRunner(BaseModelRunner):
 
     def violated(self, observations, sdf_data):
         rope_configurations = observations
-        rope_images = link_bot_pycommon.make_rope_images(sdf_data, rope_configurations)
+        rope_images = link_bot_pycommon.link_bot_sdf_tools.make_rope_images(sdf_data, rope_configurations)
         inputs_dict = {
             'rope_image': rope_images,
         }
