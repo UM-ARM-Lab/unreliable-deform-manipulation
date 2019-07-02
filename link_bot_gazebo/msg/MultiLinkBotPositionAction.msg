@@ -1,0 +1,2 @@
+geometry_msgs/Vector3 gripper1_pos
+geometry_msgs/Vector3 gripper2_pos

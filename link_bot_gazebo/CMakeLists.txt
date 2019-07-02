@@ -10,6 +10,7 @@ add_message_files(
         LinkBotConfiguration.msg
         LinkBotVelocityAction.msg
         LinkBotForceAction.msg
+        MultiLinkBotPositionAction.msg
         WriteSDF.msg
 )
 
@@ -40,6 +41,11 @@ target_include_directories(linkbot_model_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(linkbot_model_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 add_dependencies(linkbot_model_plugin link_bot_gazebo_generate_messages)
 
+add_library(multi_link_bot_model_plugin SHARED plugins/multi_link_bot_model_plugin.cpp)
+target_include_directories(multi_link_bot_model_plugin PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(multi_link_bot_model_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+add_dependencies(multi_link_bot_model_plugin link_bot_gazebo_generate_messages)
+
 add_library(stepping_plugin SHARED plugins/stepping_plugin.cpp)
 target_include_directories(stepping_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(stepping_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
@@ -49,4 +55,9 @@ add_library(collision_map_plugin SHARED plugins/collision_map_plugin.cpp)
 target_include_directories(collision_map_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(collision_map_plugin cnpy::cnpy ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} stdc++fs)
 add_dependencies(collision_map_plugin link_bot_gazebo_generate_messages)
+
+add_library(linkbot_visual_plugin SHARED plugins/linkbot_visual_plugin.cpp)
+target_include_directories(linkbot_visual_plugin PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(linkbot_visual_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+add_dependencies(linkbot_visual_plugin link_bot_gazebo_generate_messages)
 

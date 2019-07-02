@@ -16,7 +16,7 @@ from colorama import Fore
 
 from gazebo_msgs.srv import SpawnModelRequest
 from ignition import markers
-from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
+from link_bot_gazebo.msg import LinkBotConfiguration, MultiLinkBotPositionAction
 from link_bot_gazebo.srv import ComputeSDF
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
 from link_bot_models.label_types import LabelType
@@ -28,6 +28,12 @@ DT = 0.1  # seconds per time step
 
 def random_yaw():
     return np.random.uniform(-np.pi, np.pi)
+
+
+def norm_dot(force, velocity):
+    return np.dot(velocity, force) / (np.linalg.norm(velocity) + 1e-9) * np.linalg.norm(force)
+    # return np.dot(speed, force) / (np.linalg.norm(force) + 1e-9)
+    # return np.dot(force, speed) / (np.linalg.norm(force) * np.linalg.norm(speed) + 1e-9)
 
 
 def plot(args, sdf_data, threshold, rope_configuration, constraint_labels):
@@ -54,23 +60,7 @@ def plot(args, sdf_data, threshold, rope_configuration, constraint_labels):
     plt.quiver(x, y, dx, dy, units='x', scale=10)
 
 
-def generate_env(args):
-    state_req = LinkBotStateRequest()
-    action_msg = LinkBotVelocityAction()
-    action_msg.control_link_name = 'head'
-
-    # place rope at a random location
-    rope_length = 1.5
-    n_joints = 8
-    init_config = LinkBotConfiguration()
-    rope_x = np.random.uniform(-args.w / 2 + rope_length, args.w / 2 - rope_length)
-    rope_y = np.random.uniform(-args.h / 2 + rope_length, args.h / 2 - rope_length)
-    init_config.tail_pose.x = rope_x
-    init_config.tail_pose.y = rope_y
-    init_config.tail_pose.theta = random_yaw()
-    init_config.joint_angles_rad = np.clip(np.random.randn(n_joints) * np.pi / 4, -np.pi / 2, np.pi / 2)
-
-    # construct gazebo world
+def make_gazebo_world_file(args, rope_length, rope_x, rope_y):
     world_xml_root = ET.fromstring("""<?xml version="1.0" ?>
         <sdf version="1.5">
             <world name="default">
@@ -85,8 +75,21 @@ def generate_env(args):
                 <include>
                     <uri>model://sun</uri>
                 </include>
+                <include>
+                    <uri>model://arena_5</uri>
+                    <pose>0 0 0 0 0 0</pose>
+                    <name>arena</name>
+                </include>
                 <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
                 <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
+                <physics name="ode" type="ode">
+                    <real_time_update_rate>10000</real_time_update_rate>
+                    <ode>
+                        <solver>
+                          <type>quick</type>
+                        </solver>
+                    </ode>
+                </physics>
             </world>
         </sdf>
         """)
@@ -123,109 +126,188 @@ def generate_env(args):
         # Launch the gazebo world
         tree = ET.ElementTree(world_xml_root)
         tree.write(world_file)
-        cli_args = ['roslaunch',
-                    'link_bot_gazebo',
-                    'multi_link_bot.launch',
-                    'world_name:={}'.format(world_file.name),
-                    'verbose:={}'.format(bool(args.verbose)),
-                    'gui:={}'.format(not args.headless),
-                    ]
+    return world_file
 
+
+def init_simulation(args, run_idx, env_idx, cli_args, init_config):
+    if args.verbose:
+        stdout_file = sys.stdout
+        stderr_file = sys.stderr
+    else:
+        stdout_file = open(".roslaunch.stdout-{}.{}".format(run_idx, env_idx), 'w')
+        stderr_file = open(".roslaunch.stdout-{}.{}".format(run_idx, env_idx), 'w')
+
+    process = subprocess.Popen(cli_args, stdout=stdout_file, stderr=stderr_file)  # something long running
+    sleep(2.0)
+
+    # wait until gazebo is up
+    while not rosnode.rosnode_ping("gazebo", max_count=1):
+        pass
+
+    # fire up the services
+    if args.verbose:
+        print(Fore.CYAN + "Waiting for services..." + Fore.RESET)
+
+    rospy.wait_for_service("/world_control")
+    rospy.wait_for_service("/link_bot_state")
+    rospy.wait_for_service("/sdf")
+
+    if args.verbose:
+        print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
+
+    action_pub = rospy.Publisher("/multi_link_bot_position_action", MultiLinkBotPositionAction, queue_size=10)
+    config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
+    world_control = rospy.ServiceProxy('/world_control', WorldControl)
+    get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
+    compute_sdf = rospy.ServiceProxy('/sdf', ComputeSDF)
+
+    # set the rope configuration
+    config_pub.publish(init_config)
+
+    # let the simulator run
+    step = WorldControlRequest()
+    step.steps = int(DT / 0.001)  # assuming 0.001s per simulation step
+    world_control(step)  # this will block until stepping is complete
+
+    return process, (action_pub, world_control, get_state, compute_sdf)
+
+
+def publish_markers(args, target_x, target_y, rope_x, rope_y):
+    target_marker = markers.make_marker(rgb=[1, 0, 0], id=1)
+    target_marker.pose.position.x = target_x
+    target_marker.pose.position.y = target_y
+    rope_marker = markers.make_marker(rgb=[0, 1, 0], id=2)
+    rope_marker.pose.position.x = rope_x
+    rope_marker.pose.position.y = rope_y
+    if not args.headless:
+        markers.publish(target_marker)
+        markers.publish(rope_marker)
+
+
+def generate_env(args, env_idx):
+    # place rope at a random location
+    rope_length = 1.5
+    n_joints = 8
+    init_config = LinkBotConfiguration()
+    rope_x = np.random.uniform(-args.w / 2 + rope_length, args.w / 2 - rope_length)
+    rope_y = np.random.uniform(-args.h / 2 + rope_length, args.h / 2 - rope_length)
+    init_config.tail_pose.x = rope_x
+    init_config.tail_pose.y = rope_y
+    init_config.tail_pose.theta = random_yaw()
+    init_config.joint_angles_rad = np.clip(np.random.randn(n_joints) * np.pi / 4, -np.pi / 2, np.pi / 2)
+
+    # construct gazebo world
+    world_file = make_gazebo_world_file(args, rope_length, rope_x, rope_y)
+
+    cli_args = ['roslaunch',
+                'link_bot_gazebo',
+                'multi_link_bot.launch',
+                'world_name:={}'.format(world_file.name),
+                'verbose:={}'.format(bool(args.verbose)),
+                'gui:={}'.format(not args.headless),
+                ]
+
+    run_idx = 0
+    state_req = LinkBotStateRequest()
+    action_msg = MultiLinkBotPositionAction()
     while True:
-        process = None
-        try:
-            process = subprocess.Popen(cli_args)  # something long running
-            sleep(3.0)
+        process, services = init_simulation(args, run_idx, env_idx, cli_args, init_config)
+        action_pub, world_control, get_state, compute_sdf = services
 
-            # wait until gazebo is up
-            while not rosnode.rosnode_ping("gazebo", max_count=1):
-                pass
+        # Compute SDF Data
+        sdf_data = link_bot_sdf_tools.request_sdf_data(compute_sdf, res=args.res)
 
-            # fireup the services
-            rospy.wait_for_service("/sdf")
-            action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
-            config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
-            world_control = rospy.ServiceProxy('/world_control', WorldControl)
-            get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
-            compute_sdf_service = rospy.ServiceProxy('/sdf', ComputeSDF)
+        # Create random rope configurations by picking a random point and applying forces to move the rope to that point
+        rope_configurations = np.ndarray((args.steps, 6), dtype=np.float32)
+        gripper_forces = np.ndarray((args.steps, 4))
+        gripper_velocities = np.ndarray((args.steps, 4))
+        constraint_labels = np.ndarray((args.steps, 2), dtype=np.float32)
+        target_x = np.random.uniform(-args.w / 2, args.w / 2)
+        target_y = np.random.uniform(-args.h / 2, args.h / 2)
 
-            # set the rope configuration
-            config_pub.publish(init_config)
+        publish_markers(args, target_x, target_y, rope_x, rope_y)
+
+        history_size = 5
+        gripper1_velocity_history = np.zeros((history_size, 3))
+        gripper1_force_history = np.zeros((history_size, 3))
+        for t in range(args.steps):
+            # save the state and action data
+            link_bot_state = get_state(state_req)
+            rope_configurations[t] = np.array([link_bot_state.tail_x,
+                                               link_bot_state.tail_y,
+                                               link_bot_state.mid_x,
+                                               link_bot_state.mid_y,
+                                               link_bot_state.head_x,
+                                               link_bot_state.head_y])
+            gripper_forces[t] = np.array([link_bot_state.gripper1_force.x,
+                                          link_bot_state.gripper1_force.y,
+                                          link_bot_state.gripper2_force.x,
+                                          link_bot_state.gripper2_force.y])
+            gripper_velocities[t] = np.array([link_bot_state.gripper1_velocity.x,
+                                              link_bot_state.gripper1_velocity.y,
+                                              link_bot_state.gripper2_velocity.x,
+                                              link_bot_state.gripper2_velocity.y])
+
+            # TODO: use ground truth labels not just based on force/velocity?
+            # Use a simple median filter to check whether we are at the constraint boundary
+            # check if the angle of the vectors of force and vector of velocity are close enough to 0
+
+            gripper1_velocity_vec = np.array([link_bot_state.gripper1_velocity.x, link_bot_state.gripper1_velocity.y, 0])
+            gripper1_force_vec = np.array([link_bot_state.gripper1_force.x, link_bot_state.gripper1_force.y, 0])
+            gripper1_force_history = np.roll(gripper1_force_history, 1, axis=0)
+            gripper1_force_history[0] = gripper1_force_vec
+            gripper1_velocity_history = np.roll(gripper1_velocity_history, 1, axis=0)
+            gripper1_velocity_history[0] = gripper1_velocity_vec
+
+            filtered_gripper1_force = np.median(gripper1_force_history, axis=0)
+            filtered_gripper1_velocity = np.median(gripper1_velocity_history, axis=0)
+            normalized_dot = norm_dot(filtered_gripper1_force, filtered_gripper1_velocity)
+
+            if normalized_dot > -10000 or t < history_size:
+                at_constraint_boundary = False
+            else:
+                at_constraint_boundary = True
+
+            if args.verbose:
+                print(normalized_dot, at_constraint_boundary)
+
+            constraint_labels[t, 0] = at_constraint_boundary
+            constraint_labels[t, 1] = at_constraint_boundary
+
+            # publish the pull command
+            action_msg.gripper1_pos.x = target_x
+            action_msg.gripper1_pos.y = target_y
+            action_pub.publish(action_msg)
 
             # let the simulator run
             step = WorldControlRequest()
             step.steps = int(DT / 0.001)  # assuming 0.001s per simulation step
             world_control(step)  # this will block until stepping is complete
 
-            # Compute SDF Data
-            sdf_data = link_bot_sdf_tools.request_sdf_data(compute_sdf_service, res=args.res)
+        n_positive = np.count_nonzero(np.any(constraint_labels, axis=1))
+        percentage_positive = n_positive * 100.0 / constraint_labels.shape[0]
 
-            # Create random rope configurations by picking a random point and applying forces to move the rope to that point
-            rope_configurations = np.ndarray((args.steps, 6), dtype=np.float32)
-            torques = np.ndarray((args.steps, args.steps + 1, args.N))
-            constraint_labels = np.ndarray((args.steps, 2), dtype=np.float32)
-            target_x = np.random.uniform(-args.w / 2, args.w / 2)
-            target_y = np.random.uniform(-args.h / 2, args.h / 2)
-            target_marker = markers.make_marker(rgb=[1, 0, 0], id=1)
-            target_marker.pose.position.x = target_x
-            target_marker.pose.position.y = target_y
-            rope_marker = markers.make_marker(rgb=[0, 1, 0], id=2)
-            rope_marker.pose.position.x = rope_x
-            rope_marker.pose.position.y = rope_y
-            markers.publish(target_marker)
-            markers.publish(rope_marker)
-            for t in range(args.steps):
-                # save the state and action data
-                link_bot_state = get_state(state_req)
-                rope_configurations[t] = np.array([link_bot_state.tail_x,
-                                                   link_bot_state.tail_y,
-                                                   link_bot_state.mid_x,
-                                                   link_bot_state.mid_y,
-                                                   link_bot_state.head_x,
-                                                   link_bot_state.head_y])
-                torques[t] = np.array([link_bot_state.tail_torque.x,
-                                       link_bot_state.tail_torque.y,
-                                       link_bot_state.mid_torque.x,
-                                       link_bot_state.mid_torque.y,
-                                       link_bot_state.head_torque.x,
-                                       link_bot_state.head_torque.y])
-                head_in_contact = link_bot_state.in_contact[-1]
-                constraint_labels[t, 0] = head_in_contact
-                constraint_labels[t, 1] = link_bot_state.overstretched
-
-                # publish the pull command
-                kP = 2.0
-                vector_to_target = np.array([target_x - link_bot_state.head_x, target_y - link_bot_state.head_y]) * kP
-                norm_vector_to_target = np.clip(vector_to_target, -1, 1)
-                head_vx = norm_vector_to_target[0]
-                head_vy = norm_vector_to_target[1]
-                action_msg.vx = head_vx
-                action_msg.vy = head_vy
-                action_pub.publish(action_msg)
-
-                # let the simulator run
-                step = WorldControlRequest()
-                step.steps = int(DT / 0.001)  # assuming 0.001s per simulation step
-                world_control(step)  # this will block until stepping is complete
-
-            n_positive = np.count_nonzero(np.any(constraint_labels, axis=1))
-            percentage_positive = n_positive * 100.0 / constraint_labels.shape[0]
-
-            return_status = process.poll()
-            if return_status is None:
-                process.terminate()
-                break
-            else:
-                print(Fore.RED + "Process died! Restarting" + Fore.RESET)
-        except Exception as e:
-            print('\n\n\n\n\n')
-            print(Fore.RED + "Exception! Killing all rosnodes." + Fore.RESET)
+        return_status = process.poll()
+        print(return_status)
+        if return_status is None or return_status == 0:
+            # everything is fine, so end the experiment
+            if args.verbose:
+                print(Fore.GREEN + "Trial {} Complete".format(env_idx) + Fore.RESET)
             process.terminate()
-            all_nodes = rosnode.rosnode_listnodes()
-            rosnode.kill_nodes(all_nodes)
-            print(e)
+            break
+        else:
+            print(Fore.RED + "Process died! Restarting" + Fore.RESET)
+        if not args.retry:
+            if args.verbose:
+                print(Fore.GREEN + "Trial {} Complete".format(env_idx) + Fore.RESET)
+            break
 
-    return rope_configurations, constraint_labels, sdf_data, percentage_positive
+        all_nodes = rosnode.rosnode_listnodes()
+        rosnode.kill_nodes(all_nodes)
+        sleep(1.0)
+        process.wait()
+
+    return (rope_configurations, gripper_forces, gripper_velocities, constraint_labels), sdf_data, percentage_positive
 
 
 def generate(args):
@@ -250,18 +332,21 @@ def generate(args):
 
     filename_pairs = []
     percentages_positive = []
-    for i in range(args.envs):
-        rope_configurations, constraint_labels, sdf_data, percentage_violation = generate_env(args)
+    for env_idx in range(args.envs):
+        data, sdf_data, percentage_violation = generate_env(args, env_idx)
+        rope_configurations, gripper_forces, gripper_velocities, constraint_labels = data
         percentages_positive.append(percentage_violation)
         if args.outdir:
-            rope_data_filename = os.path.join(full_output_directory, 'rope_data_{:d}.npz'.format(i))
-            sdf_filename = os.path.join(full_output_directory, 'sdf_data_{:d}.npz'.format(i))
+            rope_data_filename = os.path.join(full_output_directory, 'rope_data_{:d}.npz'.format(env_idx))
+            sdf_filename = os.path.join(full_output_directory, 'sdf_data_{:d}.npz'.format(env_idx))
 
             # FIXME: order matters
             filename_pairs.append([sdf_filename, rope_data_filename])
 
             np.savez(rope_data_filename,
                      rope_configurations=rope_configurations,
+                     gripper_forces=gripper_forces,
+                     gripper_velocities=gripper_velocities,
                      constraints=constraint_labels)
             sdf_data.save(sdf_filename)
         print(".", end='')
@@ -298,6 +383,7 @@ def main():
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--verbose", '-v', action="store_true")
     parser.add_argument("--headless", action="store_true")
+    parser.add_argument("--retry", action="store_true")
 
     args = parser.parse_args()
 

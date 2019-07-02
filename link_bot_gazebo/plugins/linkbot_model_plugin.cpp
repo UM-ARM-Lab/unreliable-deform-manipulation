@@ -9,6 +9,7 @@ bool in_contact(msgs::Contacts const &contacts)
 {
   for (auto i{0u}; i < contacts.contact_size(); ++i) {
     auto const &contact = contacts.contact(i);
+    std::cout << contact.collision1() << " " << contact.collision2() << '\n';
     if (contact.collision1() == "link_bot::head::head_collision" and
         contact.collision2() != "ground_plane::link::collision") {
       return true;
@@ -88,6 +89,9 @@ void LinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr co
 
   model_ = parent;
 
+  // TODO: read from SDF? support multiple grippers?
+  velocity_control_link_ = model_->GetLink("head");
+
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(std::bind(&LinkBotModelPlugin::OnUpdate, this));
   x_vel_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
   y_vel_pid_ = common::PID(kP_, kI_, kD_, 100, -100, 800, -800);
@@ -98,6 +102,8 @@ void LinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr co
       contact_sensors_.emplace_back(contact_sensor);
     }
   }
+
+  std::cout << "LinkBot Model Plugin finished initializing!\n";
 }
 
 void LinkBotModelPlugin::OnUpdate()
@@ -117,8 +123,9 @@ void LinkBotModelPlugin::OnUpdate()
     if (velocity_control_link_) {
       auto const current_linear_vel = velocity_control_link_->WorldLinearVel();
       auto const error = current_linear_vel - target_linear_vel_;
-      force.X(x_vel_pid_.Update(error.X(), 0.001));
-      force.Y(y_vel_pid_.Update(error.Y(), 0.001));
+      constexpr auto dt{0.001};
+      force.X(x_vel_pid_.Update(error.X(), dt));
+      force.Y(y_vel_pid_.Update(error.Y(), dt));
       velocity_control_link_->AddForce(force);
     }
   }
@@ -199,13 +206,10 @@ bool LinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateReque
   auto const &mid = model_->GetLink("link_4");
   auto const &head = model_->GetLink("head");
 
-  for (auto const contact_sensor : contact_sensors_) {
+  for (auto const &contact_sensor : contact_sensors_) {
     auto const &contacts = contact_sensor->Contacts();
     res.in_contact.emplace_back(in_contact(contacts));
   }
-  auto const &tail_torque = tail->RelativeTorque();
-  auto const &mid_torque = mid->RelativeTorque();
-  auto const &head_torque = head->RelativeTorque();
 
   res.tail_x = tail->WorldPose().Pos().X();
   res.tail_y = tail->WorldPose().Pos().Y();
@@ -213,16 +217,30 @@ bool LinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateReque
   res.mid_y = mid->WorldPose().Pos().Y();
   res.head_x = head->WorldPose().Pos().X();
   res.head_y = head->WorldPose().Pos().Y();
-  res.tail_torque.x = tail_torque.X();
-  res.tail_torque.y = tail_torque.Y();
-  res.tail_torque.z = tail_torque.Z();
-  res.mid_torque.x = mid_torque.X();
-  res.mid_torque.y = mid_torque.Y();
-  res.mid_torque.z = mid_torque.Z();
-  res.head_torque.x = head_torque.X();
-  res.head_torque.y = head_torque.Y();
-  res.head_torque.z = head_torque.Z();
+
   res.overstretched = 0;
+
+  res.gripper1_force.x = x_vel_pid_.GetCmd();
+  res.gripper1_force.y = y_vel_pid_.GetCmd();
+  res.gripper1_force.z = 0;
+
+  res.gripper2_force.x = 0;
+  res.gripper2_force.y = 0;
+  res.gripper2_force.z = 0;
+
+  if (not velocity_control_link_) {
+    std::cout << "VELOCITY CONTROL LINK NOT SET!!!\n";
+  }
+  auto const current_linear_vel = velocity_control_link_->WorldLinearVel();
+
+  res.gripper1_velocity.x = current_linear_vel.X();
+  res.gripper1_velocity.y = current_linear_vel.Y();
+  res.gripper1_velocity.z = 0;
+
+  res.gripper2_velocity.x = 0;
+  res.gripper2_velocity.y = 0;
+  res.gripper2_velocity.z = 0;
+
   return true;
 }
 

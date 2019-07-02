@@ -20,15 +20,6 @@
             <geometry>
                 <box size="<%=radius*2%> <%=radius*2%> <%=collision_link_length%>"/>
             </geometry>
-            <surface>
-                <contact>
-                    <ode>
-                        <max_vel>0.00</max_vel>
-                        <min_depth>0.01</min_depth>
-                    </ode>
-                    <collide_bitmask>0x01</collide_bitmask>
-                </contact>
-            </surface>
         </collision>
         <inertial>
             <mass value="<%=link_mass%>"/>
@@ -64,7 +55,7 @@
         <child link="link_<%=i+1%>"/>
         <origin xyz="<%=link_length - radius/2.0%> 0 0"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3" upper="3" effort="10" velocity="1"/>
+        <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1" friction="0.0"/>
     </joint>
     <% end %>
@@ -74,7 +65,7 @@
         <child link="head"/>
         <origin xyz="<%=link_length - radius/2.0%> 0 0"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3" upper="3" effort="10" velocity="1"/>
+        <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1.0" friction="0.0"/>
     </joint>
 
@@ -97,14 +88,21 @@
                 <collision>head_collision</collision>
             </contact>
         </sensor>
+        <visual>
+            <plugin name="link_bot_visual" filename="liblinkbot_visual_plugin.so">
+            </plugin>
+        </visual>
+    </gazebo>
+
+    <gazebo reference="head_joint">
     </gazebo>
 
     <gazebo>
-        <plugin name="linkbot_model_plugin" filename="liblinkbot_model_plugin.so">
-            <kP>600.0</kP>
-            <kI>10.0</kI>
-            <kD>1.0</kD>
-            <action_scale>1</action_scale>
+        <plugin name="multi_link_bot_model_plugin" filename="libmulti_link_bot_model_plugin.so">
+            <kP>1000.0</kP>
+            <kI>0.0</kI>
+            <kD>0.0</kD>
+            <gripper1_link>head</gripper1_link>
         </plugin>
         <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
             <legacyModeNS>false</legacyModeNS>

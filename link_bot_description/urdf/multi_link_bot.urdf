@@ -20,15 +20,6 @@
             <geometry>
                 <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
-            <surface>
-                <contact>
-                    <ode>
-                        <max_vel>0.00</max_vel>
-                        <min_depth>0.01</min_depth>
-                    </ode>
-                    <collide_bitmask>0x01</collide_bitmask>
-                </contact>
-            </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
@@ -49,15 +40,6 @@
             <geometry>
                 <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
-            <surface>
-                <contact>
-                    <ode>
-                        <max_vel>0.00</max_vel>
-                        <min_depth>0.01</min_depth>
-                    </ode>
-                    <collide_bitmask>0x01</collide_bitmask>
-                </contact>
-            </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
@@ -78,15 +60,6 @@
             <geometry>
                 <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
-            <surface>
-                <contact>
-                    <ode>
-                        <max_vel>0.00</max_vel>
-                        <min_depth>0.01</min_depth>
-                    </ode>
-                    <collide_bitmask>0x01</collide_bitmask>
-                </contact>
-            </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
@@ -107,15 +80,6 @@
             <geometry>
                 <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
-            <surface>
-                <contact>
-                    <ode>
-                        <max_vel>0.00</max_vel>
-                        <min_depth>0.01</min_depth>
-                    </ode>
-                    <collide_bitmask>0x01</collide_bitmask>
-                </contact>
-            </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
@@ -136,15 +100,6 @@
             <geometry>
                 <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
-            <surface>
-                <contact>
-                    <ode>
-                        <max_vel>0.00</max_vel>
-                        <min_depth>0.01</min_depth>
-                    </ode>
-                    <collide_bitmask>0x01</collide_bitmask>
-                </contact>
-            </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
@@ -165,15 +120,6 @@
             <geometry>
                 <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
-            <surface>
-                <contact>
-                    <ode>
-                        <max_vel>0.00</max_vel>
-                        <min_depth>0.01</min_depth>
-                    </ode>
-                    <collide_bitmask>0x01</collide_bitmask>
-                </contact>
-            </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
@@ -194,15 +140,6 @@
             <geometry>
                 <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
-            <surface>
-                <contact>
-                    <ode>
-                        <max_vel>0.00</max_vel>
-                        <min_depth>0.01</min_depth>
-                    </ode>
-                    <collide_bitmask>0x01</collide_bitmask>
-                </contact>
-            </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
@@ -223,15 +160,6 @@
             <geometry>
                 <box size="0.04 0.04 0.11285714285714284"/>
             </geometry>
-            <surface>
-                <contact>
-                    <ode>
-                        <max_vel>0.00</max_vel>
-                        <min_depth>0.01</min_depth>
-                    </ode>
-                    <collide_bitmask>0x01</collide_bitmask>
-                </contact>
-            </surface>
         </collision>
         <inertial>
             <mass value="1.4285714285714286"/>
@@ -267,7 +195,7 @@
         <child link="link_1"/>
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3" upper="3" effort="10" velocity="1"/>
+        <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1" friction="0.0"/>
     </joint>
     
@@ -276,7 +204,7 @@
         <child link="link_2"/>
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3" upper="3" effort="10" velocity="1"/>
+        <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1" friction="0.0"/>
     </joint>
     
@@ -285,7 +213,7 @@
         <child link="link_3"/>
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3" upper="3" effort="10" velocity="1"/>
+        <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1" friction="0.0"/>
     </joint>
     
@@ -294,7 +222,7 @@
         <child link="link_4"/>
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3" upper="3" effort="10" velocity="1"/>
+        <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1" friction="0.0"/>
     </joint>
     
@@ -303,7 +231,7 @@
         <child link="link_5"/>
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3" upper="3" effort="10" velocity="1"/>
+        <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1" friction="0.0"/>
     </joint>
     
@@ -312,7 +240,7 @@
         <child link="link_6"/>
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3" upper="3" effort="10" velocity="1"/>
+        <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1" friction="0.0"/>
     </joint>
     
@@ -321,7 +249,7 @@
         <child link="link_7"/>
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3" upper="3" effort="10" velocity="1"/>
+        <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1" friction="0.0"/>
     </joint>
     
@@ -331,7 +259,7 @@
         <child link="head"/>
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3" upper="3" effort="10" velocity="1"/>
+        <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1.0" friction="0.0"/>
     </joint>
 
@@ -417,14 +345,21 @@
                 <collision>head_collision</collision>
             </contact>
         </sensor>
+        <visual>
+            <plugin name="link_bot_visual" filename="liblinkbot_visual_plugin.so">
+            </plugin>
+        </visual>
+    </gazebo>
+
+    <gazebo reference="head_joint">
     </gazebo>
 
     <gazebo>
-        <plugin name="linkbot_model_plugin" filename="liblinkbot_model_plugin.so">
-            <kP>600.0</kP>
-            <kI>10.0</kI>
-            <kD>1.0</kD>
-            <action_scale>1</action_scale>
+        <plugin name="multi_link_bot_model_plugin" filename="libmulti_link_bot_model_plugin.so">
+            <kP>1000.0</kP>
+            <kI>0.0</kI>
+            <kD>0.0</kD>
+            <gripper1_link>head</gripper1_link>
         </plugin>
         <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
             <legacyModeNS>false</legacyModeNS>
