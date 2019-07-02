@@ -1,5 +1,5 @@
 <%num_links = 7%>
-<%mass = 2.0%>
+<%mass = 10.0%>
 <%length = 1.0%>
 <%radius = 0.02%>
 <%link_length = length/num_links - radius/2%>
@@ -56,7 +56,7 @@
         <origin xyz="<%=link_length - radius/2.0%> 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
-        <dynamics damping="1" friction="0.0"/>
+        <dynamics damping="2.0" friction="0.01"/>
     </joint>
     <% end %>
 
@@ -66,7 +66,7 @@
         <origin xyz="<%=link_length - radius/2.0%> 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
-        <dynamics damping="1.0" friction="0.0"/>
+        <dynamics damping="2.0" friction="0.01"/>
     </joint>
 
     <% for i in 0..num_links %>

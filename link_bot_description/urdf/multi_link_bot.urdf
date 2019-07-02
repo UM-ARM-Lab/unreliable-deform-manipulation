@@ -196,7 +196,7 @@
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
-        <dynamics damping="1" friction="0.0"/>
+        <dynamics damping="2.0" friction="0.01"/>
     </joint>
     
     <joint name="joint_1" type="revolute">
@@ -205,7 +205,7 @@
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
-        <dynamics damping="1" friction="0.0"/>
+        <dynamics damping="2.0" friction="0.01"/>
     </joint>
     
     <joint name="joint_2" type="revolute">
@@ -214,7 +214,7 @@
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
-        <dynamics damping="1" friction="0.0"/>
+        <dynamics damping="2.0" friction="0.01"/>
     </joint>
     
     <joint name="joint_3" type="revolute">
@@ -223,7 +223,7 @@
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
-        <dynamics damping="1" friction="0.0"/>
+        <dynamics damping="2.0" friction="0.01"/>
     </joint>
     
     <joint name="joint_4" type="revolute">
@@ -232,7 +232,7 @@
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
-        <dynamics damping="1" friction="0.0"/>
+        <dynamics damping="2.0" friction="0.01"/>
     </joint>
     
     <joint name="joint_5" type="revolute">
@@ -241,7 +241,7 @@
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
-        <dynamics damping="1" friction="0.0"/>
+        <dynamics damping="2.0" friction="0.01"/>
     </joint>
     
     <joint name="joint_6" type="revolute">
@@ -250,7 +250,7 @@
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
-        <dynamics damping="1" friction="0.0"/>
+        <dynamics damping="2.0" friction="0.01"/>
     </joint>
     
 
@@ -260,7 +260,7 @@
         <origin xyz="0.12285714285714285 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
-        <dynamics damping="1.0" friction="0.0"/>
+        <dynamics damping="2.0" friction="0.01"/>
     </joint>
 
     
