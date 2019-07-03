@@ -95,8 +95,8 @@ def main():
     parser, train_subparser, eval_subparser, show_subparser = base_model.base_parser()
 
     train_subparser.set_defaults(func=train)
-    # eval_subparser.set_defaults(func=evaluate)
-    eval_subparser.set_defaults(func=DistanceFunctionModelRunner.evaluate_main)
+    eval_subparser.set_defaults(func=evaluate)
+    # eval_subparser.set_defaults(func=DistanceFunctionModelRunner.evaluate_main)
     show_subparser.set_defaults(func=DistanceFunctionModelRunner.show)
 
     parser.run()

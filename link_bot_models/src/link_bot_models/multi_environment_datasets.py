@@ -17,11 +17,10 @@ class EnvironmentData:
 
 class MultiEnvironmentDataset:
 
-    def __init__(self, filename_pairs, constraint_label_types, n_obstacles, obstacle_size, threshold, seed):
+    def __init__(self, filename_pairs, constraint_label_types, n_obstacles, obstacle_size, seed):
         self.constraint_label_types = constraint_label_types
         self.n_obstacles = n_obstacles
         self.obstacle_size = obstacle_size
-        self.threshold = threshold
         self.seed = seed
         self.N = 0
 
@@ -77,11 +76,9 @@ class MultiEnvironmentDataset:
         filename_pairs = dataset_dict['filename_pairs']
         n_obstacles = dataset_dict['n_obstacles']
         obstacle_size = dataset_dict['obstacle_size']
-        threshold = dataset_dict['threshold']
         seed = dataset_dict['seed']
         dataset = MultiEnvironmentDataset(filename_pairs, constraint_label_types=constraint_label_types, n_obstacles=n_obstacles,
-                                          obstacle_size=obstacle_size,
-                                          threshold=threshold, seed=seed)
+                                          obstacle_size=obstacle_size, seed=seed)
         return dataset
 
     def save(self, dataset_filename):
@@ -93,7 +90,6 @@ class MultiEnvironmentDataset:
             'n_rope_configurations_per_env': self.rope_configurations_per_env,
             'n_obstacles': self.n_obstacles,
             'obstacle_size': self.obstacle_size,
-            'threshold': self.threshold,
             'filename_pairs': self.abs_filename_pairs,
             'constraint_label_types': [label_type.name for label_type in self.constraint_label_types],
         }
