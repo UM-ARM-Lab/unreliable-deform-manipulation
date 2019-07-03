@@ -50,7 +50,8 @@ class MultiConstraintModelRunner(BaseModelRunner):
                             name=LabelType.Combined.name)(concat_predictions)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
-        self.keras_model = Model(inputs=self.model_inputs, outputs=[prediction, concat_predictions])
+        self.model_outputs = [prediction, self.sdf_function_prediction, overstretching_prediction]
+        self.keras_model = Model(inputs=self.model_inputs, outputs=self.model_outputs)
         self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
 
         losses = {
