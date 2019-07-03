@@ -2,7 +2,7 @@ import numpy as np
 from keras.layers import Input, Lambda
 from keras.models import Model
 
-from link_bot_models.base_model import BaseModelRunner
+from link_bot_models.base_model_runner import BaseModelRunner
 from link_bot_models.components.sdf_function_layer import sdf_function_layer
 from link_bot_models.label_types import LabelType
 from link_bot_pycommon import link_bot_sdf_utils

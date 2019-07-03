@@ -3,6 +3,7 @@ import os
 
 import keras
 import numpy as np
+from colorama import Fore
 
 from link_bot_models.label_types import LabelType
 from link_bot_pycommon import link_bot_sdf_utils
@@ -17,12 +18,12 @@ class EnvironmentData:
 
 class MultiEnvironmentDataset:
 
-    def __init__(self, filename_pairs, constraint_label_types, n_obstacles, obstacle_size, seed):
+    def __init__(self, filename_pairs, constraint_label_types, n_obstacles, obstacle_size, seed, name):
         self.constraint_label_types = constraint_label_types
         self.n_obstacles = n_obstacles
         self.obstacle_size = obstacle_size
         self.seed = seed
-        self.N = 0
+        self.name = name
 
         # convert all file paths to be absolute
         self.abs_filename_pairs = []
@@ -34,6 +35,7 @@ class MultiEnvironmentDataset:
         self.sdf_shape = None
         self.n_environments = len(filename_pairs)
         self.environments = np.ndarray([self.n_environments], dtype=np.object)
+        self.N = 0
         example_id = 0
         for i, (sdf_data_filename, rope_data_filename) in enumerate(filename_pairs):
             sdf_data = link_bot_sdf_utils.SDF.load(sdf_data_filename)
@@ -62,15 +64,16 @@ class MultiEnvironmentDataset:
                 example_id += 1
         self.num_examples = example_id
 
-    def generator(self, batch_size):
-        return self.generator_specific_labels(self.constraint_label_types, batch_size)
+    def generator(self, model_output_names, batch_size):
+        return self.generator_for_labels(model_output_names, self.constraint_label_types, batch_size)
 
-    def generator_specific_labels(self, constraint_label_types, batch_size):
+    def generator_for_labels(self, model_output_names, constraint_label_types, batch_size):
         """ allows you to test with just some of the labels """
-        return DatasetGenerator(self, constraint_label_types, batch_size)
+        return DatasetGenerator(self, model_output_names, constraint_label_types, batch_size)
 
     @staticmethod
     def load_dataset(dataset_filename):
+        name = os.path.split(dataset_filename)[-2]
         dataset_dict = json.load(open(dataset_filename, 'r'))
         constraint_label_types = [LabelType[label_type] for label_type in dataset_dict['constraint_label_types']]
         filename_pairs = dataset_dict['filename_pairs']
@@ -78,7 +81,7 @@ class MultiEnvironmentDataset:
         obstacle_size = dataset_dict['obstacle_size']
         seed = dataset_dict['seed']
         dataset = MultiEnvironmentDataset(filename_pairs, constraint_label_types=constraint_label_types, n_obstacles=n_obstacles,
-                                          obstacle_size=obstacle_size, seed=seed)
+                                          obstacle_size=obstacle_size, seed=seed, name=name)
         return dataset
 
     def save(self, dataset_filename):
@@ -101,7 +104,7 @@ class MultiEnvironmentDataset:
 
 class DatasetGenerator(keras.utils.Sequence):
 
-    def __init__(self, dataset, label_types_map, batch_size, shuffle=True):
+    def __init__(self, dataset, model_output_names, label_types_map, batch_size, shuffle=True):
         batch_size_err_msg = "Batch size {} must even divide the dataset size {}".format(batch_size, len(dataset))
         assert len(dataset) % batch_size == 0, batch_size_err_msg
 
@@ -112,6 +115,19 @@ class DatasetGenerator(keras.utils.Sequence):
             np.random.shuffle(examples_ids)
         self.batches = np.reshape(examples_ids, [-1, batch_size])
         self.label_types_map = label_types_map
+        self.model_output_names = model_output_names
+
+        for output, label in label_types_map:
+            if label not in [label_type.name for label_type in self.dataset.constraint_label_types]:
+                msg_fmt = "You asked to map the label {0} to output {1}, but the label {0} is not in the dataset {2}"
+                msg = msg_fmt.format(label, output, dataset.name)
+                if label not in self.dataset.constraint_label_types:
+                    raise RuntimeError(msg)
+
+        for output_name in self.model_output_names:
+            if output_name not in [pair[0] for pair in self.label_types_map]:
+                warning = "Warning: no mapping provided for model output {} in dataset {}".format(output_name, dataset.name)
+                print(Fore.YELLOW + warning + Fore.RESET)
 
     def __len__(self):
         return self.batches.shape[0]
@@ -125,7 +141,7 @@ class DatasetGenerator(keras.utils.Sequence):
         batch_indeces = self.batches[index]
         n_rope_points = int(self.dataset.N // 2)
         x = {
-            'sdf': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1], 1]),
+            'sdf_input': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1], 1]),
             'sdf_gradient': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1], 2]),
             'sdf_origin': np.ndarray([self.batch_size, 2]),
             'sdf_resolution': np.ndarray([self.batch_size, 2]),
@@ -137,6 +153,12 @@ class DatasetGenerator(keras.utils.Sequence):
         y = {}
         for label_type, _ in self.label_types_map:
             y[label_type] = np.ndarray([self.batch_size, 1])
+
+        # if there are model outputs that don't have a label in this dataset, then just pass in blank labels
+        # there is only an issue if you also request to train on this label
+        for output_name in self.model_output_names:
+            if output_name not in [pair[0] for pair in self.label_types_map]:
+                y[output_name] = np.zeros([self.batch_size, 1])
 
         loaded_data_cache = {}
         for i, example_id in enumerate(batch_indeces):
@@ -161,7 +183,7 @@ class DatasetGenerator(keras.utils.Sequence):
 
             rope_image = link_bot_sdf_utils.make_rope_images(sdf_data, rope_configuration)
 
-            x['sdf'][i] = np.atleast_3d(sdf_data.sdf)
+            x['sdf_input'][i] = np.atleast_3d(sdf_data.sdf)
             x['sdf_gradient'][i] = sdf_data.gradient
             x['sdf_origin'][i] = sdf_data.origin
             x['sdf_resolution'][i] = sdf_data.resolution

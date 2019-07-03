@@ -6,8 +6,8 @@ import tensorflow as tf
 from keras import Model
 from keras.layers import Input
 
-from link_bot_models import base_model
-from link_bot_models.base_model import BaseModelRunner
+from link_bot_models import base_model_runner
+from link_bot_models.base_model_runner import BaseModelRunner
 from link_bot_models.components.distance_function_layer import distance_function_layer
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
@@ -63,7 +63,7 @@ def train(args):
             'sigmoid_scale': 100,
             'N': train_dataset.N,
         }
-        args_dict.update(base_model.make_args_dict(args))
+        args_dict.update(base_model_runner.make_args_dict(args))
         model = DistanceFunctionModelRunner(args_dict)
 
     model.train(train_dataset, validation_dataset, args.label_types_map, log_path, args)
@@ -92,7 +92,7 @@ def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=220)
     tf.logging.set_verbosity(tf.logging.ERROR)
 
-    parser, train_subparser, eval_subparser, show_subparser = base_model.base_parser()
+    parser, train_subparser, eval_subparser, show_subparser = base_model_runner.base_parser()
 
     train_subparser.set_defaults(func=train)
     eval_subparser.set_defaults(func=evaluate)

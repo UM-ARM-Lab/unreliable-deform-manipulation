@@ -7,12 +7,12 @@ import pathlib
 import sys
 
 import keras
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
 from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
+from keras.models import Model
 from keras.models import load_model
 
 from link_bot_models.callbacks import StopAtAccuracy, DebugCallback
@@ -32,26 +32,28 @@ custom_objects = {
 }
 
 
-def to_tuple_of_strings(combined_str):
-    k, v = combined_str.split(":=")
-    # check that the string is a valid enum
-    try:
-        label_type = LabelType[k]
-    except KeyError:
-        print(Fore.RED + "{} is not a valid LabelType. Choose one of:".format(label_type))
-        for label_type in LabelType:
-            print('  ' + label_type.name)
-        print(Fore.RESET)
-        sys.exit(-2)
-    try:
-        label_type = LabelType[v]
-    except KeyError:
-        print(Fore.RED + "{} is not a valid LabelType. Choose one of:".format(label_type))
-        for label_type in LabelType:
-            print('  ' + label_type.name)
-        print(Fore.RESET)
-        sys.exit(-2)
-    return k, v
+class ConstraintTypeMapping:
+
+    def __call__(self, combined_str):
+        k, v = combined_str.split(":=")
+        # check that the string is a valid enum
+        try:
+            label_type = LabelType[k]
+        except KeyError:
+            print(Fore.RED + "{} is not a valid LabelType. Choose one of:".format(label_type))
+            for label_type in LabelType:
+                print('  ' + label_type.name)
+            print(Fore.RESET)
+            sys.exit(-2)
+        try:
+            label_type = LabelType[v]
+        except KeyError:
+            print(Fore.RED + "{} is not a valid LabelType. Choose one of:".format(label_type))
+            for label_type in LabelType:
+                print('  ' + label_type.name)
+            print(Fore.RESET)
+            sys.exit(-2)
+        return k, v
 
 
 def base_parser():
@@ -67,12 +69,11 @@ def base_parser():
 
     train_subparser.add_argument("train_dataset", help="dataset (json file)")
     train_subparser.add_argument("validation_dataset", help="dataset (json file)")
-    train_subparser.add_argument("label_types_map", nargs='+', type=to_tuple_of_strings)
+    train_subparser.add_argument("label_types_map", nargs='+', type=ConstraintTypeMapping())
     train_subparser.add_argument("--batch-size", "-b", type=int, default=100)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=50)
     train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
-    train_subparser.add_argument("--plot", action='store_true')
     train_subparser.add_argument("--debug", action='store_true')
     train_subparser.add_argument("--validation-steps", type=int, default=-1)
     train_subparser.add_argument("--early-stopping", action='store_true')
@@ -80,7 +81,7 @@ def base_parser():
 
     eval_subparser.add_argument("dataset", help="dataset (json file)")
     eval_subparser.add_argument("checkpoint")
-    eval_subparser.add_argument("label_types_map", nargs='+', type=json.loads)
+    eval_subparser.add_argument("label_types_map", nargs='+', type=ConstraintTypeMapping())
     eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
 
     show_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
@@ -179,39 +180,44 @@ class BaseModelRunner:
                 callbacks.append(DebugCallback())
 
         # we want to map each name in label_types to one of the named model outputs
-        train_generator = train_dataset.generator_specific_labels(label_types_map, self.batch_size)
+        model_output_names = [output.op.name.split("/")[0] for output in self.keras_model.outputs]
+        train_generator = train_dataset.generator_for_labels(model_output_names, label_types_map, self.batch_size)
 
         if args.validation_steps == -1:
-            validation_generator = validation_dataset.generator_specific_labels(label_types_map, self.batch_size)
+            validation_generator = validation_dataset.generator_for_labels(model_output_names, label_types_map, self.batch_size)
             validation_steps = None
         elif args.validation_steps > 0:
-            validation_generator = validation_dataset.generator_specific_labels(label_types_map, self.batch_size)
+            validation_generator = validation_dataset.generator_for_labels(model_output_names, label_types_map, self.batch_size)
             validation_steps = args.validation_steps
         else:
             validation_generator = None
             validation_steps = None
 
-        history = self.keras_model.fit_generator(train_generator,
-                                                 callbacks=callbacks,
-                                                 validation_data=validation_generator,
-                                                 initial_epoch=self.initial_epoch,
-                                                 validation_steps=validation_steps,
-                                                 epochs=args.epochs)
-
-        if args.plot:
-            plt.figure()
-            plt.title("Loss")
-            plt.plot(history.history['loss'])
-
-            plt.figure()
-            plt.title("Accuracy")
-            plt.plot(history.history['acc'])
+        # The Keras way to train only some outputs of a model is to make a new model with just the outputs you want to train
+        # the weights will all be shared, and any weights with gradient to the outputs used will be updated in all models
+        outputs = []
+        losses = {}
+        for output, label in label_types_map:
+            for output_tensor in self.keras_model.outputs:
+                output_name = output_tensor.op.name.split("/")[0]
+                if output_name == output:
+                    outputs.append(output_tensor)
+                    losses[output_name] = 'binary_crossentropy'
+        model_with_spefic_outputs = Model(inputs=self.keras_model.inputs, outputs=outputs)
+        model_with_spefic_outputs.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
+        model_with_spefic_outputs.fit_generator(train_generator,
+                                                callbacks=callbacks,
+                                                validation_data=validation_generator,
+                                                initial_epoch=self.initial_epoch,
+                                                validation_steps=validation_steps,
+                                                epochs=args.epochs)
 
         if args.validation_steps == 0:
             self.evaluate(validation_dataset, label_types_map)
 
     def evaluate(self, validation_dataset, label_types_map, display=True):
-        generator = validation_dataset.generator_specific_labels(label_types_map, self.batch_size)
+        model_output_names = [output.op.name.split("/")[0] for output in self.keras_model.outputs]
+        generator = validation_dataset.generator_for_labels(model_output_names, label_types_map, self.batch_size)
         metrics = self.keras_model.evaluate_generator(generator)
         if display:
             print("Validation:")

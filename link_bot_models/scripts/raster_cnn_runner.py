@@ -6,8 +6,8 @@ import tensorflow as tf
 from keras.layers import Input, Concatenate, Dense
 from keras.models import Model
 
-from link_bot_models import base_model
-from link_bot_models.base_model import BaseModelRunner
+from link_bot_models import base_model_runner
+from link_bot_models.base_model_runner import BaseModelRunner
 from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
@@ -74,7 +74,7 @@ def train(args):
             'fc_layer_sizes': [256, 256],
             'N': train_dataset.N,
         }
-        args_dict.update(base_model.make_args_dict(args))
+        args_dict.update(base_model_runner.make_args_dict(args))
         model = RasterCNNModelRunner(args_dict)
 
     model.train(train_dataset, validation_dataset, args.label_types, log_path, args)
@@ -84,7 +84,7 @@ def main():
     np.set_printoptions(precision=6, suppress=True)
     tf.logging.set_verbosity(tf.logging.ERROR)
 
-    parser, train_subparser, eval_subparser, show_subparser = base_model.base_parser()
+    parser, train_subparser, eval_subparser, show_subparser = base_model_runner.base_parser()
 
     train_subparser.set_defaults(func=train)
     eval_subparser.set_defaults(func=RasterCNNModelRunner.evaluate_main)

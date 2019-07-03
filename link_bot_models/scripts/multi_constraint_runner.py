@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-import numpy as np
 import keras.backend as K
+import numpy as np
 import tensorflow as tf
-from colorama import Fore, Style
-from keras.layers import Input, Concatenate, Lambda, Activation
+from colorama import Style
+from keras.layers import Input, Concatenate, Lambda
 from keras.models import Model
 
-from link_bot_models import base_model
-from link_bot_models.label_types import LabelType
-from link_bot_models.base_model import BaseModelRunner
+from link_bot_models import base_model_runner
+from link_bot_models.base_model_runner import BaseModelRunner
 from link_bot_models.components.distance_function_layer import distance_function_layer
 from link_bot_models.components.sdf_function_layer import sdf_function_layer
+from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
@@ -26,7 +26,7 @@ class MultiConstraintModelRunner(BaseModelRunner):
         self.fc_layer_sizes = args_dict['fc_layer_sizes']
         self.beta = args_dict['beta']
 
-        sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf')
+        sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf_input')
         sdf_gradient = Input(shape=[self.sdf_shape[0], self.sdf_shape[0], 2], dtype='float32', name='sdf_gradient')
         sdf_resolution = Input(shape=[2], dtype='float32', name='sdf_resolution')
         sdf_origin = Input(shape=[2], dtype='float32', name='sdf_origin')  # will be converted to int32 in SDF layer
@@ -107,7 +107,7 @@ def train(args):
             'sigmoid_scale': 100,
             'N': train_dataset.N,
         }
-        args_dict.update(base_model.make_args_dict(args))
+        args_dict.update(base_model_runner.make_args_dict(args))
         model = MultiConstraintModelRunner(args_dict)
 
     model.train(train_dataset, validation_dataset, args.label_types_map, log_path, args)
@@ -145,9 +145,9 @@ def evaluate(args):
     for batch_i in range(len(generator)):
         x, y_true = generator[batch_i]
         combined_predictions, sdf_predictions, ovs_predictions = model.keras_model.predict(x)
-        true_sdf = y_true['SDF_output']
-        true_ovs = y_true['Overstretching_output']
-        true_combined = y_true['combined_output']
+        true_sdf = y_true['SDF']
+        true_ovs = y_true['Overstretching']
+        true_combined = y_true['combined']
 
         for yi_sdf, yi_ovs, yi_combined, yi_hat_sdf, yi_hat_ovs, yi_hat_combined in zip(true_sdf, true_ovs, true_combined,
                                                                                         sdf_predictions, ovs_predictions,
@@ -215,7 +215,7 @@ def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=220)
     tf.logging.set_verbosity(tf.logging.ERROR)
 
-    parser, train_subparser, eval_subparser, show_subparser = base_model.base_parser()
+    parser, train_subparser, eval_subparser, show_subparser = base_model_runner.base_parser()
 
     train_subparser.set_defaults(func=train)
     eval_subparser.set_defaults(func=evaluate)
