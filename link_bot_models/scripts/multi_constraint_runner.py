@@ -109,7 +109,7 @@ def train(args):
         args_dict.update(base_model.make_args_dict(args))
         model = MultiConstraintModelRunner(args_dict)
 
-    model.train(train_dataset, validation_dataset, args.label_types, log_path, args)
+    model.train(train_dataset, validation_dataset, args.label_types_map, log_path, args)
 
 
 def evaluate(args):
@@ -118,7 +118,7 @@ def evaluate(args):
 
     # normal evaluation
     # print(Style.BRIGHT + "Combined Model:" + Style.NORMAL)
-    # model.evaluate(dataset, args.label_types)
+    # model.evaluate(dataset, args.label_types_map)
 
     sdf_only_true_positive = 0
     sdf_only_true_negative = 0

@@ -2,10 +2,10 @@ import numpy as np
 from keras.layers import Input, Lambda
 from keras.models import Model
 
-import link_bot_pycommon.link_bot_sdf_tools
 from link_bot_models.base_model import BaseModelRunner
 from link_bot_models.components.sdf_function_layer import sdf_function_layer
-from link_bot_pycommon import link_bot_pycommon
+from link_bot_models.label_types import LabelType
+from link_bot_pycommon import link_bot_sdf_utils
 
 
 class SDFFunctionModelRunner(BaseModelRunner):
@@ -24,15 +24,18 @@ class SDFFunctionModelRunner(BaseModelRunner):
         self.beta = args_dict['beta']
         self.sigmoid_scale = args_dict['sigmoid_scale']
 
-        sdf_input_layer, sdf_function = sdf_function_layer(self.sdf_shape, self.fc_layer_sizes, self.beta, self.sigmoid_scale)
-        sdf_function_prediction = sdf_function(sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input)
-        prediction = Lambda(lambda x: x, name='combined_output')(sdf_function_prediction)
+        sdf_input_layer, sdf_function = sdf_function_layer(self.sdf_shape, self.fc_layer_sizes, self.beta, self.sigmoid_scale,
+                                                           LabelType.SDF.name)
+        prediction = sdf_function(sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
         self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
 
-        self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        losses = {
+            LabelType.SDF.name: 'binary_crossentropy',
+        }
+        self.keras_model.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
 
     def violated(self, observations, sdf_data):
         m = observations.shape[0]
@@ -75,7 +78,7 @@ def test_single_prediction(sdf_data, model, threshold, rope_configuration):
     rope_configuration = rope_configuration.squeeze()
     head_x = rope_configuration[4]
     head_y = rope_configuration[5]
-    row_col = link_bot_pycommon.link_bot_sdf_tools.point_to_sdf_idx(head_x, head_y, sdf_data.resolution, sdf_data.origin)
+    row_col = link_bot_sdf_utils.point_to_sdf_idx(head_x, head_y, sdf_data.resolution, sdf_data.origin)
     true_violated = sdf_data.sdf[row_col] < threshold
 
     result = EvaluateResult(rope_configuration, predicted_point, predicted_violated, true_violated)

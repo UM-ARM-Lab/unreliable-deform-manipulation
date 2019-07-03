@@ -30,17 +30,7 @@ def train(args):
         args_dict.update(base_model.make_args_dict(args))
         model = SDFFunctionModelRunner(args_dict)
 
-    # w0 = model.keras_model.get_weights()
-
-    return model.evaluate(validation_dataset, args.label_types)
-    model.train(train_dataset, validation_dataset, args.label_types, log_path, args)
-
-    # w1 = model.keras_model.get_weights()
-    # dw = 0
-    # for w0_i, w1_i in zip(w0, w1):
-    #     dw += np.linalg.norm(w1_i - w0_i)
-    # print('dw:', dw)
-
+    model.train(train_dataset, validation_dataset, args.label_types_map, log_path, args)
 
 
 def main():
