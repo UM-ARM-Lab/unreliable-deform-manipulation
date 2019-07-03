@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import argparse
 import os
+import git
 import sys
 
 import matplotlib.pyplot as plt
@@ -71,7 +72,7 @@ def generate_env(args):
     overstretched_threshold = nominal_link_length * args.overstretched_factor_threshold
     for i in range(args.n):
         # half gaussian with variance such that ~50% of ropes will be overstretched
-        length = abs(np.random.randn()) * 0.185 + nominal_link_length
+        length = abs(np.random.randn()) * 0.180 + nominal_link_length
         rope_configurations[i] = link_bot_pycommon.make_random_rope_configuration(sdf_data.extent, length=length)
         tail_x = rope_configurations[i, 0]
         tail_y = rope_configurations[i, 1]
@@ -85,9 +86,9 @@ def generate_env(args):
         mid_head_overstretched = np.hypot(mid_x - head_x, mid_y - head_y) > overstretched_threshold
         ovs_constraint_labels[i] = tail_mid_overstretched or mid_head_overstretched
 
-    all_labels = np.vstack((sdf_constraint_labels, ovs_constraint_labels))
+    all_labels = np.hstack((sdf_constraint_labels, ovs_constraint_labels))
     n_positive = np.count_nonzero(np.any(all_labels, axis=1))
-    percentage_positive = n_positive * 100.0 / all_labels.size
+    percentage_positive = n_positive * 100.0 / all_labels.shape[0]
 
     if args.n_plots and args.n_plots > 0:
         for i in np.random.choice(rope_configurations.shape[0], size=args.n_plots):
@@ -99,7 +100,9 @@ def generate_env(args):
 
 
 def generate(args):
-    full_output_directory = '{}_{}_{}'.format(args.outdir, args.m, args.n)
+    repo = git.Repo(search_parent_directories=True)
+    sha = repo.head.object.hexsha[:10]
+    full_output_directory = '{}_{}_{}_{}'.format(args.outdir, sha, args.m, args.n)
     if args.outdir:
         if os.path.isfile(full_output_directory):
             print(Fore.RED + "argument outdir is an existing file, aborting." + Fore.RESET)
@@ -186,7 +189,7 @@ def main():
     generate_parser.add_argument('--seed', type=int, help='random seed')
     generate_parser.add_argument('--res', '-r', type=float, default=0.05, help='size of cells in meters')
     generate_parser.add_argument('--n-obstacles', type=int, default=14, help='size of obstacles in cells')
-    generate_parser.add_argument('--obstacle-size', type=int, default=8, help='size of obstacles in cells')
+    generate_parser.add_argument('--obstacle-size', type=int, default=7, help='size of obstacles in cells')
     generate_parser.add_argument('--sdf-threshold', type=np.float32, default=0.0)
     generate_parser.add_argument('--overstretched-factor-threshold', type=np.float32, default=1.25)
     generate_parser.add_argument('--n-plots', type=int, help='number of examples to plot')
