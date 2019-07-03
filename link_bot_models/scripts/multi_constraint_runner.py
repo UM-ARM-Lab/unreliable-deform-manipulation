@@ -35,24 +35,28 @@ class MultiConstraintModelRunner(BaseModelRunner):
 
         # Distance Function
         n_points = int(self.N / 2)
-        distance_matrix_layer, distance_function = distance_function_layer(self.sigmoid_scale, n_points)
+        distance_matrix_layer, distance_function = distance_function_layer(self.sigmoid_scale, n_points,
+                                                                           LabelType.Overstretching.name)
         overstretching_prediction = distance_function(rope_input)
 
         # SDF Function
-        sdf_input_layer, sdf_function = sdf_function_layer(self.sdf_shape, self.fc_layer_sizes, self.beta, self.sigmoid_scale)
+        sdf_input_layer, sdf_function = sdf_function_layer(self.sdf_shape, self.fc_layer_sizes, self.beta, self.sigmoid_scale,
+                                                           LabelType.SDF.name)
         self.sdf_function_prediction = sdf_function(sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input)
 
         # Combine
-        concat_predictions = Concatenate(name='all_output')([self.sdf_function_prediction, overstretching_prediction])
-        prediction = Lambda(lambda x: K.sum(x, axis=1, keepdims=True) - K.prod(x, axis=1, keepdims=True), name='combined_output')(concat_predictions)
+        concat_predictions = Concatenate()([self.sdf_function_prediction, overstretching_prediction])
+        prediction = Lambda(lambda x: K.sum(x, axis=1, keepdims=True) - K.prod(x, axis=1, keepdims=True),
+                            name=LabelType.Combined.name)(concat_predictions)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=[prediction, concat_predictions])
         self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
 
         losses = {
-            'combined_output': 'binary_crossentropy',
-            # 'all_output': 'binary_crossentropy',
+            LabelType.Combined.name: 'binary_crossentropy',
+            LabelType.SDF.name: 'binary_crossentropy',
+            LabelType.Overstretching.name: 'binary_crossentropy',
         }
         self.keras_model.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
 
@@ -107,13 +111,14 @@ def train(args):
 
     model.train(train_dataset, validation_dataset, args.label_types, log_path, args)
 
+
 def evaluate(args):
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
     model = MultiConstraintModelRunner.load(args.checkpoint)
 
     # normal evaluation
-    #print(Style.BRIGHT + "Combined Model:" + Style.NORMAL)
-    #model.evaluate(dataset, args.label_types)
+    # print(Style.BRIGHT + "Combined Model:" + Style.NORMAL)
+    # model.evaluate(dataset, args.label_types)
 
     sdf_only_true_positive = 0
     sdf_only_true_negative = 0
@@ -135,43 +140,47 @@ def evaluate(args):
     correct = 0
     _correct = 0
     xx = 0
-    sdf_label_generator = dataset.generator_specific_labels([LabelType.SDF], args.batch_size)
-    for batch_i in range(len(sdf_label_generator)):
-        x, y_true = sdf_label_generator[batch_i]
-        combined_predictions, all_output_predictions = model.keras_model.predict(x)
-        true_all_output = y_true['all_output']
-        true_combined  = y_true['combined_output']
+    generator = dataset.generator(args.batch_size)
+    for batch_i in range(len(generator)):
+        x, y_true = generator[batch_i]
+        combined_predictions, sdf_predictions, ovs_predictions = model.keras_model.predict(x)
+        true_sdf = y_true['SDF_output']
+        true_ovs = y_true['Overstretching_output']
+        true_combined = y_true['combined_output']
 
-        for yi, yi_combined, yi_hat, yi_hat_combined in zip(true_all_output, true_combined, all_output_predictions, combined_predictions):
-            yi_hat = np.round(yi_hat).astype(np.int)
+        for yi_sdf, yi_ovs, yi_combined, yi_hat_sdf, yi_hat_ovs, yi_hat_combined in zip(true_sdf, true_ovs, true_combined,
+                                                                                        sdf_predictions, ovs_predictions,
+                                                                                        combined_predictions):
+            yi_hat_sdf = np.round(yi_hat_sdf).astype(np.int)
+            yi_hat_ovs = np.round(yi_hat_ovs).astype(np.int)
             yi_hat_combined = (yi_hat_combined > 0.9999).astype(np.int)
 
-            if yi[0] == yi_hat[0]:
+            if yi_sdf == yi_hat_sdf:
                 sdf_correct += 1
-            if yi[1] == yi_hat[1]:
+            if yi_ovs == yi_hat_ovs:
                 ovs_correct += 1
-            if np.any(yi) == np.any(yi_hat):
+            if (yi_sdf or yi_ovs) == (yi_hat_sdf or yi_hat_ovs):
                 _correct += 1
 
-            if yi[0] == 0:
-                if yi_hat[0] == 0:
+            if yi_sdf == 0:
+                if yi_hat_sdf == 0:
                     sdf_only_true_negative += 1
                 sdf_only_negative_total += 1
 
-            if np.all(yi == [1, 0]):
-                if np.all(yi_hat == [1, 0]):
+            if yi_sdf and not yi_ovs:
+                if yi_hat_sdf and not yi_hat_ovs:
                     sdf_only_true_positive += 1
                 sdf_only_total += 1
-            elif np.all(yi == [0, 1]):
-                if np.all(yi_hat == [0, 1]):
+            elif not yi_sdf and yi_ovs:
+                if not yi_hat_sdf and yi_hat_ovs:
                     ovs_only_true_positive += 1
                 ovs_only_total += 1
-            elif np.all(yi == [1, 1]):
-                if np.all(yi_hat == [1, 1]):
+            elif yi_sdf and yi_ovs:
+                if yi_hat_sdf and yi_hat_ovs:
                     sdf_and_ovs_true_positive += 1
                 sdf_and_ovs_total += 1
-            elif np.all(yi == [0, 0]):
-                if np.all(yi_hat == [0, 0]):
+            else:
+                if not yi_hat_sdf and yi_hat_ovs:
                     neither_true_negative += 1
                 neither_total += 1
 

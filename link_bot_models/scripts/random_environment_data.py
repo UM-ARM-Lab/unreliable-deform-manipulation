@@ -12,11 +12,11 @@ from colorama import Fore
 import sdf_tools
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon import link_bot_pycommon, link_bot_sdf_utils
 from link_bot_pycommon import link_bot_sdf_tools
 
 
-def plot(args, sdf_data, threshold, rope_configuration, constraint_labels):
+def plot(args, sdf_data, threshold, rope_configuration, sdf_constraint_labels, ovs_constraint_labels):
     del args  # unused
     plt.figure()
     binary = sdf_data.sdf < threshold
@@ -24,8 +24,8 @@ def plot(args, sdf_data, threshold, rope_configuration, constraint_labels):
 
     xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
     ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
-    sdf_constraint_color = 'r' if constraint_labels[0] else 'g'
-    overstretched_constraint_color = 'r' if constraint_labels[1] else 'g'
+    sdf_constraint_color = 'r' if sdf_constraint_labels else 'g'
+    overstretched_constraint_color = 'r' if ovs_constraint_labels else 'g'
     plt.plot(xs, ys, linewidth=0.5, zorder=1, c=overstretched_constraint_color)
     plt.scatter(rope_configuration[4], rope_configuration[5], s=16, c=sdf_constraint_color, zorder=2)
 
@@ -65,7 +65,8 @@ def generate_env(args):
 
     # create random rope configurations
     rope_configurations = np.ndarray((args.n, 6), dtype=np.float32)
-    constraint_labels = np.ndarray((args.n, 2), dtype=np.float32)
+    sdf_constraint_labels = np.ndarray((args.n, 1), dtype=np.float32)
+    ovs_constraint_labels = np.ndarray((args.n, 1), dtype=np.float32)
     nominal_link_length = 0.5
     overstretched_threshold = nominal_link_length * args.overstretched_factor_threshold
     for i in range(args.n):
@@ -78,22 +79,23 @@ def generate_env(args):
         mid_y = rope_configurations[i, 3]
         head_x = rope_configurations[i, 4]
         head_y = rope_configurations[i, 5]
-        row, col = link_bot_sdf_tools.point_to_sdf_idx(head_x, head_y, sdf_resolution, sdf_origin)
-        constraint_labels[i, 0] = sdf[row, col] < args.sdf_threshold
+        row, col = link_bot_sdf_utils.point_to_sdf_idx(head_x, head_y, sdf_resolution, sdf_origin)
+        sdf_constraint_labels[i] = sdf[row, col] < args.sdf_threshold
         tail_mid_overstretched = np.hypot(tail_x - mid_x, tail_y - mid_y) > overstretched_threshold
         mid_head_overstretched = np.hypot(mid_x - head_x, mid_y - head_y) > overstretched_threshold
-        constraint_labels[i, 1] = tail_mid_overstretched or mid_head_overstretched
+        ovs_constraint_labels[i] = tail_mid_overstretched or mid_head_overstretched
 
-    n_positive = np.count_nonzero(np.any(constraint_labels, axis=1))
-    percentage_positive = n_positive * 100.0 / constraint_labels.shape[0]
+    all_labels = np.vstack((sdf_constraint_labels, ovs_constraint_labels))
+    n_positive = np.count_nonzero(np.any(all_labels, axis=1))
+    percentage_positive = n_positive * 100.0 / all_labels.size
 
     if args.n_plots and args.n_plots > 0:
         for i in np.random.choice(rope_configurations.shape[0], size=args.n_plots):
-            plot(args, sdf_data, args.sdf_threshold, rope_configurations[i], constraint_labels[i])
+            plot(args, sdf_data, args.sdf_threshold, rope_configurations[i], sdf_constraint_labels[i], ovs_constraint_labels[i])
 
         plt.show()
 
-    return rope_configurations, constraint_labels, sdf_data, percentage_positive
+    return rope_configurations, sdf_constraint_labels, ovs_constraint_labels, sdf_data, percentage_positive
 
 
 def generate(args):
@@ -117,7 +119,7 @@ def generate(args):
     filename_pairs = []
     percentages_positive = []
     for i in range(args.m):
-        rope_configurations, constraint_labels, sdf_data, percentage_violation = generate_env(args)
+        rope_configurations, sdf_constraint_labels, ovs_constraint_labels, sdf_data, percentage_violation = generate_env(args)
         percentages_positive.append(percentage_violation)
         if args.outdir:
             rope_data_filename = os.path.join(full_output_directory, 'rope_data_{:d}.npz'.format(i))
@@ -126,12 +128,17 @@ def generate(args):
             # FIXME: order matters
             filename_pairs.append([sdf_filename, rope_data_filename])
 
-            np.savez(rope_data_filename,
-                     rope_configurations=rope_configurations,
-                     constraints=constraint_labels,
-                     # save this so we can visualize what the true constraint boundary is
-                     # this value should not be used for training, that would be cheating!
-                     threshold=args.sdf_threshold)
+            combined_constraint_labels = np.any(np.vstack((ovs_constraint_labels, sdf_constraint_labels)), axis=1)
+            save_dict = {
+                "rope_configurations": rope_configurations,
+                LabelType.SDF.name: sdf_constraint_labels,
+                LabelType.Overstretching.name: ovs_constraint_labels,
+                LabelType.Combined.name: combined_constraint_labels,
+                # save threshold so we can visualize what the true constraint boundary is
+                # this value should not be used for training, that would be cheating!
+                "threshold": args.sdf_threshold,
+            }
+            np.savez(rope_data_filename, **save_dict)
             sdf_data.save(sdf_filename)
         print(".", end='')
         sys.stdout.flush()
@@ -155,12 +162,13 @@ def plot_main(args):
     xs, ys = generator[0]
     for i in range(args.n):
         sdf_data = link_bot_sdf_tools.SDF(sdf=np.squeeze(xs['sdf'][i]),
-                       gradient=xs['sdf_gradient'][i],
-                       resolution=xs['sdf_resolution'][i],
-                       origin=xs['sdf_origin'][i])
+                                          gradient=xs['sdf_gradient'][i],
+                                          resolution=xs['sdf_resolution'][i],
+                                          origin=xs['sdf_origin'][i])
         rope_configuration = xs['rope_configuration'][i]
-        constraint_labels = ys['all_output'][i]
-        plot(args, sdf_data, dataset.threshold, rope_configuration, constraint_labels)
+        sdf_constraint_labels = ys[LabelType.SDF.name][i]
+        ovs_constraint_labels = ys[LabelType.Overstretching.name][i]
+        plot(args, sdf_data, dataset.threshold, rope_configuration, sdf_constraint_labels, ovs_constraint_labels)
 
     plt.show()
 

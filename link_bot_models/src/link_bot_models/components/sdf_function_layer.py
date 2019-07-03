@@ -6,7 +6,7 @@ from link_bot_models.components.out_of_bounds_regularization import OutOfBoundsR
 from link_bot_models.components.sdf_lookup import SDFLookup
 
 
-def sdf_function_layer(sdf_shape, fc_layer_sizes, beta, sigmoid_scale):
+def sdf_function_layer(sdf_shape, fc_layer_sizes, beta, sigmoid_scale, output_name=None):
     p = "sdf_function_"
     sdf_extent_cheating = np.array([-2.5, 2.5, -2.5, 2.5])
     regularizer = OutOfBoundsRegularizer(sdf_extent_cheating, beta)
@@ -20,7 +20,7 @@ def sdf_function_layer(sdf_shape, fc_layer_sizes, beta, sigmoid_scale):
     negate = Lambda(lambda x: -x, name=p + 'negate')
     bias_layer = BiasLayer()
     scale_logits = Lambda(lambda x: sigmoid_scale * x, name=p + 'scale')
-    sigmoid = Activation('sigmoid', name=p + 'sigmoid')
+    sigmoid = Activation('sigmoid', name=output_name)
 
     # we have to flatten everything in order to pass it around and I don't understand why
     flatten_sdf = Reshape(target_shape=[sdf_shape[0] * sdf_shape[1]])

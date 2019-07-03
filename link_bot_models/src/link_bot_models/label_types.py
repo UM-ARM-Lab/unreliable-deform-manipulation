@@ -6,6 +6,7 @@ import link_bot_pycommon.args_enum
 class LabelType(link_bot_pycommon.args_enum.ArgsEnum):
     SDF = 0
     Overstretching = 1
+    Combined = 2
 
     @staticmethod
     def mask(label_types):

@@ -32,6 +32,28 @@ custom_objects = {
 }
 
 
+def to_tuple_of_strings(combined_str):
+    k, v = combined_str.split(":=")
+    # check that the string is a valid enum
+    try:
+        label_type = LabelType[k]
+    except KeyError:
+        print(Fore.RED + "{} is not a valid LabelType. Choose one of:".format(label_type))
+        for label_type in LabelType:
+            print('  ' + label_type.name)
+        print(Fore.RESET)
+        sys.exit(-2)
+    try:
+        label_type = LabelType[v]
+    except KeyError:
+        print(Fore.RED + "{} is not a valid LabelType. Choose one of:".format(label_type))
+        for label_type in LabelType:
+            print('  ' + label_type.name)
+        print(Fore.RESET)
+        sys.exit(-2)
+    return k, v
+
+
 def base_parser():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
@@ -45,7 +67,7 @@ def base_parser():
 
     train_subparser.add_argument("train_dataset", help="dataset (json file)")
     train_subparser.add_argument("validation_dataset", help="dataset (json file)")
-    train_subparser.add_argument("label_types", nargs='+', type=LabelType.__getitem__)
+    train_subparser.add_argument("label_types_map", nargs='+', type=to_tuple_of_strings)
     train_subparser.add_argument("--batch-size", "-b", type=int, default=100)
     train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
     train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=50)
@@ -58,7 +80,7 @@ def base_parser():
 
     eval_subparser.add_argument("dataset", help="dataset (json file)")
     eval_subparser.add_argument("checkpoint")
-    eval_subparser.add_argument("label_types", nargs='+', type=LabelType.__getitem__)
+    eval_subparser.add_argument("label_types_map", nargs='+', type=json.loads)
     eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
 
     show_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
@@ -109,13 +131,13 @@ class BaseModelRunner:
         metadata = {
             'tf_version': str(tf.__version__),
             'checkpoint': args.checkpoint,
-            'label_type': [label_type.name for label_type in label_types],
+            'label_type': label_types,
             'commandline': args.commandline,
             'args_dict': self.args_dict,
         }
         return metadata
 
-    def train(self, train_dataset, validation_dataset, label_types, log_path, args):
+    def train(self, train_dataset, validation_dataset, label_types_map, log_path, args):
         callbacks = []
         if args.log is not None:
             full_log_path = os.path.join("log_data", log_path)
@@ -126,7 +148,7 @@ class BaseModelRunner:
 
             metadata_path = os.path.join(full_log_path, "metadata.json")
             metadata_file = open(metadata_path, 'w')
-            metadata = self.base_metadata(label_types, args)
+            metadata = self.base_metadata(label_types_map, args)
             metadata['log path'] = full_log_path
             metadata_file.write(json.dumps(metadata, indent=2))
 
@@ -156,13 +178,14 @@ class BaseModelRunner:
             if args.debug:
                 callbacks.append(DebugCallback())
 
-        train_generator = train_dataset.generator_specific_labels(label_types, self.batch_size)
+        # we want to map each name in label_types to one of the named model outputs
+        train_generator = train_dataset.generator_specific_labels(label_types_map, self.batch_size)
 
         if args.validation_steps == -1:
-            validation_generator = validation_dataset.generator_specific_labels(label_types, self.batch_size)
+            validation_generator = validation_dataset.generator_specific_labels(label_types_map, self.batch_size)
             validation_steps = None
         elif args.validation_steps > 0:
-            validation_generator = validation_dataset.generator_specific_labels(label_types, self.batch_size)
+            validation_generator = validation_dataset.generator_specific_labels(label_types_map, self.batch_size)
             validation_steps = args.validation_steps
         else:
             validation_generator = None
@@ -185,10 +208,10 @@ class BaseModelRunner:
             plt.plot(history.history['acc'])
 
         if args.validation_steps == 0:
-            self.evaluate(validation_dataset, label_types)
+            self.evaluate(validation_dataset, label_types_map)
 
-    def evaluate(self, validation_dataset, label_types, display=True):
-        generator = validation_dataset.generator_specific_labels(label_types, self.batch_size)
+    def evaluate(self, validation_dataset, label_types_map, display=True):
+        generator = validation_dataset.generator_specific_labels(label_types_map, self.batch_size)
         metrics = self.keras_model.evaluate_generator(generator)
         if display:
             print("Validation:")

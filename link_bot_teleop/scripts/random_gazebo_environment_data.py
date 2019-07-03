@@ -33,8 +33,6 @@ def random_yaw():
 
 def norm_dot(force, velocity):
     return np.dot(velocity, force) / (np.linalg.norm(velocity) + 1e-9) * np.linalg.norm(force)
-    # return np.dot(speed, force) / (np.linalg.norm(force) + 1e-9)
-    # return np.dot(force, speed) / (np.linalg.norm(force) * np.linalg.norm(speed) + 1e-9)
 
 
 def plot(args, sdf_data, threshold, rope_configuration, constraint_labels):
@@ -84,7 +82,7 @@ def make_gazebo_world_file(args, rope_length, rope_x, rope_y):
                 <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
                 <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
                 <physics name="ode" type="ode">
-                    <real_time_update_rate>1000</real_time_update_rate>
+                    <real_time_update_rate>10000</real_time_update_rate>
                     <ode>
                         <solver>
                             <type>quick</type>
@@ -263,7 +261,7 @@ def generate_env(args, env_idx):
     rope_configurations = np.ndarray((args.steps, 6), dtype=np.float32)
     gripper_forces = np.ndarray((args.steps, 4))
     gripper_velocities = np.ndarray((args.steps, 4))
-    constraint_labels = np.ndarray((args.steps, 2), dtype=np.float32)
+    constraint_labels = np.ndarray((args.steps, 1), dtype=np.float32)
 
     history_size = 5
     gripper1_velocity_history = np.zeros((history_size, 3))
@@ -299,7 +297,6 @@ def generate_env(args, env_idx):
             print(normalized_dot, at_constraint_boundary)
 
         constraint_labels[t, 0] = at_constraint_boundary
-        constraint_labels[t, 1] = at_constraint_boundary
 
         if t % args.new_goal_period == 0:
             # target_x = np.random.uniform(-args.w / 2, args.w / 2)
@@ -360,7 +357,7 @@ def generate(args):
     np.random.seed(args.seed)
 
     # Define what kinds of labels are contained in this dataset
-    constraint_label_types = [LabelType.SDF, LabelType.Overstretching]
+    constraint_label_types = [LabelType.Combined]
 
     filename_pairs = []
     percentages_positive = []
@@ -406,13 +403,13 @@ def main():
     parser.add_argument('h', type=int, help='environment with in meters (int)')
     parser.add_argument("--outdir", help='directory dataset will go in')
     parser.add_argument('--res', '-r', type=float, default=0.05, help='size of cells in meters')
-    parser.add_argument('--n-obstacles', type=int, default=10, help='size of obstacles in cells')
-    parser.add_argument('--obstacle-size', type=int, default=4, help='size of obstacles in cells')
+    parser.add_argument('--n-obstacles', type=int, default=20, help='size of obstacles in cells')
+    parser.add_argument('--obstacle-size', type=int, default=5, help='size of obstacles in cells')
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
     parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     parser.add_argument("--save-frequency", '-f', help='save every this many steps', type=int, default=10)
-    parser.add_argument("--new-goal-period", help='change target rope position every this many time steps', type=int, default=20)
+    parser.add_argument("--new-goal-period", help='change target rope position every this many time steps', type=int, default=50)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--verbose", '-v', action="store_true")
     parser.add_argument("--headless", action="store_true")

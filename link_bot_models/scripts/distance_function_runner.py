@@ -4,11 +4,12 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 from keras import Model
-from keras.layers import Lambda, Input
+from keras.layers import Input
 
 from link_bot_models import base_model
 from link_bot_models.base_model import BaseModelRunner
 from link_bot_models.components.distance_function_layer import distance_function_layer
+from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
@@ -23,13 +24,15 @@ class DistanceFunctionModelRunner(BaseModelRunner):
 
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
-        distance_matrix_layer, layer = distance_function_layer(self.sigmoid_scale, self.n_points)
-        distance_prediction = layer(rope_input)
-        prediction = Lambda(lambda x: x, name='combined_output')(distance_prediction)
+        distance_matrix_layer, layer = distance_function_layer(self.sigmoid_scale, self.n_points, LabelType.Overstretching.name)
+        prediction = layer(rope_input)
 
         self.model_inputs = [rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
-        self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
+        losses = {
+            LabelType.Overstretching.name: 'binary_crossentropy',
+        }
+        self.keras_model.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
 
         self.distance_matrix_model = Model(inputs=self.model_inputs, outputs=distance_matrix_layer.output)
 
@@ -63,16 +66,7 @@ def train(args):
         args_dict.update(base_model.make_args_dict(args))
         model = DistanceFunctionModelRunner(args_dict)
 
-    # w0 = model.keras_model.get_weights()
-
-    return model.evaluate(validation_dataset, args.label_types)
-    model.train(train_dataset, validation_dataset, args.label_types, log_path, args)
-
-    # w1 = model.keras_model.get_weights()
-    # dw = 0
-    # for w0_i, w1_i in zip(w0, w1):
-    #     dw += np.linalg.norm(w1_i - w0_i)
-    # print('dw:', dw)
+    model.train(train_dataset, validation_dataset, args.label_types_map, log_path, args)
 
 
 def evaluate(args):
@@ -91,7 +85,7 @@ def evaluate(args):
     d = model.distance_matrix_model.predict(x)
     print(np.squeeze(d))
 
-    return model.evaluate(dataset, args.label_types)
+    return model.evaluate(dataset, args.label_types_map)
 
 
 def main():

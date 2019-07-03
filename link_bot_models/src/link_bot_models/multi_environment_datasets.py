@@ -4,10 +4,8 @@ import os
 import keras
 import numpy as np
 
-import link_bot_pycommon.link_bot_sdf_tools
 from link_bot_models.label_types import LabelType
-from link_bot_pycommon import link_bot_pycommon
-from link_bot_pycommon.link_bot_sdf_tools import SDF
+from link_bot_pycommon import link_bot_sdf_utils
 
 
 class EnvironmentData:
@@ -39,7 +37,7 @@ class MultiEnvironmentDataset:
         self.environments = np.ndarray([self.n_environments], dtype=np.object)
         example_id = 0
         for i, (sdf_data_filename, rope_data_filename) in enumerate(filename_pairs):
-            sdf_data = SDF.load(sdf_data_filename)
+            sdf_data = link_bot_sdf_utils.SDF.load(sdf_data_filename)
             rope_data = np.load(rope_data_filename)
             examples_in_env, N = rope_data['rope_configurations'].shape
 
@@ -56,11 +54,12 @@ class MultiEnvironmentDataset:
             self.environments[i] = env
 
             for j in range(examples_in_env):
-                self.example_information.append({
+                example_info = {
                     'sdf_data_filename': sdf_data_filename,
                     'rope_data_filename': rope_data_filename,
-                    'rope_data_index': j
-                })
+                    'rope_data_index': j,
+                }
+                self.example_information.append(example_info)
                 example_id += 1
         self.num_examples = example_id
 
@@ -106,7 +105,7 @@ class MultiEnvironmentDataset:
 
 class DatasetGenerator(keras.utils.Sequence):
 
-    def __init__(self, dataset, label_types, batch_size, shuffle=True):
+    def __init__(self, dataset, label_types_map, batch_size, shuffle=True):
         batch_size_err_msg = "Batch size {} must even divide the dataset size {}".format(batch_size, len(dataset))
         assert len(dataset) % batch_size == 0, batch_size_err_msg
 
@@ -116,7 +115,7 @@ class DatasetGenerator(keras.utils.Sequence):
         if shuffle:
             np.random.shuffle(examples_ids)
         self.batches = np.reshape(examples_ids, [-1, batch_size])
-        self.label_mask = LabelType.mask(label_types)
+        self.label_types_map = label_types_map
 
     def __len__(self):
         return self.batches.shape[0]
@@ -138,10 +137,10 @@ class DatasetGenerator(keras.utils.Sequence):
             'rope_configuration': np.ndarray([self.batch_size, self.dataset.N]),
             'rope_image': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1], n_rope_points]),
         }
-        y = {
-            'combined_output': np.ndarray([self.batch_size, 1]),
-            'all_output': np.ndarray([self.batch_size, self.label_mask.shape[0]]),
-        }
+
+        y = {}
+        for label_type, _ in self.label_types_map:
+            y[label_type] = np.ndarray([self.batch_size, 1])
 
         loaded_data_cache = {}
         for i, example_id in enumerate(batch_indeces):
@@ -153,7 +152,7 @@ class DatasetGenerator(keras.utils.Sequence):
             if sdf_data_filename in loaded_data_cache:
                 sdf_data = loaded_data_cache[sdf_data_filename]
             else:
-                sdf_data = SDF.load(sdf_data_filename)
+                sdf_data = link_bot_sdf_utils.SDF.load(sdf_data_filename)
                 loaded_data_cache[sdf_data_filename] = sdf_data
 
             if rope_data_filename in loaded_data_cache:
@@ -164,10 +163,7 @@ class DatasetGenerator(keras.utils.Sequence):
 
             rope_configuration = rope_data['rope_configurations'][example_info['rope_data_index']]
 
-            rope_image = link_bot_pycommon.link_bot_sdf_tools.make_rope_images(sdf_data, rope_configuration)
-
-            all_label = rope_data['constraints'][example_info['rope_data_index']].astype(np.float32)
-            combined_label = np.any(all_label * self.label_mask).astype(np.float32)
+            rope_image = link_bot_sdf_utils.make_rope_images(sdf_data, rope_configuration)
 
             x['sdf'][i] = np.atleast_3d(sdf_data.sdf)
             x['sdf_gradient'][i] = sdf_data.gradient
@@ -177,7 +173,8 @@ class DatasetGenerator(keras.utils.Sequence):
             x['rope_configuration'][i] = rope_configuration
             x['rope_image'][i] = rope_image
 
-            y['all_output'][i] = all_label
-            y['combined_output'][i] = combined_label
+            for label_type_key, label_type_value in self.label_types_map:
+                label = rope_data[label_type_value][example_info['rope_data_index']].astype(np.float32)
+                y[label_type_key][i] = label
 
         return x, y
