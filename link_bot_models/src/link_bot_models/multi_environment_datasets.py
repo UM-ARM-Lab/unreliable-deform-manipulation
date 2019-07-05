@@ -101,23 +101,22 @@ class MultiEnvironmentDataset:
     def __len__(self):
         return self.num_examples
 
-    def slice(self, rounded_num_examples):
-        indeces = np.random.choice(self.num_examples, size=rounded_num_examples)
-        self.example_information = self.example_information[indeces]
-        self.num_examples = rounded_num_examples
-
 
 class DatasetGenerator(keras.utils.Sequence):
 
     def __init__(self, dataset, model_output_names, label_types_map, batch_size, shuffle=True):
-        batch_size_err_msg = "Batch size {} must even divide the dataset size {}".format(batch_size, len(dataset))
-        assert len(dataset) % batch_size == 0, batch_size_err_msg
-
         self.dataset = dataset
         self.batch_size = batch_size
-        examples_ids = np.arange(0, self.dataset.num_examples)
+
+        if len(dataset) % batch_size != 0:
+            err_msg = "Batch size {} doesn't evenly divide the dataset size {}".format(self.batch_size, len(self.dataset))
+            print(Fore.YELLOW + err_msg + Fore.RESET)
+
+        examples_ids = np.arange(0, len(self.dataset))
         if shuffle:
             np.random.shuffle(examples_ids)
+        n_batches = int(len(dataset) // batch_size)
+        examples_ids = examples_ids[:n_batches * batch_size]
         self.batches = np.reshape(examples_ids, [-1, batch_size])
         self.label_types_map = label_types_map
         self.model_output_names = model_output_names

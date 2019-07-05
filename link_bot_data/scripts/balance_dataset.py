@@ -76,8 +76,6 @@ def main():
 
     dataset = MultiEnvironmentDataset(new_filename_pairs, constraint_label_types=dataset.constraint_label_types,
                                       n_obstacles=dataset.n_obstacles, obstacle_size=dataset.obstacle_size, seed=dataset.seed)
-    rounded_num_examples = (dataset.num_examples // 100) * 100
-    dataset.slice(rounded_num_examples)
     dataset.save(new_dataset_filename)
 
 
