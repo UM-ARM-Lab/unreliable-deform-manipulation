@@ -249,7 +249,7 @@ def generate_env(args, env_idx):
                             link_bot_state.gripper1_velocity.z]
         ntv = np.linalg.norm(target_velocity)
         nv = np.linalg.norm(current_velocity)
-        if abs(ntv - nv) > 0.1:
+        if abs(ntv - nv) > 0.15:
             at_constraint_boundary = True
         else:
             at_constraint_boundary = False
@@ -308,7 +308,6 @@ def generate(args):
                 proc.kill()
                 break
         else:
-            print("done")
             gz_running = False
 
     rospy.init_node('random_gazebo_environment_data')
