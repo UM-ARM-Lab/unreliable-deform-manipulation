@@ -18,13 +18,11 @@ def decompress_and_deserialize(sdf, gradient, msg):
     gradient.DeserializeSelf(uncompressed_gradient, 0, sdf_tools.DeserializeFixedSizePODVecd)
 
 
-def request_sdf_data(get_sdf_service, res=0.05, robot_name='link_bot'):
+def request_sdf_data(get_sdf_service, width=5.0, height=5.0, res=0.05, robot_name='link_bot'):
     compute_sdf_request = ComputeSDFRequest()
     compute_sdf_request.center.x = 0
     compute_sdf_request.center.y = 0
     compute_sdf_request.request_new = True
-    width = 10.0
-    height = 10.0
     compute_sdf_request.resolution = res  # applies to both x/y dimensions
     compute_sdf_request.x_width = width
     compute_sdf_request.y_height = height
@@ -41,6 +39,6 @@ def request_sdf_data(get_sdf_service, res=0.05, robot_name='link_bot'):
 
     np_sdf, np_gradient = sdf_tools.compute_gradient(sdf)
     np_resolution = np.array([res, res])
-    np_origin = np.array([-height / res / 2, -width / res / 2])
+    np_origin = np.array([height / res / 2, width / res / 2])
     sdf_data = SDF(sdf=np_sdf, gradient=np_gradient, resolution=np_resolution, origin=np_origin)
     return sdf_data

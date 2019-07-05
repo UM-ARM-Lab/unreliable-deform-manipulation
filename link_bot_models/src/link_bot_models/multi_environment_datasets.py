@@ -18,12 +18,11 @@ class EnvironmentData:
 
 class MultiEnvironmentDataset:
 
-    def __init__(self, filename_pairs, constraint_label_types, n_obstacles, obstacle_size, seed, name):
+    def __init__(self, filename_pairs, constraint_label_types, n_obstacles, obstacle_size, seed):
         self.constraint_label_types = constraint_label_types
         self.n_obstacles = n_obstacles
         self.obstacle_size = obstacle_size
         self.seed = seed
-        self.name = name
 
         # convert all file paths to be absolute
         self.abs_filename_pairs = []
@@ -65,11 +64,12 @@ class MultiEnvironmentDataset:
         self.num_examples = example_id
 
     def generator(self, model_output_names, batch_size):
-        return self.generator_for_labels(model_output_names, self.constraint_label_types, batch_size)
+        label_types_map = [[label_type.name, label_type.name] for label_type in self.constraint_label_types]
+        return self.generator_for_labels(model_output_names, label_types_map, batch_size)
 
-    def generator_for_labels(self, model_output_names, constraint_label_types, batch_size):
+    def generator_for_labels(self, model_output_names, label_types_map, batch_size):
         """ allows you to test with just some of the labels """
-        return DatasetGenerator(self, model_output_names, constraint_label_types, batch_size)
+        return DatasetGenerator(self, model_output_names, label_types_map, batch_size)
 
     @staticmethod
     def load_dataset(dataset_filename):
@@ -81,7 +81,7 @@ class MultiEnvironmentDataset:
         obstacle_size = dataset_dict['obstacle_size']
         seed = dataset_dict['seed']
         dataset = MultiEnvironmentDataset(filename_pairs, constraint_label_types=constraint_label_types, n_obstacles=n_obstacles,
-                                          obstacle_size=obstacle_size, seed=seed, name=name)
+                                          obstacle_size=obstacle_size, seed=seed)
         return dataset
 
     def save(self, dataset_filename):
@@ -120,13 +120,14 @@ class DatasetGenerator(keras.utils.Sequence):
         for output, label in label_types_map:
             if label not in [label_type.name for label_type in self.dataset.constraint_label_types]:
                 msg_fmt = "You asked to map the label {0} to output {1}, but the label {0} is not in the dataset {2}"
-                msg = msg_fmt.format(label, output, dataset.name)
+                dataset_name = self.dataset.abs_filename_pairs[0][0].split(os.path.sep)[-2]
+                msg = msg_fmt.format(label, output, dataset_name)
                 if label not in self.dataset.constraint_label_types:
                     raise RuntimeError(msg)
 
         for output_name in self.model_output_names:
             if output_name not in [pair[0] for pair in self.label_types_map]:
-                warning = "Warning: no mapping provided for model output {} in dataset {}".format(output_name, dataset.name)
+                warning = "Warning: no mapping provided for model output {}".format(output_name)
                 print(Fore.YELLOW + warning + Fore.RESET)
 
     def __len__(self):

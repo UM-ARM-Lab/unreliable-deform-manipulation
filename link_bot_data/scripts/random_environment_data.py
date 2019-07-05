@@ -99,17 +99,21 @@ def generate(args):
 def plot_main(args):
     np.random.seed(args.seed)
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
-    generator = dataset.generator(args.n)
+    generator = dataset.generator([], args.batch_size)
     xs, ys = generator[0]
     for i in range(args.n):
-        sdf_data = link_bot_sdf_tools.SDF(sdf=np.squeeze(xs['sdf'][i]),
+        sdf_data = link_bot_sdf_tools.SDF(sdf=np.squeeze(xs['sdf_input'][i]),
                                           gradient=xs['sdf_gradient'][i],
                                           resolution=xs['sdf_resolution'][i],
                                           origin=xs['sdf_origin'][i])
         rope_configuration = xs['rope_configuration'][i]
-        sdf_constraint_labels = ys[LabelType.SDF.name][i]
-        ovs_constraint_labels = ys[LabelType.Overstretching.name][i]
-        plot_sdf_and_ovs(args, sdf_data, dataset.threshold, rope_configuration, sdf_constraint_labels, ovs_constraint_labels)
+        if LabelType.SDF.name in ys and LabelType.Overstretching.name in ys:
+            sdf_constraint_labels = ys[LabelType.SDF.name][i]
+            ovs_constraint_labels = ys[LabelType.Overstretching.name][i]
+            plot_sdf_and_ovs(args, sdf_data, 0, rope_configuration, sdf_constraint_labels, ovs_constraint_labels)
+        else:
+            combined_constraint_labels = ys[LabelType.Combined.name][i]
+            plot_sdf_and_ovs(args, sdf_data, 0, rope_configuration, None, None, combined_constraint_labels)
 
     plt.show()
 
@@ -138,6 +142,8 @@ def main():
     plot_parser.add_argument('dataset', help='json dataset file')
     plot_parser.add_argument('n', type=int, help='number of examples to plot')
     plot_parser.add_argument('--seed', type=int, help='random seed')
+    plot_parser.add_argument('--batch-size', type=int, default=100)
+    plot_parser.add_argument('--show-sdf-data', action='store_true')
 
     args = parser.parse_args()
 

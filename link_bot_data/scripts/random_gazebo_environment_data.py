@@ -229,7 +229,7 @@ def generate_env(args, env_idx):
     action_pub, world_control, get_state, compute_sdf = services
 
     # Compute SDF Data
-    sdf_data = link_bot_sdf_tools.request_sdf_data(compute_sdf, res=args.res)
+    sdf_data = link_bot_sdf_tools.request_sdf_data(compute_sdf, width=args.w, height=args.h, res=args.res)
 
     # Create random rope configurations by picking a random point and applying forces to move the rope to that point
     rope_configurations = np.ndarray((args.steps, 6), dtype=np.float32)

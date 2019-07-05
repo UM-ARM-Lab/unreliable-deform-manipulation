@@ -35,8 +35,11 @@ def generate_envs(args, full_output_directory, generate_env, save_dict_extras=No
             save_dict.update(save_dict_extras)
             for label_type, labels in labels_dict.items():
                 save_dict[label_type.name] = labels
+
+            # Save the data
             np.savez(rope_data_filename, **save_dict)
             sdf_data.save(sdf_filename)
+
         print(".", end='')
         sys.stdout.flush()
 
@@ -65,25 +68,38 @@ def data_directory(outdir, envs, steps):
     return full_output_directory
 
 
-def plot_sdf_and_ovs(args, sdf_data, threshold, rope_configuration, sdf_constraint_labels, ovs_constraint_labels):
-    del args  # unused
+def plot_sdf_and_ovs(args, sdf_data, threshold, rope_configuration, sdf_constraint_labels=None, ovs_constraint_labels=None,
+                     combined_labels=None):
     plt.figure()
     binary = sdf_data.sdf < threshold
     plt.imshow(np.flipud(binary.T), extent=sdf_data.extent)
 
     xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
     ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
-    sdf_constraint_color = 'r' if sdf_constraint_labels else 'g'
-    overstretched_constraint_color = 'r' if ovs_constraint_labels else 'g'
+    if sdf_constraint_labels is not None:
+        sdf_constraint_color = 'r' if sdf_constraint_labels else 'g'
+    else:
+        sdf_constraint_color = 'c'
+
+    if ovs_constraint_labels is not None:
+        overstretched_constraint_color = 'r' if ovs_constraint_labels else 'g'
+    else:
+        overstretched_constraint_color = 'c'
+
+    if combined_labels is not None:
+        overstretched_constraint_color = 'r' if combined_labels else 'g'
+        sdf_constraint_color = 'r' if combined_labels else 'g'
+
     plt.plot(xs, ys, linewidth=0.5, zorder=1, c=overstretched_constraint_color)
     plt.scatter(rope_configuration[4], rope_configuration[5], s=16, c=sdf_constraint_color, zorder=2)
 
-    plt.figure()
-    plt.imshow(np.flipud(sdf_data.sdf.T), extent=sdf_data.extent)
-    subsample = 2
-    x_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[0])
-    y_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[1])
-    y, x = np.meshgrid(y_range, x_range)
-    dx = sdf_data.gradient[::subsample, ::subsample, 0]
-    dy = sdf_data.gradient[::subsample, ::subsample, 1]
-    plt.quiver(x, y, dx, dy, units='x', scale=10)
+    if args.show_sdf_data:
+        plt.figure()
+        plt.imshow(np.flipud(sdf_data.sdf.T), extent=sdf_data.extent)
+        subsample = 2
+        x_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[0])
+        y_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[1])
+        y, x = np.meshgrid(y_range, x_range)
+        dx = sdf_data.gradient[::subsample, ::subsample, 0]
+        dy = sdf_data.gradient[::subsample, ::subsample, 1]
+        plt.quiver(x, y, dx, dy, units='x', scale=10)
