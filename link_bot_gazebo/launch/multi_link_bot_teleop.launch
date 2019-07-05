@@ -15,7 +15,9 @@
         <arg name="gui" value="$(arg gui)"/>
     </include>
 
-    <node name="joy_node" pkg="joy" type="joy_node"/>
+    <node name="joy_node" pkg="joy" type="joy_node">
+        <param name="autorepeat_rate" value="10.0" type="double" />
+    </node>
 
     <!-- Spawn a robot into Gazebo -->
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"

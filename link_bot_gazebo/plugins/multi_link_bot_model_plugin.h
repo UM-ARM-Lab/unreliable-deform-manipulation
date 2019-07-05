@@ -41,9 +41,12 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   physics::ModelPtr model_;
   event::ConnectionPtr updateConnection_;
-  double kP_{5};
-  double kI_{0};
-  double kD_{0};
+  double kP_pos_{5.0};
+  double kI_pos_{0.0};
+  double kD_pos_{0.0};
+  double kP_vel_{100.0};
+  double kI_vel_{0.0};
+  double kD_vel_{0.0};
   physics::LinkPtr gripper1_link_{nullptr};
   physics::LinkPtr gripper2_link_{nullptr};
   std::vector<geometry_msgs::Wrench> wrenches_;
@@ -51,8 +54,14 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   common::PID gripper1_y_pos_pid_;
   common::PID gripper2_x_pos_pid_;
   common::PID gripper2_y_pos_pid_;
+  common::PID gripper1_x_vel_pid_;
+  common::PID gripper1_y_vel_pid_;
+  common::PID gripper2_x_vel_pid_;
+  common::PID gripper2_y_vel_pid_;
   ignition::math::Vector3d gripper1_target_position_{0, 0, 0};
   ignition::math::Vector3d gripper2_target_position_{0, 0, 0};
+  ignition::math::Vector3d gripper1_target_velocity_{0, 0, 0};
+  ignition::math::Vector3d gripper2_target_velocity_{0, 0, 0};
   std::unique_ptr<ros::NodeHandle> ros_node_;
   ros::Subscriber joy_sub_;
   ros::Subscriber action_sub_;

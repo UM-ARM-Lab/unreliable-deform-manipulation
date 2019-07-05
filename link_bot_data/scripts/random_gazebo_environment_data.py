@@ -29,10 +29,6 @@ def random_yaw():
     return np.random.uniform(-np.pi, np.pi)
 
 
-def norm_dot(force, velocity):
-    return np.dot(velocity, force) / (np.linalg.norm(velocity) + 1e-9) * np.linalg.norm(force)
-
-
 def make_gazebo_world_file(args, rope_length, rope_x, rope_y):
     world_xml_root = ET.fromstring("""<?xml version="1.0" ?>
         <sdf version="1.5">
@@ -56,7 +52,7 @@ def make_gazebo_world_file(args, rope_length, rope_x, rope_y):
                 <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
                 <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
                 <physics name="ode" type="ode">
-                    <real_time_update_rate>10000</real_time_update_rate>
+                    <real_time_update_rate>{}</real_time_update_rate>
                     <ode>
                         <solver>
                             <type>quick</type>
@@ -68,7 +64,7 @@ def make_gazebo_world_file(args, rope_length, rope_x, rope_y):
                 </physics>
             </world>
         </sdf>
-        """)
+        """.format(args.real_time_rate * 1000))
     world_element = world_xml_root.find('world')
     box_locations = []
     with open("/tmp/temp.world", 'w+') as world_file:
@@ -237,9 +233,6 @@ def generate_env(args, env_idx):
     gripper_velocities = np.ndarray((args.steps, 4))
     combined_constraint_labels = np.ndarray((args.steps, 1), dtype=np.float32)
 
-    history_size = 5
-    gripper1_velocity_history = np.zeros((history_size, 3))
-    gripper1_force_history = np.zeros((history_size, 3))
     target_x = 0
     target_y = 0
     for t in range(args.steps):
@@ -248,27 +241,21 @@ def generate_env(args, env_idx):
         rope_configurations[t], gripper_forces[t], gripper_velocities[t] = extract_from_state(link_bot_state)
 
         # TODO: use ground truth labels not just based on force/velocity?
-        # Use a simple median filter to check whether we are at the constraint boundary
-        # check if the angle of the vectors of force and vector of velocity are close enough to 0
-
-        gripper1_velocity_vec = np.array([link_bot_state.gripper1_velocity.x, link_bot_state.gripper1_velocity.y, 0])
-        gripper1_force_vec = np.array([link_bot_state.gripper1_force.x, link_bot_state.gripper1_force.y, 0])
-        gripper1_force_history = np.roll(gripper1_force_history, 1, axis=0)
-        gripper1_force_history[0] = gripper1_force_vec
-        gripper1_velocity_history = np.roll(gripper1_velocity_history, 1, axis=0)
-        gripper1_velocity_history[0] = gripper1_velocity_vec
-
-        filtered_gripper1_force = np.median(gripper1_force_history, axis=0)
-        filtered_gripper1_velocity = np.median(gripper1_velocity_history, axis=0)
-        normalized_dot = norm_dot(filtered_gripper1_force, filtered_gripper1_velocity)
-
-        if normalized_dot > -10000 or t < history_size:
-            at_constraint_boundary = False
-        else:
+        target_velocity = [link_bot_state.gripper1_target_velocity.x,
+                           link_bot_state.gripper1_target_velocity.y,
+                           link_bot_state.gripper1_target_velocity.z]
+        current_velocity = [link_bot_state.gripper1_velocity.x,
+                            link_bot_state.gripper1_velocity.y,
+                            link_bot_state.gripper1_velocity.z]
+        ntv = np.linalg.norm(target_velocity)
+        nv = np.linalg.norm(current_velocity)
+        if abs(ntv - nv) > 0.1:
             at_constraint_boundary = True
+        else:
+            at_constraint_boundary = False
 
         if args.verbose:
-            print(normalized_dot, at_constraint_boundary)
+            print(nv, ntv, at_constraint_boundary)
 
         combined_constraint_labels[t, 0] = at_constraint_boundary
 
@@ -312,10 +299,17 @@ def generate_env(args, env_idx):
 
 def generate(args):
     # first kill old gazebo processes
-    for proc in psutil.process_iter():
-        if "gz" in proc.name():
-            print("killing: " + proc.name())
-            proc.kill()
+    gz_running = True
+    while gz_running:
+        for proc in psutil.process_iter():
+            executable = proc.cmdline()[0]
+            if "gzserver" in proc.name() or "gzclient" in proc.name() or "gzserver" in executable or "gzclient" in executable:
+                print("killing old gazebo instance!")
+                proc.kill()
+                break
+        else:
+            print("done")
+            gz_running = False
 
     rospy.init_node('random_gazebo_environment_data')
 
@@ -347,8 +341,9 @@ def main():
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
     parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     parser.add_argument("--save-frequency", '-f', help='save every this many steps', type=int, default=10)
-    parser.add_argument("--new-goal-period", help='change target rope position every this many time steps', type=int, default=50)
+    parser.add_argument("--new-goal-period", help='change target rope position every this many time steps', type=int, default=100)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
+    parser.add_argument("--real-time-rate", help='number of times real time', type=float, default=10)
     parser.add_argument("--verbose", '-v', action="store_true")
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--retry", action="store_true")

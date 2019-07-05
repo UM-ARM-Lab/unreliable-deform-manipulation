@@ -118,6 +118,27 @@ def plot_main(args):
     plt.show()
 
 
+def plot_main2(args):
+    np.random.seed(args.seed)
+    dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
+    for env in dataset.environments[:args.n]:
+        plt.figure()
+        plt.imshow(env.sdf_data.image < 0, extent=env.sdf_data.extent)
+
+        rope_configurations = env.rope_data['rope_configurations']
+        ys = env.rope_data[LabelType.Combined.name]
+
+        for rope_configuration, y, in zip(rope_configurations, ys):
+            xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
+            ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
+
+            color = 'r' if y else 'g'
+            plt.plot(xs, ys, linewidth=0.5, zorder=1, c=color)
+            plt.scatter(rope_configuration[4], rope_configuration[5], s=16, c=color, zorder=2)
+
+    plt.show()
+
+
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
@@ -138,7 +159,7 @@ def main():
     generate_parser.add_argument('--outdir')
 
     plot_parser = subparsers.add_parser('plot')
-    plot_parser.set_defaults(func=plot_main)
+    plot_parser.set_defaults(func=plot_main2)
     plot_parser.add_argument('dataset', help='json dataset file')
     plot_parser.add_argument('n', type=int, help='number of examples to plot')
     plot_parser.add_argument('--seed', type=int, help='random seed')

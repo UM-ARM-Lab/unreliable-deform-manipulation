@@ -99,9 +99,12 @@
 
     <gazebo>
         <plugin name="multi_link_bot_model_plugin" filename="libmulti_link_bot_model_plugin.so">
-            <kP>1000.0</kP>
-            <kI>0.0</kI>
-            <kD>0.0</kD>
+            <kP_pos>2.5</kP_pos>
+            <kI_pos>0.02</kI_pos>
+            <kD_pos>0.0</kD_pos>
+            <kP_vel>5000.0</kP_vel>
+            <kI_vel>0.0</kI_vel>
+            <kD_vel>0.0</kD_vel>
             <gripper1_link>head</gripper1_link>
         </plugin>
         <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">

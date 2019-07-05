@@ -22,7 +22,7 @@ class MultiRasterCNNModelRunner(BaseModelRunner):
         super(MultiRasterCNNModelRunner, self).__init__(args_dict)
         self.sdf_shape = args_dict['sdf_shape']
 
-        sdf = Input(shape=(self.sdf_shape[0], self.sdf_shape[1], 1), dtype='float32', name='sdf')
+        sdf = Input(shape=(self.sdf_shape[0], self.sdf_shape[1], 1), dtype='float32', name='sdf_input')
         rope_image = Input(shape=(self.sdf_shape[0], self.sdf_shape[1], 3), dtype='float32', name='rope_image')
         combined_image = Concatenate()([sdf, rope_image])
 
@@ -30,11 +30,14 @@ class MultiRasterCNNModelRunner(BaseModelRunner):
         self.fc_layer_sizes = args_dict['fc_layer_sizes']
 
         cnn_output = simple_cnn_layer(self.conv_filters, self.fc_layer_sizes)(combined_image)
-        predictions = Dense(1, activation='sigmoid', name='combined_output')(cnn_output)
+        predictions = Dense(1, activation='sigmoid', name=LabelType.Combined.name)(cnn_output)
 
         self.model_inputs = [sdf, rope_image]
         self.keras_model = Model(inputs=self.model_inputs, outputs=predictions)
-        self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        losses = {
+            LabelType.Combined.name: 'binary_crossentropy'
+        }
+        self.keras_model.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
 
     def violated(self, observations, sdf_data):
         m = observations.shape[0]
@@ -46,7 +49,7 @@ class MultiRasterCNNModelRunner(BaseModelRunner):
         sdf_extent = np.tile(sdf_data.extent, [m, 1])
         inputs_dict = {
             'rope_configuration': rope_configuration,
-            'sdf': sdf,
+            'sdf_input': sdf,
             'sdf_gradient': sdf_gradient,
             'sdf_origin': sdf_origin,
             'sdf_resolution': sdf_resolution,
@@ -81,7 +84,7 @@ def train(args):
         args_dict.update(base_model_runner.make_args_dict(args))
         model = MultiRasterCNNModelRunner(args_dict)
 
-    model.train(train_dataset, validation_dataset, args.label_types, log_path, args)
+    model.train(train_dataset, validation_dataset, args.label_types_map, log_path, args)
 
 
 def main():

@@ -107,16 +107,18 @@ class DatasetGenerator(keras.utils.Sequence):
     def __init__(self, dataset, model_output_names, label_types_map, batch_size, shuffle=True):
         self.dataset = dataset
         self.batch_size = batch_size
+        n_batches = int(len(dataset) // batch_size)
+        n_examples_rounded = n_batches * batch_size
 
         if len(dataset) % batch_size != 0:
-            err_msg = "Batch size {} doesn't evenly divide the dataset size {}".format(self.batch_size, len(self.dataset))
+            msg_fmt = "Batch size {} doesn't evenly divide the dataset size {}, rounding down to {}"
+            err_msg = msg_fmt.format(self.batch_size, len(self.dataset), n_examples_rounded)
             print(Fore.YELLOW + err_msg + Fore.RESET)
 
         examples_ids = np.arange(0, len(self.dataset))
         if shuffle:
             np.random.shuffle(examples_ids)
-        n_batches = int(len(dataset) // batch_size)
-        examples_ids = examples_ids[:n_batches * batch_size]
+        examples_ids = examples_ids[:n_examples_rounded]
         self.batches = np.reshape(examples_ids, [-1, batch_size])
         self.label_types_map = label_types_map
         self.model_output_names = model_output_names

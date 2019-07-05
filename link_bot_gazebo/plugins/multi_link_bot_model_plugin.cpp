@@ -56,25 +56,46 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
 
   model_ = parent;
 
-  if (!sdf->HasElement("kP")) {
-    printf("using default kP=%f\n", kP_);
+  if (!sdf->HasElement("kP_pos")) {
+    printf("using default kP_pos=%f\n", kP_pos_);
   }
   else {
-    kP_ = sdf->GetElement("kP")->Get<double>();
+    kP_pos_ = sdf->GetElement("kP_pos")->Get<double>();
   }
 
-  if (!sdf->HasElement("kI")) {
-    printf("using default kI=%f\n", kI_);
+  if (!sdf->HasElement("kI_pos")) {
+    printf("using default kI_pos=%f\n", kI_pos_);
   }
   else {
-    kI_ = sdf->GetElement("kI")->Get<double>();
+    kI_pos_ = sdf->GetElement("kI_pos")->Get<double>();
   }
 
-  if (!sdf->HasElement("kD")) {
-    printf("using default kD=%f\n", kD_);
+  if (!sdf->HasElement("kD_pos")) {
+    printf("using default kD_pos=%f\n", kD_pos_);
   }
   else {
-    kD_ = sdf->GetElement("kD")->Get<double>();
+    kD_pos_ = sdf->GetElement("kD_pos")->Get<double>();
+  }
+
+  if (!sdf->HasElement("kP_vel")) {
+    printf("using default kP_vel=%f\n", kP_vel_);
+  }
+  else {
+    kP_vel_ = sdf->GetElement("kP_vel")->Get<double>();
+  }
+
+  if (!sdf->HasElement("kI_vel")) {
+    printf("using default kI_vel=%f\n", kI_vel_);
+  }
+  else {
+    kI_vel_ = sdf->GetElement("kI_vel")->Get<double>();
+  }
+
+  if (!sdf->HasElement("kD_vel")) {
+    printf("using default kD_vel=%f\n", kD_vel_);
+  }
+  else {
+    kD_vel_ = sdf->GetElement("kD_vel")->Get<double>();
   }
 
   if (!sdf->HasElement("gripper1_link")) {
@@ -84,21 +105,25 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto const &gripper1_link_name = sdf->GetElement("gripper1_link")->Get<std::string>();
   gripper1_link_ = model_->GetLink(gripper1_link_name);
 
-
   if (sdf->HasElement("gripper2_link")) {
     auto const &gripper2_link_name = sdf->GetElement("gripper1_link")->Get<std::string>();
     gripper2_link_ = model_->GetLink(gripper2_link_name);
   }
 
-  ROS_INFO("kP=%f, kI=%f, kD=%f", kP_, kI_, kD_);
-
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(std::bind(&MultiLinkBotModelPlugin::OnUpdate, this));
-  constexpr auto max_force{125};
+  constexpr auto max_force{200};
+  constexpr auto max_vel{0.30};
+  constexpr auto max_vel_integral{1};
   constexpr auto max_integral{100};
-  gripper1_x_pos_pid_ = common::PID(kP_, kI_, kD_, max_integral, -max_integral, max_force, -max_force);
-  gripper1_y_pos_pid_ = common::PID(kP_, kI_, kD_, max_integral, -max_integral, max_force, -max_force);
-  gripper2_x_pos_pid_ = common::PID(kP_, kI_, kD_, max_integral, -max_integral, max_force, -max_force);
-  gripper2_y_pos_pid_ = common::PID(kP_, kI_, kD_, max_integral, -max_integral, max_force, -max_force);
+  gripper1_x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
+  gripper1_y_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
+  gripper2_x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
+  gripper2_y_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
+
+  gripper1_x_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+  gripper1_y_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+  gripper2_x_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+  gripper2_y_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
 
   std::cout << "MultiLinkBot Model Plugin finished initializing!\n";
 }
@@ -108,27 +133,41 @@ void MultiLinkBotModelPlugin::OnUpdate()
   constexpr auto dt{0.001};
 
   ignition::math::Vector3d force{};
-  auto const gripper1_position = gripper1_link_->WorldPose().Pos();
-  auto const gripper1_error = gripper1_position - gripper1_target_position_;
-  force.X(gripper1_x_pos_pid_.Update(gripper1_error.X(), dt));
-  force.Y(gripper1_y_pos_pid_.Update(gripper1_error.Y(), dt));
+  auto const gripper1_pos = gripper1_link_->WorldPose().Pos();
+  auto const gripper1_pos_error = gripper1_pos - gripper1_target_position_;
+
+  gripper1_target_velocity_.X(gripper1_x_pos_pid_.Update(gripper1_pos_error.X(), dt));
+  gripper1_target_velocity_.Y(gripper1_y_pos_pid_.Update(gripper1_pos_error.Y(), dt));
+
+  auto const gripper1_vel = gripper1_link_->WorldLinearVel();
+  auto const gripper1_vel_error = gripper1_vel - gripper1_target_velocity_;
+  force.X(gripper1_x_vel_pid_.Update(gripper1_vel_error.X(), dt));
+  force.Y(gripper1_y_vel_pid_.Update(gripper1_vel_error.Y(), dt));
   gripper1_link_->AddForce(force);
 
   if (gripper2_link_) {
-    auto const gripper2_position = gripper2_link_->WorldPose().Pos();
-    auto const gripper2_error = gripper2_position - gripper2_target_position_;
-    force.X(gripper2_x_pos_pid_.Update(gripper2_error.X(), dt));
-    force.Y(gripper2_y_pos_pid_.Update(gripper2_error.Y(), dt));
+    auto const gripper2_pos = gripper2_link_->WorldPose().Pos();
+    auto const gripper2_pos_error = gripper2_pos - gripper2_target_position_;
+
+    gripper2_target_velocity_.X(gripper2_x_pos_pid_.Update(gripper2_pos_error.X(), dt));
+    gripper2_target_velocity_.Y(gripper2_y_pos_pid_.Update(gripper2_pos_error.Y(), dt));
+
+    auto const gripper2_vel = gripper2_link_->WorldLinearVel();
+    auto const gripper2_vel_error = gripper2_vel - gripper2_target_velocity_;
+    force.X(gripper2_x_vel_pid_.Update(gripper2_vel_error.X(), dt));
+    force.Y(gripper2_y_vel_pid_.Update(gripper2_vel_error.Y(), dt));
     gripper2_link_->AddForce(force);
+
   }
 }
 
 void MultiLinkBotModelPlugin::OnJoy(sensor_msgs::JoyConstPtr const msg)
 {
-  gripper1_target_position_.X(-msg->axes[0]);
-  gripper1_target_position_.Y(msg->axes[1]);
-  gripper2_target_position_.X(msg->axes[3]);
-  gripper2_target_position_.Y(-msg->axes[4]);
+  constexpr auto scale{2000.0 / 32768.0};
+  gripper1_target_position_.X(gripper1_target_position_.X() - msg->axes[0] * scale);
+  gripper1_target_position_.Y(gripper1_target_position_.Y() + msg->axes[1] * scale);
+  gripper2_target_position_.X(gripper2_target_position_.X() + msg->axes[3] * scale);
+  gripper2_target_position_.Y(gripper2_target_position_.Y() -msg->axes[4] * scale);
 }
 
 void MultiLinkBotModelPlugin::OnAction(link_bot_gazebo::MultiLinkBotPositionActionConstPtr const msg)
@@ -151,7 +190,7 @@ void MultiLinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurat
   ignition::math::Pose3d pose{};
   pose.Pos().X(msg->tail_pose.x);
   pose.Pos().Y(msg->tail_pose.y);
-  pose.Pos().Z(0.05);
+  pose.Pos().Z(0.01);
   pose.Rot() = ignition::math::Quaterniond::EulerToQuaternion(0, 0, msg->tail_pose.theta);
   model_->SetWorldPose(pose);
   model_->SetWorldTwist({0, 0, 0}, {0, 0, 0});
@@ -166,6 +205,7 @@ void MultiLinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurat
 bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req,
                                                    link_bot_gazebo::LinkBotStateResponse &res)
 {
+  // FIXME: don't hard code these
   auto const &tail = model_->GetLink("link_0");
   auto const &mid = model_->GetLink("link_4");
   auto const &head = model_->GetLink("head");
@@ -191,6 +231,10 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
   res.gripper1_velocity.x = gripper1_velocity.X();
   res.gripper1_velocity.y = gripper1_velocity.Y();
   res.gripper1_velocity.z = 0;
+
+  res.gripper1_target_velocity.x = gripper1_target_velocity_.X();
+  res.gripper1_target_velocity.y = gripper1_target_velocity_.Y();
+  res.gripper1_target_velocity.z = gripper1_target_velocity_.Z();
 
   if (gripper2_link_) {
     auto const gripper2_velocity = gripper2_link_->WorldLinearVel();

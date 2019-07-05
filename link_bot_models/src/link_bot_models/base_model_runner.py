@@ -199,7 +199,8 @@ class BaseModelRunner:
         losses = {}
         for output, label in label_types_map:
             for output_tensor in self.keras_model.outputs:
-                output_name = output_tensor.op.name.split("/")[0]
+                # TODO: better way to get the name of outputs ops?
+                output_name = output_tensor.op.name.split("/")[0].split("_")[0]
                 if output_name == output:
                     outputs.append(output_tensor)
                     losses[output_name] = 'binary_crossentropy'
