@@ -55,10 +55,9 @@ def main():
         negative_indeces = np.argwhere(1 - combined_label).squeeze()
         positive_indeces = np.argwhere(combined_label).squeeze()
 
-        if positive_count > negative_count:
-            positive_indeces = np.random.choice(positive_indeces, size=positive_count)
-        else:
-            negative_indeces = np.random.choice(negative_indeces, size=positive_count)
+        count = min(negative_count, positive_count)
+        positive_indeces = np.random.choice(positive_indeces, size=count)
+        negative_indeces = np.random.choice(negative_indeces, size=count)
 
         new_indeces = np.concatenate((negative_indeces, positive_indeces))
 
@@ -77,6 +76,8 @@ def main():
 
     dataset = MultiEnvironmentDataset(new_filename_pairs, constraint_label_types=dataset.constraint_label_types,
                                       n_obstacles=dataset.n_obstacles, obstacle_size=dataset.obstacle_size, seed=dataset.seed)
+    rounded_num_examples = (dataset.num_examples // 100) * 100
+    dataset.slice(rounded_num_examples)
     dataset.save(new_dataset_filename)
 
 

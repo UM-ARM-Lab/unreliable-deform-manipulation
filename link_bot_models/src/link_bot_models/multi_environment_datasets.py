@@ -61,6 +61,7 @@ class MultiEnvironmentDataset:
                 }
                 self.example_information.append(example_info)
                 example_id += 1
+        self.example_information = np.array(self.example_information)
         self.num_examples = example_id
 
     def generator(self, model_output_names, batch_size):
@@ -73,7 +74,6 @@ class MultiEnvironmentDataset:
 
     @staticmethod
     def load_dataset(dataset_filename):
-        name = os.path.split(dataset_filename)[-2]
         dataset_dict = json.load(open(dataset_filename, 'r'))
         constraint_label_types = [LabelType[label_type] for label_type in dataset_dict['constraint_label_types']]
         filename_pairs = dataset_dict['filename_pairs']
@@ -100,6 +100,11 @@ class MultiEnvironmentDataset:
 
     def __len__(self):
         return self.num_examples
+
+    def slice(self, rounded_num_examples):
+        indeces = np.random.choice(self.num_examples, size=rounded_num_examples)
+        self.example_information = self.example_information[indeces]
+        self.num_examples = rounded_num_examples
 
 
 class DatasetGenerator(keras.utils.Sequence):

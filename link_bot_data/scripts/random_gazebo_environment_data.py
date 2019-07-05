@@ -137,17 +137,17 @@ def init_simulation(args, run_idx, env_idx, cli_args, init_config):
         stdout_file = open(".roslaunch.stdout-{}.{}".format(run_idx, env_idx), 'w')
         stderr_file = open(".roslaunch.stdout-{}.{}".format(run_idx, env_idx), 'w')
 
-    process = subprocess.Popen(cli_args, stdout=stdout_file, stderr=stderr_file)  # something long running
+    process = subprocess.Popen(cli_args, stdout=stdout_file, stderr=stderr_file)
 
     # fire up the services
-    if args.verbose:
+    if args.verbose or (env_idx == 0 and run_idx == 0):
         print(Fore.CYAN + "Waiting for services..." + Fore.RESET)
 
     rospy.wait_for_service("/world_control")
     rospy.wait_for_service("/link_bot_state")
     rospy.wait_for_service("/sdf")
 
-    if args.verbose:
+    if args.verbose or (env_idx == 0 and run_idx == 0):
         print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
 
     action_pub = rospy.Publisher("/multi_link_bot_position_action", MultiLinkBotPositionAction, queue_size=10)

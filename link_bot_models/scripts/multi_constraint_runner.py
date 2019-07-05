@@ -103,7 +103,7 @@ def train(args):
                 (16, (3, 3)),
             ],
             'beta': 1e-2,
-            'fc_layer_sizes': [16, 16],
+            'fc_layer_sizes': [32, 32],
             'sigmoid_scale': 100,
             'N': train_dataset.N,
         }
