@@ -247,7 +247,7 @@ class BaseModelRunner:
     def evaluate_main(cls, args):
         dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
         model = cls.load(args.checkpoint)
-        return model.evaluate(dataset, args.label_types)
+        return model.evaluate(dataset, args.label_types_map)
 
     @classmethod
     def show(cls, args):

@@ -1,12 +1,12 @@
 from keras.layers import Conv2D, MaxPool2D, Flatten, Dense
 
 
-def simple_cnn_layer(conv_filters, fc_layer_sizes):
+def simple_cnn_layer(conv_filters, fc_layer_sizes, use_bias=True):
     conv_layers = []
     for conv_filter in conv_filters:
         n_filters = conv_filter[0]
         filter_size = conv_filter[1]
-        conv_layers.append((Conv2D(n_filters, filter_size, activation='relu'),
+        conv_layers.append((Conv2D(n_filters, filter_size, activation='relu', use_bias=use_bias),
                             MaxPool2D(2)))
 
     flatten = Flatten()

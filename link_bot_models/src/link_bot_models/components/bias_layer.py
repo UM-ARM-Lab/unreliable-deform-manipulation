@@ -3,14 +3,15 @@ from keras.layers import Layer
 
 class BiasLayer(Layer):
 
-    def __init__(self, **kwargs):
+    def __init__(self, initializer='uniform', **kwargs):
         super(BiasLayer, self).__init__(**kwargs)
+        self.initializer = initializer
         self.bias = None
 
     def build(self, input_shape):
         self.bias = self.add_weight(name='bias',
                                     shape=(input_shape[1], 1),
-                                    initializer='uniform',
+                                    initializer=self.initializer,
                                     trainable=True)
         super(BiasLayer, self).build(input_shape)  # Be sure to call this at the end
 

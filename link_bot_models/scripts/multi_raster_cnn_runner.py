@@ -29,7 +29,7 @@ class MultiRasterCNNModelRunner(BaseModelRunner):
         self.conv_filters = args_dict['conv_filters']
         self.fc_layer_sizes = args_dict['fc_layer_sizes']
 
-        cnn_output = simple_cnn_layer(self.conv_filters, self.fc_layer_sizes)(combined_image)
+        cnn_output = simple_cnn_layer(self.conv_filters, self.fc_layer_sizes, use_bias=False)(combined_image)
         predictions = Dense(1, activation='sigmoid', name=LabelType.Combined.name)(cnn_output)
 
         self.model_inputs = [sdf, rope_image]
@@ -73,11 +73,10 @@ def train(args):
         args_dict = {
             'sdf_shape': sdf_shape,
             'conv_filters': [
-                (32, (5, 5)),
-                (16, (3, 3)),
+                (4, (7, 7)),
             ],
             'fc_layer_sizes': [
-                32,
+                2,
             ],
             'N': train_dataset.N,
         }

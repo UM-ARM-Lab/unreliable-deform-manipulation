@@ -64,13 +64,13 @@ class MultiEnvironmentDataset:
         self.example_information = np.array(self.example_information)
         self.num_examples = example_id
 
-    def generator(self, model_output_names, batch_size):
+    def generator(self, model_output_names, batch_size, shuffle=True):
         label_types_map = [[label_type.name, label_type.name] for label_type in self.constraint_label_types]
-        return self.generator_for_labels(model_output_names, label_types_map, batch_size)
+        return self.generator_for_labels(model_output_names, label_types_map, batch_size, shuffle=True)
 
-    def generator_for_labels(self, model_output_names, label_types_map, batch_size):
+    def generator_for_labels(self, model_output_names, label_types_map, batch_size, shuffle=True):
         """ allows you to test with just some of the labels """
-        return DatasetGenerator(self, model_output_names, label_types_map, batch_size)
+        return DatasetGenerator(self, model_output_names, label_types_map, batch_size, shuffle=shuffle)
 
     @staticmethod
     def load_dataset(dataset_filename):

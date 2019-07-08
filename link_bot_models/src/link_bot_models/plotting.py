@@ -10,9 +10,10 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.lines import Line2D
 
 from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon import args_enum
 
 
-class PlotType(link_bot_pycommon.args_enum.ArgsEnum):
+class PlotType(args_enum.ArgsEnum):
     none = auto()
     random_individual = auto()
     random_combined = auto()
@@ -64,8 +65,10 @@ def plot_examples(sdf_image, extent, results, subsample=10, title=''):
     head_xs = [result.rope_configuration[4] for result in results[::subsample]]
     head_ys = [result.rope_configuration[5] for result in results[::subsample]]
 
-    plt.scatter(predicted_xs, predicted_ys, s=5, c='r', label='predicted', zorder=3)
-    plt.scatter(head_xs, head_ys, s=5, c='b', label='true', zorder=2)
+    pred_color = ['r' if result.predicted_violated else 'g' for result in results[::subsample]]
+    true_color = ['r' if result.true_violated else '#00ff00' for result in results[::subsample]]
+    plt.scatter(predicted_xs, predicted_ys, s=50, c=pred_color, label='predicted', zorder=2)
+    plt.scatter(head_xs, head_ys, s=5, c=true_color, label='true', zorder=3, marker='x', alpha=0.5)
 
     for result in results[::subsample]:
         predicted_point = result.predicted_point
