@@ -73,7 +73,7 @@ def plot(args, sdf_data, model, threshold, results, true_positives, true_negativ
 
 
 def main():
-    np.set_printoptions(precision=6, suppress=True)
+    np.set_printoptions(precision=6, suppress=True, linewidth=250)
     tf.logging.set_verbosity(tf.logging.ERROR)
 
     parser = argparse.ArgumentParser()
@@ -92,6 +92,8 @@ def main():
     parser.add_argument("--random_init", action='store_true')
 
     args = parser.parse_args()
+
+    np.random.seed(args.seed)
 
     # get the rope configurations we're going to evaluate
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
@@ -120,8 +122,6 @@ def main():
         false_negatives = [result for result in results if result.true_violated and not result.predicted_violated]
         false_negatives = np.array(false_negatives)
         n_false_negatives = len(false_negatives)
-
-        print(n_true_positives, n_true_negatives, n_false_positives, n_false_negatives)
 
         accuracy = (n_true_positives + n_true_negatives) / m * 100
         try:

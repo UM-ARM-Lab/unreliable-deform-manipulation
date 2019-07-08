@@ -247,6 +247,13 @@ class BaseModelRunner:
     def evaluate_main(cls, args):
         dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
         model = cls.load(args.checkpoint)
+
+        names = [weight.name for layer in model.keras_model.layers for weight in layer.weights]
+        weights = model.keras_model.get_weights()
+
+        for name, weight in zip(names, weights):
+            print(name, weight)
+
         return model.evaluate(dataset, args.label_types_map)
 
     @classmethod

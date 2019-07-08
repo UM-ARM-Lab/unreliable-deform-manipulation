@@ -66,9 +66,9 @@ def plot_examples(sdf_image, extent, results, subsample=10, title=''):
     head_ys = [result.rope_configuration[5] for result in results[::subsample]]
 
     pred_color = ['r' if result.predicted_violated else 'g' for result in results[::subsample]]
-    true_color = ['r' if result.true_violated else '#00ff00' for result in results[::subsample]]
+    true_color = ['#990000' if result.true_violated else '#00ff00' for result in results[::subsample]]
     plt.scatter(predicted_xs, predicted_ys, s=50, c=pred_color, label='predicted', zorder=2)
-    plt.scatter(head_xs, head_ys, s=5, c=true_color, label='true', zorder=3, marker='x', alpha=0.5)
+    plt.scatter(head_xs, head_ys, s=5, c=true_color, label='true', zorder=3)
 
     for result in results[::subsample]:
         predicted_point = result.predicted_point

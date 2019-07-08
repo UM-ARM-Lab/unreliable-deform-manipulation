@@ -54,6 +54,7 @@ class SDFFunctionModelRunner(BaseModelRunner):
         }
 
         predicted_violated = (self.keras_model.predict(inputs_dict) > 0.5).astype(np.bool)
+        self.sdf_input_model.set_weights(self.keras_model.get_weights())
         predicted_point = self.sdf_input_model.predict(inputs_dict)
 
         return predicted_violated, predicted_point
