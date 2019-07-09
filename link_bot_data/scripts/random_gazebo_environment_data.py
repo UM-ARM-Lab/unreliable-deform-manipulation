@@ -174,24 +174,6 @@ def publish_markers(args, target_x, target_y, rope_x, rope_y):
     markers.publish(rope_marker)
 
 
-def extract_from_state(link_bot_state):
-    rope_configurations = np.array([link_bot_state.tail_x,
-                                    link_bot_state.tail_y,
-                                    link_bot_state.mid_x,
-                                    link_bot_state.mid_y,
-                                    link_bot_state.head_x,
-                                    link_bot_state.head_y])
-    gripper_forces = np.array([link_bot_state.gripper1_force.x,
-                               link_bot_state.gripper1_force.y,
-                               link_bot_state.gripper2_force.x,
-                               link_bot_state.gripper2_force.y])
-    gripper_velocities = np.array([link_bot_state.gripper1_velocity.x,
-                                   link_bot_state.gripper1_velocity.y,
-                                   link_bot_state.gripper2_velocity.x,
-                                   link_bot_state.gripper2_velocity.y])
-    return rope_configurations, gripper_forces, gripper_velocities
-
-
 def generate_env(args, env_idx):
     # place rope at a random location
     rope_length = 1.05
@@ -229,24 +211,34 @@ def generate_env(args, env_idx):
 
     # Create random rope configurations by picking a random point and applying forces to move the rope to that point
     rope_configurations = np.ndarray((args.steps, 6), dtype=np.float32)
-    gripper_forces = np.ndarray((args.steps, 4))
-    gripper_velocities = np.ndarray((args.steps, 4))
+    gripper1_forces = np.ndarray((args.steps, 2))
+    gripper1_target_velocities = np.ndarray((args.steps, 2))
+    gripper1_velocities = np.ndarray((args.steps, 2))
+    gripper2_forces = np.ndarray((args.steps, 2))
+    gripper2_target_velocities = np.ndarray((args.steps, 2))
+    gripper2_velocities = np.ndarray((args.steps, 2))
     combined_constraint_labels = np.ndarray((args.steps, 1), dtype=np.float32)
 
     target_x = 0
     target_y = 0
     for t in range(args.steps):
         # save the state and action data
-        link_bot_state = get_state(state_req)
-        rope_configurations[t], gripper_forces[t], gripper_velocities[t] = extract_from_state(link_bot_state)
+        s = get_state(state_req)
+        rope_configurations[t] = np.array([s.tail_x, s.tail_y, s.mid_x, s.mid_y, s.head_x, s.head_y])
+        gripper1_forces[t] = np.array([s.gripper1_force.x, s.gripper1_force.y])
+        gripper1_target_velocities[t] = np.array([s.gripper1_target_velocity.x, s.gripper1_target_velocity.y])
+        gripper1_velocities[t] = np.array([s.gripper1_velocity.x, s.gripper1_velocity.y])
+        gripper2_forces[t] = np.array([s.gripper1_force.x, s.gripper1_force.y])
+        gripper2_target_velocities[t] = np.array([s.gripper1_target_velocity.x, s.gripper1_target_velocity.y])
+        gripper2_velocities[t] = np.array([s.gripper1_velocity.x, s.gripper1_velocity.y])
 
         # TODO: use ground truth labels not just based on force/velocity?
-        target_velocity = [link_bot_state.gripper1_target_velocity.x,
-                           link_bot_state.gripper1_target_velocity.y,
-                           link_bot_state.gripper1_target_velocity.z]
-        current_velocity = [link_bot_state.gripper1_velocity.x,
-                            link_bot_state.gripper1_velocity.y,
-                            link_bot_state.gripper1_velocity.z]
+        target_velocity = [s.gripper1_target_velocity.x,
+                           s.gripper1_target_velocity.y,
+                           s.gripper1_target_velocity.z]
+        current_velocity = [s.gripper1_velocity.x,
+                            s.gripper1_velocity.y,
+                            s.gripper1_velocity.z]
         ntv = np.linalg.norm(target_velocity)
         nv = np.linalg.norm(current_velocity)
         if abs(ntv - nv) > 0.15:
@@ -292,9 +284,18 @@ def generate_env(args, env_idx):
         sleep(1.0)
 
     labels_dict = {
-        LabelType.Combined: combined_constraint_labels,
+        LabelType.Combined.name: combined_constraint_labels,
     }
-    return rope_configurations, labels_dict, sdf_data, percentage_positive
+    data_dict = {
+        'rope_configurations': rope_configurations,
+        'gripper1_forces': gripper1_forces,
+        'gripper1_velocities': gripper1_velocities,
+        'gripper1_target_velocities': gripper1_target_velocities,
+        'gripper2_forces': gripper2_forces,
+        'gripper2_velocities': gripper2_velocities,
+        'gripper2_target_velocities': gripper2_target_velocities,
+    }
+    return data_dict, labels_dict, sdf_data, percentage_positive
 
 
 def generate(args):

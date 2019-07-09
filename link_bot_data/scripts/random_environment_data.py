@@ -74,11 +74,14 @@ def generate_env(args, env_idx):
         plt.show()
 
     labels_dict = {
-        LabelType.SDF: sdf_constraint_labels,
-        LabelType.Overstretching: ovs_constraint_labels,
-        LabelType.Combined: combined_constraint_labels,
+        LabelType.SDF.name: sdf_constraint_labels,
+        LabelType.Overstretching.name: ovs_constraint_labels,
+        LabelType.Combined.name: combined_constraint_labels,
     }
-    return rope_configurations, labels_dict, sdf_data, percentage_positive
+    data_dict = {
+        'rope_configurations': rope_configurations,
+    }
+    return data_dict, labels_dict, sdf_data, percentage_positive
 
 
 def generate(args):

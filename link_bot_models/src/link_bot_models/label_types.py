@@ -7,6 +7,7 @@ class LabelType(link_bot_pycommon.args_enum.ArgsEnum):
     SDF = 0
     Overstretching = 1
     Combined = 2
+    CNN_SDF = 3
 
     @staticmethod
     def mask(label_types):

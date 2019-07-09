@@ -19,7 +19,7 @@ def generate_envs(args, full_output_directory, generate_env, save_dict_extras=No
     percentages_positive = []
     constraint_label_types = None
     for i in range(args.envs):
-        rope_configurations, labels_dict, sdf_data, percentage_violation = generate_env(args, i)
+        data_dict, labels_dict, sdf_data, percentage_violation = generate_env(args, i)
         constraint_label_types = list(labels_dict.keys())
         percentages_positive.append(percentage_violation)
         if args.outdir:
@@ -29,15 +29,11 @@ def generate_envs(args, full_output_directory, generate_env, save_dict_extras=No
             # FIXME: order matters
             filename_pairs.append([sdf_filename, rope_data_filename])
 
-            save_dict = {
-                "rope_configurations": rope_configurations,
-            }
-            save_dict.update(save_dict_extras)
-            for label_type, labels in labels_dict.items():
-                save_dict[label_type.name] = labels
+            data_dict.update(labels_dict)
+            data_dict.update(save_dict_extras)
 
             # Save the data
-            np.savez(rope_data_filename, **save_dict)
+            np.savez(rope_data_filename, **data_dict)
             sdf_data.save(sdf_filename)
 
         print(".", end='')

@@ -85,6 +85,12 @@ class MultiEnvironmentDataset:
         return dataset
 
     def save(self, dataset_filename):
+        constraint_label_strs = []
+        for label_type in self.constraint_label_types:
+            if isinstance(label_type, str):
+                constraint_label_strs.append(label_type)
+            else:
+                constraint_label_strs.append(label_type.name)
         dataset_dict = {
             'n_environments': len(self.abs_filename_pairs),
             'seed': self.seed,
@@ -94,7 +100,7 @@ class MultiEnvironmentDataset:
             'n_obstacles': self.n_obstacles,
             'obstacle_size': self.obstacle_size,
             'filename_pairs': self.abs_filename_pairs,
-            'constraint_label_types': [label_type.name for label_type in self.constraint_label_types],
+            'constraint_label_types': [label_type for label_type in constraint_label_strs],
         }
         json.dump(dataset_dict, open(dataset_filename, 'w'), sort_keys=True, indent=4)
 

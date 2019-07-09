@@ -219,13 +219,9 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
 
   res.overstretched = 0;
 
-  res.gripper1_force.x = gripper1_x_pos_pid_.GetCmd();
-  res.gripper1_force.y = gripper1_y_pos_pid_.GetCmd();
+  res.gripper1_force.x = gripper1_x_vel_pid_.GetCmd();
+  res.gripper1_force.y = gripper1_y_vel_pid_.GetCmd();
   res.gripper1_force.z = 0;
-
-  res.gripper2_force.x = gripper2_x_pos_pid_.GetCmd();
-  res.gripper2_force.y = gripper2_y_pos_pid_.GetCmd();
-  res.gripper2_force.z = 0;
 
   auto const gripper1_velocity = gripper1_link_->WorldLinearVel();
   res.gripper1_velocity.x = gripper1_velocity.X();
@@ -241,6 +237,14 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
     res.gripper2_velocity.x = gripper2_velocity.X();
     res.gripper2_velocity.y = gripper2_velocity.Y();
     res.gripper2_velocity.z = 0;
+
+    res.gripper2_force.x = gripper2_x_vel_pid_.GetCmd();
+    res.gripper2_force.y = gripper2_y_vel_pid_.GetCmd();
+    res.gripper2_force.z = 0;
+
+    res.gripper2_target_velocity.x = gripper2_target_velocity_.X();
+    res.gripper2_target_velocity.y = gripper2_target_velocity_.Y();
+    res.gripper2_target_velocity.z = gripper2_target_velocity_.Z();
   }
 
   return true;
