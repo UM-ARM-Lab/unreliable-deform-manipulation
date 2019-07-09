@@ -15,7 +15,7 @@ def sdf_function_layer(sdf_shape, fc_layer_sizes, beta, sigmoid_scale, output_na
     for fc_layer_size in fc_layer_sizes:
         dense_layers.append(Dense(fc_layer_size, activation='tanh'))
     sdf_input_layer = Dense(2, activation=None, activity_regularizer=regularizer)
-    concat = Concatenate()
+    concat = Concatenate(name=p + 'concat')
     sdf_lookup = SDFLookup(sdf_shape)
     negate = Lambda(lambda x: -x, name=p + 'negate')
     bias_layer = BiasLayer()

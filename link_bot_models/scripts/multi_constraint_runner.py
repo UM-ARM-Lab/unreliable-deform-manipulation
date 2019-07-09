@@ -23,10 +23,6 @@ def train(args):
     else:
         args_dict = {
             'sdf_shape': sdf_shape,
-            'conv_filters': [
-                (32, (5, 5)),
-                (16, (3, 3)),
-            ],
             'beta': 1e-2,
             'fc_layer_sizes': [32, 32],
             'sigmoid_scale': 100,

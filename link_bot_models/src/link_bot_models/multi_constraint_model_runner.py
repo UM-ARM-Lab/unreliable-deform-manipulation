@@ -40,7 +40,7 @@ class MultiConstraintModelRunner(BaseModelRunner):
         self.sdf_function_prediction = sdf_function(sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input)
 
         # Combine
-        concat_predictions = Concatenate()([self.sdf_function_prediction, overstretching_prediction])
+        concat_predictions = Concatenate(name='prediction_concat')([self.sdf_function_prediction, overstretching_prediction])
         prediction = Lambda(lambda x: K.sum(x, axis=1, keepdims=True) - K.prod(x, axis=1, keepdims=True),
                             name=LabelType.Combined.name)(concat_predictions)
 

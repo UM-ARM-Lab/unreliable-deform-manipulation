@@ -23,6 +23,7 @@ from link_bot_models.components.sdf_lookup import SDFLookup
 from link_bot_models.label_types import LabelType
 from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
+from link_bot_models import my_viz
 
 custom_objects = {
     'BiasLayer': BiasLayer,
@@ -148,10 +149,10 @@ class BaseModelRunner:
             experiments_util.make_log_dir(full_log_path)
 
             metadata_path = os.path.join(full_log_path, "metadata.json")
-            metadata_file = open(metadata_path, 'w')
-            metadata = self.base_metadata(label_types_map, args)
-            metadata['log path'] = full_log_path
-            metadata_file.write(json.dumps(metadata, indent=2))
+            with open(metadata_path, 'w') as metadata_file:
+                metadata = self.base_metadata(label_types_map, args)
+                metadata['log path'] = full_log_path
+                metadata_file.write(json.dumps(metadata, indent=2))
 
             model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
 
@@ -204,9 +205,9 @@ class BaseModelRunner:
                 if output_name == output:
                     outputs.append(output_tensor)
                     losses[output_name] = 'binary_crossentropy'
-        model_with_spefic_outputs = Model(inputs=self.keras_model.inputs, outputs=outputs)
-        model_with_spefic_outputs.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
-        model_with_spefic_outputs.fit_generator(train_generator,
+        model_with_specific_outputs = Model(inputs=self.keras_model.inputs, outputs=outputs)
+        model_with_specific_outputs.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
+        model_with_specific_outputs.fit_generator(train_generator,
                                                 callbacks=callbacks,
                                                 validation_data=validation_generator,
                                                 initial_epoch=self.initial_epoch,
@@ -248,12 +249,6 @@ class BaseModelRunner:
         dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
         model = cls.load(args.checkpoint)
 
-        names = [weight.name for layer in model.keras_model.layers for weight in layer.weights]
-        weights = model.keras_model.get_weights()
-
-        for name, weight in zip(names, weights):
-            print(name, weight)
-
         return model.evaluate(dataset, args.label_types_map)
 
     @classmethod
@@ -263,4 +258,11 @@ class BaseModelRunner:
         path = pathlib.Path(args.checkpoint)
         names = [pathlib.Path(part).stem for part in path.parts if part != '/' and part != 'log_data']
         image_filename = 'img~' + "~".join(names) + '.png'
-        keras.utils.plot_model(model.keras_model, to_file=image_filename, show_shapes=True)
+
+        names = [weight.name for layer in model.keras_model.layers for weight in layer.weights]
+        weights = model.keras_model.get_weights()
+
+        for name, weight in zip(names, weights):
+            print(name, weight)
+
+        my_viz.plot_model(model.keras_model, to_file=image_filename, show_shapes=True)
