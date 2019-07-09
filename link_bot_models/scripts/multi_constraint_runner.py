@@ -139,7 +139,8 @@ def main():
     parser, train_subparser, eval_subparser, show_subparser = base_model_runner.base_parser()
 
     train_subparser.set_defaults(func=train)
-    eval_subparser.set_defaults(func=evaluate)
+    # eval_subparser.set_defaults(func=evaluate)
+    eval_subparser.set_defaults(func=MultiConstraintModelRunner.evaluate_main)
     show_subparser.set_defaults(func=MultiConstraintModelRunner.show)
 
     parser.run()
