@@ -156,7 +156,6 @@ class BaseModelRunner:
             model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
 
             checkpoint_callback = ModelCheckpoint(model_filename, monitor='loss')
-            checkpoint_callback.on_epoch_begin = checkpoint_callback.on_epoch_end
             callbacks.append(checkpoint_callback)
 
             tensorboard = TensorBoard(log_dir=full_log_path)
