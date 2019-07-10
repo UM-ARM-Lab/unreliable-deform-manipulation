@@ -18,5 +18,5 @@
 
     <!-- Spawn a robot into Gazebo -->
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
-          args="-file $(find link_bot_description)/urdf/($arg n)_link_bot.urdf -urdf -x $(arg spawn_x) -y $(arg spawn_y) -z 0.01 -model link_bot"/>
+          args="-file $(find link_bot_description)/urdf/$(arg n)_link_bot.urdf -urdf -x $(arg spawn_x) -y $(arg spawn_y) -z 0.01 -model link_bot"/>
 </launch>

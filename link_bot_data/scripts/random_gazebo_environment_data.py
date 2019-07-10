@@ -2,6 +2,7 @@
 from __future__ import print_function, division
 
 import argparse
+import os
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -130,8 +131,8 @@ def init_simulation(args, run_idx, env_idx, cli_args, init_config):
         stdout_file = sys.stdout
         stderr_file = sys.stderr
     else:
-        stdout_file = open(".roslaunch.stdout-{}.{}".format(run_idx, env_idx), 'w')
-        stderr_file = open(".roslaunch.stdout-{}.{}".format(run_idx, env_idx), 'w')
+        stdout_file = open(os.devnull, "w")
+        stderr_file = open(os.devnull, "w")
 
     process = subprocess.Popen(cli_args, stdout=stdout_file, stderr=stderr_file)
 
@@ -177,7 +178,7 @@ def publish_markers(args, target_x, target_y, rope_x, rope_y):
 def generate_env(args, env_idx):
     # place rope at a random location
     rope_length = 1.05
-    n_joints = 8
+    n_joints = args.num_rope_links - 1
     init_config = LinkBotConfiguration()
     wall_thickness = 0.05
     rope_x = np.random.uniform(-args.w / 2 + rope_length + wall_thickness, args.w / 2 - rope_length - wall_thickness)
@@ -192,12 +193,13 @@ def generate_env(args, env_idx):
 
     cli_args = ['roslaunch',
                 'link_bot_gazebo',
-                'multi_link_bot.launch',
+                'n_link_bot.launch',
                 'world_name:={}'.format(world_file.name),
                 'verbose:={}'.format(bool(args.verbose)),
                 'gui:={}'.format(not args.headless),
                 'spawn_x:={}'.format(rope_x),
                 'spawn_y:={}'.format(rope_y),
+                'n:={}'.format(args.num_rope_links)
                 ]
 
     run_idx = 0
@@ -226,7 +228,7 @@ def generate_env(args, env_idx):
     for t in range(args.steps):
         # save the state and action data
         s = get_state(state_req)
-        rope_configurations[t] = np.array([s.tail_x, s.tail_y, s.mid_x, s.mid_y, s.head_x, s.head_y])
+        rope_configurations[t] = np.array([[pt.x, pt.y] for pt in s.points]).flatten()
         gripper1_forces[t] = np.array([s.gripper1_force.x, s.gripper1_force.y])
         gripper1_target_velocities[t] = np.array([s.gripper1_target_velocity.x, s.gripper1_target_velocity.y])
         gripper1_velocities[t] = np.array([s.gripper1_velocity.x, s.gripper1_velocity.y])
@@ -243,7 +245,7 @@ def generate_env(args, env_idx):
                             s.gripper1_velocity.z]
         ntv = np.linalg.norm(target_velocity)
         nv = np.linalg.norm(current_velocity)
-        if abs(ntv - nv) > 0.15:
+        if abs(ntv - nv) > 0.155:
             at_constraint_boundary = True
         else:
             at_constraint_boundary = False
@@ -259,9 +261,9 @@ def generate_env(args, env_idx):
             # TODO: parameterize this
             box_idx = np.random.choice(len(box_locations))
             gripper1_target_x, gripper1_target_y = box_locations[box_idx]
-            pos_std = 0.75
-            gripper1_target_x = gripper1_target_x + np.random.uniform(-pos_std, pos_std)
-            gripper1_target_y = gripper1_target_y + np.random.uniform(-pos_std, pos_std)
+            pos_std = 0.5
+            gripper1_target_x = gripper1_target_x
+            gripper1_target_y = gripper1_target_y
             gripper2_target_x = gripper1_target_x + np.random.uniform(-pos_std, pos_std)
             gripper2_target_y = gripper1_target_y + np.random.uniform(-pos_std, pos_std)
             if not args.headless:
@@ -346,13 +348,14 @@ def main():
     parser.add_argument("--outdir", help='directory dataset will go in')
     parser.add_argument('--res', '-r', type=float, default=0.05, help='size of cells in meters')
     parser.add_argument('--n-obstacles', type=int, default=20, help='size of obstacles in cells')
-    parser.add_argument('--obstacle-size', type=int, default=5, help='size of obstacles in cells')
+    parser.add_argument('--obstacle-size', type=int, default=4, help='size of obstacles in cells')
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
     parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     parser.add_argument("--save-frequency", '-f', help='save every this many steps', type=int, default=10)
     parser.add_argument("--new-goal-period", help='change target rope position every this many time steps', type=int, default=100)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
+    parser.add_argument("--num-rope-links", type=int, default=2, choices=[2, 7])
     parser.add_argument("--real-time-rate", help='number of times real time', type=float, default=10)
     parser.add_argument("--verbose", '-v', action="store_true")
     parser.add_argument("--headless", action="store_true")

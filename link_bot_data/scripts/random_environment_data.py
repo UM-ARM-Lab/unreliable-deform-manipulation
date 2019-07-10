@@ -125,8 +125,10 @@ def plot_main2(args):
     np.random.seed(args.seed)
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
     for env in dataset.environments[:args.n]:
-        plt.figure()
-        plt.imshow(env.sdf_data.image < 0, extent=env.sdf_data.extent)
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+
+        ax.imshow(env.sdf_data.image <= 0, extent=env.sdf_data.extent)
 
         rope_configurations = env.rope_data['rope_configurations']
         ys = env.rope_data[LabelType.Combined.name]
@@ -136,9 +138,18 @@ def plot_main2(args):
             ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
 
             color = 'r' if y else 'g'
-            plt.plot(xs, ys, linewidth=0.5, zorder=1, c=color)
-            plt.scatter(rope_configuration[4], rope_configuration[5], s=16, c=color, zorder=2)
+            ax.plot(xs, ys, linewidth=0.2, zorder=1, c=color)
+            ax.scatter(rope_configuration[4], rope_configuration[5], s=16, c=color, zorder=2)
 
+        major_ticks = np.arange(env.sdf_data.extent[0], env.sdf_data.extent[1], 1)
+        minor_ticks = np.arange(env.sdf_data.extent[2], env.sdf_data.extent[3], env.sdf_data.resolution[0])
+
+        ax.set_xticks(major_ticks)
+        ax.set_xticks(minor_ticks, minor=True)
+        ax.set_yticks(major_ticks)
+        ax.set_yticks(minor_ticks, minor=True)
+
+        ax.grid(which='both', alpha=0.2)
     plt.show()
 
 

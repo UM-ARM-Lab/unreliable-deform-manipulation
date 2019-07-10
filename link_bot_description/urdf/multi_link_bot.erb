@@ -3,7 +3,7 @@
 <%link_mass = 10.0/@num_links%>
 <?xml version="1.0"?>
 <robot name="link_bot">
-    <% for i in 0..@num_links %>
+    <% for i in 1..@num_links %>
     <link name="link_<%=i%>">
         <visual>
             <origin rpy="0 -1.5707 0" xyz="<%=link_length / 2.0 - @radius / 2.0%> 0 0"/>
@@ -45,7 +45,7 @@
         </inertial>
     </link>
 
-    <% for i in 0..@num_links-1 %>
+    <% for i in 1..@num_links-1 %>
     <joint name="joint_<%=i%>" type="revolute">
         <parent link="link_<%=i%>"/>
         <child link="link_<%=i+1%>"/>
@@ -65,8 +65,9 @@
         <dynamics damping="2.0" friction="0.01"/>
     </joint>
 
-    <% for i in 0..@num_links %>
+    <% for i in 1..@num_links %>
     <gazebo reference="link_<%=i%>">
+        <material>Gazebo/DarkGray</material>
         <self_collide>true</self_collide>
         <sensor name='link_<%=i%>_contact' type='contact'>
             <contact>

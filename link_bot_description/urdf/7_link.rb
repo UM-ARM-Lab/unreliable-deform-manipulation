@@ -9,4 +9,4 @@
             <kI_vel>0.0</kI_vel>
             <kD_vel>0.0</kD_vel>
             <gripper1_link>head</gripper1_link>
-            <gripper1_link>link_0</gripper1_link>'
+            <gripper1_link>link_1</gripper1_link>'
