@@ -106,7 +106,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   gripper1_link_ = model_->GetLink(gripper1_link_name);
 
   if (sdf->HasElement("gripper2_link")) {
-    auto const &gripper2_link_name = sdf->GetElement("gripper1_link")->Get<std::string>();
+    auto const &gripper2_link_name = sdf->GetElement("gripper2_link")->Get<std::string>();
     gripper2_link_ = model_->GetLink(gripper2_link_name);
   }
 
@@ -205,7 +205,7 @@ void MultiLinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurat
 bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req,
                                                    link_bot_gazebo::LinkBotStateResponse &res)
 {
-  // FIXME: don't hard code these
+  // FIXME: don't hard code these, put them in the request
   auto const &tail = model_->GetLink("link_0");
   auto const &mid = model_->GetLink("link_4");
   auto const &head = model_->GetLink("head");

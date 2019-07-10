@@ -219,8 +219,10 @@ def generate_env(args, env_idx):
     gripper2_velocities = np.ndarray((args.steps, 2))
     combined_constraint_labels = np.ndarray((args.steps, 1), dtype=np.float32)
 
-    target_x = 0
-    target_y = 0
+    gripper1_target_x = 0
+    gripper1_target_y = 0
+    gripper2_target_x = 0
+    gripper2_target_y = 0
     for t in range(args.steps):
         # save the state and action data
         s = get_state(state_req)
@@ -254,14 +256,22 @@ def generate_env(args, env_idx):
         if t % args.new_goal_period == 0:
             # target_x = np.random.uniform(-args.w / 2, args.w / 2)
             # target_y = np.random.uniform(-args.h / 2, args.h / 2)
+            # TODO: parameterize this
             box_idx = np.random.choice(len(box_locations))
-            target_x, target_y = box_locations[box_idx]
+            gripper1_target_x, gripper1_target_y = box_locations[box_idx]
+            pos_std = 0.75
+            gripper1_target_x = gripper1_target_x + np.random.uniform(-pos_std, pos_std)
+            gripper1_target_y = gripper1_target_y + np.random.uniform(-pos_std, pos_std)
+            gripper2_target_x = gripper1_target_x + np.random.uniform(-pos_std, pos_std)
+            gripper2_target_y = gripper1_target_y + np.random.uniform(-pos_std, pos_std)
             if not args.headless:
-                publish_markers(args, target_x, target_y, rope_x, rope_y)
+                publish_markers(args, gripper1_target_x, gripper1_target_y, rope_x, rope_y)
 
         # publish the pull command
-        action_msg.gripper1_pos.x = target_x
-        action_msg.gripper1_pos.y = target_y
+        action_msg.gripper1_pos.x = gripper1_target_x
+        action_msg.gripper1_pos.y = gripper1_target_y
+        action_msg.gripper2_pos.x = gripper2_target_x
+        action_msg.gripper2_pos.y = gripper2_target_y
         action_pub.publish(action_msg)
 
         # let the simulator run
