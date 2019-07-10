@@ -1,8 +1,10 @@
 #include "multi_link_bot_model_plugin.h"
 
 #include <exception>
-#include <ignition/math/Vector3.hh>
 #include <memory>
+
+#include <geometry_msgs/Point.h>
+#include <ignition/math/Vector3.hh>
 
 namespace gazebo {
 
@@ -205,19 +207,13 @@ void MultiLinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurat
 bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req,
                                                    link_bot_gazebo::LinkBotStateResponse &res)
 {
-  // FIXME: don't hard code these, put them in the request
-  auto const &tail = model_->GetLink("link_0");
-  auto const &mid = model_->GetLink("link_4");
-  auto const &head = model_->GetLink("head");
-
-  res.tail_x = tail->WorldPose().Pos().X();
-  res.tail_y = tail->WorldPose().Pos().Y();
-  res.mid_x = mid->WorldPose().Pos().X();
-  res.mid_y = mid->WorldPose().Pos().Y();
-  res.head_x = head->WorldPose().Pos().X();
-  res.head_y = head->WorldPose().Pos().Y();
-
-  res.overstretched = 0;
+  for (auto const &link : model_->GetLinks())
+  {
+    geometry_msgs::Point pt;
+    pt.x = link->WorldPose().Pos().X();
+    pt.y = link->WorldPose().Pos().Y();
+    res.points.emplace_back(pt);
+  }
 
   res.gripper1_force.x = gripper1_x_vel_pid_.GetCmd();
   res.gripper1_force.y = gripper1_y_vel_pid_.GetCmd();

@@ -1,12 +1,5 @@
 ---
-float64 tail_x
-float64 tail_y
-float64 mid_x
-float64 mid_y
-float64 head_x
-float64 head_y
-bool[] in_contact
-bool overstretched
+geometry_msgs/Point[] points
 geometry_msgs/Vector3 gripper1_force
 geometry_msgs/Vector3 gripper2_force
 geometry_msgs/Vector3 gripper1_velocity

@@ -102,10 +102,14 @@
     </gazebo>
     <gazebo>
         <plugin name="linkbot_model_plugin" filename="liblinkbot_model_plugin.so">
-            <kP>600.0</kP>
-            <kI>10.0</kI>
-            <kD>1.0</kD>
-            <action_scale>1</action_scale>
+            <kP_pos>2.5</kP_pos>
+            <kI_pos>0.02</kI_pos>
+            <kD_pos>0.0</kD_pos>
+            <kP_vel>5000.0</kP_vel>
+            <kI_vel>0.0</kI_vel>
+            <kD_vel>0.0</kD_vel>
+            <gripper1_link>head</gripper1_link>
+            <gripper2_link>link_0</gripper2_link>
         </plugin>
         <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
             <legacyModeNS>false</legacyModeNS>

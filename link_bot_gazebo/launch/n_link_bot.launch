@@ -4,6 +4,7 @@
     <arg name="gui" default="true"/>
     <arg name="spawn_x" default="0"/>
     <arg name="spawn_y" default="0"/>
+    <arg name="n" default="2"/>
 
     <include file="$(find link_bot_description)/launch/link_bot_description.launch">
     </include>
@@ -15,11 +16,7 @@
         <arg name="gui" value="$(arg gui)"/>
     </include>
 
-    <node name="joy_node" pkg="joy" type="joy_node">
-        <param name="autorepeat_rate" value="10.0" type="double" />
-    </node>
-
     <!-- Spawn a robot into Gazebo -->
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
-          args="-file $(find link_bot_description)/urdf/multi_link_bot.urdf -urdf -x $(arg spawn_x) -y $(arg spawn_y) -z 0.01 -model link_bot"/>
+          args="-file $(find link_bot_description)/urdf/($arg n)_link_bot.urdf -urdf -x $(arg spawn_x) -y $(arg spawn_y) -z 0.01 -model link_bot"/>
 </launch>

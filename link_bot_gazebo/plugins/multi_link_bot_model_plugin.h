@@ -3,7 +3,6 @@
 #include <string>
 #include <thread>
 
-#include <geometry_msgs/Wrench.h>
 #include <link_bot_gazebo/LinkBotConfiguration.h>
 #include <link_bot_gazebo/LinkBotState.h>
 #include <link_bot_gazebo/MultiLinkBotPositionAction.h>
@@ -49,7 +48,6 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   double kD_vel_{0.0};
   physics::LinkPtr gripper1_link_{nullptr};
   physics::LinkPtr gripper2_link_{nullptr};
-  std::vector<geometry_msgs::Wrench> wrenches_;
   common::PID gripper1_x_pos_pid_;
   common::PID gripper1_y_pos_pid_;
   common::PID gripper2_x_pos_pid_;
