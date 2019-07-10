@@ -10,7 +10,7 @@ import link_bot_pycommon.link_bot_sdf_tools
 from link_bot_models import base_model_runner
 from link_bot_models.base_model_runner import BaseModelRunner
 from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util, link_bot_pycommon
 
 

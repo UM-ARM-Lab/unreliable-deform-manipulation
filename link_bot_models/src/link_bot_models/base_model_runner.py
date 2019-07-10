@@ -6,7 +6,6 @@ import os
 import pathlib
 import sys
 
-import keras
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
@@ -21,7 +20,7 @@ from link_bot_models.components.distance_matrix_layer import DistanceMatrix
 from link_bot_models.components.out_of_bounds_regularization import OutOfBoundsRegularizer
 from link_bot_models.components.sdf_lookup import SDFLookup
 from link_bot_models.label_types import LabelType
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 from link_bot_models import my_viz
 
@@ -157,6 +156,7 @@ class BaseModelRunner:
             model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
 
             checkpoint_callback = ModelCheckpoint(model_filename, monitor='loss')
+            checkpoint_callback.on_epoch_begin = checkpoint_callback.on_epoch_end
             callbacks.append(checkpoint_callback)
 
             tensorboard = TensorBoard(log_dir=full_log_path)

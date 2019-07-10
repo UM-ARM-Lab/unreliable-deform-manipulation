@@ -8,7 +8,7 @@ import tensorflow as tf
 from tabulate import tabulate
 
 from link_bot_gaussian_process import link_bot_gp, data_reformatting, error_metrics
-from link_bot_pycommon.src.link_bot_pycommon import experiments_util
+from link_bot_pycommon import experiments_util
 
 
 def main():

@@ -7,7 +7,7 @@ from colorama import Style
 
 from link_bot_models import base_model_runner
 from link_bot_models.multi_constraint_model_runner import MultiConstraintModelRunner
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
 

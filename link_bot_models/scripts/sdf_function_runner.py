@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_models import base_model_runner
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_models.sdf_function_model import SDFFunctionModelRunner
 from link_bot_pycommon import experiments_util
 
@@ -23,7 +23,7 @@ def train(args):
         args_dict = {
             'sdf_shape': sdf_shape,
             'beta': 1e-2,
-            'fc_layer_sizes': [32, 32],
+            'fc_layer_sizes': [],
             'sigmoid_scale': 100,
             'N': train_dataset.N
         }

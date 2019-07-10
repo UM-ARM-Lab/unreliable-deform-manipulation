@@ -10,7 +10,7 @@ from link_bot_models import base_model_runner
 from link_bot_models.base_model_runner import BaseModelRunner
 from link_bot_models.components.distance_function_layer import distance_function_layer
 from link_bot_models.label_types import LabelType
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
 

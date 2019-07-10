@@ -353,7 +353,7 @@ def main():
     parser.add_argument("-L", help="dimensions in control input", type=int, default=2)
     parser.add_argument("-Q", help="dimensions in constraint checking output space", type=int, default=1)
     parser.add_argument("--save-frequency", '-f', help='save every this many steps', type=int, default=10)
-    parser.add_argument("--new-goal-period", help='change target rope position every this many time steps', type=int, default=100)
+    parser.add_argument("--new-goal-period", help='change target rope position every this many time steps', type=int, default=50)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--num-rope-links", type=int, default=2, choices=[2, 7])
     parser.add_argument("--real-time-rate", help='number of times real time', type=float, default=10)

@@ -5,13 +5,15 @@ import argparse
 from time import time
 
 import matplotlib.pyplot as plt
+from tensorflow.python import debug as tf_debug
+from keras import backend as K
 import numpy as np
 import tensorflow as tf
 from colorama import Fore, Style
 
 from link_bot_models import plotting
 from link_bot_models.base_model_runner import ConstraintTypeMapping
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_models.sdf_function_model import test_predictions, SDFFunctionModelRunner
 
 
@@ -21,7 +23,7 @@ from link_bot_models.sdf_function_model import test_predictions, SDFFunctionMode
 def plot(args, sdf_data, model, threshold, results, true_positives, true_negatives, false_positives, false_negatives):
     n_examples = results.shape[0]
 
-    sdf_data.image = (sdf_data.image < threshold).astype(np.uint8)
+    # sdf_data.image = (sdf_data.image <= threshold).astype(np.uint8)
 
     if args.plot_type == plotting.PlotType.none:
         return None
@@ -99,7 +101,12 @@ def main():
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
 
     model = SDFFunctionModelRunner.load(args.checkpoint)
+
     # model = MultiConstraintModelRunner.load(args.checkpoint)
+
+    # sess = K.get_session()
+    # sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+    # K.set_session(sess)
 
     for env_idx, environment in list(enumerate(dataset.environments)):
         print(Style.BRIGHT + Fore.GREEN + "Environment {}".format(env_idx) + Fore.RESET + Style.NORMAL)

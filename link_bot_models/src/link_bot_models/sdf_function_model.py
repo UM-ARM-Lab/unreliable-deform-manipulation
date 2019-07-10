@@ -23,13 +23,15 @@ class SDFFunctionModelRunner(BaseModelRunner):
         self.beta = args_dict['beta']
         self.sigmoid_scale = args_dict['sigmoid_scale']
 
-        sdf_input_layer, sdf_function = sdf_function_layer(self.sdf_shape, self.fc_layer_sizes, self.beta, self.sigmoid_scale,
-                                                           LabelType.SDF.name)
+        sdf_input_layer, sdf_output_layer, sdf_function = sdf_function_layer(self.sdf_shape, self.fc_layer_sizes, self.beta,
+                                                                             self.sigmoid_scale,
+                                                                             LabelType.SDF.name)
         prediction = sdf_function(sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
         self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
+        self.sdf_output_model = Model(inputs=self.model_inputs, outputs=sdf_output_layer.output)
 
         losses = {
             LabelType.SDF.name: 'binary_crossentropy',
@@ -53,9 +55,16 @@ class SDFFunctionModelRunner(BaseModelRunner):
             'sdf_extent': sdf_extent
         }
 
-        predicted_violated = (self.keras_model.predict(inputs_dict) > 0.5).astype(np.bool)
+        # TODO: we have to set weights on the other models for some reason...?
         self.sdf_input_model.set_weights(self.keras_model.get_weights())
+        self.sdf_output_model.set_weights(self.keras_model.get_weights())
+
+        predicted_violated = np.array(self.keras_model.predict(inputs_dict))
+        predicted_violated = predicted_violated.astype(np.bool)
         predicted_point = self.sdf_input_model.predict(inputs_dict)
+        sdf_output = self.sdf_output_model.predict(inputs_dict)
+
+        print(np.hstack((rope_configuration, predicted_point, predicted_violated, sdf_output))[32:35])
 
         return predicted_violated, predicted_point
 

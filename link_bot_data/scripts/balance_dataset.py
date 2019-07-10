@@ -10,7 +10,7 @@ from shutil import copyfile
 import numpy as np
 
 from link_bot_models.label_types import LabelType
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 
 
 def main():

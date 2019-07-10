@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from colorama import Fore
 
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 
 
 def generate_envs(args, full_output_directory, generate_env, save_dict_extras=None):

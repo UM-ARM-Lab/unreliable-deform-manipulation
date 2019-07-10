@@ -25,13 +25,11 @@ def sdf_func(inputs, sdf_shape):
     origin = inputs[:, end_resolution:end_origin]
     input_points = inputs[:, end_origin:end_input_point]
 
-    integer_origin = tf.cast(origin, dtype=tf.int32)
-
-    float_input_points = tf.math.divide(input_points, resolution)
-    integer_input_points = tf.cast(float_input_points, dtype=tf.int32)
-    integer_input_points = tf.add(integer_input_points, integer_origin, name='integer_input_points')
+    float_input_points = tf.math.divide(input_points, resolution, name='float_input_points')
+    float_offset_input_points = tf.add(float_input_points, origin, name='float_offset_input_points')
+    integer_input_points = tf.cast(float_offset_input_points, dtype=tf.int32)
     integer_input_points_flat = ravel_2d(integer_input_points, sdf_shape[1])
-    integer_input_points_flat = tf.expand_dims(integer_input_points_flat, axis=1)
+    integer_input_points_flat = tf.expand_dims(integer_input_points_flat, axis=1, name='integer_input_points_flat')
 
     oob_left = integer_input_points[:, 0] < 0
     oob_right = integer_input_points[:, 0] >= sdf_shape[1]

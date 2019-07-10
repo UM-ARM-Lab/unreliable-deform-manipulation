@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_models import base_model_runner
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_models.sdf_cnn_model_runner import SDFCNNModelRunner
 from link_bot_pycommon import experiments_util
 

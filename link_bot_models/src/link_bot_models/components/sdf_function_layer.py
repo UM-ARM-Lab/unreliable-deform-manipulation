@@ -1,4 +1,5 @@
 import numpy as np
+from keras.initializers import Constant
 from keras.layers import Dense, Concatenate, Lambda, Activation, Reshape
 
 from link_bot_models.components.bias_layer import BiasLayer
@@ -14,11 +15,12 @@ def sdf_function_layer(sdf_shape, fc_layer_sizes, beta, sigmoid_scale, output_na
     dense_layers = []
     for fc_layer_size in fc_layer_sizes:
         dense_layers.append(Dense(fc_layer_size, activation='tanh'))
-    sdf_input_layer = Dense(2, activation=None, activity_regularizer=regularizer)
+    w = [[0, 0], [0, 0], [0, 0], [0, 0], [1, 0], [0, 1]]
+    sdf_input_layer = Dense(2, activation=None, activity_regularizer=regularizer, kernel_initializer=Constant(w), use_bias=False)
     concat = Concatenate(name=p + 'concat')
     sdf_lookup = SDFLookup(sdf_shape)
     negate = Lambda(lambda x: -x, name=p + 'negate')
-    bias_layer = BiasLayer()
+    bias_layer = BiasLayer(initializer=Constant(0.02))
     scale_logits = Lambda(lambda x: sigmoid_scale * x, name=p + 'scale')
     sigmoid = Activation('sigmoid', name=output_name)
 
@@ -44,4 +46,4 @@ def sdf_function_layer(sdf_shape, fc_layer_sizes, beta, sigmoid_scale, output_na
 
         return predictions
 
-    return sdf_input_layer, forward
+    return sdf_input_layer, sdf_lookup, forward

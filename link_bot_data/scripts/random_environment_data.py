@@ -9,7 +9,7 @@ import numpy as np
 import sdf_tools
 from link_bot_data import random_environment_data_utils
 from link_bot_models.label_types import LabelType
-from link_bot_models.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import link_bot_pycommon, link_bot_sdf_utils
 from link_bot_pycommon import link_bot_sdf_tools
 from link_bot_data.random_environment_data_utils import plot_sdf_and_ovs
