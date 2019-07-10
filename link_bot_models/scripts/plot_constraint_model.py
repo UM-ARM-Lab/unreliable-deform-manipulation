@@ -5,15 +5,13 @@ import argparse
 from time import time
 
 import matplotlib.pyplot as plt
-from tensorflow.python import debug as tf_debug
-from keras import backend as K
 import numpy as np
 import tensorflow as tf
 from colorama import Fore, Style
 
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_models import plotting
 from link_bot_models.base_model_runner import ConstraintTypeMapping
-from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_models.sdf_function_model import test_predictions, SDFFunctionModelRunner
 
 
@@ -103,10 +101,6 @@ def main():
     model = SDFFunctionModelRunner.load(args.checkpoint)
 
     # model = MultiConstraintModelRunner.load(args.checkpoint)
-
-    # sess = K.get_session()
-    # sess = tf_debug.LocalCLIDebugWrapperSession(sess)
-    # K.set_session(sess)
 
     for env_idx, environment in list(enumerate(dataset.environments)):
         print(Style.BRIGHT + Fore.GREEN + "Environment {}".format(env_idx) + Fore.RESET + Style.NORMAL)

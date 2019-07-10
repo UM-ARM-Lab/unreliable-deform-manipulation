@@ -23,8 +23,8 @@ def train(args):
         args_dict = {
             'sdf_shape': sdf_shape,
             'beta': 1e-2,
-            'fc_layer_sizes': [],
-            'sigmoid_scale': 100,
+            'fc_layer_sizes': [32, 32],
+            'sigmoid_scale': args.sigmoid_scale,
             'N': train_dataset.N
         }
         args_dict.update(base_model_runner.make_args_dict(args))
@@ -39,6 +39,7 @@ def main():
 
     parser, train_subparser, eval_subparser, show_subparser = base_model_runner.base_parser()
 
+    train_subparser.add_argument('--sigmoid-scale', type=float, default=100.0)
     train_subparser.set_defaults(func=train)
     eval_subparser.set_defaults(func=SDFFunctionModelRunner.evaluate_main)
     show_subparser.set_defaults(func=SDFFunctionModelRunner.show)

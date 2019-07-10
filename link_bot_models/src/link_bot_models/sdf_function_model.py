@@ -59,12 +59,8 @@ class SDFFunctionModelRunner(BaseModelRunner):
         self.sdf_input_model.set_weights(self.keras_model.get_weights())
         self.sdf_output_model.set_weights(self.keras_model.get_weights())
 
-        predicted_violated = np.array(self.keras_model.predict(inputs_dict))
-        predicted_violated = predicted_violated.astype(np.bool)
+        predicted_violated = np.array(self.keras_model.predict(inputs_dict)) > 0.5
         predicted_point = self.sdf_input_model.predict(inputs_dict)
-        sdf_output = self.sdf_output_model.predict(inputs_dict)
-
-        print(np.hstack((rope_configuration, predicted_point, predicted_violated, sdf_output))[32:35])
 
         return predicted_violated, predicted_point
 
