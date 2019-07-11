@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 from tabulate import tabulate
 
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_gaussian_process import link_bot_gp, data_reformatting, error_metrics
 from link_bot_pycommon import experiments_util
 
@@ -27,7 +28,7 @@ def main():
 
     # Load data
     ###########################################################################
-    data = np.load(args.data)
+    dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
     train_idx_start = 0
     train_idx_end = 200
     test_idx_start = 200
