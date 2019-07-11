@@ -161,6 +161,7 @@ class DatasetGenerator(keras.utils.Sequence):
             'sdf_extent': np.ndarray([self.batch_size, 4]),
             'rope_configuration': np.ndarray([self.batch_size, self.dataset.N]),
             'rope_image': np.ndarray([self.batch_size, self.dataset.sdf_shape[0], self.dataset.sdf_shape[1], n_rope_points]),
+            'gripper1_target_velocity': np.ndarray([self.batch_size, 2]),
         }
 
         y = {}
@@ -192,7 +193,9 @@ class DatasetGenerator(keras.utils.Sequence):
                 rope_data = np.load(rope_data_filename)
                 loaded_data_cache[rope_data_filename] = rope_data
 
-            rope_configuration = rope_data['rope_configurations'][example_info['rope_data_index']]
+            example_data_index = example_info['rope_data_index']
+            rope_configuration = rope_data['rope_configurations'][example_data_index]
+            gripper1_target_velocity = rope_data['gripper1_target_velocities'][example_data_index]
 
             rope_image = link_bot_sdf_utils.make_rope_images(sdf_data, rope_configuration)
 
@@ -203,9 +206,10 @@ class DatasetGenerator(keras.utils.Sequence):
             x['sdf_extent'][i] = sdf_data.extent
             x['rope_configuration'][i] = rope_configuration
             x['rope_image'][i] = rope_image
+            x['gripper1_target_velocity'][i] = gripper1_target_velocity
 
             for label_type_key, label_type_value in self.label_types_map:
-                label = rope_data[label_type_value][example_info['rope_data_index']].astype(np.float32)
+                label = rope_data[label_type_value][example_data_index].astype(np.float32)
                 y[label_type_key][i] = label
 
         return x, y

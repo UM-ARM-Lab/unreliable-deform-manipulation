@@ -110,6 +110,9 @@ def main():
         # FIXME: make all models have this API
         results = test_predictions(model, environment)
         m = results.shape[0]
+        if m == 0:
+            print(Fore.YELLOW + "Env {} has no examples".format(env_idx) + Fore.RESET)
+            continue
 
         true_positives = [result for result in results if result.true_violated and result.predicted_violated]
         true_positives = np.array(true_positives)

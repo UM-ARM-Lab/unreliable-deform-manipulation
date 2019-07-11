@@ -14,6 +14,39 @@ from link_bot_gaussian_process import data_reformatting
 from link_bot_pycommon import experiments_util
 
 
+def animate_training_data(x, arena_size=5, linewidth=7):
+    T = x.shape[0]
+    states = np.ndarray((T, 6))
+    for t, x_t in enumerate(x):
+        state = x_t[:6]
+        states[t] = state
+
+    fig = plt.figure(figsize=(10, 10))
+
+    x_0 = states[0]
+    x_0_xs = [x_0[0], x_0[2], x_0[4]]
+    x_0_ys = [x_0[1], x_0[3], x_0[5]]
+    line = plt.plot(x_0_xs, x_0_ys, color='black', linewidth=linewidth, zorder=1)[0]
+    scat = plt.scatter(x_0_xs, x_0_ys, color=['blue', 'blue', 'green'], zorder=2, s=50)
+
+    plt.xlabel("x (m)")
+    plt.ylabel("y (m)")
+    plt.xlim([-arena_size, arena_size])
+    plt.ylim([-arena_size, arena_size])
+
+    def update(t):
+        x_t = states[t]
+        x_t_xs = [x_t[0], x_t[2], x_t[4]]
+        x_t_ys = [x_t[1], x_t[3], x_t[5]]
+        line.set_xdata(x_t_xs)
+        line.set_ydata(x_t_ys)
+        offsets = np.vstack((x_t_xs, x_t_ys)).T
+        scat.set_offsets(offsets)
+
+    anim = FuncAnimation(fig, update, frames=T, interval=1)
+    return anim
+
+
 def predict(fwd_model, np_state, np_controls, np_duration_steps_int, steps=None, initial_variance=0.00001):
     # flatten and combine np_controls and durations
     np_controls_flat = []
@@ -41,7 +74,7 @@ def predict(fwd_model, np_state, np_controls, np_duration_steps_int, steps=None,
     return prediction
 
 
-def animate_predict(prediction, sdf, arena_size):
+def animate_predict(prediction, sdf, arena_size, linewidth):
     T = prediction.shape[0]
 
     fig = plt.figure(figsize=(10, 10))
@@ -53,7 +86,8 @@ def animate_predict(prediction, sdf, arena_size):
     x_0 = prediction[0]
     x_0_xs = [x_0[0], x_0[2], x_0[4]]
     x_0_ys = [x_0[1], x_0[3], x_0[5]]
-    line = plt.plot(x_0_xs, x_0_ys, color='black', linewidth=10)[0]
+    line = plt.plot(x_0_xs, x_0_ys, color='black', linewidth=linewidth, zorder=1)[0]
+    scat = plt.scatter(x_0_xs, x_0_ys, color=['red', 'blue', 'green'], linewidth=linewidth, zorder=2)
 
     plt.xlabel("x (m)")
     plt.ylabel("y (m)")
@@ -66,6 +100,8 @@ def animate_predict(prediction, sdf, arena_size):
         x_t_ys = [x_t[1], x_t[3], x_t[5]]
         line.set_xdata(x_t_xs)
         line.set_ydata(x_t_ys)
+        offsets = np.vstack((x_t_xs, x_t_ys)).T
+        scat.set_offsets(offsets)
 
     anim = FuncAnimation(fig, update, frames=T, interval=100)
     return anim

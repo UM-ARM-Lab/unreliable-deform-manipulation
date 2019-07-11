@@ -3,12 +3,14 @@
 import argparse
 
 import gpflow as gpf
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from tabulate import tabulate
 
 from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_gaussian_process import link_bot_gp, data_reformatting, error_metrics
+from link_bot_models.label_types import LabelType
 from link_bot_pycommon import experiments_util
 
 
@@ -16,7 +18,9 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('data')
+    parser.add_argument('train_dataset')
+    parser.add_argument('test_dataset')
+    parser.add_argument("mask_label_type", type=LabelType.from_string)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--dont-save', action='store_true')
@@ -28,25 +32,26 @@ def main():
 
     # Load data
     ###########################################################################
-    dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
-    train_idx_start = 0
-    train_idx_end = 200
-    test_idx_start = 200
-    test_idx_end = 240
+    train_dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
+    test_dataset = MultiEnvironmentDataset.load_dataset(args.test_dataset)
 
-    fwd_train_data = data_reformatting.format_forward_data(data, train_idx_start, train_idx_end)
+    fwd_train_data = data_reformatting.format_forward_data_gz(args, train_dataset)
     fwd_train_x = fwd_train_data[3]
     fwd_train_y = fwd_train_data[1]
-    fwd_test_data = data_reformatting.format_forward_data(data, test_idx_start, test_idx_end)
+    fwd_test_data = data_reformatting.format_forward_data_gz(args, test_dataset)
     fwd_test_x = fwd_test_data[3]
     fwd_test_y = fwd_test_data[1]
 
-    inv_train_data = data_reformatting.format_inverse_data(data, train_idx_start, train_idx_end)
+    inv_train_data = data_reformatting.format_inverse_data_gz(args, train_dataset)
     inv_train_x = inv_train_data[0]
     inv_train_y = inv_train_data[1]
-    inv_test_data = data_reformatting.format_inverse_data(data, test_idx_start, test_idx_end)
+    inv_test_data = data_reformatting.format_inverse_data_gz(args, test_dataset)
     inv_test_x = inv_test_data[0]
     inv_test_y = inv_test_data[1]
+
+    anim = link_bot_gp.animate_training_data(fwd_train_data[-2])
+    plt.show()
+    return
 
     # Train
     ###########################################################################
@@ -56,10 +61,10 @@ def main():
     inv_model = link_bot_gp.LinkBotGP()
 
     print("Training forward model")
-    fwd_model.train(fwd_train_x, fwd_train_y, verbose=args.verbose, maximum_training_iterations=300,
+    fwd_model.train(fwd_train_x, fwd_train_y, verbose=args.verbose, maximum_training_iterations=500,
                     n_inducing_points=20)
     print("Training inverse model")
-    inv_model.train(inv_train_x, inv_train_y, verbose=args.verbose, maximum_training_iterations=300,
+    inv_model.train(inv_train_x, inv_train_y, verbose=args.verbose, maximum_training_iterations=500,
                     n_inducing_points=20)
 
     # Save
