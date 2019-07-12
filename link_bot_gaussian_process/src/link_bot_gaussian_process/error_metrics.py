@@ -36,8 +36,9 @@ def inv_model_error_metrics(my_model, test_x, test_y):
     true_theta = np.arctan2(test_y[:, 1], test_y[:, 0])
     abs_angle_error = abs(np.rad2deg(link_bot_pycommon.yaw_diff(true_theta, pred_theta)))
 
-    abs_time_step_error = abs(pred_y[:, 3] - test_y[:, 3])
+    # abs_time_step_error = abs(pred_y[:, 3] - test_y[:, 3])
 
     return np.array([make_row('speed error (m/s)', abs_speed_error),
                      make_row('angle error (deg)', abs_angle_error),
-                     make_row('time steps error', abs_time_step_error)], dtype=np.object)
+                     # make_row('time steps error', abs_time_step_error)
+                     ], dtype=np.object)

@@ -62,16 +62,18 @@ def predict(fwd_model, np_state, np_controls, np_duration_steps_int, steps=None,
 
     prediction = np.zeros((steps, fwd_model.n_state))
 
+    variances = np.ndarray((steps, fwd_model.n_state))
     for t in range(steps):
         prediction[t] = x_t
         x_t_relative = data_reformatting.make_relative_to_head(x_t)
         combined_x_t_relative = np.hstack((x_t_relative, [np_controls_flat[t]]))
 
-        mu_delta_x_t_plus_1s, _ = fwd_model.model.predict_y(combined_x_t_relative)
+        mu_delta_x_t_plus_1s, variance = fwd_model.model.predict_y(combined_x_t_relative)
+        variances[t] = variance
 
         x_t = x_t + mu_delta_x_t_plus_1s
 
-    return prediction
+    return prediction, variances
 
 
 def animate_predict(prediction, sdf, arena_size, linewidth):
@@ -87,7 +89,7 @@ def animate_predict(prediction, sdf, arena_size, linewidth):
     x_0_xs = [x_0[0], x_0[2], x_0[4]]
     x_0_ys = [x_0[1], x_0[3], x_0[5]]
     line = plt.plot(x_0_xs, x_0_ys, color='black', linewidth=linewidth, zorder=1)[0]
-    scat = plt.scatter(x_0_xs, x_0_ys, color=['red', 'blue', 'green'], linewidth=linewidth, zorder=2)
+    scat = plt.scatter(x_0_xs, x_0_ys, color=['blue', 'blue', 'green'], linewidth=linewidth, zorder=2)
 
     plt.xlabel("x (m)")
     plt.ylabel("y (m)")

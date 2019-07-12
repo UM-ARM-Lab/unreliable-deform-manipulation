@@ -106,8 +106,11 @@ def format_inverse_data_gz(args, dataset):
     # the action representation here is cos(theta), sin(theta), magnitude
     # I think this is better than predicting just components or mag/theta
     # because theta is discontinuous and GPs assume smoothness
-    x = np.concatenate((delta_flat, head_delta), axis=1)  # by including only the head delta as a feature we are super cheating
-    y = np.concatenate((actions_flat_scaled, mag_flat, num_steps_flat), axis=1)
+    # FIXME: by including only the head delta as a feature we are super cheating
+    x = np.concatenate((delta_flat, head_delta), axis=1)
+    # y = np.concatenate((actions_flat_scaled, mag_flat, num_steps_flat), axis=1)
+    # NOTE: asking the model to predict both magnitude and number of steps is ill-posed, there is no single correct solution
+    y = np.concatenate((actions_flat_scaled, mag_flat), axis=1)
 
     return x, y
     ###############################

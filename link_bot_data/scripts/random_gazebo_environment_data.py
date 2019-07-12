@@ -256,16 +256,13 @@ def generate_env(args, env_idx):
         combined_constraint_labels[t, 0] = at_constraint_boundary
 
         if t % args.new_goal_period == 0:
-            # target_x = np.random.uniform(-args.w / 2, args.w / 2)
-            # target_y = np.random.uniform(-args.h / 2, args.h / 2)
-            # TODO: parameterize this
-            box_idx = np.random.choice(len(box_locations))
-            gripper1_target_x, gripper1_target_y = box_locations[box_idx]
-            pos_std = 0.5
-            gripper1_target_x = gripper1_target_x
-            gripper1_target_y = gripper1_target_y
-            gripper2_target_x = gripper1_target_x + np.random.uniform(-pos_std, pos_std)
-            gripper2_target_y = gripper1_target_y + np.random.uniform(-pos_std, pos_std)
+            if np.random.uniform(0, 1) < 0.1:
+                gripper1_target_x = np.random.uniform(-args.w / 2, args.w / 2)
+                gripper1_target_y = np.random.uniform(-args.h / 2, args.h / 2)
+            else:
+                box_idx = np.random.choice(len(box_locations))
+                # TODO: parameterize this
+                gripper1_target_x, gripper1_target_y = box_locations[box_idx]
             if not args.headless:
                 publish_markers(args, gripper1_target_x, gripper1_target_y, rope_x, rope_y)
 
