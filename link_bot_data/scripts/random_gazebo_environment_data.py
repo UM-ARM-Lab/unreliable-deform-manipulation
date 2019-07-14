@@ -18,7 +18,7 @@ from gazebo_msgs.srv import SpawnModelRequest
 from ignition import markers
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo.msg import LinkBotConfiguration, MultiLinkBotPositionAction
-from link_bot_gazebo.srv import ComputeSDF
+from link_bot_sdf_tools.srv import ComputeSDF
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
 from link_bot_models.label_types import LabelType
 from link_bot_pycommon import link_bot_sdf_tools

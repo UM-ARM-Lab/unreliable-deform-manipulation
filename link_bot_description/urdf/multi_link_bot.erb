@@ -35,7 +35,7 @@
         <collision name="head">
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <box size="<%= @radius %> <%= @radius %> <%= @radius %>"/>
+                <sphere radius="<%= @radius %>" />
             </geometry>
         </collision>
         <inertial>
@@ -67,7 +67,7 @@
 
     <% for i in 1..@num_links %>
     <gazebo reference="link_<%=i%>">
-        <material>Gazebo/DarkGray</material>
+        <material>Gazebo/Green</material>
         <self_collide>true</self_collide>
         <sensor name='link_<%=i%>_contact' type='contact'>
             <contact>

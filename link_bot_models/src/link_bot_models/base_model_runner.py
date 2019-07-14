@@ -207,11 +207,11 @@ class BaseModelRunner:
         model_with_specific_outputs = Model(inputs=self.keras_model.inputs, outputs=outputs)
         model_with_specific_outputs.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
         model_with_specific_outputs.fit_generator(train_generator,
-                                                callbacks=callbacks,
-                                                validation_data=validation_generator,
-                                                initial_epoch=self.initial_epoch,
-                                                validation_steps=validation_steps,
-                                                epochs=args.epochs)
+                                                  callbacks=callbacks,
+                                                  validation_data=validation_generator,
+                                                  initial_epoch=self.initial_epoch,
+                                                  validation_steps=validation_steps,
+                                                  epochs=args.epochs)
 
         if args.validation_steps == 0:
             self.evaluate(validation_dataset, label_types_map)

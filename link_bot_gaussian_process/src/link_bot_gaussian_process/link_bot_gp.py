@@ -2,6 +2,7 @@ import os
 from time import time
 
 import gpflow as gpf
+import tensorflow as tf
 import gpflow.multioutput.features as mf
 import gpflow.multioutput.kernels as mk
 import matplotlib.pyplot as plt
@@ -76,7 +77,7 @@ def predict(fwd_model, np_state, np_controls, np_duration_steps_int, steps=None,
     return prediction, variances
 
 
-def animate_predict(prediction, sdf, arena_size, linewidth):
+def animate_predict(prediction, sdf, arena_size, linewidth=6):
     T = prediction.shape[0]
 
     fig = plt.figure(figsize=(10, 10))
@@ -217,16 +218,11 @@ class LinkBotGP:
         return np.array([[u[0, 0] / nu * u[0, 2], u[0, 1] / nu * u[0, 2]]])
 
     def fwd_act(self, s, u):
-        """
-        Given a state and action, predict the next state
-        :param s: a 1xN vector containing the relative position from each point to the last point,
-        including the last point. example: [-1, 1, 0, 1, 0, 0]
-        :param u: a 1x2 vector containing x and y velocity, as applied to the last point
-        :return: the _delta_ state
-        """
         s_relative = data_reformatting.make_relative_to_head(s)
         x_star = np.hstack((s_relative, u))
         delta_mu, _ = self.model.predict_y(x_star)
+
+        # DEBUGGING:
         # delta_mu = 0.1 * np.array([u[0, 0], u[0, 1], u[0, 0], u[0, 1], u[0, 0], u[0, 1]])
         s_next = s + delta_mu
         return s_next

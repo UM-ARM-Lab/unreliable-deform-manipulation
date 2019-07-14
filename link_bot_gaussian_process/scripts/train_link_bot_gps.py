@@ -46,10 +46,10 @@ def train(args):
 
     print("Training forward model")
     fwd_model.train(fwd_train_x, fwd_train_y, verbose=args.verbose, maximum_training_iterations=500,
-                    n_inducing_points=20)
+                    n_inducing_points=500)
     print("Training inverse model")
     inv_model.train(inv_train_x, inv_train_y, verbose=args.verbose, maximum_training_iterations=500,
-                    n_inducing_points=20)
+                    n_inducing_points=50)
 
     # Save
     ###########################################################################

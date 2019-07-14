@@ -1,28 +1,29 @@
 #!/usr/bin/env python
-from __future__ import print_function
+from __future__ import division, print_function
 
 import argparse
 import os
 import time
 from builtins import input
 
+import gpflow as gpf
 import numpy as np
 import ompl.util as ou
+import rospy
 import tensorflow as tf
 from colorama import Fore
+from std_msgs.msg import String
 
-import rospy
-
-import link_bot_pycommon.link_bot_sdf_tools
 from gazebo_msgs.msg import ContactsState
-from gazebo_msgs.srv import GetLinkState
 from ignition import markers
-from link_bot_agent import agent, gp_rrt
+from link_bot_agent import gp_rrt
 from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
-from link_bot_gazebo.srv import WorldControl, WorldControlRequest
+from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
+from link_bot_models.sdf_function_model import SDFFunctionModelRunner
 from link_bot_pycommon import link_bot_pycommon
-import gpflow as gpf
+from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon.link_bot_sdf_utils import SDF
 
 dt = 0.1
 success_dist = 0.10
@@ -46,7 +47,7 @@ def common(args, start, max_steps=1e6):
     gpf.reset_default_session(config=config)
 
     max_v = 1
-    sdf, sdf_gradient, sdf_resolution, sdf_origin = link_bot_pycommon.link_bot_sdf_tools.load_sdf(args.sdf)
+    sdf_data = SDF.load(args.sdf)
 
     args_dict = vars(args)
     args_dict['random_init'] = False
@@ -58,50 +59,60 @@ def common(args, start, max_steps=1e6):
     ##############################################
     #             NN Constraint Model            #
     ##############################################
-    # constraint_tf_graph = tf.Graph()
-    # with constraint_tf_graph.as_default():
-    #     args_dict = vars(args)
-    #     N = 6
-    #     constraint_model = ConstraintModel(args_dict, sdf, sdf_gradient, sdf_resolution, sdf_origin, N)
-    #     constraint_model.setup()
-    #
-    #     def sdf_violated(np_state):
-    #         violated = constraint_model.violated(np_state, sdf, sdf_resolution, sdf_origin)
-    #         x = np_state[0, 4]
-    #         y = np_state[0, 5]
-    #         row_col = link_bot_pycommon.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
-    #         true_violated = sdf[row_col] < args.sdf_threshold
+    constraint_tf_graph = tf.Graph()
+    with constraint_tf_graph.as_default():
+        model = SDFFunctionModelRunner.load(args.checkpoint)
+        model = model.change_sdf_shape(sdf_data.sdf.shape[0], sdf_data.sdf.shape[1])
+        model.initialize_auxiliary_models()
+
+        class ConstraintCheckerWrapper:
+
+            def __init__(self):
+                pass
+
+            @staticmethod
+            def get_graph():
+                return constraint_tf_graph
+
+            def __call__(self, np_state):
+                predicted_violated, predicted_point = model.violated(np_state, sdf_data)
+                return predicted_violated
 
     #############################################
     #           R_k Constraint Model            #
     #############################################
-    def sdf_violated(np_state):
-        R_k = np.array([[0, 0],
-                        [0, 0],
-                        [0, 0],
-                        [0, 0],
-                        [1, 0],
-                        [0, 1]])
-        pt = np_state @ R_k
-        x = pt[0, 0]
-        y = pt[0, 1]
-        row_col = link_bot_pycommon.link_bot_sdf_tools.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
-        violated = sdf[row_col] < args.sdf_threshold
-        return violated
+    # def sdf_violated(np_state):
+    #     R_k = np.array([[0, 0],
+    #                     [0, 0],
+    #                     [0, 0],
+    #                     [0, 0],
+    #                     [1, 0],
+    #                     [0, 1]])
+    #     pt = np_state @ R_k
+    #     x = pt[0, 0]
+    #     y = pt[0, 1]
+    #     row_col = link_bot_sdf_utils.point_to_sdf_idx(x, y, sdf_resolution, sdf_origin)
+    #     violated = sdf[row_col] < 0.02
+    #     return violated
 
-    rrt = gp_rrt.GPRRT(fwd_gp_model, inv_gp_model, sdf_violated, dt, max_v, args.planner_timeout)
+    rrt = gp_rrt.GPRRT(fwd_gp_model, inv_gp_model, ConstraintCheckerWrapper(), dt, max_v, args.planner_timeout)
 
-    get_link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
+    get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
 
     rospy.init_node('MPCAgent')
 
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
+    action_mode_pub = rospy.Publisher("/link_bot_action_mode", String, queue_size=1)
     rospy.Subscriber("/head_contact", ContactsState, contacts_callback)
 
+    state_req = LinkBotStateRequest()
     action_msg = LinkBotVelocityAction()
-    action_msg.control_link_name = 'head'
+
+    action_mode_msg = String()
+    action_mode_msg.data = "velocity"
+    action_mode_pub.publish(action_mode_msg)
 
     # Statistics
     num_fails = 0
@@ -151,9 +162,9 @@ def common(args, start, max_steps=1e6):
             contacts = 0
             start_time = time.time()
             while step_idx < max_steps and not done:
-                s = agent.get_state(get_link_state)
-                s = np.array(s).reshape((1, fwd_gp_model.n_state))
-                planned_actions, _, planning_time = rrt.plan(s, goal, sdf, args.verbose)
+                s = get_state(state_req)
+                s = np.array([[pt.x, pt.y] for pt in s.points]).reshape(1, -1)
+                planned_actions, _, planning_time = rrt.plan(s, goal, sdf_data.sdf, args.verbose)
 
                 if planned_actions is None:
                     num_fails += 1
@@ -164,8 +175,8 @@ def common(args, start, max_steps=1e6):
                         break
 
                     # publish the pull command
-                    action_msg.vx = action[0]
-                    action_msg.vy = action[1]
+                    action_msg.gripper1_velocity.x = action[0]
+                    action_msg.gripper1_velocity.y = action[1]
                     action_pub.publish(action_msg)
 
                     step = WorldControlRequest()
@@ -176,8 +187,8 @@ def common(args, start, max_steps=1e6):
                     if in_contact:
                         contacts += 1
 
-                    links_state = agent.get_state(get_link_state)
-                    s_next = np.array(links_state).reshape(1, fwd_gp_model.n_state)
+                    links_state = get_state(state_req)
+                    s_next = np.array([[pt.x, pt.y] for pt in links_state.points]).reshape(1, -1)
                     true_cost = link_bot_pycommon.state_cost(s_next, goal)
 
                     if args.pause:
@@ -207,11 +218,12 @@ def common(args, start, max_steps=1e6):
     except KeyboardInterrupt:
         pass
 
-    return np.array(min_true_costs), np.array(execution_times), np.array(planning_times), np.array(nums_contacts), num_fails, num_successes
+    return np.array(min_true_costs), np.array(execution_times), np.array(planning_times), np.array(
+        nums_contacts), num_fails, num_successes
 
 
 def test(args):
-    start = np.array([[-1, 0, 0, 0, 0, 0]])
+    start = np.array([[2, -4, 0, 0, 0, 0]])
     args.n_trials = 1
     common(args, start, max_steps=args.max_steps)
 
@@ -252,8 +264,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("gp_model_dir", help="load this saved forward model file")
-    # parser.add_argument("checkpoint", help="constraint model checkpoint")
-    # parser.add_argument("model_type", choices=ConstraintModelType.strings())
+    parser.add_argument("checkpoint", help="model checkpoint")
     parser.add_argument("sdf", help="sdf and gradient of the environment (npz file)")
     parser.add_argument("--model-name", '-m', default="link_bot")
     parser.add_argument("--seed", '-s', type=int, default=1)
@@ -262,10 +273,8 @@ def main():
     parser.add_argument("--plot-plan", action='store_true')
     parser.add_argument("--debug", action='store_true')
     parser.add_argument("--num-actions", '-T', help="number of actions to execute from the plan", type=int, default=-1)
-    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=90.0)
-    parser.add_argument("--controller", choices=['gurobi', 'ompl-lqr', 'ompl-dual-lqr', 'ompl-gurobi'])
+    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=60.0)
     parser.add_argument("--n-trials", '-n', type=int, default=20)
-    parser.add_argument("--sdf-threshold", type=float, help='smallest allowed distance to an obstacle', default=0.20)
 
     subparsers = parser.add_subparsers()
     test_subparser = subparsers.add_parser("test")

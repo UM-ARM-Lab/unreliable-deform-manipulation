@@ -39,9 +39,15 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
 
   auto joy_bind = boost::bind(&MultiLinkBotModelPlugin::OnJoy, this, _1);
   auto joy_so = ros::SubscribeOptions::create<sensor_msgs::Joy>("/joy", 1, joy_bind, ros::VoidPtr(), &queue_);
-  auto vel_action_bind = boost::bind(&MultiLinkBotModelPlugin::OnAction, this, _1);
-  auto vel_action_so = ros::SubscribeOptions::create<link_bot_gazebo::MultiLinkBotPositionAction>(
-      "/multi_link_bot_position_action", 1, vel_action_bind, ros::VoidPtr(), &queue_);
+  auto pos_action_bind = boost::bind(&MultiLinkBotModelPlugin::OnAction, this, _1);
+  auto pos_action_so = ros::SubscribeOptions::create<link_bot_gazebo::MultiLinkBotPositionAction>(
+      "/multi_link_bot_position_action", 1, pos_action_bind, ros::VoidPtr(), &queue_);
+  auto vel_action_bind = boost::bind(&MultiLinkBotModelPlugin::OnVelocityAction, this, _1);
+  auto vel_action_so = ros::SubscribeOptions::create<link_bot_gazebo::LinkBotVelocityAction>(
+      "/link_bot_velocity_action", 1, vel_action_bind, ros::VoidPtr(), &queue_);
+  auto action_mode_bind = boost::bind(&MultiLinkBotModelPlugin::OnActionMode, this, _1);
+  auto action_mode_so = ros::SubscribeOptions::create<std_msgs::String>("/link_bot_action_mode", 1, action_mode_bind,
+                                                                        ros::VoidPtr(), &queue_);
   auto config_bind = boost::bind(&MultiLinkBotModelPlugin::OnConfiguration, this, _1);
   auto config_so = ros::SubscribeOptions::create<link_bot_gazebo::LinkBotConfiguration>(
       "/link_bot_configuration", 1, config_bind, ros::VoidPtr(), &queue_);
@@ -50,7 +56,9 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
                                                                                         ros::VoidPtr(), &queue_);
 
   joy_sub_ = ros_node_->subscribe(joy_so);
-  action_sub_ = ros_node_->subscribe(vel_action_so);
+  action_sub_ = ros_node_->subscribe(pos_action_so);
+  velocity_action_sub_ = ros_node_->subscribe(vel_action_so);
+  action_mode_sub_ = ros_node_->subscribe(action_mode_so);
   config_sub_ = ros_node_->subscribe(config_so);
   state_service_ = ros_node_->advertiseService(service_so);
 
@@ -122,10 +130,14 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   gripper2_x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
   gripper2_y_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
 
-  gripper1_x_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
-  gripper1_y_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
-  gripper2_x_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
-  gripper2_y_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+  gripper1_x_vel_pid_ =
+      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+  gripper1_y_vel_pid_ =
+      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+  gripper2_x_vel_pid_ =
+      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+  gripper2_y_vel_pid_ =
+      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
 
   std::cout << "MultiLinkBot Model Plugin finished initializing!\n";
 }
@@ -134,32 +146,49 @@ void MultiLinkBotModelPlugin::OnUpdate()
 {
   constexpr auto dt{0.001};
 
-  ignition::math::Vector3d force{};
-  auto const gripper1_pos = gripper1_link_->WorldPose().Pos();
-  auto const gripper1_pos_error = gripper1_pos - gripper1_target_position_;
+  if (mode == "velocity") {
+    ignition::math::Vector3d force{};
+    auto const gripper1_vel = gripper1_link_->WorldLinearVel();
+    auto const gripper1_vel_error = gripper1_vel - gripper1_target_velocity_;
+    force.X(gripper1_x_vel_pid_.Update(gripper1_vel_error.X(), dt));
+    force.Y(gripper1_y_vel_pid_.Update(gripper1_vel_error.Y(), dt));
+    gripper1_link_->AddForce(force);
 
-  gripper1_target_velocity_.X(gripper1_x_pos_pid_.Update(gripper1_pos_error.X(), dt));
-  gripper1_target_velocity_.Y(gripper1_y_pos_pid_.Update(gripper1_pos_error.Y(), dt));
+    if (gripper2_link_) {
+      auto const gripper2_vel = gripper2_link_->WorldLinearVel();
+      auto const gripper2_vel_error = gripper2_vel - gripper2_target_velocity_;
+      force.X(gripper2_x_vel_pid_.Update(gripper2_vel_error.X(), dt));
+      force.Y(gripper2_y_vel_pid_.Update(gripper2_vel_error.Y(), dt));
+      gripper2_link_->AddForce(force);
+    }
+  }
+  else if (mode == "position") {
+    ignition::math::Vector3d force{};
+    auto const gripper1_pos = gripper1_link_->WorldPose().Pos();
+    auto const gripper1_pos_error = gripper1_pos - gripper1_target_position_;
 
-  auto const gripper1_vel = gripper1_link_->WorldLinearVel();
-  auto const gripper1_vel_error = gripper1_vel - gripper1_target_velocity_;
-  force.X(gripper1_x_vel_pid_.Update(gripper1_vel_error.X(), dt));
-  force.Y(gripper1_y_vel_pid_.Update(gripper1_vel_error.Y(), dt));
-  gripper1_link_->AddForce(force);
+    gripper1_target_velocity_.X(gripper1_x_pos_pid_.Update(gripper1_pos_error.X(), dt));
+    gripper1_target_velocity_.Y(gripper1_y_pos_pid_.Update(gripper1_pos_error.Y(), dt));
 
-  if (gripper2_link_) {
-    auto const gripper2_pos = gripper2_link_->WorldPose().Pos();
-    auto const gripper2_pos_error = gripper2_pos - gripper2_target_position_;
+    auto const gripper1_vel = gripper1_link_->WorldLinearVel();
+    auto const gripper1_vel_error = gripper1_vel - gripper1_target_velocity_;
+    force.X(gripper1_x_vel_pid_.Update(gripper1_vel_error.X(), dt));
+    force.Y(gripper1_y_vel_pid_.Update(gripper1_vel_error.Y(), dt));
+    gripper1_link_->AddForce(force);
 
-    gripper2_target_velocity_.X(gripper2_x_pos_pid_.Update(gripper2_pos_error.X(), dt));
-    gripper2_target_velocity_.Y(gripper2_y_pos_pid_.Update(gripper2_pos_error.Y(), dt));
+    if (gripper2_link_) {
+      auto const gripper2_pos = gripper2_link_->WorldPose().Pos();
+      auto const gripper2_pos_error = gripper2_pos - gripper2_target_position_;
 
-    auto const gripper2_vel = gripper2_link_->WorldLinearVel();
-    auto const gripper2_vel_error = gripper2_vel - gripper2_target_velocity_;
-    force.X(gripper2_x_vel_pid_.Update(gripper2_vel_error.X(), dt));
-    force.Y(gripper2_y_vel_pid_.Update(gripper2_vel_error.Y(), dt));
-    gripper2_link_->AddForce(force);
+      gripper2_target_velocity_.X(gripper2_x_pos_pid_.Update(gripper2_pos_error.X(), dt));
+      gripper2_target_velocity_.Y(gripper2_y_pos_pid_.Update(gripper2_pos_error.Y(), dt));
 
+      auto const gripper2_vel = gripper2_link_->WorldLinearVel();
+      auto const gripper2_vel_error = gripper2_vel - gripper2_target_velocity_;
+      force.X(gripper2_x_vel_pid_.Update(gripper2_vel_error.X(), dt));
+      force.Y(gripper2_y_vel_pid_.Update(gripper2_vel_error.Y(), dt));
+      gripper2_link_->AddForce(force);
+    }
   }
 }
 
@@ -169,7 +198,7 @@ void MultiLinkBotModelPlugin::OnJoy(sensor_msgs::JoyConstPtr const msg)
   gripper1_target_position_.X(gripper1_target_position_.X() - msg->axes[0] * scale);
   gripper1_target_position_.Y(gripper1_target_position_.Y() + msg->axes[1] * scale);
   gripper2_target_position_.X(gripper2_target_position_.X() + msg->axes[3] * scale);
-  gripper2_target_position_.Y(gripper2_target_position_.Y() -msg->axes[4] * scale);
+  gripper2_target_position_.Y(gripper2_target_position_.Y() - msg->axes[4] * scale);
 }
 
 void MultiLinkBotModelPlugin::OnAction(link_bot_gazebo::MultiLinkBotPositionActionConstPtr const msg)
@@ -179,6 +208,16 @@ void MultiLinkBotModelPlugin::OnAction(link_bot_gazebo::MultiLinkBotPositionActi
   gripper2_target_position_.X(msg->gripper2_pos.x);
   gripper2_target_position_.Y(msg->gripper2_pos.y);
 }
+
+void MultiLinkBotModelPlugin::OnVelocityAction(link_bot_gazebo::LinkBotVelocityActionConstPtr msg)
+{
+  gripper1_target_velocity_.X(msg->gripper1_velocity.x);
+  gripper1_target_velocity_.Y(msg->gripper1_velocity.y);
+  gripper2_target_velocity_.X(msg->gripper2_velocity.x);
+  gripper2_target_velocity_.Y(msg->gripper2_velocity.y);
+}
+
+void MultiLinkBotModelPlugin::OnActionMode(std_msgs::StringConstPtr msg) { mode = msg->data; }
 
 void MultiLinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurationConstPtr msg)
 {
@@ -207,8 +246,7 @@ void MultiLinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurat
 bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req,
                                                    link_bot_gazebo::LinkBotStateResponse &res)
 {
-  for (auto const &link : model_->GetLinks())
-  {
+  for (auto const &link : model_->GetLinks()) {
     geometry_msgs::Point pt;
     pt.x = link->WorldPose().Pos().X();
     pt.y = link->WorldPose().Pos().Y();

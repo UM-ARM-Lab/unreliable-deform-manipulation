@@ -1,3 +1,5 @@
+from copy import copy
+
 import numpy as np
 from keras.layers import Input
 from keras.models import Model
@@ -10,6 +12,7 @@ from link_bot_models.label_types import LabelType
 class SDFFunctionModelRunner(BaseModelRunner):
     def __init__(self, args_dict):
         super(SDFFunctionModelRunner, self).__init__(args_dict)
+        self.auxiliary_models_initialized = False
         self.sdf_shape = args_dict['sdf_shape']
 
         sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf_input')
@@ -24,21 +27,22 @@ class SDFFunctionModelRunner(BaseModelRunner):
         self.sigmoid_scale = args_dict['sigmoid_scale']
 
         sdf_input_layer, sdf_output_layer, sdf_function = sdf_function_layer(self.sdf_shape, self.fc_layer_sizes, self.beta,
-                                                                             self.sigmoid_scale,
-                                                                             LabelType.SDF.name)
+                                                                             self.sigmoid_scale, LabelType.SDF.name)
         prediction = sdf_function(sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input)
 
         self.model_inputs = [sdf, sdf_gradient, sdf_resolution, sdf_origin, sdf_extent, rope_input]
         self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
         self.sdf_input_model = Model(inputs=self.model_inputs, outputs=sdf_input_layer.output)
         self.sdf_output_model = Model(inputs=self.model_inputs, outputs=sdf_output_layer.output)
-
-        losses = {
-            LabelType.SDF.name: 'binary_crossentropy',
-        }
-        self.keras_model.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
+        #
+        # losses = {
+        #     LabelType.SDF.name: 'binary_crossentropy',
+        # }
+        # self.keras_model.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
 
     def violated(self, observations, sdf_data):
+        assert self.auxiliary_models_initialized
+
         m = observations.shape[0]
         rope_configuration = observations
         sdf = np.tile(np.expand_dims(sdf_data.sdf, axis=2), [m, 1, 1, 1])
@@ -55,14 +59,24 @@ class SDFFunctionModelRunner(BaseModelRunner):
             'sdf_extent': sdf_extent
         }
 
-        # TODO: we have to set weights on the other models for some reason...?
-        self.sdf_input_model.set_weights(self.keras_model.get_weights())
-        self.sdf_output_model.set_weights(self.keras_model.get_weights())
-
         predicted_violated = np.array(self.keras_model.predict(inputs_dict)) > 0.5
         predicted_point = self.sdf_input_model.predict(inputs_dict)
 
         return predicted_violated, predicted_point
+
+    def initialize_auxiliary_models(self):
+        self.sdf_input_model.set_weights(self.keras_model.get_weights())
+        self.sdf_output_model.set_weights(self.keras_model.get_weights())
+        self.auxiliary_models_initialized = True
+
+    def change_sdf_shape(self, new_rows, new_cols):
+        new_args_dict = copy(self.args_dict)
+        new_args_dict['sdf_shape'][0] = new_rows
+        new_args_dict['sdf_shape'][1] = new_cols
+        old_weights = self.keras_model.get_weights()
+        model = SDFFunctionModelRunner(new_args_dict)
+        model.keras_model.set_weights(old_weights)
+        return model
 
 
 class EvaluateResult:

@@ -6,41 +6,41 @@
     
     <link name="link_1">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.235 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.2125 0 0"/>
             <geometry>
-                <cylinder length="0.49" radius="0.02"/>
+                <cylinder length="0.475" radius="0.05"/>
             </geometry>
         </visual>
         <collision name="link_1_collision">
-            <origin rpy="0 -1.5707 0" xyz="0.235 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.2125 0 0"/>
             <geometry>
-                <box size="0.04 0.04 0.47"/>
+                <box size="0.1 0.1 0.425"/>
             </geometry>
         </collision>
         <inertial>
             <mass value="5.0"/>
             <inertia ixx="3.333" ixy="0" ixz="0" iyy="0" iyz="0" izz="3.333"/>
-            <origin rpy="0 0 0" xyz="0.48 0 0"/>
+            <origin rpy="0 0 0" xyz="0.44999999999999996 0 0"/>
         </inertial>
     </link>
     
     <link name="link_2">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.235 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.2125 0 0"/>
             <geometry>
-                <cylinder length="0.49" radius="0.02"/>
+                <cylinder length="0.475" radius="0.05"/>
             </geometry>
         </visual>
         <collision name="link_2_collision">
-            <origin rpy="0 -1.5707 0" xyz="0.235 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.2125 0 0"/>
             <geometry>
-                <box size="0.04 0.04 0.47"/>
+                <box size="0.1 0.1 0.425"/>
             </geometry>
         </collision>
         <inertial>
             <mass value="5.0"/>
             <inertia ixx="3.333" ixy="0" ixz="0" iyy="0" iyz="0" izz="3.333"/>
-            <origin rpy="0 0 0" xyz="0.48 0 0"/>
+            <origin rpy="0 0 0" xyz="0.44999999999999996 0 0"/>
         </inertial>
     </link>
     
@@ -49,13 +49,13 @@
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <sphere radius="0.02"/>
+                <sphere radius="0.05"/>
             </geometry>
         </visual>
         <collision name="head">
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <box size="0.02 0.02 0.02"/>
+                <sphere radius="0.05" />
             </geometry>
         </collision>
         <inertial>
@@ -69,7 +69,7 @@
     <joint name="joint_1" type="revolute">
         <parent link="link_1"/>
         <child link="link_2"/>
-        <origin xyz="0.48 0 0"/>
+        <origin xyz="0.44999999999999996 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="2.0" friction="0.01"/>
@@ -79,7 +79,7 @@
     <joint name="head_joint" type="revolute">
         <parent link="link_2"/>
         <child link="head"/>
-        <origin xyz="0.48 0 0"/>
+        <origin xyz="0.44999999999999996 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="2.0" friction="0.01"/>
@@ -87,7 +87,7 @@
 
     
     <gazebo reference="link_1">
-        <material>Gazebo/DarkGray</material>
+        <material>Gazebo/Green</material>
         <self_collide>true</self_collide>
         <sensor name='link_1_contact' type='contact'>
             <contact>
@@ -97,7 +97,7 @@
     </gazebo>
     
     <gazebo reference="link_2">
-        <material>Gazebo/DarkGray</material>
+        <material>Gazebo/Green</material>
         <self_collide>true</self_collide>
         <sensor name='link_2_contact' type='contact'>
             <contact>

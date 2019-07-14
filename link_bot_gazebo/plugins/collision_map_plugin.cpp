@@ -82,8 +82,8 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
   }
 
   {
-    auto so =
-        ros::AdvertiseServiceOptions::create<link_bot_gazebo::ComputeSDF>("/sdf", get_sdf, ros::VoidConstPtr(), &queue_);
+    auto so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ComputeSDF>("/sdf", get_sdf, ros::VoidConstPtr(),
+                                                                                &queue_);
     get_service_ = ros_node_->advertiseService(so);
   }
 
@@ -124,7 +124,10 @@ void CollisionMapPlugin::OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg)
   std::vector<size_t> gradient_shape{static_cast<unsigned long>(grid_.GetNumXCells()),
                                      static_cast<unsigned long>(grid_.GetNumYCells()), 2};
 
-  std::vector<double> origin_vec{msg->center.x - msg->x_width / 2, msg->center.y - msg->y_height / 2};
+  // FIXME: this doesn't work if the origin isn't 0
+  auto const origin_x_coordinate = static_cast<int>(msg->x_width / 2 / msg->resolution);
+  auto const origin_y_coordinate = static_cast<int>(msg->y_height / 2 / msg->resolution);
+  std::vector<int> origin_vec{origin_x_coordinate, origin_y_coordinate};
   std::vector<float> resolutions{msg->resolution, msg->resolution, msg->resolution};
   cnpy::npz_save(msg->filename, "sdf", &sdf_.GetImmutableRawData()[0], shape, "w");
   cnpy::npz_save(msg->filename, "sdf_gradient", &sdf_gradient_flat[0], gradient_shape, "a");

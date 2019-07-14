@@ -1,12 +1,13 @@
+from time import time
+
+import matplotlib.pyplot as plt
+import numpy as np
 from ompl import base as ob
 from ompl import control as oc
 
-from time import time
-import matplotlib.pyplot as plt
-import numpy as np
+from link_bot_agent import ompl_util
 from link_bot_agent.gp_directed_control_sampler import GPDirectedControlSampler, plot
 from link_bot_agent.link_bot_goal import LinkBotGoal
-from link_bot_agent import ompl_util
 from link_bot_gaussian_process import link_bot_gp
 
 
@@ -32,10 +33,10 @@ class LinkBotStateSpace(ob.RealVectorStateSpace):
 
 class GPRRT:
 
-    def __init__(self, fwd_gp_model, inv_gp_model, constraint_violated, dt, max_v, planner_timeout):
+    def __init__(self, fwd_gp_model, inv_gp_model, constraint_checker_wrapper, dt, max_v, planner_timeout, ):
+        self.constraint_checker_wrapper = constraint_checker_wrapper
         self.fwd_gp_model = fwd_gp_model
         self.inv_gp_model = inv_gp_model
-        self.constraint_violated = constraint_violated
         self.dt = dt
         self.planner_timeout = planner_timeout
         self.n_state = self.fwd_gp_model.n_state
@@ -49,34 +50,70 @@ class GPRRT:
         self.state_space.setBounds(-self.state_space_size, self.state_space_size)
 
         self.control_space = oc.RealVectorControlSpace(self.state_space, self.n_control)
+        control_bounds = ob.RealVectorBounds(2)
+        control_bounds.setLow(-0.3)
+        control_bounds.setHigh(0.3)
+        self.control_space.setBounds(control_bounds)
 
         self.ss = oc.SimpleSetup(self.control_space)
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
 
         self.si = self.ss.getSpaceInformation()
         self.si.setPropagationStepSize(self.dt)
-        self.si.setMinMaxControlDuration(1, 10)
+        self.si.setMinMaxControlDuration(1, 100)
 
         # use the default state propagator, it won't be called anyways because we use a directed control sampler
-        self.ss.setStatePropagator(oc.StatePropagator(self.si))
+        # self.ss.setStatePropagator(oc.StatePropagator(self.si))
+        self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
 
-        self.si.setDirectedControlSamplerAllocator(
-            GPDirectedControlSampler.allocator(self.fwd_gp_model, self.inv_gp_model, self.max_v))
+        # self.si.setDirectedControlSamplerAllocator(
+        #     GPDirectedControlSampler.allocator(self.fwd_gp_model, self.inv_gp_model, self.max_v))
 
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(False)
         self.ss.setPlanner(self.planner)
 
-    def isStateValid(self, state):
-        # check if our model predicts that constraints are violated in this state
-        if not self.state_space.satisfiesBounds(state):
-            return False
+    def propagate(self, start, control, duration, state_out):
+        np_s = np.ndarray((1, self.fwd_gp_model.n_state))
+        np_u = np.ndarray((1, self.fwd_gp_model.n_control))
 
-        np_state = np.ndarray((1, self.n_state))
-        for i in range(self.n_state):
-            np_state[0, i] = state[i]
-        constraint_violated = self.constraint_violated(np_state)
-        return not constraint_violated
+        for i in range(self.fwd_gp_model.n_state):
+            np_s[0, i] = start[i]
+
+        for i in range(self.fwd_gp_model.n_control):
+            np_u[0, i] = control[i]
+
+        steps = int(duration / self.dt)
+        np_s_next = np_s
+        for t in range(steps):
+            np_s_next = self.fwd_gp_model.fwd_act(np_s_next, np_u)
+
+        # DEBUGGING:
+        # sx = [np_s[0, 0], np_s[0, 2], np_s[0, 4]]
+        # sy = [np_s[0, 1], np_s[0, 3], np_s[0, 5]]
+        # sx_ = [np_s_next[0, 0], np_s_next[0, 2], np_s_next[0, 4]]
+        # sy_ = [np_s_next[0, 1], np_s_next[0, 3], np_s_next[0, 5]]
+        # plt.scatter(sx, sy, c=['b', 'b', 'g'], zorder=2)
+        # plt.plot(sx, sy, c='k', zorder=1)
+        # plt.scatter(sx_, sy_, c=['r', 'r', 'c'], zorder=2)
+        # plt.quiver(np_s[0, 4], np_s[0, 5], control[0], control[1])
+        # plt.axis("equal")
+        # plt.show()
+
+        for i in range(self.fwd_gp_model.n_state):
+            state_out[i] = np_s_next[0, i]
+
+    def isStateValid(self, state):
+        with self.constraint_checker_wrapper.get_graph().as_default():
+            # check if our model predicts that constraints are violated in this state
+            if not self.state_space.satisfiesBounds(state):
+                return False
+
+            np_state = np.ndarray((1, self.n_state))
+            for i in range(self.n_state):
+                np_state[0, i] = state[i]
+            constraint_violated = self.constraint_checker_wrapper(np_state)
+            return not constraint_violated
 
     def plan(self, np_start, np_goal, sdf, verbose=False):
         # create start and goal states
@@ -85,7 +122,7 @@ class GPRRT:
         for i in range(self.n_state):
             start()[i] = np_start[0, i].astype(np.float64)
         # the threshold on "cost-to-goal" is interpretable here as Euclidean distance
-        epsilon = 0.25
+        epsilon = 0.10
         goal = LinkBotGoal(self.si, epsilon, np_goal)
 
         self.ss.clear()
@@ -125,7 +162,7 @@ class GPRRT:
                     planner_data = ob.PlannerData(self.si)
                     self.planner.getPlannerData(planner_data)
                     plot(planner_data, sdf, np_start, np_goal, np_states, np_controls, self.arena_size)
-                    particles = link_bot_gp.predict(self.fwd_gp_model, np_start, np_controls, np_duration_steps_int)
+                    particles, variances = link_bot_gp.predict(self.fwd_gp_model, np_start, np_controls, np_duration_steps_int)
                     animation = link_bot_gp.animate_predict(particles, sdf, self.arena_size)
                     animation.save('gp_mpc_{}.gif'.format(int(time())), writer='imagemagick', fps=10)
                     plt.show()

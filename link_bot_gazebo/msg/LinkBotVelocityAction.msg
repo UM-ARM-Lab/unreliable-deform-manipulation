@@ -1,3 +1,3 @@
-float64 vx
-float64 vy
-string control_link_name
+geometry_msgs/Point gripper1_velocity
+geometry_msgs/Point gripper2_velocity
+

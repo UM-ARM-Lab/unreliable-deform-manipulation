@@ -37,8 +37,8 @@ def get_rope_data(get_link_state, num_links):
 
 
 def get_state(get_link_state):
-    links = {'link_0': LinkConfig(),
-             'link_1': LinkConfig(),
+    links = {'link_1': LinkConfig(),
+             'link_2': LinkConfig(),
              'head': LinkConfig()}
 
     # get the new states
