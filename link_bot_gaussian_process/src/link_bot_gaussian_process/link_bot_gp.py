@@ -218,26 +218,30 @@ class LinkBotGP:
         return np.array([[u[0, 0] / nu * u[0, 2], u[0, 1] / nu * u[0, 2]]])
 
     def fwd_act(self, s, u):
-        # s_relative = data_reformatting.make_relative_to_head(s)
-        # x_star = np.hstack((s_relative, u))
-        # delta_mu, _ = self.model.predict_y(x_star)
+        s_relative = data_reformatting.make_relative_to_head(s)
+        x_star = np.hstack((s_relative, u))
+        delta_mu, _ = self.model.predict_y(x_star)
 
         # DEBUGGING:
-        delta_mu = 0.1 * np.array([u[0, 0], u[0, 1], u[0, 0], u[0, 1], u[0, 0], u[0, 1]])
+        # delta_mu = 0.1 * np.array([u[0, 0], u[0, 1], u[0, 0], u[0, 1], u[0, 0], u[0, 1]])
+
         s_next = s + delta_mu
         return s_next
 
     def inv_act(self, s, s_target, max_v=1.0):
-        # delta = s_target - s
-        # head_delta_mag = np.linalg.norm(delta[:, 4:6], axis=1, keepdims=True)
-        # x_star = np.concatenate((delta, head_delta_mag), axis=1)
-        # output, _ = self.model.predict_y(x_star)
-        # triplet_action = output[0, :3]
-        # pred_n_steps = output[0, 3]
-        # vx_vy_u = LinkBotGP.convert_triplet_action(triplet_action)
-        vx_vy_u = np.atleast_2d(s_target[0, 0:2] - s[0, 0:2])
-        u_norm = np.linalg.norm(vx_vy_u)
-        if u_norm > 1:
-            vx_vy_u = vx_vy_u / u_norm
-        pred_n_steps = np.linalg.norm(vx_vy_u) / 0.1
+        delta = s_target - s
+        head_delta_mag = np.linalg.norm(delta[:, 4:6], axis=1, keepdims=True)
+        x_star = np.concatenate((delta, head_delta_mag), axis=1)
+        output, _ = self.model.predict_y(x_star)
+        triplet_action = output[0, :3]
+        pred_n_steps = output[0, 3]
+        vx_vy_u = LinkBotGP.convert_triplet_action(triplet_action)
+
+        # DEBUGGING:
+        # vx_vy_u = np.atleast_2d(s_target[0, 0:2] - s[0, 0:2])
+        # u_norm = np.linalg.norm(vx_vy_u)
+        # if u_norm > 1:
+        #     vx_vy_u = vx_vy_u / u_norm
+        # pred_n_steps = np.linalg.norm(vx_vy_u) / 0.1
+
         return vx_vy_u, pred_n_steps

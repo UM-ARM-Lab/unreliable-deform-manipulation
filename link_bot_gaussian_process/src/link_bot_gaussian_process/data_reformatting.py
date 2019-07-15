@@ -1,17 +1,6 @@
 import numpy as np
 
 
-def undo_make_relative_to_head(state_relative_to_head, head):
-    state = np.copy(state_relative_to_head)
-    state[0] += head[0]
-    state[1] += head[1]
-    state[2] += head[0]
-    state[3] += head[1]
-    state[4] += head[0]
-    state[5] += head[1]
-    return state.reshape(state.shape)
-
-
 def make_relative_to_head(states):
     states_relative_to_head = np.copy(states)
     assert states.ndim > 1
@@ -30,7 +19,7 @@ def make_relative_to_head(states):
 def format_forward_data_gz(args, dataset):
     """
     input to the forward model is a position of each point on the rope relative to the head,
-    concatentated with the control input
+    concatenated with the control input
     """
 
     # get all pairs of (states, next state) where neither has constraint label 1
@@ -99,7 +88,7 @@ def format_inverse_data_gz(args, dataset):
     num_steps_flat = np.array(num_steps_flat).astype(np.float64)
 
     head_delta = np.linalg.norm(delta_flat[:, 4:6], axis=1, keepdims=True)
-    actions_flat_scaled = actions_flat / np.linalg.norm(actions_flat, axis=1).reshape(-1, 1)
+    actions_flat_normalized = actions_flat / np.linalg.norm(actions_flat, axis=1).reshape(-1, 1)
     mag_flat = np.linalg.norm(actions_flat, axis=1).reshape(-1, 1)
     num_steps_flat = num_steps_flat.reshape(-1, 1)
 
@@ -108,9 +97,11 @@ def format_inverse_data_gz(args, dataset):
     # because theta is discontinuous and GPs assume smoothness
     # FIXME: by including only the head delta as a feature we are super cheating
     x = np.concatenate((delta_flat, head_delta), axis=1)
-    # y = np.concatenate((actions_flat_scaled, mag_flat, num_steps_flat), axis=1)
+    y = np.concatenate((actions_flat_normalized, mag_flat, num_steps_flat), axis=1)
     # NOTE: asking the model to predict both magnitude and number of steps is ill-posed, there is no single correct solution
-    y = np.concatenate((actions_flat_scaled, mag_flat), axis=1)
+    # NOTE: in the new gazebo data, the target velocity changes over the course of a trajectory, so it doesn't make sense to
+    #       predict the speed, only the direction of the action
+    y = actions_flat_normalized
 
     return x, y
 
@@ -146,6 +137,7 @@ def format_inverse_data(data, traj_idx_start=0, traj_idx_end=-1, examples_per_tr
     start_indeces = np.random.randint(1, max_n_steps, size=(n_traj * examples_per_traj))
     end_indeces = np.random.randint(1, max_n_steps, size=(n_traj * examples_per_traj))
     for i in np.argwhere(start_indeces > end_indeces):
+        # DEBUGGING:
         # https://stackoverflow.com/questions/14836228/is-there-a-standardized-method-to-swap-two-variables-in-python
         # yes, this is correct.
         start_indeces[i], end_indeces[i] = end_indeces[i], start_indeces[i]

@@ -14,18 +14,20 @@ def inv_sample():
     return np.array([[np.cos(theta) * v, np.sin(theta) * v]])
 
 
-def plot(planner_data, sdf, start, goal, path, controls, arena_size):
+def plot(state_space, control_space, planner_data, sdf, start, goal, path, controls, arena_size):
     plt.figure()
     max = np.max(np.flipud(sdf.T))
     img = Image.fromarray(np.uint8(np.flipud(sdf.T) / max * 256))
     small_sdf = img.resize((80, 80))
     plt.imshow(small_sdf, extent=[-arena_size, arena_size, -arena_size, arena_size])
 
-    plt.scatter(start[0, 0], start[0, 1], label='start', s=100, c='y')
-    plt.scatter(goal[0, 0], goal[0, 1], label='goal', s=100, c='g')
-    plt.plot(path[:, 0], path[:, 1], label='tail path', linewidth=4, c='m')
-    plt.plot(path[:, 4], path[:, 5], label='head path', linewidth=3, c='b')
-    plt.quiver(path[:-1, 0], path[:-1, 1], controls[:, 0], controls[:, 1], width=0.001)
+    plt.scatter(start[0, 0], start[0, 1], label='start', s=100, c='c', zorder=1)
+    plt.scatter(goal[0, 0], goal[0, 1], label='goal', s=100, c='g', zorder=1)
+    for path_i in path:
+        xs = [path_i[0], path_i[2], path_i[4]]
+        ys = [path_i[1], path_i[3], path_i[5]]
+        plt.plot(xs, ys, label='final path', linewidth=4, c='m', alpha=0.75, zorder=4)
+    plt.quiver(path[:-1, 0], path[:-1, 1], controls[:, 0], controls[:, 1], width=0.001, zorder=5)
 
     for vertex_index in range(planner_data.numVertices()):
         v = planner_data.getVertex(vertex_index)
@@ -33,16 +35,20 @@ def plot(planner_data, sdf, start, goal, path, controls, arena_size):
         s = v.getState()
         edges_map = ob.mapUintToPlannerDataEdge()
 
-        plt.scatter(s[0], s[1], s=25, c='r', zorder=2)
+        np_s = state_space.to_numpy(s)
+        plt.scatter(np_s[0, 0], np_s[0, 1], s=15, c='orange', zorder=2, alpha=0.5, label='tail')
 
         if len(edges_map.keys()) == 0:
-            plt.plot([s[0], s[2], s[4]], [s[1], s[3], s[5]], linewidth=1, c='orange', alpha=0.2, zorder=1)
+            xs = [np_s[0, 0], np_s[0, 2], np_s[0, 4]]
+            ys = [np_s[0, 1], np_s[0, 3], np_s[0, 5]]
+            plt.plot(xs, ys, linewidth=1, c='orange', alpha=0.2, zorder=2, label='full rope')
 
         planner_data.getEdges(vertex_index, edges_map)
         for vertex_index2 in edges_map.keys():
             v2 = planner_data.getVertex(vertex_index2)
             s2 = v2.getState()
-            plt.plot([s[0], s2[0]], [s[1], s2[1]], c='gray', zorder=0)
+            np_s2 = state_space.to_numpy(s2)
+            plt.plot([np_s[0, 0], np_s2[0, 0]], [np_s[0, 1], np_s2[0, 1]], c='gray', label='tree', zorder=1)
 
     plt.xlabel("x")
     plt.ylabel("y")
@@ -60,7 +66,7 @@ def plot(planner_data, sdf, start, goal, path, controls, arena_size):
         Line2D([0], [0], color='gray', lw=1),
     ]
 
-    plt.legend(custom_lines, ['start', 'goal', 'tail path', 'head_path', 'tail', 'full rope', 'search tree (tail)'])
+    plt.legend(custom_lines, ['start', 'goal', 'final path', 'tail', 'full rope', 'search tree'])
 
 
 class GPDirectedControlSampler(oc.DirectedControlSampler):

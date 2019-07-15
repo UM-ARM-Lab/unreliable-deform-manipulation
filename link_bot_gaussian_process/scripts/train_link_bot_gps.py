@@ -46,10 +46,10 @@ def train(args):
 
     print("Training forward model")
     fwd_model.train(fwd_train_x, fwd_train_y, verbose=args.verbose, maximum_training_iterations=500,
-                    n_inducing_points=500)
+                    n_inducing_points=20)
     print("Training inverse model")
     inv_model.train(inv_train_x, inv_train_y, verbose=args.verbose, maximum_training_iterations=500,
-                    n_inducing_points=50)
+                    n_inducing_points=20)
 
     # Save
     ###########################################################################
@@ -91,6 +91,7 @@ def evaluate(args, fwd_model, inv_model, fwd_test_x, fwd_test_y, inv_test_x, inv
     print(table)
     with open("metrics.md", 'w') as f:
         f.writelines(table)
+        f.write("\n")
 
 
 def main():
