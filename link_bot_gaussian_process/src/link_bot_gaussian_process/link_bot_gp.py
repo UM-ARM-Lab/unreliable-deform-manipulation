@@ -218,12 +218,12 @@ class LinkBotGP:
         return np.array([[u[0, 0] / nu * u[0, 2], u[0, 1] / nu * u[0, 2]]])
 
     def fwd_act(self, s, u):
-        s_relative = data_reformatting.make_relative_to_head(s)
-        x_star = np.hstack((s_relative, u))
-        delta_mu, _ = self.model.predict_y(x_star)
+        # s_relative = data_reformatting.make_relative_to_head(s)
+        # x_star = np.hstack((s_relative, u))
+        # delta_mu, _ = self.model.predict_y(x_star)
 
         # DEBUGGING:
-        # delta_mu = 0.1 * np.array([u[0, 0], u[0, 1], u[0, 0], u[0, 1], u[0, 0], u[0, 1]])
+        delta_mu = 0.1 * np.array([u[0, 0], u[0, 1], u[0, 0], u[0, 1], u[0, 0], u[0, 1]])
         s_next = s + delta_mu
         return s_next
 
