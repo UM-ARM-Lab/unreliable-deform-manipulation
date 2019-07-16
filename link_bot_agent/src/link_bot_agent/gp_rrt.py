@@ -9,82 +9,8 @@ from ompl import control as oc
 from link_bot_agent import ompl_util
 from link_bot_agent.gp_directed_control_sampler import GPDirectedControlSampler, plot
 from link_bot_agent.link_bot_goal import LinkBotGoal
+from link_bot_agent.state_spaces import LinkBotStateSpace, LinkBotControlSpace
 from link_bot_gaussian_process import link_bot_gp
-
-
-class LinkBotControlSpace(oc.RealVectorControlSpace):
-
-    def __init__(self, state_space, n_control):
-        super(LinkBotControlSpace, self).__init__(state_space, n_control)
-
-    @staticmethod
-    def to_numpy(control):
-        assert isinstance(control, oc.RealVectorControlSpace.ControlType)
-        np_u = np.ndarray((1, 2))
-        np_u[0, 0] = control[0]
-        np_u[0, 1] = control[1]
-        return np_u
-
-
-class MinimalLinkBotStateSpace(ob.RealVectorStateSpace):
-
-    def __init__(self, n_state):
-        super(MinimalLinkBotStateSpace, self).__init__(n_state)
-        self.setDimensionName(0, 'tail_x')
-        self.setDimensionName(1, 'tail_y')
-        self.setDimensionName(2, 'theta_0')
-        self.setDimensionName(3, 'theta_1')
-
-    @staticmethod
-    def to_numpy(state, l=0.5):
-        np_s = np.ndarray((1, 6))
-        np_s[0, 0] = state[0]
-        np_s[0, 1] = state[1]
-        np_s[0, 2] = np_s[0, 0] + np.cos(state[2]) * l
-        np_s[0, 3] = np_s[0, 1] + np.sin(state[2]) * l
-        np_s[0, 4] = np_s[0, 2] + np.cos(state[3]) * l
-        np_s[0, 5] = np_s[0, 3] + np.sin(state[3]) * l
-        return np_s
-
-    @staticmethod
-    def from_numpy(np_s, state_out):
-        state_out[0] = np_s[0, 0]
-        state_out[1] = np_s[0, 1]
-        state_out[2] = np.arctan2(np_s[0, 3] - np_s[0, 1], np_s[0, 2] - np_s[0, 0])
-        state_out[3] = np.arctan2(np_s[0, 5] - np_s[0, 3], np_s[0, 4] - np_s[0, 2])
-
-
-class LinkBotStateSpace(ob.RealVectorStateSpace):
-
-    def __init__(self, n_state):
-        super(LinkBotStateSpace, self).__init__(n_state)
-        self.setDimensionName(0, 'tail_x')
-        self.setDimensionName(1, 'tail_y')
-        self.setDimensionName(2, 'mid_x')
-        self.setDimensionName(3, 'mid_y')
-        self.setDimensionName(4, 'head_x')
-        self.setDimensionName(5, 'head_y')
-
-    #
-    # def distance(self, s1, s2):
-    #     # all the weight is in the tail
-    #     weights = [1, 1, 0, 0, 0, 0]
-    #     dist = 0
-    #     for i in range(self.getDimension()):
-    #         dist += weights[i] * (s1[i] - s2[i]) ** 2
-    #     return dist
-
-    @staticmethod
-    def to_numpy(state):
-        np_s = np.ndarray((1, 6))
-        for i in range(6):
-            np_s[0, i] = state[i]
-        return np_s
-
-    @staticmethod
-    def from_numpy(np_s, state_out):
-        for i in range(6):
-            state_out[i] = np_s[0, i]
 
 
 class GPRRT:
@@ -101,9 +27,11 @@ class GPRRT:
 
         self.arena_size = 5
         self.state_space_size = 5  # be careful this will cause out of bounds in the SDF
-        self.state_space = LinkBotStateSpace(self.n_state)
+        extent = [-self.state_space_size, self.state_space_size, -self.state_space_size, self.state_space_size]
+        self.state_space = LinkBotStateSpace(self.n_state, extent)
         self.state_space.setName("dynamics latent space")
         self.state_space.setBounds(-self.state_space_size, self.state_space_size)
+        self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_space.allocator))
 
         self.control_space = LinkBotControlSpace(self.state_space, self.n_control)
         control_bounds = ob.RealVectorBounds(2)
@@ -122,8 +50,8 @@ class GPRRT:
         # self.ss.setStatePropagator(oc.StatePropagator(self.si))
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
 
-        # self.si.setDirectedControlSamplerAllocator(
-        #     GPDirectedControlSampler.allocator(self.fwd_gp_model, self.inv_gp_model, self.max_v))
+        self.si.setDirectedControlSamplerAllocator(
+            GPDirectedControlSampler.allocator(self.fwd_gp_model, self.inv_gp_model, self.max_v))
 
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(False)

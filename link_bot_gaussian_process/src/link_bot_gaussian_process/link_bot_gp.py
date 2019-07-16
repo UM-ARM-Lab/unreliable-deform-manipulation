@@ -2,11 +2,11 @@ import os
 from time import time
 
 import gpflow as gpf
-import tensorflow as tf
 import gpflow.multioutput.features as mf
 import gpflow.multioutput.kernels as mk
 import matplotlib.pyplot as plt
 import numpy as np
+from ompl import util as ou
 from PIL import Image
 from colorama import Fore
 from matplotlib.animation import FuncAnimation
@@ -123,6 +123,14 @@ class LinkBotGP:
         self.maximum_training_iterations = None
         self.model_def = None
         self.model = None
+        self.rng = None
+        self.min_steps = 1
+        self.max_steps = 1
+
+    def initialize_rng(self, min_steps, max_steps):
+        self.min_steps = min_steps
+        self.max_steps = max_steps
+        self.rng = ou.RNG()
 
     def train(self, X, Y, n_inducing_points=100, verbose=True, maximum_training_iterations=300):
         self.n_data_points, self.n_inputs = X.shape
@@ -232,16 +240,16 @@ class LinkBotGP:
         delta = s_target - s
         head_delta_mag = np.linalg.norm(delta[:, 4:6], axis=1, keepdims=True)
         x_star = np.concatenate((delta, head_delta_mag), axis=1)
-        output, _ = self.model.predict_y(x_star)
-        triplet_action = output[0, :3]
-        pred_n_steps = output[0, 3]
-        vx_vy_u = LinkBotGP.convert_triplet_action(triplet_action)
+        u, _ = self.model.predict_y(x_star)
+        # normalize in case the GP outputs sin/cos that are slightly > 1
+        u_norm = np.linalg.norm(u)
+        if u_norm > 1:
+            u = u / u_norm
+
+        random_n_steps = self.rng.uniformInt(self.min_steps, self.max_steps)
 
         # DEBUGGING:
         # vx_vy_u = np.atleast_2d(s_target[0, 0:2] - s[0, 0:2])
-        # u_norm = np.linalg.norm(vx_vy_u)
-        # if u_norm > 1:
-        #     vx_vy_u = vx_vy_u / u_norm
         # pred_n_steps = np.linalg.norm(vx_vy_u) / 0.1
 
-        return vx_vy_u, pred_n_steps
+        return u, random_n_steps

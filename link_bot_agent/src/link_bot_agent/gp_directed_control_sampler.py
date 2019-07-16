@@ -27,7 +27,7 @@ def plot(state_space, control_space, planner_data, sdf, start, goal, path, contr
         xs = [path_i[0], path_i[2], path_i[4]]
         ys = [path_i[1], path_i[3], path_i[5]]
         plt.plot(xs, ys, label='final path', linewidth=4, c='m', alpha=0.75, zorder=4)
-    plt.quiver(path[:-1, 0], path[:-1, 1], controls[:, 0], controls[:, 1], width=0.001, zorder=5)
+    plt.quiver(path[:-1, 4], path[:-1, 5], controls[:, 0], controls[:, 1], width=0.002, zorder=5, color='k')
 
     for vertex_index in range(planner_data.numVertices()):
         v = planner_data.getVertex(vertex_index)
@@ -48,7 +48,7 @@ def plot(state_space, control_space, planner_data, sdf, start, goal, path, contr
             v2 = planner_data.getVertex(vertex_index2)
             s2 = v2.getState()
             np_s2 = state_space.to_numpy(s2)
-            plt.plot([np_s[0, 0], np_s2[0, 0]], [np_s[0, 1], np_s2[0, 1]], c='gray', label='tree', zorder=1)
+            plt.plot([np_s[0, 0], np_s2[0, 0]], [np_s[0, 1], np_s2[0, 1]], c='white', label='tree', zorder=1)
 
     plt.xlabel("x")
     plt.ylabel("y")
@@ -60,13 +60,12 @@ def plot(state_space, control_space, planner_data, sdf, start, goal, path, contr
         Line2D([0], [0], color='y', lw=1),
         Line2D([0], [0], color='g', lw=1),
         Line2D([0], [0], color='m', lw=1),
-        Line2D([0], [0], color='b', lw=1),
-        Line2D([0], [0], color='r', lw=1),
+        Line2D([0], [0], color='k', lw=1),
         Line2D([0], [0], color='orange', lw=1),
-        Line2D([0], [0], color='gray', lw=1),
+        Line2D([0], [0], color='white', lw=1),
     ]
 
-    plt.legend(custom_lines, ['start', 'goal', 'final path', 'tail', 'full rope', 'search tree'])
+    plt.legend(custom_lines, ['start', 'goal', 'final path', 'controls', 'full rope', 'search tree'])
 
 
 class GPDirectedControlSampler(oc.DirectedControlSampler):
@@ -79,6 +78,13 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
         self.max_v = max_v
         self.fwd_gp_model = fwd_gp_model
         self.inv_gp_model = inv_gp_model
+        self.state_space = self.si.getStateSpace()
+        self.control_space = self.si.getControlSpace()
+        self.n_state = self.state_space.getDimension()
+        self.n_control = self.control_space.getDimension()
+        self.min_steps = int(self.si.getMinControlDuration())
+        self.max_steps = int(self.si.getMaxControlDuration())
+        self.inv_gp_model.initialize_rng(self.min_steps, self.max_steps)
 
     @classmethod
     def alloc(cls, si, fwd_gp_model, inv_gp_model, max_v):
@@ -94,21 +100,15 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
     def sampleTo(self, control_out, previous_control, state, target_out):
         # we return 0 to indicate no duration when LQR gives us a control that takes us into collision
         # this will cause the RRT to throw out this motion
-        n_state = self.si.getStateSpace().getDimension()
-        n_control = self.si.getControlSpace().getDimension()
-        np_s = np.ndarray((1, n_state))
-        np_target = np.ndarray((1, n_state))
-        for i in range(n_state):
-            np_s[0, i] = state[i]
-            np_target[0, i] = target_out[i]
+        np_s = self.state_space.to_numpy(state)
+        np_target = self.state_space.to_numpy(target_out)
 
         u, duration_steps_float = self.inv_gp_model.inv_act(np_s, np_target, self.max_v)
         duration_steps = max(int(duration_steps_float), 1)
         for i in range(duration_steps):
             np_s_next = self.fwd_gp_model.fwd_act(np_s, u)
             # use the already allocated target_out OMPL state for the intermediate states
-            for j in range(n_state):
-                target_out[j] = np_s_next[0, j]
+            self.state_space.from_numpy(np_s_next, target_out)
             if not self.si.isValid(target_out):
                 duration_steps = i
                 break
@@ -119,9 +119,7 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
         if not self.si.isValid(target_out):
             duration_steps = 0
 
-        for i in range(n_control):
-            control_out[i] = u[0, i]
-        for i in range(n_state):
-            target_out[i] = np_s_next[0, i]
+        self.control_space.from_numpy(u, control_out)
+        self.state_space.from_numpy(np_s_next, target_out)
 
         return duration_steps

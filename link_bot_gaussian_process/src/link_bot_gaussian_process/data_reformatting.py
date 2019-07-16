@@ -97,7 +97,7 @@ def format_inverse_data_gz(args, dataset):
     # because theta is discontinuous and GPs assume smoothness
     # FIXME: by including only the head delta as a feature we are super cheating
     x = np.concatenate((delta_flat, head_delta), axis=1)
-    y = np.concatenate((actions_flat_normalized, mag_flat, num_steps_flat), axis=1)
+    # y = np.concatenate((actions_flat_normalized, mag_flat, num_steps_flat), axis=1)
     # NOTE: asking the model to predict both magnitude and number of steps is ill-posed, there is no single correct solution
     # NOTE: in the new gazebo data, the target velocity changes over the course of a trajectory, so it doesn't make sense to
     #       predict the speed, only the direction of the action
