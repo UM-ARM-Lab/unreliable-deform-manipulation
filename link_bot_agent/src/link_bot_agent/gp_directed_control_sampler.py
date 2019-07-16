@@ -21,6 +21,11 @@ def plot(state_space, control_space, planner_data, sdf, start, goal, path, contr
     small_sdf = img.resize((80, 80))
     plt.imshow(small_sdf, extent=[-arena_size, arena_size, -arena_size, arena_size])
 
+    for state_sampled_at in GPDirectedControlSampler.states_sampled_at:
+        xs = [state_sampled_at[0, 0], state_sampled_at[0, 2], state_sampled_at[0, 4]]
+        ys = [state_sampled_at[0, 1], state_sampled_at[0, 3], state_sampled_at[0, 5]]
+        plt.plot(xs, ys, label='sampled states', linewidth=0.5, c='r', alpha=0.5, zorder=1)
+
     plt.scatter(start[0, 0], start[0, 1], label='start', s=100, c='c', zorder=1)
     plt.scatter(goal[0, 0], goal[0, 1], label='goal', s=100, c='g', zorder=1)
     for path_i in path:
@@ -29,6 +34,7 @@ def plot(state_space, control_space, planner_data, sdf, start, goal, path, contr
         plt.plot(xs, ys, label='final path', linewidth=4, c='m', alpha=0.75, zorder=4)
     plt.quiver(path[:-1, 4], path[:-1, 5], controls[:, 0], controls[:, 1], width=0.002, zorder=5, color='k')
 
+    print(planner_data.numVertices())
     for vertex_index in range(planner_data.numVertices()):
         v = planner_data.getVertex(vertex_index)
         # draw the configuration of the rope
@@ -69,6 +75,7 @@ def plot(state_space, control_space, planner_data, sdf, start, goal, path, contr
 
 
 class GPDirectedControlSampler(oc.DirectedControlSampler):
+    states_sampled_at = []
 
     def __init__(self, si, fwd_gp_model, inv_gp_model, max_v):
         super(GPDirectedControlSampler, self).__init__(si)
@@ -98,10 +105,10 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
         return oc.DirectedControlSamplerAllocator(partial)
 
     def sampleTo(self, control_out, previous_control, state, target_out):
-        # we return 0 to indicate no duration when LQR gives us a control that takes us into collision
-        # this will cause the RRT to throw out this motion
         np_s = self.state_space.to_numpy(state)
         np_target = self.state_space.to_numpy(target_out)
+
+        self.states_sampled_at.append(np_target)
 
         u, duration_steps_float = self.inv_gp_model.inv_act(np_s, np_target, self.max_v)
         duration_steps = max(int(duration_steps_float), 1)

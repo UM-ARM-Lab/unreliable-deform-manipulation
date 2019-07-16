@@ -11,7 +11,7 @@ import rospy
 from builtins import input
 from colorama import Fore
 
-import link_bot_pycommon.link_bot_sdf_tools
+import src.link_bot.link_bot_sdf_tools.src.link_bot_sdf_tools.link_bot_sdf_tools
 from gazebo_msgs.msg import ContactsState
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
@@ -22,7 +22,6 @@ from link_bot_agent import agent, ompl_act, one_step_action_selector, lqr_action
 from link_bot_agent.gurobi_directed_control_sampler import GurobiDirectedControlSampler
 from link_bot_agent.lqr_directed_control_sampler import LQRDirectedControlSampler
 from link_bot_models import linear_tf_model, linear_constraint_model
-from link_bot_pycommon import link_bot_pycommon
 
 dt = 0.1
 success_dist = 0.10
@@ -64,7 +63,7 @@ def common(args, start, max_steps=1e6):
     n_steps = 1
     n_steps_for_logging = 50
     if args.controller == 'ompl-dual-lqr':
-        sdf, sdf_gradient, sdf_resolution = link_bot_pycommon.link_bot_sdf_tools.load_sdf(args.sdf)
+        sdf, sdf_gradient, sdf_resolution = src.link_bot.link_bot_sdf_tools.src.link_bot_sdf_tools.link_bot_sdf_tools.load_sdf(args.sdf)
         sdf_rows, sdf_cols = sdf.shape
         sdf_origin_coordinate = np.array([sdf_rows / 2, sdf_cols / 2], dtype=np.int32)
 

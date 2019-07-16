@@ -3,9 +3,9 @@ import struct
 import numpy as np
 
 import sdf_tools
-from link_bot_gazebo.srv import ComputeSDFRequest
+from .srv import ComputeSDFRequest
 # FIXME: imports not working?!
-from .link_bot_sdf_utils import SDF
+from link_bot_pycommon.link_bot_sdf_utils import SDF
 
 
 def decompress_and_deserialize(sdf, gradient, msg):

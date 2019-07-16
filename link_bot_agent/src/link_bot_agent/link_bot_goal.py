@@ -1,5 +1,5 @@
-import ompl.base as ob
 import numpy as np
+import ompl.base as ob
 
 
 class LinkBotGoal(ob.GoalSampleableRegion):
@@ -16,6 +16,10 @@ class LinkBotGoal(ob.GoalSampleableRegion):
     def sampleGoal(self, state_out):
         sampler = self.getSpaceInformation().allocStateSampler()
         sampler.sampleUniform(state_out)
+        state_out[2] = (state_out[2] - state_out[0]) + self.tail_x
+        state_out[3] = (state_out[3] - state_out[1]) + self.tail_y
+        state_out[4] = (state_out[4] - state_out[0]) + self.tail_x
+        state_out[5] = (state_out[5] - state_out[1]) + self.tail_y
         state_out[0] = self.tail_x
         state_out[1] = self.tail_y
 

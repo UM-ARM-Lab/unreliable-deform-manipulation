@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import rospy
 
-from link_bot_pycommon import link_bot_sdf_tools
+from src.link_bot.link_bot_sdf_tools.src.link_bot_sdf_tools import link_bot_sdf_tools
 from link_bot_gazebo.srv import ComputeSDF
 
 rospy.init_node("testing")

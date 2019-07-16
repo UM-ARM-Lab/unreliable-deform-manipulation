@@ -21,7 +21,7 @@ from link_bot_gazebo.msg import LinkBotConfiguration, MultiLinkBotPositionAction
 from link_bot_sdf_tools.srv import ComputeSDF
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
 from link_bot_models.label_types import LabelType
-from link_bot_pycommon import link_bot_sdf_tools
+from link_bot_sdf_tools import link_bot_sdf_tools
 
 DT = 0.1  # seconds per time step
 
