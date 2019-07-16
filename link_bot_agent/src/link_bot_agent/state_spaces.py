@@ -80,14 +80,6 @@ class LinkBotStateSpace(ob.RealVectorStateSpace):
         self.setDimensionName(4, 'head_x')
         self.setDimensionName(5, 'head_y')
 
-    def distance(self, s1, s2):
-        # all the weight is in the tail
-        weights = [1, 1, 0, 0, 0, 0]
-        dist = 0
-        for i in range(self.getDimension()):
-            dist += weights[i] * (s1[i] - s2[i]) ** 2
-        return dist
-
     def allocator(self, state_space):
         sampler = LinkBotStateSpaceSampler(state_space, self.extent)
         return sampler

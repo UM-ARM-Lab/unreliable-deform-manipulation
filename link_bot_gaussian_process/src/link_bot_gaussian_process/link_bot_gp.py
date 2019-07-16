@@ -253,3 +253,18 @@ class LinkBotGP:
         # pred_n_steps = np.linalg.norm(vx_vy_u) / 0.1
 
         return u, random_n_steps
+
+    def dumb_inv_act(self, fwd_model, s, s_target, max_v=1.0):
+        random_n_steps = self.rng.uniformInt(self.min_steps, self.max_steps)
+        min_distance = np.inf
+        min_u = None
+        for i in range(10):
+            theta = np.random.uniform(-np.pi, np.pi)
+            u = np.array([[max_v * np.cos(theta), max_v * np.sin(theta)]])
+            s_next = fwd_model.fwd_act(s, u)
+            distance = np.linalg.norm(s_next - s_target)
+            if distance < min_distance:
+                min_distance = distance
+                min_u = u
+
+        return min_u, random_n_steps

@@ -1,3 +1,4 @@
+from time import time
 import matplotlib.pyplot as plt
 import numpy as np
 import ompl.util as ou
@@ -21,6 +22,9 @@ def plot(state_space, control_space, planner_data, sdf, start, goal, path, contr
     small_sdf = img.resize((80, 80))
     plt.imshow(small_sdf, extent=[-arena_size, arena_size, -arena_size, arena_size])
 
+    print(len(GPDirectedControlSampler.states_sampled_at))
+    print(planner_data.numVertices())
+
     for state_sampled_at in GPDirectedControlSampler.states_sampled_at:
         xs = [state_sampled_at[0, 0], state_sampled_at[0, 2], state_sampled_at[0, 4]]
         ys = [state_sampled_at[0, 1], state_sampled_at[0, 3], state_sampled_at[0, 5]]
@@ -34,7 +38,6 @@ def plot(state_space, control_space, planner_data, sdf, start, goal, path, contr
         plt.plot(xs, ys, label='final path', linewidth=4, c='m', alpha=0.75, zorder=4)
     plt.quiver(path[:-1, 4], path[:-1, 5], controls[:, 0], controls[:, 1], width=0.002, zorder=5, color='k')
 
-    print(planner_data.numVertices())
     for vertex_index in range(planner_data.numVertices()):
         v = planner_data.getVertex(vertex_index)
         # draw the configuration of the rope
@@ -110,7 +113,9 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
 
         self.states_sampled_at.append(np_target)
 
-        u, duration_steps_float = self.inv_gp_model.inv_act(np_s, np_target, self.max_v)
+        # u, duration_steps_float = self.inv_gp_model.inv_act(np_s, np_target, self.max_v)
+        u, duration_steps_float = self.inv_gp_model.dumb_inv_act(self.fwd_gp_model, np_s, np_target, self.max_v)
+
         duration_steps = max(int(duration_steps_float), 1)
         for i in range(duration_steps):
             np_s_next = self.fwd_gp_model.fwd_act(np_s, u)

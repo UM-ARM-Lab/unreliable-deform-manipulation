@@ -1,6 +1,5 @@
-from time import time
-
 import matplotlib.pyplot as plt
+from time import time
 import numpy as np
 from matplotlib import animation
 from ompl import base as ob
@@ -139,8 +138,8 @@ class GPRRT:
                     plot(self.state_space, self.control_space, planner_data, sdf, np_start, np_goal, np_states, np_controls,
                          self.arena_size)
                     prediction, variances = link_bot_gp.predict(self.fwd_gp_model, np_start, np_controls, np_duration_steps_int)
-                    # animation = link_bot_gp.animate_predict(prediction, sdf, self.arena_size)
-                    # animation.save('gp_mpc_{}.mp4'.format(int(time())), writer=self.writer)
+                    animation = link_bot_gp.animate_predict(prediction, sdf, self.arena_size)
+                    animation.save('gp_mpc_{}.mp4'.format(int(time())), writer=self.writer)
                     plt.show()
                     final_error = np.linalg.norm(np_states[-1, 0:2] - np_goal)
                     lengths = [np.linalg.norm(np_states[i] - np_states[i - 1]) for i in range(1, len(np_states))]

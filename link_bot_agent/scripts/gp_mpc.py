@@ -45,7 +45,7 @@ def common(args, start, max_steps=1e6):
     config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=False, per_process_gpu_memory_fraction=0.01))
     gpf.reset_default_session(config=config)
 
-    max_v = 1
+    max_v = 0.3
     sdf_data = SDF.load(args.sdf)
 
     args_dict = vars(args)
