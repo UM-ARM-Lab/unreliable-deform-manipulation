@@ -111,6 +111,19 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
         np_s = self.state_space.to_numpy(state)
         np_target = self.state_space.to_numpy(target_out)
 
+        # construct a new np_target which is at most 1 meter away from the rope
+        # 1 meter is ~80th percentile on how far the head moved in the training data for the inverse GP
+        np_s_tail = np_s.reshape(-1, 2)[0]
+        np_target_pts = np_target.reshape(-1, 2)
+        np_target_tail = np_target_pts[0]
+        tail_delta = np_target_tail - np_s_tail
+        max_tail_delta = 1.0
+        new_tail = np_s_tail
+        if np.linalg.norm(tail_delta) > max_tail_delta:
+            new_tail = np_s_tail + tail_delta / np.linalg.norm(tail_delta) * max_tail_delta
+        new_np_target = (np_target_pts - np_target_tail + new_tail).reshape(-1, self.n_state)
+        np_target = new_np_target
+
         self.states_sampled_at.append(np_target)
 
         # u, duration_steps_float = self.inv_gp_model.inv_act(np_s, np_target, self.max_v)

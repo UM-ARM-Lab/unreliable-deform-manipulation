@@ -62,6 +62,7 @@ def format_inverse_data_gz(args, dataset):
     actions_flat = []
     delta_flat = []
     num_steps_flat = []
+    j = 0
     for env in dataset.environments:
         rope_data = env.rope_data
         env_states = rope_data['rope_configurations']
@@ -83,6 +84,7 @@ def format_inverse_data_gz(args, dataset):
             delta_flat.append(delta)
             actions_flat.append(traj_action)
             num_steps_flat.append(t_end - t_start)
+            j += 1
     delta_flat = np.array(delta_flat).astype(np.float64)
     actions_flat = np.array(actions_flat).astype(np.float64)
     num_steps_flat = np.array(num_steps_flat).astype(np.float64)
