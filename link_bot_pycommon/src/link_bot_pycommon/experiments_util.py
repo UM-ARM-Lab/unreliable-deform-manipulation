@@ -6,15 +6,15 @@ from datetime import datetime
 import git
 
 
-def experiment_name(nickname='', additional_attribute=''):
+def experiment_name(nickname, *names):
+    nickname = nickname.replace(" ", "-")
     repo = git.Repo(search_parent_directories=True)
     sha = repo.head.object.hexsha[:10]
     stamp = "{:%B_%d_%H-%M-%S}".format(datetime.now())
-    nickname = "" if nickname is None else nickname.replace(" ", "_")
-    if additional_attribute:
-        log_path = os.path.join(nickname, "{}__{}__{}".format(stamp, sha, additional_attribute))
-    else:
-        log_path = os.path.join(nickname, "{}__{}".format(stamp, sha))
+    format_string = "{}_" + "{}_" * (len(names) - 1) + "{}"
+    log_path = os.path.join(format_string.format(stamp, sha, *names))
+    log_path = os.path.join(nickname, log_path)
+    log_path = log_path.replace(" ", "-")
     return log_path
 
 
