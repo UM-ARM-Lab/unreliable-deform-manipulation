@@ -4,11 +4,23 @@ import os
 import sys
 
 import git
+from ignition import markers
 import matplotlib.pyplot as plt
 import numpy as np
 from colorama import Fore
 
 from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
+
+
+def publish_markers(args, target_x, target_y, rope_x, rope_y):
+    target_marker = markers.make_marker(rgb=[1, 0, 0], id=1)
+    target_marker.pose.position.x = target_x
+    target_marker.pose.position.y = target_y
+    rope_marker = markers.make_marker(rgb=[0, 1, 0], id=2)
+    rope_marker.pose.position.x = rope_x
+    rope_marker.pose.position.y = rope_y
+    markers.publish(target_marker)
+    markers.publish(rope_marker)
 
 
 def generate_envs(args, full_output_directory, generate_env, save_dict_extras=None):

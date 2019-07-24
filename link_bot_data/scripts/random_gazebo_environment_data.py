@@ -163,18 +163,6 @@ def init_simulation(args, run_idx, env_idx, cli_args, init_config):
 
     return process, (action_pub, world_control, get_state, compute_sdf)
 
-
-def publish_markers(args, target_x, target_y, rope_x, rope_y):
-    target_marker = markers.make_marker(rgb=[1, 0, 0], id=1)
-    target_marker.pose.position.x = target_x
-    target_marker.pose.position.y = target_y
-    rope_marker = markers.make_marker(rgb=[0, 1, 0], id=2)
-    rope_marker.pose.position.x = rope_x
-    rope_marker.pose.position.y = rope_y
-    markers.publish(target_marker)
-    markers.publish(rope_marker)
-
-
 def generate_env(args, env_idx):
     # place rope at a random location
     rope_length = 1.05
@@ -264,7 +252,7 @@ def generate_env(args, env_idx):
                 # TODO: parameterize this
                 gripper1_target_x, gripper1_target_y = box_locations[box_idx]
             if not args.headless:
-                publish_markers(args, gripper1_target_x, gripper1_target_y, rope_x, rope_y)
+                random_environment_data_utils.publish_markers(args, gripper1_target_x, gripper1_target_y, rope_x, rope_y)
 
         # publish the pull command
         action_msg.gripper1_pos.x = gripper1_target_x

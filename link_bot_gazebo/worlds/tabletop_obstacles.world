@@ -3,22 +3,32 @@
     <world name="default">
         <gui>
             <camera name='user_camera'>
-                <pose frame=''>0 0 25 0 1.5707 1.5707</pose>
+                <pose frame=''>0 0 1.02 0 1.5707 1.5707</pose>
             </camera>
         </gui>
         <include>
             <uri>model://ground_plane</uri>
         </include>
         <include>
+          <uri>model://my_camera</uri>
+          <pose frame=''>0 0 1.0 0 1.5707 1.5707</pose>
+          <name>camera</name>
+        </include>
+        <include>
             <uri>model://sun</uri>
         </include>
         <include>
-            <uri>model://box</uri>
-            <pose>2.5 2.5 0 0 0 0</pose>
-            <name>box1</name>
+            <uri>model://cheezits</uri>
+            <pose>0.25 -0.25 0 0 0 0</pose>
+            <name>cheezits_box</name>
         </include>
         <include>
-            <uri>model://arena</uri>
+            <uri>model://tissue_box</uri>
+            <pose>0.25 0.25 0 0 0 0</pose>
+            <name>tissue_box</name>
+        </include>
+        <include>
+            <uri>model://arena_1</uri>
             <pose>0 0 0 0 0 0</pose>
             <name>arena</name>
         </include>

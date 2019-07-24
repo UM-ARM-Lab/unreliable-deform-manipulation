@@ -6,3 +6,4 @@ geometry_msgs/Vector3 gripper1_velocity
 geometry_msgs/Vector3 gripper2_velocity
 geometry_msgs/Vector3 gripper1_target_velocity
 geometry_msgs/Vector3 gripper2_target_velocity
+sensor_msgs/Image camera_image

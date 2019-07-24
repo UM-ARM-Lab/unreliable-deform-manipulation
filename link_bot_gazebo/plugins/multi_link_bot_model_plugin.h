@@ -45,7 +45,9 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   void QueueThread();
 
   physics::ModelPtr model_;
+  sensors::CameraSensorPtr camera_sensor;
   event::ConnectionPtr updateConnection_;
+  uint32_t image_sequence_number{0u};
   double kP_pos_{5.0};
   double kI_pos_{0.0};
   double kD_pos_{0.0};

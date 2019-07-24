@@ -66,50 +66,52 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
 
   model_ = parent;
 
-  if (!sdf->HasElement("kP_pos")) {
-    printf("using default kP_pos=%f\n", kP_pos_);
-  }
-  else {
-    kP_pos_ = sdf->GetElement("kP_pos")->Get<double>();
-  }
+  {
+    if (!sdf->HasElement("kP_pos")) {
+      printf("using default kP_pos=%f\n", kP_pos_);
+    }
+    else {
+      kP_pos_ = sdf->GetElement("kP_pos")->Get<double>();
+    }
 
-  if (!sdf->HasElement("kI_pos")) {
-    printf("using default kI_pos=%f\n", kI_pos_);
-  }
-  else {
-    kI_pos_ = sdf->GetElement("kI_pos")->Get<double>();
-  }
+    if (!sdf->HasElement("kI_pos")) {
+      printf("using default kI_pos=%f\n", kI_pos_);
+    }
+    else {
+      kI_pos_ = sdf->GetElement("kI_pos")->Get<double>();
+    }
 
-  if (!sdf->HasElement("kD_pos")) {
-    printf("using default kD_pos=%f\n", kD_pos_);
-  }
-  else {
-    kD_pos_ = sdf->GetElement("kD_pos")->Get<double>();
-  }
+    if (!sdf->HasElement("kD_pos")) {
+      printf("using default kD_pos=%f\n", kD_pos_);
+    }
+    else {
+      kD_pos_ = sdf->GetElement("kD_pos")->Get<double>();
+    }
 
-  if (!sdf->HasElement("kP_vel")) {
-    printf("using default kP_vel=%f\n", kP_vel_);
-  }
-  else {
-    kP_vel_ = sdf->GetElement("kP_vel")->Get<double>();
-  }
+    if (!sdf->HasElement("kP_vel")) {
+      printf("using default kP_vel=%f\n", kP_vel_);
+    }
+    else {
+      kP_vel_ = sdf->GetElement("kP_vel")->Get<double>();
+    }
 
-  if (!sdf->HasElement("kI_vel")) {
-    printf("using default kI_vel=%f\n", kI_vel_);
-  }
-  else {
-    kI_vel_ = sdf->GetElement("kI_vel")->Get<double>();
-  }
+    if (!sdf->HasElement("kI_vel")) {
+      printf("using default kI_vel=%f\n", kI_vel_);
+    }
+    else {
+      kI_vel_ = sdf->GetElement("kI_vel")->Get<double>();
+    }
 
-  if (!sdf->HasElement("kD_vel")) {
-    printf("using default kD_vel=%f\n", kD_vel_);
-  }
-  else {
-    kD_vel_ = sdf->GetElement("kD_vel")->Get<double>();
-  }
+    if (!sdf->HasElement("kD_vel")) {
+      printf("using default kD_vel=%f\n", kD_vel_);
+    }
+    else {
+      kD_vel_ = sdf->GetElement("kD_vel")->Get<double>();
+    }
 
-  if (!sdf->HasElement("gripper1_link")) {
-    throw std::invalid_argument("no gripper1_link tag provided");
+    if (!sdf->HasElement("gripper1_link")) {
+      throw std::invalid_argument("no gripper1_link tag provided");
+    }
   }
 
   auto const &gripper1_link_name = sdf->GetElement("gripper1_link")->Get<std::string>();
@@ -118,6 +120,14 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   if (sdf->HasElement("gripper2_link")) {
     auto const &gripper2_link_name = sdf->GetElement("gripper2_link")->Get<std::string>();
     gripper2_link_ = model_->GetLink(gripper2_link_name);
+  }
+
+  // TODO: make this a sdformat tag
+  auto constexpr camera_name{"default::camera::link::my_camera"};
+  auto const &sensor = sensors::get_sensor(camera_name);
+  camera_sensor = std::dynamic_pointer_cast<sensors::CameraSensor>(sensor);
+  if (!camera_sensor) {
+    std::cout << "Failed to load camera: " << camera_name << '\n';
   }
 
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(std::bind(&MultiLinkBotModelPlugin::OnUpdate, this));
@@ -279,6 +289,24 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
     res.gripper2_target_velocity.x = gripper2_target_velocity_.X();
     res.gripper2_target_velocity.y = gripper2_target_velocity_.Y();
     res.gripper2_target_velocity.z = gripper2_target_velocity_.Z();
+  }
+
+  if (camera_sensor and camera_sensor->LastMeasurementTime() > common::Time::Zero) {
+    // one byte per channel
+    auto constexpr byte_depth = 1;
+    auto constexpr num_channels = 3;
+    auto const w = camera_sensor->ImageWidth();
+    auto const h = camera_sensor->ImageHeight();
+    auto const total_size_bytes = w * h * byte_depth * num_channels;
+    auto const &sensor_image = camera_sensor->ImageData();
+    res.camera_image.width = w;
+    res.camera_image.height = h;
+    res.camera_image.step = w * byte_depth * num_channels;
+    res.camera_image.encoding = "rgb8";
+    res.camera_image.header.seq = image_sequence_number;
+    res.camera_image.header.stamp = ros::Time::now();
+    res.camera_image.data.assign(sensor_image, sensor_image + total_size_bytes);
+    image_sequence_number += 1;
   }
 
   return true;
