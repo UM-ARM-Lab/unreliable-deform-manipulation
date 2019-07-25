@@ -2,9 +2,9 @@
     <arg name="world_name" default="worlds/no_arena.world"/>
     <arg name="verbose" default="true"/>
     <arg name="gui" default="true"/>
-    <arg name="spawn_x" default="-0.35"/>
+    <arg name="spawn_x" default="-0.45"/>
     <arg name="spawn_y" default="0.0"/>
-    <arg name="spawn_yaw" default="1.5707"/>
+    <arg name="spawn_yaw" default="0"/>
 
     <include file="$(find link_bot_description)/launch/link_bot_description.launch">
     </include>

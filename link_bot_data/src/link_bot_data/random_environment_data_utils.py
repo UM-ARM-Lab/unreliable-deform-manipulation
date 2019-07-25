@@ -12,11 +12,18 @@ from colorama import Fore
 from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 
 
-def publish_markers(args, target_x, target_y, rope_x, rope_y):
-    target_marker = markers.make_marker(rgb=[1, 0, 0], id=1)
+def publish_marker(args, target_x, target_y, marker_size=0.01):
+    target_marker = markers.make_marker(rgb=[1, 0, 0], id=1, scale=marker_size)
     target_marker.pose.position.x = target_x
     target_marker.pose.position.y = target_y
-    rope_marker = markers.make_marker(rgb=[0, 1, 0], id=2)
+    markers.publish(target_marker)
+
+
+def publish_markers(args, target_x, target_y, rope_x, rope_y, marker_size=0.01):
+    target_marker = markers.make_marker(rgb=[1, 0, 0], id=1, scale=marker_size)
+    target_marker.pose.position.x = target_x
+    target_marker.pose.position.y = target_y
+    rope_marker = markers.make_marker(rgb=[0, 1, 0], id=2, scale=marker_size)
     rope_marker.pose.position.x = rope_x
     rope_marker.pose.position.y = rope_y
     markers.publish(target_marker)
@@ -63,10 +70,11 @@ def generate_envs(args, full_output_directory, generate_env, save_dict_extras=No
         dataset.save(dataset_filename)
 
 
-def data_directory(outdir, envs, steps):
+def data_directory(outdir, *names):
     repo = git.Repo(search_parent_directories=True)
     sha = repo.head.object.hexsha[:10]
-    full_output_directory = '{}_{}_{}_{}'.format(outdir, sha, envs, steps)
+    format_string = "{}_{}_" + "{}_" * (len(names) - 1) + "{}"
+    full_output_directory = format_string.format(outdir, sha, *names)
     if outdir:
         if os.path.isfile(full_output_directory):
             print(Fore.RED + "argument outdir is an existing file, aborting." + Fore.RESET)

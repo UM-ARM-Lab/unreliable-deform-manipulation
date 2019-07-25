@@ -129,10 +129,9 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   if (!camera_sensor) {
     std::cout << "Failed to load camera: " << camera_name << '\n';
   }
-
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(std::bind(&MultiLinkBotModelPlugin::OnUpdate, this));
   constexpr auto max_force{200};
-  constexpr auto max_vel{0.30};
+  constexpr auto max_vel{0.15};
   constexpr auto max_vel_integral{1};
   constexpr auto max_integral{100};
   gripper1_x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
@@ -307,6 +306,9 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
     res.camera_image.header.stamp = ros::Time::now();
     res.camera_image.data.assign(sensor_image, sensor_image + total_size_bytes);
     image_sequence_number += 1;
+  }
+  else {
+    std::cout << "no camera image available" << std::endl;
   }
 
   return true;
