@@ -50,10 +50,6 @@ def generate_tf_record(dir_name, args):
             img = Image.open(image_filename)
             image_array = np.array(img)
             image_bytes[traj_idx, t] = image_array[:, :, :3].tobytes()
-            # if t <= 1:
-            #     image_bytes[traj_idx, t] = image_array[:, :, :3].tobytes()
-            # else:
-            #     image_bytes[traj_idx, t] = zero_image.tobytes()
             i += 1
 
     print(image_bytes.shape, states.shape, actions.shape)
