@@ -20,7 +20,7 @@ from link_bot_data import video_prediction_dataset_utils
 def generate_tf_record(record_idx, trajs_per_tfrecords, args):
     env_size = 1.0
     block_size = 0.125
-    traj_length = 30
+    traj_length = 60
     image_size = 64
     state_dim = 2
     action_dim = 2
@@ -92,14 +92,16 @@ def main():
         print(Fore.YELLOW + "Output directory {} does not exist. Aborting".format(args.out_dir) + Fore.RESET)
         return
 
-    num_examples = 5000
+    num_examples = 1000
     # If you change this number the video_prediction code breaks
     trajs_per_tfrecords = 256
     num_tfrecords = num_examples // trajs_per_tfrecords
 
     process_arguments = zip(range(num_tfrecords), [trajs_per_tfrecords] * num_tfrecords, [args] * num_tfrecords)
-    with Pool(args.num_processes) as p:
-        p.starmap(generate_tf_record, process_arguments)
+    for args in process_arguments:
+        generate_tf_record(*args)
+    # with Pool(args.num_processes) as p:
+    #     p.starmap(generate_tf_record, process_arguments)
 
 
 if __name__ == '__main__':

@@ -9,9 +9,14 @@ import numpy as np
 import rospy
 import tensorflow
 from colorama import Fore
+from std_msgs.msg import String
 from std_srvs.srv import Empty, EmptyRequest
+from tf.transformations import quaternion_from_euler
 
-from geometry_msgs.msg import Point
+opts = tensorflow.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
+conf = tensorflow.ConfigProto(gpu_options=opts)
+tensorflow.enable_eager_execution(config=conf)
+
 from gazebo_msgs.srv import GetPhysicsProperties, GetPhysicsPropertiesRequest
 from gazebo_msgs.srv import SetPhysicsProperties, SetPhysicsPropertiesRequest
 from link_bot_data import random_environment_data_utils
@@ -19,12 +24,12 @@ from link_bot_data import video_prediction_dataset_utils
 from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_gazebo.msg import LinkBotConfiguration, MultiLinkBotPositionAction, Position2dEnable, Position2dAction, ObjectAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
-from std_msgs.msg import String
-from tf.transformations import quaternion_from_euler
 from link_bot_models.label_types import LabelType
 from link_bot_sdf_tools import link_bot_sdf_tools
 from link_bot_sdf_tools.srv import ComputeSDF
 
+
+n_trajs_per_file = 256
 DT = 0.1  # seconds per time step
 w = 1
 h = 1
@@ -177,7 +182,6 @@ def generate_trajs(args, full_output_directory, services):
     filename_pairs = []
     percentages_positive = []
     constraint_label_types = None
-    n_trajs_per_file = 256
 
     states = np.ndarray((n_trajs_per_file, args.steps_per_traj, 2), np.float32)
     actions = np.ndarray((n_trajs_per_file, args.steps_per_traj, 2), np.float32)
@@ -253,10 +257,10 @@ def generate_trajs(args, full_output_directory, services):
 
             end_traj_idx = i
             start_traj_idx = end_traj_idx - n_trajs_per_file + 1
-            full_filename = "traj_{}_to_{}".format(start_traj_idx, end_traj_idx)
+            full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tensorflow.data.experimental.TFRecordWriter(full_filename)
             print("saving {}".format(full_filename))
-            writer.write(serialized_dataset)
+            op = writer.write(serialized_dataset)
 
     mean_percentage_positive = np.mean(percentages_positive)
     print("Class balance: mean % positive: {}".format(mean_percentage_positive))
@@ -270,7 +274,7 @@ def generate_trajs(args, full_output_directory, services):
 def generate(args):
     rospy.init_node('gazebo_small_with_images')
 
-    assert args.n_trajs % 256 == 0, "num trajs must be multiple of 256"
+    assert args.n_trajs % n_trajs_per_file == 0, "num trajs must be multiple of {}".format(n_trajs_per_file)
 
     full_output_directory = random_environment_data_utils.data_directory(args.outdir, args.n_trajs)
     if not os.path.isdir(full_output_directory) and args.verbose:
@@ -333,6 +337,7 @@ def generate(args):
 
 def main():
     np.set_printoptions(precision=4, suppress=True, linewidth=220, threshold=5000)
+    tensorflow.logging.set_verbosity(tensorflow.logging.DEBUG)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)
