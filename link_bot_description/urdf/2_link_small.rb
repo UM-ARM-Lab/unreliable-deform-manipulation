@@ -1,5 +1,5 @@
 @num_links = 2
-@mass = 1.0
+@mass = 0.5
 @length = 0.5
 @radius = 0.02
 @multi_link_bot_model_plugin_args = '<kP_pos>50</kP_pos>

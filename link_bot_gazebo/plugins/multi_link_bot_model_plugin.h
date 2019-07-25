@@ -40,7 +40,6 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   bool StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req, link_bot_gazebo::LinkBotStateResponse &res);
 
- protected:
  private:
   void QueueThread();
 

@@ -12,6 +12,9 @@ add_message_files(
         LinkBotForceAction.msg
         MultiLinkBotPositionAction.msg
         WriteSDF.msg
+        Position2dEnable.msg
+        Position2dAction.msg
+        ObjectAction.msg
 )
 
 add_service_files(
@@ -55,4 +58,9 @@ add_library(linkbot_visual_plugin SHARED plugins/linkbot_visual_plugin.cpp)
 target_include_directories(linkbot_visual_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(linkbot_visual_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 add_dependencies(linkbot_visual_plugin link_bot_gazebo_generate_messages)
+
+add_library(position_2d_plugin SHARED plugins/position_2d_plugin.cpp)
+target_include_directories(position_2d_plugin PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(position_2d_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+add_dependencies(position_2d_plugin link_bot_gazebo_generate_messages)
 

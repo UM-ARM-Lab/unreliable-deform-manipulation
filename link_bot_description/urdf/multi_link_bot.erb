@@ -19,16 +19,22 @@
             <surface>
               <friction>
                 <ode>
-                  <mu>12.5</mu>
-                  <mu2>12.5</mu2>
+                  <mu>1</mu>
+                  <mu2>1</mu2>
                 </ode>
               </friction>
             </surface>
         </collision>
         <inertial>
             <mass value="<%= link_mass %>"/>
-            <inertia ixx="<%=1.0/12.0*link_mass*link_length*link_length%>" ixy="0" ixz="0" iyy="0" iyz="0" izz="<%=1.0/12.0*link_mass*link_length*link_length%>"/>
-            <origin rpy="0 0 0" xyz="<%= link_length - @radius / 2.0%> 0 0"/>
+            <inertia
+              ixx="<%=1.0/12.0*link_mass*(8*@radius*@radius)%>"
+              ixy="0"
+              ixz="0"
+              iyy="<%=1.0/12.0*link_mass*((link_length-@radius/2)*(link_length-@radius/2)+4*@radius*@radius)%>"
+              iyz="0"
+              izz="<%=1.0/12.0*link_mass*((link_length-@radius/2)*(link_length-@radius/2)+4*@radius*@radius)%>"/>
+            <origin rpy="0 0 0" xyz="<%=link_length/2 - @radius/2%> 0 0"/>
         </inertial>
     </link>
     <% end %>
@@ -48,8 +54,8 @@
             <surface>
               <friction>
                 <ode>
-                  <mu>12.5</mu>
-                  <mu2>12.5</mu2>
+                  <mu>1</mu>
+                  <mu2>1</mu2>
                 </ode>
               </friction>
             </surface>
@@ -57,7 +63,7 @@
         <inertial>
             <mass value="0.1"/>
             <origin rpy="0 0 0" xyz="0 0 0"/>
-            <inertia ixx="0.0004" ixy="0" ixz="0" iyy="0.0004" iyz="0" izz="0.004"/>
+            <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.001"/>
         </inertial>
     </link>
 
@@ -113,10 +119,6 @@
     <gazebo>
         <plugin name="multi_link_bot_model_plugin" filename="libmulti_link_bot_model_plugin.so">
             <%= @multi_link_bot_model_plugin_args %>
-        </plugin>
-        <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
-            <legacyModeNS>false</legacyModeNS>
-            <robotNamespace>link_bot</robotNamespace>
         </plugin>
     </gazebo>
 </robot>

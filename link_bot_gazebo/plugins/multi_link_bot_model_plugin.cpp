@@ -199,6 +199,9 @@ void MultiLinkBotModelPlugin::OnUpdate()
       gripper2_link_->AddForce(force);
     }
   }
+  else if (mode == "disabled") {
+    // do nothing!
+  }
 }
 
 void MultiLinkBotModelPlugin::OnJoy(sensor_msgs::JoyConstPtr const msg)
@@ -290,6 +293,7 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
     res.gripper2_target_velocity.z = gripper2_target_velocity_.Z();
   }
 
+  // camera_sensor->Render();
   if (camera_sensor and camera_sensor->LastMeasurementTime() > common::Time::Zero) {
     // one byte per channel
     auto constexpr byte_depth = 1;

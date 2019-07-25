@@ -19,16 +19,22 @@
             <surface>
               <friction>
                 <ode>
-                  <mu>12.5</mu>
-                  <mu2>12.5</mu2>
+                  <mu>1</mu>
+                  <mu2>1</mu2>
                 </ode>
               </friction>
             </surface>
         </collision>
         <inertial>
-            <mass value="0.5"/>
-            <inertia ixx="0.0023999999999999994" ixy="0" ixz="0" iyy="0" iyz="0" izz="0.0023999999999999994"/>
-            <origin rpy="0 0 0" xyz="0.22999999999999998 0 0"/>
+            <mass value="0.25"/>
+            <inertia
+              ixx="6.666666666666667e-05"
+              ixy="0"
+              ixz="0"
+              iyy="0.0011354166666666663"
+              iyz="0"
+              izz="0.0011354166666666663"/>
+            <origin rpy="0 0 0" xyz="0.11 0 0"/>
         </inertial>
     </link>
     
@@ -47,16 +53,22 @@
             <surface>
               <friction>
                 <ode>
-                  <mu>12.5</mu>
-                  <mu2>12.5</mu2>
+                  <mu>1</mu>
+                  <mu2>1</mu2>
                 </ode>
               </friction>
             </surface>
         </collision>
         <inertial>
-            <mass value="0.5"/>
-            <inertia ixx="0.0023999999999999994" ixy="0" ixz="0" iyy="0" iyz="0" izz="0.0023999999999999994"/>
-            <origin rpy="0 0 0" xyz="0.22999999999999998 0 0"/>
+            <mass value="0.25"/>
+            <inertia
+              ixx="6.666666666666667e-05"
+              ixy="0"
+              ixz="0"
+              iyy="0.0011354166666666663"
+              iyz="0"
+              izz="0.0011354166666666663"/>
+            <origin rpy="0 0 0" xyz="0.11 0 0"/>
         </inertial>
     </link>
     
@@ -76,8 +88,8 @@
             <surface>
               <friction>
                 <ode>
-                  <mu>12.5</mu>
-                  <mu2>12.5</mu2>
+                  <mu>1</mu>
+                  <mu2>1</mu2>
                 </ode>
               </friction>
             </surface>
@@ -85,7 +97,7 @@
         <inertial>
             <mass value="0.1"/>
             <origin rpy="0 0 0" xyz="0 0 0"/>
-            <inertia ixx="0.0004" ixy="0" ixz="0" iyy="0.0004" iyz="0" izz="0.004"/>
+            <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.001"/>
         </inertial>
     </link>
 
@@ -157,10 +169,6 @@
             <kI_vel>0.0</kI_vel>
             <kD_vel>0.0</kD_vel>
             <gripper1_link>head</gripper1_link>
-        </plugin>
-        <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
-            <legacyModeNS>false</legacyModeNS>
-            <robotNamespace>link_bot</robotNamespace>
         </plugin>
     </gazebo>
 </robot>

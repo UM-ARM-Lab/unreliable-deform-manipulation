@@ -43,12 +43,12 @@ class SDF:
 
     @staticmethod
     def load(filename):
-        npz = np.load(filename)
-        sdf = npz['sdf']
-        grad = npz['sdf_gradient']
-        res = npz['sdf_resolution'].reshape(2)
-        origin = npz['sdf_origin'].reshape(2)
-        return SDF(sdf=sdf, gradient=grad, resolution=res, origin=origin)
+        with np.load(filename) as npz:
+            sdf = npz['sdf']
+            grad = npz['sdf_gradient']
+            res = npz['sdf_resolution'].reshape(2)
+            origin = npz['sdf_origin'].reshape(2)
+            return SDF(sdf=sdf, gradient=grad, resolution=res, origin=origin)
 
     def __repr__(self):
         return "SDF: size={}x{} origin=({},{}) resolution=({},{})".format(self.sdf.shape[0],

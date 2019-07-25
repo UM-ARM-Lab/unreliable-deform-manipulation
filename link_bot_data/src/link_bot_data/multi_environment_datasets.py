@@ -38,8 +38,10 @@ class MultiEnvironmentDataset:
         example_id = 0
         for i, (sdf_data_filename, rope_data_filename) in enumerate(filename_pairs):
             sdf_data = link_bot_sdf_utils.SDF.load(sdf_data_filename)
-            rope_data = np.load(rope_data_filename)
-            examples_in_env, N = rope_data['rope_configurations'].shape
+
+            with np.load(rope_data_filename) as rope_data:
+                examples_in_env, N = rope_data['rope_configurations'].shape
+                env = EnvironmentData(sdf_data, rope_data)
 
             if i == 0:
                 # store useful information about the dataset
@@ -50,7 +52,6 @@ class MultiEnvironmentDataset:
             error_msg = "SDFs shape {} doesn't match shape {}".format(self.sdf_shape, sdf_data.sdf.shape)
             assert self.sdf_shape == sdf_data.sdf.shape, error_msg
 
-            env = EnvironmentData(sdf_data, rope_data)
             self.environments[i] = env
 
             for j in range(examples_in_env):
