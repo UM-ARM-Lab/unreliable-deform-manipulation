@@ -99,12 +99,12 @@ def generate_traj(args, services, env_idx):
         # FIXME: this is a hack
         while True:
             s = services.get_state(state_req)
+            image = np.frombuffer(s.camera_image.data, dtype=np.uint8)
+            if image.size == 64 * 64 * 3 and image.min() != image.max():
+                break
             step = WorldControlRequest()
             step.steps = int(0.05 / 0.001)  # assuming 0.001s per simulation step
             services.world_control(step)  # this will block until stepping is complete
-            image = np.frombuffer(s.camera_image.data, dtype=np.uint8)
-            if image.size == 64 * 64 * 3:
-                break
 
         images[t] = image.reshape(64, 64, 3).tobytes()
         gripper1_forces[t] = np.array([s.gripper1_force.x, s.gripper1_force.y])

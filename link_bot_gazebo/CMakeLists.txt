@@ -64,3 +64,6 @@ target_include_directories(position_2d_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(position_2d_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 add_dependencies(position_2d_plugin link_bot_gazebo_generate_messages)
 
+add_library(my_camera_plugin SHARED plugins/my_camera_plugin.cpp)
+target_include_directories(my_camera_plugin PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(my_camera_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} CameraPlugin)

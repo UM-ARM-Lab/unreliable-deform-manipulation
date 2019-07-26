@@ -1,29 +1,11 @@
 #include "multi_link_bot_model_plugin.h"
 
-#include <exception>
 #include <memory>
 
 #include <geometry_msgs/Point.h>
 #include <ignition/math/Vector3.hh>
 
 namespace gazebo {
-
-bool in_contact(msgs::Contacts const &contacts)
-{
-  for (auto i{0u}; i < contacts.contact_size(); ++i) {
-    auto const &contact = contacts.contact(i);
-    std::cout << contact.collision1() << " " << contact.collision2() << '\n';
-    if (contact.collision1() == "link_bot::head::head_collision" and
-        contact.collision2() != "ground_plane::link::collision") {
-      return true;
-    }
-    if (contact.collision2() == "link_bot::head::head_collision" and
-        contact.collision1() != "ground_plane::link::collision") {
-      return true;
-    }
-  }
-  return false;
-}
 
 void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 {
@@ -293,8 +275,7 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
     res.gripper2_target_velocity.z = gripper2_target_velocity_.Z();
   }
 
-  // camera_sensor->Render();
-  if (camera_sensor and camera_sensor->LastMeasurementTime() > common::Time::Zero) {
+  if (camera_sensor) {
     // one byte per channel
     auto constexpr byte_depth = 1;
     auto constexpr num_channels = 3;

@@ -1,4 +1,4 @@
-# coding: utf-8
+#!/usr/bin/env python
 import rospy
 from sensor_msgs.msg import Image
 from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotState, LinkBotStateResponse
