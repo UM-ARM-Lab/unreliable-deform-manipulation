@@ -52,6 +52,6 @@ class CollisionMapPlugin : public WorldPlugin {
   void QueueThread();
 
   void compute_sdf(float x_width, float y_height, geometry_msgs::Point center, float resolution,
-                   std::string const &robot_name, float min_z, float max_z, bool verbose = true);
+                   std::string const &robot_name, float min_z, float max_z, bool verbose = false);
 };
 }  // namespace gazebo

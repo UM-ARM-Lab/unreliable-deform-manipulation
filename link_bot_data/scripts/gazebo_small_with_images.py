@@ -28,7 +28,6 @@ from link_bot_models.label_types import LabelType
 from link_bot_sdf_tools import link_bot_sdf_tools
 from link_bot_sdf_tools.srv import ComputeSDF
 
-
 n_trajs_per_file = 256
 DT = 0.1  # seconds per time step
 w = 1
@@ -85,8 +84,19 @@ def generate_traj(args, services, env_idx):
     gripper2_velocities = np.ndarray((args.steps_per_traj, 2))
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1), dtype=np.float32)
 
-    gripper1_target_x = np.random.uniform(-w / 2, w / 2)
-    gripper1_target_y = np.random.uniform(-h / 2, h / 2)
+    # bias sampling to explore
+    s = services.get_state(state_req)
+    current_head_point = s.points[-1]
+    gripper1_current_x = current_head_point.x
+    gripper1_current_y = current_head_point.y
+    current = np.array([gripper1_current_x, gripper1_current_y])
+    while True:
+        gripper1_target_x = np.random.uniform(-w / 2, w / 2)
+        gripper1_target_y = np.random.uniform(-h / 2, h / 2)
+        target = np.array([gripper1_target_x, gripper1_target_y])
+        d = np.linalg.norm(current - target)
+        if d > 0.1:
+            break
 
     if args.verbose:
         random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y)
@@ -283,6 +293,7 @@ def generate(args):
 
     if not args.seed:
         args.seed = np.random.randint(0, 10000)
+        print("Using seed: ", args.seed)
     np.random.seed(args.seed)
 
     # fire up services
@@ -343,7 +354,7 @@ def main():
     parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)
     parser.add_argument("outdir")
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
-    parser.add_argument("--steps-per-traj", type=int, default=30)
+    parser.add_argument("--steps-per-traj", type=int, default=75)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--real-time-rate", help='number of times real time', type=float, default=10)
     parser.add_argument("--verbose", '-v', action="store_true")

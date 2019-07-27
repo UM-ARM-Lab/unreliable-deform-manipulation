@@ -188,13 +188,17 @@ void CollisionMapPlugin::compute_sdf(float x_width, float y_height, geometry_msg
 
   auto const t1 = std::chrono::steady_clock::now();
   std::chrono::duration<double> const time_to_compute_occupancy_grid = t1 - t0;
-  std::cout << "Time to compute occupancy grid_: " << time_to_compute_occupancy_grid.count() << std::endl;
+  if (verbose) {
+    std::cout << "Time to compute occupancy grid_: " << time_to_compute_occupancy_grid.count() << std::endl;
+  }
 
   sdf_ = grid_.ExtractSignedDistanceField(oob_value.occupancy, false, false).first;
 
   auto const t2 = std::chrono::steady_clock::now();
   std::chrono::duration<double> const time_to_compute_sdf = t2 - t1;
-  std::cout << "Time to compute sdf: " << time_to_compute_sdf.count() << std::endl;
+  if (verbose) {
+    std::cout << "Time to compute sdf: " << time_to_compute_sdf.count() << std::endl;
+  }
 
   auto const t3 = std::chrono::steady_clock::now();
   sdf_tools::SignedDistanceField::GradientFunction gradient_function = [&](const int64_t x_index, const int64_t y_index,
