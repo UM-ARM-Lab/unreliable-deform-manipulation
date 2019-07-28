@@ -112,15 +112,15 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
     std::cout << "Failed to load camera: " << camera_name << '\n';
   }
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(std::bind(&MultiLinkBotModelPlugin::OnUpdate, this));
-  constexpr auto max_force{200};
+  constexpr auto max_integral{0};
   constexpr auto max_vel{0.15};
-  constexpr auto max_vel_integral{1};
-  constexpr auto max_integral{100};
   gripper1_x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
   gripper1_y_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
   gripper2_x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
   gripper2_y_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
 
+  constexpr auto max_vel_integral{1};
+  constexpr auto max_force{50};
   gripper1_x_vel_pid_ =
       common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
   gripper1_y_vel_pid_ =
@@ -155,13 +155,22 @@ void MultiLinkBotModelPlugin::OnUpdate()
   }
   else if (mode == "position") {
     ignition::math::Vector3d force{};
-    auto const gripper1_pos = gripper1_link_->WorldPose().Pos();
+    // zero the Z component
+    auto const gripper1_pos = [&]() {
+      auto p = gripper1_link_->WorldPose().Pos();
+      p.Z(0);
+      return p;
+    }();
     auto const gripper1_pos_error = gripper1_pos - gripper1_target_position_;
 
     gripper1_target_velocity_.X(gripper1_x_pos_pid_.Update(gripper1_pos_error.X(), dt));
     gripper1_target_velocity_.Y(gripper1_y_pos_pid_.Update(gripper1_pos_error.Y(), dt));
 
-    auto const gripper1_vel = gripper1_link_->WorldLinearVel();
+    auto const gripper1_vel = [&]() {
+      auto v = gripper1_link_->WorldLinearVel();
+      v.Z(0);
+      return v;
+    }();
     auto const gripper1_vel_error = gripper1_vel - gripper1_target_velocity_;
     force.X(gripper1_x_vel_pid_.Update(gripper1_vel_error.X(), dt));
     force.Y(gripper1_y_vel_pid_.Update(gripper1_vel_error.Y(), dt));

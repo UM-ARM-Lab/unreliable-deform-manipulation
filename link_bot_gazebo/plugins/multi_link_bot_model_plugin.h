@@ -47,10 +47,10 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   sensors::CameraSensorPtr camera_sensor;
   event::ConnectionPtr updateConnection_;
   uint32_t image_sequence_number{0u};
-  double kP_pos_{5.0};
+  double kP_pos_{0.0};
   double kI_pos_{0.0};
   double kD_pos_{0.0};
-  double kP_vel_{100.0};
+  double kP_vel_{0.0};
   double kI_vel_{0.0};
   double kD_vel_{0.0};
   physics::LinkPtr gripper1_link_{nullptr};

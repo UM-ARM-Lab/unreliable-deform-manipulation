@@ -6,15 +6,15 @@
     
     <link name="link_1">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.105 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.11 0 0"/>
             <geometry>
-                <cylinder length="0.22" radius="0.01"/>
+                <cylinder length="0.24" radius="0.02"/>
             </geometry>
         </visual>
         <collision name="link_1_collision">
-            <origin rpy="0 -1.5707 0" xyz="0.105 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.11 0 0"/>
             <geometry>
-                <box size="0.02 0.02 0.21"/>
+                <box size="0.04 0.04 0.22"/>
             </geometry>
             <surface>
               <friction>
@@ -28,27 +28,27 @@
         <inertial>
             <mass value="0.25"/>
             <inertia
-              ixx="1.6666666666666667e-05"
+              ixx="6.666666666666667e-05"
               ixy="0"
               ixz="0"
-              iyy="0.0009713541666666665"
+              iyy="0.0011354166666666663"
               iyz="0"
-              izz="0.0009713541666666665"/>
-            <origin rpy="0 0 0" xyz="0.105 0 0"/>
+              izz="0.0011354166666666663"/>
+            <origin rpy="0 0 0" xyz="0.11 0 0"/>
         </inertial>
     </link>
     
     <link name="link_2">
         <visual>
-            <origin rpy="0 -1.5707 0" xyz="0.105 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.11 0 0"/>
             <geometry>
-                <cylinder length="0.22" radius="0.01"/>
+                <cylinder length="0.24" radius="0.02"/>
             </geometry>
         </visual>
         <collision name="link_2_collision">
-            <origin rpy="0 -1.5707 0" xyz="0.105 0 0"/>
+            <origin rpy="0 -1.5707 0" xyz="0.11 0 0"/>
             <geometry>
-                <box size="0.02 0.02 0.21"/>
+                <box size="0.04 0.04 0.22"/>
             </geometry>
             <surface>
               <friction>
@@ -62,13 +62,13 @@
         <inertial>
             <mass value="0.25"/>
             <inertia
-              ixx="1.6666666666666667e-05"
+              ixx="6.666666666666667e-05"
               ixy="0"
               ixz="0"
-              iyy="0.0009713541666666665"
+              iyy="0.0011354166666666663"
               iyz="0"
-              izz="0.0009713541666666665"/>
-            <origin rpy="0 0 0" xyz="0.105 0 0"/>
+              izz="0.0011354166666666663"/>
+            <origin rpy="0 0 0" xyz="0.11 0 0"/>
         </inertial>
     </link>
     
@@ -77,13 +77,13 @@
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <sphere radius="0.01"/>
+                <sphere radius="0.02"/>
             </geometry>
         </visual>
         <collision name="head">
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <sphere radius="0.01" />
+                <sphere radius="0.02" />
             </geometry>
             <surface>
               <friction>
@@ -105,7 +105,7 @@
     <joint name="joint_1" type="revolute">
         <parent link="link_1"/>
         <child link="link_2"/>
-        <origin xyz="0.215 0 0"/>
+        <origin xyz="0.22999999999999998 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1.0" friction="0.0"/>
@@ -115,7 +115,7 @@
     <joint name="head_joint" type="revolute">
         <parent link="link_2"/>
         <child link="head"/>
-        <origin xyz="0.215 0 0"/>
+        <origin xyz="0.22999999999999998 0 0"/>
         <axis xyz="0 0 1"/>
         <limit lower="-3" upper="3" effort="10" velocity="5"/>
         <dynamics damping="1.0" friction="0.0"/>

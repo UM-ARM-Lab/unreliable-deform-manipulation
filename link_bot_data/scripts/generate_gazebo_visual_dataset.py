@@ -95,10 +95,11 @@ def generate_traj(args, services, env_idx):
         gripper1_target_y = np.random.uniform(-h / 2, h / 2)
         target = np.array([gripper1_target_x, gripper1_target_y])
         d = np.linalg.norm(current - target)
-        if d > 0.1:
+        if d > 0.25:
             break
 
     if args.verbose:
+        print(gripper1_target_x, gripper1_target_y)
         random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y)
 
     for t in range(args.steps_per_traj):
@@ -340,7 +341,7 @@ def generate(args):
 
     # let the simulator run to get the first image
     step = WorldControlRequest()
-    step.steps = int(DT / 0.001)  # assuming 0.001s per simulation step
+    step.steps = int(0.5 / 0.001)  # assuming 0.001s per simulation step
     services.world_control(step)  # this will block until stepping is complete
 
     generate_trajs(args, full_output_directory, services)
