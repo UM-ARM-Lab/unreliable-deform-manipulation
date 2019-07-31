@@ -54,11 +54,6 @@ target_include_directories(collision_map_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(collision_map_plugin cnpy::cnpy ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} stdc++fs)
 add_dependencies(collision_map_plugin link_bot_gazebo_generate_messages)
 
-add_library(linkbot_visual_plugin SHARED plugins/linkbot_visual_plugin.cpp)
-target_include_directories(linkbot_visual_plugin PUBLIC ${catkin_INCLUDE_DIRS})
-target_link_libraries(linkbot_visual_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
-add_dependencies(linkbot_visual_plugin link_bot_gazebo_generate_messages)
-
 add_library(position_2d_plugin SHARED plugins/position_2d_plugin.cpp)
 target_include_directories(position_2d_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(position_2d_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})

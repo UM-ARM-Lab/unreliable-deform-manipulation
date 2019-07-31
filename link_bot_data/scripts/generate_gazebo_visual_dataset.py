@@ -38,10 +38,10 @@ class GazeboServices:
 
     def __init__(self):
         self.action_pub = rospy.Publisher("/multi_link_bot_position_action", MultiLinkBotPositionAction, queue_size=10)
-        self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
-        self.action_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=1, latch=True)
-        self.position_2d_enable = rospy.Publisher('/position_2d_enable', Position2dEnable, queue_size=10, latch=True)
-        self.position_2d_action = rospy.Publisher('/position_2d_action', Position2dAction, queue_size=10, latch=True)
+        self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10)
+        self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
+        self.position_2d_enable = rospy.Publisher('/position_2d_enable', Position2dEnable, queue_size=10)
+        self.position_2d_action = rospy.Publisher('/position_2d_action', Position2dAction, queue_size=10)
         self.world_control = rospy.ServiceProxy('/world_control', WorldControl)
         self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
         self.compute_sdf = rospy.ServiceProxy('/sdf', ComputeSDF)
@@ -99,7 +99,7 @@ def generate_traj(args, services, env_idx):
             break
 
     if args.verbose:
-        print(gripper1_target_x, gripper1_target_y)
+        print('gripper target:', gripper1_target_x, gripper1_target_y)
         random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y)
 
     for t in range(args.steps_per_traj):
@@ -114,6 +114,8 @@ def generate_traj(args, services, env_idx):
             step = WorldControlRequest()
             step.steps = int(0.05 / 0.001)  # assuming 0.001s per simulation step
             services.world_control(step)  # this will block until stepping is complete
+            if image.size == 64 * 64 * 3 and image.min() != image.max():
+                break
 
         images[t] = image.reshape(64, 64, 3).tobytes()
         gripper1_forces[t] = np.array([s.gripper1_force.x, s.gripper1_force.y])
@@ -198,17 +200,27 @@ def generate_trajs(args, full_output_directory, services):
 
     move_wait_duration = 5
 
+    # construct message we will publish
+    enable_objects = Position2dEnable()
+    enable_objects.model_names = ['cheezits_box', 'tissue_box']
+    enable_objects.enable = True
+
+    disable_objects = Position2dEnable()
+    disable_objects.model_names = ['cheezits_box', 'tissue_box']
+    disable_objects.enable = False
+
+    disable_link_bot = String()
+    disable_link_bot.data = 'disabled'
+
+    enable_link_bot = String()
+    enable_link_bot.data = 'position'
+
     for i in range(args.n_trajs):
         current_record_traj_idx = i % n_trajs_per_file
 
         # disable the rope controller, enable the hand-of-god to move objects
-        enable = Position2dEnable()
-        enable.enable = True
-        enable.model_names = ['cheezits_box', 'tissue_box']
-        services.position_2d_enable.publish(enable)
-        action_mode = String()
-        action_mode.data = 'disabled'
-        services.action_mode.publish(action_mode)
+        services.position_2d_enable.publish(enable_objects)
+        services.link_bot_mode.publish(disable_link_bot)
 
         # Move the objects
         move_action = Position2dAction()
@@ -223,14 +235,9 @@ def generate_trajs(args, full_output_directory, services):
         step.steps = int(move_wait_duration / 0.001)  # assuming 0.001s per simulation step
         services.world_control(step)  # this will block until stepping is complete
 
-        # enable the rope controller, disable the objects so they stop
-        action_mode = String()
-        action_mode.data = 'position'
-        services.action_mode.publish(action_mode)
-        enable = Position2dEnable()
-        enable.enable = False
-        enable.model_names = ['cheezits_box', 'tissue_box']
-        services.position_2d_enable.publish(enable)
+        # disable the objects so they stop, enabled the rope controller
+        services.position_2d_enable.publish(disable_objects)
+        services.link_bot_mode.publish(enable_link_bot)
 
         # collect new data
         data_dict, labels_dict, sdf_data, percentage_violation = generate_traj(args, services, i)
@@ -309,16 +316,13 @@ def generate(args):
     set.time_step = current_physics.time_step
     set.ode_config = current_physics.ode_config
     set.max_update_rate = args.real_time_rate * 1000.0
+    set.enabled = True
     services.set_physics.call(set)
-
-    action_mode = String()
-    action_mode.data = 'position'
-    services.action_mode.publish(action_mode)
 
     # Set initial object positions
     move_action = Position2dAction()
     cheezits_move = ObjectAction()
-    cheezits_move.pose.position.x = 0.25
+    cheezits_move.pose.position.x = 0.20
     cheezits_move.pose.position.y = -0.25
     cheezits_move.pose.orientation.x = 0
     cheezits_move.pose.orientation.y = 0
@@ -327,7 +331,7 @@ def generate(args):
     cheezits_move.model_name = "cheezits_box"
     move_action.actions.append(cheezits_move)
     tissue_move = ObjectAction()
-    tissue_move.pose.position.x = 0.25
+    tissue_move.pose.position.x = 0.20
     tissue_move.pose.position.y = 0.25
     tissue_move.pose.orientation.x = 0
     tissue_move.pose.orientation.y = 0
@@ -339,7 +343,7 @@ def generate(args):
 
     # let the simulator run to get the first image
     step = WorldControlRequest()
-    step.steps = int(0.5 / 0.001)  # assuming 0.001s per simulation step
+    step.steps = int(5.0 / 0.001)  # assuming 0.001s per simulation step
     services.world_control(step)  # this will block until stepping is complete
 
     generate_trajs(args, full_output_directory, services)

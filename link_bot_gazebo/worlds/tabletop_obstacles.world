@@ -13,7 +13,7 @@
         <include>
           <uri>model://my_camera</uri>
           <pose frame=''>0 0 1.0 0 1.5707 1.5707</pose>
-          <name>camera</name>
+          <name>my_camera</name>
         </include>
         <include>
             <uri>model://sun</uri>

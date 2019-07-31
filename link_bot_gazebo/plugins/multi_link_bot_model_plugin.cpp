@@ -105,7 +105,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   }
 
   // TODO: make this a sdformat tag
-  auto constexpr camera_name{"default::camera::link::my_camera"};
+  auto constexpr camera_name{"default::my_camera::link::my_camera"};
   auto const &sensor = sensors::get_sensor(camera_name);
   camera_sensor = std::dynamic_pointer_cast<sensors::CameraSensor>(sensor);
   if (!camera_sensor) {
