@@ -1,0 +1,4 @@
+<launch>
+    <node name="republish_gz_camera" pkg="link_bot_gazebo" type="republish_gz_camera.py"/>
+    <node name="image_view" pkg="rqt_image_view" type="rqt_image_view"/>
+</launch>

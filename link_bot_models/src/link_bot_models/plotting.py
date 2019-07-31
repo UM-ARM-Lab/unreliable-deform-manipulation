@@ -1,16 +1,15 @@
 from enum import auto
 
-import numpy as np
-
-import link_bot_pycommon.args_enum
-from link_bot_models import sdf_function_model
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib import animation
 from matplotlib.animation import FuncAnimation
 from matplotlib.lines import Line2D
 
-from link_bot_pycommon import link_bot_pycommon
+import link_bot_pycommon.args_enum
+from link_bot_models import sdf_function_model
 from link_bot_pycommon import args_enum
+from link_bot_pycommon import link_bot_pycommon
 
 
 class PlotType(args_enum.ArgsEnum):
@@ -67,8 +66,13 @@ def plot_examples(sdf_image, extent, results, subsample=10, title=''):
 
     pred_color = ['r' if result.predicted_violated else 'g' for result in results[::subsample]]
     true_color = ['#990000' if result.true_violated else '#00ff00' for result in results[::subsample]]
+    print(predicted_xs)
     plt.scatter(predicted_xs, predicted_ys, s=50, c=pred_color, label='predicted', zorder=2)
     plt.scatter(head_xs, head_ys, s=5, c=true_color, label='true', zorder=3)
+    for result in results[::subsample]:
+        rope_xs = [result.rope_configuration[0], result.rope_configuration[2], result.rope_configuration[4]]
+        rope_ys = [result.rope_configuration[1], result.rope_configuration[3], result.rope_configuration[5]]
+        plt.plot(rope_xs, rope_ys, c='gray', zorder=2, linewidth=1)
 
     for result in results[::subsample]:
         predicted_point = result.predicted_point

@@ -101,6 +101,7 @@ def common(args, start, max_steps=1e6):
     rospy.init_node('MPCAgent')
 
     world_control = rospy.ServiceProxy('/world_control', WorldControl)
+    action_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=1, latch=True)
     config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10, latch=True)
     action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
     action_mode_pub = rospy.Publisher("/link_bot_action_mode", String, queue_size=1)

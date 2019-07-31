@@ -27,7 +27,7 @@ def request_sdf_data(get_sdf_service, width=5.0, height=5.0, res=0.05, robot_nam
     compute_sdf_request.x_width = width
     compute_sdf_request.y_height = height
     compute_sdf_request.min_z = 0.01  # must be greater than zero or the ground plane will be included
-    compute_sdf_request.max_z = 2  # must be higher than the highest obstacle
+    compute_sdf_request.max_z = 0.5 # must be higher than the highest obstacle
     compute_sdf_request.robot_name = robot_name
 
     response = get_sdf_service(compute_sdf_request)

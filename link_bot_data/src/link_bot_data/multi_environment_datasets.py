@@ -39,9 +39,9 @@ class MultiEnvironmentDataset:
         for i, (sdf_data_filename, rope_data_filename) in enumerate(filename_pairs):
             sdf_data = link_bot_sdf_utils.SDF.load(sdf_data_filename)
 
-            with np.load(rope_data_filename) as rope_data:
-                examples_in_env, N = rope_data['rope_configurations'].shape
-                env = EnvironmentData(sdf_data, rope_data)
+            rope_data = np.load(rope_data_filename)
+            examples_in_env, N = rope_data['rope_configurations'].shape
+            env = EnvironmentData(sdf_data, rope_data)
 
             if i == 0:
                 # store useful information about the dataset

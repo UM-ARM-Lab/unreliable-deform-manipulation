@@ -3,10 +3,8 @@
 #include <link_bot_gazebo/WriteSDF.h>
 #include <std_msgs/ColorRGBA.h>
 #include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/serialization.hpp>
-#include <arc_utilities/voxel_grid.hpp>
 #include <arc_utilities/zlib_helpers.hpp>
 #include <chrono>
 #include <experimental/filesystem>
@@ -51,7 +49,7 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     return true;
   };
 
-  auto get_sdf = [&](link_bot_gazebo::ComputeSDFRequest &req, link_bot_gazebo::ComputeSDFResponse &res) {
+  auto get_sdf = [&](link_bot_sdf_tools::ComputeSDFRequest &req, link_bot_sdf_tools::ComputeSDFResponse &res) {
     if (req.request_new) {
       compute_sdf(req.x_width, req.y_height, req.center, req.resolution, req.robot_name, req.min_z, req.max_z);
     }
@@ -82,8 +80,8 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
   }
 
   {
-    auto so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ComputeSDF>("/sdf", get_sdf, ros::VoidConstPtr(),
-                                                                                &queue_);
+    auto so = ros::AdvertiseServiceOptions::create<link_bot_sdf_tools::ComputeSDF>("/sdf", get_sdf, ros::VoidConstPtr(),
+                                                                                   &queue_);
     get_service_ = ros_node_->advertiseService(so);
   }
 
@@ -165,9 +163,8 @@ void CollisionMapPlugin::compute_sdf(float x_width, float y_height, geometry_msg
   start.Z(max_z);
   end.Z(min_z);
 
-  // parameters needed for the GetIntersection check
   std::string entityName;
-  double dist;
+  double dist{0};
 
   auto const t0 = std::chrono::steady_clock::now();
 

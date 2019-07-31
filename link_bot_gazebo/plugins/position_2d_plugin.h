@@ -20,7 +20,7 @@ class Position2dPlugin : public ModelPlugin {
  public:
   ~Position2dPlugin() override;
 
-  void Load(physics::ModelPtr parent, sdf::ElementPtr sdf);
+  void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
 
   void OnUpdate();
 

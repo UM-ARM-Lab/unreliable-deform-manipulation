@@ -14,7 +14,7 @@
 #include <ignition/math/Vector3.hh>
 
 #include <link_bot_gazebo/WriteSDF.h>
-#include <link_bot_gazebo/ComputeSDF.h>
+#include <link_bot_sdf_tools/ComputeSDF.h>
 #include <sdf_tools/SDF.h>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/voxel_grid.hpp>
@@ -41,12 +41,12 @@ class CollisionMapPlugin : public WorldPlugin {
   static const sdf_tools::COLLISION_CELL occupied_value;
 
  public:
-  void Load(physics::WorldPtr world, sdf::ElementPtr _sdf);
+  void Load(physics::WorldPtr world, sdf::ElementPtr _sdf) override;
 
  public:
   void OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg);
 
-  ~CollisionMapPlugin();
+  ~CollisionMapPlugin() override;
 
  private:
   void QueueThread();

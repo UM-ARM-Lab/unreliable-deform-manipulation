@@ -99,6 +99,7 @@ def main():
     dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
 
     model = SDFFunctionModelRunner.load(args.checkpoint)
+    model.initialize_auxiliary_models()
 
     # model = MultiConstraintModelRunner.load(args.checkpoint)
 
