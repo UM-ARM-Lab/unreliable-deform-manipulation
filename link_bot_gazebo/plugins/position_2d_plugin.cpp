@@ -44,6 +44,41 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       kD_pos_ = sdf->GetElement("kD_pos")->Get<double>();
     }
 
+    if (!sdf->HasElement("max_vel")) {
+      printf("using default max_vel=%f\n", max_vel_);
+    }
+    else {
+      max_vel_ = sdf->GetElement("max_vel")->Get<double>();
+    }
+
+    if (!sdf->HasElement("kP_rot")) {
+      printf("using default kP_rot=%f\n", kP_rot_);
+    }
+    else {
+      kP_rot_ = sdf->GetElement("kP_rot")->Get<double>();
+    }
+
+    if (!sdf->HasElement("kI_rot")) {
+      printf("using default kI_rot=%f\n", kI_rot_);
+    }
+    else {
+      kI_rot_ = sdf->GetElement("kI_rot")->Get<double>();
+    }
+
+    if (!sdf->HasElement("kD_rot")) {
+      printf("using default kD_rot=%f\n", kD_rot_);
+    }
+    else {
+      kD_rot_ = sdf->GetElement("kD_rot")->Get<double>();
+    }
+
+    if (!sdf->HasElement("max_torque")) {
+      printf("using default max_torque=%f\n", max_torque_);
+    }
+    else {
+      max_torque_ = sdf->GetElement("max_torque")->Get<double>();
+    }
+
     if (!sdf->HasElement("kP_vel")) {
       printf("using default kP_vel=%f\n", kP_vel_);
     }
@@ -63,6 +98,13 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     }
     else {
       kD_vel_ = sdf->GetElement("kD_vel")->Get<double>();
+    }
+
+    if (!sdf->HasElement("max_force")) {
+      printf("using default max_force=%f\n", max_force_);
+    }
+    else {
+      max_force_ = sdf->GetElement("max_force")->Get<double>();
     }
 
     if (sdf->HasElement("linkName")) {
@@ -99,15 +141,15 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
   ros_queue_thread_ = std::thread(std::bind(&Position2dPlugin::QueueThread, this));
 
-  constexpr auto max_force{150};
-  constexpr auto max_vel{1};
   constexpr auto max_vel_integral{0};
   constexpr auto max_integral{0};
-  x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
-  y_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
+  x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel_, -max_vel_);
+  y_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel_, -max_vel_);
 
-  x_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
-  y_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+  z_rot_pid_ = common::PID(kP_rot_, kI_rot_, kD_rot_, max_integral, -max_integral, max_torque_, -max_torque_);
+
+  x_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
+  y_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
 
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&Position2dPlugin::OnUpdate, this));
 }
@@ -116,7 +158,7 @@ void Position2dPlugin::OnUpdate()
 {
   constexpr auto dt{0.001};
 
-  ignition::math::Vector3d force{};
+  ignition::math::Vector3d force;
   auto const pos = link_->WorldPose().Pos();
   auto const pose_error = pos - target_pose_.Pos();
 
@@ -133,9 +175,18 @@ void Position2dPlugin::OnUpdate()
   auto const collision = link_->GetCollision(i);
   auto const box = boost::dynamic_pointer_cast<physics::BoxShape>(collision->GetShape());
   auto const z = box->Size().Z();
+
+  ignition::math::Vector3d torque;
+  torque.X(0);
+  torque.Y(0);
+  auto const yaw_error = link_->WorldPose().Rot().Yaw();
+  auto const yaw_torque = z_rot_pid_.Update(yaw_error, dt);
+  torque.Z(yaw_torque);
+
   if (enabled_) {
     ignition::math::Vector3d const push_position(0, 0, -z / 2.0 + 0.01);
     link_->AddForceAtRelativePosition(force, push_position);
+    link_->AddRelativeTorque(torque);
   }
 }
 

@@ -67,3 +67,7 @@ add_dependencies(position_2d_plugin link_bot_gazebo_generate_messages)
 add_library(my_camera_plugin SHARED plugins/my_camera_plugin.cpp)
 target_include_directories(my_camera_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(my_camera_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} CameraPlugin)
+
+add_library(test_ray_plugin SHARED plugins/test_ray_plugin.cpp)
+target_include_directories(test_ray_plugin PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(test_ray_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
