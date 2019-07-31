@@ -196,6 +196,7 @@ def generate_trajs(args, full_output_directory, services):
 
     states = np.ndarray((n_trajs_per_file, args.steps_per_traj, 2), np.float32)
     actions = np.ndarray((n_trajs_per_file, args.steps_per_traj, 2), np.float32)
+    constraint_labels = np.ndarray((n_trajs_per_file, args.steps_per_traj, 1), np.float32)
     image_bytes = np.ndarray((n_trajs_per_file, args.steps_per_traj), object)
 
     move_wait_duration = 5
@@ -245,6 +246,7 @@ def generate_trajs(args, full_output_directory, services):
         head_positions = data_dict['rope_configurations'][:, 4:6]
         states[current_record_traj_idx] = head_positions
         actions[current_record_traj_idx] = data_dict['gripper1_target_velocities']
+        constraint_labels[current_record_traj_idx] = labels_dict[LabelType.Combined.name]
         image_bytes[current_record_traj_idx] = data_dict['images']
 
         constraint_label_types = list(labels_dict.keys())
@@ -267,16 +269,16 @@ def generate_trajs(args, full_output_directory, services):
             sys.stdout.flush()
 
         if current_record_traj_idx == n_trajs_per_file - 1:
-            dataset = tensorflow.data.Dataset.from_tensor_slices((image_bytes, states, actions))
+            dataset = tensorflow.data.Dataset.from_tensor_slices((image_bytes, states, actions, constraint_labels))
 
-            serialized_dataset = dataset.map(video_prediction_dataset_utils.tf_serialize_example)
+            serialized_dataset = dataset.map(video_prediction_dataset_utils.tf_serialize_example_4)
 
             end_traj_idx = i
             start_traj_idx = end_traj_idx - n_trajs_per_file + 1
             full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tensorflow.data.experimental.TFRecordWriter(full_filename)
             print("saving {}".format(full_filename))
-            op = writer.write(serialized_dataset)
+            writer.write(serialized_dataset)
 
     mean_percentage_positive = np.mean(percentages_positive)
     print("Class balance: mean % positive: {}".format(mean_percentage_positive))
