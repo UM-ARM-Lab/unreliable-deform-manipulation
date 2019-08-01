@@ -21,7 +21,6 @@ from gazebo_msgs.srv import GetPhysicsProperties, GetPhysicsPropertiesRequest
 from gazebo_msgs.srv import SetPhysicsProperties, SetPhysicsPropertiesRequest
 from link_bot_data import random_environment_data_utils
 from link_bot_data import video_prediction_dataset_utils
-from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_gazebo.msg import LinkBotConfiguration, MultiLinkBotPositionAction, Position2dEnable, Position2dAction, ObjectAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
 from link_bot_models.label_types import LabelType
@@ -76,6 +75,10 @@ def generate_traj(args, services, env_idx):
     # Create random rope configurations by picking a random point and applying forces to move the rope to that point
     rope_configurations = np.ndarray((args.steps_per_traj, 6), dtype=np.float32)
     images = np.ndarray(args.steps_per_traj, dtype=object)
+    sdfs = np.ndarray(args.steps_per_traj, dtype=object)
+    sdf_gradients = np.ndarray(args.steps_per_traj, dtype=object)
+    sdf_resolutions = np.ndarray((args.steps_per_traj, 2), dtype=np.float32)
+    sdf_origins = np.ndarray((args.steps_per_traj, 2), dtype=np.int32)
     gripper1_forces = np.ndarray((args.steps_per_traj, 2))
     gripper1_target_velocities = np.ndarray((args.steps_per_traj, 2))
     gripper1_velocities = np.ndarray((args.steps_per_traj, 2))
@@ -83,6 +86,7 @@ def generate_traj(args, services, env_idx):
     gripper2_target_velocities = np.ndarray((args.steps_per_traj, 2))
     gripper2_velocities = np.ndarray((args.steps_per_traj, 2))
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1), dtype=np.float32)
+    constraint_label_types = np.ndarray((args.steps_per_traj, 1), dtype=np.str)
 
     # bias sampling to explore
     s = services.get_state(state_req)
@@ -118,7 +122,12 @@ def generate_traj(args, services, env_idx):
                 break
 
         images[t] = image.reshape(64, 64, 3).tobytes()
+        sdfs[t] = sdf_data.sdf
+        sdf_gradients[t] = sdf_data.gradient
+        sdf_resolutions[t] = sdf_data.resolution
+        sdf_origins[t] = sdf_data.origin
         gripper1_forces[t] = np.array([s.gripper1_force.x, s.gripper1_force.y])
+        constraint_label_types[t] = [LabelType.Combined.name]
         gripper1_target_velocities[t] = np.array([s.gripper1_target_velocity.x, s.gripper1_target_velocity.y])
         gripper1_velocities[t] = np.array([s.gripper1_velocity.x, s.gripper1_velocity.y])
         gripper2_forces[t] = np.array([s.gripper1_force.x, s.gripper1_force.y])
@@ -162,6 +171,7 @@ def generate_traj(args, services, env_idx):
 
     labels_dict = {
         LabelType.Combined.name: combined_constraint_labels,
+        'constraint_label_types': constraint_label_types,
     }
     data_dict = {
         'rope_configurations': rope_configurations,
@@ -172,8 +182,12 @@ def generate_traj(args, services, env_idx):
         'gripper2_velocities': gripper2_velocities,
         'gripper2_target_velocities': gripper2_target_velocities,
         'images': images,
+        'sdfs': sdfs,
+        'sdf_gradients': sdf_gradients,
+        'sdf_resolutions': sdf_resolutions,
+        'sdf_origins': sdf_origins,
     }
-    return data_dict, labels_dict, sdf_data, percentage_positive
+    return data_dict, labels_dict, percentage_positive
 
 
 def random_object_move(model_name):
@@ -190,14 +204,18 @@ def random_object_move(model_name):
 
 
 def generate_trajs(args, full_output_directory, services):
-    filename_pairs = []
     percentages_positive = []
-    constraint_label_types = None
 
+    # TODO: make this more efficient and shorter, maybe not returning a dict from generate_traj?
     states = np.ndarray((n_trajs_per_file, args.steps_per_traj, 2), np.float32)
     actions = np.ndarray((n_trajs_per_file, args.steps_per_traj, 2), np.float32)
     constraint_labels = np.ndarray((n_trajs_per_file, args.steps_per_traj, 1), np.float32)
+    constraint_label_types = np.ndarray((n_trajs_per_file, 1), np.str)
     image_bytes = np.ndarray((n_trajs_per_file, args.steps_per_traj), object)
+    sdfs = np.ndarray((n_trajs_per_file, args.steps_per_traj), object)
+    sdf_gradients = np.ndarray((n_trajs_per_file, args.steps_per_traj), object)
+    sdf_resolutions = np.ndarray((n_trajs_per_file, args.steps_per_traj), np.float32)
+    sdf_origins = np.ndarray((n_trajs_per_file, args.steps_per_traj), np.float32)
 
     move_wait_duration = 5
 
@@ -241,52 +259,49 @@ def generate_trajs(args, full_output_directory, services):
         services.link_bot_mode.publish(enable_link_bot)
 
         # collect new data
-        data_dict, labels_dict, sdf_data, percentage_violation = generate_traj(args, services, i)
+        data_dict, labels_dict, percentage_violation = generate_traj(args, services, i)
 
         head_positions = data_dict['rope_configurations'][:, 4:6]
         states[current_record_traj_idx] = head_positions
         actions[current_record_traj_idx] = data_dict['gripper1_target_velocities']
         constraint_labels[current_record_traj_idx] = labels_dict[LabelType.Combined.name]
+        constraint_label_types[current_record_traj_idx] = labels_dict['constraint_label_types']
         image_bytes[current_record_traj_idx] = data_dict['images']
+        sdfs[current_record_traj_idx] = data_dict['sdfs']
+        sdf_gradients[current_record_traj_idx] = data_dict['sdf_gradients']
+        sdf_resolutions[current_record_traj_idx] = data_dict['sdf_resolutions']
+        sdf_origins[current_record_traj_idx] = data_dict['sdf_origins']
 
-        constraint_label_types = list(labels_dict.keys())
         percentages_positive.append(percentage_violation)
 
-        rope_data_filename = os.path.join(full_output_directory, 'rope_data_{:d}.npz'.format(i))
-        sdf_filename = os.path.join(full_output_directory, 'sdf_data_{:d}.npz'.format(i))
-
-        # FIXME: order matters
-        filename_pairs.append([sdf_filename, rope_data_filename])
-
-        data_dict.update(labels_dict)
-
         # Save the data
-        np.savez(rope_data_filename, **data_dict)
-        sdf_data.save(sdf_filename)
-
-        if not args.verbose:
-            print(".", end='')
-            sys.stdout.flush()
-
         if current_record_traj_idx == n_trajs_per_file - 1:
-            dataset = tensorflow.data.Dataset.from_tensor_slices((image_bytes, states, actions, constraint_labels))
+            dataset = tensorflow.data.Dataset.from_tensor_slices((image_bytes,
+                                                                  states,
+                                                                  actions,
+                                                                  constraint_labels,
+                                                                  constraint_label_types,
+                                                                  sdfs,
+                                                                  sdf_gradients,
+                                                                  sdf_resolutions,
+                                                                  sdf_origins))
 
-            serialized_dataset = dataset.map(video_prediction_dataset_utils.tf_serialize_example_4)
+            serialized_dataset = dataset.map(video_prediction_dataset_utils.tf_serialize_example)
 
             end_traj_idx = i
             start_traj_idx = end_traj_idx - n_trajs_per_file + 1
             full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tensorflow.data.experimental.TFRecordWriter(full_filename)
-            print("saving {}".format(full_filename))
             writer.write(serialized_dataset)
+            print("saved {}".format(full_filename))
 
-    mean_percentage_positive = np.mean(percentages_positive)
-    print("Class balance: mean % positive: {}".format(mean_percentage_positive))
+            if args.verbose:
+                mean_percentage_positive = np.mean(percentages_positive)
+                print("Class balance: mean % positive: {}".format(mean_percentage_positive))
 
-    dataset_filename = os.path.join(full_output_directory, 'dataset.json')
-    dataset = MultiEnvironmentDataset(filename_pairs, constraint_label_types=constraint_label_types,
-                                      n_obstacles=-1, obstacle_size=-1, seed=args.seed)
-    dataset.save(dataset_filename)
+        if not args.verbose:
+            print(".", end='')
+            sys.stdout.flush()
 
 
 def generate(args):
