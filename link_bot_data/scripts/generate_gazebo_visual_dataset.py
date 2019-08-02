@@ -13,6 +13,8 @@ from std_msgs.msg import String
 from std_srvs.srv import Empty, EmptyRequest
 from tf.transformations import quaternion_from_euler
 
+from link_bot_data.video_prediction_dataset_utils import bytes_feature, float_feature, int_feature
+
 opts = tensorflow.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.ConfigProto(gpu_options=opts)
 tensorflow.enable_eager_execution(config=conf)
@@ -20,10 +22,8 @@ tensorflow.enable_eager_execution(config=conf)
 from gazebo_msgs.srv import GetPhysicsProperties, GetPhysicsPropertiesRequest
 from gazebo_msgs.srv import SetPhysicsProperties, SetPhysicsPropertiesRequest
 from link_bot_data import random_environment_data_utils
-from link_bot_data import video_prediction_dataset_utils
 from link_bot_gazebo.msg import LinkBotConfiguration, MultiLinkBotPositionAction, Position2dEnable, Position2dAction, ObjectAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
-from link_bot_models.label_types import LabelType
 from link_bot_sdf_tools import link_bot_sdf_tools
 from link_bot_sdf_tools.srv import ComputeSDF
 
@@ -72,46 +72,29 @@ def generate_traj(args, services, env_idx):
     # Compute SDF Data
     sdf_data = link_bot_sdf_tools.request_sdf_data(services.compute_sdf, width=w, height=h, res=args.res)
 
-    # Create random rope configurations by picking a random point and applying forces to move the rope to that point
-    rope_configurations = np.ndarray((args.steps_per_traj, 6), dtype=np.float32)
-    images = np.ndarray(args.steps_per_traj, dtype=object)
-    sdfs = np.ndarray(args.steps_per_traj, dtype=object)
-    sdf_gradients = np.ndarray(args.steps_per_traj, dtype=object)
-    sdf_resolutions = np.ndarray((args.steps_per_traj, 2), dtype=np.float32)
-    sdf_origins = np.ndarray((args.steps_per_traj, 2), dtype=np.int32)
-    gripper1_forces = np.ndarray((args.steps_per_traj, 2))
-    gripper1_target_velocities = np.ndarray((args.steps_per_traj, 2))
-    gripper1_velocities = np.ndarray((args.steps_per_traj, 2))
-    gripper2_forces = np.ndarray((args.steps_per_traj, 2))
-    gripper2_target_velocities = np.ndarray((args.steps_per_traj, 2))
-    gripper2_velocities = np.ndarray((args.steps_per_traj, 2))
-    combined_constraint_labels = np.ndarray((args.steps_per_traj, 1), dtype=np.float32)
-    constraint_label_types = np.ndarray((args.steps_per_traj, 1), dtype=np.str)
-
-    # bias sampling to explore
+    # bias sampling to explore by choosing a target location at least min_near away
     s = services.get_state(state_req)
     current_head_point = s.points[-1]
     gripper1_current_x = current_head_point.x
     gripper1_current_y = current_head_point.y
     current = np.array([gripper1_current_x, gripper1_current_y])
+    min_near = 0.25
     while True:
         gripper1_target_x = np.random.uniform(-w / 2, w / 2)
         gripper1_target_y = np.random.uniform(-h / 2, h / 2)
         target = np.array([gripper1_target_x, gripper1_target_y])
         d = np.linalg.norm(current - target)
-        if d > 0.25:
+        if d > min_near:
             break
 
     if args.verbose:
         print('gripper target:', gripper1_target_x, gripper1_target_y)
         random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y)
 
+    feature = {}
+    combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
     for t in range(args.steps_per_traj):
-        # save the state and action data
-        s = services.get_state(state_req)
-        rope_configurations[t] = np.array([[pt.x, pt.y] for pt in s.points]).flatten()
-
-        # FIXME: this is a hack
+        # FIXME: this is a hack, because sometimes the gazebo camera image doesn't work
         while True:
             s = services.get_state(state_req)
             image = np.frombuffer(s.camera_image.data, dtype=np.uint8)
@@ -120,19 +103,6 @@ def generate_traj(args, services, env_idx):
             services.world_control(step)  # this will block until stepping is complete
             if image.size == 64 * 64 * 3 and image.min() != image.max():
                 break
-
-        images[t] = image.reshape(64, 64, 3).tobytes()
-        sdfs[t] = sdf_data.sdf
-        sdf_gradients[t] = sdf_data.gradient
-        sdf_resolutions[t] = sdf_data.resolution
-        sdf_origins[t] = sdf_data.origin
-        gripper1_forces[t] = np.array([s.gripper1_force.x, s.gripper1_force.y])
-        constraint_label_types[t] = [LabelType.Combined.name]
-        gripper1_target_velocities[t] = np.array([s.gripper1_target_velocity.x, s.gripper1_target_velocity.y])
-        gripper1_velocities[t] = np.array([s.gripper1_velocity.x, s.gripper1_velocity.y])
-        gripper2_forces[t] = np.array([s.gripper1_force.x, s.gripper1_force.y])
-        gripper2_target_velocities[t] = np.array([s.gripper1_target_velocity.x, s.gripper1_target_velocity.y])
-        gripper2_velocities[t] = np.array([s.gripper1_velocity.x, s.gripper1_velocity.y])
 
         # TODO: use ground truth labels not just based on force/velocity?
         target_velocity = [s.gripper1_target_velocity.x,
@@ -158,6 +128,19 @@ def generate_traj(args, services, env_idx):
         action_msg.gripper1_pos.y = gripper1_target_y
         services.action_pub.publish(action_msg)
 
+        # format the tf feature
+        feature['{}/image_aux1/encoded'.format(t)] = bytes_feature(image.reshape(64, 64, 3).tobytes())
+        feature['{}/sdf/encoded'.format(t)] = bytes_feature(sdf_data.sdf.tobytes())
+        feature['{}/sdf_gradient/encoded'.format(t)] = bytes_feature(sdf_data.gradient.tobytes())
+        feature['{}/sdf_resolution'.format(t)] = float_feature(sdf_data.resolution)
+        feature['{}/sdf_origin'.format(t)] = int_feature(sdf_data.origin)
+        feature['{}/endeffector_pos'.format(t)] = float_feature(np.array([s.points[-1].x, s.points[-1].y]))
+        feature['{}/action'.format(t)] = float_feature(np.array([s.gripper1_target_velocity.x, s.gripper1_target_velocity.y]))
+        feature['{}/1/velocity'.format(t)] = float_feature(np.array([s.gripper1_velocity.x, s.gripper1_velocity.y]))
+        feature['{}/1/force'.format(t)] = float_feature(np.array([s.gripper1_force.x, s.gripper1_force.y]))
+        feature['{}/constraint'.format(t)] = int_feature(np.array([at_constraint_boundary]))
+        feature['{}/rope_configuration'.format(t)] = float_feature(np.array([[pt.x, pt.y] for pt in s.points]).flatten())
+
         # let the simulator run
         step = WorldControlRequest()
         step.steps = int(DT / 0.001)  # assuming 0.001s per simulation step
@@ -169,25 +152,9 @@ def generate_traj(args, services, env_idx):
     if args.verbose:
         print(Fore.GREEN + "Trajectory {} Complete".format(env_idx) + Fore.RESET)
 
-    labels_dict = {
-        LabelType.Combined.name: combined_constraint_labels,
-        'constraint_label_types': constraint_label_types,
-    }
-    data_dict = {
-        'rope_configurations': rope_configurations,
-        'gripper1_forces': gripper1_forces,
-        'gripper1_velocities': gripper1_velocities,
-        'gripper1_target_velocities': gripper1_target_velocities,
-        'gripper2_forces': gripper2_forces,
-        'gripper2_velocities': gripper2_velocities,
-        'gripper2_target_velocities': gripper2_target_velocities,
-        'images': images,
-        'sdfs': sdfs,
-        'sdf_gradients': sdf_gradients,
-        'sdf_resolutions': sdf_resolutions,
-        'sdf_origins': sdf_origins,
-    }
-    return data_dict, labels_dict, percentage_positive
+    example_proto = tensorflow.train.Example(features=tensorflow.train.Features(feature=feature))
+    example = example_proto.SerializeToString()
+    return example, percentage_positive
 
 
 def random_object_move(model_name):
@@ -204,21 +171,6 @@ def random_object_move(model_name):
 
 
 def generate_trajs(args, full_output_directory, services):
-    percentages_positive = []
-
-    # TODO: make this more efficient and shorter, maybe not returning a dict from generate_traj?
-    states = np.ndarray((n_trajs_per_file, args.steps_per_traj, 2), np.float32)
-    actions = np.ndarray((n_trajs_per_file, args.steps_per_traj, 2), np.float32)
-    constraint_labels = np.ndarray((n_trajs_per_file, args.steps_per_traj, 1), np.float32)
-    constraint_label_types = np.ndarray((n_trajs_per_file, 1), np.str)
-    image_bytes = np.ndarray((n_trajs_per_file, args.steps_per_traj), object)
-    sdfs = np.ndarray((n_trajs_per_file, args.steps_per_traj), object)
-    sdf_gradients = np.ndarray((n_trajs_per_file, args.steps_per_traj), object)
-    sdf_resolutions = np.ndarray((n_trajs_per_file, args.steps_per_traj), np.float32)
-    sdf_origins = np.ndarray((n_trajs_per_file, args.steps_per_traj), np.float32)
-
-    move_wait_duration = 5
-
     # construct message we will publish
     enable_objects = Position2dEnable()
     enable_objects.model_names = ['cheezits_box', 'tissue_box']
@@ -234,6 +186,8 @@ def generate_trajs(args, full_output_directory, services):
     enable_link_bot = String()
     enable_link_bot.data = 'position'
 
+    examples = np.ndarray([n_trajs_per_file], dtype=np.str)
+    percentages_positive = []
     for i in range(args.n_trajs):
         current_record_traj_idx = i % n_trajs_per_file
 
@@ -251,6 +205,7 @@ def generate_trajs(args, full_output_directory, services):
 
         # let the move actually occur
         step = WorldControlRequest()
+        move_wait_duration = 5
         step.steps = int(move_wait_duration / 0.001)  # assuming 0.001s per simulation step
         services.world_control(step)  # this will block until stepping is complete
 
@@ -258,35 +213,16 @@ def generate_trajs(args, full_output_directory, services):
         services.position_2d_enable.publish(disable_objects)
         services.link_bot_mode.publish(enable_link_bot)
 
-        # collect new data
-        data_dict, labels_dict, percentage_violation = generate_traj(args, services, i)
-
-        head_positions = data_dict['rope_configurations'][:, 4:6]
-        states[current_record_traj_idx] = head_positions
-        actions[current_record_traj_idx] = data_dict['gripper1_target_velocities']
-        constraint_labels[current_record_traj_idx] = labels_dict[LabelType.Combined.name]
-        constraint_label_types[current_record_traj_idx] = labels_dict['constraint_label_types']
-        image_bytes[current_record_traj_idx] = data_dict['images']
-        sdfs[current_record_traj_idx] = data_dict['sdfs']
-        sdf_gradients[current_record_traj_idx] = data_dict['sdf_gradients']
-        sdf_resolutions[current_record_traj_idx] = data_dict['sdf_resolutions']
-        sdf_origins[current_record_traj_idx] = data_dict['sdf_origins']
-
+        # Generate a new trajectory
+        example, percentage_violation = generate_traj(args, services, i)
+        examples[current_record_traj_idx] = example
         percentages_positive.append(percentage_violation)
 
         # Save the data
         if current_record_traj_idx == n_trajs_per_file - 1:
-            dataset = tensorflow.data.Dataset.from_tensor_slices((image_bytes,
-                                                                  states,
-                                                                  actions,
-                                                                  constraint_labels,
-                                                                  constraint_label_types,
-                                                                  sdfs,
-                                                                  sdf_gradients,
-                                                                  sdf_resolutions,
-                                                                  sdf_origins))
-
-            serialized_dataset = dataset.map(video_prediction_dataset_utils.tf_serialize_example)
+            # Construct the dataset where each trajectory has been serialized into one big string
+            # since tfrecords don't really support hierarchical data structures
+            serialized_dataset = tensorflow.data.Dataset.from_tensor_slices(examples)
 
             end_traj_idx = i
             start_traj_idx = end_traj_idx - n_trajs_per_file + 1

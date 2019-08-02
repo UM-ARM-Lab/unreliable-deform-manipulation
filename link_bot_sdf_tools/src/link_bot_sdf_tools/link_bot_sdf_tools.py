@@ -39,6 +39,6 @@ def request_sdf_data(get_sdf_service, width=5.0, height=5.0, res=0.05, robot_nam
 
     np_sdf, np_gradient = sdf_tools.compute_gradient(sdf)
     np_resolution = np.array([res, res])
-    np_origin = np.array([height / res / 2, width / res / 2])
+    np_origin = np.array([height / res / 2, width / res / 2], np.int64)
     sdf_data = SDF(sdf=np_sdf, gradient=np_gradient, resolution=np_resolution, origin=np_origin)
     return sdf_data
