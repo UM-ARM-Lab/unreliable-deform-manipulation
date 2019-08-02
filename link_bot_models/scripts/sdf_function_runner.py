@@ -11,7 +11,10 @@ from link_bot_pycommon import experiments_util
 
 
 def train(args):
-    log_path = experiments_util.experiment_name(args.log)
+    if args.log:
+        log_path = experiments_util.experiment_name(args.log)
+    else:
+        log_path = None
 
     train_dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
     validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
