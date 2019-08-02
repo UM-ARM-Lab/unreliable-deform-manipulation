@@ -186,7 +186,7 @@ def generate_trajs(args, full_output_directory, services):
     enable_link_bot = String()
     enable_link_bot.data = 'position'
 
-    examples = np.ndarray([n_trajs_per_file], dtype=np.str)
+    examples = np.ndarray([n_trajs_per_file], dtype=object)
     percentages_positive = []
     for i in range(args.n_trajs):
         current_record_traj_idx = i % n_trajs_per_file
@@ -222,7 +222,7 @@ def generate_trajs(args, full_output_directory, services):
         if current_record_traj_idx == n_trajs_per_file - 1:
             # Construct the dataset where each trajectory has been serialized into one big string
             # since tfrecords don't really support hierarchical data structures
-            serialized_dataset = tensorflow.data.Dataset.from_tensor_slices(examples)
+            serialized_dataset = tensorflow.data.Dataset.from_tensor_slices((examples))
 
             end_traj_idx = i
             start_traj_idx = end_traj_idx - n_trajs_per_file + 1
