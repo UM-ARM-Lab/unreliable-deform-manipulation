@@ -28,7 +28,7 @@ from link_bot_sdf_tools import link_bot_sdf_tools
 from link_bot_sdf_tools.srv import ComputeSDF
 
 n_trajs_per_file = 64
-DT = 0.1  # seconds per time step
+DT = 1.0  # seconds per time step
 w = 1
 h = 1
 
