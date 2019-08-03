@@ -13,7 +13,7 @@ from std_msgs.msg import String
 from std_srvs.srv import Empty, EmptyRequest
 from tf.transformations import quaternion_from_euler
 
-from link_bot_data.video_prediction_dataset_utils import bytes_feature, float_feature, int_feature
+from link_bot_data.video_prediction_dataset_utils import bytes_feature, float_feature
 
 opts = tensorflow.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.ConfigProto(gpu_options=opts)
@@ -27,7 +27,7 @@ from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState,
 from link_bot_sdf_tools import link_bot_sdf_tools
 from link_bot_sdf_tools.srv import ComputeSDF
 
-n_trajs_per_file = 256
+n_trajs_per_file = 64
 DT = 0.1  # seconds per time step
 w = 1
 h = 1
@@ -133,12 +133,12 @@ def generate_traj(args, services, env_idx):
         feature['{}/sdf/encoded'.format(t)] = bytes_feature(sdf_data.sdf.tobytes())
         feature['{}/sdf_gradient/encoded'.format(t)] = bytes_feature(sdf_data.gradient.tobytes())
         feature['{}/sdf_resolution'.format(t)] = float_feature(sdf_data.resolution)
-        feature['{}/sdf_origin'.format(t)] = int_feature(sdf_data.origin)
+        feature['{}/sdf_origin'.format(t)] = float_feature(sdf_data.origin.astype(np.float32))
         feature['{}/endeffector_pos'.format(t)] = float_feature(np.array([s.points[-1].x, s.points[-1].y]))
         feature['{}/action'.format(t)] = float_feature(np.array([s.gripper1_target_velocity.x, s.gripper1_target_velocity.y]))
         feature['{}/1/velocity'.format(t)] = float_feature(np.array([s.gripper1_velocity.x, s.gripper1_velocity.y]))
         feature['{}/1/force'.format(t)] = float_feature(np.array([s.gripper1_force.x, s.gripper1_force.y]))
-        feature['{}/constraint'.format(t)] = int_feature(np.array([at_constraint_boundary]))
+        feature['{}/constraint'.format(t)] = float_feature(np.array([float(at_constraint_boundary)]))
         feature['{}/rope_configuration'.format(t)] = float_feature(np.array([[pt.x, pt.y] for pt in s.points]).flatten())
 
         # let the simulator run
@@ -227,7 +227,7 @@ def generate_trajs(args, full_output_directory, services):
             end_traj_idx = i
             start_traj_idx = end_traj_idx - n_trajs_per_file + 1
             full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
-            writer = tensorflow.data.experimental.TFRecordWriter(full_filename)
+            writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type="ZLIB")
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))
 
