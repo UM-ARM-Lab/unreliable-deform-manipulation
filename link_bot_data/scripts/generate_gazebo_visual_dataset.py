@@ -73,19 +73,7 @@ def generate_traj(args, services, env_idx):
     sdf_data = link_bot_sdf_tools.request_sdf_data(services.compute_sdf, width=w, height=h, res=args.res)
 
     # bias sampling to explore by choosing a target location at least min_near away
-    s = services.get_state(state_req)
-    current_head_point = s.points[-1]
-    gripper1_current_x = current_head_point.x
-    gripper1_current_y = current_head_point.y
-    current = np.array([gripper1_current_x, gripper1_current_y])
-    min_near = 0.25
-    while True:
-        gripper1_target_x = np.random.uniform(-w / 2, w / 2)
-        gripper1_target_y = np.random.uniform(-h / 2, h / 2)
-        target = np.array([gripper1_target_x, gripper1_target_y])
-        d = np.linalg.norm(current - target)
-        if d > min_near:
-            break
+    gripper1_target_x, gripper1_target_y = sample_goal(services, state_req)
 
     if args.verbose:
         print('gripper target:', gripper1_target_x, gripper1_target_y)
@@ -94,6 +82,12 @@ def generate_traj(args, services, env_idx):
     feature = {}
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
     for t in range(args.steps_per_traj):
+        if t % args.steps_per_target:
+            gripper1_target_x, gripper1_target_y = sample_goal(services, state_req)
+            if args.verbose:
+                print('gripper target:', gripper1_target_x, gripper1_target_y)
+                random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y)
+
         # FIXME: this is a hack, because sometimes the gazebo camera image doesn't work
         while True:
             s = services.get_state(state_req)
@@ -155,6 +149,23 @@ def generate_traj(args, services, env_idx):
     example_proto = tensorflow.train.Example(features=tensorflow.train.Features(feature=feature))
     example = example_proto.SerializeToString()
     return example, percentage_positive
+
+
+def sample_goal(services, state_req):
+    s = services.get_state(state_req)
+    current_head_point = s.points[-1]
+    gripper1_current_x = current_head_point.x
+    gripper1_current_y = current_head_point.y
+    current = np.array([gripper1_current_x, gripper1_current_y])
+    min_near = 0.25
+    while True:
+        gripper1_target_x = np.random.uniform(-w / 2, w / 2)
+        gripper1_target_y = np.random.uniform(-h / 2, h / 2)
+        target = np.array([gripper1_target_x, gripper1_target_y])
+        d = np.linalg.norm(current - target)
+        if d > min_near:
+            break
+    return gripper1_target_x, gripper1_target_y
 
 
 def random_object_move(model_name):
@@ -310,7 +321,8 @@ def main():
     parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)
     parser.add_argument("outdir")
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
-    parser.add_argument("--steps-per-traj", type=int, default=75)
+    parser.add_argument("--steps-per-traj", type=int, default=100)
+    parser.add_argument("--steps-per-target", type=int, default=10)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--real-time-rate", help='number of times real time', type=float, default=10)
     parser.add_argument("--verbose", '-v', action="store_true")
