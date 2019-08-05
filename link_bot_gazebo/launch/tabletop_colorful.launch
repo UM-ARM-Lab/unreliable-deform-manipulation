@@ -2,8 +2,9 @@
     <arg name="world_name" default="worlds/no_arena.world"/>
     <arg name="verbose" default="true"/>
     <arg name="gui" default="true"/>
-    <arg name="spawn_x" default="-0.45"/>
+    <arg name="spawn_x" default="0.0"/>
     <arg name="spawn_y" default="0.0"/>
+
     <arg name="spawn_yaw" default="0"/>
 
     <include file="$(find link_bot_description)/launch/link_bot_description.launch">
@@ -18,5 +19,5 @@
 
     <!-- Spawn a robot into Gazebo -->
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
-          args="-file $(find link_bot_description)/urdf/colorful_link_bot.urdf -urdf -x $(arg spawn_x) -y $(arg spawn_y) -Y $(arg spawn_yaw) -z 0.01 -model link_bot"/>
+          args="-file $(find link_bot_description)/urdf/colorful_link_bot.sdf -sdf -x $(arg spawn_x) -y $(arg spawn_y) -Y $(arg spawn_yaw) -z 0.01 -model link_bot"/>
 </launch>

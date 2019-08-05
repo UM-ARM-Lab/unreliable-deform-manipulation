@@ -28,6 +28,8 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   void OnUpdate();
 
+  void OnPostRender();
+
   void OnJoy(sensor_msgs::JoyConstPtr msg);
 
   void OnAction(link_bot_gazebo::MultiLinkBotPositionActionConstPtr msg);
@@ -46,7 +48,10 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   physics::ModelPtr model_;
   sensors::CameraSensorPtr camera_sensor;
   event::ConnectionPtr updateConnection_;
+  event::ConnectionPtr postRenderConnection_;
   uint32_t image_sequence_number{0u};
+  sensor_msgs::Image latest_image_;
+  bool ready_{false};
   double kP_pos_{0.0};
   double kI_pos_{0.0};
   double kD_pos_{0.0};

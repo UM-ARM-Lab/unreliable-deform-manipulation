@@ -9,12 +9,11 @@ import numpy as np
 import rospy
 import tensorflow
 from colorama import Fore
-from scipy.stats import mode
 from std_msgs.msg import String
 from std_srvs.srv import Empty, EmptyRequest
 from tf.transformations import quaternion_from_euler
 
-from link_bot_data.video_prediction_dataset_utils import bytes_feature, float_feature
+from link_bot_data.video_prediction_dataset_utils import bytes_feature, float_feature, int_feature
 
 opts = tensorflow.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.ConfigProto(gpu_options=opts)
@@ -81,8 +80,9 @@ def generate_traj(args, services, env_idx):
 
     feature = {
         # These features don't change over time
-        'sdf/encoded': bytes_feature(sdf_data.sdf.tobytes()),
-        'sdf/gradient/encoded': bytes_feature(sdf_data.gradient.tobytes()),
+        'sdf/sdf': float_feature(sdf_data.sdf.flatten()),
+        'sdf/gradient': float_feature(sdf_data.gradient.flatten()),
+        'sdf/shape': int_feature(np.array(sdf_data.sdf.shape)),
         'sdf/resolution': float_feature(sdf_data.resolution),
         'sdf/origin': float_feature(sdf_data.origin.astype(np.float32))
     }
@@ -94,32 +94,28 @@ def generate_traj(args, services, env_idx):
                 print('gripper target:', gripper1_target_x, gripper1_target_y)
                 random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y)
 
-        # FIXME: this is a hack, because sometimes the gazebo camera image doesn't work
-        while True:
-            s = services.get_state(state_req)
-            image = np.frombuffer(s.camera_image.data, dtype=np.uint8)
-            step = WorldControlRequest()
-            step.steps = int(0.05 / 0.001)  # assuming 0.001s per simulation step
-            services.world_control(step)  # this will block until stepping is complete
-            if image.size == 64 * 64 * 3 and image.min() != image.max() and mode(image)[0] != 128:
-                break
+        s = services.get_state(state_req)
+        image = np.copy(np.frombuffer(s.camera_image.data, dtype=np.uint8)).reshape([64, 64, 3])
 
-        # TODO: use ground truth labels not just based on force/velocity?
+        # Note: ground truth labels are just based on force/velocity
         target_velocity = [s.gripper1_target_velocity.x,
                            s.gripper1_target_velocity.y,
                            s.gripper1_target_velocity.z]
         current_velocity = [s.gripper1_velocity.x,
                             s.gripper1_velocity.y,
                             s.gripper1_velocity.z]
-        ntv = np.linalg.norm(target_velocity)
-        nv = np.linalg.norm(current_velocity)
-        if abs(ntv - nv) > 0.155:
+        target_speed = np.linalg.norm(target_velocity)
+        speed = np.linalg.norm(current_velocity)
+        if abs(target_speed - speed) > 0.12:
             at_constraint_boundary = True
+            image[:2, :, 0] = 255
+            image[:2, :, 1] = 0
+            image[:2, :, 2] = 0
         else:
             at_constraint_boundary = False
 
         if args.verbose:
-            print(t, nv, ntv, at_constraint_boundary)
+            print(t, abs(speed - target_speed), at_constraint_boundary)
 
         combined_constraint_labels[t, 0] = at_constraint_boundary
 
@@ -129,8 +125,9 @@ def generate_traj(args, services, env_idx):
         services.action_pub.publish(action_msg)
 
         # format the tf feature
-        feature['{}/image_aux1/encoded'.format(t)] = bytes_feature(image.reshape(64, 64, 3).tobytes())
-        feature['{}/endeffector_pos'.format(t)] = float_feature(np.array([s.points[-1].x, s.points[-1].y]))
+        head_idx = s.link_names.index("head")
+        feature['{}/image_aux1/encoded'.format(t)] = bytes_feature(image.tobytes())
+        feature['{}/endeffector_pos'.format(t)] = float_feature(np.array([s.points[head_idx].x, s.points[head_idx].y]))
         feature['{}/action'.format(t)] = float_feature(np.array([s.gripper1_target_velocity.x, s.gripper1_target_velocity.y]))
         feature['{}/1/velocity'.format(t)] = float_feature(np.array([s.gripper1_velocity.x, s.gripper1_velocity.y]))
         feature['{}/1/force'.format(t)] = float_feature(np.array([s.gripper1_force.x, s.gripper1_force.y]))
@@ -155,7 +152,8 @@ def generate_traj(args, services, env_idx):
 
 def sample_goal(services, state_req):
     s = services.get_state(state_req)
-    current_head_point = s.points[-1]
+    head_idx = s.link_names.index('head')
+    current_head_point = s.points[head_idx]
     gripper1_current_x = current_head_point.x
     gripper1_current_y = current_head_point.y
     current = np.array([gripper1_current_x, gripper1_current_y])
@@ -325,7 +323,7 @@ def main():
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
     parser.add_argument("--n-trajs-per-file", type=int, default=256)
     parser.add_argument("--steps-per-traj", type=int, default=100)
-    parser.add_argument("--steps-per-target", type=int, default=15)
+    parser.add_argument("--steps-per-target", type=int, default=7)
     parser.add_argument("--start-idx-offset", type=int, default=0)
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='')
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)

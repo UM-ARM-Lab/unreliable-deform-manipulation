@@ -109,9 +109,10 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto const &sensor = sensors::get_sensor(camera_name);
   camera_sensor = std::dynamic_pointer_cast<sensors::CameraSensor>(sensor);
   if (!camera_sensor) {
-    std::cout << "Failed to load camera: " << camera_name << '\n';
+    gzerr << "Failed to load camera: " << camera_name << '\n';
   }
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(std::bind(&MultiLinkBotModelPlugin::OnUpdate, this));
+  postRenderConnection_ = event::Events::ConnectPostRender(std::bind(&MultiLinkBotModelPlugin::OnPostRender, this));
   constexpr auto max_integral{0};
   constexpr auto max_vel{0.15};
   gripper1_x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
@@ -130,7 +131,34 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   gripper2_y_vel_pid_ =
       common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
 
-  std::cout << "MultiLinkBot Model Plugin finished initializing!\n";
+  // this won't be changing
+  latest_image_.encoding = "rgb8";
+
+  gzlog << "MultiLinkBot Model Plugin finished initializing!\n";
+}
+
+void MultiLinkBotModelPlugin::OnPostRender()
+{
+  if (camera_sensor and camera_sensor->LastUpdateTime() > common::Time::Zero) {
+    // one byte per channel
+    auto constexpr byte_depth = 1;
+    auto constexpr num_channels = 3;
+    auto const w = camera_sensor->ImageWidth();
+    auto const h = camera_sensor->ImageHeight();
+    auto const total_size_bytes = w * h * byte_depth * num_channels;
+    auto const &sensor_image = camera_sensor->ImageData();
+    latest_image_.width = w;
+    latest_image_.height = h;
+    latest_image_.step = w * byte_depth * num_channels;
+    latest_image_.header.seq = image_sequence_number;
+    latest_image_.header.stamp = ros::Time::now();
+    latest_image_.data.assign(sensor_image, sensor_image + total_size_bytes);
+    image_sequence_number += 1;
+    ready_ = true;
+  }
+  else {
+    gzwarn << "no camera image available" << std::endl;
+  }
 }
 
 void MultiLinkBotModelPlugin::OnUpdate()
@@ -254,6 +282,7 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
     pt.x = link->WorldPose().Pos().X();
     pt.y = link->WorldPose().Pos().Y();
     res.points.emplace_back(pt);
+    res.link_names.emplace_back(link->GetName());
   }
 
   res.gripper1_force.x = gripper1_x_vel_pid_.GetCmd();
@@ -284,26 +313,17 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
     res.gripper2_target_velocity.z = gripper2_target_velocity_.Z();
   }
 
-  if (camera_sensor) {
-    // one byte per channel
-    auto constexpr byte_depth = 1;
-    auto constexpr num_channels = 3;
-    auto const w = camera_sensor->ImageWidth();
-    auto const h = camera_sensor->ImageHeight();
-    auto const total_size_bytes = w * h * byte_depth * num_channels;
-    auto const &sensor_image = camera_sensor->ImageData();
-    res.camera_image.width = w;
-    res.camera_image.height = h;
-    res.camera_image.step = w * byte_depth * num_channels;
-    res.camera_image.encoding = "rgb8";
-    res.camera_image.header.seq = image_sequence_number;
-    res.camera_image.header.stamp = ros::Time::now();
-    res.camera_image.data.assign(sensor_image, sensor_image + total_size_bytes);
-    image_sequence_number += 1;
-  }
-  else {
-    std::cout << "no camera image available" << std::endl;
-  }
+  while (!ready_)
+    ;
+
+  // one byte per channel
+  auto constexpr byte_depth = 1;
+  auto constexpr num_channels = 3;
+  auto const w = camera_sensor->ImageWidth();
+  auto const h = camera_sensor->ImageHeight();
+  auto const total_size_bytes = w * h * byte_depth * num_channels;
+  res.camera_image = latest_image_;
+  image_sequence_number += 1;
 
   return true;
 }

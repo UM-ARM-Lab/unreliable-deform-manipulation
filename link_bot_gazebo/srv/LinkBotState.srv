@@ -1,5 +1,6 @@
 ---
 geometry_msgs/Point[] points
+string[] link_names
 geometry_msgs/Vector3 gripper1_force
 geometry_msgs/Vector3 gripper2_force
 geometry_msgs/Vector3 gripper1_velocity

@@ -40,6 +40,7 @@
             <ode>
                 <solver>
                     <type>quick</type>
+                    <friction_model>cone_model</friction_model>
                 </solver>
                 <constraints>
                     <contact_surface_layer>0.002</contact_surface_layer>

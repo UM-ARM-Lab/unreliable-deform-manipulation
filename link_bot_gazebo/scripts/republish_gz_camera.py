@@ -18,7 +18,7 @@ def main():
     while True:
         response = get_state.call(req)
         repub.publish(response.camera_image)
-        sleep(1.0)
+        sleep(0.01)
 
 
 if __name__ == '__main__':
