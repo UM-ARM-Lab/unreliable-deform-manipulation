@@ -82,7 +82,7 @@ def generate_traj(args, services, env_idx):
     feature = {}
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
     for t in range(args.steps_per_traj):
-        if t % args.steps_per_target:
+        if t % args.steps_per_target == 0:
             gripper1_target_x, gripper1_target_y = sample_goal(services, state_req)
             if args.verbose:
                 print('gripper target:', gripper1_target_x, gripper1_target_y)
@@ -157,7 +157,7 @@ def sample_goal(services, state_req):
     gripper1_current_x = current_head_point.x
     gripper1_current_y = current_head_point.y
     current = np.array([gripper1_current_x, gripper1_current_y])
-    min_near = 0.25
+    min_near = 0.35
     while True:
         gripper1_target_x = np.random.uniform(-w / 2, w / 2)
         gripper1_target_y = np.random.uniform(-h / 2, h / 2)
@@ -235,7 +235,7 @@ def generate_trajs(args, full_output_directory, services):
             # since tfrecords don't really support hierarchical data structures
             serialized_dataset = tensorflow.data.Dataset.from_tensor_slices((examples))
 
-            end_traj_idx = i
+            end_traj_idx = i + args.start_idx_offset
             start_traj_idx = end_traj_idx - n_trajs_per_file + 1
             full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type="ZLIB")
@@ -323,6 +323,7 @@ def main():
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
     parser.add_argument("--steps-per-traj", type=int, default=100)
     parser.add_argument("--steps-per-target", type=int, default=10)
+    parser.add_argument("--start-idx-offset", type=int, default=0)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--real-time-rate", help='number of times real time', type=float, default=10)
     parser.add_argument("--verbose", '-v', action="store_true")
