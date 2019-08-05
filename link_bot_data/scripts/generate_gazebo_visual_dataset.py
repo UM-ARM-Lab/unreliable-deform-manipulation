@@ -106,11 +106,8 @@ def generate_traj(args, services, env_idx):
                             s.gripper1_velocity.z]
         target_speed = np.linalg.norm(target_velocity)
         speed = np.linalg.norm(current_velocity)
-        if abs(target_speed - speed) > 0.12:
+        if abs(target_speed - speed) > 0.05:
             at_constraint_boundary = True
-            image[:2, :, 0] = 255
-            image[:2, :, 1] = 0
-            image[:2, :, 2] = 0
         else:
             at_constraint_boundary = False
 
