@@ -191,7 +191,7 @@
 
     <gazebo reference="head">
         <self_collide>true</self_collide>
-        <material>Gazebo/Blue</material>
+        <material>Gazebo/Yellow</material>
         <sensor name='head_contact' type='contact'>
             <contact>
                 <collision>head_collision</collision>

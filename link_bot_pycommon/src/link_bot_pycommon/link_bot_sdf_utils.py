@@ -27,10 +27,10 @@ def point_to_sdf_idx(x, y, resolution, origin):
 class SDF:
 
     def __init__(self, sdf, gradient, resolution, origin):
-        self.sdf = sdf
-        self.gradient = gradient
-        self.resolution = resolution
-        self.origin = origin
+        self.sdf = sdf.astype(np.float32)
+        self.gradient = gradient.astype(np.float32)
+        self.resolution = resolution.astype(np.float32)
+        self.origin = origin.astype(np.float32)
         self.extent = sdf_bounds(sdf, resolution, origin)
         self.image = np.flipud(sdf.T)
 

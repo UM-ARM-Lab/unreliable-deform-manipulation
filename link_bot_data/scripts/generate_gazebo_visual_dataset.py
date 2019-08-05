@@ -9,6 +9,7 @@ import numpy as np
 import rospy
 import tensorflow
 from colorama import Fore
+from scipy.stats import mode
 from std_msgs.msg import String
 from std_srvs.srv import Empty, EmptyRequest
 from tf.transformations import quaternion_from_euler
@@ -27,7 +28,6 @@ from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState,
 from link_bot_sdf_tools import link_bot_sdf_tools
 from link_bot_sdf_tools.srv import ComputeSDF
 
-n_trajs_per_file = 64
 DT = 1.0  # seconds per time step
 w = 1
 h = 1
@@ -79,7 +79,13 @@ def generate_traj(args, services, env_idx):
         print('gripper target:', gripper1_target_x, gripper1_target_y)
         random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y)
 
-    feature = {}
+    feature = {
+        # These features don't change over time
+        'sdf/encoded': bytes_feature(sdf_data.sdf.tobytes()),
+        'sdf/gradient/encoded': bytes_feature(sdf_data.gradient.tobytes()),
+        'sdf/resolution': float_feature(sdf_data.resolution),
+        'sdf/origin': float_feature(sdf_data.origin.astype(np.float32))
+    }
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
     for t in range(args.steps_per_traj):
         if t % args.steps_per_target == 0:
@@ -95,7 +101,7 @@ def generate_traj(args, services, env_idx):
             step = WorldControlRequest()
             step.steps = int(0.05 / 0.001)  # assuming 0.001s per simulation step
             services.world_control(step)  # this will block until stepping is complete
-            if image.size == 64 * 64 * 3 and image.min() != image.max():
+            if image.size == 64 * 64 * 3 and image.min() != image.max() and mode(image)[0] != 128:
                 break
 
         # TODO: use ground truth labels not just based on force/velocity?
@@ -124,10 +130,6 @@ def generate_traj(args, services, env_idx):
 
         # format the tf feature
         feature['{}/image_aux1/encoded'.format(t)] = bytes_feature(image.reshape(64, 64, 3).tobytes())
-        feature['{}/sdf/encoded'.format(t)] = bytes_feature(sdf_data.sdf.tobytes())
-        feature['{}/sdf_gradient/encoded'.format(t)] = bytes_feature(sdf_data.gradient.tobytes())
-        feature['{}/sdf_resolution'.format(t)] = float_feature(sdf_data.resolution)
-        feature['{}/sdf_origin'.format(t)] = float_feature(sdf_data.origin.astype(np.float32))
         feature['{}/endeffector_pos'.format(t)] = float_feature(np.array([s.points[-1].x, s.points[-1].y]))
         feature['{}/action'.format(t)] = float_feature(np.array([s.gripper1_target_velocity.x, s.gripper1_target_velocity.y]))
         feature['{}/1/velocity'.format(t)] = float_feature(np.array([s.gripper1_velocity.x, s.gripper1_velocity.y]))
@@ -157,7 +159,7 @@ def sample_goal(services, state_req):
     gripper1_current_x = current_head_point.x
     gripper1_current_y = current_head_point.y
     current = np.array([gripper1_current_x, gripper1_current_y])
-    min_near = 0.35
+    min_near = 0.5
     while True:
         gripper1_target_x = np.random.uniform(-w / 2, w / 2)
         gripper1_target_y = np.random.uniform(-h / 2, h / 2)
@@ -197,10 +199,10 @@ def generate_trajs(args, full_output_directory, services):
     enable_link_bot = String()
     enable_link_bot.data = 'position'
 
-    examples = np.ndarray([n_trajs_per_file], dtype=object)
+    examples = np.ndarray([args.n_trajs_per_file], dtype=object)
     percentages_positive = []
     for i in range(args.n_trajs):
-        current_record_traj_idx = i % n_trajs_per_file
+        current_record_traj_idx = i % args.n_trajs_per_file
 
         # disable the rope controller, enable the hand-of-god to move objects
         services.position_2d_enable.publish(enable_objects)
@@ -230,15 +232,15 @@ def generate_trajs(args, full_output_directory, services):
         percentages_positive.append(percentage_violation)
 
         # Save the data
-        if current_record_traj_idx == n_trajs_per_file - 1:
+        if current_record_traj_idx == args.n_trajs_per_file - 1:
             # Construct the dataset where each trajectory has been serialized into one big string
             # since tfrecords don't really support hierarchical data structures
             serialized_dataset = tensorflow.data.Dataset.from_tensor_slices((examples))
 
             end_traj_idx = i + args.start_idx_offset
-            start_traj_idx = end_traj_idx - n_trajs_per_file + 1
+            start_traj_idx = end_traj_idx - args.n_trajs_per_file + 1
             full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
-            writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type="ZLIB")
+            writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type=args.compression_type)
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))
 
@@ -254,7 +256,7 @@ def generate_trajs(args, full_output_directory, services):
 def generate(args):
     rospy.init_node('gazebo_small_with_images')
 
-    assert args.n_trajs % n_trajs_per_file == 0, "num trajs must be multiple of {}".format(n_trajs_per_file)
+    assert args.n_trajs % args.n_trajs_per_file == 0, "num trajs must be multiple of {}".format(args.n_trajs_per_file)
 
     full_output_directory = random_environment_data_utils.data_directory(args.outdir, args.n_trajs)
     if not os.path.isdir(full_output_directory) and args.verbose:
@@ -321,9 +323,11 @@ def main():
     parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)
     parser.add_argument("outdir")
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
+    parser.add_argument("--n-trajs-per-file", type=int, default=256)
     parser.add_argument("--steps-per-traj", type=int, default=100)
-    parser.add_argument("--steps-per-target", type=int, default=10)
+    parser.add_argument("--steps-per-target", type=int, default=15)
     parser.add_argument("--start-idx-offset", type=int, default=0)
+    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='')
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--real-time-rate", help='number of times real time', type=float, default=10)
     parser.add_argument("--verbose", '-v', action="store_true")
