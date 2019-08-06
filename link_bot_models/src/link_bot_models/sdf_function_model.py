@@ -15,11 +15,11 @@ class SDFFunctionModelRunner(BaseModelRunner):
         self.auxiliary_models_initialized = False
         self.sdf_shape = args_dict['sdf_shape']
 
-        sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf_input')
-        sdf_gradient = Input(shape=[self.sdf_shape[0], self.sdf_shape[0], 2], dtype='float32', name='sdf_gradient')
-        sdf_resolution = Input(shape=[2], dtype='float32', name='sdf_resolution')
-        sdf_origin = Input(shape=[2], dtype='float32', name='sdf_origin')  # will be converted to int32 in SDF layer
-        sdf_extent = Input(shape=[4], dtype='float32', name='sdf_extent')
+        sdf = Input(shape=[self.sdf_shape[0], self.sdf_shape[1], 1], dtype='float32', name='sdf_input', tensor=sdf_input)
+        sdf_gradient = Input(shape=[self.sdf_shape[0], self.sdf_shape[0], 2], dtype='float32', name='sdf_gradient', tensor=sdf_gradient_input)
+        sdf_resolution = Input(shape=[2], dtype='float32', name='sdf_resolution', input=sdf_resolution_input)
+        sdf_origin = Input(shape=[2], dtype='float32', name='sdf_origin', input=sdf_origin_input)  # will be converted to int32 in SDF layer
+        sdf_extent = Input(shape=[4], dtype='float32', name='sdf_extent', input=sdf_)
         rope_input = Input(shape=[self.N], dtype='float32', name='rope_configuration')
 
         self.fc_layer_sizes = args_dict['fc_layer_sizes']

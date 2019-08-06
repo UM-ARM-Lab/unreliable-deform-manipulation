@@ -11,23 +11,23 @@ import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
 from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
-from keras.models import Model
 from keras.models import load_model
 
+from link_bot_models import my_viz
 from link_bot_models.callbacks import StopAtAccuracy, DebugCallback
 from link_bot_models.components.bias_layer import BiasLayer
 from link_bot_models.components.distance_matrix_layer import DistanceMatrix
 from link_bot_models.components.out_of_bounds_regularization import OutOfBoundsRegularizer
+from link_bot_models.components.raster_points_layer import RasterPoints
 from link_bot_models.components.sdf_lookup import SDFLookup
 from link_bot_models.label_types import LabelType
-from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
-from link_bot_models import my_viz
 
 custom_objects = {
     'BiasLayer': BiasLayer,
     'SDFLookup': SDFLookup,
     'DistanceMatrix': DistanceMatrix,
+    'RasterPoints': RasterPoints,
     'OutOfBoundsRegularizer': OutOfBoundsRegularizer,
 }
 
@@ -59,32 +59,33 @@ class ConstraintTypeMapping:
 def base_parser():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
-    train_subparser = subparsers.add_parser("train")
-    eval_subparser = subparsers.add_parser("eval")
-    show_subparser = subparsers.add_parser("show")
+    train_parser = subparsers.add_parser("train")
+    eval_parser = subparsers.add_parser("eval")
+    show_parser = subparsers.add_parser("show")
 
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("-N", help="dimensions in input state", type=int, default=6)
     parser.add_argument("--seed", type=int, default=0)
 
-    train_subparser.add_argument("train_dataset", help="dataset (json file)")
-    train_subparser.add_argument("validation_dataset", help="dataset (json file)")
-    train_subparser.add_argument("label_types_map", nargs='+', type=ConstraintTypeMapping())
-    train_subparser.add_argument("--batch-size", "-b", type=int, default=100)
-    train_subparser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
-    train_subparser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=50)
-    train_subparser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
-    train_subparser.add_argument("--debug", action='store_true')
-    train_subparser.add_argument("--validation-steps", type=int, default=-1)
-    train_subparser.add_argument("--early-stopping", action='store_true')
-    train_subparser.add_argument("--val-acc-threshold", type=float, default=None)
+    train_parser.add_argument("input_dir", help="directory of tfrecords")
+    train_parser.add_argument("dataset", type=str, help="dataset class name")
+    train_parser.add_argument("dataset_hparams_dict", type=str, help="json file of hyperparameters")
+    train_parser.add_argument("--dataset-hparams", type=str, help="a string of comma separated list of dataset hyperparameters")
+    train_parser.add_argument("--batch-size", "-b", type=int, default=32)
+    train_parser.add_argument("--log", "-l", nargs='?', help="save/log the graph and summaries", const="")
+    train_parser.add_argument("--epochs", "-e", type=int, help="number of epochs to train for", default=50)
+    train_parser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
+    train_parser.add_argument("--debug", action='store_true')
+    train_parser.add_argument("--validation-steps", type=int, default=-1)
+    train_parser.add_argument("--early-stopping", action='store_true')
+    train_parser.add_argument("--val-acc-threshold", type=float, default=None)
 
-    eval_subparser.add_argument("dataset", help="dataset (json file)")
-    eval_subparser.add_argument("checkpoint")
-    eval_subparser.add_argument("label_types_map", nargs='+', type=ConstraintTypeMapping())
-    eval_subparser.add_argument("--batch-size", "-b", type=int, default=100)
+    eval_parser.add_argument("dataset", help="dataset (json file)")
+    eval_parser.add_argument("checkpoint")
+    eval_parser.add_argument("label_types_map", nargs='+', type=ConstraintTypeMapping())
+    eval_parser.add_argument("--batch-size", "-b", type=int, default=32)
 
-    show_subparser.add_argument("checkpoint", help="eval the *.ckpt name")
+    show_parser.add_argument("checkpoint", help="eval the *.ckpt name")
 
     def run_parser():
         commandline = ' '.join(sys.argv)
@@ -102,7 +103,7 @@ def base_parser():
 
     parser.run = run_parser
 
-    return parser, train_subparser, eval_subparser, show_subparser
+    return parser, train_parser, eval_parser, show_parser
 
 
 def make_args_dict(args):
@@ -128,17 +129,16 @@ class BaseModelRunner:
 
         self.keras_model = None
 
-    def base_metadata(self, label_types, args):
+    def base_metadata(self, args):
         metadata = {
             'tf_version': str(tf.__version__),
             'checkpoint': args.checkpoint,
-            'label_type': label_types,
             'commandline': args.commandline,
             'args_dict': self.args_dict,
         }
         return metadata
 
-    def train(self, train_dataset, validation_dataset, label_types_map, log_path, args):
+    def train(self, dataset, log_path, args):
         callbacks = []
         if args.log is not None:
             full_log_path = os.path.join("log_data", log_path)
@@ -149,13 +149,13 @@ class BaseModelRunner:
 
             metadata_path = os.path.join(full_log_path, "metadata.json")
             with open(metadata_path, 'w') as metadata_file:
-                metadata = self.base_metadata(label_types_map, args)
+                metadata = self.base_metadata(args)
                 metadata['log path'] = full_log_path
                 metadata_file.write(json.dumps(metadata, indent=2))
 
             model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
 
-            checkpoint_callback = ModelCheckpoint(model_filename, monitor='loss')
+            checkpoint_callback = ModelCheckpoint(model_filename, monitor='loss', save_weights_only=True)
             callbacks.append(checkpoint_callback)
 
             tensorboard = TensorBoard(log_dir=full_log_path)
@@ -179,47 +179,21 @@ class BaseModelRunner:
             if args.debug:
                 callbacks.append(DebugCallback())
 
-        # we want to map each name in label_types to one of the named model outputs
-        model_output_names = [output.op.name.split("/")[0] for output in self.keras_model.outputs]
-        train_generator = train_dataset.generator_for_labels(model_output_names, label_types_map, self.batch_size)
-
-        if args.validation_steps == -1:
-            validation_generator = validation_dataset.generator_for_labels(model_output_names, label_types_map, self.batch_size)
+        if args.validation_steps <= 0:
             validation_steps = None
-        elif args.validation_steps > 0:
-            validation_generator = validation_dataset.generator_for_labels(model_output_names, label_types_map, self.batch_size)
-            validation_steps = args.validation_steps
         else:
-            validation_generator = None
-            validation_steps = None
+            validation_steps = args.validation_steps
 
-        # The Keras way to train only some outputs of a model is to make a new model with just the outputs you want to train
-        # the weights will all be shared, and any weights with gradient to the outputs used will be updated in all models
-        outputs = []
-        losses = {}
-        for output, label in label_types_map:
-            for output_tensor in self.keras_model.outputs:
-                # TODO: better way to get the name of outputs ops?
-                output_name = output_tensor.op.name.split("/")[0].split("_")[0]
-                if output_name == output:
-                    outputs.append(output_tensor)
-                    losses[output_name] = 'binary_crossentropy'
-        model_with_specific_outputs = Model(inputs=self.keras_model.inputs, outputs=outputs)
-        model_with_specific_outputs.compile(optimizer='adam', loss=losses, metrics=['accuracy'])
-        model_with_specific_outputs.fit_generator(train_generator,
-                                                  callbacks=callbacks,
-                                                  validation_data=validation_generator,
-                                                  initial_epoch=self.initial_epoch,
-                                                  validation_steps=validation_steps,
-                                                  epochs=args.epochs)
+        self.keras_model.fit(callbacks=callbacks,
+                             initial_epoch=self.initial_epoch,
+                             steps_per_epoch=dataset.num_examples_per_epoch() - args.validation_steps,
+                             validation_steps=validation_steps,
+                             epochs=args.epochs)
 
-        if args.validation_steps == 0:
-            self.evaluate(validation_dataset, label_types_map)
-
-    def evaluate(self, validation_dataset, label_types_map, display=True):
-        model_output_names = [output.op.name.split("/")[0] for output in self.keras_model.outputs]
-        generator = validation_dataset.generator_for_labels(model_output_names, label_types_map, self.batch_size)
-        metrics = self.keras_model.evaluate_generator(generator)
+    def evaluate(self, display=True):
+        keras_model_eval = None
+        keras_model_eval.set_weights(self.keras_model.get_weights())
+        metrics = keras_model_eval.evaluate()
         if display:
             print("Validation:")
             for name, metric in zip(self.keras_model.metrics_names, metrics):

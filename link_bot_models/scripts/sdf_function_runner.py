@@ -5,7 +5,6 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_models import base_model_runner
-from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_models.sdf_function_model import SDFFunctionModelRunner
 from link_bot_pycommon import experiments_util
 
@@ -16,9 +15,9 @@ def train(args):
     else:
         log_path = None
 
-    train_dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
-    validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
-    sdf_shape = train_dataset.sdf_shape
+    # train_dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
+    # validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
+    # sdf_shape = train_dataset.sdf_shape
 
     if args.checkpoint:
         model = SDFFunctionModelRunner.load(args.checkpoint)

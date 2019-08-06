@@ -1,0 +1,13 @@
+{
+    "batch_size": 32,
+    "l1_weight": 0.0,
+    "l2_weight": 1.0,
+    "ngf": 16,
+    "transformation": "cdna",
+    "kernel_size": [5, 5],
+    "num_masks": 10,
+    "first_image_background": true,
+    "generate_scratch_image": true,
+    "schedule_sampling_k": 900.0
+}
+
