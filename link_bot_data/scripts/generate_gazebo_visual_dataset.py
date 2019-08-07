@@ -27,7 +27,7 @@ from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState,
 from link_bot_sdf_tools import link_bot_sdf_tools
 from link_bot_sdf_tools.srv import ComputeSDF
 
-DT = 1.0  # seconds per time step
+DT = 0.5  # seconds per time step
 w = 1
 h = 1
 
@@ -323,6 +323,7 @@ def main():
     parser.add_argument("--steps-per-target", type=int, default=7)
     parser.add_argument("--start-idx-offset", type=int, default=0)
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='')
+    parser.add_argument("--n-trajs-per-file", type=int, default=128)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--real-time-rate", help='number of times real time', type=float, default=10)
     parser.add_argument("--verbose", '-v', action="store_true")

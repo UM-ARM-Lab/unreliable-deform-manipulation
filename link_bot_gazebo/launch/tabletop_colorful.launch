@@ -1,7 +1,7 @@
 <launch>
     <arg name="world_name" default="worlds/no_arena.world"/>
-    <arg name="verbose" default="true"/>
-    <arg name="gui" default="true"/>
+    <arg name="verbose" default="false"/>
+    <arg name="gui" default="false"/>
     <arg name="spawn_x" default="0.0"/>
     <arg name="spawn_y" default="0.0"/>
 
