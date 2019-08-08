@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import argparse
 import json
 
@@ -71,8 +72,8 @@ def main():
         ys = [rope_config[1], rope_config[3], rope_config[5]]
         plt.plot(xs, ys, zorder=2, c='k')
         plt.scatter(rope_config[4], rope_config[5], zorder=3, c=color)
-        plt.quiver(rope_config[4], rope_config[5], vx, vy, zorder=2, color='orange', scale=0.75)
-        plt.title("speed: {:0.2f} m/s".format(speed))
+        plt.quiver(rope_config[4], rope_config[5], vx, vy, zorder=2, color='orange', scale=0.75, alpha=0.5)
+        plt.title("speed: {:0.2f} m/s, rope config {}".format(speed, rope_config))
         plt.xlim([-1, 1])
         plt.ylim([-1, 1])
     plt.show()
