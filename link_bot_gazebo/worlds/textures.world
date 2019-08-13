@@ -8,7 +8,7 @@
             </camera>
         </gui>
         <include>
-            <uri>model://ground_plane</uri>
+            <uri>model://victor_table_plane</uri>
         </include>
         <include>
             <uri>model://my_camera</uri>
@@ -19,12 +19,12 @@
             <uri>model://sun</uri>
         </include>
         <include>
-            <uri>model://cheezits</uri>
+            <uri>model://cheezits_textured</uri>
             <pose>0.24 -0.24 0 0 0 0</pose>
             <name>cheezits_box</name>
         </include>
         <include>
-            <uri>model://tissue_box</uri>
+            <uri>model://tissue_box_textured</uri>
             <pose>0.25 0.25 0 0 0 0</pose>
             <name>tissue_box</name>
         </include>

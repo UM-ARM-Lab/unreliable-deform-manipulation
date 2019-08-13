@@ -58,7 +58,7 @@ class GazeboServices:
         stop_velocity_action.gripper1_velocity.y = 0
 
         self.unpause(EmptyRequest())
-        sleep(0.1)
+        sleep(0.5)
         self.link_bot_mode.publish(action_mode_msg)
         self.velocity_action_pub.publish(stop_velocity_action)
         self.reset(EmptyRequest())

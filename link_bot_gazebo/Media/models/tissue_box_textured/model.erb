@@ -1,10 +1,10 @@
-<% w = 0.1651 %>
-<% d = 0.0635 %>
-<% h = 0.2159 %>
+<% w = 0.1 %>
+<% d = 0.1 %>
+<% h = 0.1 %>
 <% mass = 100 %>
 <?xml version="1.0"?>
 <sdf version="1.4">
-  <model name="cheezits">
+  <model name="tissue_box">
     <link name="link_1">
       <pose>0 0 <%= h/2 %> 0 0 0</pose>
       <gravity>true</gravity>
@@ -14,9 +14,9 @@
           <ixx><%= 1.0/12.0 * mass * (h*h + d*d)%></ixx>
           <ixy>0</ixy>
           <ixz>0</ixz>
-          <iyy><%= 1.0/12.0 * mass * (w*w + h*h)%></iyy>
+          <iyy><%= 1.0/12.0 * mass * (w*w + d*d)%></iyy>
           <iyz>0</iyz>
-          <izz><%= 1.0/12.0 * mass * (w*w + d*d)%></izz>
+          <izz><%= 1.0/12.0 * mass * (w*w + h*h)%></izz>
         </inertia>
         <mass><%=mass%></mass>
       </inertial>
@@ -29,7 +29,8 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Red</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Bricks</name>
           </script>
         </material>
       </visual>

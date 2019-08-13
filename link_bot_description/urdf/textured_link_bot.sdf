@@ -42,7 +42,8 @@
                 </geometry>
                 <material>
                     <script>
-                        <name>Gazebo/Black</name>
+                        <name>Gazebo/BigGrass</name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
                     </script>
                 </material>
             </visual>
@@ -90,7 +91,8 @@
                 </geometry>
                 <material>
                     <script>
-                        <name>Gazebo/Green</name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                        <name>Gazebo/BigRedGrass</name>
                     </script>
                 </material>
             </visual>
