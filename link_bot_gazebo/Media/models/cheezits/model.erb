@@ -1,0 +1,70 @@
+<% w = 0.1651 %>
+<% d = 0.0635 %>
+<% h = 0.2159 %>
+<% mass = 100 %>
+<?xml version="1.0"?>
+<sdf version="1.4">
+  <model name="cheezits">
+    <link name="link_1">
+      <pose>0 0 <%= h/2 %> 0 0 0</pose>
+      <gravity>true</gravity>
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <inertia>
+          <ixx><%= 1.0/12.0 * mass * (h*h + d*d)%></ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy><%= 1.0/12.0 * mass * (w*w + h*h)%></iyy>
+          <iyz>0</iyz>
+          <izz><%= 1.0/12.0 * mass * (w*w + d*d)%></izz>
+        </inertia>
+        <mass><%=mass%></mass>
+      </inertial>
+      <visual name="visual">
+        <cast_shadows>0</cast_shadows>
+        <geometry>
+          <box>
+            <size><%=w%> <%=d%> <%=h%></size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Wood</name>
+          </script>
+        </material>
+      </visual>
+      <collision name="box_collision">
+        <geometry>
+          <box>
+            <size><%=w%> <%=d%> <%=h%></size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.1</mu>
+              <mu2>0.1</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+    </link>
+    <plugin name="position_2d" filename="libposition_2d_plugin.so">
+      <linkName>link_1</linkName>
+      <kP_pos>50</kP_pos>
+      <kI_pos>0.0</kI_pos>
+      <kD_pos>0.0</kD_pos>
+      <max_vel>1.0</max_vel>
+      <kP_rot>20</kP_rot>
+      <kI_rot>0.0</kI_rot>
+      <kD_rot>0.0</kD_rot>
+      <max_torque>20.0</max_torque>
+      <kP_vel>100.0</kP_vel>
+      <kI_vel>0.0</kI_vel>
+      <kD_vel>0.0</kD_vel>
+      <max_force>100.0</max_force>
+    </plugin>
+  </model>
+</sdf>
+

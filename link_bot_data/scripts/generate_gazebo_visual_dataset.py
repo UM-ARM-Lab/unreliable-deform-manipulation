@@ -10,58 +10,27 @@ import rospy
 import tensorflow
 from colorama import Fore
 from std_msgs.msg import String
-from std_srvs.srv import Empty, EmptyRequest
+from std_srvs.srv import EmptyRequest
 from tf.transformations import quaternion_from_euler
 
 from link_bot_data.video_prediction_dataset_utils import bytes_feature, float_feature, int_feature
+from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_sdf_tools.srv import ComputeSDF
 
 opts = tensorflow.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.ConfigProto(gpu_options=opts)
 tensorflow.enable_eager_execution(config=conf)
 
-from gazebo_msgs.srv import GetPhysicsProperties, GetPhysicsPropertiesRequest
-from gazebo_msgs.srv import SetPhysicsProperties, SetPhysicsPropertiesRequest
+from gazebo_msgs.srv import GetPhysicsPropertiesRequest
+from gazebo_msgs.srv import SetPhysicsPropertiesRequest
 from link_bot_data import random_environment_data_utils
-from link_bot_gazebo.msg import LinkBotConfiguration, MultiLinkBotPositionAction, Position2dEnable, Position2dAction, ObjectAction
-from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
+from link_bot_gazebo.msg import MultiLinkBotPositionAction, Position2dEnable, Position2dAction, ObjectAction
+from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 from link_bot_sdf_tools import link_bot_sdf_tools
-from link_bot_sdf_tools.srv import ComputeSDF
 
 DT = 0.5  # seconds per time step
 w = 1
 h = 1
-
-
-class GazeboServices:
-
-    def __init__(self):
-        self.action_pub = rospy.Publisher("/multi_link_bot_position_action", MultiLinkBotPositionAction, queue_size=10)
-        self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10)
-        self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
-        self.position_2d_enable = rospy.Publisher('/position_2d_enable', Position2dEnable, queue_size=10)
-        self.position_2d_action = rospy.Publisher('/position_2d_action', Position2dAction, queue_size=10)
-        self.world_control = rospy.ServiceProxy('/world_control', WorldControl)
-        self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
-        self.compute_sdf = rospy.ServiceProxy('/sdf', ComputeSDF)
-        self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
-        self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
-        self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
-        self.services_to_wait_for = [
-            '/world_control',
-            '/link_bot_state',
-            '/sdf',
-            '/gazebo/get_physics_properties',
-            '/gazebo/set_physics_properties',
-            '/gazebo/reset_simulation',
-        ]
-
-    def wait(self, args):
-        if args.verbose:
-            print(Fore.CYAN + "Waiting for services..." + Fore.RESET)
-        for s in self.services_to_wait_for:
-            rospy.wait_for_service(s)
-        if args.verbose:
-            print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
 
 
 def generate_traj(args, services, env_idx):
@@ -119,7 +88,7 @@ def generate_traj(args, services, env_idx):
         # publish the pull command
         action_msg.gripper1_pos.x = gripper1_target_x
         action_msg.gripper1_pos.y = gripper1_target_y
-        services.action_pub.publish(action_msg)
+        services.position_action_pub.publish(action_msg)
 
         # format the tf feature
         head_idx = s.link_names.index("head")
@@ -143,6 +112,7 @@ def generate_traj(args, services, env_idx):
         print(Fore.GREEN + "Trajectory {} Complete".format(env_idx) + Fore.RESET)
 
     example_proto = tensorflow.train.Example(features=tensorflow.train.Features(feature=feature))
+    # TODO: include documentation *inside* the tfrecords file describing what each feature is
     example = example_proto.SerializeToString()
     return example, percentage_positive
 
@@ -265,6 +235,7 @@ def generate(args):
 
     # fire up services
     services = GazeboServices()
+    services.compute_sdf = rospy.ServiceProxy('/sdf', ComputeSDF)
     services.wait(args)
     empty = EmptyRequest()
     services.reset.call(empty)

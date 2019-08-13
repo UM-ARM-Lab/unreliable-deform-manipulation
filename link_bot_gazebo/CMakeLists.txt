@@ -5,6 +5,9 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs geometry_msg
 find_package(cnpy REQUIRED)
 find_package(gazebo REQUIRED)
 
+
+catkin_python_setup()
+
 add_message_files(
         FILES
         LinkBotConfiguration.msg
@@ -32,8 +35,6 @@ generate_messages(
 )
 
 catkin_package(CATKIN_DEPENDS message_runtime)
-
-set(CMAKE_BUILD_TYPE=Debug)
 
 include_directories(${GAZEBO_INCLUDE_DIRS})
 link_directories(${GAZEBO_LIBRARY_DIRS})

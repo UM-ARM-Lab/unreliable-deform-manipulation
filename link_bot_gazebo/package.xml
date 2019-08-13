@@ -16,4 +16,10 @@
 
   <exec_depend>link_bot_description</exec_depend>
   <exec_depend>message_runtime</exec_depend>
+
+   <export>
+     <gazebo_ros gazebo_media_path="${prefix}/Media" />
+     <gazebo_ros gazebo_model_path="${prefix}/Media/models" />
+     <gazebo_ros gazebo_plugin_path="${prefix}/lib" />
+   </export>
 </package>

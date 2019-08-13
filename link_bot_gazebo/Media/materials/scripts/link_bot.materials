@@ -1,0 +1,14 @@
+material LinkBotGazebo/MyVictorTable
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture ../textures/victor_table.jpg
+        scale 0.5 0.5
+      }
+    }
+  }
+}
