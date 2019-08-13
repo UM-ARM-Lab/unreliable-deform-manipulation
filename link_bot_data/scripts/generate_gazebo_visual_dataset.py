@@ -28,7 +28,7 @@ from link_bot_gazebo.msg import MultiLinkBotPositionAction, Position2dEnable, Po
 from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 from link_bot_sdf_tools import link_bot_sdf_tools
 
-DT = 0.5  # seconds per time step
+DT = 0.25  # seconds per time step
 w = 1
 h = 1
 
