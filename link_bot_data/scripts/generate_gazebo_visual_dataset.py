@@ -292,7 +292,7 @@ def main():
     parser.add_argument("--steps-per-traj", type=int, default=100)
     parser.add_argument("--steps-per-target", type=int, default=7)
     parser.add_argument("--start-idx-offset", type=int, default=0)
-    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='')
+    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     parser.add_argument("--n-trajs-per-file", type=int, default=128)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
     parser.add_argument("--real-time-rate", help='number of times real time', type=float, default=10)
