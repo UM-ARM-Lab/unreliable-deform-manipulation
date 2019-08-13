@@ -289,7 +289,6 @@ def main():
     parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)
     parser.add_argument("outdir")
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
-    parser.add_argument("--n-trajs-per-file", type=int, default=256)
     parser.add_argument("--steps-per-traj", type=int, default=100)
     parser.add_argument("--steps-per-target", type=int, default=7)
     parser.add_argument("--start-idx-offset", type=int, default=0)
