@@ -186,7 +186,7 @@ class BaseModelRunner:
 
         self.keras_model.fit(callbacks=callbacks,
                              initial_epoch=self.initial_epoch,
-                             steps_per_epoch=dataset.num_examples_per_epoch() - args.validation_steps,
+                             steps_per_epoch=(dataset.num_examples_per_epoch() - args.validation_steps) // args.batch_size,
                              validation_steps=validation_steps,
                              epochs=args.epochs)
 
