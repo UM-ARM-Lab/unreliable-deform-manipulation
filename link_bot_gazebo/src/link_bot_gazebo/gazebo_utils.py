@@ -49,7 +49,7 @@ class GazeboServices:
         if args.verbose:
             print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
 
-    def reset_gazebo_environment(self):
+    def reset_gazebo_environment(self, reset_model_poses=True):
         action_mode_msg = String()
         action_mode_msg.data = "velocity"
 
@@ -61,5 +61,6 @@ class GazeboServices:
         sleep(0.5)
         self.link_bot_mode.publish(action_mode_msg)
         self.velocity_action_pub.publish(stop_velocity_action)
-        self.reset(EmptyRequest())
+        if reset_model_poses:
+            self.reset(EmptyRequest())
         sleep(0.5)
