@@ -79,6 +79,7 @@ def train(args):
                                  seed=args.seed,
                                  hparams_dict=dataset_hparams_dict,
                                  hparams=args.dataset_hparams)
+    print(train_dataset.num_examples_per_epoch())
     val_dataset = VideoDataset(args.input_dir,
                                mode='val',
                                num_epochs=args.epochs,

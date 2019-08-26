@@ -27,6 +27,8 @@ class RasterPoints(Layer):
         row_indeces = indeces[:, :, 1].flatten()
         col_indeces = indeces[:, :, 0].flatten()
         point_channel_indeces = np.tile(np.arange(self.n_points), batch_size)
+        if np.any(rope_configurations > 0.5) or np.any(rope_configurations < -0.5):
+            print(rope_configurations)
         rope_images[batch_indeces, row_indeces, col_indeces, point_channel_indeces] = 1
         return rope_images
 
