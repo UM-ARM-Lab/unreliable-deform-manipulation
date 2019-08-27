@@ -22,6 +22,7 @@ from link_bot_models.components.raster_points_layer import RasterPoints
 from link_bot_models.components.sdf_lookup import SDFLookup
 from link_bot_models.label_types import LabelType
 from link_bot_pycommon import experiments_util
+from video_prediction import datasets
 
 custom_objects = {
     'BiasLayer': BiasLayer,
@@ -80,9 +81,11 @@ def base_parser():
     train_parser.add_argument("--early-stopping", action='store_true')
     train_parser.add_argument("--val-acc-threshold", type=float, default=None)
 
-    eval_parser.add_argument("dataset", help="dataset (json file)")
+    eval_parser.add_argument("input_dir", help="directory of tfrecords")
+    eval_parser.add_argument("dataset", type=str, help="dataset class name")
+    eval_parser.add_argument("dataset_hparams_dict", type=str, help="json file of hyperparameters")
     eval_parser.add_argument("checkpoint")
-    eval_parser.add_argument("label_types_map", nargs='+', type=ConstraintTypeMapping())
+    eval_parser.add_argument("--dataset-hparams", type=str, help="a string of comma separated list of dataset hyperparameters")
     eval_parser.add_argument("--batch-size", "-b", type=int, default=32)
 
     show_parser.add_argument("checkpoint", help="eval the *.ckpt name")
@@ -115,7 +118,11 @@ def make_args_dict(args):
 
 class BaseModelRunner:
 
-    def __init__(self, args_dict):
+    def __init__(self, args_dict, inputs):
+        """
+        :param args_dict: Everything needed to define the architecture
+        :param inputs: tensors from the loaded dataset
+        """
         self.args_dict = args_dict
         self.seed = args_dict['seed']
         self.batch_size = args_dict['batch_size']
@@ -190,10 +197,8 @@ class BaseModelRunner:
                              validation_steps=validation_steps,
                              epochs=args.epochs)
 
-    def evaluate(self, display=True):
-        keras_model_eval = None
-        keras_model_eval.set_weights(self.keras_model.get_weights())
-        metrics = keras_model_eval.evaluate()
+    def evaluate(self, n_steps, display=True):
+        metrics = self.keras_model.evaluate(steps=n_steps)
         if display:
             print("Validation:")
             for name, metric in zip(self.keras_model.metrics_names, metrics):
@@ -202,31 +207,47 @@ class BaseModelRunner:
         return self.keras_model.metrics_names, metrics
 
     @classmethod
-    def load(cls, checkpoint):
+    def load(cls, checkpoint, inputs):
         checkpoint_path = pathlib.Path(checkpoint)
         metadata_path = checkpoint_path.parent / 'metadata.json'
         metadata = json.load(open(metadata_path, 'r'))
         args_dict = metadata['args_dict']
-        model = cls(args_dict)
+        model = cls(args_dict, inputs)
 
         basename = os.path.basename(os.path.splitext(checkpoint)[0])
         initial_epoch = int(basename[3:])
-        keras_model = load_model(checkpoint, custom_objects=custom_objects)
-        model.keras_model = keras_model
+        # keras_model = load_model(checkpoint, custom_objects=custom_objects)
         model.initial_epoch = initial_epoch
+        model.keras_model.load_weights(checkpoint)
         print(Fore.CYAN + "Restored keras model {}".format(checkpoint) + Fore.RESET)
         return model
 
     @classmethod
     def evaluate_main(cls, args):
-        dataset = MultiEnvironmentDataset.load_dataset(args.dataset)
-        model = cls.load(args.checkpoint)
+        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
+        VideoDataset = datasets.get_dataset_class(args.dataset)
+        dataset = VideoDataset(args.input_dir,
+                               mode='val',
+                               num_epochs=1,
+                               seed=args.seed,
+                               hparams_dict=dataset_hparams_dict,
+                               hparams=args.dataset_hparams)
 
-        return model.evaluate(dataset, args.label_types_map)
+        batch_size = args.batch_size
+        tf_dataset = dataset.make_dataset(batch_size)
+        iterator = tf_dataset.make_one_shot_iterator()
+        handle = iterator.string_handle()
+        iterator = tf.data.Iterator.from_string_handle(handle, tf_dataset.output_types,
+                                                       tf_dataset.output_shapes)
+        inputs = iterator.get_next()
+
+        model = cls.load(args.checkpoint, inputs)
+        n_steps = int(dataset.num_examples_per_epoch() / batch_size)
+        return model.evaluate(n_steps)
 
     @classmethod
     def show(cls, args):
-        model = cls.load(args.checkpoint)
+        model = cls.load(args.checkpoint, None)
         print(model.keras_model.summary())
         path = pathlib.Path(args.checkpoint)
         names = [pathlib.Path(part).stem for part in path.parts if part != '/' and part != 'log_data']

@@ -19,7 +19,7 @@ from video_prediction import datasets
 class RasterCNNModelRunner(BaseModelRunner):
 
     def __init__(self, args_dict, inputs):
-        super(RasterCNNModelRunner, self).__init__(args_dict)
+        super(RasterCNNModelRunner, self).__init__(args_dict, inputs)
         self.sdf_shape = args_dict['sdf_shape']
         self.conv_filters = args_dict['conv_filters']
         self.fc_layer_sizes = args_dict['fc_layer_sizes']
