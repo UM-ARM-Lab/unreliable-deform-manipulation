@@ -11,7 +11,6 @@ import tensorflow as tf
 from colorama import Fore
 from keras.backend.tensorflow_backend import set_session
 from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
-from keras.models import load_model
 
 from link_bot_models import my_viz
 from link_bot_models.callbacks import StopAtAccuracy, DebugCallback
@@ -22,7 +21,7 @@ from link_bot_models.components.raster_points_layer import RasterPoints
 from link_bot_models.components.sdf_lookup import SDFLookup
 from link_bot_models.label_types import LabelType
 from link_bot_pycommon import experiments_util
-from video_prediction import datasets
+from video_prediction.datasets import dataset_utils
 
 custom_objects = {
     'BiasLayer': BiasLayer,
@@ -118,12 +117,13 @@ def make_args_dict(args):
 
 class BaseModelRunner:
 
-    def __init__(self, args_dict, inputs):
+    def __init__(self, args_dict, inputs, steps_per_epoch):
         """
         :param args_dict: Everything needed to define the architecture
         :param inputs: tensors from the loaded dataset
         """
         self.args_dict = args_dict
+        self.steps_per_epoch = steps_per_epoch
         self.seed = args_dict['seed']
         self.batch_size = args_dict['batch_size']
         self.N = args_dict['N']
@@ -197,8 +197,8 @@ class BaseModelRunner:
                              validation_steps=validation_steps,
                              epochs=args.epochs)
 
-    def evaluate(self, n_steps, display=True):
-        metrics = self.keras_model.evaluate(steps=n_steps)
+    def evaluate(self, display=True):
+        metrics = self.keras_model.evaluate(steps=self.steps_per_epoch)
         if display:
             print("Validation:")
             for name, metric in zip(self.keras_model.metrics_names, metrics):
@@ -207,16 +207,15 @@ class BaseModelRunner:
         return self.keras_model.metrics_names, metrics
 
     @classmethod
-    def load(cls, checkpoint, inputs):
+    def load(cls, checkpoint, inputs, steps_per_epoch):
         checkpoint_path = pathlib.Path(checkpoint)
         metadata_path = checkpoint_path.parent / 'metadata.json'
         metadata = json.load(open(metadata_path, 'r'))
         args_dict = metadata['args_dict']
-        model = cls(args_dict, inputs)
+        model = cls(args_dict, inputs, steps_per_epoch)
 
         basename = os.path.basename(os.path.splitext(checkpoint)[0])
         initial_epoch = int(basename[3:])
-        # keras_model = load_model(checkpoint, custom_objects=custom_objects)
         model.initial_epoch = initial_epoch
         model.keras_model.load_weights(checkpoint)
         print(Fore.CYAN + "Restored keras model {}".format(checkpoint) + Fore.RESET)
@@ -224,30 +223,21 @@ class BaseModelRunner:
 
     @classmethod
     def evaluate_main(cls, args):
-        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
-        VideoDataset = datasets.get_dataset_class(args.dataset)
-        dataset = VideoDataset(args.input_dir,
-                               mode='val',
-                               num_epochs=1,
-                               seed=args.seed,
-                               hparams_dict=dataset_hparams_dict,
-                               hparams=args.dataset_hparams)
+        dataset, inputs, steps_per_epoch = dataset_utils.get_inputs(args.input_dir,
+                                                                    args.dataset,
+                                                                    args.dataset_hparams_dict,
+                                                                    args.dataset_hparams,
+                                                                    mode='test',
+                                                                    epochs=1,
+                                                                    seed=args.seed,
+                                                                    batch_size=args.batch_size)
 
-        batch_size = args.batch_size
-        tf_dataset = dataset.make_dataset(batch_size)
-        iterator = tf_dataset.make_one_shot_iterator()
-        handle = iterator.string_handle()
-        iterator = tf.data.Iterator.from_string_handle(handle, tf_dataset.output_types,
-                                                       tf_dataset.output_shapes)
-        inputs = iterator.get_next()
-
-        model = cls.load(args.checkpoint, inputs)
-        n_steps = int(dataset.num_examples_per_epoch() / batch_size)
-        return model.evaluate(n_steps)
+        model = cls.load(args.checkpoint, inputs, steps_per_epoch)
+        return model.evaluate()
 
     @classmethod
     def show(cls, args):
-        model = cls.load(args.checkpoint, None)
+        model = cls.load(args.checkpoint, None, steps_per_epoch=0)
         print(model.keras_model.summary())
         path = pathlib.Path(args.checkpoint)
         names = [pathlib.Path(part).stem for part in path.parts if part != '/' and part != 'log_data']

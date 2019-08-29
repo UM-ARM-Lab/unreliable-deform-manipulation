@@ -83,9 +83,9 @@ def plot_examples(sdf_image, extent, results, subsample=10, title=''):
     return SavableFigure(fig)
 
 
-def plot_single_example(sdf_data, result):
+def plot_single_example(result):
     fig = plt.figure()
-    plt.imshow(sdf_data.image, extent=sdf_data.extent)
+    plt.imshow(np.squeeze(result.sdf), extent=result.extent)
     plt.plot(result.rope_configuration[[0, 2, 4]], result.rope_configuration[[1, 3, 5]], label='rope')
 
     if result.predicted_violated:
@@ -98,8 +98,10 @@ def plot_single_example(sdf_data, result):
     else:
         true_color = 'g'
 
-    plt.scatter(result.predicted_point[0], result.predicted_point[1], s=5, c=pred_color, label='pred')
-    plt.scatter(result.rope_configuration[4], result.rope_configuration[5], s=5, c=true_color, label='true')
+    plt.scatter(result.rope_configuration[4], result.rope_configuration[5], s=50, c=pred_color, label='pred', zorder=2,
+                edgecolors='black', linewidths=1)
+    plt.scatter(result.rope_configuration[4], result.rope_configuration[5], s=5, c=true_color, label='true', zorder=3,
+                edgecolors='white', linewidths=1)
     plt.legend()
     return SavableFigure(fig)
 

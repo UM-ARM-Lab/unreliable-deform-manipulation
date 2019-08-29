@@ -17,6 +17,7 @@ def main():
     parser.add_argument("n_examples", type=int)
     parser.add_argument("--verbose", action='store_true')
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--mode", choices=['test', 'val', 'train'], default='train')
     parser.add_argument("--dataset-hparams", type=str, help="a string of comma separated list of dataset hyperparameters")
 
     args = parser.parse_args()
@@ -26,7 +27,7 @@ def main():
 
     dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
     dataset = LinkBotDataset(args.input_dir,
-                             mode='train',
+                             mode=args.mode,
                              num_epochs=1,
                              seed=args.seed,
                              hparams_dict=dataset_hparams_dict,
@@ -46,6 +47,7 @@ def main():
         except tf.errors.OutOfRangeError:
             break
         sdf = input_results['sdf'].squeeze()
+        image = input_results['images'].squeeze()
         res = input_results['sdf_resolution'].squeeze()
         origin = input_results['sdf_origin'].squeeze()
         rope_config = input_results['rope_configurations'].squeeze()
@@ -67,6 +69,7 @@ def main():
             negative_count += 1
 
         plt.figure()
+        # plt.imshow(image, extent=extent, cmap='jet')
         plt.imshow(occupancy_image, extent=extent, cmap='jet')
         xs = [rope_config[0], rope_config[2], rope_config[4]]
         ys = [rope_config[1], rope_config[3], rope_config[5]]

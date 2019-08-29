@@ -1,7 +1,25 @@
 from keras.layers import Conv2D, MaxPool2D, Flatten, Dense
 
 
-def simple_cnn_layer(conv_filters, fc_layer_sizes, use_bias=True):
+def simple_cnn_layer(conv_filters, use_bias=True):
+    conv_layers = []
+    for conv_filter in conv_filters:
+        n_filters = conv_filter[0]
+        filter_size = conv_filter[1]
+        conv_layers.append((Conv2D(n_filters, filter_size, activation='relu', use_bias=use_bias),
+                            MaxPool2D(2)))
+
+    def forward(input_image):
+        conv_h = input_image
+        for conv, pool in conv_layers:
+            conv_z = conv(conv_h)
+            conv_h = pool(conv_z)
+        return conv_h
+
+    return forward
+
+
+def simple_cnn_relu_layer(conv_filters, fc_layer_sizes, use_bias=True):
     conv_layers = []
     for conv_filter in conv_filters:
         n_filters = conv_filter[0]

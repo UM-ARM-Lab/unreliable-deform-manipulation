@@ -16,9 +16,12 @@ def main():
     req = LinkBotStateRequest()
 
     while True:
-        response = get_state.call(req)
-        repub.publish(response.camera_image)
-        sleep(0.01)
+        try:
+            response = get_state.call(req)
+            repub.publish(response.camera_image)
+            sleep(0.01)
+        except rospy.service.ServiceException:
+            pass
 
 
 if __name__ == '__main__':

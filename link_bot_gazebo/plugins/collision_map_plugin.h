@@ -14,7 +14,6 @@
 #include <ignition/math/Vector3.hh>
 
 #include <link_bot_gazebo/WriteSDF.h>
-#include <link_bot_sdf_tools/ComputeSDF.h>
 #include <sdf_tools/SDF.h>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/voxel_grid.hpp>
@@ -28,6 +27,7 @@ class CollisionMapPlugin : public WorldPlugin {
   ros::Publisher gazebo_sdf_viz_pub_;
   ros::ServiceServer query_service_;
   ros::ServiceServer get_service_;
+  ros::ServiceServer get_service2_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
   gazebo::physics::RayShapePtr ray;

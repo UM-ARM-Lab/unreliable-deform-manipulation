@@ -7,7 +7,7 @@ from keras.models import Model
 
 from link_bot_models.base_model_runner import BaseModelRunner
 from link_bot_models.components.sdf_function_layer import sdf_function_layer
-from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
+from link_bot_models.components.simple_cnn_layer import simple_cnn_relu_layer
 from link_bot_models.label_types import LabelType
 
 
@@ -37,7 +37,7 @@ class SDFCNNModelRunner(BaseModelRunner):
         self.sdf_function_prediction = sdf_function(sdf, sdf_gradient, sdf_resolution, sdf_origin, rope_input)
 
         # CNN Bit
-        cnn_output = simple_cnn_layer(self.conv_filters, self.cnn_fc_layer_sizes)(combined_image)
+        cnn_output = simple_cnn_relu_layer(self.conv_filters, self.cnn_fc_layer_sizes)(combined_image)
         cnn_prediction = Dense(1, activation='sigmoid', name=LabelType.CNN_SDF.name)(cnn_output)
 
         # Combine

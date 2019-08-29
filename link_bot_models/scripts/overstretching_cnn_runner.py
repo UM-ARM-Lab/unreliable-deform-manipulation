@@ -7,10 +7,10 @@ from keras import Model
 from keras.layers import Input, Dense
 
 import src.link_bot.link_bot_sdf_tools.src.link_bot_sdf_tools.link_bot_sdf_tools
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_models import base_model_runner
 from link_bot_models.base_model_runner import BaseModelRunner
-from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
-from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_models.components.simple_cnn_layer import simple_cnn_relu_layer
 from link_bot_pycommon import experiments_util
 
 
@@ -25,7 +25,7 @@ class OverstretchingCNNModelRunner(BaseModelRunner):
         self.conv_filters = args_dict['conv_filters']
         self.fc_layer_sizes = args_dict['fc_layer_sizes']
 
-        cnn_output = simple_cnn_layer(self.conv_filters, self.fc_layer_sizes)(rope_image)
+        cnn_output = simple_cnn_relu_layer(self.conv_filters, self.fc_layer_sizes)(rope_image)
         predictions = Dense(1, activation='sigmoid', name='combined_output')(cnn_output)
 
         self.model_inputs = [rope_image]
@@ -34,7 +34,8 @@ class OverstretchingCNNModelRunner(BaseModelRunner):
 
     def violated(self, observations, sdf_data):
         rope_configurations = observations
-        rope_images = src.link_bot.link_bot_sdf_tools.src.link_bot_sdf_tools.link_bot_sdf_tools.make_rope_images(sdf_data, rope_configurations)
+        rope_images = src.link_bot.link_bot_sdf_tools.src.link_bot_sdf_tools.link_bot_sdf_tools.make_rope_images(sdf_data,
+                                                                                                                 rope_configurations)
         inputs_dict = {
             'rope_image': rope_images,
         }

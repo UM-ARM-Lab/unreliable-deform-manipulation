@@ -151,7 +151,9 @@ void MultiLinkBotModelPlugin::OnPostRender()
     latest_image_.height = h;
     latest_image_.step = w * byte_depth * num_channels;
     latest_image_.header.seq = image_sequence_number;
-    latest_image_.header.stamp = ros::Time::now();
+    auto const stamp = camera_sensor->LastUpdateTime();
+    latest_image_.header.stamp.sec = stamp.sec;
+    latest_image_.header.stamp.nsec = stamp.nsec;
     latest_image_.data.assign(sensor_image, sensor_image + total_size_bytes);
     image_sequence_number += 1;
     ready_ = true;
@@ -323,6 +325,7 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
   auto const h = camera_sensor->ImageHeight();
   auto const total_size_bytes = w * h * byte_depth * num_channels;
   res.camera_image = latest_image_;
+  res.header.stamp = ros::Time::now();
   image_sequence_number += 1;
 
   return true;

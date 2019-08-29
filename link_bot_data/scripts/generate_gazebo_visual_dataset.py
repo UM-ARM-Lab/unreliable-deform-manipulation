@@ -5,6 +5,7 @@ import argparse
 import os
 import sys
 
+import matplotlib.pyplot as plt
 import numpy as np
 import rospy
 import tensorflow
@@ -38,6 +39,7 @@ def generate_traj(args, services, env_idx):
     action_msg = MultiLinkBotPositionAction()
 
     # Compute SDF Data
+    # TODO: use new sdf2 service
     sdf_data = link_bot_sdf_tools.request_sdf_data(services.compute_sdf, width=w, height=h, res=args.res)
 
     # bias sampling to explore by choosing a target location at least min_near away
@@ -91,6 +93,12 @@ def generate_traj(args, services, env_idx):
         services.position_action_pub.publish(action_msg)
 
         # format the tf feature
+        rope_configuration = np.array([[pt.x, pt.y] for pt in s.points])
+        # plt.imshow(image, extent=[-0.55, 0.55, -0.55, 0.55])
+        # plt.title(np.array2string(rope_configuration))
+        # plt.plot([rope_configuration[0, 0], rope_configuration[1, 0], rope_configuration[2, 0]],
+        #          [rope_configuration[0, 1], rope_configuration[1, 1], rope_configuration[2, 1]])
+        # plt.show()
         head_idx = s.link_names.index("head")
         feature['{}/image_aux1/encoded'.format(t)] = bytes_feature(image.tobytes())
         feature['{}/endeffector_pos'.format(t)] = float_feature(np.array([s.points[head_idx].x, s.points[head_idx].y]))
@@ -98,7 +106,7 @@ def generate_traj(args, services, env_idx):
         feature['{}/1/velocity'.format(t)] = float_feature(np.array([s.gripper1_velocity.x, s.gripper1_velocity.y]))
         feature['{}/1/force'.format(t)] = float_feature(np.array([s.gripper1_force.x, s.gripper1_force.y]))
         feature['{}/constraint'.format(t)] = float_feature(np.array([float(at_constraint_boundary)]))
-        feature['{}/rope_configuration'.format(t)] = float_feature(np.array([[pt.x, pt.y] for pt in s.points]).flatten())
+        feature['{}/rope_configuration'.format(t)] = float_feature(rope_configuration.flatten())
 
         # let the simulator run
         step = WorldControlRequest()
@@ -111,6 +119,9 @@ def generate_traj(args, services, env_idx):
     if args.verbose:
         print(Fore.GREEN + "Trajectory {} Complete".format(env_idx) + Fore.RESET)
 
+    print(type(feature['sdf/resolution']))
+    import sys
+    sys.exit(-2)
     example_proto = tensorflow.train.Example(features=tensorflow.train.Features(feature=feature))
     # TODO: include documentation *inside* the tfrecords file describing what each feature is
     example = example_proto.SerializeToString()
@@ -206,6 +217,8 @@ def generate_trajs(args, full_output_directory, services):
             start_traj_idx = end_traj_idx - args.n_trajs_per_file + 1
             full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type=args.compression_type)
+            tf_string = tf.py_function(serialize_example_pyfunction, (images, states, actions), tf.string)
+            return tf.reshape(tf_string, ())
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))
 
@@ -236,7 +249,7 @@ def generate(args):
     # fire up services
     services = GazeboServices()
     services.compute_sdf = rospy.ServiceProxy('/sdf', ComputeSDF)
-    services.wait(args)
+    services.wait(args.verbose)
     empty = EmptyRequest()
     services.reset.call(empty)
 

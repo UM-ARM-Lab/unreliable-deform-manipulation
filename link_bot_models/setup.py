@@ -8,4 +8,4 @@ setup_args = generate_distutils_setup(
     packages=['link_bot_models'],
     package_dir={'': 'src'})
 
-setup(**setup_args)
+setup(requires=['keras', 'np', 'tensorflow'], **setup_args)

@@ -7,9 +7,9 @@ from std_srvs.srv import Empty
 from std_srvs.srv import EmptyRequest
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
-from gazebo_msgs.srv import GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest
 from link_bot_gazebo.msg import MultiLinkBotPositionAction, LinkBotConfiguration, Position2dEnable, Position2dAction, \
     LinkBotVelocityAction
+from link_bot_gazebo.srv import ComputeSDF2
 from link_bot_gazebo.srv import WorldControl, LinkBotState
 
 
@@ -27,6 +27,7 @@ class GazeboServices:
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
         self.compute_sdf = None
+        self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
         self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
         self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
@@ -34,6 +35,7 @@ class GazeboServices:
             '/world_control',
             '/link_bot_state',
             '/sdf',
+            '/sdf2',
             '/gazebo/get_physics_properties',
             '/gazebo/set_physics_properties',
             '/gazebo/reset_simulation',
@@ -41,12 +43,12 @@ class GazeboServices:
             '/gazebo/unpause_physics',
         ]
 
-    def wait(self, args):
-        if args.verbose:
+    def wait(self, verbose=False):
+        if verbose:
             print(Fore.CYAN + "Waiting for services..." + Fore.RESET)
         for s in self.services_to_wait_for:
             rospy.wait_for_service(s)
-        if args.verbose:
+        if verbose:
             print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
 
     def reset_gazebo_environment(self, reset_model_poses=True):

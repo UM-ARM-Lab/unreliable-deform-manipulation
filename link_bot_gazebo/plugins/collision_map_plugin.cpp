@@ -1,7 +1,10 @@
 #include <cnpy/cnpy.h>
+#include <link_bot_gazebo/ComputeSDF2.h>
 #include <link_bot_gazebo/QuerySDF.h>
 #include <link_bot_gazebo/WriteSDF.h>
+#include <link_bot_sdf_tools/ComputeSDF.h>
 #include <std_msgs/ColorRGBA.h>
+#include <std_msgs/MultiArrayDimension.h>
 #include <visualization_msgs/Marker.h>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/serialization.hpp>
@@ -63,6 +66,42 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     return true;
   };
 
+  auto get_sdf2 = [&](link_bot_gazebo::ComputeSDF2Request &req, link_bot_gazebo::ComputeSDF2Response &res) {
+    if (req.request_new) {
+      compute_sdf(req.x_width, req.y_height, req.center, req.resolution, req.robot_name, req.min_z, req.max_z);
+    }
+    res.h = req.y_height;
+    res.w = req.x_width;
+    res.res = std::vector<float>(2, req.resolution);
+    auto const origin_x_coordinate = static_cast<int>(req.x_width / 2 / req.resolution);
+    auto const origin_y_coordinate = static_cast<int>(req.y_height / 2 / req.resolution);
+    std::vector<int> origin_vec{origin_x_coordinate, origin_y_coordinate};
+    res.origin = origin_vec;
+    res.sdf = sdf_.GetImmutableRawData();
+    std_msgs::MultiArrayDimension row_dim;
+    row_dim.label = "row";
+    row_dim.size = sdf_gradient_.GetNumXCells();
+    row_dim.stride = 1;
+    std_msgs::MultiArrayDimension col_dim;
+    col_dim.label = "col";
+    col_dim.size = sdf_gradient_.GetNumYCells();
+    col_dim.stride = 1;
+    res.gradient.layout.dim.emplace_back(row_dim);
+    res.gradient.layout.dim.emplace_back(col_dim);
+    auto const sdf_gradient_flat = [&]() {
+      auto const &data = sdf_gradient_.GetImmutableRawData();
+      std::vector<double> flat;
+      for (auto const &d : data) {
+        // only save the x/y currently
+        flat.emplace_back(d[0]);
+        flat.emplace_back(d[1]);
+      }
+      return flat;
+    }();
+    res.gradient.data = sdf_gradient_flat;
+    return true;
+  };
+
   ros_node_ = std::make_unique<ros::NodeHandle>("collision_map_plugin");
 
   gazebo_sdf_viz_pub_ = ros_node_->advertise<visualization_msgs::Marker>("gazebo_sdf_viz", 1);
@@ -80,9 +119,15 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
   }
 
   {
-    auto so = ros::AdvertiseServiceOptions::create<link_bot_sdf_tools::ComputeSDF>("/sdf", get_sdf, ros::VoidConstPtr(),
-                                                                                   &queue_);
+    auto so = ros::AdvertiseServiceOptions::create<link_bot_sdf_tools::ComputeSDF>("/sdf2", get_sdf,
+                                                                                   ros::VoidConstPtr(), &queue_);
     get_service_ = ros_node_->advertiseService(so);
+  }
+
+  {
+    auto so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ComputeSDF2>("/sdf", get_sdf2, ros::VoidConstPtr(),
+                                                                                 &queue_);
+    get_service2_ = ros_node_->advertiseService(so);
   }
 
   ros_queue_thread_ = std::thread(std::bind(&CollisionMapPlugin::QueueThread, this));

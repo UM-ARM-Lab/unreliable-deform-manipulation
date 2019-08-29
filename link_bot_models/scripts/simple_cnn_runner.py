@@ -3,89 +3,64 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
-from keras.layers import Input, Concatenate, Dense
-from keras.models import Model
 
 from link_bot_models import base_model_runner
-from link_bot_models.base_model_runner import BaseModelRunner
-from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
-from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
+from link_bot_models.simple_cnn_model import SimpleCNNModelRunner
 from link_bot_pycommon import experiments_util
-
-
-class SimpleCNNModelRunner(BaseModelRunner):
-
-    def __init__(self, args_dict):
-        super(SimpleCNNModelRunner, self).__init__(args_dict)
-        self.sdf_shape = args_dict['sdf_shape']
-
-        sdf_input = Input(shape=(self.sdf_shape[0], self.sdf_shape[1], 1), dtype='float32', name='sdf')
-        rope_input = Input(shape=(self.N,), dtype='float32', name='rope_configuration')
-
-        self.conv_filters = args_dict['conv_filters']
-        self.fc_layer_sizes = args_dict['fc_layer_sizes']
-
-        cnn_output = simple_cnn_layer(self.conv_filters, [])(sdf_input)
-        concat = Concatenate()([cnn_output, rope_input])
-
-        fc_h = concat
-        for fc_layer_size in self.fc_layer_sizes:
-            fc_h = Dense(fc_layer_size, activation='relu')(fc_h)
-        prediction = Dense(1, activation='sigmoid', name='combined_output')(fc_h)
-
-        # This creates a model that includes
-        self.model_inputs = [sdf_input, rope_input]
-        self.keras_model = Model(inputs=self.model_inputs, outputs=prediction)
-        self.keras_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-
-    def violated(self, observations, sdf_data):
-        m = observations.shape[0]
-        rope_configuration = observations
-        sdf = np.tile(np.expand_dims(sdf_data.sdf, axis=2), [m, 1, 1, 1])
-        sdf_gradient = np.tile(sdf_data.gradient, [m, 1, 1, 1])
-        sdf_origin = np.tile(sdf_data.origin, [m, 1])
-        sdf_resolution = np.tile(sdf_data.resolution, [m, 1])
-        sdf_extent = np.tile(sdf_data.extent, [m, 1])
-        inputs_dict = {
-            'rope_configuration': rope_configuration,
-            'sdf': sdf,
-            'sdf_gradient': sdf_gradient,
-            'sdf_origin': sdf_origin,
-            'sdf_resolution': sdf_resolution,
-            'sdf_extent': sdf_extent
-        }
-
-        predicted_violated = (self.keras_model.predict(inputs_dict) > 0.5).astype(np.bool)
-        return predicted_violated
+from video_prediction.datasets import dataset_utils
 
 
 def train(args):
-    log_path = experiments_util.experiment_name(args.log)
+    if args.log:
+        log_path = experiments_util.experiment_name(args.log)
+    else:
+        log_path = None
 
-    train_dataset = MultiEnvironmentDataset.load_dataset(args.train_dataset)
-    validation_dataset = MultiEnvironmentDataset.load_dataset(args.validation_dataset)
-    sdf_shape = train_dataset.sdf_shape
+    train_dataset, train_inputs, steps_per_epoch = dataset_utils.get_inputs(args.input_dir,
+                                                                            args.dataset,
+                                                                            args.dataset_hparams_dict,
+                                                                            args.dataset_hparams,
+                                                                            mode='train',
+                                                                            epochs=args.epochs,
+                                                                            seed=args.seed,
+                                                                            batch_size=args.batch_size,
+                                                                            balance_constraints_label=True)
+    val_dataset, val_inputs, _ = dataset_utils.get_inputs(args.input_dir,
+                                                          args.dataset,
+                                                          args.dataset_hparams_dict,
+                                                          args.dataset_hparams,
+                                                          mode='val',
+                                                          epochs=1,
+                                                          seed=args.seed,
+                                                          batch_size=args.batch_size,
+                                                          balance_constraints_label=True)
 
+    # Now that we have the input tensors, so we can construct our Keras model
     if args.checkpoint:
-        model = SimpleCNNModelRunner.load(args.checkpoint)
+        train_model = SimpleCNNModelRunner.load(args.checkpoint, train_inputs, steps_per_epoch)
     else:
         args_dict = {
-            'sdf_shape': sdf_shape,
-            'conv_filters': [
-                (64, (7, 7)),
+            'sdf_shape': train_dataset.hparams.sdf_shape,
+            'conv_filters_1': [
                 (32, (5, 5)),
+                (32, (5, 5)),
+            ],
+            'conv_filters_2': [
                 (16, (3, 3)),
                 (16, (3, 3)),
             ],
-            'fc_layer_sizes': [
-                32,
-            ],
-            'N': train_dataset.N,
+            'fc_layer_sizes': [256, 256],
+            'N': train_dataset.hparams.rope_config_dim,
         }
         args_dict.update(base_model_runner.make_args_dict(args))
-        model = SimpleCNNModelRunner(args_dict)
+        train_model = SimpleCNNModelRunner(args_dict, train_inputs, steps_per_epoch)
+        val_model = SimpleCNNModelRunner(args_dict, val_inputs, steps_per_epoch)
 
-    model.train(train_dataset, validation_dataset, args.label_types, log_path, args)
+    try:
+        train_model.train(train_dataset, log_path, args)
+    except KeyboardInterrupt:
+        print("Interrupted.")
+        pass
 
 
 def main():

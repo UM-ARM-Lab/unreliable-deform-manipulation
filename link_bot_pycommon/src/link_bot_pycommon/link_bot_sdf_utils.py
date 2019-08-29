@@ -12,9 +12,14 @@ def sdf_idx_to_point(row, col, resolution, origin):
     return np.array([y, x])
 
 
-def sdf_bounds(sdf, resolution, origin):
+def sdf_bounds(sdf, resolution, origin, offset=None):
     xmin, ymin = sdf_idx_to_point(0, 0, resolution, origin)
     xmax, ymax = sdf_idx_to_point(sdf.shape[0], sdf.shape[1], resolution, origin)
+    if offset:
+        xmin -= offset
+        ymin -= offset
+        xmax += offset
+        ymax += offset
     return [xmin, xmax, ymin, ymax]
 
 

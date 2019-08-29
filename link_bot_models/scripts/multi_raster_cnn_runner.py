@@ -6,11 +6,11 @@ import tensorflow as tf
 from keras.layers import Input, Concatenate, Dense
 from keras.models import Model
 
+from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_models import base_model_runner
 from link_bot_models.base_model_runner import BaseModelRunner
-from link_bot_models.components.simple_cnn_layer import simple_cnn_layer
+from link_bot_models.components.simple_cnn_layer import simple_cnn_relu_layer
 from link_bot_models.label_types import LabelType
-from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
 multi_raster_cnn_label_types = [LabelType.SDF, LabelType.Overstretching]
@@ -29,7 +29,7 @@ class MultiRasterCNNModelRunner(BaseModelRunner):
         self.conv_filters = args_dict['conv_filters']
         self.fc_layer_sizes = args_dict['fc_layer_sizes']
 
-        cnn_output = simple_cnn_layer(self.conv_filters, self.fc_layer_sizes, use_bias=False)(combined_image)
+        cnn_output = simple_cnn_relu_layer(self.conv_filters, self.fc_layer_sizes, use_bias=False)(combined_image)
         predictions = Dense(1, activation='sigmoid', name=LabelType.Combined.name)(cnn_output)
 
         self.model_inputs = [sdf, rope_image]

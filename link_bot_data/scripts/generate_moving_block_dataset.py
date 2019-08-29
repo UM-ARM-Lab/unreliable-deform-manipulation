@@ -3,7 +3,6 @@ from __future__ import print_function, division
 
 import argparse
 import os
-from multiprocessing import Pool
 
 import numpy as np
 import tensorflow as tf

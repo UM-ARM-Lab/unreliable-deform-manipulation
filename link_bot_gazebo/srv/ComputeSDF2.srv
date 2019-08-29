@@ -1,0 +1,15 @@
+bool request_new
+string robot_name
+geometry_msgs/Point center
+float32 x_width
+float32 y_height
+float32 resolution
+float32 max_z
+float32 min_z
+---
+float32 w
+float32 h
+float32[] sdf
+std_msgs/Float64MultiArray gradient
+float32[] res
+int32[] origin

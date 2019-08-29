@@ -25,6 +25,7 @@ add_service_files(
         WorldControl.srv
         QuerySDF.srv
         LinkBotState.srv
+        ComputeSDF2.srv
 )
 
 generate_messages(
