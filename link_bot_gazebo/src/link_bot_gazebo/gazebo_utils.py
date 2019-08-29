@@ -1,16 +1,16 @@
 from time import sleep
 
+import numpy as np
 import rospy
 from colorama import Fore
 from std_msgs.msg import String
-from std_srvs.srv import Empty
+from std_srvs.srv import Empty, EmptyRequest
 from std_srvs.srv import EmptyRequest
 
-from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
+from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest
 from link_bot_gazebo.msg import MultiLinkBotPositionAction, LinkBotConfiguration, Position2dEnable, Position2dAction, \
-    LinkBotVelocityAction
-from link_bot_gazebo.srv import ComputeSDF2
-from link_bot_gazebo.srv import WorldControl, LinkBotState
+    LinkBotVelocityAction, ObjectAction
+from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest
 
 
 class GazeboServices:
@@ -66,3 +66,47 @@ class GazeboServices:
         if reset_model_poses:
             self.reset(EmptyRequest())
         sleep(0.5)
+
+
+def setup_gazebo_env(verbose, real_time_rate):
+    # fire up services
+    services = GazeboServices()
+    services.wait(verbose)
+    empty = EmptyRequest()
+    services.reset.call(empty)
+    # set up physics
+    get = GetPhysicsPropertiesRequest()
+    current_physics = services.get_physics.call(get)
+    set = SetPhysicsPropertiesRequest()
+    set.gravity = current_physics.gravity
+    set.time_step = current_physics.time_step
+    set.ode_config = current_physics.ode_config
+    set.max_update_rate = real_time_rate * 1000.0
+    set.enabled = True
+    services.set_physics.call(set)
+    # Set initial object positions
+    move_action = Position2dAction()
+    cheezits_move = ObjectAction()
+    cheezits_move.pose.position.x = 0.20
+    cheezits_move.pose.position.y = -0.25
+    cheezits_move.pose.orientation.x = 0
+    cheezits_move.pose.orientation.y = 0
+    cheezits_move.pose.orientation.z = 0
+    cheezits_move.pose.orientation.w = 0
+    cheezits_move.model_name = "cheezits_box"
+    move_action.actions.append(cheezits_move)
+    tissue_move = ObjectAction()
+    tissue_move.pose.position.x = 0.20
+    tissue_move.pose.position.y = 0.25
+    tissue_move.pose.orientation.x = 0
+    tissue_move.pose.orientation.y = 0
+    tissue_move.pose.orientation.z = 0
+    tissue_move.pose.orientation.w = 0
+    tissue_move.model_name = "tissue_box"
+    move_action.actions.append(tissue_move)
+    services.position_2d_action.publish(move_action)
+    # let the simulator run to get the first image
+    step = WorldControlRequest()
+    step.steps = int(5.0 / 0.001)  # assuming 0.001s per simulation step
+    services.world_control(step)  # this will block until stepping is complete
+    return services

@@ -4,12 +4,11 @@ import os
 import sys
 
 import git
-from ignition import markers
 import matplotlib.pyplot as plt
 import numpy as np
 from colorama import Fore
 
-from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
+from ignition import markers
 
 
 def publish_marker(args, target_x, target_y, marker_size=0.01):
@@ -31,6 +30,8 @@ def publish_markers(args, target_x, target_y, rope_x, rope_y, marker_size=0.01):
 
 
 def generate_envs(args, full_output_directory, generate_env, save_dict_extras=None):
+    from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
+
     if save_dict_extras is None:
         save_dict_extras = {}
 
@@ -119,3 +120,5 @@ def plot_sdf_and_ovs(args, sdf_data, threshold, rope_configuration, sdf_constrai
         dx = sdf_data.gradient[::subsample, ::subsample, 0]
         dy = sdf_data.gradient[::subsample, ::subsample, 1]
         plt.quiver(x, y, dx, dy, units='x', scale=10)
+
+

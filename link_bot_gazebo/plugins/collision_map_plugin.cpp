@@ -86,8 +86,13 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     col_dim.label = "col";
     col_dim.size = sdf_gradient_.GetNumYCells();
     col_dim.stride = 1;
+    std_msgs::MultiArrayDimension grad_dim;
+    grad_dim.label = "grad";
+    grad_dim.size = 2;
+    grad_dim.stride = 1;
     res.gradient.layout.dim.emplace_back(row_dim);
     res.gradient.layout.dim.emplace_back(col_dim);
+    res.gradient.layout.dim.emplace_back(grad_dim);
     auto const sdf_gradient_flat = [&]() {
       auto const &data = sdf_gradient_.GetImmutableRawData();
       std::vector<double> flat;
@@ -119,13 +124,13 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
   }
 
   {
-    auto so = ros::AdvertiseServiceOptions::create<link_bot_sdf_tools::ComputeSDF>("/sdf2", get_sdf,
-                                                                                   ros::VoidConstPtr(), &queue_);
+    auto so = ros::AdvertiseServiceOptions::create<link_bot_sdf_tools::ComputeSDF>("/sdf", get_sdf, ros::VoidConstPtr(),
+                                                                                   &queue_);
     get_service_ = ros_node_->advertiseService(so);
   }
 
   {
-    auto so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ComputeSDF2>("/sdf", get_sdf2, ros::VoidConstPtr(),
+    auto so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ComputeSDF2>("/sdf2", get_sdf2, ros::VoidConstPtr(),
                                                                                  &queue_);
     get_service2_ = ros_node_->advertiseService(so);
   }

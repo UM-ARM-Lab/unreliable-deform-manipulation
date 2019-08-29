@@ -5,27 +5,21 @@ import argparse
 import os
 import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
 import rospy
 import tensorflow
 from colorama import Fore
-from std_msgs.msg import String
-from std_srvs.srv import EmptyRequest
-from tf.transformations import quaternion_from_euler
 
+import visual_mpc.gazebo_trajectory_execution
 from link_bot_data.video_prediction_dataset_utils import bytes_feature, float_feature, int_feature
-from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_sdf_tools.srv import ComputeSDF
+from link_bot_gazebo import gazebo_utils
 
 opts = tensorflow.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.ConfigProto(gpu_options=opts)
 tensorflow.enable_eager_execution(config=conf)
 
-from gazebo_msgs.srv import GetPhysicsPropertiesRequest
-from gazebo_msgs.srv import SetPhysicsPropertiesRequest
 from link_bot_data import random_environment_data_utils
-from link_bot_gazebo.msg import MultiLinkBotPositionAction, Position2dEnable, Position2dAction, ObjectAction
+from link_bot_gazebo.msg import MultiLinkBotPositionAction
 from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 from link_bot_sdf_tools import link_bot_sdf_tools
 
@@ -146,61 +140,13 @@ def sample_goal(services, state_req):
     return gripper1_target_x, gripper1_target_y
 
 
-def random_object_move(model_name):
-    move = ObjectAction()
-    move.pose.position.x = np.random.uniform(-w / 2 + 0.05, w / 2 - 0.05)
-    move.pose.position.y = np.random.uniform(-w / 2 + 0.05, w / 2 - 0.05)
-    q = quaternion_from_euler(0, 0, np.random.uniform(-np.pi, np.pi))
-    move.pose.orientation.x = q[0]
-    move.pose.orientation.y = q[1]
-    move.pose.orientation.z = q[2]
-    move.pose.orientation.w = q[3]
-    move.model_name = model_name
-    return move
-
-
 def generate_trajs(args, full_output_directory, services):
-    # construct message we will publish
-    enable_objects = Position2dEnable()
-    enable_objects.model_names = ['cheezits_box', 'tissue_box']
-    enable_objects.enable = True
-
-    disable_objects = Position2dEnable()
-    disable_objects.model_names = ['cheezits_box', 'tissue_box']
-    disable_objects.enable = False
-
-    disable_link_bot = String()
-    disable_link_bot.data = 'disabled'
-
-    enable_link_bot = String()
-    enable_link_bot.data = 'position'
-
     examples = np.ndarray([args.n_trajs_per_file], dtype=object)
     percentages_positive = []
     for i in range(args.n_trajs):
         current_record_traj_idx = i % args.n_trajs_per_file
 
-        # disable the rope controller, enable the hand-of-god to move objects
-        services.position_2d_enable.publish(enable_objects)
-        services.link_bot_mode.publish(disable_link_bot)
-
-        # Move the objects
-        move_action = Position2dAction()
-        cheezits_move = random_object_move("cheezits_box")
-        tissue_move = random_object_move("tissue_box")
-        move_action.actions.append(cheezits_move)
-        move_action.actions.append(tissue_move)
-        services.position_2d_action.publish(move_action)
-
-        # let the move actually occur
-        step = WorldControlRequest()
-        move_wait_duration = 5
-        step.steps = int(move_wait_duration / 0.001)  # assuming 0.001s per simulation step
-        services.world_control(step)  # this will block until stepping is complete
-
-        # disable the objects so they stop, enabled the rope controller
-        services.position_2d_enable.publish(disable_objects)
-        services.link_bot_mode.publish(enable_link_bot)
+        visual_mpc.gazebo_trajectory_execution.move_objects(services, w, h)
 
         # Generate a new trajectory
         example, percentage_violation = generate_traj(args, services, i)
@@ -217,8 +163,6 @@ def generate_trajs(args, full_output_directory, services):
             start_traj_idx = end_traj_idx - args.n_trajs_per_file + 1
             full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type=args.compression_type)
-            tf_string = tf.py_function(serialize_example_pyfunction, (images, states, actions), tf.string)
-            return tf.reshape(tf_string, ())
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))
 
@@ -246,50 +190,7 @@ def generate(args):
         print("Using seed: ", args.seed)
     np.random.seed(args.seed)
 
-    # fire up services
-    services = GazeboServices()
-    services.compute_sdf = rospy.ServiceProxy('/sdf', ComputeSDF)
-    services.wait(args.verbose)
-    empty = EmptyRequest()
-    services.reset.call(empty)
-
-    # set up physics
-    get = GetPhysicsPropertiesRequest()
-    current_physics = services.get_physics.call(get)
-    set = SetPhysicsPropertiesRequest()
-    set.gravity = current_physics.gravity
-    set.time_step = current_physics.time_step
-    set.ode_config = current_physics.ode_config
-    set.max_update_rate = args.real_time_rate * 1000.0
-    set.enabled = True
-    services.set_physics.call(set)
-
-    # Set initial object positions
-    move_action = Position2dAction()
-    cheezits_move = ObjectAction()
-    cheezits_move.pose.position.x = 0.20
-    cheezits_move.pose.position.y = -0.25
-    cheezits_move.pose.orientation.x = 0
-    cheezits_move.pose.orientation.y = 0
-    cheezits_move.pose.orientation.z = 0
-    cheezits_move.pose.orientation.w = 0
-    cheezits_move.model_name = "cheezits_box"
-    move_action.actions.append(cheezits_move)
-    tissue_move = ObjectAction()
-    tissue_move.pose.position.x = 0.20
-    tissue_move.pose.position.y = 0.25
-    tissue_move.pose.orientation.x = 0
-    tissue_move.pose.orientation.y = 0
-    tissue_move.pose.orientation.z = 0
-    tissue_move.pose.orientation.w = 0
-    tissue_move.model_name = "tissue_box"
-    move_action.actions.append(tissue_move)
-    services.position_2d_action.publish(move_action)
-
-    # let the simulator run to get the first image
-    step = WorldControlRequest()
-    step.steps = int(5.0 / 0.001)  # assuming 0.001s per simulation step
-    services.world_control(step)  # this will block until stepping is complete
+    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate)
 
     generate_trajs(args, full_output_directory, services)
 
