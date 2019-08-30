@@ -9,9 +9,8 @@ from std_srvs.srv import EmptyRequest
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest
 from link_bot_gazebo.msg import MultiLinkBotPositionAction, LinkBotConfiguration, Position2dEnable, Position2dAction, \
     LinkBotVelocityAction, ObjectAction
-from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest
-from link_bot_pycommon import link_bot_sdf_utils
-from visual_mpc import gui_tools
+from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
+    CameraProjection, CameraProjectionRequest
 from visual_mpc.numpy_point import NumpyPoint
 
 
@@ -27,6 +26,7 @@ class GazeboServices:
         self.world_control = rospy.ServiceProxy('/world_control', WorldControl)
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
+        self.xy_to_rowcol = rospy.ServiceProxy('/my_camera/xy_to_rowcol', CameraProjection)
         self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
         self.compute_sdf = None
         self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
@@ -43,6 +43,7 @@ class GazeboServices:
             '/gazebo/reset_simulation',
             '/gazebo/pause_physics',
             '/gazebo/unpause_physics',
+            '/my_camera/xy_to_rowcol',
         ]
 
     def wait(self, verbose=False):
@@ -114,11 +115,25 @@ def setup_gazebo_env(verbose, real_time_rate):
     return services
 
 
-def get_rope_head_px(services, image_w, image_h, env_w, env_h):
-    # FIXME: this requires camera projection...
+def get_rope_head_pixel_coordinates(services):
     state_req = LinkBotStateRequest()
     state = services.get_state(state_req)
     head_x_m = state.points[-1].x
     head_y_m = state.points[-1].y
-    head_y_px, head_x_px = gui_tools.xy_to_rowcol(head_x_m, head_y_m, env_w, env_h, image_w, image_h)
-    return NumpyPoint(head_x_px, head_y_px)
+    req = CameraProjectionRequest()
+    req.xyz.x = head_x_m
+    req.xyz.y = head_y_m
+    req.xyz.z = 0.01
+    res = services.xy_to_rowcol(req)
+    return NumpyPoint(int(res.rowcol.x_col), int(res.rowcol.y_row)), head_x_m, head_y_m
+
+
+def xy_to_row_col(services, x, y, z):
+    state_req = LinkBotStateRequest()
+    state = services.get_state(state_req)
+    req = CameraProjectionRequest()
+    req.xyz.x = x
+    req.xyz.y = y
+    req.xyz.z = z
+    res = services.xy_to_rowcol(req)
+    return NumpyPoint(int(res.rowcol.x_col), int(res.rowcol.y_row)), head_x_m, head_y_m

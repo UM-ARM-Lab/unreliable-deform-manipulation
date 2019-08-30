@@ -30,8 +30,8 @@ class MyCameraPlugin : public CameraPlugin {
                             link_bot_gazebo::CameraProjectionResponse &res) {
       ignition::math::Vector3d vec{req.xyz.x, req.xyz.y, req.xyz.z};
       auto const point = camera->Project(vec);
-      res.rowcol.x = point.X();
-      res.rowcol.y = point.Y();
+      res.rowcol.x_col = point.X();
+      res.rowcol.y_row = point.Y();
       return true;
     };
 

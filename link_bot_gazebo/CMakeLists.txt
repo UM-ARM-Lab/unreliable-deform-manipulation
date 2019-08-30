@@ -18,6 +18,7 @@ add_message_files(
         Position2dEnable.msg
         Position2dAction.msg
         ObjectAction.msg
+        IntPoint2D.msg
 )
 
 add_service_files(
