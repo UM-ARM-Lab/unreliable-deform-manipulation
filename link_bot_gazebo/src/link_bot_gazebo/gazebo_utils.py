@@ -1,5 +1,6 @@
 from time import sleep
 
+import numpy as np
 import rospy
 from colorama import Fore
 from std_msgs.msg import String
@@ -10,7 +11,7 @@ from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysi
 from link_bot_gazebo.msg import MultiLinkBotPositionAction, LinkBotConfiguration, Position2dEnable, Position2dAction, \
     LinkBotVelocityAction, ObjectAction
 from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
-    CameraProjection, CameraProjectionRequest
+    CameraProjection, CameraProjectionRequest, ComputeSDF2Request
 from visual_mpc.numpy_point import NumpyPoint
 
 
@@ -137,3 +138,22 @@ def xy_to_row_col(services, x, y, z):
     req.xyz.z = z
     res = services.xy_to_rowcol(req)
     return NumpyPoint(int(res.rowcol.x_col), int(res.rowcol.y_row)), head_x_m, head_y_m
+
+
+def get_sdf_data(services):
+    sdf_request = ComputeSDF2Request()
+    sdf_request.resolution = 0.01
+    sdf_request.y_height = 1
+    sdf_request.x_width = 1
+    sdf_request.center.x = 0
+    sdf_request.center.y = 0
+    sdf_request.min_z = 0.01
+    sdf_request.max_z = 2.00
+    sdf_request.robot_name = 'link_bot'
+    sdf_request.request_new = True
+    sdf_response = services.compute_sdf2(sdf_request)
+    sdf = np.array(sdf_response.sdf).reshape([sdf_response.gradient.layout.dim[0].size, sdf_response.gradient.layout.dim[1].size])
+    gradient = np.array(sdf_response.gradient.data).reshape([sdf_response.gradient.layout.dim[0].size,
+                                                             sdf_response.gradient.layout.dim[1].size,
+                                                             sdf_response.gradient.layout.dim[2].size])
+    return gradient, sdf, sdf_response
