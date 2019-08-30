@@ -146,7 +146,7 @@ def generate_trajs(args, full_output_directory, services):
     for i in range(args.n_trajs):
         current_record_traj_idx = i % args.n_trajs_per_file
 
-        visual_mpc.gazebo_trajectory_execution.move_objects(services, w, h)
+        visual_mpc.gazebo_trajectory_execution.move_objects(services, w, h, 'position')
 
         # Generate a new trajectory
         example, percentage_violation = generate_traj(args, services, i)

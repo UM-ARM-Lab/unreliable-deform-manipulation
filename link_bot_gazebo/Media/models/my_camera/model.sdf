@@ -8,9 +8,9 @@
                 <camera>
                     <projection_type>perspective</projection_type>
                     <horizontal_fov>1.0</horizontal_fov>
-<!--                    <save enabled="true">-->
-<!--                        <path>/tmp/camera_save_tutorial</path>-->
-<!--                    </save>-->
+                    <!--                    <save enabled="true">-->
+                    <!--                        <path>/tmp/camera_save_tutorial</path>-->
+                    <!--                    </save>-->
                     <image>
                         <width>64</width>
                         <height>64</height>
@@ -22,6 +22,7 @@
                 </camera>
                 <always_on>1</always_on>
                 <update_rate>100</update_rate>
+                <plugin name='my_camera_plugin' filename='libmy_camera_plugin.so'/>
             </sensor>
         </link>
     </model>

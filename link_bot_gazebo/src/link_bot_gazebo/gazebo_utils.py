@@ -1,16 +1,18 @@
 from time import sleep
 
-import numpy as np
 import rospy
 from colorama import Fore
 from std_msgs.msg import String
-from std_srvs.srv import Empty, EmptyRequest
+from std_srvs.srv import Empty
 from std_srvs.srv import EmptyRequest
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest
 from link_bot_gazebo.msg import MultiLinkBotPositionAction, LinkBotConfiguration, Position2dEnable, Position2dAction, \
     LinkBotVelocityAction, ObjectAction
-from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest
+from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest
+from link_bot_pycommon import link_bot_sdf_utils
+from visual_mpc import gui_tools
+from visual_mpc.numpy_point import NumpyPoint
 
 
 class GazeboServices:
@@ -110,3 +112,13 @@ def setup_gazebo_env(verbose, real_time_rate):
     step.steps = int(5.0 / 0.001)  # assuming 0.001s per simulation step
     services.world_control(step)  # this will block until stepping is complete
     return services
+
+
+def get_rope_head_px(services, image_w, image_h, env_w, env_h):
+    # FIXME: this requires camera projection...
+    state_req = LinkBotStateRequest()
+    state = services.get_state(state_req)
+    head_x_m = state.points[-1].x
+    head_y_m = state.points[-1].y
+    head_y_px, head_x_px = gui_tools.xy_to_rowcol(head_x_m, head_y_m, env_w, env_h, image_w, image_h)
+    return NumpyPoint(head_x_px, head_y_px)

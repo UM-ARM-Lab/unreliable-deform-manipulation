@@ -26,6 +26,7 @@ add_service_files(
         QuerySDF.srv
         LinkBotState.srv
         ComputeSDF2.srv
+        CameraProjection.srv
 )
 
 generate_messages(
