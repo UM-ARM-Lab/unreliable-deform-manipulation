@@ -130,14 +130,12 @@ def get_rope_head_pixel_coordinates(services):
 
 
 def xy_to_row_col(services, x, y, z):
-    state_req = LinkBotStateRequest()
-    state = services.get_state(state_req)
     req = CameraProjectionRequest()
     req.xyz.x = x
     req.xyz.y = y
     req.xyz.z = z
     res = services.xy_to_rowcol(req)
-    return NumpyPoint(int(res.rowcol.x_col), int(res.rowcol.y_row)), head_x_m, head_y_m
+    return NumpyPoint(int(res.rowcol.x_col), int(res.rowcol.y_row))
 
 
 def get_sdf_data(services):
