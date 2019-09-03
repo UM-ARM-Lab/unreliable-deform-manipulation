@@ -12,6 +12,7 @@ from link_bot_gazebo.msg import MultiLinkBotPositionAction, LinkBotConfiguration
     LinkBotVelocityAction, ObjectAction
 from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
     CameraProjection, CameraProjectionRequest, ComputeSDF2Request
+from visual_mpc import sensor_image_to_float_image
 from visual_mpc.numpy_point import NumpyPoint
 
 
@@ -71,6 +72,23 @@ class GazeboServices:
             self.reset(EmptyRequest())
         sleep(0.5)
 
+    def get_context(self, context_length, state_dim, action_dim, image_h=64, image_w=64, image_d=3):
+        state_req = LinkBotStateRequest()
+        initial_context_images = np.ndarray((context_length, image_h, image_w, image_d))
+        initial_context_states = np.ndarray((context_length, state_dim))
+        for t in range(context_length):
+            state = self.get_state.call(state_req)
+            s = np.array([state.points[-1].x, state.points[-1].y])
+            # Convert to float image
+            image = sensor_image_to_float_image(state.camera_image.data, image_h, image_w, image_d)
+            initial_context_images[t] = image
+            initial_context_states[t] = s
+
+        context_images = initial_context_images
+        context_states = initial_context_states
+        context_actions = np.zeros([context_length - 1, action_dim])
+        return context_images, context_states, context_actions
+
 
 def setup_gazebo_env(verbose, real_time_rate):
     # fire up services
@@ -111,7 +129,7 @@ def setup_gazebo_env(verbose, real_time_rate):
     services.position_2d_action.publish(move_action)
     # let the simulator run to get the first image
     step = WorldControlRequest()
-    step.steps = int(5.0 / 0.001)  # assuming 0.001s per simulation step
+    step.steps = 1000
     services.world_control(step)  # this will block until stepping is complete
     return services
 

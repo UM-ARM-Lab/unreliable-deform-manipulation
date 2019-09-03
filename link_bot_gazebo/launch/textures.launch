@@ -1,5 +1,5 @@
 <launch>
-    <arg name="world_name" default="worlds/no_arena.world"/>
+    <arg name="world_name" default="textures"/>
     <arg name="verbose" default="false"/>
     <arg name="gui" default="false"/>
     <arg name="spawn_x" default="0.0"/>
@@ -11,7 +11,7 @@
     </include>
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/textures.world"/>
+        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/$(arg world_name).world"/>
         <arg name="verbose" default="$(arg verbose)"/>
         <arg name="paused" default="false"/>
         <arg name="gui" value="$(arg gui)"/>

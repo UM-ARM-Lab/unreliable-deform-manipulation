@@ -6,7 +6,6 @@ import gpflow.multioutput.features as mf
 import gpflow.multioutput.kernels as mk
 import matplotlib.pyplot as plt
 import numpy as np
-from ompl import util as ou
 from PIL import Image
 from colorama import Fore
 from matplotlib.animation import FuncAnimation
@@ -15,36 +14,56 @@ from link_bot_gaussian_process import data_reformatting
 from link_bot_pycommon import experiments_util
 
 
-def animate_training_data(x, arena_size=5, linewidth=7):
-    T = x.shape[0]
-    states = np.ndarray((T, 6))
-    for t, x_t in enumerate(x):
-        state = x_t[:6]
-        states[t] = state
-
+def animate_training_data(rope_configurations, actions, sdfs, arena_size=5, linewidth=7, interval=100, arrow_width=0.02):
     fig = plt.figure(figsize=(10, 10))
+    ax = plt.gca()
 
-    x_0 = states[0]
+    x_0 = rope_configurations[0, 0]
     x_0_xs = [x_0[0], x_0[2], x_0[4]]
     x_0_ys = [x_0[1], x_0[3], x_0[5]]
-    line = plt.plot(x_0_xs, x_0_ys, color='black', linewidth=linewidth, zorder=1)[0]
-    scat = plt.scatter(x_0_xs, x_0_ys, color=['blue', 'blue', 'green'], zorder=2, s=50)
+    before = ax.plot(x_0_xs, x_0_ys, color='black', linewidth=linewidth, zorder=2)[0]
+
+    arrow = plt.Arrow(x_0[4], x_0[5], actions[0, 0, 0], actions[0, 0, 1], width=arrow_width, zorder=3)
+    patch = ax.add_patch(arrow)
+
+    ax.set_title("0")
+
+    x_0 = rope_configurations[0, 1]
+    x_0_xs = [x_0[0], x_0[2], x_0[4]]
+    x_0_ys = [x_0[1], x_0[3], x_0[5]]
+    after = ax.plot(x_0_xs, x_0_ys, color='gray', linewidth=linewidth, zorder=1)[0]
+
+    img_handle = ax.imshow(sdfs[0], extent=[-arena_size, arena_size, -arena_size, arena_size])
 
     plt.xlabel("x (m)")
     plt.ylabel("y (m)")
     plt.xlim([-arena_size, arena_size])
     plt.ylim([-arena_size, arena_size])
 
-    def update(t):
-        x_t = states[t]
-        x_t_xs = [x_t[0], x_t[2], x_t[4]]
-        x_t_ys = [x_t[1], x_t[3], x_t[5]]
-        line.set_xdata(x_t_xs)
-        line.set_ydata(x_t_ys)
-        offsets = np.vstack((x_t_xs, x_t_ys)).T
-        scat.set_offsets(offsets)
+    def update(i):
+        nonlocal patch
 
-    anim = FuncAnimation(fig, update, frames=T, interval=1)
+        x_i = rope_configurations[i, 0]
+        x_i_xs = [x_i[0], x_i[2], x_i[4]]
+        x_i_ys = [x_i[1], x_i[3], x_i[5]]
+        before.set_xdata(x_i_xs)
+        before.set_ydata(x_i_ys)
+
+        patch.remove()
+        arrow = plt.Arrow(x_i[4], x_i[5], actions[i, 0, 0], actions[i, 0, 1], width=arrow_width, zorder=3)
+        patch = ax.add_patch(arrow)
+
+        ax.set_title(i)
+
+        img_handle.set_data(sdfs[i])
+
+        x_i = rope_configurations[i, 1]
+        x_i_xs = [x_i[0], x_i[2], x_i[4]]
+        x_i_ys = [x_i[1], x_i[3], x_i[5]]
+        after.set_xdata(x_i_xs)
+        after.set_ydata(x_i_ys)
+
+    anim = FuncAnimation(fig, update, frames=rope_configurations.shape[0], interval=interval, repeat=False)
     return anim
 
 
@@ -112,7 +131,7 @@ def animate_predict(prediction, sdf, arena_size, linewidth=6):
 
 class LinkBotGP:
 
-    def __init__(self):
+    def __init__(self, rng_type=None):
         """ you have to called either train or load before any of the other methods """
         self.n_data_points = None  # number of data points
         self.n_inputs = None  # input dimensionality
@@ -126,11 +145,12 @@ class LinkBotGP:
         self.rng = None
         self.min_steps = 1
         self.max_steps = 1
+        self.rng_type = rng_type
 
     def initialize_rng(self, min_steps, max_steps):
         self.min_steps = min_steps
         self.max_steps = max_steps
-        self.rng = ou.RNG()
+        self.rng = self.rng_type()
 
     def train(self, X, Y, n_inducing_points=100, verbose=True, maximum_training_iterations=300):
         self.n_data_points, self.n_inputs = X.shape
@@ -166,9 +186,9 @@ class LinkBotGP:
 
         t0 = time()
         opt.minimize(self.model, disp=verbose, maxiter=self.maximum_training_iterations)
-        dt = time() - t0
+        training_time = time() - t0
         if verbose:
-            print(Fore.YELLOW + "training time: {}s".format(dt) + Fore.RESET)
+            print(Fore.YELLOW + "training time: {:7.3f}s".format(training_time) + Fore.RESET)
 
     def metadata(self):
         return {
