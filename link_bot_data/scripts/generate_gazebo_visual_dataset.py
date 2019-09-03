@@ -202,11 +202,12 @@ def generate(args):
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)
 
-    with open(pathlib.Path(full_output_directory) / 'option.json', 'w') as of:
+    with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': DT,
             'env_w': env_w,
             'env_h': env_h,
+            'compression_type': args.compression_type
         }
         json.dump(options, of)
 

@@ -1,3 +1,4 @@
 {
-    "compression_type": "ZLIB"
+    "compression_type": "ZLIB",
+    "dt": 0.25
 }
