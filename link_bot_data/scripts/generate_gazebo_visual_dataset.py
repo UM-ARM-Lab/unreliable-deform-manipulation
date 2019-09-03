@@ -23,7 +23,7 @@ conf = tensorflow.ConfigProto(gpu_options=opts)
 tensorflow.enable_eager_execution(config=conf)
 
 from link_bot_data import random_environment_data_utils
-from link_bot_gazebo.msg import MultiLinkBotPositionAction
+from link_bot_gazebo.msg import MultiLinkBotPositionAction, Position2dEnable
 from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 
 DT = 0.25  # seconds per time step
@@ -98,6 +98,8 @@ def generate_traj(args, services, env_idx):
         feature['{}/image_aux1/encoded'.format(t)] = bytes_feature(image.tobytes())
         feature['{}/endeffector_pos'.format(t)] = float_feature(np.array([s.points[head_idx].x, s.points[head_idx].y]))
         feature['{}/1/velocity'.format(t)] = float_feature(np.array([s.gripper1_velocity.x, s.gripper1_velocity.y]))
+        feature['{}/1/target_velocity'.format(t)] = float_feature(
+            np.array([s.gripper1_target_velocity.x, s.gripper1_target_velocity.y]))
         feature['{}/1/force'.format(t)] = float_feature(np.array([s.gripper1_force.x, s.gripper1_force.y]))
         feature['{}/constraint'.format(t)] = float_feature(np.array([float(at_constraint_boundary)]))
         feature['{}/rope_configuration'.format(t)] = float_feature(rope_configuration.flatten())

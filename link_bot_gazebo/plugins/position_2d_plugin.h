@@ -8,10 +8,11 @@
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/TransportTypes.hh>
 
-#include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/Pose.h>
-#include <link_bot_gazebo/Position2dEnable.h>
 #include <link_bot_gazebo/Position2dAction.h>
+#include <link_bot_gazebo/Position2dEnable.h>
+#include <std_msgs/Empty.h>
+#include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
 
 namespace gazebo {
@@ -24,6 +25,8 @@ class Position2dPlugin : public ModelPlugin {
 
   void OnUpdate();
 
+  void OnStop(std_msgs::EmptyConstPtr msg);
+
   void OnEnable(link_bot_gazebo::Position2dEnableConstPtr msg);
 
   void OnAction(link_bot_gazebo::Position2dActionConstPtr msg);
@@ -35,12 +38,13 @@ class Position2dPlugin : public ModelPlugin {
   physics::ModelPtr model_;
   physics::LinkPtr link_;
   std::string link_name_;
-  bool enabled_{false};
+  bool enabled_{true};
   std::unique_ptr<ros::NodeHandle> ros_node_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
   ros::Subscriber enable_sub_;
   ros::Subscriber action_sub_;
+  ros::Subscriber stop_sub_;
   double kP_pos_{0.0};
   double kI_pos_{0.0};
   double kD_pos_{0.0};

@@ -24,8 +24,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.15</mu>
-                            <mu2>0.15</mu2>
+                            <mu>0.05</mu>
+                            <mu2>0.05</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -73,8 +73,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.15</mu>
-                            <mu2>0.15</mu2>
+                            <mu>0.05</mu>
+                            <mu2>0.05</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -146,8 +146,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.15</mu>
-                            <mu2>0.15</mu2>
+                            <mu>0.05</mu>
+                            <mu2>0.05</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -209,6 +209,7 @@
             <kP_vel>75.0</kP_vel>
             <kI_vel>0.0</kI_vel>
             <kD_vel>0.0</kD_vel>
+            <max_force>1.0</max_force>
             <gripper1_link>head</gripper1_link>
         </plugin>
         <pose frame=''>-0.45 0 0.01 0 -0 0</pose>

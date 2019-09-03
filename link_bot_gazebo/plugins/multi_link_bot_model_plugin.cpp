@@ -94,6 +94,13 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
     if (!sdf->HasElement("gripper1_link")) {
       throw std::invalid_argument("no gripper1_link tag provided");
     }
+
+    if (!sdf->HasElement("max_force")) {
+      printf("using default max_force=%f\n", max_force_);
+    }
+    else {
+      max_force_ = sdf->GetElement("max_force")->Get<double>();
+    }
   }
 
   auto const &gripper1_link_name = sdf->GetElement("gripper1_link")->Get<std::string>();
@@ -121,15 +128,14 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   gripper2_y_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel, -max_vel);
 
   constexpr auto max_vel_integral{1};
-  constexpr auto max_force{50};
   gripper1_x_vel_pid_ =
-      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
   gripper1_y_vel_pid_ =
-      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
   gripper2_x_vel_pid_ =
-      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
   gripper2_y_vel_pid_ =
-      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force, -max_force);
+      common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
 
   // this won't be changing
   latest_image_.encoding = "rgb8";

@@ -4,7 +4,8 @@ import numpy as np
 import rospy
 from colorama import Fore
 from std_msgs.msg import String
-from std_srvs.srv import Empty
+import std_msgs
+import std_srvs
 from std_srvs.srv import EmptyRequest
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest
@@ -23,18 +24,18 @@ class GazeboServices:
         self.velocity_action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
         self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10)
         self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
-        self.position_2d_enable = rospy.Publisher('/position_2d_enable', Position2dEnable, queue_size=10)
+        self.position_2d_stop = rospy.Publisher('/position_2d_stop', std_msgs.msg.Empty, queue_size=10)
         self.position_2d_action = rospy.Publisher('/position_2d_action', Position2dAction, queue_size=10)
         self.world_control = rospy.ServiceProxy('/world_control', WorldControl)
-        self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
-        self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
+        self.pause = rospy.ServiceProxy('/gazebo/pause_physics', std_srvs.srv.Empty)
+        self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', std_srvs.srv.Empty)
         self.xy_to_rowcol = rospy.ServiceProxy('/my_camera/xy_to_rowcol', CameraProjection)
         self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
         self.compute_sdf = None
         self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
         self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
-        self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
+        self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", std_srvs.srv.Empty)
         self.services_to_wait_for = [
             '/world_control',
             '/link_bot_state',

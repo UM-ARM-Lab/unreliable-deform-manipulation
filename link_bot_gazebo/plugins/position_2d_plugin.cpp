@@ -128,6 +128,9 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     return;
   }
 
+  auto stop_bind = boost::bind(&Position2dPlugin::OnStop, this, _1);
+  auto stop_so =
+      ros::SubscribeOptions::create<std_msgs::Empty>("/position_2d_stop", 1, stop_bind, ros::VoidPtr(), &queue_);
   auto enable_bind = boost::bind(&Position2dPlugin::OnEnable, this, _1);
   auto enable_so = ros::SubscribeOptions::create<link_bot_gazebo::Position2dEnable>(
       "/position_2d_enable", 1, enable_bind, ros::VoidPtr(), &queue_);
@@ -138,6 +141,7 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   enable_sub_ = ros_node_->subscribe(enable_so);
   action_sub_ = ros_node_->subscribe(pos_action_so);
+  stop_sub_ = ros_node_->subscribe(stop_so);
 
   ros_queue_thread_ = std::thread(std::bind(&Position2dPlugin::QueueThread, this));
 
@@ -152,6 +156,8 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   y_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
 
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&Position2dPlugin::OnUpdate, this));
+ 
+  target_pose_ = link_->WorldPose();
 }
 
 void Position2dPlugin::OnUpdate()
@@ -189,6 +195,8 @@ void Position2dPlugin::OnUpdate()
     link_->AddRelativeTorque(torque);
   }
 }
+
+void Position2dPlugin::OnStop(std_msgs::EmptyConstPtr const msg) { target_pose_ = link_->WorldPose(); }
 
 void Position2dPlugin::OnEnable(link_bot_gazebo::Position2dEnableConstPtr const msg)
 {

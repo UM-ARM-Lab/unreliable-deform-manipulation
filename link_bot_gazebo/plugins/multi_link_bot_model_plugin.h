@@ -58,6 +58,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   double kP_vel_{0.0};
   double kI_vel_{0.0};
   double kD_vel_{0.0};
+  double max_force_{1.0};
   physics::LinkPtr gripper1_link_{nullptr};
   physics::LinkPtr gripper2_link_{nullptr};
   common::PID gripper1_x_pos_pid_;
