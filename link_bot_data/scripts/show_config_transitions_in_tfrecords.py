@@ -45,8 +45,7 @@ def main():
         try:
             data = sess.run(train_inputs)
         except tf.errors.OutOfRangeError:
-            print(Fore.RED + "Dataset does not contain {} examples.".format(args.n_training_examples) + Fore.RESET)
-            return
+            break
 
         images = data['images'].squeeze()
         rope_configurations = data['rope_configurations'].squeeze()

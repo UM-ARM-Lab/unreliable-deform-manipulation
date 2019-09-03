@@ -51,18 +51,18 @@ def main():
         try:
             data = sess.run(train_inputs)
         except tf.errors.OutOfRangeError:
-            print(Fore.RED + "Dataset does not contain {} examples.".format(args.n_training_examples) + Fore.RESET)
-            return
+            break
 
         rope_configurations = data['rope_configurations'].squeeze()
         sdfs = np.transpose(data['sdf'].squeeze(), [0, 2, 1])
-        resolution = data['sdf_resolution']
-        origin = data['sdf_origin']
-        constraints = data['constraints']
+        resolutions = data['sdf_resolution'].squeeze()
+        origins = data['sdf_origin'].squeeze()
+        constraints = data['constraints'].squeeze()
 
-        for true_violated, upside_down_sdf, rope_config in zip(constraints, sdfs, rope_configurations):
+        zipped = zip(constraints, sdfs, rope_configurations, resolutions, origins)
+        for true_violated, upside_down_sdf, rope_config, resolution, origin in zipped:
             sdf = np.flipud(upside_down_sdf)
-            row, col = point_to_sdf_idx(rope_configurations[4], rope_config[5], resolution=resolution, origin=origin)
+            row, col = point_to_sdf_idx(rope_config[4], rope_config[5], resolution=resolution, origin=origin)
             signed_distance = sdf[row, col]
             predicted_violated = signed_distance < 0.02
 
