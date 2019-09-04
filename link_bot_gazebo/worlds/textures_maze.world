@@ -20,22 +20,22 @@
         </include>
         <include>
             <uri>model://cheezits_textured</uri>
-            <pose>-.205 -0.139 0 0 0 -0.689</pose>
+            <pose>-.25 -0.1 0 0 0 0</pose>
             <name>cheezits_box0</name>
         </include>
         <include>
             <uri>model://cheezits_textured</uri>
-            <pose>-.06 -0.24 0 0 0 -0.689</pose>
+            <pose>-.1 -0.18 0 0 0 0</pose>
             <name>cheezits_box1</name>
         </include>
         <include>
             <uri>model://cheezits_textured</uri>
-            <pose>.05 -0.21 0 0 0 0.689</pose>
+            <pose>.1 -0.18 0 0 0 0</pose>
             <name>cheezits_box2</name>
         </include>
         <include>
             <uri>model://cheezits_textured</uri>
-            <pose>.19 -0.10 0 0 0 0.689</pose>
+            <pose>.25 -0.10 0 0 0 0</pose>
             <name>cheezits_box3</name>
         </include>
         <include>

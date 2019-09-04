@@ -4,9 +4,9 @@
 #include <thread>
 
 #include <link_bot_gazebo/LinkBotConfiguration.h>
+#include <link_bot_gazebo/LinkBotPositionAction.h>
 #include <link_bot_gazebo/LinkBotState.h>
 #include <link_bot_gazebo/LinkBotVelocityAction.h>
-#include <link_bot_gazebo/MultiLinkBotPositionAction.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <ros/subscribe_options.h>
@@ -20,11 +20,21 @@
 #include <sdf/sdf.hh>
 
 namespace gazebo {
+
+struct ControlResult {
+  ignition::math::Vector3d gripper1_vel{ignition::math::Vector3d::Zero};
+  ignition::math::Vector3d gripper2_vel{ignition::math::Vector3d::Zero};
+  ignition::math::Vector3d gripper1_force{ignition::math::Vector3d::Zero};
+  ignition::math::Vector3d gripper2_force{ignition::math::Vector3d::Zero};
+};
+
 class MultiLinkBotModelPlugin : public ModelPlugin {
  public:
   void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/) override;
 
   ~MultiLinkBotModelPlugin() override;
+
+  ControlResult UpdateControl();
 
   void OnUpdate();
 
@@ -32,7 +42,8 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   void OnJoy(sensor_msgs::JoyConstPtr msg);
 
-  void OnAction(link_bot_gazebo::MultiLinkBotPositionActionConstPtr msg);
+  bool OnPositionAction(link_bot_gazebo::LinkBotPositionActionRequest &req,
+                link_bot_gazebo::LinkBotPositionActionResponse &res);
 
   void OnVelocityAction(link_bot_gazebo::LinkBotVelocityActionConstPtr msg);
 
@@ -58,7 +69,9 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   double kP_vel_{0.0};
   double kI_vel_{0.0};
   double kD_vel_{0.0};
+  double max_vel_{1.0};
   double max_force_{1.0};
+  double max_vel_acc_{1.0};
   physics::LinkPtr gripper1_link_{nullptr};
   physics::LinkPtr gripper2_link_{nullptr};
   common::PID gripper1_x_pos_pid_;
@@ -72,16 +85,18 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   ignition::math::Vector3d gripper1_target_position_{0, 0, 0};
   ignition::math::Vector3d gripper2_target_position_{0, 0, 0};
   ignition::math::Vector3d gripper1_target_velocity_{0, 0, 0};
+  ignition::math::Vector3d gripper1_current_target_velocity_{0, 0, 0};
+  // TODO: implement acceleration for gripper 2
   ignition::math::Vector3d gripper2_target_velocity_{0, 0, 0};
   std::unique_ptr<ros::NodeHandle> ros_node_;
   ros::Subscriber joy_sub_;
-  ros::Subscriber action_sub_;
+  ros::ServiceServer pos_action_service_;
   ros::Subscriber velocity_action_sub_;
   ros::Subscriber action_mode_sub_;
   ros::Subscriber config_sub_;
   ros::ServiceServer state_service_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
-  std::string mode{"position"};
+  std::string mode{"velocity"};
 };
 }  // namespace gazebo

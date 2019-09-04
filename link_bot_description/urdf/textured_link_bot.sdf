@@ -206,10 +206,12 @@
             <kP_pos>50</kP_pos>
             <kI_pos>0.001</kI_pos>
             <kD_pos>0.0</kD_pos>
-            <kP_vel>75.0</kP_vel>
+            <kP_vel>20.0</kP_vel>
             <kI_vel>0.0</kI_vel>
             <kD_vel>0.0</kD_vel>
             <max_force>1.0</max_force>
+            <max_vel>0.15</max_vel>
+            <max_vel_acc>0.01</max_vel_acc>
             <gripper1_link>head</gripper1_link>
         </plugin>
         <pose frame=''>-0.45 0 0.01 0 -0 0</pose>

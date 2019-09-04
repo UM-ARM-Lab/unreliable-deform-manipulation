@@ -2,17 +2,17 @@ from time import sleep
 
 import numpy as np
 import rospy
-from colorama import Fore
-from std_msgs.msg import String
 import std_msgs
 import std_srvs
+from colorama import Fore
+from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest
-from link_bot_gazebo.msg import MultiLinkBotPositionAction, LinkBotConfiguration, Position2dEnable, Position2dAction, \
+from link_bot_gazebo.msg import LinkBotConfiguration, Position2dAction, \
     LinkBotVelocityAction, ObjectAction
 from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
-    CameraProjection, CameraProjectionRequest, ComputeSDF2Request
+    CameraProjection, CameraProjectionRequest, ComputeSDF2Request, LinkBotPositionAction
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.numpy_point import NumpyPoint
 
@@ -20,7 +20,6 @@ from visual_mpc.numpy_point import NumpyPoint
 class GazeboServices:
 
     def __init__(self):
-        self.position_action_pub = rospy.Publisher("/multi_link_bot_position_action", MultiLinkBotPositionAction, queue_size=10)
         self.velocity_action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
         self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10)
         self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
@@ -36,9 +35,11 @@ class GazeboServices:
         self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
         self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", std_srvs.srv.Empty)
+        self.position_action = rospy.ServiceProxy("/link_bot_position_action", LinkBotPositionAction)
         self.services_to_wait_for = [
             '/world_control',
             '/link_bot_state',
+            '/link_bot_position_action',
             '/sdf',
             '/sdf2',
             '/gazebo/get_physics_properties',

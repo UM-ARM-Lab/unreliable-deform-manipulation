@@ -13,7 +13,6 @@ add_message_files(
         LinkBotConfiguration.msg
         LinkBotVelocityAction.msg
         LinkBotForceAction.msg
-        MultiLinkBotPositionAction.msg
         WriteSDF.msg
         Position2dEnable.msg
         Position2dAction.msg
@@ -28,6 +27,7 @@ add_service_files(
         LinkBotState.srv
         ComputeSDF2.srv
         CameraProjection.srv
+        LinkBotPositionAction.srv
 )
 
 generate_messages(
