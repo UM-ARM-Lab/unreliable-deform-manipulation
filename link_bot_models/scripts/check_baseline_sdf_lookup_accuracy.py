@@ -12,7 +12,7 @@ from link_bot_pycommon.link_bot_sdf_utils import point_to_sdf_idx
 from video_prediction.datasets import dataset_utils
 
 
-def show_error(rope_config, action, sdf, x, y, predicted_violated, true_violated, signed_distance):
+def show_error(rope_config, action, image, sdf_image, x, y, predicted_violated, true_violated, signed_distance, vx, vy):
     fig, ax = plt.subplots()
     arena_size = 0.5
 
@@ -22,7 +22,8 @@ def show_error(rope_config, action, sdf, x, y, predicted_violated, true_violated
     ax.set_ylim([-arena_size, arena_size])
     ax.axis("equal")
 
-    ax.imshow(np.flipud(sdf), extent=[-0.5, 0.5, -0.5, 0.5], zorder=0)
+    ax.imshow(image, extent=[-0.53, 0.53, -0.53, 0.53], zorder=0)
+    ax.imshow(sdf_image, extent=[-0.5, 0.5, -0.5, 0.5], zorder=0, alpha=0.5)
 
     plt.quiver(rope_config[4], rope_config[5], action[0], action[1], zorder=4)
 
@@ -31,7 +32,7 @@ def show_error(rope_config, action, sdf, x, y, predicted_violated, true_violated
     plt.scatter(x, y, c='w', s=100, zorder=2)
     plt.scatter(rope_config[4], rope_config[5], c='r' if true_violated else 'g', marker='*', s=150, zorder=3, linewidths=0.1,
                 edgecolors='k')
-    plt.title(signed_distance)
+    plt.title("{} {:.3f},{:.3f} {:.3f},{:.3f}".format(signed_distance, action[0], action[1], vx, vy))
     plt.show()
 
 
@@ -44,6 +45,7 @@ def main():
     parser.add_argument('dataset_hparams_dict')
     parser.add_argument('--distance-threshold', type=float, default=0.02)
     parser.add_argument('--cheat', action='store_true')
+    parser.add_argument('--show', action='store_true')
 
     args = parser.parse_args()
 
@@ -77,15 +79,17 @@ def main():
             break
 
         rope_configurations = data['rope_configurations'].squeeze()
-        sdfs = np.transpose(data['sdf'].squeeze(), [0, 2, 1])
+        sdfs = data['sdf'].squeeze()
         resolutions = data['sdf_resolution'].squeeze()
+        images = data['images'].squeeze()
         origins = data['sdf_origin'].squeeze()
         constraints = data['constraints'].squeeze()
         actions = data['actions'].squeeze()
+        post_action_velocities = data['post_action_velocity'].squeeze()
 
-        zipped = zip(constraints, sdfs, rope_configurations, actions, resolutions, origins)
-        for true_violated, upside_down_sdf, rope_config, action, resolution, origin in zipped:
-            sdf = np.flipud(upside_down_sdf)
+        zipped = zip(constraints, sdfs, rope_configurations, actions, resolutions, origins, images, post_action_velocities)
+        for true_violated, sdf, rope_config, action, resolution, origin, image, vel in zipped:
+            sdf_image = np.flipud(sdf.T) > 0
             x = rope_config[4]
             y = rope_config[5]
             if args.cheat:
@@ -106,12 +110,16 @@ def main():
                 else:
                     incorrect += 1
                     fp += 1
-                    show_error(rope_config, action, sdf, x, y, predicted_violated, true_violated, signed_distance)
+                    if args.show:
+                        show_error(rope_config, action, image, sdf_image, x, y, predicted_violated, true_violated, signed_distance,
+                                   vel[0], vel[1])
             else:
                 if true_violated:
                     incorrect += 1
                     fn += 1
-                    show_error(rope_config, action, sdf, x, y, predicted_violated, true_violated, signed_distance)
+                    # if args.show:
+                    #     show_error(rope_config, action, image, sdf_image, x, y, predicted_violated, true_violated, signed_distance,
+                    #                vel[0], vel[1])
                 else:
                     correct += 1
                     tn += 1
@@ -119,6 +127,7 @@ def main():
     accuracy = correct / (correct + incorrect)
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
+    print(tp, tn, fp, fn)
     print("accuracy: {:5.3f}".format(accuracy))
     print("precision: {:5.3f}".format(precision))
     print("recall: {:5.3f}".format(recall))

@@ -53,52 +53,6 @@ def train(args):
 
     rope_configurations = data['rope_configurations']
     actions = data['actions']
-    # sdfs = data['sdf'][:, 0].squeeze()
-    # sdfs = sdfs > 0
-
-    ##########################################################################
-    import matplotlib.pyplot as plt
-    arrow_width = 0.02
-    arena_size = 0.5
-    fig = plt.figure(figsize=(10, 10))
-    ax = plt.gca()
-
-    line = plot_rope_configuration(ax, rope_configurations[idx, 0])
-    before = ax.plot(x_0_xs, x_0_ys, color='red', zorder=2)[0]
-
-    arrow = plt.Arrow(x_0[4], x_0[5], actions[0, 0, 0], actions[0, 0, 1], width=arrow_width, zorder=3)
-    patch = ax.add_patch(arrow)
-
-    ax.set_title("0")
-
-    x_0 = rope_configurations[0, 1]
-    x_0_xs = [x_0[0], x_0[2], x_0[4]]
-    x_0_ys = [x_0[1], x_0[3], x_0[5]]
-
-    plt.xlabel("x (m)")
-    plt.ylabel("y (m)")
-    plt.xlim([-arena_size, arena_size])
-    plt.ylim([-arena_size, arena_size])
-
-    def update(i):
-        nonlocal patch
-
-        x_i = rope_configurations[traj_idx, t]
-        x_i_xs = [x_i[0], x_i[2], x_i[4]]
-        x_i_ys = [x_i[1], x_i[3], x_i[5]]
-        before.set_xdata(x_i_xs)
-        before.set_ydata(x_i_ys)
-
-        patch.remove()
-        arrow = plt.Arrow(x_i[4], x_i[5], actions[traj_idx, t, 0], actions[traj_idx, t, 1], width=arrow_width, zorder=3)
-        patch = ax.add_patch(arrow)
-
-        ax.set_title("{} {} ".format(traj_idx, t))
-
-    anim = FuncAnimation(fig, update, frames=rope_configurations.shape[0] * rope_configurations.shape[1], interval=1000, repeat=False)
-    plt.show()
-    return
-    ##########################################################################
 
     fwd_train_data = data_reformatting.format_forward_data_gz_tfrecords(rope_configurations, actions)
     fwd_train_x = fwd_train_data[2]
@@ -107,10 +61,6 @@ def train(args):
     fwd_val_data = data_reformatting.format_forward_data_gz_tfrecords(rope_configurations, actions)
     fwd_val_x = fwd_val_data[2]
     fwd_val_y = fwd_val_data[1]
-
-    import matplotlib.pyplot as plt
-    anim = link_bot_gp.animate_training_data(rope_configurations, actions, sdfs, arena_size=0.5, interval=2000)
-    plt.show()
 
     # Train
     ###########################################################################
