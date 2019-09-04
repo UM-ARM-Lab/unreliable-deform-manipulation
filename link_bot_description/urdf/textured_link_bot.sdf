@@ -24,8 +24,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.05</mu>
-                            <mu2>0.05</mu2>
+                            <mu>0.10</mu>
+                            <mu2>0.10</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -73,8 +73,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.05</mu>
-                            <mu2>0.05</mu2>
+                            <mu>0.10</mu>
+                            <mu2>0.10</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -116,7 +116,7 @@
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>1</damping>
+                    <damping>0</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -146,8 +146,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.05</mu>
-                            <mu2>0.05</mu2>
+                            <mu>0.10</mu>
+                            <mu2>0.10</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -188,7 +188,7 @@
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>1</damping>
+                    <damping>0</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>

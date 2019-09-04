@@ -67,16 +67,14 @@ def generate_traj(args, services, env_idx):
             gripper1_target_x, gripper1_target_y = sample_goal(head_point)
             if args.verbose:
                 print('gripper target:', gripper1_target_x, gripper1_target_y)
-                random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y, marker_size=0.1)
+                random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y, marker_size=0.05)
 
         image = np.copy(np.frombuffer(state.camera_image.data, dtype=np.uint8)).reshape([64, 64, 3])
 
         # compute the velocity to move in that direction
-        velocity = np.minimum(np.maximum(np.random.randn() * 0.1 + 0.10, 0), 0.15)
+        velocity = np.minimum(np.maximum(np.random.randn() * 0.07 + 0.10, 0), 0.15)
         gripper1_target_vx = velocity if gripper1_target_x > head_point.x else -velocity
         gripper1_target_vy = velocity if gripper1_target_y > head_point.y else -velocity
-        target_velocity = np.array([gripper1_target_vx, gripper1_target_vy])
-        target_speed = np.linalg.norm(target_velocity)
 
         # publish the pull command, which will return the target velocity
         action_msg.gripper1_velocity.x = gripper1_target_vx
@@ -89,15 +87,20 @@ def generate_traj(args, services, env_idx):
         services.world_control(step)  # this will block until stepping is complete
 
         post_action_state = services.get_state(state_req)
-        current_velocity = [post_action_state.gripper1_velocity.x, post_action_state.gripper1_velocity.y]
-        speed = np.linalg.norm(current_velocity)
-        if abs(target_speed - speed) > 0.025:  # This threshold must be tuned.
+        stopped = 0.025  # This threshold must be tuned.
+        if (abs(post_action_state.gripper1_velocity.x) < stopped < abs(gripper1_target_vx)) \
+                or (abs(post_action_state.gripper1_velocity.y) < stopped < abs(gripper1_target_vy)):
             at_constraint_boundary = True
         else:
             at_constraint_boundary = False
 
         if args.verbose:
-            print("{} {:0.4f} {:0.4f} {}".format(t, abs(speed - target_speed), velocity, at_constraint_boundary))
+            print("{} {:0.4f} {:0.4f} {:0.4f} {:0.4f} {}".format(t,
+                                                                 gripper1_target_vx,
+                                                                 gripper1_target_vy,
+                                                                 post_action_state.gripper1_velocity.x,
+                                                                 post_action_state.gripper1_velocity.y,
+                                                                 at_constraint_boundary))
 
         combined_constraint_labels[t, 0] = at_constraint_boundary
 
@@ -119,6 +122,8 @@ def generate_traj(args, services, env_idx):
         feature['{}/image_aux1/encoded'.format(t)] = bytes_feature(image.tobytes())
         feature['{}/endeffector_pos'.format(t)] = float_feature(np.array([head_point.x, head_point.y]))
         feature['{}/1/velocity'.format(t)] = float_feature(np.array([state.gripper1_velocity.x, state.gripper1_velocity.y]))
+        feature['{}/1/post_action_velocity'.format(t)] = float_feature(np.array([post_action_state.gripper1_velocity.x,
+                                                                                 post_action_state.gripper1_velocity.y]))
         feature['{}/1/force'.format(t)] = float_feature(np.array([state.gripper1_force.x, state.gripper1_force.y]))
         feature['{}/rope_configuration'.format(t)] = float_feature(rope_configuration.flatten())
         feature['{}/action'.format(t)] = float_feature(np.array([gripper1_target_vx, gripper1_target_vy]))

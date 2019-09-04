@@ -51,11 +51,11 @@ def main():
         res = input_results['sdf_resolution'].squeeze()
         origin = input_results['sdf_origin'].squeeze()
         rope_config = input_results['rope_configurations'].squeeze()
+        velocity = input_results['post_action_velocity'].squeeze()
         action = input_results['actions'].squeeze()
         vx, vy = action
         constraint = bool(input_results['constraints'].squeeze())
         extent = sdf_bounds(sdf, res, origin)
-        speed = np.linalg.norm(action)
         occupancy_image = np.flipud(input_results['sdf'].squeeze().T) > 0
 
         color = 'r' if constraint else 'g'
@@ -76,7 +76,7 @@ def main():
         plt.plot(xs, ys, zorder=2, c='k')
         plt.scatter(rope_config[4], rope_config[5], zorder=3, c=color)
         plt.quiver(rope_config[4], rope_config[5], vx, vy, zorder=2, color='orange', scale=0.75, alpha=0.5)
-        plt.title("speed: {:0.2f} m/s, rope config {}".format(speed, rope_config))
+        plt.title("commanded: {:.3f},{:.3f} m/s, measured {:.3f},{:.3f} m/s".format(action[0], action[1], velocity[0], velocity[1]))
         plt.xlim([-1, 1])
         plt.ylim([-1, 1])
     plt.show()
