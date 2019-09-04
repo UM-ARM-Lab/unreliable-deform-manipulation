@@ -127,7 +127,6 @@ def main():
     accuracy = correct / (correct + incorrect)
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
-    print(tp, tn, fp, fn)
     print("accuracy: {:5.3f}".format(accuracy))
     print("precision: {:5.3f}".format(precision))
     print("recall: {:5.3f}".format(recall))
