@@ -4,6 +4,8 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
+# tf.enable_eager_execution()
+
 from link_bot_models import base_model_runner
 from link_bot_models.simple_cnn_model import SimpleCNNModelRunner
 from link_bot_pycommon import experiments_util
@@ -16,24 +18,24 @@ def train(args):
     else:
         log_path = None
 
-    train_dataset, train_iterator, steps_per_epoch = dataset_utils.get_iterators(args.input_dir,
-                                                                                 'link_bot',
-                                                                                 args.dataset_hparams_dict,
-                                                                                 args.dataset_hparams,
-                                                                                 mode='train',
-                                                                                 epochs=args.epochs,
-                                                                                 seed=args.seed,
-                                                                                 batch_size=args.batch_size,
-                                                                                 balance_constraints_label=args.balance)
-    val_dataset, val_iterator, _ = dataset_utils.get_iterators(args.input_dir,
-                                                               'link_bot',
-                                                               args.dataset_hparams_dict,
-                                                               args.dataset_hparams,
-                                                               mode='val',
-                                                               epochs=1,
-                                                               seed=args.seed,
-                                                               batch_size=args.batch_size,
-                                                               balance_constraints_label=args.balance)
+    train_dataset, train_tf_dataset = dataset_utils.get_dataset(args.input_dir,
+                                                                'link_bot',
+                                                                args.dataset_hparams_dict,
+                                                                args.dataset_hparams,
+                                                                mode='train',
+                                                                epochs=args.epochs,
+                                                                seed=args.seed,
+                                                                batch_size=args.batch_size,
+                                                                balance_constraints_label=args.balance)
+    val_dataset, val_tf_dataset = dataset_utils.get_dataset(args.input_dir,
+                                                            'link_bot',
+                                                            args.dataset_hparams_dict,
+                                                            args.dataset_hparams,
+                                                            mode='val',
+                                                            epochs=None,
+                                                            seed=args.seed,
+                                                            batch_size=args.batch_size,
+                                                            balance_constraints_label=args.balance)
 
     # Now that we have the input tensors, so we can construct our Keras model
     if args.checkpoint:
@@ -56,7 +58,7 @@ def train(args):
         model = SimpleCNNModelRunner(args_dict)
 
     try:
-        model.train(train_dataset, train_iterator, val_iterator, log_path, args)
+        model.train(train_dataset, train_tf_dataset, val_dataset, val_tf_dataset, log_path, args)
     except KeyboardInterrupt:
         print("Interrupted.")
         pass

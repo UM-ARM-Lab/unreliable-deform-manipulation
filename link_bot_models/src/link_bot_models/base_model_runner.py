@@ -146,7 +146,7 @@ class BaseModelRunner:
         }
         return metadata
 
-    def train(self, train_dataset, train_iterator, val_iterator, log_path, args):
+    def train(self, train_dataset, train_tf_dataset, val_dataset, val_tf_dataset, log_path, args):
         callbacks = []
         if args.log is not None:
             full_log_path = os.path.join("log_data", log_path)
@@ -187,21 +187,20 @@ class BaseModelRunner:
             if args.debug:
                 callbacks.append(DebugCallback())
 
-        if args.validation_steps <= 0:
-            validation_steps = None
-        else:
-            validation_steps = args.validation_steps
+        steps_per_epoch = train_dataset.num_examples_per_epoch() // args.batch_size
+        val_steps_per_epoch = val_dataset.num_examples_per_epoch() // args.batch_size
 
-        print(train_iterator.get_next())
-        print(val_iterator.get_next())
-        self.keras_model.fit(x=train_iterator,
+        if args.validation_steps <= 0:
+            val_tf_dataset = None
+            val_steps_per_epoch = None
+
+        self.keras_model.fit(x=train_tf_dataset,
                              y=None,
                              callbacks=callbacks,
                              initial_epoch=self.initial_epoch,
-                             # steps_per_epoch=(train_dataset.num_examples_per_epoch() - args.validation_steps) // args.batch_size,
-                             steps_per_epoch=1,  # FIXME: debugging
-                             validation_data=val_iterator,
-                             validation_steps=validation_steps,
+                             steps_per_epoch=steps_per_epoch,
+                             validation_data=val_tf_dataset,
+                             validation_steps=val_steps_per_epoch,
                              epochs=args.epochs,
                              verbose=True)
 
