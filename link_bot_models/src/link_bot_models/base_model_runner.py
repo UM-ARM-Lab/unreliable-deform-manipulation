@@ -81,7 +81,6 @@ def base_parser():
     train_parser.add_argument("--val-acc-threshold", type=float, default=None)
 
     eval_parser.add_argument("input_dir", help="directory of tfrecords")
-    eval_parser.add_argument("dataset", type=str, help="dataset class name")
     eval_parser.add_argument("dataset_hparams_dict", type=str, help="json file of hyperparameters")
     eval_parser.add_argument("checkpoint")
     eval_parser.add_argument("--dataset-hparams", type=str, help="a string of comma separated list of dataset hyperparameters")
@@ -204,8 +203,9 @@ class BaseModelRunner:
                              epochs=args.epochs,
                              verbose=True)
 
-    def evaluate(self, steps_per_epoch, display=True):
-        metrics = self.keras_model.evaluate(steps=steps_per_epoch)
+    def evaluate(self, args, dataset, tf_dataset, display=True):
+        steps_per_epoch = dataset.num_examples_per_epoch() // args.batch_size
+        metrics = self.keras_model.evaluate(tf_dataset, steps=steps_per_epoch)
         if display:
             print("Validation:")
             for name, metric in zip(self.keras_model.metrics_names, metrics):
@@ -232,16 +232,16 @@ class BaseModelRunner:
     def evaluate_main(cls, args):
         model = cls.load(args.checkpoint)
 
-        test_dataset, inputs, steps_per_epoch = dataset_utils.get_inputs(args.input_dir,
-                                                                         'link_bot',
-                                                                         args.dataset_hparams_dict,
-                                                                         args.dataset_hparams,
-                                                                         mode='test',
-                                                                         epochs=1,
-                                                                         seed=args.seed,
-                                                                         batch_size=1)
+        dataset, tf_dataset = dataset_utils.get_dataset(args.input_dir,
+                                                        'link_bot',
+                                                        args.dataset_hparams_dict,
+                                                        args.dataset_hparams,
+                                                        mode='val',
+                                                        epochs=1,
+                                                        seed=args.seed,
+                                                        batch_size=1)
 
-        return model.evaluate(steps_per_epoch=steps_per_epoch)
+        return model.evaluate(args, dataset, tf_dataset)
 
     @classmethod
     def show(cls, args):
