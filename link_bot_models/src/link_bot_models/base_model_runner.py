@@ -76,7 +76,7 @@ def base_parser():
     train_parser.add_argument("--checkpoint", "-c", help="restart from this *.ckpt name")
     train_parser.add_argument("--debug", action='store_true')
     train_parser.add_argument("--balance", action='store_true')
-    train_parser.add_argument("--validation-steps", type=int, default=-1)
+    train_parser.add_argument("--validation", action='store_true')
     train_parser.add_argument("--early-stopping", action='store_true')
     train_parser.add_argument("--val-acc-threshold", type=float, default=None)
 
@@ -171,7 +171,7 @@ class BaseModelRunner:
 
             val_acc_threshold = args.val_acc_threshold
             if val_acc_threshold is not None:
-                if args.validation_steps:
+                if args.validation:
                     raise ValueError("Validation dataset must be provided in order to use this monitor")
                 if val_acc_threshold < 0 or val_acc_threshold > 1:
                     raise ValueError("val_acc_threshold {} must be between 0 and 1 inclusive".format(val_acc_threshold))
@@ -179,7 +179,7 @@ class BaseModelRunner:
                 callbacks.append(stop_at_accuracy)
 
             if args.early_stopping:
-                if args.validation_steps:
+                if args.validation:
                     raise ValueError("Validation dataset must be provided in order to use this monitor")
                 early_stopping = EarlyStopping(monitor='val_acc', patience=5, min_delta=0.001, verbose=args.verbose)
                 callbacks.append(early_stopping)
@@ -190,7 +190,7 @@ class BaseModelRunner:
         steps_per_epoch = train_dataset.num_examples_per_epoch() // args.batch_size
         val_steps_per_epoch = val_dataset.num_examples_per_epoch() // args.batch_size
 
-        if args.validation_steps <= 0:
+        if not args.validation:
             val_tf_dataset = None
             val_steps_per_epoch = None
 

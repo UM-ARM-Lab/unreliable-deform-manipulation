@@ -43,15 +43,11 @@ def train(args):
     else:
         args_dict = {
             'sdf_shape': train_dataset.hparams.sdf_shape,
-            'conv_filters_1': [
+            'conv_filters': [
                 (32, (5, 5)),
                 (32, (5, 5)),
             ],
-            'conv_filters_2': [
-                (16, (3, 3)),
-                (16, (3, 3)),
-            ],
-            'fc_layer_sizes': [256, 256],
+            'fc_layer_sizes': [128, 128],
             'N': train_dataset.hparams.rope_config_dim,
         }
         args_dict.update(base_model_runner.make_args_dict(args))
