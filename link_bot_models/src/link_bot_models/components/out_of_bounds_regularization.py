@@ -1,9 +1,8 @@
 import numpy as np
 import tensorflow as tf
-from keras.regularizers import Regularizer
 
 
-class OutOfBoundsRegularizer(Regularizer):
+class OutOfBoundsRegularizer(tf.keras.regularizers.Regularizer):
 
     def __init__(self, sdf_extent, beta):
         self.sdf_extent = sdf_extent

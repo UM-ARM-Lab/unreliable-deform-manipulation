@@ -17,21 +17,23 @@ def train(args):
         log_path = None
 
     train_dataset, train_inputs = dataset_utils.get_inputs(args.input_dir,
-                                                           args.dataset,
+                                                           'link_bot',
                                                            args.dataset_hparams_dict,
                                                            args.dataset_hparams,
                                                            mode='train',
                                                            epochs=args.epochs,
                                                            seed=args.seed,
-                                                           batch_size=args.batch_size)
+                                                           batch_size=args.batch_size,
+                                                           balance_constraints_label=args.balance)
     val_dataset, val_inputs = dataset_utils.get_inputs(args.input_dir,
-                                                       args.dataset,
+                                                       'link_bot',
                                                        args.dataset_hparams_dict,
                                                        args.dataset_hparams,
                                                        mode='val',
                                                        epochs=1,
                                                        seed=args.seed,
-                                                       batch_size=args.batch_size)
+                                                       batch_size=args.batch_size,
+                                                       balance_constraints_label=args.balance)
 
     # Now that we have the input tensors, so we can construct our Keras model
     if args.checkpoint:

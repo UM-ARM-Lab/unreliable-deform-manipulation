@@ -1,7 +1,6 @@
-from keras.layers import Layer
+import tensorflow as tf
 
-
-class BiasLayer(Layer):
+class BiasLayer(tf.keras.layers.Layer):
 
     def __init__(self, initializer='uniform', **kwargs):
         super(BiasLayer, self).__init__(**kwargs)

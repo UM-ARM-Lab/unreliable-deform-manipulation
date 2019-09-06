@@ -1,8 +1,7 @@
 import tensorflow as tf
-from keras.layers import Layer
 
 
-class DistanceMatrix(Layer):
+class DistanceMatrix(tf.keras.layers.Layer):
 
     def __init__(self, **kwargs):
         super(DistanceMatrix, self).__init__(**kwargs)

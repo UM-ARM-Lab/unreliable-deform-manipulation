@@ -44,6 +44,7 @@ def main():
     parser.add_argument('indir')
     parser.add_argument('dataset_hparams_dict')
     parser.add_argument('--distance-threshold', type=float, default=0.02)
+    parser.add_argument('--balance', action='store_true')
     parser.add_argument('--cheat', action='store_true')
     parser.add_argument('--show', action='store_true')
 
@@ -57,14 +58,15 @@ def main():
     sess = gpf.get_default_session()
 
     dataset, train_inputs, steps_per_epoch = dataset_utils.get_inputs(args.indir,
-                                                                      'link_bot_video',
+                                                                      'link_bot',
                                                                       args.dataset_hparams_dict,
-                                                                      'sequence_length=100',
+                                                                      '',
                                                                       mode='train',
                                                                       epochs=1,
                                                                       seed=0,
                                                                       batch_size=1,
-                                                                      shuffle=False)
+                                                                      shuffle=False,
+                                                                      balance_constraints_label=args.balance)
 
     incorrect = 0
     correct = 0
@@ -78,51 +80,49 @@ def main():
         except tf.errors.OutOfRangeError:
             break
 
-        rope_configurations = data['rope_configurations'].squeeze()
-        sdfs = data['sdf'].squeeze()
-        resolutions = data['sdf_resolution'].squeeze()
-        images = data['images'].squeeze()
-        origins = data['sdf_origin'].squeeze()
-        constraints = data['constraints'].squeeze()
-        actions = data['actions'].squeeze()
-        post_action_velocities = data['post_action_velocity'].squeeze()
+        rope_configuration = data['rope_configurations'].squeeze()
+        sdf = data['sdf'].squeeze()
+        resolution = data['sdf_resolution'].squeeze()
+        image = data['images'].squeeze()
+        origin = data['sdf_origin'].squeeze()
+        constraint = data['constraints'].squeeze()
+        action = data['actions'].squeeze()
+        post_action_velocity = data['post_action_velocity'].squeeze()
 
-        zipped = zip(constraints, sdfs, rope_configurations, actions, resolutions, origins, images, post_action_velocities)
-        for true_violated, sdf, rope_config, action, resolution, origin, image, vel in zipped:
-            sdf_image = np.flipud(sdf.T) > 0
-            x = rope_config[4]
-            y = rope_config[5]
-            if args.cheat:
-                dx = action[0] * dataset.hparams.dt
-                dy = action[1] * dataset.hparams.dt
-                x += dx
-                y += dy
-                x = min(max(x, -0.48), 0.48)
-                y = min(max(y, -0.48), 0.48)
-            row, col = point_to_sdf_idx(x, y, resolution=resolution, origin=origin)
-            signed_distance = sdf[row, col]
-            predicted_violated = signed_distance < args.distance_threshold
+        sdf_image = np.flipud(sdf.T) > 0
+        x = rope_configuration[4]
+        y = rope_configuration[5]
+        if args.cheat:
+            dx = action[0] * dataset.hparams.dt
+            dy = action[1] * dataset.hparams.dt
+            x += dx
+            y += dy
+            x = min(max(x, -0.48), 0.48)
+            y = min(max(y, -0.48), 0.48)
+        row, col = point_to_sdf_idx(x, y, resolution=resolution, origin=origin)
+        signed_distance = sdf[row, col]
+        predicted_violated = signed_distance < args.distance_threshold
 
-            if predicted_violated:
-                if true_violated:
-                    correct += 1
-                    tp += 1
-                else:
-                    incorrect += 1
-                    fp += 1
-                    if args.show:
-                        show_error(rope_config, action, image, sdf_image, x, y, predicted_violated, true_violated, signed_distance,
-                                   vel[0], vel[1])
+        if predicted_violated:
+            if constraint:
+                correct += 1
+                tp += 1
             else:
-                if true_violated:
-                    incorrect += 1
-                    fn += 1
-                    # if args.show:
-                    #     show_error(rope_config, action, image, sdf_image, x, y, predicted_violated, true_violated, signed_distance,
-                    #                vel[0], vel[1])
-                else:
-                    correct += 1
-                    tn += 1
+                incorrect += 1
+                fp += 1
+                if args.show:
+                    show_error(rope_configuration, action, image, sdf_image, x, y, predicted_violated, constraint,
+                               signed_distance, post_action_velocity[0], post_action_velocity[1])
+        else:
+            if constraint:
+                incorrect += 1
+                fn += 1
+                if args.show:
+                    show_error(rope_configuration, action, image, sdf_image, x, y, predicted_violated, constraint,
+                               signed_distance, post_action_velocity[0], post_action_velocity[1])
+            else:
+                correct += 1
+                tn += 1
 
     accuracy = correct / (correct + incorrect)
     precision = tp / (tp + fp)

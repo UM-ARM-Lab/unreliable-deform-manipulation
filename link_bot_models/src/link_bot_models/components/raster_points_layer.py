@@ -1,9 +1,8 @@
 import numpy as np
 import tensorflow as tf
-from keras.layers import Layer
 
 
-class RasterPoints(Layer):
+class RasterPoints(tf.keras.layers.Layer):
 
     def __init__(self, sdf_shape, **kwargs):
         super(RasterPoints, self).__init__(**kwargs)
@@ -28,7 +27,7 @@ class RasterPoints(Layer):
         col_indeces = indeces[:, :, 0].flatten()
         point_channel_indeces = np.tile(np.arange(self.n_points), batch_size)
         if np.any(rope_configurations > 0.5) or np.any(rope_configurations < -0.5):
-            print(rope_configurations)
+            raise ValueError(np.array2string(rope_configurations))
         rope_images[batch_indeces, row_indeces, col_indeces, point_channel_indeces] = 1
         return rope_images
 
@@ -39,7 +38,10 @@ class RasterPoints(Layer):
         """
         x, resolution, origin = inputs
         points = tf.reshape(x, [-1, self.n_points, 2])
-        return tf.py_func(self.raster_points, [points, resolution, origin], tf.float32, name='raster_points')
+        rope_image = tf.py_func(self.raster_points, [points, resolution, origin], tf.float32, name='raster_points')
+        input_shapes = [input.shape for input in inputs]
+        rope_image.set_shape(self.compute_output_shape(input_shapes))
+        return rope_image
 
     def get_config(self):
         config = {}

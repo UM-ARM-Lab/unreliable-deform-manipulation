@@ -1,4 +1,4 @@
-from keras.layers import Conv2D, MaxPool2D, Flatten, Dense
+from tensorflow.keras import layers
 
 
 def simple_cnn_layer(conv_filters, use_bias=True):
@@ -6,8 +6,8 @@ def simple_cnn_layer(conv_filters, use_bias=True):
     for conv_filter in conv_filters:
         n_filters = conv_filter[0]
         filter_size = conv_filter[1]
-        conv_layers.append((Conv2D(n_filters, filter_size, activation='relu', use_bias=use_bias),
-                            MaxPool2D(2)))
+        conv_layers.append((layers.Conv2D(n_filters, filter_size, activation='relu', use_bias=use_bias),
+                            layers.MaxPool2D(2)))
 
     def forward(input_image):
         conv_h = input_image
@@ -24,14 +24,14 @@ def simple_cnn_relu_layer(conv_filters, fc_layer_sizes, use_bias=True):
     for conv_filter in conv_filters:
         n_filters = conv_filter[0]
         filter_size = conv_filter[1]
-        conv_layers.append((Conv2D(n_filters, filter_size, activation='relu', use_bias=use_bias),
-                            MaxPool2D(2)))
+        conv_layers.append((layers.Conv2D(n_filters, filter_size, activation='relu', use_bias=use_bias),
+                            layers.MaxPool2D(2)))
 
-    flatten = Flatten()
+    flatten = layers.Flatten()
 
     dense_layers = []
     for fc_layer_size in fc_layer_sizes:
-        dense_layers.append(Dense(fc_layer_size, activation='relu'))
+        dense_layers.append(layers.Dense(fc_layer_size, activation='relu'))
 
     def forward(input_image):
         conv_h = input_image

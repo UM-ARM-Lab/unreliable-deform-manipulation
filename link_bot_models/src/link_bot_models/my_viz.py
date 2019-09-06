@@ -1,9 +1,9 @@
 import os
 
 import pydot
-from keras.layers.wrappers import Wrapper
-from keras.models import Sequential
-from keras.utils import vis_utils
+from tensorflow.keras.models import Sequential
+from tensorflow.python.keras.layers.wrappers import Wrapper
+from tensorflow.python.keras.utils import vis_utils
 
 
 def model_to_dot(model,

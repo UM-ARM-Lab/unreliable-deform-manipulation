@@ -12,6 +12,9 @@ def fwd_model_error_metrics(my_model, test_x, test_y):
     compute the euclidean distance for each node in pred_y[i] to each node in test_y[i],
     averaged over all i using the max likelihood prediction
     """
+    tail_disp = np.linalg.norm(test_y[:, 0:2], axis=1)
+    head_disp = np.linalg.norm(test_y[:, 4:6], axis=1)
+
     pred_delta_x_mean, pred_delta_x_sigma = my_model.model.predict_y(test_x)
     tail_error = np.linalg.norm(pred_delta_x_mean[:, 0:2] - test_y[:, 0:2], axis=1)
     mid_error = np.linalg.norm(pred_delta_x_mean[:, 2:4] - test_y[:, 2:4], axis=1)
@@ -21,7 +24,10 @@ def fwd_model_error_metrics(my_model, test_x, test_y):
     return np.array([make_row('tail position error (m)', tail_error),
                      make_row('mid position error (m)', mid_error),
                      make_row('head position error (m)', head_error),
-                     make_row('total position error (m)', total_node_error)], dtype=np.object)
+                     make_row('total position error (m)', total_node_error),
+                     make_row("tail position displacement (m)", tail_disp),
+                     make_row("head position displacement (m)", head_disp),
+                     ], dtype=np.object)
 
 
 def inv_model_error_metrics(my_model, test_x, test_y):

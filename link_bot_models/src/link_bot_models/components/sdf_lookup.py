@@ -1,5 +1,5 @@
 import tensorflow as tf
-from keras.layers import Layer
+from tensorflow.keras import layers
 
 
 def ravel_2d(indeces_batch, cols):
@@ -59,7 +59,7 @@ def sdf_func(inputs, sdf_shape):
     return sdf_value, __sdf_gradient_func
 
 
-class SDFLookup(Layer):
+class SDFLookup(tf.keras.layers.Layer):
 
     def __init__(self, sdf_shape, **kwargs):
         self.sdf_shape = sdf_shape

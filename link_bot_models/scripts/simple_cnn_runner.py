@@ -16,28 +16,28 @@ def train(args):
     else:
         log_path = None
 
-    train_dataset, train_inputs, steps_per_epoch = dataset_utils.get_inputs(args.input_dir,
-                                                                            args.dataset,
-                                                                            args.dataset_hparams_dict,
-                                                                            args.dataset_hparams,
-                                                                            mode='train',
-                                                                            epochs=args.epochs,
-                                                                            seed=args.seed,
-                                                                            batch_size=args.batch_size,
-                                                                            balance_constraints_label=True)
-    val_dataset, val_inputs, _ = dataset_utils.get_inputs(args.input_dir,
-                                                          args.dataset,
-                                                          args.dataset_hparams_dict,
-                                                          args.dataset_hparams,
-                                                          mode='val',
-                                                          epochs=1,
-                                                          seed=args.seed,
-                                                          batch_size=args.batch_size,
-                                                          balance_constraints_label=True)
+    train_dataset, train_iterator, steps_per_epoch = dataset_utils.get_iterators(args.input_dir,
+                                                                                 'link_bot',
+                                                                                 args.dataset_hparams_dict,
+                                                                                 args.dataset_hparams,
+                                                                                 mode='train',
+                                                                                 epochs=args.epochs,
+                                                                                 seed=args.seed,
+                                                                                 batch_size=args.batch_size,
+                                                                                 balance_constraints_label=args.balance)
+    val_dataset, val_iterator, _ = dataset_utils.get_iterators(args.input_dir,
+                                                               'link_bot',
+                                                               args.dataset_hparams_dict,
+                                                               args.dataset_hparams,
+                                                               mode='val',
+                                                               epochs=1,
+                                                               seed=args.seed,
+                                                               batch_size=args.batch_size,
+                                                               balance_constraints_label=args.balance)
 
     # Now that we have the input tensors, so we can construct our Keras model
     if args.checkpoint:
-        train_model = SimpleCNNModelRunner.load(args.checkpoint, train_inputs, steps_per_epoch)
+        model = SimpleCNNModelRunner.load(args.checkpoint)
     else:
         args_dict = {
             'sdf_shape': train_dataset.hparams.sdf_shape,
@@ -53,11 +53,10 @@ def train(args):
             'N': train_dataset.hparams.rope_config_dim,
         }
         args_dict.update(base_model_runner.make_args_dict(args))
-        train_model = SimpleCNNModelRunner(args_dict, train_inputs, steps_per_epoch)
-        val_model = SimpleCNNModelRunner(args_dict, val_inputs, steps_per_epoch)
+        model = SimpleCNNModelRunner(args_dict)
 
     try:
-        train_model.train(train_dataset, log_path, args)
+        model.train(train_dataset, train_iterator, val_iterator, log_path, args)
     except KeyboardInterrupt:
         print("Interrupted.")
         pass
