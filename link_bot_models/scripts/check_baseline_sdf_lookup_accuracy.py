@@ -76,18 +76,18 @@ def main():
     tn = 0
     while True:
         try:
-            data = sess.run(train_inputs)
+            x, y = sess.run(train_inputs)
         except tf.errors.OutOfRangeError:
             break
 
-        rope_configuration = data['rope_configurations'].squeeze()
-        sdf = data['sdf'].squeeze()
-        resolution = data['sdf_resolution'].squeeze()
-        image = data['images'].squeeze()
-        origin = data['sdf_origin'].squeeze()
-        constraint = data['constraints'].squeeze()
-        action = data['actions'].squeeze()
-        post_action_velocity = data['post_action_velocity'].squeeze()
+        rope_configuration = x['rope_configurations'].squeeze()
+        sdf = x['sdf'].squeeze()
+        resolution = x['sdf_resolution'].squeeze()
+        image = x['images'].squeeze()
+        origin = x['sdf_origin'].squeeze()
+        action = x['actions'].squeeze()
+        post_action_velocity = x['post_action_velocity'].squeeze()
+        constraint = y['constraints'].squeeze()
 
         sdf_image = np.flipud(sdf.T) > 0
         x = rope_configuration[4]
