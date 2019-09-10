@@ -12,9 +12,14 @@ from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysi
 from link_bot_gazebo.msg import LinkBotConfiguration, Position2dAction, \
     LinkBotVelocityAction, ObjectAction
 from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
-    CameraProjection, CameraProjectionRequest, ComputeSDF2Request, LinkBotPositionAction
+    InverseCameraProjection, InverseCameraProjectionRequest, CameraProjection, CameraProjectionRequest, ComputeSDF2Request, \
+    LinkBotPositionAction
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.numpy_point import NumpyPoint
+
+
+def points_to_config(points):
+    return np.array([[p.x, p.y] for p in points]).flatten()
 
 
 class GazeboServices:
@@ -29,6 +34,7 @@ class GazeboServices:
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', std_srvs.srv.Empty)
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', std_srvs.srv.Empty)
         self.xy_to_rowcol = rospy.ServiceProxy('/my_camera/xy_to_rowcol', CameraProjection)
+        self.rowcol_to_xy = rospy.ServiceProxy('/my_camera/rowcol_to_xy', InverseCameraProjection)
         self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
         self.compute_sdf = None
         self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
@@ -48,6 +54,7 @@ class GazeboServices:
             '/gazebo/pause_physics',
             '/gazebo/unpause_physics',
             '/my_camera/xy_to_rowcol',
+            '/my_camera/rowcol_to_xy',
         ]
 
     def wait(self, verbose=False):
@@ -75,21 +82,30 @@ class GazeboServices:
         sleep(0.5)
 
     def get_context(self, context_length, state_dim, action_dim, image_h=64, image_w=64, image_d=3):
+        # TODO: don't require these dimensions as arguments, they can be figured out from the messages/services
         state_req = LinkBotStateRequest()
         initial_context_images = np.ndarray((context_length, image_h, image_w, image_d))
         initial_context_states = np.ndarray((context_length, state_dim))
         for t in range(context_length):
             state = self.get_state.call(state_req)
-            s = np.array([state.points[-1].x, state.points[-1].y])
+            rope_config = points_to_config(state.points)
             # Convert to float image
             image = sensor_image_to_float_image(state.camera_image.data, image_h, image_w, image_d)
             initial_context_images[t] = image
-            initial_context_states[t] = s
+            initial_context_states[t] = rope_config
 
         context_images = initial_context_images
         context_states = initial_context_states
         context_actions = np.zeros([context_length - 1, action_dim])
         return context_images, context_states, context_actions
+
+
+def rowcol_to_xy(services, row, col):
+    req = InverseCameraProjectionRequest()
+    req.rowcol.x_col = col
+    req.rowcol.y_row = row
+    res = services.rowcol_to_xy(req)
+    return NumpyPoint(int(res.xyz.x), int(res.xyz.y))
 
 
 def setup_gazebo_env(verbose, real_time_rate):

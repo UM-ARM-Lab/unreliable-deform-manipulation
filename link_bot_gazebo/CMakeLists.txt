@@ -27,6 +27,7 @@ add_service_files(
         LinkBotState.srv
         ComputeSDF2.srv
         CameraProjection.srv
+        InverseCameraProjection.srv
         LinkBotPositionAction.srv
 )
 

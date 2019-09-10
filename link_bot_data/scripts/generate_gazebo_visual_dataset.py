@@ -59,7 +59,7 @@ def generate_traj(args, services, env_idx):
         # Query the current state
         state = services.get_state(state_req)
         head_idx = state.link_names.index("head")
-        rope_configuration = np.array([[pt.x, pt.y] for pt in state.points])
+        rope_configuration = gazebo_utils.points_to_config(state.points)
         head_point = state.points[head_idx]
 
         # Pick a new target if necessary
