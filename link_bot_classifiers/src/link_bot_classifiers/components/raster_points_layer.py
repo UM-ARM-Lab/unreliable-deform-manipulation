@@ -38,7 +38,7 @@ class RasterPoints(tf.keras.layers.Layer):
         """
         x, resolution, origin = inputs
         points = tf.reshape(x, [-1, self.n_points, 2])
-        rope_image = tf.py_func(self.raster_points, [points, resolution, origin], tf.float32, name='raster_points')
+        rope_image = tf.py_function(self.raster_points, [points, resolution, origin], tf.float32, name='raster_points')
         input_shapes = [input.shape for input in inputs]
         rope_image.set_shape(self.compute_output_shape(input_shapes))
         return rope_image

@@ -5,8 +5,8 @@ import numpy as np
 import tensorflow as tf
 from colorama import Style
 
-from link_bot_models import base_model_runner
-from link_bot_models.multi_constraint_model_runner import MultiConstraintModelRunner
+from link_bot_classifiers import base_classifier_runner
+from link_bot_classifiers.multi_constraint_model_runner import MultiConstraintModelRunner
 from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util
 
@@ -28,7 +28,7 @@ def train(args):
             'sigmoid_scale': 100,
             'N': train_dataset.N,
         }
-        args_dict.update(base_model_runner.make_args_dict(args))
+        args_dict.update(base_classifier_runner.make_args_dict(args))
         model = MultiConstraintModelRunner(args_dict)
 
     model.train(train_dataset, validation_dataset, args.label_types_map, log_path, args)
@@ -136,7 +136,7 @@ def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=220)
     tf.logging.set_verbosity(tf.logging.ERROR)
 
-    parser, train_subparser, eval_subparser, show_subparser = base_model_runner.base_parser()
+    parser, train_subparser, eval_subparser, show_subparser = base_classifier_runner.base_parser()
 
     train_subparser.set_defaults(func=train)
     # eval_subparser.set_defaults(func=evaluate)

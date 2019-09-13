@@ -4,12 +4,12 @@ import numpy as np
 from keras.layers import Input
 from keras.models import Model
 
-from link_bot_models.base_model_runner import BaseModelRunner
-from link_bot_models.components.sdf_function_layer import sdf_function_layer
-from link_bot_models.label_types import LabelType
+from link_bot_classifiers.base_classifier_runner import BaseClassifierRunner
+from link_bot_classifiers.components.sdf_function_layer import sdf_function_layer
+from link_bot_classifiers.label_types import LabelType
 
 
-class SDFFunctionModelRunner(BaseModelRunner):
+class SDFFunctionModelRunner(BaseClassifierRunner):
     def __init__(self, args_dict):
         super(SDFFunctionModelRunner, self).__init__(args_dict)
         self.auxiliary_models_initialized = False

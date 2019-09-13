@@ -41,8 +41,7 @@ class MyCameraPlugin : public CameraPlugin {
                             link_bot_gazebo::InverseCameraProjectionResponse &res) {
       ignition::math::Vector3d result;
       ignition::math::Planed ground_plane{ignition::math::Vector3d::UnitZ};
-      auto const flipped_y =  camera->ImageHeight() - req.rowcol.y_row;
-      camera->WorldPointOnPlane(req.rowcol.x_col, flipped_y, ground_plane, result);
+      camera->WorldPointOnPlane(req.rowcol.x_col, req.rowcol.y_row, ground_plane, result);
       res.xyz.x = result.X();
       res.xyz.y = result.Y();
       res.xyz.z = result.Z();

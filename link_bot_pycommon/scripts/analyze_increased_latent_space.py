@@ -4,7 +4,7 @@ import argparse
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
-from link_bot_models.src.link_bot_models import linear_tf_model as m
+from link_bot_classifiers.src.link_bot_models import linear_tf_model as m
 
 
 def main():

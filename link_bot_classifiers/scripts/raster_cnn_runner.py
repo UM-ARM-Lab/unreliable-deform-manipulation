@@ -4,8 +4,8 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from link_bot_models import base_model_runner
-from link_bot_models.raster_cnn_model import RasterCNNModelRunner
+from link_bot_classifiers import base_classifier_runner
+from link_bot_classifiers.raster_cnn_model import RasterCNNModelRunner
 from link_bot_pycommon import experiments_util
 from video_prediction.datasets import dataset_utils
 
@@ -50,7 +50,7 @@ def train(args):
             'fc_layer_sizes': [256, 256],
             'N': train_dataset.hparams.rope_config_dim,
         }
-        args_dict.update(base_model_runner.make_args_dict(args))
+        args_dict.update(base_classifier_runner.make_args_dict(args))
         train_model = RasterCNNModelRunner(args_dict, train_inputs)
         val_model = RasterCNNModelRunner(args_dict, val_inputs)
 
@@ -61,7 +61,7 @@ def main():
     np.set_printoptions(precision=6, suppress=True)
     tf.logging.set_verbosity(tf.logging.ERROR)
 
-    parser, train_subparser, eval_subparser, show_subparser = base_model_runner.base_parser()
+    parser, train_subparser, eval_subparser, show_subparser = base_classifier_runner.base_parser()
 
     train_subparser.set_defaults(func=train)
     eval_subparser.set_defaults(func=RasterCNNModelRunner.evaluate_main)

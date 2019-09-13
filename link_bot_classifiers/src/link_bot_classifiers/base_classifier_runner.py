@@ -12,14 +12,14 @@ from colorama import Fore
 from tensorflow.keras.backend import set_session
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
 
-from link_bot_models import my_viz
-from link_bot_models.callbacks import StopAtAccuracy, DebugCallback
-from link_bot_models.components.bias_layer import BiasLayer
-from link_bot_models.components.distance_matrix_layer import DistanceMatrix
-from link_bot_models.components.out_of_bounds_regularization import OutOfBoundsRegularizer
-from link_bot_models.components.raster_points_layer import RasterPoints
-from link_bot_models.components.sdf_lookup import SDFLookup
-from link_bot_models.label_types import LabelType
+from link_bot_classifiers import my_viz
+from link_bot_classifiers.callbacks import StopAtAccuracy, DebugCallback
+from link_bot_classifiers.components.bias_layer import BiasLayer
+from link_bot_classifiers.components.distance_matrix_layer import DistanceMatrix
+from link_bot_classifiers.components.out_of_bounds_regularization import OutOfBoundsRegularizer
+from link_bot_classifiers.components.raster_points_layer import RasterPoints
+from link_bot_classifiers.components.sdf_lookup import SDFLookup
+from link_bot_classifiers.label_types import LabelType
 from link_bot_pycommon import experiments_util
 from video_prediction.datasets import dataset_utils
 
@@ -117,7 +117,7 @@ def make_args_dict(args):
     }
 
 
-class BaseModelRunner:
+class BaseClassifierRunner:
 
     def __init__(self, args_dict):
         """

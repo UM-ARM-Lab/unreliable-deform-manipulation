@@ -88,7 +88,10 @@ class GazeboServices:
         initial_context_states = np.ndarray((context_length, state_dim))
         for t in range(context_length):
             state = self.get_state.call(state_req)
-            rope_config = points_to_config(state.points)
+            if state_dim == 6:
+                rope_config = points_to_config(state.points)
+            else:
+                rope_config = np.array([state.points[-1].x, state.points[-1].y])
             # Convert to float image
             image = sensor_image_to_float_image(state.camera_image.data, image_h, image_w, image_d)
             initial_context_images[t] = image
@@ -105,7 +108,7 @@ def rowcol_to_xy(services, row, col):
     req.rowcol.x_col = col
     req.rowcol.y_row = row
     res = services.rowcol_to_xy(req)
-    return NumpyPoint(int(res.xyz.x), int(res.xyz.y))
+    return res.xyz.x, res.xyz.y
 
 
 def setup_gazebo_env(verbose, real_time_rate):

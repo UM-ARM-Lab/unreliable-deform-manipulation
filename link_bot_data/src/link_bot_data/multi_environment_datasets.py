@@ -5,7 +5,7 @@ import keras
 import numpy as np
 from colorama import Fore
 
-from link_bot_models.label_types import LabelType
+from link_bot_classifiers.label_types import LabelType
 from link_bot_pycommon import link_bot_sdf_utils
 
 

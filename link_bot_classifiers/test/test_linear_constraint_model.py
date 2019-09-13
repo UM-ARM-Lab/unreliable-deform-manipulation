@@ -5,7 +5,7 @@ import tensorflow as tf
 import unittest
 import numpy as np
 
-from link_bot_models.src.link_bot_models import linear_constraint_model as m
+from link_bot_classifiers.src.link_bot_models import linear_constraint_model as m
 
 
 class TestLoss(unittest.TestCase):

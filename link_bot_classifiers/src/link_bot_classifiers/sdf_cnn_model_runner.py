@@ -5,13 +5,13 @@ import keras.backend as K
 from keras.layers import Input, Concatenate, Lambda, Dense
 from keras.models import Model
 
-from link_bot_models.base_model_runner import BaseModelRunner
-from link_bot_models.components.sdf_function_layer import sdf_function_layer
-from link_bot_models.components.simple_cnn_layer import simple_cnn_relu_layer
-from link_bot_models.label_types import LabelType
+from link_bot_classifiers.base_classifier_runner import BaseClassifierRunner
+from link_bot_classifiers.components.sdf_function_layer import sdf_function_layer
+from link_bot_classifiers.components.simple_cnn_layer import simple_cnn_relu_layer
+from link_bot_classifiers.label_types import LabelType
 
 
-class SDFCNNModelRunner(BaseModelRunner):
+class SDFCNNModelRunner(BaseClassifierRunner):
     def __init__(self, args_dict):
         super(SDFCNNModelRunner, self).__init__(args_dict)
         self.sdf_shape = args_dict['sdf_shape']

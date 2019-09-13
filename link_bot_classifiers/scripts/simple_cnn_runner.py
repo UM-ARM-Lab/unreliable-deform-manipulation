@@ -6,8 +6,8 @@ import tensorflow as tf
 
 # tf.enable_eager_execution()
 
-from link_bot_models import base_model_runner
-from link_bot_models.simple_cnn_model import SimpleCNNModelRunner
+from link_bot_classifiers import base_classifier_runner
+from link_bot_classifiers.simple_cnn_model import SimpleCNNModelRunner
 from link_bot_pycommon import experiments_util
 from video_prediction.datasets import dataset_utils
 
@@ -50,7 +50,7 @@ def train(args):
             'fc_layer_sizes': [32, 32],
             'N': train_dataset.hparams.rope_config_dim,
         }
-        args_dict.update(base_model_runner.make_args_dict(args))
+        args_dict.update(base_classifier_runner.make_args_dict(args))
         model = SimpleCNNModelRunner(args_dict)
 
     try:
@@ -64,7 +64,7 @@ def main():
     np.set_printoptions(precision=6, suppress=True)
     tf.logging.set_verbosity(tf.logging.ERROR)
 
-    parser, train_subparser, eval_subparser, show_subparser = base_model_runner.base_parser()
+    parser, train_subparser, eval_subparser, show_subparser = base_classifier_runner.base_parser()
 
     train_subparser.set_defaults(func=train)
     eval_subparser.set_defaults(func=SimpleCNNModelRunner.evaluate_main)

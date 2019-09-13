@@ -20,7 +20,7 @@ from link_bot_agent import gp_rrt
 from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest, LinkBotState, LinkBotStateRequest
-from link_bot_models.sdf_function_model import SDFFunctionModelRunner
+from link_bot_classifiers.sdf_function_model import SDFFunctionModelRunner
 from link_bot_pycommon import link_bot_pycommon
 from link_bot_pycommon.link_bot_sdf_utils import SDF
 

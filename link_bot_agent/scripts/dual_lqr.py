@@ -14,7 +14,7 @@ from builtins import input
 from link_bot_gazebo.msg import LinkBotConfiguration, LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControl, WorldControlRequest
 from src.link_bot.link_bot_sdf_tools.src.link_bot_sdf_tools.link_bot_sdf_tools import SDF
-from link_bot_models import linear_constraint_model
+from link_bot_classifiers import linear_constraint_model
 from link_bot_agent import agent, dual_lqr_action_selector
 
 dt = 0.1

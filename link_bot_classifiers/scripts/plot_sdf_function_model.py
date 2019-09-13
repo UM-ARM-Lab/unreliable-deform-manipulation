@@ -10,9 +10,9 @@ import tensorflow as tf
 from colorama import Fore, Style
 
 from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
-from link_bot_models import plotting
-from link_bot_models.base_model_runner import ConstraintTypeMapping
-from link_bot_models.sdf_function_model import test_predictions, SDFFunctionModelRunner
+from link_bot_classifiers import plotting
+from link_bot_classifiers.base_classifier_runner import ConstraintTypeMapping
+from link_bot_classifiers.sdf_function_model import test_predictions, SDFFunctionModelRunner
 
 
 def plot(args, sdf_data, model, threshold, results, true_positives, true_negatives, false_positives, false_negatives):

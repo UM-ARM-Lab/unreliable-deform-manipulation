@@ -10,9 +10,9 @@ import numpy as np
 import tensorflow as tf
 from colorama import Style
 
-from link_bot_models import plotting
-from link_bot_models.raster_cnn_model import RasterCNNModelRunner
-from link_bot_models.sdf_function_model import EvaluateResult
+from link_bot_classifiers import plotting
+from link_bot_classifiers.raster_cnn_model import RasterCNNModelRunner
+from link_bot_classifiers.sdf_function_model import EvaluateResult
 from link_bot_pycommon import link_bot_sdf_utils
 from video_prediction.datasets import dataset_utils
 

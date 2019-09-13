@@ -5,12 +5,12 @@ import numpy as np
 from keras.layers import Input, Concatenate, Dense
 from keras.models import Model
 
-from link_bot_models.base_model_runner import BaseModelRunner
-from link_bot_models.components.raster_points_layer import RasterPoints
-from link_bot_models.components.simple_cnn_layer import simple_cnn_relu_layer
+from link_bot_classifiers.base_classifier_runner import BaseClassifierRunner
+from link_bot_classifiers.components.raster_points_layer import RasterPoints
+from link_bot_classifiers.components.simple_cnn_layer import simple_cnn_relu_layer
 
 
-class RasterCNNModelRunner(BaseModelRunner):
+class RasterCNNModelRunner(BaseClassifierRunner):
 
     def __init__(self, args_dict, inputs, steps_per_epoch):
         super(RasterCNNModelRunner, self).__init__(args_dict, inputs, steps_per_epoch)
