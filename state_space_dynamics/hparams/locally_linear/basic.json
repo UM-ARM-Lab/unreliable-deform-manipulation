@@ -1,0 +1,11 @@
+{
+  "sdf_shape": [101, 101],
+  "n_control": 2,
+  "sequence_length": 12,
+  "n_points": 3,
+  "conv_filters": [
+    [8, [5, 5]],
+    [8, [5, 5]]
+  ],
+  "fc_layer_sizes": [32, 32]
+}

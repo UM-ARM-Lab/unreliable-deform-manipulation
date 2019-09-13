@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>link_bot_models</name>
+  <name>state_space_dynamics</name>
   <version>0.0.0</version>
-  <description>jupyter models</description>
+  <description>state space dynamics</description>
 
   <maintainer email="pmitrano@umich.edu">pmitrano</maintainer>
 
