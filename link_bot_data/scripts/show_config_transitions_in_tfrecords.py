@@ -87,7 +87,7 @@ def main():
 
             ax.set_title("{} {}".format(i, t))
 
-        anim = FuncAnimation(fig, update, frames=actions.shape[0], interval=1000, repeat=True)
+        anim = FuncAnimation(fig, update, frames=actions.shape[0], interval=100, repeat=True)
         plt.show()
 
         i += 1

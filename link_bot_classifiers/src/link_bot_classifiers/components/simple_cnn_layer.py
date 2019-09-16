@@ -1,4 +1,4 @@
-from tensorflow.keras import layers
+import tensorflow.keras.layers as layers
 
 
 def simple_cnn_layer(conv_filters, use_bias=True):

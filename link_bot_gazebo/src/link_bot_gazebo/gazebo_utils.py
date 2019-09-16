@@ -177,11 +177,11 @@ def xy_to_row_col(services, x, y, z):
     return NumpyPoint(int(res.rowcol.x_col), int(res.rowcol.y_row))
 
 
-def get_sdf_data(services):
+def get_sdf_data(services, env_w=1, env_h=1, res=0.01):
     sdf_request = ComputeSDF2Request()
-    sdf_request.resolution = 0.01
-    sdf_request.y_height = 1
-    sdf_request.x_width = 1
+    sdf_request.resolution = res
+    sdf_request.y_height = env_h
+    sdf_request.x_width = env_w
     sdf_request.center.x = 0
     sdf_request.center.y = 0
     sdf_request.min_z = 0.01

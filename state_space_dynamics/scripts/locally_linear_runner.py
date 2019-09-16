@@ -21,14 +21,16 @@ def main():
 
     train_parser = subparsers.add_parser('train')
     train_parser.add_argument('input_dir', type=pathlib.Path)
-    train_parser.add_argument('dataset_hparams_dict', type=pathlib.Path)
     train_parser.add_argument('model_hparams', type=pathlib.Path)
+    train_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
     train_parser.add_argument('--dataset-hparams', type=str)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=32)
     train_parser.add_argument('--seed', type=int, default=None)
     train_parser.add_argument('--epochs', type=int, default=100)
     train_parser.add_argument('--log', '-l')
+    train_parser.add_argument('--validation', action='store_true')
+    train_parser.add_argument('--debug', action='store_true')
 
     eval_parser = subparsers.add_parser('eval')
     eval_parser.add_argument('checkpoint')
@@ -47,45 +49,47 @@ def main():
     else:
         log_path = None
 
+    if args.dataset_hparams_dict:
+        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
+    else:
+        dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
+
+    model_hparams = json.load(open(args.model_hparams, 'r'))
+    dataset_hparams_dict['sequence_length'] = model_hparams['sequence_length']
+    dataset_hparams_dict['sdf_shape'] = model_hparams['sdf_shape']
+
+    ###############
+    # Datasets
+    ###############
     train_dataset, train_tf_dataset = dataset_utils.get_dataset(args.input_dir,
                                                                 'state_space',
-                                                                args.dataset_hparams_dict,
+                                                                dataset_hparams_dict,
                                                                 args.dataset_hparams,
                                                                 mode='train',
                                                                 epochs=args.epochs,
                                                                 seed=args.seed,
                                                                 batch_size=args.batch_size)
-    d = train_tf_dataset.make_one_shot_iterator().get_next()
-    print(d.keys())
-    print(d['actions'].shape)
-    return
-
     val_dataset, val_tf_dataset = dataset_utils.get_dataset(args.input_dir,
                                                             'state_space',
-                                                            args.dataset_hparams_dict,
+                                                            dataset_hparams_dict,
                                                             args.dataset_hparams,
                                                             mode='val',
                                                             epochs=None,
                                                             seed=args.seed,
                                                             batch_size=args.batch_size)
 
-    # Now that we have the input tensors, so we can construct our Keras model
+    ###############
+    # Model
+    ###############
     if args.checkpoint:
         model = LocallyLinearModel.load(args.checkpoint)
     else:
-        args_dict = {
-            'sdf_shape': train_dataset.hparams.sdf_shape,
-            'conv_filters': [
-                (8, (5, 5)),
-                (8, (5, 5)),
-            ],
-            'fc_layer_sizes': [32, 32],
-            'N': train_dataset.hparams.rope_config_dim,
-        }
-        model_hparams = json.load(open(args.model_hparams, 'r'))
         model = LocallyLinearModel(model_hparams)
 
     try:
+        ###############
+        # Train
+        ###############
         model.train(train_dataset, train_tf_dataset, val_dataset, val_tf_dataset, log_path, args)
     except KeyboardInterrupt:
         print("Interrupted.")

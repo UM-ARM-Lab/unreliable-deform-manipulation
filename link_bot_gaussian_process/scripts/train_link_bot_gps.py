@@ -25,7 +25,7 @@ def train(args):
     fwd_model = link_bot_gp.LinkBotGP()
 
     train_dataset, train_inputs, steps_per_epoch = dataset_utils.get_inputs(args.indir,
-                                                                            'link_bot_video',
+                                                                            'state_space',
                                                                             args.dataset_hparams_dict,
                                                                             'sequence_length=2',
                                                                             mode='train',
@@ -35,7 +35,7 @@ def train(args):
                                                                             shuffle=False)
 
     val_dataset, val_inputs, _ = dataset_utils.get_inputs(args.indir,
-                                                          'link_bot_video',
+                                                          'state_space',
                                                           args.dataset_hparams_dict,
                                                           'sequence_length=2',
                                                           mode='val',
@@ -54,11 +54,11 @@ def train(args):
         print(Fore.RED + "Validation Dataset does not contain {} examples.".format(num_val_examples) + Fore.RESET)
         return
 
-    train_rope_configurations = train_data['rope_configurations']
+    train_rope_configurations = train_data['states']
 
     train_actions = train_data['actions']
 
-    val_rope_configurations = val_data['rope_configurations']
+    val_rope_configurations = val_data['states']
     val_actions = val_data['actions']
 
     fwd_train_data = data_reformatting.format_forward_data_gz_tfrecords(train_rope_configurations, train_actions)

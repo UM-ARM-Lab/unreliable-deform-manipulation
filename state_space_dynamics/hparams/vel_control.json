@@ -1,5 +1,4 @@
 {
-    "sequence_length": 15,
     "free_space_only": false,
     "compression_type": "ZLIB",
     "dt": 0.25,

@@ -28,8 +28,6 @@ from link_bot_data import random_environment_data_utils
 from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest, LinkBotPositionActionRequest
 
 DT = 0.25  # seconds per time step
-env_w = 1
-env_h = 1
 
 
 def generate_traj(args, services, env_idx):
@@ -37,7 +35,7 @@ def generate_traj(args, services, env_idx):
     action_msg = LinkBotVelocityAction()
 
     # Compute SDF Data
-    gradient, sdf, sdf_response = get_sdf_data(services)
+    gradient, sdf, sdf_response = get_sdf_data(services, env_w=args.env_w, env_h=args.env_h)
     control_response = np.array(sdf_response.res)
     origin = np.array(sdf_response.origin)
     sdf_data = SDF(sdf=sdf, gradient=gradient, resolution=control_response, origin=origin)
@@ -64,7 +62,7 @@ def generate_traj(args, services, env_idx):
 
         # Pick a new target if necessary
         if t % args.steps_per_target == 0:
-            gripper1_target_x, gripper1_target_y = sample_goal(head_point)
+            gripper1_target_x, gripper1_target_y = sample_goal(args, head_point, env_padding=1.0)
             if args.verbose:
                 print('gripper target:', gripper1_target_x, gripper1_target_y)
                 random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y, marker_size=0.05)
@@ -141,14 +139,14 @@ def generate_traj(args, services, env_idx):
     return example, percentage_positive
 
 
-def sample_goal(current_head_point):
+def sample_goal(args, current_head_point, env_padding):
     gripper1_current_x = current_head_point.x
     gripper1_current_y = current_head_point.y
     current = np.array([gripper1_current_x, gripper1_current_y])
     min_near = 0.5
     while True:
-        gripper1_target_x = np.random.uniform(-env_w / 2, env_w / 2)
-        gripper1_target_y = np.random.uniform(-env_h / 2, env_h / 2)
+        gripper1_target_x = np.random.uniform(-args.env_w / 2 + env_padding, args.env_w / 2 - env_padding)
+        gripper1_target_y = np.random.uniform(-args.env_h / 2 + env_padding, args.env_h / 2 - env_padding)
         target = np.array([gripper1_target_x, gripper1_target_y])
         d = np.linalg.norm(current - target)
         if d > min_near:
@@ -162,7 +160,8 @@ def generate_trajs(args, full_output_directory, services):
     for i in range(args.n_trajs):
         current_record_traj_idx = i % args.n_trajs_per_file
 
-        visual_mpc.gazebo_trajectory_execution.move_objects(services, env_w, env_h, 'velocity')
+        if not args.no_obstacles:
+            visual_mpc.gazebo_trajectory_execution.move_objects(services, args.env_w, args.env_h, 'velocity', padding=0.1)
 
         # Generate a new trajectory
         example, percentage_violation = generate_traj(args, services, i)
@@ -204,11 +203,11 @@ def generate(args):
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': DT,
-            'env_w': env_w,
-            'env_h': env_h,
+            'env_w': args.env_w,
+            'env_h': args.env_h,
             'compression_type': args.compression_type
         }
-        json.dump(options, of)
+        json.dump(options, of, indent=1)
 
     if args.seed is None:
         args.seed = np.random.randint(0, 10000)
@@ -228,9 +227,12 @@ def main():
     parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)
     parser.add_argument("outdir")
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
+    parser.add_argument('--env-w', type=float, default=1.0)
+    parser.add_argument('--env-h', type=float, default=1.0)
     parser.add_argument("--steps-per-traj", type=int, default=100)
     parser.add_argument("--steps-per-target", type=int, default=25)
     parser.add_argument("--start-idx-offset", type=int, default=0)
+    parser.add_argument("--no-obstacles", action='store_true')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     parser.add_argument("--n-trajs-per-file", type=int, default=512)
     parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
