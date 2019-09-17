@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 
-import std_srvs
 import argparse
 import os
-from matplotlib import animation
 import random
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 import rospy
+import std_srvs
 import tensorflow as tf
+from matplotlib import animation
 
 from link_bot_data.visualization import plottable_rope_configuration
 from link_bot_gaussian_process import link_bot_gp
@@ -21,14 +22,14 @@ def visualize(predicted_traj):
     fig, axes = plt.subplots(nrows=1, ncols=2)
 
     points = np.array(predicted_traj).reshape([-1, 3, 2])
-    head_to_mid_lengths = np.linalg.norm(points[:, 1] - points[:, 0], axis=1)
-    mid_to_tail_lengths = np.linalg.norm(points[:, 2] - points[:, 1], axis=1)
+    head_to_mid_lengths = np.linalg.norm(points[:, 2] - points[:, 1], axis=1)
+    mid_to_tail_lengths = np.linalg.norm(points[:, 1] - points[:, 0], axis=1)
     axes[1].plot(head_to_mid_lengths, label='head to mid dist')
     axes[1].plot(mid_to_tail_lengths, label='mid to tail dist')
 
     rope_handle, = axes[0].plot([], [], color='r')
-    head_scatt = axes[0].scatter([], [], color='k', s=100)
-    other_points_scatt = axes[0].scatter([], [], color='k', s=50)
+    head_scatt = axes[0].scatter([], [], color='k', s=10)
+    other_points_scatt = axes[0].scatter([], [], color='k', s=5)
     axes[0].set_xlim([-5.0, 5.0])
     axes[0].set_ylim([-5.0, 5.0])
 
@@ -41,7 +42,9 @@ def visualize(predicted_traj):
 
     anim = animation.FuncAnimation(fig, update, interval=250, frames=len(predicted_traj))
     plt.legend()
-    anim.save('gp_rollout.gif', writer='imagemagick')
+    plt.tight_layout()
+    outname = "gp_rollout_{}.gif".format(int(time.time()))
+    anim.save(outname, writer='imagemagick', fps=30)
     plt.show()
 
 

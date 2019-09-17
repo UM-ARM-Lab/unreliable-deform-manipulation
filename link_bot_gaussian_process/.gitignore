@@ -1,4 +1,5 @@
 *.swp
+*.gif
 notebooks/*.mp4
 *.pyc
 __pycache__
