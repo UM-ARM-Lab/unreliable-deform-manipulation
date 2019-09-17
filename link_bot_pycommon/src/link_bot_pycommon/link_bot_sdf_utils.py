@@ -12,6 +12,12 @@ def sdf_idx_to_point(row, col, resolution, origin):
     return np.array([y, x])
 
 
+def bounds_from_env_size(sdf_w, sdf_h, new_origin, resolution, origin):
+    rmin, cmin = point_to_sdf_idx(-sdf_w / 2 + new_origin[0], -sdf_h / 2 + new_origin[1], resolution, origin)
+    rmax, cmax = point_to_sdf_idx(sdf_w / 2 + new_origin[0], sdf_h / 2 + new_origin[1], resolution, origin)
+    return [rmin, rmax, cmin, cmax]
+
+
 def sdf_bounds(sdf, resolution, origin, offset=None):
     xmin, ymin = sdf_idx_to_point(0, 0, resolution, origin)
     xmax, ymax = sdf_idx_to_point(sdf.shape[0], sdf.shape[1], resolution, origin)
@@ -24,8 +30,8 @@ def sdf_bounds(sdf, resolution, origin, offset=None):
 
 
 def point_to_sdf_idx(x, y, resolution, origin):
-    row = int(x / resolution[0] + origin[0])
-    col = int(y / resolution[1] + origin[1])
+    col = int(x / resolution[1] + origin[1])
+    row = int(y / resolution[0] + origin[0])
     return row, col
 
 
@@ -35,6 +41,7 @@ class SDF:
         self.sdf = sdf.astype(np.float32)
         self.gradient = gradient.astype(np.float32)
         self.resolution = resolution.astype(np.float32)
+        # Origin means the indeces (row/col) of the world point (0, 0)
         self.origin = origin.astype(np.float32)
         self.extent = sdf_bounds(sdf, resolution, origin)
         self.image = np.flipud(sdf.T)

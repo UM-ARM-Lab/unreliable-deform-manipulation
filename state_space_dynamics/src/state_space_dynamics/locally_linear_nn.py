@@ -8,13 +8,14 @@ from colorama import Fore
 from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
 
 from link_bot_classifiers.callbacks import DebugCallback, StopAtAccuracy
+from link_bot_classifiers.components.relu_layers import relu_layers
 from link_bot_classifiers.components.action_smear_layer import action_smear_layer
 from link_bot_classifiers.components.raster_points_layer import RasterPoints
 from link_bot_classifiers.components.simple_cnn_layer import simple_cnn_relu_layer
 from link_bot_pycommon import experiments_util
 
 
-class LocallyLinearModel:
+class LocallyLinearNN:
 
     def __init__(self, hparams):
         self.initial_epoch = 0
@@ -22,40 +23,40 @@ class LocallyLinearModel:
         input_sequence_length = hparams['sequence_length'] - 1
         n_dim = hparams['n_points'] * 2
 
-        sdf = layers.Input(name='sdf', shape=(input_sequence_length, hparams['sdf_shape'][0], hparams['sdf_shape'][1], 1))
         states = layers.Input(name='states', shape=(input_sequence_length, n_dim))
-        sdf_resolution = layers.Input(name='sdf_resolution', shape=(input_sequence_length, 2))
-        sdf_origin = layers.Input(name='sdf_origin', shape=(input_sequence_length, 2))
         actions = layers.Input(name='actions', shape=(input_sequence_length, 2))
 
-        binary_sdf = layers.Lambda(function=lambda sdf: tf.cast(sdf > 0, dtype=tf.float32), name='make_binary')(sdf)
-        action_image = action_smear_layer(actions, hparams['sdf_shape'][0], hparams['sdf_shape'][1])(actions)
-        rope_images = RasterPoints(input_sequence_length, hparams['sdf_shape'])([states, sdf_resolution, sdf_origin])
-        # Drop the last time step in the input
-        concat = layers.Concatenate(axis=-1)([binary_sdf, action_image, rope_images])
-        # we need to remove the time dimension since CNNs don't understand that
-        concat_flat_shape = [-1] + [int(dim) for dim in concat.shape[2:]]
-        concat_flat = layers.Lambda(function=lambda c: tf.reshape(c, concat_flat_shape), name='flatten_time')(concat)
-        out_h = simple_cnn_relu_layer(hparams['conv_filters'], hparams['fc_layer_sizes'])(concat_flat)
-        # right now we output N^2 + N*M elements for full A and B matrices
         elements_in_A = hparams['n_points'] * (2 * 2)
         elements_in_B = n_dim * hparams['n_control']
-        num_elements_in_linear_model = elements_in_A + elements_in_B
-        A_and_B_elements = layers.Dense(num_elements_in_linear_model, activation='sigmoid',
-                                        name='constraints')(out_h)
-        # reshape to bring back the time dimension
-        A_and_B_elements = layers.Lambda(lambda ab: tf.reshape(ab, [-1, input_sequence_length, num_elements_in_linear_model]),
-                                         name='unflatten_time')(A_and_B_elements)
 
-        def dynamics(_states_actions_and_params):
-            _states, _actions, params = _states_actions_and_params
+        # state here is ? x 3 x 2
+        nn = relu_layers(hparams['fc_layer_sizes'])
+        # right now we output N^2 + N*M elements for full A and B matrices
+        num_elements_in_linear_model = elements_in_A + elements_in_B
+        h_to_params = layers.Dense(num_elements_in_linear_model, activation='sigmoid', name='constraints')
+
+        def AB_params(states, actions):
+            # concat stat:e and action here
+            out_h = nn(states, actions)
+            params = h_to_params(out_h)
+            return params
+
+        def dynamics(_dynamics_inputs):
+            _states, _actions = _dynamics_inputs
 
             s_0_flat = tf.reshape(_states[:, 0], [-1, n_dim, 1])
 
-            # _gen_states shuold be ? x T x 3 x 2
+            # _gen_states should be ? x T x 3 x 2
             _gen_states = [s_0_flat]
             for t in range(input_sequence_length):
-                params_t = params[:, t]
+                s_t_flat = _gen_states[-1]
+                action_t = actions[:, t]
+
+                # First raster the previously predicted rope state into an image, then concat with smeared actions
+                # then pass to the AB network
+                # TODO: support concatenation with an SDF?
+                params_t = AB_params(s_t_flat, action_t)
+
                 A_t_params, B_t_params = tf.split(params_t, [elements_in_A, elements_in_B], axis=1)
                 A_t_per_point = tf.split(A_t_params, hparams['n_points'], axis=1)
                 B_t_per_point = tf.split(B_t_params, hparams['n_points'], axis=1)
@@ -66,24 +67,27 @@ class LocallyLinearModel:
                 B_t = tf.concat(B_t_per_point, axis=1)
 
                 u_t = tf.expand_dims(_actions[:, t], axis=-1)
-                s_t_flat = _gen_states[-1]
 
                 s_t_plus_1_flat = tf.linalg.matmul(A_t, s_t_flat) + tf.linalg.matmul(B_t, u_t)
 
                 _gen_states.append(s_t_plus_1_flat)
 
             stacked = tf.stack(_gen_states)
-            stacked = tf.reshape(tf.transpose(stacked, [1, 0, 2, 3]), [-1, hparams['sequence_length'], n_dim])
+            stacked = tf.transpose(stacked, [1, 0, 2, 3])
             return stacked
 
-        gen_states = layers.Lambda(lambda args: dynamics(args), name='output_states')([states, actions, A_and_B_elements])
+        gen_states = layers.Lambda(lambda args: dynamics(args), name='output_states')([states, actions])
 
-        self.model_inputs = [sdf, sdf_resolution, sdf_origin, actions, states]
+        if hparams['use_sdf']:
+            self.model_inputs = [sdf, sdf_resolution, sdf_origin, actions, states]
+        else:
+            self.model_inputs = [sdf_resolution, sdf_origin, actions, states]
         self.keras_model = models.Model(inputs=self.model_inputs, outputs=gen_states)
         self.keras_model.compile(optimizer=tf.train.AdamOptimizer(),
                                  loss='binary_crossentropy',
                                  metrics=['accuracy'],
-                                 run_eagerly=True)
+                                # run_eagerly=True
+                                 )
 
     def train(self, train_dataset, train_tf_dataset, val_dataset, val_tf_dataset, log_path, args):
         callbacks = []

@@ -1,5 +1,6 @@
 {
-  "sdf_shape": [501, 501],
+  "use_sdf": false,
+  "sdf_shape": [100, 100],
   "n_control": 2,
   "sequence_length": 10,
   "n_points": 3,

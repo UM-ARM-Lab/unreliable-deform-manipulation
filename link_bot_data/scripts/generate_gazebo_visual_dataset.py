@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
-import matplotlib.pyplot as plt
 
 import argparse
 import json
@@ -18,41 +17,52 @@ from link_bot_data.video_prediction_dataset_utils import bytes_feature, float_fe
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_sdf_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
-from link_bot_pycommon.link_bot_sdf_utils import SDF
+from link_bot_pycommon import link_bot_sdf_utils
 
 opts = tensorflow.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.ConfigProto(gpu_options=opts)
 tensorflow.enable_eager_execution(config=conf)
 
 from link_bot_data import random_environment_data_utils
-from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest, LinkBotPositionActionRequest
+from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 
 DT = 0.25  # seconds per time step
 
 
-def generate_traj(args, services, env_idx):
+def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gripper1_target_y):
     state_req = LinkBotStateRequest()
     action_msg = LinkBotVelocityAction()
 
+    # Center SDF at the current head position
+    state = services.get_state(state_req)
+    head_idx = state.link_names.index("head")
+    initial_head_point = np.array([state.points[head_idx].x, state.points[head_idx].y])
+
     # Compute SDF Data
-    gradient, sdf, sdf_response = get_sdf_data(services, env_w=args.env_w, env_h=args.env_h)
-    control_response = np.array(sdf_response.res)
+    gradient, sdf, sdf_response = get_sdf_data(services, env_w=args.env_w, env_h=args.env_h, res=args.res)
+    resolution = np.array(sdf_response.res)
     origin = np.array(sdf_response.origin)
-    sdf_data = SDF(sdf=sdf, gradient=gradient, resolution=control_response, origin=origin)
+    sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)
+    sdf_bounds = link_bot_sdf_utils.bounds_from_env_size(args.sdf_w, args.sdf_h, initial_head_point, sdf_data.resolution,
+                                                         sdf_data.origin)
+    rmin, rmax, cmin, cmax = sdf_bounds
+    local_sdf = sdf_data.sdf[rmin:rmax, cmin:cmax]
+    local_sdf_gradient = sdf_data.sdf[rmin:rmax, cmin:cmax]
+    # indeces of the world point 0,0 in the local sdf
+    local_sdf_origin_indeces_in_full_sdf = np.array([rmin, cmin])
+    local_sdf_origin = origin - local_sdf_origin_indeces_in_full_sdf
 
     feature = {
         # These features don't change over time
-        'sdf/sdf': float_feature(sdf_data.sdf.flatten()),
-        'sdf/gradient': float_feature(sdf_data.gradient.flatten()),
-        'sdf/shape': int_feature(np.array(sdf_data.sdf.shape)),
+        'sdf/sdf': float_feature(local_sdf.flatten()),
+        'sdf/gradient': float_feature(local_sdf_gradient.flatten()),
+        'sdf/shape': int_feature(np.array(local_sdf.shape)),
         'sdf/resolution': float_feature(sdf_data.resolution),
-        'sdf/origin': float_feature(sdf_data.origin.astype(np.float32))
+        'sdf/origin': float_feature(local_sdf_origin),
+        'sdf/head_points': float_feature(initial_head_point),
     }
 
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
-    last_rope_configuration = None
-    gripper1_target_x = None
-    gripper1_target_y = None
     for t in range(args.steps_per_traj):
         # Query the current state
         state = services.get_state(state_req)
@@ -61,8 +71,8 @@ def generate_traj(args, services, env_idx):
         head_point = state.points[head_idx]
 
         # Pick a new target if necessary
-        if t % args.steps_per_target == 0:
-            gripper1_target_x, gripper1_target_y = sample_goal(args, head_point, env_padding=1.0)
+        if global_t_step % args.steps_per_target == 0:
+            gripper1_target_x, gripper1_target_y = sample_goal(args.env_w, args.env_h, head_point, env_padding=0.25)
             if args.verbose:
                 print('gripper target:', gripper1_target_x, gripper1_target_y)
                 random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y, marker_size=0.05)
@@ -85,7 +95,7 @@ def generate_traj(args, services, env_idx):
         services.world_control(step)  # this will block until stepping is complete
 
         post_action_state = services.get_state(state_req)
-        stopped = 0.025  # This threshold must be tuned.
+        stopped = 0.025  # This threshold must be tuned whenever physics or the above velocity controller parameters change
         if (abs(post_action_state.gripper1_velocity.x) < stopped < abs(gripper1_target_vx)) \
                 or (abs(post_action_state.gripper1_velocity.y) < stopped < abs(gripper1_target_vy)):
             at_constraint_boundary = True
@@ -102,20 +112,6 @@ def generate_traj(args, services, env_idx):
 
         combined_constraint_labels[t, 0] = at_constraint_boundary
 
-        # plt.imshow(image, extent=[-0.53, 0.53, -0.53, 0.53])
-        # plt.imshow(sdf_data.image > 0, extent=[-0.5, 0.5, -0.5, 0.5], alpha=0.2)
-        # plt.title(np.array2string(rope_configuration))
-        # if last_rope_configuration is not None:
-        #     plt.plot([last_rope_configuration[0, 0], last_rope_configuration[1, 0], last_rope_configuration[2, 0]],
-        #              [last_rope_configuration[0, 1], last_rope_configuration[1, 1], last_rope_configuration[2, 1]], c='r')
-        # plt.plot([rope_configuration[0, 0], rope_configuration[1, 0], rope_configuration[2, 0]],
-        #          [rope_configuration[0, 1], rope_configuration[1, 1], rope_configuration[2, 1]], c='g')
-        # plt.scatter(rope_configuration[2, 0], rope_configuration[2, 1], c='r' if at_constraint_boundary else 'g', s=100)
-        # plt.quiver(rope_configuration[2, 0], rope_configuration[2, 1],
-        #            gripper1_target_vx, gripper1_target_vy)
-        # plt.show()
-        # last_rope_configuration = rope_configuration
-
         # format the tf feature
         feature['{}/image_aux1/encoded'.format(t)] = bytes_feature(image.tobytes())
         feature['{}/endeffector_pos'.format(t)] = float_feature(np.array([head_point.x, head_point.y]))
@@ -127,6 +123,8 @@ def generate_traj(args, services, env_idx):
         feature['{}/action'.format(t)] = float_feature(np.array([gripper1_target_vx, gripper1_target_vy]))
         feature['{}/constraint'.format(t)] = float_feature(np.array([float(at_constraint_boundary)]))
 
+        global_t_step += 1
+
     n_positive = np.count_nonzero(np.any(combined_constraint_labels, axis=1))
     percentage_positive = n_positive * 100.0 / combined_constraint_labels.shape[0]
 
@@ -136,17 +134,17 @@ def generate_traj(args, services, env_idx):
     example_proto = tensorflow.train.Example(features=tensorflow.train.Features(feature=feature))
     # TODO: include documentation *inside* the tfrecords file describing what each feature is
     example = example_proto.SerializeToString()
-    return example, percentage_positive
+    return example, percentage_positive, global_t_step, gripper1_target_x, gripper1_target_y
 
 
-def sample_goal(args, current_head_point, env_padding):
+def sample_goal(w, h, current_head_point, env_padding):
     gripper1_current_x = current_head_point.x
     gripper1_current_y = current_head_point.y
     current = np.array([gripper1_current_x, gripper1_current_y])
     min_near = 0.5
     while True:
-        gripper1_target_x = np.random.uniform(-args.env_w / 2 + env_padding, args.env_w / 2 - env_padding)
-        gripper1_target_y = np.random.uniform(-args.env_h / 2 + env_padding, args.env_h / 2 - env_padding)
+        gripper1_target_x = np.random.uniform(-w / 2 + env_padding, w / 2 - env_padding)
+        gripper1_target_y = np.random.uniform(-h / 2 + env_padding, h / 2 - env_padding)
         target = np.array([gripper1_target_x, gripper1_target_y])
         d = np.linalg.norm(current - target)
         if d > min_near:
@@ -157,6 +155,9 @@ def sample_goal(args, current_head_point, env_padding):
 def generate_trajs(args, full_output_directory, services):
     examples = np.ndarray([args.n_trajs_per_file], dtype=object)
     percentages_positive = []
+    global_t_step = 0
+    gripper1_target_x = None
+    gripper1_target_y = None
     for i in range(args.n_trajs):
         current_record_traj_idx = i % args.n_trajs_per_file
 
@@ -164,7 +165,10 @@ def generate_trajs(args, full_output_directory, services):
             visual_mpc.gazebo_trajectory_execution.move_objects(services, args.env_w, args.env_h, 'velocity', padding=0.1)
 
         # Generate a new trajectory
-        example, percentage_violation = generate_traj(args, services, i)
+        example, percentage_violation, global_t_step, gripper1_target_x, gripper1_target_y = generate_traj(args, services, i,
+                                                                                                           global_t_step,
+                                                                                                           gripper1_target_x,
+                                                                                                           gripper1_target_y)
         examples[current_record_traj_idx] = example
         percentages_positive.append(percentage_violation)
 
@@ -194,6 +198,8 @@ def generate(args):
     rospy.init_node('gazebo_small_with_images')
 
     assert args.n_trajs % args.n_trajs_per_file == 0, "num trajs must be multiple of {}".format(args.n_trajs_per_file)
+    assert args.env_w >= args.sdf_w
+    assert args.env_h >= args.sdf_h
 
     full_output_directory = random_environment_data_utils.data_directory(args.outdir, args.n_trajs)
     if not os.path.isdir(full_output_directory) and args.verbose:
@@ -229,6 +235,8 @@ def main():
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=1.0)
     parser.add_argument('--env-h', type=float, default=1.0)
+    parser.add_argument('--sdf-w', type=float, default=1.0)
+    parser.add_argument('--sdf-h', type=float, default=1.0)
     parser.add_argument("--steps-per-traj", type=int, default=100)
     parser.add_argument("--steps-per-target", type=int, default=25)
     parser.add_argument("--start-idx-offset", type=int, default=0)

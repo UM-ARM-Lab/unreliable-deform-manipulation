@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon import experiments_util
-from state_space_dynamics.locally_linear_model import LocallyLinearModel
+from state_space_dynamics.locally_linear_cnn import LocallyLinearModel
 from video_prediction.datasets import dataset_utils
 
 tf.enable_eager_execution()
