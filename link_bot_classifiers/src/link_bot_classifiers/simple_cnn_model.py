@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import numpy as np
+import tensorflow as tf
 import tensorflow.keras.layers as layers
 import tensorflow.keras.models as models
 
@@ -25,7 +26,9 @@ class SimpleCNNModelRunner(BaseClassifierRunner):
         sdf_origin = layers.Input(name='sdf_origin', shape=(2,))
         action = layers.Input(name='actions', shape=(2,))
 
-        action_image = action_smear_layer(action, sdf)(action)
+        action = layers.Reshape(target_shape=[1, 2])(action)
+        action_image = action_smear_layer(action, self.sdf_shape[0], self.sdf_shape[1])(action)
+        action_image = layers.Lambda(function=lambda x: tf.squeeze(x, axis=1), name='squeeze_actions')(action_image)
         rope_image = RasterPoints(self.sdf_shape)([rope_config, sdf_resolution, sdf_origin])
         concat = layers.Concatenate(axis=-1)([sdf, action_image, rope_image])
         out_h = simple_cnn_relu_layer(self.conv_filters, self.fc_layer_sizes)(concat)

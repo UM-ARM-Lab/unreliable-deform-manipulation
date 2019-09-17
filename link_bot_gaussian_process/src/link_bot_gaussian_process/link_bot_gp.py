@@ -217,6 +217,7 @@ class LinkBotGP:
 
     def fwd_act(self, s, u):
         s_relative = data_reformatting.make_relative_to_head(s)
+        s_relative = s_relative[:, :-2]
         x_star = np.hstack((s_relative, u))
         delta_mu, _ = self.model.predict_y(x_star)
 

@@ -18,13 +18,19 @@ from link_bot_gazebo.srv import LinkBotStateRequest
 
 
 def visualize(predicted_traj):
-    fig, axes = plt.subplots()
+    fig, axes = plt.subplots(nrows=1, ncols=2)
 
-    rope_handle, = axes.plot([], [], color='r')
-    head_scatt = axes.scatter([], [], color='k', s=100)
-    other_points_scatt = axes.scatter([], [], color='k', s=50)
-    axes.set_xlim([-1.0, 1.0])
-    axes.set_ylim([-1.0, 1.0])
+    points = np.array(predicted_traj).reshape([-1, 3, 2])
+    head_to_mid_lengths = np.linalg.norm(points[:, 1] - points[:, 0], axis=1)
+    mid_to_tail_lengths = np.linalg.norm(points[:, 2] - points[:, 1], axis=1)
+    axes[1].plot(head_to_mid_lengths, label='head to mid dist')
+    axes[1].plot(mid_to_tail_lengths, label='mid to tail dist')
+
+    rope_handle, = axes[0].plot([], [], color='r')
+    head_scatt = axes[0].scatter([], [], color='k', s=100)
+    other_points_scatt = axes[0].scatter([], [], color='k', s=50)
+    axes[0].set_xlim([-5.0, 5.0])
+    axes[0].set_ylim([-5.0, 5.0])
 
     def update(t):
         rope_config = predicted_traj[t][0]
@@ -33,7 +39,9 @@ def visualize(predicted_traj):
         head_scatt.set_offsets([xs[-1], ys[-1]])
         other_points_scatt.set_offsets(np.stack([xs[:-1], ys[:-1]], axis=1))
 
-    _ = animation.FuncAnimation(fig, update, interval=250, frames=len(predicted_traj))
+    anim = animation.FuncAnimation(fig, update, interval=250, frames=len(predicted_traj))
+    plt.legend()
+    anim.save('gp_rollout.gif', writer='imagemagick')
     plt.show()
 
 
