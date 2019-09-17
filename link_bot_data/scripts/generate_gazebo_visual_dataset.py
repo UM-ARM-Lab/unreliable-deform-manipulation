@@ -63,6 +63,7 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
     }
 
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
+    print(local_sdf_origin)
     for t in range(args.steps_per_traj):
         # Query the current state
         state = services.get_state(state_req)

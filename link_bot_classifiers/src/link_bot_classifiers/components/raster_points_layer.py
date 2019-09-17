@@ -20,13 +20,13 @@ class RasterPoints(tf.keras.layers.Layer):
         batch_size = rope_configurations.shape[0]
         rope_images = np.zeros([batch_size, self.sdf_shape[0], self.sdf_shape[1], self.n_points],
                                dtype=np.float32)
-        batch_resolution = np.expand_dims(resolution, axis=1)
-        batch_origin = np.expand_dims(origin, axis=1)
-        indeces = (rope_configurations / batch_resolution + batch_origin).astype(np.int64)
-        print(batch_origin[0], rope_configurations[0], indeces[0])
+        batch_resolution = resolution
+        batch_origin = origin
+        row_y_indeces = tf.cast(rope_configurations[:, :, 1] / batch_resolution[:, 0:1] + batch_origin[:, 0:1], tf.int64)
+        col_x_indeces = tf.cast(rope_configurations[:, :, 0] / batch_resolution[:, 1:2] + batch_origin[:, 1:2], tf.int64)
         batch_indeces = np.arange(batch_size).repeat(self.n_points)
-        row_indeces = indeces[:, :, 1].flatten()
-        col_indeces = indeces[:, :, 0].flatten()
+        row_indeces = tf.flatten(row_y_indeces)
+        col_indeces = tf.flatten(col_x_indeces)
         point_channel_indeces = np.tile(np.arange(self.n_points), batch_size)
         rope_images[batch_indeces, row_indeces, col_indeces, point_channel_indeces] = 1
         return rope_images

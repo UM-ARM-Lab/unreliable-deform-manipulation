@@ -10,7 +10,7 @@ from link_bot_pycommon import experiments_util
 from state_space_dynamics.locally_linear_cnn import LocallyLinearModel
 from video_prediction.datasets import dataset_utils
 
-tf.enable_eager_execution()
+# tf.enable_eager_execution()
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 
@@ -65,6 +65,7 @@ def main():
                                                                 'state_space',
                                                                 dataset_hparams_dict,
                                                                 args.dataset_hparams,
+                                                                shuffle=False,
                                                                 mode='train',
                                                                 epochs=args.epochs,
                                                                 seed=args.seed,
@@ -73,6 +74,7 @@ def main():
                                                             'state_space',
                                                             dataset_hparams_dict,
                                                             args.dataset_hparams,
+                                                            shuffle=False,
                                                             mode='val',
                                                             epochs=None,
                                                             seed=args.seed,

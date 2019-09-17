@@ -106,7 +106,7 @@ class LocallyLinearModel:
         self.keras_model.compile(optimizer=tf.train.AdamOptimizer(),
                                  loss='binary_crossentropy',
                                  metrics=['accuracy'],
-                                # run_eagerly=True
+                                 #run_eagerly=True
                                  )
 
     def train(self, train_dataset, train_tf_dataset, val_dataset, val_tf_dataset, log_path, args):
