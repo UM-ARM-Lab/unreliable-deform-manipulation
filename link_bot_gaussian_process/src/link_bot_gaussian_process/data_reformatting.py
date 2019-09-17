@@ -16,23 +16,28 @@ def make_relative_to_head(states):
     return states_relative_to_head.reshape(states.shape)
 
 
-def format_forward_data_gz_tfrecords(rope_configurations, actions):
+def format_forward_data_gz_tfrecords(x_rope_configurations, y_rope_configurations, actions):
     """
     input to the forward model is a position of each point on the rope relative to the head,
     concatenated with the control input
     """
-    states_flat = rope_configurations[:, 0, :]
-    next_states_flat = rope_configurations[:, 1, :]
+    x_rope_configurations = x_rope_configurations.squeeze()
+    y_rope_configurations = y_rope_configurations[:, 1:, :].squeeze()
 
-    delta_flat = next_states_flat - states_flat
+    delta_flat = y_rope_configurations - x_rope_configurations
 
     # make input data more zero centered by making things relative to the head
-    states_relative_to_head_flat = make_relative_to_head(states_flat)
+    # NOTE: don't include the head point (0,0)
+    relative_to_head = make_relative_to_head(x_rope_configurations)
+    if relative_to_head.ndim == 2:
+        relative_to_head = relative_to_head[:, :-2]
+    else:
+        relative_to_head = relative_to_head[:, :, :-2]
 
-    combined_x = np.concatenate((states_relative_to_head_flat, actions[:, 0]), axis=1)
-    y = delta_flat
+    actions = actions.squeeze()
+    combined_x = np.concatenate((relative_to_head, actions), axis=-1)
 
-    return states_relative_to_head_flat, y, combined_x, states_flat
+    return combined_x, delta_flat
 
 
 def format_forward_data_gz(args, dataset):

@@ -1,5 +1,6 @@
 import os
 from time import time
+from typing import Optional
 
 import gpflow as gpf
 import gpflow.multioutput.features as mf
@@ -14,118 +15,87 @@ from link_bot_gaussian_process import data_reformatting
 from link_bot_pycommon import experiments_util
 
 
-def animate_training_data(rope_configurations, actions, sdfs, arena_size=5, linewidth=7, interval=100, arrow_width=0.02):
-    fig = plt.figure(figsize=(10, 10))
-    ax = plt.gca()
-
-    x_0 = rope_configurations[0, 0]
-    x_0_xs = [x_0[0], x_0[2], x_0[4]]
-    x_0_ys = [x_0[1], x_0[3], x_0[5]]
-    before = ax.plot(x_0_xs, x_0_ys, color='black', linewidth=linewidth, zorder=2)[0]
-
-    arrow = plt.Arrow(x_0[4], x_0[5], actions[0, 0, 0], actions[0, 0, 1], width=arrow_width, zorder=3)
-    patch = ax.add_patch(arrow)
-
-    ax.set_title("0")
-
-    x_0 = rope_configurations[0, 1]
-    x_0_xs = [x_0[0], x_0[2], x_0[4]]
-    x_0_ys = [x_0[1], x_0[3], x_0[5]]
-    after = ax.plot(x_0_xs, x_0_ys, color='gray', linewidth=linewidth, zorder=1)[0]
-
-    img_handle = ax.imshow(sdfs[0], extent=[-arena_size, arena_size, -arena_size, arena_size])
-
-    plt.xlabel("x (m)")
-    plt.ylabel("y (m)")
-    plt.xlim([-arena_size, arena_size])
-    plt.ylim([-arena_size, arena_size])
-
-    def update(i):
-        nonlocal patch
-
-        x_i = rope_configurations[i, 0]
-        x_i_xs = [x_i[0], x_i[2], x_i[4]]
-        x_i_ys = [x_i[1], x_i[3], x_i[5]]
-        before.set_xdata(x_i_xs)
-        before.set_ydata(x_i_ys)
-
-        patch.remove()
-        arrow = plt.Arrow(x_i[4], x_i[5], actions[i, 0, 0], actions[i, 0, 1], width=arrow_width, zorder=3)
-        patch = ax.add_patch(arrow)
-
-        ax.set_title(i)
-
-        img_handle.set_data(sdfs[i])
-
-        x_i = rope_configurations[i, 1]
-        x_i_xs = [x_i[0], x_i[2], x_i[4]]
-        x_i_ys = [x_i[1], x_i[3], x_i[5]]
-        after.set_xdata(x_i_xs)
-        after.set_ydata(x_i_ys)
-
-    anim = FuncAnimation(fig, update, frames=rope_configurations.shape[0], interval=interval, repeat=False)
-    return anim
-
-
-def predict(fwd_model, np_state, np_controls, np_duration_steps_int, steps=None, initial_variance=0.00001):
+def predict(fwd_model, np_state, np_controls, steps=None, initial_variance=0.00001):
     # flatten and combine np_controls and durations
-    np_controls_flat = []
-    for control, duration in zip(np_controls, np_duration_steps_int):
-        for i in range(duration):
-            np_controls_flat.append(control)
-    np_controls_flat = np.array(np_controls_flat)
-
     if steps is None:
-        steps = np_controls_flat.shape[0]
+        steps = np_controls.shape[0] + 1
 
     x_t = np.copy(np_state)
 
-    prediction = np.zeros((steps, fwd_model.n_state))
+    prediction = np.zeros((steps, np_state.shape[1]))
+    prediction[0] = np_state[0]
 
-    variances = np.ndarray((steps, fwd_model.n_state))
-    for t in range(steps):
-        prediction[t] = x_t
-        x_t_relative = data_reformatting.make_relative_to_head(x_t)
-        combined_x_t_relative = np.hstack((x_t_relative, [np_controls_flat[t]]))
+    variances = np.zeros((steps, np_state.shape[1]))
+    for t in range(steps - 1):
+        prediction[t + 1] = x_t
+        x_t_relative = data_reformatting.make_relative_to_head(x_t)[:, :-2]
+        combined_x_t_relative = np.hstack((x_t_relative, [np_controls[t]]))
 
         mu_delta_x_t_plus_1s, variance = fwd_model.model.predict_y(combined_x_t_relative)
-        variances[t] = variance
+        variances[t + 1] = variance
 
         x_t = x_t + mu_delta_x_t_plus_1s
 
     return prediction, variances
 
 
-def animate_predict(prediction, sdf, arena_size, linewidth=6):
+def animate_predict(prediction: np.ndarray,
+                    y_rope_configurations: np.ndarray,
+                    sdf: Optional[np.ndarray] = None,
+                    arena_size: int = 2,
+                    linewidth: float = 6,
+                    example_idx: int = None):
     T = prediction.shape[0]
 
     fig = plt.figure(figsize=(10, 10))
-    max = np.max(np.flipud(sdf.T))
-    img = Image.fromarray(np.uint8(np.flipud(sdf.T) / max * 256))
-    small_sdf = img.resize((50, 50))
-    plt.imshow(small_sdf, extent=[-arena_size, arena_size, -arena_size, arena_size])
+    if sdf:
+        max = np.max(np.flipud(sdf.T))
+        img = Image.fromarray(np.uint8(np.flipud(sdf.T) / max * 256))
+        small_sdf = img.resize((50, 50))
+        plt.imshow(small_sdf, extent=[-arena_size, arena_size, -arena_size, arena_size])
 
-    x_0 = prediction[0]
-    x_0_xs = [x_0[0], x_0[2], x_0[4]]
-    x_0_ys = [x_0[1], x_0[3], x_0[5]]
-    line = plt.plot(x_0_xs, x_0_ys, color='black', linewidth=linewidth, zorder=1)[0]
-    scat = plt.scatter(x_0_xs, x_0_ys, color=['blue', 'blue', 'green'], linewidth=linewidth, zorder=2)
+    pred_x_0 = prediction[0]
+    pred_x_0_xs = [pred_x_0[0], pred_x_0[2], pred_x_0[4]]
+    pred_x_0_ys = [pred_x_0[1], pred_x_0[3], pred_x_0[5]]
+    pred_line = plt.plot(pred_x_0_xs, pred_x_0_ys, color='black', linewidth=linewidth, zorder=1)[0]
+    pred_scatt = plt.scatter(pred_x_0_xs, pred_x_0_ys, color=['blue', 'blue', 'green'], linewidth=linewidth, zorder=2)
+
+    true_x_0 = y_rope_configurations[0]
+    true_x_0_xs = [true_x_0[0], true_x_0[2], true_x_0[4]]
+    true_x_0_ys = [true_x_0[1], true_x_0[3], true_x_0[5]]
+    true_line = plt.plot(true_x_0_xs, true_x_0_ys, color='red', linewidth=linewidth, zorder=1)[0]
+    true_scatt = plt.scatter(true_x_0_xs, true_x_0_ys, color=['red', 'red', 'orange'], linewidth=linewidth, zorder=2)
 
     plt.xlabel("x (m)")
     plt.ylabel("y (m)")
+    plt.axis("equal")
     plt.xlim([-arena_size - 1, arena_size + 1])
     plt.ylim([-arena_size - 1, arena_size + 1])
+    if example_idx:
+        plt.title(example_idx)
+    time_text_handle = plt.text(5, 8, 't=0', fontdict={'color': 'white', 'size': 5},
+                                bbox=dict(facecolor='black', alpha=0.5))
 
     def update(t):
-        x_t = prediction[t]
-        x_t_xs = [x_t[0], x_t[2], x_t[4]]
-        x_t_ys = [x_t[1], x_t[3], x_t[5]]
-        line.set_xdata(x_t_xs)
-        line.set_ydata(x_t_ys)
-        offsets = np.vstack((x_t_xs, x_t_ys)).T
-        scat.set_offsets(offsets)
+        pred_x_t = prediction[t]
+        pred_x_t_xs = [pred_x_t[0], pred_x_t[2], pred_x_t[4]]
+        pred_x_t_ys = [pred_x_t[1], pred_x_t[3], pred_x_t[5]]
+        pred_line.set_xdata(pred_x_t_xs)
+        pred_line.set_ydata(pred_x_t_ys)
+        pred_offsets = np.vstack((pred_x_t_xs, pred_x_t_ys)).T
+        pred_scatt.set_offsets(pred_offsets)
 
-    anim = FuncAnimation(fig, update, frames=T, interval=100)
+        true_x_t = y_rope_configurations[t]
+        true_x_t_xs = [true_x_t[0], true_x_t[2], true_x_t[4]]
+        true_x_t_ys = [true_x_t[1], true_x_t[3], true_x_t[5]]
+        true_line.set_xdata(true_x_t_xs)
+        true_line.set_ydata(true_x_t_ys)
+        true_offsets = np.vstack((true_x_t_xs, true_x_t_ys)).T
+        true_scatt.set_offsets(true_offsets)
+
+        time_text_handle.set_text("t={}".format(t))
+
+    anim = FuncAnimation(fig, update, frames=T, interval=250)
     return anim
 
 
@@ -288,3 +258,66 @@ class LinkBotGP:
                 min_u = u
 
         return min_u, random_n_steps
+
+    def animate_validation(self,
+                           x_rope_configurations: np.ndarray,
+                           y_rope_configurations: np.ndarray,
+                           actions: np.ndarray,
+                           sdfs: Optional[np.ndarray] = None,
+                           arena_size: int = 2,
+                           linewidth: int = 2,
+                           interval: int = 250,
+                           arrow_width: float = 0.02):
+        fig = plt.figure(figsize=(10, 10))
+        ax = plt.gca()
+
+        x_0 = x_rope_configurations[0]
+        x_0_xs = [x_0[0], x_0[2], x_0[4]]
+        x_0_ys = [x_0[1], x_0[3], x_0[5]]
+        before = ax.plot(x_0_xs, x_0_ys, color='black', linewidth=linewidth, zorder=2)[0]
+
+        arrow = plt.Arrow(x_0[4], x_0[5], actions[0, 0], actions[0, 1], width=arrow_width, zorder=3)
+        patch = ax.add_patch(arrow)
+
+        ax.set_title("0")
+
+        x_0 = y_rope_configurations[0]
+        x_0_xs = [x_0[0], x_0[2], x_0[4]]
+        x_0_ys = [x_0[1], x_0[3], x_0[5]]
+        after = ax.plot(x_0_xs, x_0_ys, color='gray', linewidth=linewidth, zorder=1)[0]
+
+        if sdfs:
+            img_handle = ax.imshow(sdfs[0], extent=[-arena_size, arena_size, -arena_size, arena_size])
+
+        plt.xlabel("x (m)")
+        plt.ylabel("y (m)")
+        plt.axis("equal")
+        plt.xlim([-arena_size, arena_size])
+        plt.ylim([-arena_size, arena_size])
+
+        def update(i):
+            nonlocal patch
+
+            x_i = x_rope_configurations[i]
+            x_i_xs = [x_i[0], x_i[2], x_i[4]]
+            x_i_ys = [x_i[1], x_i[3], x_i[5]]
+            before.set_xdata(x_i_xs)
+            before.set_ydata(x_i_ys)
+
+            patch.remove()
+            arrow = plt.Arrow(x_i[4], x_i[5], actions[i, 0], actions[i, 1], width=arrow_width, zorder=3)
+            patch = ax.add_patch(arrow)
+
+            ax.set_title(i)
+
+            if sdfs:
+                img_handle.set_data(sdfs[i])
+
+            x_i = y_rope_configurations[i]
+            x_i_xs = [x_i[0], x_i[2], x_i[4]]
+            x_i_ys = [x_i[1], x_i[3], x_i[5]]
+            after.set_xdata(x_i_xs)
+            after.set_ydata(x_i_ys)
+
+        anim = FuncAnimation(fig, update, frames=x_rope_configurations.shape[0], interval=interval, repeat=True)
+        return anim

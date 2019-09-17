@@ -63,7 +63,6 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
     }
 
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
-    print(local_sdf_origin)
     for t in range(args.steps_per_traj):
         # Query the current state
         state = services.get_state(state_req)
@@ -210,6 +209,8 @@ def generate(args):
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': DT,
+            'sdf_w': args.sdf_w,
+            'sdf_h': args.sdf_h,
             'env_w': args.env_w,
             'env_h': args.env_h,
             'compression_type': args.compression_type
