@@ -33,13 +33,9 @@ class LocallyLinearModel:
 
             binary_sdf = layers.Lambda(function=lambda sdf: tf.cast(sdf > 0, dtype=tf.float32), name='make_binary')(sdf)
             action_image = action_smear_layer(actions, hparams['sdf_shape'][0], hparams['sdf_shape'][1])(actions)
-            rope_images = RasterPoints(input_sequence_length, hparams['sdf_shape'])([states, sdf_resolution, sdf_origin])
-            concat = layers.Concatenate(axis=-1)([binary_sdf, action_image, rope_images])
         else:
-            # NOTE: this we do ahead of time beacuse it never changes
+            # NOTE: this we do ahead of time because it never changes
             action_image = action_smear_layer(actions, hparams['sdf_shape'][0], hparams['sdf_shape'][1])(actions)
-            # rope_images = RasterPoints(input_sequence_length, hparams['sdf_shape'])([states, sdf_resolution, sdf_origin])
-            # concat = layers.Concatenate(axis=-1)([action_image, rope_images])
         # TODO: How do we rasterize the rope configuration? should it have anything to do with the SDF?
         # it just needs to be the same dimensions...? but if there is no sdf shape then it can be arbitrarily chosen
         # so just choose a fixed size for the rope image if use_sdf is false?
@@ -73,6 +69,7 @@ class LocallyLinearModel:
                 # then pass to the AB network
                 # TODO: support concatenation with an SDF?
                 rope_images = RasterPoints(hparams['sdf_shape'])([s_t_flat, sdf_resolution[:, t], sdf_origin[:, t]])
+                print(action_image_t, rope_images)
                 concat = layers.Concatenate(axis=-1)([action_image_t, rope_images])
 
                 params_t = AB_params(concat)
@@ -106,7 +103,7 @@ class LocallyLinearModel:
         self.keras_model.compile(optimizer=tf.train.AdamOptimizer(),
                                  loss='binary_crossentropy',
                                  metrics=['accuracy'],
-                                 #run_eagerly=True
+                                 run_eagerly=True
                                  )
 
     def train(self, train_dataset, train_tf_dataset, val_dataset, val_tf_dataset, log_path, args):
