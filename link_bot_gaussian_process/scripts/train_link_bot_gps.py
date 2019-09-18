@@ -5,10 +5,13 @@ import json
 import os
 import pathlib
 
+import tensorflow as tf
+
+# tf.enable_eager_execution()
+
 import gpflow as gpf
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 from colorama import Fore
 from tabulate import tabulate
 
@@ -43,6 +46,7 @@ def train(args):
     config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=False, per_process_gpu_memory_fraction=0.1))
     gpf.reset_default_session(config=config)
     sess = gpf.get_default_session()
+
     fwd_model = link_bot_gp.LinkBotGP()
 
     num_validation_examples = 100
@@ -63,7 +67,7 @@ def train(args):
     # Train
     ###########################################################################
 
-    print("Training forward model")
+    print(Fore.CYAN + "Training forward model" + Fore.RESET)
     fwd_model.train(train_fwd_gp_x, train_fwd_gp_y, verbose=args.verbose, maximum_training_iterations=args.max_iters,
                     n_inducing_points=args.n_inducing_points)
 
@@ -72,6 +76,8 @@ def train(args):
     if not args.dont_save:
         log_path = experiments_util.experiment_name(args.log, 'gpf')
         fwd_model.save(log_path, 'fwd_model')
+
+    print(Fore.CYAN + "Evaluating" + Fore.RESET)
 
     evaluate(fwd_model, val_fwd_gp_x, val_fwd_gp_y)
 

@@ -12,6 +12,7 @@ from colorama import Fore
 from matplotlib.animation import FuncAnimation
 
 from link_bot_gaussian_process import data_reformatting
+from link_bot_gaussian_process.my_svgp import MySVGP
 from link_bot_pycommon import experiments_util
 
 
@@ -150,14 +151,23 @@ class LinkBotGP:
 
         likelihood_variance = self.model_def['initial_likelihood_variance']
         likelihood = gpf.likelihoods.Gaussian(likelihood_variance)
-        self.model = gpf.models.SVGP(X, Y, kernel, likelihood, feat=feature)
-        opt = gpf.train.ScipyOptimizer()
+        self.model = MySVGP(X, Y, kernel, likelihood, feat=feature)
+
         self.maximum_training_iterations = maximum_training_iterations
 
+        # opt = gpf.train.ScipyOptimizer()
+        optimizer = gpf.train.AdamOptimizer()
+        optimizer_tensor = optimizer.make_optimize_tensor(self.model)
+        session = gpf.get_default_session()
+
         t0 = time()
-        opt.minimize(self.model, disp=verbose, maxiter=self.maximum_training_iterations)
+        # opt.minimize(self.model, disp=verbose, maxiter=self.maximum_training_iterations)
+        for _ in range(self.maximum_training_iterations):
+            session.run(optimizer_tensor)
         training_time = time() - t0
+
         if verbose:
+            print(self.model.compute_log_likelihood())
             print(Fore.YELLOW + "training time: {:7.3f}s".format(training_time) + Fore.RESET)
 
     def metadata(self):
