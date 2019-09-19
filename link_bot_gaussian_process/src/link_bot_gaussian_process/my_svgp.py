@@ -55,7 +55,7 @@ class MySVGP(gpf.models.SVGP):
 
         # TODO: compute this from the input data? or at least make it an argument to the constructor
         nominal_length = 0.23
-        beta = 1000
+        beta = 0
         # if the number is high, then we say the likelihood is low
         tail_to_mid = tf.norm(predicted_points[:, 0] - predicted_points[:, 1], axis=1)
         mid_to_head = tf.norm(predicted_points[:, 1] - predicted_points[:, 2], axis=1)

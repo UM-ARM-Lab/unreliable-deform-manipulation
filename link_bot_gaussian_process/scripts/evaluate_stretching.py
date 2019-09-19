@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import pathlib
 import random
 import time
 
@@ -15,7 +16,7 @@ from link_bot_gaussian_process import link_bot_gp
 from link_bot_pycommon.link_bot_pycommon import make_random_rope_configuration
 
 
-def visualize(predicted_traj, action):
+def visualize(outdir, predicted_traj, action):
     fig, axes = plt.subplots(nrows=1, ncols=2)
 
     points = np.array(predicted_traj).reshape([-1, 3, 2])
@@ -29,7 +30,7 @@ def visualize(predicted_traj, action):
     other_points_scatt = axes[0].scatter([], [], color='k', s=5)
     axes[0].set_xlim([-5.0, 5.0])
     axes[0].set_ylim([-5.0, 5.0])
-    axes[1].set_ylim([0, 1.0])
+    axes[1].set_ylim([0, 0.5])
 
     def update(t):
         rope_config = predicted_traj[t][0]
@@ -43,8 +44,11 @@ def visualize(predicted_traj, action):
     plt.tight_layout()
     axes[0].set_title("Rollout (action={})".format(np.array2string(action)))
     axes[1].set_title("distance")
-    outname = "gp_rollout_{}.gif".format(int(time.time()))
-    anim.save(outname, writer='imagemagick', fps=30)
+
+    if outdir:
+        outname = outdir / "gp_rollout_{}.gif".format(int(time.time()))
+        anim.save(outname, writer='imagemagick', fps=30)
+
     plt.show()
 
 
@@ -54,7 +58,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("gp_model_dir")
-    parser.add_argument("--outdir", help="output visualizations here")
+    parser.add_argument("--outdir", help="output visualizations here", type=pathlib.Path)
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--seed', type=int)
     parser.add_argument('--n-examples', type=int, default=10)
@@ -80,7 +84,7 @@ def main():
             predicted_traj.append(s_next)
             s = s_next
 
-        visualize(predicted_traj, action)
+        visualize(args.outdir, predicted_traj, action)
 
 
 if __name__ == '__main__':
