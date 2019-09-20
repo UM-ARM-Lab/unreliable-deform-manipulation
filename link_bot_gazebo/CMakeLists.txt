@@ -29,6 +29,7 @@ add_service_files(
         CameraProjection.srv
         InverseCameraProjection.srv
         LinkBotPositionAction.srv
+        LinkBotPath.srv
 )
 
 generate_messages(

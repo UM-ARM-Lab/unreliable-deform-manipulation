@@ -13,7 +13,8 @@ from link_bot_gazebo.msg import LinkBotConfiguration, Position2dAction, \
     LinkBotVelocityAction, ObjectAction
 from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
     InverseCameraProjection, InverseCameraProjectionRequest, CameraProjection, CameraProjectionRequest, ComputeSDF2Request, \
-    LinkBotPositionAction
+    LinkBotPositionAction, LinkBotPath
+from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.numpy_point import NumpyPoint
 
@@ -42,10 +43,12 @@ class GazeboServices:
         self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
         self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", std_srvs.srv.Empty)
         self.position_action = rospy.ServiceProxy("/link_bot_position_action", LinkBotPositionAction)
+        self.execute_path = rospy.ServiceProxy("/link_bot_execute_path", LinkBotPath)
         self.services_to_wait_for = [
             '/world_control',
             '/link_bot_state',
             '/link_bot_position_action',
+            '/link_bot_execute_path',
             '/sdf',
             '/sdf2',
             '/gazebo/get_physics_properties',
@@ -177,7 +180,7 @@ def xy_to_row_col(services, x, y, z):
     return NumpyPoint(int(res.rowcol.x_col), int(res.rowcol.y_row))
 
 
-def get_sdf_data(services, env_w=1, env_h=1, res=0.01):
+def get_sdf_and_gradient(services, env_w=1, env_h=1, res=0.01):
     sdf_request = ComputeSDF2Request()
     sdf_request.resolution = res
     sdf_request.y_height = env_h
@@ -194,3 +197,19 @@ def get_sdf_data(services, env_w=1, env_h=1, res=0.01):
                                                              sdf_response.gradient.layout.dim[1].size,
                                                              sdf_response.gradient.layout.dim[2].size])
     return gradient, sdf, sdf_response
+
+
+def get_sdf_data(args, initial_head_point, services):
+    gradient, sdf, sdf_response = get_sdf_and_gradient(services, env_w=args.env_w, env_h=args.env_h, res=args.res)
+    resolution = np.array(sdf_response.res)
+    origin = np.array(sdf_response.origin)
+    sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)
+    sdf_bounds = link_bot_sdf_utils.bounds_from_env_size(args.sdf_w, args.sdf_h, initial_head_point, sdf_data.resolution,
+                                                         sdf_data.origin)
+    rmin, rmax, cmin, cmax = sdf_bounds
+    local_sdf = sdf_data.sdf[rmin:rmax, cmin:cmax]
+    local_sdf_gradient = sdf_data.sdf[rmin:rmax, cmin:cmax]
+    # indeces of the world point 0,0 in the local sdf
+    local_sdf_origin_indeces_in_full_sdf = np.array([rmin, cmin])
+    local_sdf_origin = origin - local_sdf_origin_indeces_in_full_sdf
+    return local_sdf, local_sdf_gradient, local_sdf_origin, sdf_data

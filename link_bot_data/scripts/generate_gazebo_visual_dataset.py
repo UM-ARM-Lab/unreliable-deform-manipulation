@@ -17,7 +17,7 @@ from link_bot_data.video_prediction_dataset_utils import bytes_feature, float_fe
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_sdf_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_planning.goals import sample_goal
 
 opts = tensorflow.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.ConfigProto(gpu_options=opts)
@@ -39,18 +39,7 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
     initial_head_point = np.array([state.points[head_idx].x, state.points[head_idx].y])
 
     # Compute SDF Data
-    gradient, sdf, sdf_response = get_sdf_data(services, env_w=args.env_w, env_h=args.env_h, res=args.res)
-    resolution = np.array(sdf_response.res)
-    origin = np.array(sdf_response.origin)
-    sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)
-    sdf_bounds = link_bot_sdf_utils.bounds_from_env_size(args.sdf_w, args.sdf_h, initial_head_point, sdf_data.resolution,
-                                                         sdf_data.origin)
-    rmin, rmax, cmin, cmax = sdf_bounds
-    local_sdf = sdf_data.sdf[rmin:rmax, cmin:cmax]
-    local_sdf_gradient = sdf_data.sdf[rmin:rmax, cmin:cmax]
-    # indeces of the world point 0,0 in the local sdf
-    local_sdf_origin_indeces_in_full_sdf = np.array([rmin, cmin])
-    local_sdf_origin = origin - local_sdf_origin_indeces_in_full_sdf
+    local_sdf, local_sdf_gradient, local_sdf_origin, sdf_data = get_sdf_data(args, initial_head_point, services)
 
     feature = {
         # These features don't change over time
@@ -135,21 +124,6 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
     # TODO: include documentation *inside* the tfrecords file describing what each feature is
     example = example_proto.SerializeToString()
     return example, percentage_positive, global_t_step, gripper1_target_x, gripper1_target_y
-
-
-def sample_goal(w, h, current_head_point, env_padding):
-    gripper1_current_x = current_head_point.x
-    gripper1_current_y = current_head_point.y
-    current = np.array([gripper1_current_x, gripper1_current_y])
-    min_near = 0.5
-    while True:
-        gripper1_target_x = np.random.uniform(-w / 2 + env_padding, w / 2 - env_padding)
-        gripper1_target_y = np.random.uniform(-h / 2 + env_padding, h / 2 - env_padding)
-        target = np.array([gripper1_target_x, gripper1_target_y])
-        d = np.linalg.norm(current - target)
-        if d > min_near:
-            break
-    return gripper1_target_x, gripper1_target_y
 
 
 def generate_trajs(args, full_output_directory, services):

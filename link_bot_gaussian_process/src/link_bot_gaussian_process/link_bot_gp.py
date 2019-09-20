@@ -1,3 +1,4 @@
+import json
 import os
 from time import time
 from typing import Optional
@@ -117,16 +118,19 @@ class LinkBotGP:
         self.min_steps = 1
         self.max_steps = 1
         self.rng_type = rng_type
+        self.dataset_hparams = None
+        self.metadata = None
 
     def initialize_rng(self, min_steps, max_steps):
         self.min_steps = min_steps
         self.max_steps = max_steps
         self.rng = self.rng_type()
 
-    def train(self, X, Y, n_inducing_points=100, verbose=True, maximum_training_iterations=300):
+    def train(self, X, Y, beta, dataset_hparams, n_inducing_points=100, verbose=True, maximum_training_iterations=300):
         self.n_data_points, self.n_inputs = X.shape
         _, self.n_outputs = Y.shape
         self.n_inducing_points = n_inducing_points  # number of inducing points
+        self.dataset_hparams = dataset_hparams
         X = X
         Y = Y
 
@@ -151,17 +155,18 @@ class LinkBotGP:
 
         likelihood_variance = self.model_def['initial_likelihood_variance']
         likelihood = gpf.likelihoods.Gaussian(likelihood_variance)
-        self.model = MySVGP(X, Y, kernel, likelihood, feat=feature)
+        self.model = MySVGP(X, Y, kernel, likelihood, feat=feature, beta=beta)
 
         self.maximum_training_iterations = maximum_training_iterations
 
-        # opt = gpf.train.ScipyOptimizer()
+        # Now that all the variables related to training have been set, we can build our metadata
+        self.build_metadata()
+
         optimizer = gpf.train.AdamOptimizer()
         optimizer_tensor = optimizer.make_optimize_tensor(self.model)
         session = gpf.get_default_session()
 
         t0 = time()
-        # opt.minimize(self.model, disp=verbose, maxiter=self.maximum_training_iterations)
         for _ in range(self.maximum_training_iterations):
             session.run(optimizer_tensor)
         training_time = time() - t0
@@ -170,8 +175,11 @@ class LinkBotGP:
             print(self.model.compute_log_likelihood())
             print(Fore.YELLOW + "training time: {:7.3f}s".format(training_time) + Fore.RESET)
 
-    def metadata(self):
-        return {
+    def get_metadata(self):
+        return self.metadata
+
+    def build_metadata(self):
+        self.metadata = {
             'n_data_points': self.n_data_points,
             'n_inputs': self.n_inputs,
             'n_outputs': self.n_outputs,
@@ -182,6 +190,7 @@ class LinkBotGP:
             'kernel_type': self.model_def['class'].__name__,
             'initial_hyper_params': self.model_def['initial_hyper_params'],
             'initial_likelihood_variance': self.model_def['initial_likelihood_variance'],
+            'dataset_hparams': self.dataset_hparams,
         }
 
     def save(self, log_path, model_name):
@@ -190,7 +199,7 @@ class LinkBotGP:
         full_log_path = os.path.join(os.getcwd(), 'log_data', log_path)
 
         experiments_util.make_log_dir(full_log_path)
-        experiments_util.write_metadata(self.metadata(), model_name + '-metadata.json', log_path)
+        experiments_util.write_metadata(self.get_metadata(), model_name + '-metadata.json', log_path)
         model_path = os.path.join(full_log_path, model_name)
         print(Fore.CYAN + "Saving model to {}".format(model_path) + Fore.RESET)
 
@@ -215,6 +224,9 @@ class LinkBotGP:
         # load these from the metadata file?
         self.maximum_training_iterations = None
         self.model_def = None
+        metadata = json.load(open(model_path + '-metadata.json', 'r'))
+        self.metadata = metadata
+        self.dataset_hparams = metadata['dataset_hparams']
 
     @staticmethod
     def convert_triplet_action(u):
@@ -255,14 +267,14 @@ class LinkBotGP:
 
         return u, random_n_steps
 
-    def dumb_inv_act(self, fwd_model, s, s_target, max_v=1.0):
+    def dumb_inv_act(self, s, s_target, max_v=1.0):
         random_n_steps = self.rng.uniformInt(self.min_steps, self.max_steps)
         min_distance = np.inf
         min_u = None
         for i in range(10):
             theta = np.random.uniform(-np.pi, np.pi)
             u = np.array([[max_v * np.cos(theta), max_v * np.sin(theta)]])
-            s_next = fwd_model.fwd_act(s, u)
+            s_next = self.fwd_act(s, u)
             distance = np.linalg.norm(s_next - s_target)
             if distance < min_distance:
                 min_distance = distance

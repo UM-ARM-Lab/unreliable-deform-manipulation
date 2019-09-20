@@ -1,0 +1,6 @@
+geometry_msgs/Vector3[] gripper1_path
+geometry_msgs/Vector3[] gripper2_path
+---
+geometry_msgs/Vector3[] actual_gripper1_path
+geometry_msgs/Vector3[] actual_gripper2_path
+

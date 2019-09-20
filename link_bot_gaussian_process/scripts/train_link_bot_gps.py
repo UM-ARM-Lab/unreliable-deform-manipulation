@@ -5,13 +5,10 @@ import json
 import os
 import pathlib
 
-import tensorflow as tf
-
-# tf.enable_eager_execution()
-
 import gpflow as gpf
 import matplotlib.pyplot as plt
 import numpy as np
+import tensorflow as tf
 from colorama import Fore
 from tabulate import tabulate
 
@@ -56,20 +53,30 @@ def train(args):
     else:
         dataset_hparams_dict = json.load(open(args.indir / 'hparams.json', 'r'))
 
-    train_x, train_y, train_fwd_gp_x, train_fwd_gp_y = load_data(sess, args.indir, dataset_hparams_dict, 'train',
-                                                                 args.n_training_examples, seed=args.seed)
-    val_x, val_y, val_fwd_gp_x, val_fwd_gp_y = load_data(sess, args.indir, dataset_hparams_dict, 'val', num_validation_examples,
+    train_x, train_y, train_fwd_gp_x, train_fwd_gp_y = load_data(sess,
+                                                                 args.indir,
+                                                                 dataset_hparams_dict,
+                                                                 'train',
+                                                                 args.n_training_examples,
+                                                                 seed=args.seed)
+    val_x, val_y, val_fwd_gp_x, val_fwd_gp_y = load_data(sess,
+                                                         args.indir,
+                                                         dataset_hparams_dict,
+                                                         'val',
+                                                         num_validation_examples,
                                                          seed=args.seed)
-    long_val_x, long_val_y, long_val_fwd_gp_x, long_val_fwd_gp_y = load_data(sess, args.indir, dataset_hparams_dict, 'val',
-                                                                             num_validation_examples, sequence_length=10,
-                                                                             seed=args.seed)
 
     # Train
     ###########################################################################
 
     print(Fore.CYAN + "Training forward model" + Fore.RESET)
-    fwd_model.train(train_fwd_gp_x, train_fwd_gp_y, verbose=args.verbose, maximum_training_iterations=args.max_iters,
-                    n_inducing_points=args.n_inducing_points)
+    fwd_model.train(train_fwd_gp_x,
+                    train_fwd_gp_y,
+                    beta=args.beta,
+                    verbose=args.verbose,
+                    maximum_training_iterations=args.max_iters,
+                    n_inducing_points=args.n_inducing_points,
+                    dataset_hparams=dataset_hparams_dict)
 
     # Save
     ###########################################################################
@@ -142,7 +149,8 @@ def main():
     train_parser.add_argument('--dataset-hparams-dict')
     train_parser.add_argument('--seed', type=int, default=0)
     train_parser.add_argument('--n-training-examples', type=int, default=1000)
-    train_parser.add_argument('--max-iters', type=int, default=200)
+    train_parser.add_argument('--max-iters', type=int, default=1000)
+    train_parser.add_argument('--beta', type=float, default=1000)
     train_parser.add_argument('--n-inducing-points', type=int, default=20)
     train_parser.add_argument('--verbose', action='store_true')
     train_parser.add_argument('--log')
