@@ -12,6 +12,8 @@ def plot(planner_data, sdf, start, goal, path, controls, n_state, extent):
     plt.figure()
     plt.imshow(np.flipud(sdf.T) > 0, extent=extent)
 
+    print(len(GPDirectedControlSampler.states_sampled_at))
+    print(GPDirectedControlSampler.states_sampled_at[0])
     for state_sampled_at in GPDirectedControlSampler.states_sampled_at:
         xs = [state_sampled_at[0, 0], state_sampled_at[0, 2], state_sampled_at[0, 4]]
         ys = [state_sampled_at[0, 1], state_sampled_at[0, 3], state_sampled_at[0, 5]]
@@ -114,7 +116,7 @@ class GPDirectedControlSampler(oc.DirectedControlSampler):
         #     new_tail = np_s_tail + tail_delta / np.linalg.norm(tail_delta) * max_tail_delta
         # new_np_target = (np_target_pts - np_target_tail + new_tail).reshape(-1, self.n_state)
         # np_target = new_np_target
-        #
+
         self.states_sampled_at.append(np_target)
 
         if self.inv_gp_model is None:

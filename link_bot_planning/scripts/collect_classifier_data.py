@@ -13,6 +13,7 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_data import random_environment_data_utils
+from link_bot_data.video_prediction_dataset_utils import float_feature
 from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_sdf_data
@@ -78,6 +79,11 @@ def collect_classifier_data(args):
                        env_w=args.env_w,
                        env_h=args.env_h)
 
+    # Preallocate this array once
+    examples = np.ndarray([args.n_examples_per_record], dtype=object)
+    example_idx = 0
+    current_record_traj_idx = 0
+
     services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate)
     # generate a new environment by rearranging the obstacles
     for traj_idx in range(args.n_envs):
@@ -133,9 +139,7 @@ def collect_classifier_data(args):
                 print(Fore.CYAN + "Executing Plan.".format(tail_goal_point) + Fore.RESET)
 
             traj_res = services.execute_trajectory(traj_req)
-
-            import matplotlib.pyplot as plt
-            # FOR THE TAIL
+            # convert ros message into a T x n_state numpy matrix
             actual_rope_configurations = []
             for configuration in traj_res.actual_path:
                 np_config = []
@@ -144,21 +148,50 @@ def collect_classifier_data(args):
                     np_config.append(point.y)
                 actual_rope_configurations.append(np_config)
             actual_rope_configurations = np.array(actual_rope_configurations)
-            print("====")
-            print(planned_path)
-            print("====")
-            print(actual_rope_configurations)
-            anim = link_bot_gp.animate_predict(prediction=planned_path,
-                                               y_rope_configurations=actual_rope_configurations,
-                                               sdf=sdf_data.sdf,
-                                               extent=sdf_data.extent)
-            plt.show()
 
-            # collect the transition pairs (s_t, s_{t+1}, \hat{s}_t, \hat{s}_{t+1}) and  the corresponding label
-            # The label will be based on thresholding the euclidian distance ||s_{t+1} - \hat{s}_{t+1}||2
-            # If the distance is greater than the threshold, then the label is 0 to indicate the model should not be used there.
+            if args.verbose >= 3:
+                import matplotlib.pyplot as plt
+                # FOR THE TAIL
 
-            # save to a TF record
+                anim = link_bot_gp.animate_predict(prediction=planned_path,
+                                                   y_rope_configurations=actual_rope_configurations,
+                                                   sdf=sdf_data.sdf,
+                                                   extent=sdf_data.extent)
+                plt.show()
+
+            # collect the transition pairs (s_t, s_{t+1}, \hat{s}_t, \hat{s}_{t+1})
+            planned_states = planned_path[:-1]
+            planned_next_states = planned_path[1:]
+            states = actual_rope_configurations[:-1]
+            next_states = planned_path[1:]
+            for (state, next_state, control, planned_state, planned_next_state) in zip(states, next_states, planned_controls,
+                                                                                       planned_states, planned_next_states):
+                feature = {
+                    'state': float_feature(state),
+                    'next_state': float_feature(next_state),
+                    'action': float_feature(control),
+                    'planned_state': float_feature(planned_state),
+                    'planned_next_state': float_feature(planned_next_state),
+                }
+                example_proto = tf.train.Example(features=tf.train.Features(feature=feature))
+                example = example_proto.SerializeToString()
+                examples[current_record_traj_idx] = example
+                current_record_traj_idx += 1
+                example_idx += 1
+
+                if current_record_traj_idx == args.n_examples_per_record:
+                    # save to a TF record
+                    serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
+
+                    end_example_idx = example_idx
+                    start_example_idx = end_example_idx - args.n_examples_per_record
+                    full_filename = os.path.join(full_output_directory,
+                                                 "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx))
+                    writer = tf.data.experimental.TFRecordWriter(full_filename, compression_type=args.compression_type)
+                    writer.write(serialized_dataset)
+                    print("saved {}".format(full_filename))
+
+                    current_record_traj_idx = 0
 
 
 def main():
@@ -170,11 +203,13 @@ def main():
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-envs", type=int, default=2)
     parser.add_argument("--n-targets-per-env", type=int, default=2)
+    parser.add_argument("--n-examples-per-record", type=int, default=2)
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0)
-    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=10.0)
+    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=60.0)
     parser.add_argument("--real-time-rate", type=float, default=1.0)
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
+    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     parser.add_argument('--env-w', type=float, default=5.0)
     parser.add_argument('--env-h', type=float, default=5.0)
     parser.add_argument('--sdf-w', type=float, default=1.0)
