@@ -1,20 +1,20 @@
-import matplotlib.pyplot as plt
-from time import time
 import numpy as np
 from matplotlib import animation
 from ompl import base as ob
 from ompl import control as oc
 
-from link_bot_planning import ompl_util
 from link_bot_planning.gp_directed_control_sampler import GPDirectedControlSampler, plot
 from link_bot_planning.link_bot_goal import LinkBotGoal
-from link_bot_planning.state_spaces import LinkBotStateSpace, LinkBotControlSpace
-from link_bot_gaussian_process import link_bot_gp
+from link_bot_planning.state_spaces import LinkBotControlSpace, TailStateSpaceSampler, from_numpy, to_numpy
+
+
+# TODO: don't use numpy arrays, or convert this code based to C++
+# How do I load my GP model in C++? I think I would have to implement inference from scratch.
 
 
 class GPRRT:
 
-    def __init__(self, fwd_gp_model, inv_gp_model, constraint_checker_wrapper, dt, max_v, planner_timeout):
+    def __init__(self, fwd_gp_model, inv_gp_model, constraint_checker_wrapper, dt, max_v, planner_timeout, n_state, env_w, env_h):
         self.constraint_checker_wrapper = constraint_checker_wrapper
         self.fwd_gp_model = fwd_gp_model
         self.inv_gp_model = inv_gp_model
@@ -24,18 +24,34 @@ class GPRRT:
         self.n_control = self.fwd_gp_model.n_control
         self.max_v = max_v
 
-        self.arena_size = 5
-        self.state_space_size = 5  # be careful this will cause out of bounds in the SDF
-        extent = [-self.state_space_size, self.state_space_size, -self.state_space_size, self.state_space_size]
-        self.state_space = LinkBotStateSpace(self.n_state, extent)
-        self.state_space.setName("dynamics latent space")
-        self.state_space.setBounds(-self.state_space_size, self.state_space_size)
-        self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_space.allocator))
+        self.extent = [-env_w / 2, env_w / 2, -env_h / 2, env_h / 2]
+        self.state_space = ob.RealVectorStateSpace(n_state)
+        self.state_space.setName("rope configuration space")
+        bounds = ob.RealVectorBounds(self.n_state)
+        bounds.setLow(0, -env_w / 2)
+        bounds.setLow(1, -env_h / 2)
+        bounds.setLow(2, -env_w / 2)
+        bounds.setLow(3, -env_h / 2)
+        bounds.setLow(4, -env_w / 2)
+        bounds.setLow(5, -env_h / 2)
+        bounds.setHigh(0, env_w / 2)
+        bounds.setHigh(1, env_h / 2)
+        bounds.setHigh(2, env_w / 2)
+        bounds.setHigh(3, env_h / 2)
+        bounds.setHigh(4, env_w / 2)
+        bounds.setHigh(5, env_h / 2)
+        self.state_space.setBounds(bounds)
+
+        def state_sampler_allocator(state_space):
+            sampler = TailStateSpaceSampler(state_space, self.extent)
+            return sampler
+
+        self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(state_sampler_allocator))
 
         self.control_space = LinkBotControlSpace(self.state_space, self.n_control)
         control_bounds = ob.RealVectorBounds(2)
-        control_bounds.setLow(-0.3)
-        control_bounds.setHigh(0.3)
+        control_bounds.setLow(-max_v)
+        control_bounds.setHigh(max_v)
         self.control_space.setBounds(control_bounds)
 
         self.ss = oc.SimpleSetup(self.control_space)
@@ -60,8 +76,8 @@ class GPRRT:
         self.writer = self.Writer(fps=30, metadata=dict(artist='Me'), bitrate=1800)
 
     def propagate(self, start, control, duration, state_out):
-        np_s = self.state_space.to_numpy(start)
-        np_u = self.control_space.to_numpy(control)
+        np_s = to_numpy(start, self.n_state)
+        np_u = to_numpy(control, self.n_control)
 
         steps = int(duration / self.dt)
         np_s_next = np_s
@@ -82,7 +98,7 @@ class GPRRT:
         # plt.axis("equal")
         # plt.show()
 
-        self.state_space.from_numpy(np_s_next, state_out)
+        from_numpy(np_s_next, state_out, self.n_state)
 
     def isStateValid(self, state):
         with self.constraint_checker_wrapper.get_graph().as_default():
@@ -90,17 +106,24 @@ class GPRRT:
             if not self.state_space.satisfiesBounds(state):
                 return False
 
-            np_state = self.state_space.to_numpy(state)
+            np_state = to_numpy(state, self.n_state)
             p_reject = self.constraint_checker_wrapper(np_state)
             reject = np.random.uniform(0, 1) < p_reject
             return not reject
 
-    def plan(self, np_start, np_goal, sdf, verbose=False):
+    def plan(self, np_start, tail_goal_point, sdf, verbose=0):
+        """
+        :param np_start: 1 by n matrix
+        :param tail_goal_point:  1 by n matrix
+        :param sdf:
+        :param verbose: an integer, lower means less verbose
+        :return:
+        """
         # create start and goal states
         start = ob.State(self.state_space)
-        self.state_space.from_numpy(np_start, start)
+        from_numpy(np_start, start, self.n_state)
         epsilon = 0.10
-        goal = LinkBotGoal(self.si, epsilon, np_goal)
+        goal = LinkBotGoal(self.si, epsilon, tail_goal_point)
 
         self.ss.clear()
         self.ss.setStartState(start)
@@ -109,7 +132,7 @@ class GPRRT:
             solved = self.ss.solve(self.planner_timeout)
             planning_time = self.ss.getLastPlanComputationTime()
 
-            if verbose:
+            if verbose >= 2:
                 print("Planning time: {}".format(planning_time))
 
             if solved:
@@ -117,13 +140,10 @@ class GPRRT:
 
                 np_states = np.ndarray((ompl_path.getStateCount(), self.n_state))
                 np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
-                np_durations = np.ndarray(ompl_path.getControlCount())
                 for i, state in enumerate(ompl_path.getStates()):
-                    np_states[i] = self.state_space.to_numpy(state)
-                for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
-                    np_durations[i] = duration
-                    np_controls[i] = self.control_space.to_numpy(control)
-                np_duration_steps_int = (np_durations / self.dt).astype(np.int)
+                    np_states[i] = to_numpy(state, self.n_state)
+                for i, control in enumerate(ompl_path.getControls()):
+                    np_controls[i] = to_numpy(control, self.n_control)
 
                 # Verification
                 # verified = self.verify(np_controls, np_states)
@@ -133,29 +153,24 @@ class GPRRT:
                 # SMOOTHING
                 # np_states, np_controls = self.smooth(np_states, np_controls, verbose)
 
-                if verbose:
+                if verbose >= 3:
                     planner_data = ob.PlannerData(self.si)
                     self.planner.getPlannerData(planner_data)
-                    plot(self.state_space, self.control_space, planner_data, sdf, np_start, np_goal, np_states, np_controls,
-                         self.arena_size)
-                    prediction, variances = link_bot_gp.predict(self.fwd_gp_model, np_start, np_controls, np_duration_steps_int)
-                    animation = link_bot_gp.animate_predict(prediction, sdf, self.arena_size)
-                    animation.save('gp_mpc_{}.mp4'.format(int(time())), writer=self.writer)
-                    plt.show()
-                    final_error = np.linalg.norm(np_states[-1, 0:2] - np_goal)
+                    plot(planner_data, sdf, np_start, tail_goal_point, np_states, np_controls, self.n_state, self.extent)
+                    final_error = np.linalg.norm(np_states[-1, 0:2] - tail_goal_point)
                     lengths = [np.linalg.norm(np_states[i] - np_states[i - 1]) for i in range(1, len(np_states))]
                     path_length = np.sum(lengths)
                     duration = self.dt * len(np_states)
                     print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
                         final_error, path_length, len(np_states), duration))
-                np_controls_flat = ompl_util.flatten_plan(np_controls, np_duration_steps_int)
-                return np_controls_flat, np_states, planning_time
+
+                return np_controls, np_states, planning_time
             else:
                 raise RuntimeError("No Solution found from {} to {}".format(start, goal))
         except RuntimeError:
             return None, None, -1
 
-    def smooth(self, np_states, np_controls, iters=50, verbose=False):
+    def smooth(self, np_states, np_controls, iters=50, verbose=0):
         new_states = list(np_states)
         new_controls = list(np_controls)
         shortcut_iter = 0
@@ -183,7 +198,7 @@ class GPRRT:
                     new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
                 shortcut_successes += 1
 
-        if verbose:
+        if verbose >= 3:
             print("{}/{} shortcuts succeeded".format(shortcut_successes, shortcut_iter))
 
         np_states = np.array(new_states)

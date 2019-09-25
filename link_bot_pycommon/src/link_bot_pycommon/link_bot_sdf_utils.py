@@ -13,9 +13,13 @@ def sdf_idx_to_point(row, col, resolution, origin):
 
 
 def bounds_from_env_size(sdf_w, sdf_h, new_origin, resolution, origin):
-    rmin, cmin = point_to_sdf_idx(-sdf_w / 2 + new_origin[0], -sdf_h / 2 + new_origin[1], resolution, origin)
-    rmax, cmax = point_to_sdf_idx(sdf_w / 2 + new_origin[0], sdf_h / 2 + new_origin[1], resolution, origin)
-    return [rmin, rmax, cmin, cmax]
+    xmin = -sdf_w / 2 + new_origin[0]
+    ymin = -sdf_h / 2 + new_origin[1]
+    xmax = sdf_w / 2 + new_origin[0]
+    ymax = sdf_h / 2 + new_origin[1]
+    rmin, cmin = point_to_sdf_idx(xmin, ymin, resolution, origin)
+    rmax, cmax = point_to_sdf_idx(xmax, ymax, resolution, origin)
+    return [rmin, rmax, cmin, cmax], [xmin, xmax, ymin, ymax]
 
 
 def sdf_bounds(sdf, resolution, origin, offset=None):

@@ -1,7 +1,7 @@
 import json
 import os
 from time import time
-from typing import Optional
+from typing import Optional, List
 
 import gpflow as gpf
 import gpflow.multioutput.features as mf
@@ -18,7 +18,6 @@ from link_bot_pycommon import experiments_util
 
 
 def predict(fwd_model, np_state, np_controls, steps=None, initial_variance=0.00001):
-    # flatten and combine np_controls and durations
     if steps is None:
         steps = np_controls.shape[0] + 1
 
@@ -43,18 +42,24 @@ def predict(fwd_model, np_state, np_controls, steps=None, initial_variance=0.000
 
 def animate_predict(prediction: np.ndarray,
                     y_rope_configurations: np.ndarray,
+                    extent: List[float],
                     sdf: Optional[np.ndarray] = None,
-                    arena_size: int = 2,
                     linewidth: float = 6,
                     example_idx: int = None):
+    """
+    :param prediction: Tx6 array
+    :param y_rope_configurations: Tx6 array
+    :param extent: [xmin, xmax, ymin, ymax]
+    :param sdf:
+    :param linewidth:
+    :param example_idx:
+    :return:
+    """
     T = prediction.shape[0]
 
-    fig = plt.figure(figsize=(10, 10))
-    if sdf:
-        max = np.max(np.flipud(sdf.T))
-        img = Image.fromarray(np.uint8(np.flipud(sdf.T) / max * 256))
-        small_sdf = img.resize((50, 50))
-        plt.imshow(small_sdf, extent=[-arena_size, arena_size, -arena_size, arena_size])
+    fig = plt.figure()
+    if sdf is not None:
+        plt.imshow(np.flipud(sdf.T) > 0, extent=extent)
 
     pred_x_0 = prediction[0]
     pred_x_0_xs = [pred_x_0[0], pred_x_0[2], pred_x_0[4]]
@@ -71,8 +76,8 @@ def animate_predict(prediction: np.ndarray,
     plt.xlabel("x (m)")
     plt.ylabel("y (m)")
     plt.axis("equal")
-    plt.xlim([-arena_size - 1, arena_size + 1])
-    plt.ylim([-arena_size - 1, arena_size + 1])
+    plt.xlim(extent[0:2])
+    plt.ylim(extent[2:4])
     if example_idx:
         plt.title(example_idx)
     time_text_handle = plt.text(5, 8, 't=0', fontdict={'color': 'white', 'size': 5},
@@ -129,6 +134,8 @@ class LinkBotGP:
     def train(self, X, Y, beta, dataset_hparams, n_inducing_points=100, verbose=True, maximum_training_iterations=300):
         self.n_data_points, self.n_inputs = X.shape
         _, self.n_outputs = Y.shape
+        self.n_state = 4
+        self.n_control = 2
         self.n_inducing_points = n_inducing_points  # number of inducing points
         self.dataset_hparams = dataset_hparams
         X = X
@@ -183,7 +190,7 @@ class LinkBotGP:
             'n_data_points': self.n_data_points,
             'n_inputs': self.n_inputs,
             'n_outputs': self.n_outputs,
-            'n_states': self.n_state,
+            'n_state': self.n_state,
             'n_control': self.n_control,
             'n_inducing_points': self.n_inducing_points,
             'maximum_training_iterations': self.maximum_training_iterations,
@@ -216,17 +223,19 @@ class LinkBotGP:
     def load(self, model_path):
         print(Fore.CYAN + "Loading model from {}".format(model_path) + Fore.RESET)
         self.model = gpf.saver.Saver().load(model_path)
-        self.n_data_points, self.n_inputs = self.model.X.shape
-        self.n_outputs = self.model.Y.shape[1]
-        self.n_inducing_points = self.model.feature.feat_list[0].Z.shape[0]
-        self.n_state = self.n_outputs
-        self.n_control = self.n_inputs - self.n_outputs
-        # load these from the metadata file?
-        self.maximum_training_iterations = None
-        self.model_def = None
+
         metadata = json.load(open(model_path + '-metadata.json', 'r'))
         self.metadata = metadata
         self.dataset_hparams = metadata['dataset_hparams']
+        self.n_data_points = metadata['n_data_points']
+        self.n_inputs = metadata['n_inputs']
+        self.n_outputs = metadata['n_outputs']
+        self.n_inducing_points = metadata['n_inducing_points']
+        self.n_state = metadata['n_state']
+        self.n_control = metadata['n_control']
+        # load these from the metadata file?
+        self.maximum_training_iterations = None
+        self.model_def = None
 
     @staticmethod
     def convert_triplet_action(u):
@@ -259,16 +268,13 @@ class LinkBotGP:
         if u_norm > 1:
             u = u / u_norm
 
-        random_n_steps = self.rng.uniformInt(self.min_steps, self.max_steps)
-
         # DEBUGGING:
         # vx_vy_u = np.atleast_2d(s_target[0, 0:2] - s[0, 0:2])
         # pred_n_steps = np.linalg.norm(vx_vy_u) / 0.1
 
-        return u, random_n_steps
+        return u
 
-    def dumb_inv_act(self, s, s_target, max_v=1.0):
-        random_n_steps = self.rng.uniformInt(self.min_steps, self.max_steps)
+    def dumb_inv_act(self, s, s_target, max_v=0.15):
         min_distance = np.inf
         min_u = None
         for i in range(10):
@@ -280,7 +286,7 @@ class LinkBotGP:
                 min_distance = distance
                 min_u = u
 
-        return min_u, random_n_steps
+        return min_u
 
     def animate_validation(self,
                            x_rope_configurations: np.ndarray,
@@ -309,8 +315,8 @@ class LinkBotGP:
         x_0_ys = [x_0[1], x_0[3], x_0[5]]
         after = ax.plot(x_0_xs, x_0_ys, color='gray', linewidth=linewidth, zorder=1)[0]
 
-        if sdfs:
-            img_handle = ax.imshow(sdfs[0], extent=[-arena_size, arena_size, -arena_size, arena_size])
+        if sdfs is not None:
+            img_handle = ax.imshow(sdfs[0], extent)
 
         plt.xlabel("x (m)")
         plt.ylabel("y (m)")

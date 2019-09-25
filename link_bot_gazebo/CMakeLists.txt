@@ -11,6 +11,7 @@ catkin_python_setup()
 add_message_files(
         FILES
         LinkBotConfiguration.msg
+        LinkBotJointConfiguration.msg
         LinkBotVelocityAction.msg
         LinkBotForceAction.msg
         WriteSDF.msg
@@ -30,6 +31,7 @@ add_service_files(
         InverseCameraProjection.srv
         LinkBotPositionAction.srv
         LinkBotPath.srv
+        LinkBotTrajectory.srv
 )
 
 generate_messages(

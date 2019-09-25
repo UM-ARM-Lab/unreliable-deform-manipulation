@@ -39,7 +39,7 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
     initial_head_point = np.array([state.points[head_idx].x, state.points[head_idx].y])
 
     # Compute SDF Data
-    local_sdf, local_sdf_gradient, local_sdf_origin, sdf_data = get_sdf_data(args, initial_head_point, services)
+    local_sdf, local_sdf_gradient, local_sdf_origin, local_sdf_extent, sdf_data = get_sdf_data(args, initial_head_point, services)
 
     feature = {
         # These features don't change over time

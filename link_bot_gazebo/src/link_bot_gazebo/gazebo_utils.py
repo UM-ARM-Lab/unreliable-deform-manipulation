@@ -9,11 +9,11 @@ from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest
-from link_bot_gazebo.msg import LinkBotConfiguration, Position2dAction, \
-    LinkBotVelocityAction, ObjectAction
+from link_bot_gazebo.msg import Position2dAction, \
+    LinkBotVelocityAction, ObjectAction, LinkBotJointConfiguration
 from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
     InverseCameraProjection, InverseCameraProjectionRequest, CameraProjection, CameraProjectionRequest, ComputeSDF2Request, \
-    LinkBotPositionAction, LinkBotPath
+    LinkBotPositionAction, LinkBotPath, LinkBotTrajectory
 from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.numpy_point import NumpyPoint
@@ -27,7 +27,7 @@ class GazeboServices:
 
     def __init__(self):
         self.velocity_action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
-        self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotConfiguration, queue_size=10)
+        self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotJointConfiguration, queue_size=10)
         self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
         self.position_2d_stop = rospy.Publisher('/position_2d_stop', std_msgs.msg.Empty, queue_size=10)
         self.position_2d_action = rospy.Publisher('/position_2d_action', Position2dAction, queue_size=10)
@@ -44,11 +44,13 @@ class GazeboServices:
         self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", std_srvs.srv.Empty)
         self.position_action = rospy.ServiceProxy("/link_bot_position_action", LinkBotPositionAction)
         self.execute_path = rospy.ServiceProxy("/link_bot_execute_path", LinkBotPath)
+        self.execute_trajectory = rospy.ServiceProxy("/link_bot_execute_trajectory", LinkBotTrajectory)
         self.services_to_wait_for = [
             '/world_control',
             '/link_bot_state',
             '/link_bot_position_action',
             '/link_bot_execute_path',
+            '/link_bot_execute_trajectory',
             '/sdf',
             '/sdf2',
             '/gazebo/get_physics_properties',
@@ -204,12 +206,12 @@ def get_sdf_data(args, initial_head_point, services):
     resolution = np.array(sdf_response.res)
     origin = np.array(sdf_response.origin)
     sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)
-    sdf_bounds = link_bot_sdf_utils.bounds_from_env_size(args.sdf_w, args.sdf_h, initial_head_point, sdf_data.resolution,
+    local_sdf_bounds, local_sdf_extent = link_bot_sdf_utils.bounds_from_env_size(args.sdf_w, args.sdf_h, initial_head_point, sdf_data.resolution,
                                                          sdf_data.origin)
-    rmin, rmax, cmin, cmax = sdf_bounds
+    rmin, rmax, cmin, cmax = local_sdf_bounds
     local_sdf = sdf_data.sdf[rmin:rmax, cmin:cmax]
     local_sdf_gradient = sdf_data.sdf[rmin:rmax, cmin:cmax]
     # indeces of the world point 0,0 in the local sdf
     local_sdf_origin_indeces_in_full_sdf = np.array([rmin, cmin])
     local_sdf_origin = origin - local_sdf_origin_indeces_in_full_sdf
-    return local_sdf, local_sdf_gradient, local_sdf_origin, sdf_data
+    return local_sdf, local_sdf_gradient, local_sdf_origin, local_sdf_extent, sdf_data

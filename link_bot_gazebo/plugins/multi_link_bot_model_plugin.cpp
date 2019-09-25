@@ -3,10 +3,14 @@
 #include <memory>
 
 #include <geometry_msgs/Point.h>
+#include <gazebo/common/Time.hh>
+#include <gazebo/common/Timer.hh>
 #include <ignition/math/Vector3.hh>
 
 namespace gazebo {
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cppcoreguidelines-pro-type-vararg"
 void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 {
   // Make sure the ROS node for Gazebo has already been initalized
@@ -21,6 +25,12 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
 
   auto joy_bind = boost::bind(&MultiLinkBotModelPlugin::OnJoy, this, _1);
   auto joy_so = ros::SubscribeOptions::create<sensor_msgs::Joy>("/joy", 1, joy_bind, ros::VoidPtr(), &queue_);
+  auto execute_path_bind = boost::bind(&MultiLinkBotModelPlugin::ExecutePathCallback, this, _1, _2);
+  auto execute_path_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotPath>(
+      "/link_bot_execute_path", execute_path_bind, ros::VoidPtr(), &queue_);
+  auto execute_trajectory_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteTrajectoryCallback, this, _1, _2);
+  auto execute_trajectory_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotTrajectory>(
+      "/link_bot_execute_trajectory", execute_trajectory_bind, ros::VoidPtr(), &queue_);
   auto pos_action_bind = boost::bind(&MultiLinkBotModelPlugin::OnPositionAction, this, _1, _2);
   auto pos_action_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotPositionAction>(
       "/link_bot_position_action", pos_action_bind, ros::VoidPtr(), &queue_);
@@ -31,7 +41,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto action_mode_so = ros::SubscribeOptions::create<std_msgs::String>("/link_bot_action_mode", 1, action_mode_bind,
                                                                         ros::VoidPtr(), &queue_);
   auto config_bind = boost::bind(&MultiLinkBotModelPlugin::OnConfiguration, this, _1);
-  auto config_so = ros::SubscribeOptions::create<link_bot_gazebo::LinkBotConfiguration>(
+  auto config_so = ros::SubscribeOptions::create<link_bot_gazebo::LinkBotJointConfiguration>(
       "/link_bot_configuration", 1, config_bind, ros::VoidPtr(), &queue_);
   auto state_bind = boost::bind(&MultiLinkBotModelPlugin::StateServiceCallback, this, _1, _2);
   auto service_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotState>("/link_bot_state", state_bind,
@@ -43,6 +53,8 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   config_sub_ = ros_node_->subscribe(config_so);
   state_service_ = ros_node_->advertiseService(service_so);
   pos_action_service_ = ros_node_->advertiseService(pos_action_so);
+  execute_path_service_ = ros_node_->advertiseService(execute_path_so);
+  execute_traj_service_ = ros_node_->advertiseService(execute_trajectory_so);
 
   ros_queue_thread_ = std::thread(std::bind(&MultiLinkBotModelPlugin::QueueThread, this));
 
@@ -155,6 +167,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
 
   gzlog << "MultiLinkBot Model Plugin finished initializing!\n";
 }
+#pragma clang diagnostic pop
 
 void MultiLinkBotModelPlugin::OnPostRender()
 {
@@ -173,12 +186,13 @@ void MultiLinkBotModelPlugin::OnPostRender()
     auto const stamp = camera_sensor->LastUpdateTime();
     latest_image_.header.stamp.sec = stamp.sec;
     latest_image_.header.stamp.nsec = stamp.nsec;
-    latest_image_.data.assign(sensor_image, sensor_image + total_size_bytes);
+    latest_image_.data.assign(
+        sensor_image, sensor_image + total_size_bytes);  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     image_sequence_number += 1;
     ready_ = true;
   }
   else {
-    gzwarn << "no camera image available" << std::endl;
+    //    gzwarn << "no camera image available" << std::endl;
   }
 }
 
@@ -190,74 +204,122 @@ double update_target(double const current_target, double const target, double co
   return new_current_target;
 }
 
+link_bot_gazebo::LinkBotConfiguration MultiLinkBotModelPlugin::GetConfiguration()
+{
+  link_bot_gazebo::LinkBotConfiguration configuration;
+  {
+    auto const tail = model_->GetLink("tail");
+    geometry_msgs::Point point;
+    point.x = tail->WorldPose().Pos().X();
+    point.y = tail->WorldPose().Pos().Y();
+    configuration.points.emplace_back(point);
+  }
+  {
+    auto const mid = model_->GetLink("mid");
+    geometry_msgs::Point point;
+    point.x = mid->WorldPose().Pos().X();
+    point.y = mid->WorldPose().Pos().Y();
+    configuration.points.emplace_back(point);
+  }
+  {
+    auto const head = model_->GetLink("head");
+    geometry_msgs::Point point;
+    point.x = head->WorldPose().Pos().X();
+    point.y = head->WorldPose().Pos().Y();
+    configuration.points.emplace_back(point);
+  }
+
+  return configuration;
+}
+
 ControlResult MultiLinkBotModelPlugin::UpdateControl()
 {
+  std::lock_guard<std::mutex> guard(control_mutex_);
   constexpr auto dt{0.001};
   ControlResult control_result{};
 
-  if (mode == "velocity") {
-    auto const gripper1_vel = gripper1_link_->WorldLinearVel();
+  // zero the Z component
+  auto const gripper1_pos = [&]() {
+    auto p = gripper1_link_->WorldPose().Pos();
+    p.Z(0);
+    return p;
+  }();
 
-    gripper1_current_target_velocity_.X(
-        update_target(gripper1_current_target_velocity_.X(), gripper1_target_velocity_.X(), max_vel_acc_));
-    gripper1_current_target_velocity_.Y(
-        update_target(gripper1_current_target_velocity_.Y(), gripper1_target_velocity_.Y(), max_vel_acc_));
+  auto const gripper1_vel = [&]() {
+    auto v = gripper1_link_->WorldLinearVel();
+    v.Z(0);
+    return v;
+  }();
 
-    auto const gripper1_vel_error = gripper1_vel - gripper1_current_target_velocity_;
-    control_result.gripper1_force.X(gripper1_x_vel_pid_.Update(gripper1_vel_error.X(), dt));
-    control_result.gripper1_force.Y(gripper1_y_vel_pid_.Update(gripper1_vel_error.Y(), dt));
+  control_result.configuration = GetConfiguration();
 
-    if (gripper2_link_) {
-      auto const gripper2_vel = gripper2_link_->WorldLinearVel();
-      auto const gripper2_vel_error = gripper2_vel - gripper2_target_velocity_;
-      control_result.gripper2_force.X(gripper2_x_vel_pid_.Update(gripper2_vel_error.X(), dt));
-      control_result.gripper2_force.Y(gripper2_y_vel_pid_.Update(gripper2_vel_error.Y(), dt));
+  // Gripper 1
+  {
+    if (mode_ == "velocity") {
+      gripper1_current_target_velocity_.X(
+          update_target(gripper1_current_target_velocity_.X(), gripper1_target_velocity_.X(), max_vel_acc_));
+      gripper1_current_target_velocity_.Y(
+          update_target(gripper1_current_target_velocity_.Y(), gripper1_target_velocity_.Y(), max_vel_acc_));
+
+      auto const gripper1_vel_error = gripper1_vel - gripper1_current_target_velocity_;
+      control_result.gripper1_force.X(gripper1_x_vel_pid_.Update(gripper1_vel_error.X(), dt));
+      control_result.gripper1_force.Y(gripper1_y_vel_pid_.Update(gripper1_vel_error.Y(), dt));
+    }
+    else if (mode_ == "position") {
+      gripper1_pos_error_ = gripper1_pos - gripper1_target_position_;
+
+      gripper1_target_velocity_.X(gripper1_x_pos_pid_.Update(gripper1_pos_error_.X(), dt));
+      gripper1_target_velocity_.Y(gripper1_y_pos_pid_.Update(gripper1_pos_error_.Y(), dt));
+
+      gripper1_current_target_velocity_.X(
+          update_target(gripper1_current_target_velocity_.X(), gripper1_target_velocity_.X(), max_vel_acc_));
+      gripper1_current_target_velocity_.Y(
+          update_target(gripper1_current_target_velocity_.Y(), gripper1_target_velocity_.Y(), max_vel_acc_));
+      control_result.gripper1_vel = gripper1_current_target_velocity_;
+
+      auto const gripper1_vel_error = gripper1_vel - gripper1_current_target_velocity_;
+      control_result.gripper1_force.X(gripper1_x_vel_pid_.Update(gripper1_vel_error.X(), dt));
+      control_result.gripper1_force.Y(gripper1_y_vel_pid_.Update(gripper1_vel_error.Y(), dt));
+    }
+    else if (mode_ == "disabled") {
+      // do nothing!
     }
   }
-  else if (mode == "position") {
+
+  // Gripper 2
+  if (gripper2_link_) {
     // zero the Z component
-    auto const gripper1_pos = [&]() {
-      auto p = gripper1_link_->WorldPose().Pos();
+    auto const gripper2_pos = [&]() {
+      auto p = gripper2_link_->WorldPose().Pos();
       p.Z(0);
       return p;
     }();
-    auto const gripper1_pos_error = gripper1_pos - gripper1_target_position_;
 
-    gripper1_target_velocity_.X(gripper1_x_pos_pid_.Update(gripper1_pos_error.X(), dt));
-    gripper1_target_velocity_.Y(gripper1_y_pos_pid_.Update(gripper1_pos_error.Y(), dt));
-
-    auto const gripper1_vel = [&]() {
-      auto v = gripper1_link_->WorldLinearVel();
+    auto const gripper2_vel = [&]() {
+      auto v = gripper2_link_->WorldLinearVel();
       v.Z(0);
       return v;
     }();
 
-    gripper1_current_target_velocity_.X(
-        update_target(gripper1_current_target_velocity_.X(), gripper1_target_velocity_.X(), max_vel_acc_));
-    gripper1_current_target_velocity_.Y(
-        update_target(gripper1_current_target_velocity_.Y(), gripper1_target_velocity_.Y(), max_vel_acc_));
-    control_result.gripper1_vel = gripper1_current_target_velocity_;
-
-    auto const gripper1_vel_error = gripper1_vel - gripper1_current_target_velocity_;
-    control_result.gripper1_force.X(gripper1_x_vel_pid_.Update(gripper1_vel_error.X(), dt));
-    control_result.gripper1_force.Y(gripper1_y_vel_pid_.Update(gripper1_vel_error.Y(), dt));
-
-    if (gripper2_link_) {
-      auto const gripper2_pos = gripper2_link_->WorldPose().Pos();
-      auto const gripper2_pos_error = gripper2_pos - gripper2_target_position_;
-
-      gripper2_target_velocity_.X(gripper2_x_pos_pid_.Update(gripper2_pos_error.X(), dt));
-      gripper2_target_velocity_.Y(gripper2_y_pos_pid_.Update(gripper2_pos_error.Y(), dt));
-      control_result.gripper2_vel = gripper2_target_velocity_;
-
-      auto const gripper2_vel = gripper2_link_->WorldLinearVel();
+    if (mode_ == "velocity") {
       auto const gripper2_vel_error = gripper2_vel - gripper2_target_velocity_;
       control_result.gripper2_force.X(gripper2_x_vel_pid_.Update(gripper2_vel_error.X(), dt));
       control_result.gripper2_force.Y(gripper2_y_vel_pid_.Update(gripper2_vel_error.Y(), dt));
     }
-  }
-  else if (mode == "disabled") {
-    // do nothing!
+    else if (mode_ == "position") {
+      gripper2_pos_error_ = gripper2_pos - gripper2_target_position_;
+
+      gripper2_target_velocity_.X(gripper2_x_pos_pid_.Update(gripper2_pos_error_.X(), dt));
+      gripper2_target_velocity_.Y(gripper2_y_pos_pid_.Update(gripper2_pos_error_.Y(), dt));
+      control_result.gripper2_vel = gripper2_target_velocity_;
+
+      auto const gripper2_vel_error = gripper2_vel - gripper2_target_velocity_;
+      control_result.gripper2_force.X(gripper2_x_vel_pid_.Update(gripper2_vel_error.X(), dt));
+      control_result.gripper2_force.Y(gripper2_y_vel_pid_.Update(gripper2_vel_error.Y(), dt));
+    }
+    else if (mode_ == "disabled") {
+      // do nothing!
+    }
   }
 
   return control_result;
@@ -265,7 +327,7 @@ ControlResult MultiLinkBotModelPlugin::UpdateControl()
 
 void MultiLinkBotModelPlugin::OnUpdate()
 {
-  auto const control = UpdateControl();
+  ControlResult control = UpdateControl();
 
   gripper1_link_->AddForce(control.gripper1_force);
   if (gripper2_link_) {
@@ -290,14 +352,14 @@ bool MultiLinkBotModelPlugin::OnPositionAction(link_bot_gazebo::LinkBotPositionA
   gripper2_target_position_.X(req.gripper2_pos.x);
   gripper2_target_position_.Y(req.gripper2_pos.y);
 
-  auto const control_result = UpdateControl();
+  gazebo::ControlResult control = UpdateControl();
 
-  res.gripper1_target_velocity.x = control_result.gripper1_vel.X();
-  res.gripper1_target_velocity.y = control_result.gripper1_vel.Y();
-  res.gripper1_target_velocity.z = control_result.gripper1_vel.Z();
-  res.gripper2_target_velocity.x = control_result.gripper2_vel.X();
-  res.gripper2_target_velocity.y = control_result.gripper2_vel.Y();
-  res.gripper2_target_velocity.z = control_result.gripper2_vel.Z();
+  res.gripper1_target_velocity.x = control.gripper1_vel.X();
+  res.gripper1_target_velocity.y = control.gripper1_vel.Y();
+  res.gripper1_target_velocity.z = control.gripper1_vel.Z();
+  res.gripper2_target_velocity.x = control.gripper2_vel.X();
+  res.gripper2_target_velocity.y = control.gripper2_vel.Y();
+  res.gripper2_target_velocity.z = control.gripper2_vel.Z();
 
   return true;
 }
@@ -310,9 +372,9 @@ void MultiLinkBotModelPlugin::OnVelocityAction(link_bot_gazebo::LinkBotVelocityA
   gripper2_target_velocity_.Y(msg->gripper2_velocity.y);
 }
 
-void MultiLinkBotModelPlugin::OnActionMode(std_msgs::StringConstPtr msg) { mode = msg->data; }
+void MultiLinkBotModelPlugin::OnActionMode(std_msgs::StringConstPtr msg) { mode_ = msg->data; }
 
-void MultiLinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurationConstPtr msg)
+void MultiLinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotJointConfigurationConstPtr msg)
 {
   auto const &joints = model_->GetJoints();
 
@@ -324,7 +386,7 @@ void MultiLinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotConfigurat
   ignition::math::Pose3d pose{};
   pose.Pos().X(msg->tail_pose.x);
   pose.Pos().Y(msg->tail_pose.y);
-  pose.Pos().Z(0.01);
+  pose.Pos().Z(HEAD_Z);
   pose.Rot() = ignition::math::Quaterniond::EulerToQuaternion(0, 0, msg->tail_pose.theta);
   model_->SetWorldPose(pose);
   model_->SetWorldTwist({0, 0, 0}, {0, 0, 0});
@@ -367,18 +429,60 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
     res.gripper2_force.z = 0;
   }
 
-  while (!ready_)
-    ;
+  while (!ready_) {
+  }
 
   // one byte per channel
   auto constexpr byte_depth = 1;
   auto constexpr num_channels = 3;
   auto const w = camera_sensor->ImageWidth();
   auto const h = camera_sensor->ImageHeight();
-  auto const total_size_bytes = w * h * byte_depth * num_channels;
   res.camera_image = latest_image_;
   res.header.stamp = ros::Time::now();
   image_sequence_number += 1;
+
+  return true;
+}
+
+bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBotTrajectoryRequest &req,
+                                                        link_bot_gazebo::LinkBotTrajectoryResponse &res)
+{
+  // TODO: Implement gripper1 path in parallel
+  for (auto const &target_velocity : req.gripper1_traj) {
+    mode_ = "velocity";
+    gripper1_target_velocity_.X(target_velocity.gripper1_velocity.x);
+    gripper1_target_velocity_.Y(target_velocity.gripper1_velocity.y);
+
+    auto control_result = UpdateControl();
+    res.actual_path.emplace_back(control_result.configuration);
+
+    // Wait until the setpoint is reached
+    auto const seconds_per_step = model_->GetWorld()->Physics()->GetUpdatePeriod();
+    auto const steps = static_cast<unsigned int>(req.dt / seconds_per_step);
+    model_->GetWorld()->Step(steps);
+  }
+
+  auto const final_configuration = GetConfiguration();
+  res.actual_path.emplace_back(final_configuration);
+
+  return true;
+}
+
+bool MultiLinkBotModelPlugin::ExecutePathCallback(link_bot_gazebo::LinkBotPathRequest &req,
+                                                  link_bot_gazebo::LinkBotPathResponse &res)
+{
+  // TODO: Implement gripper1 path in parallel
+  for (auto const &target_position : req.gripper1_path) {
+    mode_ = "position";
+    gripper1_target_position_.X(target_position.x);
+    gripper1_target_position_.Y(target_position.y);
+
+    auto control_result = UpdateControl();
+    res.actual_path.emplace_back(control_result.configuration);
+
+    // Wait until the setpoint is reached
+    gazebo::common::Time::Sleep(common::Time(req.execute_path_dt));
+  }
 
   return true;
 }

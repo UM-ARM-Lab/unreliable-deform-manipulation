@@ -1,0 +1,5 @@
+link_bot_gazebo/LinkBotVelocityAction[] gripper1_traj
+float64 dt
+---
+link_bot_gazebo/LinkBotConfiguration[] actual_path
+

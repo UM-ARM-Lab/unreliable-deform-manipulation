@@ -1,6 +1,6 @@
 <sdf version='1.6'>
     <model name='link_bot'>
-        <link name='link_1'>
+        <link name='tail'>
             <pose frame=''>0 0 0 0 -0 0</pose>
             <inertial>
                 <pose frame=''>0.11 0 0 0 -0 0</pose>
@@ -14,7 +14,7 @@
                     <izz>0.00113542</izz>
                 </inertia>
             </inertial>
-            <collision name='link_1_collision'>
+            <collision name='tail_collision'>
                 <pose frame=''>0.11 0 0 3.14159 -1.57079 3.14159</pose>
                 <geometry>
                     <box>
@@ -31,7 +31,7 @@
                 </surface>
                 <max_contacts>20</max_contacts>
             </collision>
-            <visual name='link_1_visual'>
+            <visual name='tail_visual'>
                 <cast_shadows>0</cast_shadows>
                 <pose frame=''>0.11 0 0 3.14159 -1.57079 3.14159</pose>
                 <geometry>
@@ -49,7 +49,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-        <link name='link_2'>
+        <link name='mid'>
             <pose frame=''>0.23 0 0 0 -0 0</pose>
             <inertial>
                 <pose frame=''>0.11 0 0 0 -0 0</pose>
@@ -63,7 +63,7 @@
                     <izz>0.00113542</izz>
                 </inertia>
             </inertial>
-            <collision name='link_2_collision'>
+            <collision name='mid_collision'>
                 <pose frame=''>0.11 0 0 3.14159 -1.57079 3.14159</pose>
                 <geometry>
                     <box>
@@ -80,7 +80,7 @@
                 </surface>
                 <max_contacts>20</max_contacts>
             </collision>
-            <visual name='link_2_visual'>
+            <visual name='mid_visual'>
                 <cast_shadows>0</cast_shadows>
                 <pose frame=''>0.11 0 0 3.14159 -1.57079 3.14159</pose>
                 <geometry>
@@ -97,16 +97,16 @@
                 </material>
             </visual>
             <self_collide>1</self_collide>
-            <sensor name='link_2_contact' type='contact'>
+            <sensor name='mid_contact' type='contact'>
                 <contact>
-                    <collision>link_2_collision</collision>
+                    <collision>mid_collision</collision>
                     <topic>__default_topic__</topic>
                 </contact>
             </sensor>
         </link>
         <joint name='joint_1' type='revolute'>
-            <child>link_2</child>
-            <parent>link_1</parent>
+            <child>mid</child>
+            <parent>tail</parent>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
@@ -178,7 +178,7 @@
         </link>
         <joint name='head_joint' type='revolute'>
             <child>head</child>
-            <parent>link_2</parent>
+            <parent>mid</parent>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>

@@ -123,7 +123,7 @@ def visualize(fwd_model, data_x, data_y):
     for i, (xi, yi, ai) in enumerate(zip(x, y, a)):
         x0 = np.expand_dims(xi[0], 0)
         prediction, _ = link_bot_gp.predict(fwd_model, x0, ai)
-        _ = link_bot_gp.animate_predict(prediction, yi, sdf=None, arena_size=2, linewidth=2, example_idx=i)
+        _ = link_bot_gp.animate_predict(prediction, yi, extent=[-2, 2, -2, 2], sdf=None, linewidth=2, example_idx=i)
         plt.show()
 
 

@@ -11,13 +11,13 @@ import ompl.util as ou
 import rospy
 import tensorflow as tf
 from colorama import Fore
-from geometry_msgs.msg import Vector3
 
 from link_bot_data import random_environment_data_utils
 from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_sdf_data
-from link_bot_gazebo.srv import LinkBotPathRequest, LinkBotStateRequest
+from link_bot_gazebo.msg import LinkBotVelocityAction
+from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
 from link_bot_planning import gp_rrt
 from link_bot_planning.goals import sample_goal
 
@@ -25,7 +25,7 @@ from link_bot_planning.goals import sample_goal
 def collect_classifier_data(args):
     rospy.init_node('collect_classifier_data')
 
-    fwd_gp_model = link_bot_gp.LinkBotGP()
+    fwd_gp_model = link_bot_gp.LinkBotGP(ou.RNG)
     fwd_gp_model.load(os.path.join(args.gp_model_dir, 'fwd_model'))
     gp_model_path_info = args.gp_model_dir.parts[1:]
 
@@ -48,11 +48,6 @@ def collect_classifier_data(args):
             'env_h': args.env_h,
         }
         json.dump(options, of, indent=1)
-
-    if args.seed is None:
-        args.seed = np.random.randint(0, 10000)
-        print("Using seed: ", args.seed)
-    np.random.seed(args.seed)
 
     ###########################################
     #             Constraint Model            #
@@ -78,7 +73,10 @@ def collect_classifier_data(args):
                        constraint_checker_wrapper=ConstraintCheckerWrapper(),
                        dt=dt,
                        max_v=args.max_v,
-                       planner_timeout=args.planner_timeout)
+                       n_state=fwd_gp_model.n_state,
+                       planner_timeout=args.planner_timeout,
+                       env_w=args.env_w,
+                       env_h=args.env_h)
 
     services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate)
     # generate a new environment by rearranging the obstacles
@@ -92,7 +90,8 @@ def collect_classifier_data(args):
         initial_head_point = np.array([state.points[head_idx].x, state.points[head_idx].y])
 
         # Compute SDF Data
-        local_sdf, local_sdf_gradient, local_sdf_origin, sdf_data = get_sdf_data(args, initial_head_point, services)
+        local_sdf, local_sdf_gradient, local_sdf_origin, local_sdf_extent, sdf_data = get_sdf_data(args, initial_head_point,
+                                                                                                   services)
 
         for plan_idx in range(args.n_targets_per_env):
             # generate a random target
@@ -100,21 +99,60 @@ def collect_classifier_data(args):
             head_idx = state.link_names.index("head")
             rope_configuration = gazebo_utils.points_to_config(state.points)
             head_point = state.points[head_idx]
-            goal = sample_goal(args.env_w, args.env_h, head_point)
+            tail_goal = sample_goal(args.env_w, args.env_h, head_point, env_padding=0.1)
+
+            start = np.expand_dims(np.array(rope_configuration), axis=0)
+            tail_goal_point = np.array(tail_goal)
 
             # plan to that target
-            planned_path, _, _ = rrt.plan(rope_configuration, goal, sdf_data.sdf, args.verbose)
+            if args.verbose >= 1:
+                print(Fore.CYAN + "Planning from {} to {}".format(start, tail_goal_point) + Fore.RESET)
+            if args.verbose >= 2:
+                # tail start x,y and tail goal x,y
+                random_environment_data_utils.publish_markers(args,
+                                                              tail_goal_point[0], tail_goal_point[1],
+                                                              rope_configuration[0], rope_configuration[1],
+                                                              marker_size=0.05)
 
-            path_req = LinkBotPathRequest()
-            for np_point in planned_path:
-                point = Vector3()
-                point.x = np_point[0]
-                point.y = np_point[1]
-                point.z = np_point[2]
-                path_req.gripper1_path.append(point)
+            planned_controls, planned_path, _ = rrt.plan(start, tail_goal_point, sdf_data.sdf, args.verbose)
+
+            traj_req = LinkBotTrajectoryRequest()
+            traj_req.dt = dt
+            if args.verbose >= 2:
+                print("Planned controls: {}".format(planned_controls))
+                print("Planned path: {}".format(planned_path))
+
+            for control in planned_controls:
+                action = LinkBotVelocityAction()
+                action.gripper1_velocity.x = control[0]
+                action.gripper1_velocity.y = control[1]
+                traj_req.gripper1_traj.append(action)
 
             # execute the plan, collecting the states that actually occurred
-            path_res = services.execute_path(planned_path, services, args, dt)
+            if args.verbose >= 2:
+                print(Fore.CYAN + "Executing Plan.".format(tail_goal_point) + Fore.RESET)
+
+            traj_res = services.execute_trajectory(traj_req)
+
+            import matplotlib.pyplot as plt
+            # FOR THE TAIL
+            actual_rope_configurations = []
+            for configuration in traj_res.actual_path:
+                np_config = []
+                for point in configuration.points:
+                    np_config.append(point.x)
+                    np_config.append(point.y)
+                actual_rope_configurations.append(np_config)
+            actual_rope_configurations = np.array(actual_rope_configurations)
+            print("====")
+            print(planned_path)
+            print("====")
+            print(actual_rope_configurations)
+            anim = link_bot_gp.animate_predict(prediction=planned_path,
+                                               y_rope_configurations=actual_rope_configurations,
+                                               sdf=sdf_data.sdf,
+                                               extent=sdf_data.extent)
+            plt.show()
 
             # collect the transition pairs (s_t, s_{t+1}, \hat{s}_t, \hat{s}_{t+1}) and  the corresponding label
             # The label will be based on thresholding the euclidian distance ||s_{t+1} - \hat{s}_{t+1}||2
@@ -132,23 +170,28 @@ def main():
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-envs", type=int, default=2)
     parser.add_argument("--n-targets-per-env", type=int, default=2)
-    parser.add_argument("--seed", '-s', type=int, default=1)
-    parser.add_argument("--verbose", action='store_true')
-    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=60.0)
+    parser.add_argument("--seed", '-s', type=int)
+    parser.add_argument('--verbose', '-v', action='count', default=0)
+    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=10.0)
     parser.add_argument("--real-time-rate", type=float, default=1.0)
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
-    parser.add_argument('--env-w', type=float, default=1.0)
-    parser.add_argument('--env-h', type=float, default=1.0)
+    parser.add_argument('--env-w', type=float, default=5.0)
+    parser.add_argument('--env-h', type=float, default=5.0)
     parser.add_argument('--sdf-w', type=float, default=1.0)
     parser.add_argument('--sdf-h', type=float, default=1.0)
     parser.add_argument('--max-v', type=float, default=0.15)
 
     args = parser.parse_args()
 
+    if args.seed is None:
+        args.seed = np.random.randint(0, 10000)
+        print("Using seed: ", args.seed)
+    np.random.seed(args.seed)
+
     np.random.seed(args.seed)
     ou.RNG.setSeed(args.seed)
-    ou.setLogLevel(ou.LOG_DEBUG)
-    # ou.setLogLevel(ou.LOG_ERROR)
+    # ou.setLogLevel(ou.LOG_DEBUG)
+    ou.setLogLevel(ou.LOG_ERROR)
 
     collect_classifier_data(args)
 
