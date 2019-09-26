@@ -13,6 +13,7 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_data import random_environment_data_utils
+from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.video_prediction_dataset_utils import float_feature
 from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo import gazebo_utils
@@ -48,10 +49,7 @@ def collect_classifier_data(args):
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': dt,
-            'sdf_w': args.sdf_w,
-            'sdf_h': args.sdf_h,
-            'env_w': args.env_w,
-            'env_h': args.env_h,
+            'args': dict([(k, str(v)) for k, v in vars(args).items()])
         }
         json.dump(options, of, indent=1)
 
@@ -140,7 +138,7 @@ def collect_classifier_data(args):
 
             traj_req = LinkBotTrajectoryRequest()
             traj_req.dt = dt
-            if args.verbose >= 2:
+            if args.verbose >= 4:
                 print("Planned controls: {}".format(planned_controls))
                 print("Planned path: {}".format(planned_path))
 
@@ -182,15 +180,17 @@ def collect_classifier_data(args):
             next_states = planned_path[1:]
             for (state, next_state, control, planned_state, planned_next_state) in zip(states, next_states, planned_controls,
                                                                                        planned_states, planned_next_states):
-                feature = {
-                    'state': float_feature(state),
-                    'next_state': float_feature(next_state),
-                    'action': float_feature(control),
-                    'planned_state': float_feature(planned_state),
-                    'planned_next_state': float_feature(planned_next_state),
-                }
-                example_proto = tf.train.Example(features=tf.train.Features(feature=feature))
-                example = example_proto.SerializeToString()
+                example = ClassifierDataset.make_serialized_example(local_sdf,
+                                                                    local_sdf_extent,
+                                                                    args.res,
+                                                                    local_sdf_origin,
+                                                                    args.env_h,
+                                                                    args.env_w,
+                                                                    state,
+                                                                    next_state,
+                                                                    control,
+                                                                    planned_state,
+                                                                    planned_next_state)
                 examples[current_record_traj_idx] = example
                 current_record_traj_idx += 1
                 example_idx += 1
@@ -200,7 +200,7 @@ def collect_classifier_data(args):
                     serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
 
                     end_example_idx = example_idx
-                    start_example_idx = end_example_idx - args.n_examples_per_record
+                    start_example_idx = end_example_idx - args.n_examples_per_record - 1
                     record_filename = "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx)
                     full_filename = full_output_directory / record_filename
                     writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=args.compression_type)
