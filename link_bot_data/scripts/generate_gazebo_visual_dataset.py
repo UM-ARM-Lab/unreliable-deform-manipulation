@@ -15,7 +15,7 @@ from colorama import Fore
 import visual_mpc.gazebo_trajectory_execution
 from link_bot_data.video_prediction_dataset_utils import bytes_feature, float_feature, int_feature
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import get_sdf_data
+from link_bot_gazebo.gazebo_utils import get_sdf_data, get_local_sdf_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_planning.goals import sample_goal
 
@@ -39,7 +39,8 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
     initial_head_point = np.array([state.points[head_idx].x, state.points[head_idx].y])
 
     # Compute SDF Data
-    local_sdf, local_sdf_gradient, local_sdf_origin, local_sdf_extent, sdf_data = get_sdf_data(args, initial_head_point, services)
+    full_sdf_data = get_sdf_data(args.env_h, args.env_w, args.res, services)
+    local_sdf_data = get_local_sdf_data(args.sdf_h, args.sdf_w, initial_head_point, full_sdf_data)
 
     feature = {
         # These features don't change over time

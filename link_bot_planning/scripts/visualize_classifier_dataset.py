@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
 import argparse
 import pathlib
@@ -28,26 +29,27 @@ def main():
                                              compression_type=args.compression_type)
 
     for i, example_dict in enumerate(dataset):
-        sdf = example_dict['sdf/sdf']
-        sdf_extent = example_dict['sdf/extent']
-        state = example_dict['state']
-        next_state = example_dict['next_state']
-        action = example_dict['action']
-        planned_state = example_dict['planned_state']
-        planned_next_state = example_dict['planned_next_state']
+        sdf = example_dict['sdf/sdf'].numpy()
+        sdf_extent = example_dict['sdf/extent'].numpy()
+        state = example_dict['state'].numpy()
+        next_state = example_dict['next_state'].numpy()
+        action = example_dict['action'].numpy()
+        planned_state = example_dict['planned_state'].numpy()
+        planned_next_state = example_dict['planned_next_state'].numpy()
 
         fig = plt.figure()
         axes = plt.subplot()
 
-        plot_rope_configuration(axes, state, c='red', label='state')
-        plot_rope_configuration(axes, next_state, c='orange', label='next state')
-        plot_rope_configuration(axes, planned_state, c='blue', label='planned state')
-        plot_rope_configuration(axes, planned_next_state, c='cyan', label='planned next state')
-        plt.imshow(sdf, extent=sdf_extent)
+        plt.imshow(np.flipud(sdf.T) > 0, extent=sdf_extent, zorder=1)
+        plot_rope_configuration(axes, state, c='red', label='state', zorder=2)
+        plot_rope_configuration(axes, next_state, c='orange', label='next state', zorder=3)
+        plot_rope_configuration(axes, planned_state, c='blue', label='planned state', zorder=4)
+        plot_rope_configuration(axes, planned_next_state, c='cyan', label='planned next state', zorder=5)
         plt.axis("equal")
         plt.title("Example {}".format(i))
         plt.xlabel("x (m)")
         plt.ylabel("y (m)")
+        plt.legend()
         plt.show()
 
 

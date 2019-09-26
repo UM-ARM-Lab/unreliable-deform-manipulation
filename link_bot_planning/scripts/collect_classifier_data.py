@@ -17,7 +17,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.video_prediction_dataset_utils import float_feature
 from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import get_sdf_data
+from link_bot_gazebo.gazebo_utils import get_sdf_data, get_local_sdf_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
 from link_bot_planning import gp_rrt
@@ -107,11 +107,6 @@ def collect_classifier_data(args):
         # Center SDF at the current head position
         state = services.get_state(state_req)
         head_idx = state.link_names.index("head")
-        initial_head_point = np.array([state.points[head_idx].x, state.points[head_idx].y])
-
-        # Compute SDF Data
-        sdf_data = get_sdf_data(args, initial_head_point, services)
-        local_sdf, local_sdf_gradient, local_sdf_origin, local_sdf_extent, sdf_data = sdf_data
 
         for plan_idx in range(args.n_targets_per_env):
             # generate a random target
@@ -134,19 +129,22 @@ def collect_classifier_data(args):
                                                               rope_configuration[0], rope_configuration[1],
                                                               marker_size=0.05)
 
-            planned_controls, planned_path, _ = rrt.plan(start, tail_goal_point, sdf_data.sdf, args.verbose)
+            # Compute SDF Data
+            full_sdf_data = get_sdf_data(args.sdf_h, args.sdf_w, args.res, services)
+
+            planned_actions, planned_path, _ = rrt.plan(start, tail_goal_point, full_sdf_data.sdf, args.verbose)
 
             traj_req = LinkBotTrajectoryRequest()
             traj_req.dt = dt
             if args.verbose >= 4:
-                print("Planned controls: {}".format(planned_controls))
+                print("Planned actions: {}".format(planned_actions))
                 print("Planned path: {}".format(planned_path))
 
-            for control in planned_controls:
-                action = LinkBotVelocityAction()
-                action.gripper1_velocity.x = control[0]
-                action.gripper1_velocity.y = control[1]
-                traj_req.gripper1_traj.append(action)
+            for action in planned_actions:
+                action_msg = LinkBotVelocityAction()
+                action.gripper1_velocity.x = action[0]
+                action.gripper1_velocity.y = action[1]
+                traj_req.gripper1_traj.append(action_msg)
 
             # execute the plan, collecting the states that actually occurred
             if args.verbose >= 2:
@@ -169,26 +167,35 @@ def collect_classifier_data(args):
 
                 anim = link_bot_gp.animate_predict(prediction=planned_path,
                                                    y_rope_configurations=actual_rope_configurations,
-                                                   sdf=sdf_data.sdf,
-                                                   extent=sdf_data.extent)
+                                                   sdf=full_sdf_data.sdf,
+                                                   extent=full_sdf_data.extent)
                 plt.show()
 
             # collect the transition pairs (s_t, s_{t+1}, \hat{s}_t, \hat{s}_{t+1})
+            states = actual_rope_configurations[:-1]
+            next_states = actual_rope_configurations[1:]
             planned_states = planned_path[:-1]
             planned_next_states = planned_path[1:]
-            states = actual_rope_configurations[:-1]
-            next_states = planned_path[1:]
-            for (state, next_state, control, planned_state, planned_next_state) in zip(states, next_states, planned_controls,
-                                                                                       planned_states, planned_next_states):
-                example = ClassifierDataset.make_serialized_example(local_sdf,
-                                                                    local_sdf_extent,
+            for (state, next_state, action, planned_state, planned_next_state) in zip(states, next_states, planned_actions,
+                                                                                      planned_states, planned_next_states):
+                actual_head_point = state[4:6]
+                planner_head_point = planned_state[4:6]
+                # compute the local SDF, which may be different for the state in the planner and the state in the real rollout
+                actual_local_sdf_data = get_local_sdf_data(args.sdf_h, args.sdf_w, actual_head_point, full_sdf_data)
+                planner_local_sdf_data = get_local_sdf_data(args.sdf_h, args.sdf_w, planner_head_point, full_sdf_data)
+
+                example = ClassifierDataset.make_serialized_example(actual_local_sdf_data.sdf,
+                                                                    actual_local_sdf_data.extent,
+                                                                    actual_local_sdf_data.origin,
+                                                                    planner_local_sdf_data.sdf,
+                                                                    planner_local_sdf_data.extent,
+                                                                    planner_local_sdf_data.origin,
+                                                                    args.sdf_h,
+                                                                    args.sdf_w,
                                                                     args.res,
-                                                                    local_sdf_origin,
-                                                                    args.env_h,
-                                                                    args.env_w,
                                                                     state,
                                                                     next_state,
-                                                                    control,
+                                                                    action,
                                                                     planned_state,
                                                                     planned_next_state)
                 examples[current_record_traj_idx] = example
@@ -200,8 +207,8 @@ def collect_classifier_data(args):
                     serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
 
                     end_example_idx = example_idx
-                    start_example_idx = end_example_idx - args.n_examples_per_record - 1
-                    record_filename = "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx)
+                    start_example_idx = end_example_idx - args.n_examples_per_record
+                    record_filename = "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx - 1)
                     full_filename = full_output_directory / record_filename
                     writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=args.compression_type)
                     writer.write(serialized_dataset)

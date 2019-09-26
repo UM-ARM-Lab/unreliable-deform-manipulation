@@ -1,4 +1,5 @@
 import pathlib
+import numpy as np
 import random
 
 import tensorflow as tf
@@ -20,46 +21,58 @@ class ClassifierDataset:
         dataset_hparams_filename = dataset_dir / 'hparams.json'
         self.hparams = json.load(open(str(dataset_hparams_filename), 'r'))
 
-    def parser(self, serialized_example):
-        features = {
-            'sdf/sdf': tf.FixedLenFeature(self.sdf_shape, tf.float32),
-            'sdf/extent': tf.FixedLenFeature([4], tf.float32),
-            'sdf/res': tf.FixedLenFeature([1], tf.float32),
-            'sdf/origin': tf.FixedLenFeature([2], tf.float32),
-            'sdf/w': tf.FixedLenFeature([1], tf.float32),
-            'sdf/h': tf.FixedLenFeature([1], tf.float32),
-            'state': tf.FixedLenFeature([self.n_state], tf.float32),
-            'next_state': tf.FixedLenFeature([self.n_state], tf.float32),
-            'action': tf.FixedLenFeature([self.n_state], tf.float32),
-            'planned_state': tf.FixedLenFeature([self.n_state], tf.float32),
-            'planned_next_state': tf.FixedLenFeature([self.n_state], tf.float32),
-        }
-        features = tf.parse_single_example(serialized_example, features=features)
-        return features
+    def parser(self, sdf_shape, n_state, n_action):
+        def _parser(serialized_example):
+            features = {
+                'sdf/sdf': tf.FixedLenFeature(sdf_shape, tf.float32),
+                'sdf/extent': tf.FixedLenFeature([4], tf.float32),
+                'sdf/res': tf.FixedLenFeature([1], tf.float32),
+                'sdf/origin': tf.FixedLenFeature([2], tf.float32),
+                'sdf/w': tf.FixedLenFeature([1], tf.float32),
+                'sdf/h': tf.FixedLenFeature([1], tf.float32),
+                'state': tf.FixedLenFeature([n_state], tf.float32),
+                'next_state': tf.FixedLenFeature([n_state], tf.float32),
+                'action': tf.FixedLenFeature([n_action], tf.float32),
+                'planned_state': tf.FixedLenFeature([n_state], tf.float32),
+                'planned_next_state': tf.FixedLenFeature([n_state], tf.float32),
+            }
+            features = tf.parse_single_example(serialized_example, features=features)
+
+            # Convert the flattened SDF tensor into a (H,W,1) tensor
+
+            return features
+
+        return _parser
 
     @classmethod
     def make_features_dict(cls,
-                           local_sdf,
-                           local_sdf_extent,
+                           actual_local_sdf,
+                           actual_local_sdf_extent,
+                           actual_local_sdf_origin,
+                           planned_local_sdf,
+                           planned_local_sdf_extent,
+                           planned_local_sdf_origin,
+                           sdf_h,
+                           sdf_w,
                            res,
-                           local_sdf_origin,
-                           env_h,
-                           env_w,
                            state,
                            next_state,
-                           control,
+                           action,
                            planned_state,
                            planned_next_state):
         features = {
-            'sdf/sdf': float_feature(local_sdf.flatten()),
-            'sdf/extent': float_feature(local_sdf_extent),
-            'sdf/res': float_feature([res]),
-            'sdf/origin': float_feature(local_sdf_origin),
-            'sdf/w': float_feature([env_h]),
-            'sdf/h': float_feature([env_w]),
+            'actual_sdf/sdf': float_feature(actual_local_sdf.flatten()),
+            'actual_sdf/extent': float_feature(np.array(actual_local_sdf_extent)),
+            'actual_sdf/origin': float_feature(np.array(actual_local_sdf_origin)),
+            'planned_sdf/sdf': float_feature(planned_local_sdf.flatten()),
+            'planned_sdf/extent': float_feature(np.array(planned_local_sdf_extent)),
+            'planned_sdf/origin': float_feature(np.array(planned_local_sdf_origin)),
+            'res': float_feature(np.array([res])),
+            'w': float_feature(np.array([sdf_h])),
+            'h': float_feature(np.array([sdf_w])),
             'state': float_feature(state),
             'next_state': float_feature(next_state),
-            'action': float_feature(control),
+            'action': float_feature(action),
             'planned_state': float_feature(planned_state),
             'planned_next_state': float_feature(planned_next_state),
         }
@@ -86,15 +99,18 @@ class ClassifierDataset:
         example = next(tf.python_io.tf_record_iterator(filenames[3], options=options))
         dict_message = MessageToDict(tf.train.Example.FromString(example))
         feature = dict_message['features']['feature']
-        print(filenames[3])
-        print(feature.keys())
         for feature_name, feature_description in feature.items():
             if feature_name == 'sdf/sdf':
-                print(feature_description)
-                sdf_shape = len(feature_description['floatList']['value'])
+                flattened_sdf_shape = len(feature_description['floatList']['value'])
+                s = int(np.sqrt(flattened_sdf_shape))
+                assert s * s == flattened_sdf_shape, "flat SDF was not square, had size {}, sqrt {}".format(flattened_sdf_shape,
+                                                                                                            s)
+                print(flattened_sdf_shape, s)
+                sdf_shape = [s, s]
             if feature_name == 'state':
-                print(feature_description)
                 n_state = len(feature_description['floatList']['value'])
+            if feature_name == 'action':
+                n_action = len(feature_description['floatList']['value'])
 
         if shuffle:
             random.shuffle(filenames)
@@ -106,6 +122,6 @@ class ClassifierDataset:
         else:
             dataset = dataset.repeat(num_epochs)
 
-        dataset = dataset.map(self.parser(sdf_shape, n_state))
+        dataset = dataset.map(self.parser(sdf_shape, n_state, n_action))
 
         return dataset

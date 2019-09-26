@@ -1,6 +1,6 @@
 from time import sleep
-
 from typing import Optional, Dict
+
 import numpy as np
 import rospy
 import std_msgs
@@ -179,7 +179,10 @@ def xy_to_row_col(services, x, y, z):
     return NumpyPoint(int(res.rowcol.x_col), int(res.rowcol.y_row))
 
 
-def get_sdf_and_gradient(services, env_w=1, env_h=1, res=0.01):
+def get_sdf_and_gradient(services: GazeboServices,
+                         env_w: float = 1.0,
+                         env_h: float = 1.0,
+                         res: float = 0.01):
     sdf_request = ComputeSDF2Request()
     sdf_request.resolution = res
     sdf_request.y_height = env_h
@@ -198,18 +201,51 @@ def get_sdf_and_gradient(services, env_w=1, env_h=1, res=0.01):
     return gradient, sdf, sdf_response
 
 
-def get_sdf_data(args, initial_head_point, services):
-    gradient, sdf, sdf_response = get_sdf_and_gradient(services, env_w=args.env_w, env_h=args.env_h, res=args.res)
+def get_sdf_data(env_h: float,
+                 env_w: float,
+                 res: float,
+                 services: GazeboServices):
+    """
+    :param env_h:  meters
+    :param env_w: meters
+    :param res: meters
+    :param services: from gazebo_utils
+    :return: SDF object for full sdf
+    """
+    gradient, sdf, sdf_response = get_sdf_and_gradient(services, env_w=env_w, env_h=env_h, res=res)
     resolution = np.array(sdf_response.res)
     origin = np.array(sdf_response.origin)
-    sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)
-    local_sdf_bounds, local_sdf_extent = link_bot_sdf_utils.bounds_from_env_size(args.sdf_w, args.sdf_h, initial_head_point,
-                                                                                 sdf_data.resolution,
-                                                                                 sdf_data.origin)
-    rmin, rmax, cmin, cmax = local_sdf_bounds
-    local_sdf = sdf_data.sdf[rmin:rmax, cmin:cmax]
-    local_sdf_gradient = sdf_data.sdf[rmin:rmax, cmin:cmax]
+    full_sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)
+    return full_sdf_data
+
+
+def get_local_sdf_data(sdf_h: float,
+                       sdf_w: float,
+                       origin_point,
+                       full_sdf_data: link_bot_sdf_utils.SDF):
+    """
+    :param sdf_h: meters
+    :param sdf_w: meters
+    :param origin_point: (x,y) meters
+    :param full_sdf_data: SDF object for full SDF
+    :return: SDF object for local sdf
+    """
+    local_sdf_bounds, local_sdf_extent = link_bot_sdf_utils.bounds_from_env_size(sdf_w,
+                                                                                 sdf_h,
+                                                                                 origin_point,
+                                                                                 full_sdf_data.resolution,
+                                                                                 full_sdf_data.origin)
+    row_min, row_max, col_min, col_max = local_sdf_bounds
+    local_sdf = full_sdf_data.sdf[row_min:row_max, col_min:col_max]
+    local_sdf_gradient = full_sdf_data.sdf[row_min:row_max, col_min:col_max]
+
     # indeces of the world point 0,0 in the local sdf
-    local_sdf_origin_indeces_in_full_sdf = np.array([rmin, cmin])
-    local_sdf_origin = origin - local_sdf_origin_indeces_in_full_sdf
-    return local_sdf, local_sdf_gradient, local_sdf_origin, local_sdf_extent, sdf_data
+    local_sdf_origin_indeces_in_full_sdf = np.array([row_min, col_min])
+
+    local_sdf_origin = full_sdf_data.origin - local_sdf_origin_indeces_in_full_sdf
+
+    local_sdf_data = link_bot_sdf_utils.SDF(sdf=local_sdf,
+                                            gradient=local_sdf_gradient,
+                                            resolution=full_sdf_data.resolution,
+                                            origin=local_sdf_origin)
+    return local_sdf_data
