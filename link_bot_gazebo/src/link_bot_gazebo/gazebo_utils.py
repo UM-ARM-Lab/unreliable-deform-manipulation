@@ -1,5 +1,6 @@
 from time import sleep
 
+from typing import Optional, Dict
 import numpy as np
 import rospy
 import std_msgs
@@ -62,12 +63,12 @@ class GazeboServices:
             '/my_camera/rowcol_to_xy',
         ]
 
-    def wait(self, verbose=False):
-        if verbose:
+    def wait(self, verbose: int = 0):
+        if verbose >= 1:
             print(Fore.CYAN + "Waiting for services..." + Fore.RESET)
         for s in self.services_to_wait_for:
             rospy.wait_for_service(s)
-        if verbose:
+        if verbose >= 1:
             print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
 
     def reset_gazebo_environment(self, reset_model_poses=True):
@@ -116,7 +117,9 @@ def rowcol_to_xy(services, row, col):
     return res.xyz.x, res.xyz.y
 
 
-def setup_gazebo_env(verbose, real_time_rate):
+def setup_gazebo_env(verbose: int,
+                     real_time_rate: float,
+                     initial_object_dict: Optional[Dict] = None):
     # fire up services
     services = GazeboServices()
     services.wait(verbose)
@@ -132,27 +135,21 @@ def setup_gazebo_env(verbose, real_time_rate):
     set.max_update_rate = real_time_rate * 1000.0
     set.enabled = True
     services.set_physics.call(set)
+
     # Set initial object positions
     move_action = Position2dAction()
-    cheezits_move = ObjectAction()
-    cheezits_move.pose.position.x = 0.20
-    cheezits_move.pose.position.y = -0.25
-    cheezits_move.pose.orientation.x = 0
-    cheezits_move.pose.orientation.y = 0
-    cheezits_move.pose.orientation.z = 0
-    cheezits_move.pose.orientation.w = 0
-    cheezits_move.model_name = "cheezits_box"
-    move_action.actions.append(cheezits_move)
-    tissue_move = ObjectAction()
-    tissue_move.pose.position.x = 0.20
-    tissue_move.pose.position.y = 0.25
-    tissue_move.pose.orientation.x = 0
-    tissue_move.pose.orientation.y = 0
-    tissue_move.pose.orientation.z = 0
-    tissue_move.pose.orientation.w = 0
-    tissue_move.model_name = "tissue_box"
-    move_action.actions.append(tissue_move)
+    for object_name, (x, y) in initial_object_dict.items():
+        move = ObjectAction()
+        move.pose.position.x = x
+        move.pose.position.y = y
+        move.pose.orientation.x = 0
+        move.pose.orientation.y = 0
+        move.pose.orientation.z = 0
+        move.pose.orientation.w = 0
+        move.model_name = object_name
+        move_action.actions.append(move)
     services.position_2d_action.publish(move_action)
+
     # let the simulator run to get the first image
     step = WorldControlRequest()
     step.steps = 1000
@@ -206,8 +203,9 @@ def get_sdf_data(args, initial_head_point, services):
     resolution = np.array(sdf_response.res)
     origin = np.array(sdf_response.origin)
     sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)
-    local_sdf_bounds, local_sdf_extent = link_bot_sdf_utils.bounds_from_env_size(args.sdf_w, args.sdf_h, initial_head_point, sdf_data.resolution,
-                                                         sdf_data.origin)
+    local_sdf_bounds, local_sdf_extent = link_bot_sdf_utils.bounds_from_env_size(args.sdf_w, args.sdf_h, initial_head_point,
+                                                                                 sdf_data.resolution,
+                                                                                 sdf_data.origin)
     rmin, rmax, cmin, cmax = local_sdf_bounds
     local_sdf = sdf_data.sdf[rmin:rmax, cmin:cmax]
     local_sdf_gradient = sdf_data.sdf[rmin:rmax, cmin:cmax]

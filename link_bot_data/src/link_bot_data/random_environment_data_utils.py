@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 
 import os
+import pathlib
 import sys
 
 import git
@@ -75,12 +76,12 @@ def data_directory(outdir, *names):
     repo = git.Repo(search_parent_directories=True)
     sha = repo.head.object.hexsha[:10]
     format_string = "{}_{}_" + "{}_" * (len(names) - 1) + "{}"
-    full_output_directory = format_string.format(outdir, sha, *names)
+    full_output_directory = pathlib.Path(format_string.format(outdir, sha, *names))
     if outdir:
-        if os.path.isfile(full_output_directory):
+        if full_output_directory.is_file():
             print(Fore.RED + "argument outdir is an existing file, aborting." + Fore.RESET)
             return
-        elif not os.path.isdir(full_output_directory):
+        elif not full_output_directory.is_dir():
             os.mkdir(full_output_directory)
     return full_output_directory
 

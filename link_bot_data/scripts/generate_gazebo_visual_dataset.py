@@ -136,7 +136,8 @@ def generate_trajs(args, full_output_directory, services):
         current_record_traj_idx = i % args.n_trajs_per_file
 
         if not args.no_obstacles:
-            visual_mpc.gazebo_trajectory_execution.move_objects(services, args.env_w, args.env_h, 'velocity', padding=0.1)
+            objects = ['cheezits_box', 'tissue_box']
+            visual_mpc.gazebo_trajectory_execution.move_objects(services, objects, args.env_w, args.env_h, 'velocity', padding=0.1)
 
         # Generate a new trajectory
         example, percentage_violation, global_t_step, gripper1_target_x, gripper1_target_y = generate_traj(args, services, i,
@@ -196,7 +197,11 @@ def generate(args):
         print("Using seed: ", args.seed)
     np.random.seed(args.seed)
 
-    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate)
+    inital_object_dict = {
+        'cheezits_box': [0.24, -0.24],
+        'tissue_box': [0.24, 0.24],
+    }
+    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, inital_object_dict)
 
     generate_trajs(args, full_output_directory, services)
 

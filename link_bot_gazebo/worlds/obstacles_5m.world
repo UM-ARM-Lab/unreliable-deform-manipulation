@@ -19,34 +19,34 @@
             <uri>model://sun</uri>
         </include>
         <include>
-            <uri>model://box</uri>
+            <uri>model://moving_box</uri>
             <pose>2.0 0 0 0 0 0</pose>
-            <name>box1</name>
+            <name>moving_box1</name>
         </include>
         <include>
-            <uri>model://box</uri>
-            <pose>-1.0 0 0 0 0 0</pose>
-            <name>box2</name>
+            <uri>model://moving_box</uri>
+            <pose>-1.5 0 0 0 0 0</pose>
+            <name>moving_box2</name>
         </include>
         <include>
-            <uri>model://box</uri>
+            <uri>model://moving_box</uri>
             <pose>-0.5 1 0 0 0 0</pose>
-            <name>box3</name>
+            <name>moving_box3</name>
         </include>
         <include>
-            <uri>model://box</uri>
+            <uri>model://moving_box</uri>
             <pose>1.5 -2 0 0 0 0</pose>
-            <name>box4</name>
+            <name>moving_box4</name>
         </include>
         <include>
-            <uri>model://box</uri>
+            <uri>model://moving_box</uri>
             <pose>-1.5 -2.0 0 0 0 0</pose>
-            <name>box5</name>
+            <name>moving_box5</name>
         </include>
         <include>
-            <uri>model://box</uri>
-            <pose>-0.5 1.5 0 0 0 0</pose>
-            <name>box6</name>
+            <uri>model://moving_box</uri>
+            <pose>-0.5 2.0 0 0 0 0</pose>
+            <name>moving_box6</name>
         </include>
         <include>
             <uri>model://arena_5</uri>

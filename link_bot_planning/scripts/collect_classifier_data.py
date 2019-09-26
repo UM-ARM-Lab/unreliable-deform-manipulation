@@ -21,6 +21,9 @@ from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
 from link_bot_planning import gp_rrt
 from link_bot_planning.goals import sample_goal
+from visual_mpc import gazebo_trajectory_execution
+
+tf.enable_eager_execution()
 
 
 def collect_classifier_data(args):
@@ -36,7 +39,9 @@ def collect_classifier_data(args):
     assert args.env_h >= args.sdf_h
 
     full_output_directory = random_environment_data_utils.data_directory(args.outdir, *gp_model_path_info)
-    if not os.path.isdir(full_output_directory) and args.verbose:
+    full_output_directory = pathlib.Path(full_output_directory)
+    print(full_output_directory)
+    if not full_output_directory.is_dir():
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)
 
@@ -84,9 +89,20 @@ def collect_classifier_data(args):
     example_idx = 0
     current_record_traj_idx = 0
 
-    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate)
-    # generate a new environment by rearranging the obstacles
+    inital_object_dict = {
+        'moving_box1': [2.0, 0],
+        'moving_box2': [-1.5, 0],
+        'moving_box3': [-0.5, 1],
+        'moving_box4': [1.5, - 2],
+        'moving_box5': [-1.5, - 2.0],
+        'moving_box6': [-0.5, 2.0],
+    }
+    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, inital_object_dict)
     for traj_idx in range(args.n_envs):
+        # generate a new environment by rearranging the obstacles
+        objects = ['moving_box{}'.format(i) for i in range(1, 7)]
+        gazebo_trajectory_execution.move_objects(services, objects, args.env_w, args.env_h, 'velocity', padding=0.5)
+
         # generate a bunch of plans to random goals
         state_req = LinkBotStateRequest()
 
@@ -96,8 +112,8 @@ def collect_classifier_data(args):
         initial_head_point = np.array([state.points[head_idx].x, state.points[head_idx].y])
 
         # Compute SDF Data
-        local_sdf, local_sdf_gradient, local_sdf_origin, local_sdf_extent, sdf_data = get_sdf_data(args, initial_head_point,
-                                                                                                   services)
+        sdf_data = get_sdf_data(args, initial_head_point, services)
+        local_sdf, local_sdf_gradient, local_sdf_origin, local_sdf_extent, sdf_data = sdf_data
 
         for plan_idx in range(args.n_targets_per_env):
             # generate a random target
@@ -185,9 +201,9 @@ def collect_classifier_data(args):
 
                     end_example_idx = example_idx
                     start_example_idx = end_example_idx - args.n_examples_per_record
-                    full_filename = os.path.join(full_output_directory,
-                                                 "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx))
-                    writer = tf.data.experimental.TFRecordWriter(full_filename, compression_type=args.compression_type)
+                    record_filename = "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx)
+                    full_filename = full_output_directory / record_filename
+                    writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=args.compression_type)
                     writer.write(serialized_dataset)
                     print("saved {}".format(full_filename))
 
