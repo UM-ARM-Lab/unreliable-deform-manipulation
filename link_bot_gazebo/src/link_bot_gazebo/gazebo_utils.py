@@ -195,9 +195,11 @@ def get_sdf_and_gradient(services: GazeboServices,
     sdf_request.request_new = True
     sdf_response = services.compute_sdf2(sdf_request)
     sdf = np.array(sdf_response.sdf).reshape([sdf_response.gradient.layout.dim[0].size, sdf_response.gradient.layout.dim[1].size])
+    sdf = sdf.T
     gradient = np.array(sdf_response.gradient.data).reshape([sdf_response.gradient.layout.dim[0].size,
                                                              sdf_response.gradient.layout.dim[1].size,
                                                              sdf_response.gradient.layout.dim[2].size])
+    gradient = np.transpose(gradient, [1, 0, 2])
     return gradient, sdf, sdf_response
 
 
@@ -230,11 +232,11 @@ def get_local_sdf_data(sdf_h: float,
     :param full_sdf_data: SDF object for full SDF
     :return: SDF object for local sdf
     """
-    local_sdf_bounds, local_sdf_extent = link_bot_sdf_utils.bounds_from_env_size(sdf_w,
-                                                                                 sdf_h,
-                                                                                 origin_point,
-                                                                                 full_sdf_data.resolution,
-                                                                                 full_sdf_data.origin)
+    local_sdf_bounds, _ = link_bot_sdf_utils.bounds_from_env_size(sdf_w,
+                                                                  sdf_h,
+                                                                  origin_point,
+                                                                  full_sdf_data.resolution,
+                                                                  full_sdf_data.origin)
     row_min, row_max, col_min, col_max = local_sdf_bounds
     local_sdf = full_sdf_data.sdf[row_min:row_max, col_min:col_max]
     local_sdf_gradient = full_sdf_data.sdf[row_min:row_max, col_min:col_max]

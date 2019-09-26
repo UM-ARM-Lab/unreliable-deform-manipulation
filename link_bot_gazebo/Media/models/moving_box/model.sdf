@@ -48,7 +48,7 @@
             <kP_rot>20</kP_rot>
             <kI_rot>0.0</kI_rot>
             <kD_rot>0.0</kD_rot>
-            <max_torque>0.5</max_torque>
+            <max_torque>1.5</max_torque>
             <kP_vel>100.0</kP_vel>
             <kI_vel>0.0</kI_vel>
             <kD_vel>0.0</kD_vel>

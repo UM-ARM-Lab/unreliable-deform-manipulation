@@ -48,7 +48,9 @@ class SDF:
         # Origin means the indeces (row/col) of the world point (0, 0)
         self.origin = origin.astype(np.float32)
         self.extent = sdf_bounds(sdf, resolution, origin)
-        self.image = np.flipud(sdf.T)
+        # NOTE: when displaying an SDF as an image, matplotlib assumes rows increase going down,
+        #  but rows correspond to y which increases going up
+        self.image = np.flipud(sdf)
 
     def save(self, sdf_filename):
         np.savez(sdf_filename,

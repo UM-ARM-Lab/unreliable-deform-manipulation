@@ -102,10 +102,9 @@ class ClassifierDataset:
         example = next(tf.python_io.tf_record_iterator(filenames[0], options=options))
         dict_message = MessageToDict(tf.train.Example.FromString(example))
         feature = dict_message['features']['feature']
-        print(feature.keys())
         res = feature['res']['floatList']['value'][0]
-        h = feature['h_m']['floatList']['value'][0] / res
-        w = feature['w_m']['floatList']['value'][0] / res
+        h = int(feature['h_m']['floatList']['value'][0] / res)
+        w = int(feature['w_m']['floatList']['value'][0] / res)
         sdf_shape = [h, w]
         n_state = len(feature['state']['floatList']['value'])
         n_action = len(feature['action']['floatList']['value'])

@@ -14,7 +14,6 @@ from colorama import Fore
 
 from link_bot_data import random_environment_data_utils
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.video_prediction_dataset_utils import float_feature
 from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_sdf_data, get_local_sdf_data
@@ -22,6 +21,7 @@ from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
 from link_bot_planning import gp_rrt
 from link_bot_planning.goals import sample_goal
+from link_bot_planning.visualization import plot_classifier_data
 from visual_mpc import gazebo_trajectory_execution
 
 tf.enable_eager_execution()
@@ -41,7 +41,6 @@ def collect_classifier_data(args):
 
     full_output_directory = random_environment_data_utils.data_directory(args.outdir, *gp_model_path_info)
     full_output_directory = pathlib.Path(full_output_directory)
-    print(full_output_directory)
     if not full_output_directory.is_dir():
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)
@@ -116,6 +115,9 @@ def collect_classifier_data(args):
             head_point = state.points[head_idx]
             tail_goal = sample_goal(args.env_w, args.env_h, head_point, env_padding=0.1)
 
+            # Compute SDF Data after all objects have finished moving
+            full_sdf_data = get_sdf_data(args.env_h, args.env_w, args.res, services)
+
             start = np.expand_dims(np.array(rope_configuration), axis=0)
             tail_goal_point = np.array(tail_goal)
 
@@ -128,9 +130,6 @@ def collect_classifier_data(args):
                                                               tail_goal_point[0], tail_goal_point[1],
                                                               rope_configuration[0], rope_configuration[1],
                                                               marker_size=0.05)
-
-            # Compute SDF Data
-            full_sdf_data = get_sdf_data(args.sdf_h, args.sdf_w, args.res, services)
 
             planned_actions, planned_path, _ = rrt.plan(start, tail_goal_point, full_sdf_data.sdf, args.verbose)
 
@@ -198,6 +197,17 @@ def collect_classifier_data(args):
                                                                     action,
                                                                     planned_state,
                                                                     planned_next_state)
+
+                import matplotlib.pyplot as plt
+                plt.imshow(planner_local_sdf_data.image > 0, extent=planner_local_sdf_data.extent, zorder=1, alpha=0.5)
+                plt.imshow(actual_local_sdf_data.image > 0, extent=actual_local_sdf_data.extent, zorder=1, alpha=0.5)
+                plt.scatter(actual_head_point[0], actual_head_point[1], zorder=2)
+                plt.scatter(planner_head_point[0], planner_head_point[1], zorder=3)
+                plt.axis("equal")
+                plt.xlabel("x (m)")
+                plt.ylabel("y (m)")
+                plt.show()
+
                 examples[current_record_traj_idx] = example
                 current_record_traj_idx += 1
                 example_idx += 1
@@ -233,8 +243,8 @@ def main():
     parser.add_argument("--real-time-rate", type=float, default=1.0)
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
-    parser.add_argument('--env-w', type=float, default=5.0)
-    parser.add_argument('--env-h', type=float, default=5.0)
+    parser.add_argument('--env-w', type=float, default=5.75)
+    parser.add_argument('--env-h', type=float, default=5.75)
     parser.add_argument('--sdf-w', type=float, default=1.0)
     parser.add_argument('--sdf-h', type=float, default=1.0)
     parser.add_argument('--max-v', type=float, default=0.15)
