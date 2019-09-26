@@ -24,12 +24,15 @@ class ClassifierDataset:
     def parser(self, sdf_shape, n_state, n_action):
         def _parser(serialized_example):
             features = {
-                'sdf/sdf': tf.FixedLenFeature(sdf_shape, tf.float32),
-                'sdf/extent': tf.FixedLenFeature([4], tf.float32),
-                'sdf/res': tf.FixedLenFeature([1], tf.float32),
-                'sdf/origin': tf.FixedLenFeature([2], tf.float32),
-                'sdf/w': tf.FixedLenFeature([1], tf.float32),
-                'sdf/h': tf.FixedLenFeature([1], tf.float32),
+                'actual_sdf/sdf': tf.FixedLenFeature(sdf_shape, tf.float32),
+                'actual_sdf/extent': tf.FixedLenFeature([4], tf.float32),
+                'actual_sdf/origin': tf.FixedLenFeature([2], tf.float32),
+                'planned_sdf/sdf': tf.FixedLenFeature(sdf_shape, tf.float32),
+                'planned_sdf/extent': tf.FixedLenFeature([4], tf.float32),
+                'planned_sdf/origin': tf.FixedLenFeature([2], tf.float32),
+                'res': tf.FixedLenFeature([1], tf.float32),
+                'w_m': tf.FixedLenFeature([1], tf.float32),
+                'h_m': tf.FixedLenFeature([1], tf.float32),
                 'state': tf.FixedLenFeature([n_state], tf.float32),
                 'next_state': tf.FixedLenFeature([n_state], tf.float32),
                 'action': tf.FixedLenFeature([n_action], tf.float32),
@@ -52,8 +55,8 @@ class ClassifierDataset:
                            planned_local_sdf,
                            planned_local_sdf_extent,
                            planned_local_sdf_origin,
-                           sdf_h,
-                           sdf_w,
+                           sdf_h_m,
+                           sdf_w_m,
                            res,
                            state,
                            next_state,
@@ -68,8 +71,8 @@ class ClassifierDataset:
             'planned_sdf/extent': float_feature(np.array(planned_local_sdf_extent)),
             'planned_sdf/origin': float_feature(np.array(planned_local_sdf_origin)),
             'res': float_feature(np.array([res])),
-            'w': float_feature(np.array([sdf_h])),
-            'h': float_feature(np.array([sdf_w])),
+            'w_m': float_feature(np.array([sdf_h_m])),
+            'h_m': float_feature(np.array([sdf_w_m])),
             'state': float_feature(state),
             'next_state': float_feature(next_state),
             'action': float_feature(action),
@@ -96,21 +99,16 @@ class ClassifierDataset:
         filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format(mode))]
 
         options = tf.python_io.TFRecordOptions(compression_type=compression_type)
-        example = next(tf.python_io.tf_record_iterator(filenames[3], options=options))
+        example = next(tf.python_io.tf_record_iterator(filenames[0], options=options))
         dict_message = MessageToDict(tf.train.Example.FromString(example))
         feature = dict_message['features']['feature']
-        for feature_name, feature_description in feature.items():
-            if feature_name == 'sdf/sdf':
-                flattened_sdf_shape = len(feature_description['floatList']['value'])
-                s = int(np.sqrt(flattened_sdf_shape))
-                assert s * s == flattened_sdf_shape, "flat SDF was not square, had size {}, sqrt {}".format(flattened_sdf_shape,
-                                                                                                            s)
-                print(flattened_sdf_shape, s)
-                sdf_shape = [s, s]
-            if feature_name == 'state':
-                n_state = len(feature_description['floatList']['value'])
-            if feature_name == 'action':
-                n_action = len(feature_description['floatList']['value'])
+        print(feature.keys())
+        res = feature['res']['floatList']['value'][0]
+        h = feature['h_m']['floatList']['value'][0] / res
+        w = feature['w_m']['floatList']['value'][0] / res
+        sdf_shape = [h, w]
+        n_state = len(feature['state']['floatList']['value'])
+        n_action = len(feature['action']['floatList']['value'])
 
         if shuffle:
             random.shuffle(filenames)

@@ -142,8 +142,8 @@ def collect_classifier_data(args):
 
             for action in planned_actions:
                 action_msg = LinkBotVelocityAction()
-                action.gripper1_velocity.x = action[0]
-                action.gripper1_velocity.y = action[1]
+                action_msg.gripper1_velocity.x = action[0]
+                action_msg.gripper1_velocity.y = action[1]
                 traj_req.gripper1_traj.append(action_msg)
 
             # execute the plan, collecting the states that actually occurred
@@ -190,8 +190,8 @@ def collect_classifier_data(args):
                                                                     planner_local_sdf_data.sdf,
                                                                     planner_local_sdf_data.extent,
                                                                     planner_local_sdf_data.origin,
-                                                                    args.sdf_h,
-                                                                    args.sdf_w,
+                                                                    args.sdf_h,  # meters
+                                                                    args.sdf_w,  # meters
                                                                     args.res,
                                                                     state,
                                                                     next_state,
