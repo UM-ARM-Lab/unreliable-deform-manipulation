@@ -58,6 +58,7 @@ class GPRRT:
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
 
         self.si = self.ss.getSpaceInformation()
+        print(self.dt)
         self.si.setPropagationStepSize(self.dt)
         self.si.setMinMaxControlDuration(1, 100)
 
@@ -79,24 +80,7 @@ class GPRRT:
         np_s = to_numpy(start, self.n_state)
         np_u = to_numpy(control, self.n_control)
 
-        steps = int(duration / self.dt)
-        np_s_next = np_s
-        for t in range(steps):
-            np_s_next = self.fwd_gp_model.fwd_act(np_s_next, np_u)
-
-        # DEBUGGING:
-        # sx = [np_s[0, 0], np_s[0, 2], np_s[0, 4]]
-        # sy = [np_s[0, 1], np_s[0, 3], np_s[0, 5]]
-        # sx_ = [np_s_next[0, 0], np_s_next[0, 2], np_s_next[0, 4]]
-        # sy_ = [np_s_next[0, 1], np_s_next[0, 3], np_s_next[0, 5]]
-        # sx_ = [np_s_next[0, 0], np_s_next[0, 2], np_s_next[0, 4]]
-        # sy_ = [np_s_next[0, 1], np_s_next[0, 3], np_s_next[0, 5]]
-        # plt.scatter(sx, sy, c=['b', 'b', 'g'], zorder=2)
-        # plt.plot(sx, sy, c='k', zorder=1)
-        # plt.scatter(sx_, sy_, c=['r', 'r', 'c'], zorder=2)
-        # plt.quiver(np_s[0, 4], np_s[0, 5], control[0], control[1])
-        # plt.axis("equal")
-        # plt.show()
+        np_s_next = self.fwd_gp_model.fwd_act(np_s, np_u)
 
         from_numpy(np_s_next, state_out, self.n_state)
 

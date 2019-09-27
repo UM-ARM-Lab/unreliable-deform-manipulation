@@ -44,9 +44,11 @@ def visualize(args, predicted_traj, actual_traj):
     plt.legend()
     plt.tight_layout()
 
-    if args.outdir:
+    if args.outdir is not None:
         outname = "gp_vs_true_{}.gif".format(int(time.time()))
-        anim.save(outname, writer='imagemagick', fps=30)
+        outname = args.outdir / outname
+        print(outname)
+        anim.save(outname, writer='imagemagick', fps=4)
 
     plt.show()
 

@@ -252,9 +252,6 @@ class LinkBotGP:
         x_star = np.hstack((s_relative, u))
         delta_mu, _ = self.model.predict_y(x_star)
 
-        # DEBUGGING:
-        # delta_mu = 0.1 * np.array([u[0, 0], u[0, 1], u[0, 0], u[0, 1], u[0, 0], u[0, 1]])
-
         s_next = s + delta_mu
         return s_next
 
@@ -267,10 +264,6 @@ class LinkBotGP:
         u_norm = np.linalg.norm(u)
         if u_norm > 1:
             u = u / u_norm
-
-        # DEBUGGING:
-        # vx_vy_u = np.atleast_2d(s_target[0, 0:2] - s[0, 0:2])
-        # pred_n_steps = np.linalg.norm(vx_vy_u) / 0.1
 
         return u
 
