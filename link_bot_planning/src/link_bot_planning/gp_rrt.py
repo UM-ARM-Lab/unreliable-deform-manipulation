@@ -58,7 +58,6 @@ class GPRRT:
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
 
         self.si = self.ss.getSpaceInformation()
-        print(self.dt)
         self.si.setPropagationStepSize(self.dt)
         self.si.setMinMaxControlDuration(1, 100)
 

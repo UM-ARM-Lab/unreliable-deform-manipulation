@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import pathlib
 import random
 import time
 
@@ -47,8 +48,7 @@ def visualize(args, predicted_traj, actual_traj):
     if args.outdir is not None:
         outname = "gp_vs_true_{}.gif".format(int(time.time()))
         outname = args.outdir / outname
-        print(outname)
-        anim.save(outname, writer='imagemagick', fps=4)
+        anim.save(str(outname), writer='imagemagick', fps=4)
 
     plt.show()
 
@@ -60,7 +60,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("gp_model_dir")
     parser.add_argument("actions")
-    parser.add_argument("--outdir", help="output visualizations here")
+    parser.add_argument("--outdir", help="output visualizations here", type=pathlib.Path)
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
 

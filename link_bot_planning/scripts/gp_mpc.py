@@ -16,7 +16,7 @@ from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_sdf_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
-from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
+from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest, WorldControlRequest
 from link_bot_planning import gp_rrt
 from link_bot_planning.goals import sample_goal
 
@@ -60,7 +60,11 @@ def common(args, max_steps=1e6):
                        env_w=args.env_w,
                        env_h=args.env_h)
 
-    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate)
+    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, reset_world=False)
+    # wait for obstacles to settle
+    step = WorldControlRequest()
+    step.steps = 5000
+    services.world_control(step)
     full_sdf_data = get_sdf_data(args.env_h, args.env_w, args.res, services)
 
     # Statistics
@@ -180,7 +184,7 @@ def main():
     parser.add_argument('--env-h', type=float, default=6)
     parser.add_argument('--sdf-w', type=float, default=1.0)
     parser.add_argument('--sdf-h', type=float, default=1.0)
-    parser.add_argument('--max-v', type=float, default=0.15)
+    parser.add_argument('--max-v', type=float, default=0.25)
     parser.add_argument("--real-time-rate", type=float, default=1.0)
     parser.add_argument("--model-name", '-m', default="link_bot")
 

@@ -119,12 +119,16 @@ def rowcol_to_xy(services, row, col):
 
 def setup_gazebo_env(verbose: int,
                      real_time_rate: float,
+                     reset_world : bool = True,
                      initial_object_dict: Optional[Dict] = None):
     # fire up services
     services = GazeboServices()
     services.wait(verbose)
-    empty = EmptyRequest()
-    services.reset.call(empty)
+
+    if reset_world:
+        empty = EmptyRequest()
+        services.reset.call(empty)
+
     # set up physics
     get = GetPhysicsPropertiesRequest()
     current_physics = services.get_physics.call(get)

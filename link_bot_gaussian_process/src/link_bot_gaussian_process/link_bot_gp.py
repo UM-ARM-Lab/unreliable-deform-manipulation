@@ -134,7 +134,7 @@ class LinkBotGP:
     def train(self, X, Y, beta, dataset_hparams, n_inducing_points=100, verbose=True, maximum_training_iterations=300):
         self.n_data_points, self.n_inputs = X.shape
         _, self.n_outputs = Y.shape
-        self.n_state = 4
+        self.n_state = 6
         self.n_control = 2
         self.n_inducing_points = n_inducing_points  # number of inducing points
         self.dataset_hparams = dataset_hparams
