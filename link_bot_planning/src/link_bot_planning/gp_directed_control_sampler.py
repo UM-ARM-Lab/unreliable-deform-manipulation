@@ -10,10 +10,8 @@ from link_bot_planning.state_spaces import to_numpy, from_numpy
 
 def plot(planner_data, sdf, start, goal, path, controls, n_state, extent):
     plt.figure()
-    plt.imshow(np.flipud(sdf.T) > 0, extent=extent)
+    plt.imshow(np.flipud(sdf) > 0, extent=extent)
 
-    print(len(GPDirectedControlSampler.states_sampled_at))
-    print(GPDirectedControlSampler.states_sampled_at[0])
     for state_sampled_at in GPDirectedControlSampler.states_sampled_at:
         xs = [state_sampled_at[0, 0], state_sampled_at[0, 2], state_sampled_at[0, 4]]
         ys = [state_sampled_at[0, 1], state_sampled_at[0, 3], state_sampled_at[0, 5]]
@@ -66,6 +64,7 @@ def plot(planner_data, sdf, start, goal, path, controls, n_state, extent):
     ]
 
     plt.legend(custom_lines, ['sampled rope configurations', 'start', 'goal', 'final path', 'controls', 'full rope', 'search tree'])
+    plt.show()
 
 
 class GPDirectedControlSampler(oc.DirectedControlSampler):

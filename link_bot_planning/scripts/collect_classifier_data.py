@@ -103,10 +103,6 @@ def collect_classifier_data(args):
         # generate a bunch of plans to random goals
         state_req = LinkBotStateRequest()
 
-        # Center SDF at the current head position
-        state = services.get_state(state_req)
-        head_idx = state.link_names.index("head")
-
         for plan_idx in range(args.n_targets_per_env):
             # generate a random target
             state = services.get_state(state_req)

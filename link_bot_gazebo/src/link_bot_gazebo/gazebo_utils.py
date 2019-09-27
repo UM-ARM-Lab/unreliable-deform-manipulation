@@ -137,18 +137,19 @@ def setup_gazebo_env(verbose: int,
     services.set_physics.call(set)
 
     # Set initial object positions
-    move_action = Position2dAction()
-    for object_name, (x, y) in initial_object_dict.items():
-        move = ObjectAction()
-        move.pose.position.x = x
-        move.pose.position.y = y
-        move.pose.orientation.x = 0
-        move.pose.orientation.y = 0
-        move.pose.orientation.z = 0
-        move.pose.orientation.w = 0
-        move.model_name = object_name
-        move_action.actions.append(move)
-    services.position_2d_action.publish(move_action)
+    if initial_object_dict is not None:
+        move_action = Position2dAction()
+        for object_name, (x, y) in initial_object_dict.items():
+            move = ObjectAction()
+            move.pose.position.x = x
+            move.pose.position.y = y
+            move.pose.orientation.x = 0
+            move.pose.orientation.y = 0
+            move.pose.orientation.z = 0
+            move.pose.orientation.w = 0
+            move.model_name = object_name
+            move_action.actions.append(move)
+        services.position_2d_action.publish(move_action)
 
     # let the simulator run to get the first image
     step = WorldControlRequest()

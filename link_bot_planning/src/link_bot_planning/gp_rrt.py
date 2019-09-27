@@ -153,7 +153,7 @@ class GPRRT:
                 # SMOOTHING
                 # np_states, np_controls = self.smooth(np_states, np_controls, verbose)
 
-                if verbose >= 3:
+                if verbose >= 2:
                     planner_data = ob.PlannerData(self.si)
                     self.planner.getPlannerData(planner_data)
                     plot(planner_data, sdf, np_start, tail_goal_point, np_states, np_controls, self.n_state, self.extent)
