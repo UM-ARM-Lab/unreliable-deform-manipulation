@@ -8,8 +8,8 @@ def plot_classifier_data(actual_sdf, actual_sdf_extent, next_state, planned_next
                          planned_state, state, i=0):
     fig = plt.figure()
     axes = plt.subplot()
-    plt.imshow(np.flipud(planned_sdf.T) > 0, extent=planned_sdf_extent, zorder=1)
-    plt.imshow(np.flipud(actual_sdf.T) > 0, extent=actual_sdf_extent, zorder=1)
+    plt.imshow(np.flipud(planned_sdf) > 0, extent=planned_sdf_extent, zorder=1, vmin=0, vmax=1, cmap='viridis')
+    plt.imshow(np.flipud(actual_sdf) > 0, extent=actual_sdf_extent, zorder=1, vmin=0, vmax=1, cmap='viridis')
     plot_rope_configuration(axes, state, c='red', label='state', zorder=2)
     plot_rope_configuration(axes, next_state, c='orange', label='next state', zorder=3)
     plot_rope_configuration(axes, planned_state, c='blue', label='planned state', zorder=4)
@@ -19,4 +19,4 @@ def plot_classifier_data(actual_sdf, actual_sdf_extent, next_state, planned_next
     plt.xlabel("x (m)")
     plt.ylabel("y (m)")
     plt.legend()
-    # plt.show()
+    plt.show()

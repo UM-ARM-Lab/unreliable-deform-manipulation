@@ -239,7 +239,7 @@ def get_local_sdf_data(sdf_h: float,
                                                                   full_sdf_data.origin)
     row_min, row_max, col_min, col_max = local_sdf_bounds
     local_sdf = full_sdf_data.sdf[row_min:row_max, col_min:col_max]
-    local_sdf_gradient = full_sdf_data.sdf[row_min:row_max, col_min:col_max]
+    local_sdf_gradient = full_sdf_data.gradient[row_min:row_max, col_min:col_max]
 
     # indeces of the world point 0,0 in the local sdf
     local_sdf_origin_indeces_in_full_sdf = np.array([row_min, col_min])

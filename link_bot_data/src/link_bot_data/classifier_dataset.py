@@ -41,8 +41,6 @@ class ClassifierDataset:
             }
             features = tf.parse_single_example(serialized_example, features=features)
 
-            # Convert the flattened SDF tensor into a (H,W,1) tensor
-
             return features
 
         return _parser

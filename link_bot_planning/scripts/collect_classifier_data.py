@@ -242,8 +242,9 @@ def main():
     parser.add_argument("--real-time-rate", type=float, default=1.0)
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
-    parser.add_argument('--env-w', type=float, default=5.75)
-    parser.add_argument('--env-h', type=float, default=5.75)
+    # Even though the arena is 5m, we need extra padding so that we can request a 1x1 meter local sdf at the corners
+    parser.add_argument('--env-w', type=float, default=6)
+    parser.add_argument('--env-h', type=float, default=6)
     parser.add_argument('--sdf-w', type=float, default=1.0)
     parser.add_argument('--sdf-h', type=float, default=1.0)
     parser.add_argument('--max-v', type=float, default=0.15)
