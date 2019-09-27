@@ -6,6 +6,7 @@ import json
 import os
 import pathlib
 
+import matplotlib.pyplot as plt
 import numpy as np
 import ompl.util as ou
 import rospy
@@ -21,7 +22,6 @@ from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
 from link_bot_planning import gp_rrt
 from link_bot_planning.goals import sample_goal
-from link_bot_planning.visualization import plot_classifier_data
 from visual_mpc import gazebo_trajectory_execution
 
 tf.enable_eager_execution()
@@ -161,9 +161,7 @@ def collect_classifier_data(args):
             actual_rope_configurations = np.array(actual_rope_configurations)
 
             if args.verbose >= 3:
-                import matplotlib.pyplot as plt
                 # FOR THE TAIL
-
                 anim = link_bot_gp.animate_predict(prediction=planned_path,
                                                    y_rope_configurations=actual_rope_configurations,
                                                    sdf=full_sdf_data.sdf,
@@ -198,15 +196,16 @@ def collect_classifier_data(args):
                                                                     planned_state,
                                                                     planned_next_state)
 
-                import matplotlib.pyplot as plt
-                plt.imshow(planner_local_sdf_data.image > 0, extent=planner_local_sdf_data.extent, zorder=1, alpha=0.5)
-                plt.imshow(actual_local_sdf_data.image > 0, extent=actual_local_sdf_data.extent, zorder=1, alpha=0.5)
-                plt.scatter(actual_head_point[0], actual_head_point[1], zorder=2)
-                plt.scatter(planner_head_point[0], planner_head_point[1], zorder=3)
-                plt.axis("equal")
-                plt.xlabel("x (m)")
-                plt.ylabel("y (m)")
-                plt.show()
+                if args.verbose >= 4:
+                    plt.figure()
+                    plt.imshow(planner_local_sdf_data.image > 0, extent=planner_local_sdf_data.extent, zorder=1, alpha=0.5)
+                    plt.imshow(actual_local_sdf_data.image > 0, extent=actual_local_sdf_data.extent, zorder=1, alpha=0.5)
+                    plt.scatter(actual_head_point[0], actual_head_point[1], zorder=2)
+                    plt.scatter(planner_head_point[0], planner_head_point[1], zorder=3)
+                    plt.axis("equal")
+                    plt.xlabel("x (m)")
+                    plt.ylabel("y (m)")
+                    plt.show()
 
                 examples[current_record_traj_idx] = example
                 current_record_traj_idx += 1
