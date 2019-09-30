@@ -142,6 +142,7 @@ def collect_classifier_data(args):
                 traj_req.gripper1_traj.append(action_msg)
 
             # execute the plan, collecting the states that actually occurred
+            #  TODO: Consider executing just a few steps, so that our start states don't diverge too much
             if args.verbose >= 2:
                 print(Fore.CYAN + "Executing Plan.".format(tail_goal_point) + Fore.RESET)
 
