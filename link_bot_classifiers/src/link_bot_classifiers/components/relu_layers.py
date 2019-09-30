@@ -4,7 +4,7 @@ from tensorflow.keras import layers
 def relu_layers(fc_layer_sizes, use_bias=True):
     dense_layers = []
     for fc_layer_size in fc_layer_sizes:
-        dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=use_bias))
+        dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=use_bias, name='relu_dense'))
 
     def forward(x):
         fc_h = x

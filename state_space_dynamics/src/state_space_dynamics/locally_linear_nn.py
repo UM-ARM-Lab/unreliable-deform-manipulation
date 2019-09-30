@@ -1,158 +1,164 @@
 import json
 import os
+import time
 
+import numpy as np
 import tensorflow as tf
 import tensorflow.keras.layers as layers
-import tensorflow.keras.models as models
-from colorama import Fore
-from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
+from tensorflow.python.training.checkpointable.data_structures import NoDependency
+from colorama import Fore, Style
 
-from link_bot_classifiers.callbacks import DebugCallback, StopAtAccuracy
-from link_bot_classifiers.components.relu_layers import relu_layers
 from link_bot_pycommon import experiments_util
 
 
-class LocallyLinearNN:
+class LocallyLinearNN(tf.keras.Model):
 
-    def __init__(self, hparams):
+    def __init__(self, hparams, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.initial_epoch = 0
-        self.hparams = hparams
-        input_sequence_length = hparams['sequence_length'] - 1
-        n_dim = hparams['n_points'] * 2
-        m_dim = hparams['n_control']
+        self.hparams = NoDependency(hparams)
+        self.input_sequence_length = self.hparams['sequence_length'] - 1
+        self.n_dim = self.hparams['n_points'] * 2
+        self.m_dim = self.hparams['n_control']
 
-        states = layers.Input(name='states', shape=(input_sequence_length, n_dim))
-        actions = layers.Input(name='actions', shape=(input_sequence_length, 2))
+        self.elements_in_A = self.hparams['n_points'] * (2 * 2)
+        self.elements_in_B = self.n_dim * self.m_dim
+        self.num_elements_in_linear_model = self.elements_in_A + self.elements_in_B
 
-        elements_in_A = hparams['n_points'] * (2 * 2)
-        elements_in_B = n_dim * m_dim
+        self.concat = layers.Concatenate()
+        self.dense_layers = []
+        for fc_layer_size in self.hparams['fc_layer_sizes']:
+            self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
+        self.dense_layers.append(layers.Dense(self.num_elements_in_linear_model, activation=None, name='linear_params'))
 
-        concat = layers.Concatenate()
-        # state here is ? x 3 x 2
-        nn = relu_layers(hparams['fc_layer_sizes'])
-        num_elements_in_linear_model = elements_in_A + elements_in_B
-        h_to_params = layers.Dense(num_elements_in_linear_model, activation=None, name='constraints')
+    def call(self, input_dict, training=None, mask=None):
+        states = input_dict['states']
+        actions = input_dict['actions']
+        s_0 = layers.Reshape(target_shape=[self.input_sequence_length, self.n_dim, 1])(states)[:, 0]
 
-        def AB_params(_states, _actions):
-            # concat state and action here
-            _states = tf.squeeze(_states, squeeze_dims=2)
-            _state_actions = concat([_states, _actions])
-            out_h = nn(_state_actions)
-            params = h_to_params(out_h)
-            return params
+        gen_states = [s_0]
+        for t in range(self.input_sequence_length):
+            s_t = gen_states[-1]
+            action_t = actions[:, t]
 
-        def dynamics(_dynamics_inputs):
-            _states, _actions = _dynamics_inputs
+            s_t_squeeze = tf.squeeze(s_t, squeeze_dims=2)
+            _state_action_t = self.concat([s_t_squeeze, action_t])
+            z_t = _state_action_t
+            for dense_layer in self.dense_layers:
+                z_t = dense_layer(z_t)
+            params_t = z_t
 
-            s_0_flat = tf.reshape(_states[:, 0], [-1, n_dim, 1])
+            A_t_params, B_t_params = tf.split(params_t, [self.elements_in_A, self.elements_in_B], axis=1)
+            A_t_per_point = tf.split(A_t_params, self.hparams['n_points'], axis=1)
+            B_t_per_point = tf.split(B_t_params, self.hparams['n_points'], axis=1)
+            A_t_per_point = [tf.linalg.LinearOperatorFullMatrix(tf.reshape(_a_p, [-1, 2, 2])) for _a_p
+                             in A_t_per_point]
+            B_t_per_point = [tf.reshape(_b_p, [-1, 2, 2]) for _b_p in B_t_per_point]
+            # TODO: remove this? do we need an A matrix?
+            A_t = tf.linalg.LinearOperatorBlockDiag(A_t_per_point).to_dense("A_t")
 
-            # _gen_states should be ? x T x 3 x 2
-            _gen_states = [s_0_flat]
-            for t in range(input_sequence_length):
-                s_t_flat = _gen_states[-1]
-                action_t = actions[:, t]
+            B_t = tf.concat(B_t_per_point, axis=1)
 
-                params_t = AB_params(s_t_flat, action_t)
+            u_t = tf.expand_dims(action_t, axis=-1)
 
-                A_t_params, B_t_params = tf.split(params_t, [elements_in_A, elements_in_B], axis=1)
-                A_t_per_point = tf.split(A_t_params, hparams['n_points'], axis=1)
-                A_t_params = tf.Print(A_t_params, [tf.shape(A_t_params)])
-                B_t_per_point = tf.split(B_t_params, hparams['n_points'], axis=1)
-                A_t_per_point = [tf.linalg.LinearOperatorFullMatrix(tf.reshape(_a_p, [-1, 2, 2])) for _a_p
-                                 in A_t_per_point]
-                B_t_per_point = [tf.reshape(_b_p, [-1, 2, 2]) for _b_p in B_t_per_point]
-                A_t = tf.linalg.LinearOperatorBlockDiag(A_t_per_point).to_dense("A_t")
-                B_t = tf.concat(B_t_per_point, axis=1)
+            # s_t_plus_1_flat = tf.linalg.matmul(A_t, s_t) + tf.linalg.matmul(B_t, u_t)
+            s_t_plus_1_flat = s_t + tf.linalg.matmul(B_t, u_t) * self.hparams['dt']
 
-                u_t = tf.expand_dims(_actions[:, t], axis=-1)
+            gen_states.append(s_t_plus_1_flat)
 
-                s_t_plus_1_flat = tf.linalg.matmul(A_t, s_t_flat) + tf.linalg.matmul(B_t, u_t)
+        gen_states = tf.stack(gen_states)
+        gen_states = tf.transpose(gen_states, [1, 0, 2, 3])
+        gen_states = tf.squeeze(gen_states, squeeze_dims=3)
+        return gen_states
 
-                _gen_states.append(s_t_plus_1_flat)
 
-            stacked = tf.stack(_gen_states)
-            stacked = tf.transpose(stacked, [1, 0, 2, 3])
-            stacked = tf.squeeze(stacked, squeeze_dims=3)
-            return stacked
+def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
+    optimizer = tf.train.AdamOptimizer()
+    loss = tf.keras.losses.MeanSquaredError()
+    net = LocallyLinearNN(hparams=hparams)
+    global_step = tf.train.get_or_create_global_step()
 
-        gen_states = layers.Lambda(lambda args: dynamics(args), name='output_states')([states, actions])
+    manager = None
+    ckpt = None
+    writer = None
+    if args.log is not None:
+        full_log_path = os.path.join("log_data", log_path)
 
-        self.model_inputs = [actions, states]
-        self.keras_model = models.Model(inputs=self.model_inputs, outputs=gen_states)
-        self.keras_model.compile(optimizer=tf.train.AdamOptimizer(),
-                                 loss='mse',
-                                 metrics=['accuracy'],
-                                 # run_eagerly=True
-                                 )
+        print(Fore.CYAN + "Logging to {}".format(full_log_path) + Fore.RESET)
 
-    def train(self, train_dataset, train_tf_dataset, val_dataset, val_tf_dataset, log_path, args):
-        callbacks = []
-        if args.log is not None:
-            full_log_path = os.path.join("log_data", log_path)
+        ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
+        manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=3)
+        ckpt.restore(manager.latest_checkpoint)
+        if manager.latest_checkpoint:
+            print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
 
-            print(Fore.CYAN + "Logging to {}".format(full_log_path) + Fore.RESET)
+        experiments_util.make_log_dir(full_log_path)
 
-            experiments_util.make_log_dir(full_log_path)
+        hparams_path = os.path.join(full_log_path, "hparams.json")
+        with open(hparams_path, 'w') as hparams_file:
+            hparams['log path'] = full_log_path
+            hparams_file.write(json.dumps(hparams, indent=2))
 
-            metadata_path = os.path.join(full_log_path, "hparams.json")
-            with open(metadata_path, 'w') as metadata_file:
-                metadata = self.hparams
-                metadata['log path'] = full_log_path
-                metadata_file.write(json.dumps(metadata, indent=2))
+        writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
 
-            model_filename = os.path.join(full_log_path, "nn.{epoch:02d}.hdf5")
+    def train_loop():
+        for epoch in range(args.epochs):
+            ################
+            # train
+            ################
+            # metrics are averaged across batches in the epoch
+            batch_losses = []
+            epoch_t0 = time.time()
+            for train_x, train_y in train_tf_dataset:
+                batch_t0 = time.time()
+                true_train_states = train_y['output_states']
+                with tf.GradientTape() as tape:
+                    pred_states = net(train_x)
+                    training_batch_loss = loss(y_true=true_train_states, y_pred=pred_states)
+                variables = net.trainable_variables
+                gradients = tape.gradient(training_batch_loss, variables)
+                optimizer.apply_gradients(zip(gradients, variables))
+                batch_losses.append(training_batch_loss.numpy())
 
-            checkpoint_callback = ModelCheckpoint(model_filename, monitor='loss', save_weights_only=True)
-            callbacks.append(checkpoint_callback)
+                global_step.assign_add(1)
 
-            tensorboard = TensorBoard(log_dir=full_log_path)
-            callbacks.append(tensorboard)
+                if args.log:
+                    for grad, var in zip(gradients, variables):
+                        tf.contrib.summary.histogram(var.name + '_grad', grad)
+                dt_per_step = time.time() - batch_t0
+                if args.verbose >= 3:
+                    print("{:4.1f}ms/step".format(dt_per_step * 1000.0))
+            dt_per_epoch = time.time() - epoch_t0
 
-            val_acc_threshold = args.val_acc_threshold
-            if val_acc_threshold is not None:
-                if args.validation:
-                    raise ValueError("Validation dataset must be provided in order to use this monitor")
-                if val_acc_threshold < 0 or val_acc_threshold > 1:
-                    raise ValueError("val_acc_threshold {} must be between 0 and 1 inclusive".format(val_acc_threshold))
-                stop_at_accuracy = StopAtAccuracy(val_acc_threshold)
-                callbacks.append(stop_at_accuracy)
+            training_loss = np.mean(batch_losses)
+            print("Epoch {:6d}, Time {:4.1f}s, Training loss: {:8.4f}".format(epoch, dt_per_epoch, training_loss))
+            if args.log:
+                tf.contrib.summary.scalar("training loss", training_loss)
 
-            if args.early_stopping:
-                if args.validation:
-                    raise ValueError("Validation dataset must be provided in order to use this monitor")
-                early_stopping = EarlyStopping(monitor='val_acc', patience=5, min_delta=0.001, verbose=args.verbose)
-                callbacks.append(early_stopping)
+            ################
+            # validation
+            ################
+            if args.validation:
+                val_losses = []
+                for val_x, val_y in val_tf_dataset:
+                    if epoch % args.summary_freq == 0:
+                        true_val_states = val_y['output_states']
+                        val_gen_states = net(val_x)
+                        batch_val_loss = loss(y_true=true_val_states, y_pred=val_gen_states)
+                        val_losses.append(batch_val_loss)
+                val_loss = np.mean(val_losses)
+                tf.contrib.summary.scalar('validation loss', val_loss, step=int(ckpt.step))
+                print("\t\t\tValidation loss: " + Style.BRIGHT + "{:8.4f}".format(val_loss) + Style.RESET_ALL)
 
-            if args.debug:
-                callbacks.append(DebugCallback())
+            ################
+            # Checkpoint
+            ################
+            if args.log and epoch % args.save_freq == 0:
+                save_path = manager.save()
+                print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(int(ckpt.step), save_path) + Fore.RESET)
 
-        steps_per_epoch = train_dataset.num_examples_per_epoch() // args.batch_size
-        val_steps_per_epoch = val_dataset.num_examples_per_epoch() // args.batch_size
-
-        if not args.validation:
-            val_tf_dataset = None
-            val_steps_per_epoch = None
-
-        self.keras_model.fit(x=train_tf_dataset,
-                             y=None,
-                             callbacks=callbacks,
-                             initial_epoch=self.initial_epoch,
-                             steps_per_epoch=steps_per_epoch,
-                             validation_data=val_tf_dataset,
-                             validation_steps=val_steps_per_epoch,
-                             epochs=args.epochs,
-                             verbose=True)
-
-    def get_default_hparams(self):
-        return {
-        }
-
-    @staticmethod
-    def load(checkpoint_directory):
-        hparams_path = checkpoint_directory / 'hparams.json'
-        model_hparams = json.load(open(hparams_path, 'r'))
-        model = LocallyLinearNN(model_hparams)
-        return model
-
-    def save(self, checkpoint_directory):
-        pass
+    if args.log:
+        with writer.as_default(), tf.contrib.summary.always_record_summaries():
+            train_loop()
+    else:
+        train_loop()

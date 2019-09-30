@@ -5,9 +5,10 @@ import pathlib
 
 import numpy as np
 import tensorflow as tf
+from colorama import Fore
 
 from link_bot_pycommon import experiments_util
-from state_space_dynamics import get_model_class
+from state_space_dynamics import get_model_module
 from video_prediction.datasets import dataset_utils
 
 tf.enable_eager_execution()
@@ -26,9 +27,12 @@ def main():
     train_parser.add_argument('--dataset-hparams', type=str)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=32)
+    train_parser.add_argument('--summary-freq', type=int, default=1)
+    train_parser.add_argument('--save-freq', type=int, default=4)
     train_parser.add_argument('--seed', type=int, default=None)
     train_parser.add_argument('--epochs', type=int, default=100)
     train_parser.add_argument('--log', '-l')
+    train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--validation', action='store_true')
     train_parser.add_argument('--debug', action='store_true')
 
@@ -55,6 +59,7 @@ def main():
         dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
 
     model_hparams = json.load(open(args.model_hparams, 'r'))
+    model_hparams['dt'] = dataset_hparams_dict['dt']
     dataset_hparams_dict['sequence_length'] = model_hparams['sequence_length']
     dataset_hparams_dict['sdf_shape'] = model_hparams['sdf_shape']
 
@@ -67,7 +72,7 @@ def main():
                                                                 args.dataset_hparams,
                                                                 shuffle=False,
                                                                 mode='train',
-                                                                epochs=args.epochs,
+                                                                epochs=1,  # we handle epochs in our training loop
                                                                 seed=args.seed,
                                                                 batch_size=args.batch_size)
     val_dataset, val_tf_dataset = dataset_utils.get_dataset(args.input_dir,
@@ -76,26 +81,27 @@ def main():
                                                             args.dataset_hparams,
                                                             shuffle=False,
                                                             mode='val',
-                                                            epochs=None,
+                                                            epochs=1,
                                                             seed=args.seed,
                                                             batch_size=args.batch_size)
 
     ###############
     # Model
     ###############
-    ModelClass = get_model_class(model_hparams['model_class'])
-    if args.checkpoint:
-        model = ModelClass.load(args.checkpoint)
-    else:
-        model = ModelClass(model_hparams)
+    module = get_model_module(model_hparams['model_class'])
+    # TODO: loading from checkpoint?
+    # if args.checkpoint:
+    #     model = module.load(args.checkpoint)
+    # else:
+    #     model = module(model_hparams)
 
     try:
         ###############
         # Train
         ###############
-        model.train(train_dataset, train_tf_dataset, val_dataset, val_tf_dataset, log_path, args)
+        module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args)
     except KeyboardInterrupt:
-        print("Interrupted.")
+        print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
 
 
