@@ -1,6 +1,7 @@
 import errno
 import json
 import os
+import pathlib
 from datetime import datetime
 
 import git
@@ -18,24 +19,18 @@ def experiment_name(nickname, *names):
     return log_path
 
 
-def make_log_dir(full_log_path):
+def make_log_dir(full_log_path: pathlib.Path):
     """ https://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python """
-    if "log_data" not in full_log_path:
+    if "log_data" not in str(full_log_path):
         raise ValueError("Full log path must contain 'log_data'")
-    try:
-        os.makedirs(full_log_path)
-    except OSError as exc:  # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(full_log_path):
-            pass
-        else:
-            raise
+    full_log_path.mkdir()
 
 
 def write_metadata(metadata, filename, log_path):
-    full_log_path = os.path.join("log_data", log_path)
+    full_log_path = pathlib.Path("log_data") / log_path
 
     make_log_dir(full_log_path)
 
-    metadata_path = os.path.join(full_log_path, filename)
+    metadata_path = full_log_path / filename
     metadata_file = open(metadata_path, 'w')
     metadata_file.write(json.dumps(metadata, indent=2))

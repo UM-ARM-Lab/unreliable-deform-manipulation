@@ -1,12 +1,12 @@
 import json
-import os
+import pathlib
 import time
 
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.layers as layers
-from tensorflow.python.training.checkpointable.data_structures import NoDependency
 from colorama import Fore, Style
+from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
 from link_bot_pycommon import experiments_util
 
@@ -72,36 +72,71 @@ class LocallyLinearNN(tf.keras.Model):
         return gen_states
 
 
+def eval(hparams, test_tf_dataset, args):
+    net = LocallyLinearNN(hparams=hparams)
+    ckpt = tf.train.Checkpoint(net=net)
+    manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=3)
+    ckpt.restore(manager.latest_checkpoint)
+    print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
+
+    # TODO: should we make sure that we use the same loss upon restoring the checkpoint?
+    loss = tf.keras.losses.MeanSquaredError()
+
+    test_losses = []
+    for test_x, test_y in test_tf_dataset:
+        true_test_states = test_y['output_states']
+        test_gen_states = net(test_x)
+        batch_test_loss = loss(y_true=true_test_states, y_pred=test_gen_states)
+        test_losses.append(batch_test_loss)
+    test_loss = np.mean(test_losses)
+    print("Test Loss: " + Style.BRIGHT + "{:8.4f}".format(test_loss) + Style.RESET_ALL)
+
+
 def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
     optimizer = tf.train.AdamOptimizer()
     loss = tf.keras.losses.MeanSquaredError()
     net = LocallyLinearNN(hparams=hparams)
     global_step = tf.train.get_or_create_global_step()
 
+    ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
+    manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=3)
+    ckpt.restore(manager.latest_checkpoint)
+    if manager.latest_checkpoint:
+        print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
+    elif args.checkpoint:
+        print(Fore.RED + "Failed to restore from checkpoint directory {}".format(args.checkpoint) + Fore.RESET)
+        print("Did you forget a subdirectory?")
+        return
+
     manager = None
-    ckpt = None
     writer = None
     if args.log is not None:
-        full_log_path = os.path.join("log_data", log_path)
+        full_log_path = pathlib.Path("log_data") / log_path
 
         print(Fore.CYAN + "Logging to {}".format(full_log_path) + Fore.RESET)
 
-        ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
-        manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=3)
-        ckpt.restore(manager.latest_checkpoint)
-        if manager.latest_checkpoint:
-            print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
-
         experiments_util.make_log_dir(full_log_path)
 
-        hparams_path = os.path.join(full_log_path, "hparams.json")
+        hparams_path = full_log_path / "hparams.json"
         with open(hparams_path, 'w') as hparams_file:
-            hparams['log path'] = full_log_path
+            hparams['log path'] = str(full_log_path)
             hparams_file.write(json.dumps(hparams, indent=2))
 
         writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
 
     def train_loop():
+        ################
+        # test the loss before any training occurs
+        ################
+        val_losses = []
+        for val_x, val_y in val_tf_dataset:
+            true_val_states = val_y['output_states']
+            val_gen_states = net(val_x)
+            batch_val_loss = loss(y_true=true_val_states, y_pred=val_gen_states)
+            val_losses.append(batch_val_loss)
+        val_loss = np.mean(val_losses)
+        print("Validation loss before any training: " + Style.BRIGHT + "{:8.4f}".format(val_loss) + Style.RESET_ALL)
+
         for epoch in range(args.epochs):
             ################
             # train
@@ -131,9 +166,10 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             dt_per_epoch = time.time() - epoch_t0
 
             training_loss = np.mean(batch_losses)
-            print("Epoch {:6d}, Time {:4.1f}s, Training loss: {:8.4f}".format(epoch, dt_per_epoch, training_loss))
+            print("Epoch: {:5d}, Time {:4.1f}s, Training loss: {:8.4f}".format(epoch, dt_per_epoch, training_loss))
             if args.log:
                 tf.contrib.summary.scalar("training loss", training_loss)
+                # TODO: show gifs of predictions in tensorboard
 
             ################
             # validation
@@ -141,11 +177,10 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             if args.validation:
                 val_losses = []
                 for val_x, val_y in val_tf_dataset:
-                    if epoch % args.summary_freq == 0:
-                        true_val_states = val_y['output_states']
-                        val_gen_states = net(val_x)
-                        batch_val_loss = loss(y_true=true_val_states, y_pred=val_gen_states)
-                        val_losses.append(batch_val_loss)
+                    true_val_states = val_y['output_states']
+                    val_gen_states = net(val_x)
+                    batch_val_loss = loss(y_true=true_val_states, y_pred=val_gen_states)
+                    val_losses.append(batch_val_loss)
                 val_loss = np.mean(val_losses)
                 tf.contrib.summary.scalar('validation loss', val_loss, step=int(ckpt.step))
                 print("\t\t\tValidation loss: " + Style.BRIGHT + "{:8.4f}".format(val_loss) + Style.RESET_ALL)
