@@ -1,4 +1,5 @@
 {
+  "model_class": "LocallyLinearNN",
   "use_sdf": false,
   "sdf_shape": [100, 100],
   "n_control": 2,
@@ -8,5 +9,5 @@
     [8, [5, 5]],
     [8, [5, 5]]
   ],
-  "fc_layer_sizes": [32, 32]
+  "fc_layer_sizes": [16, 16]
 }

@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon import experiments_util
-from state_space_dynamics.locally_linear_cnn import LocallyLinearModel
+from state_space_dynamics import get_model_class
 from video_prediction.datasets import dataset_utils
 
 tf.enable_eager_execution()
@@ -83,10 +83,11 @@ def main():
     ###############
     # Model
     ###############
+    ModelClass = get_model_class(model_hparams['model_class'])
     if args.checkpoint:
-        model = LocallyLinearModel.load(args.checkpoint)
+        model = ModelClass.load(args.checkpoint)
     else:
-        model = LocallyLinearModel(model_hparams)
+        model = ModelClass(model_hparams)
 
     try:
         ###############

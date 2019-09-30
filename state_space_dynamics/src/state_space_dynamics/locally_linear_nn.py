@@ -9,9 +9,6 @@ from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint, Earl
 
 from link_bot_classifiers.callbacks import DebugCallback, StopAtAccuracy
 from link_bot_classifiers.components.relu_layers import relu_layers
-from link_bot_classifiers.components.action_smear_layer import action_smear_layer
-from link_bot_classifiers.components.raster_points_layer import RasterPoints
-from link_bot_classifiers.components.simple_cnn_layer import simple_cnn_relu_layer
 from link_bot_pycommon import experiments_util
 
 
@@ -22,22 +19,25 @@ class LocallyLinearNN:
         self.hparams = hparams
         input_sequence_length = hparams['sequence_length'] - 1
         n_dim = hparams['n_points'] * 2
+        m_dim = hparams['n_control']
 
         states = layers.Input(name='states', shape=(input_sequence_length, n_dim))
         actions = layers.Input(name='actions', shape=(input_sequence_length, 2))
 
         elements_in_A = hparams['n_points'] * (2 * 2)
-        elements_in_B = n_dim * hparams['n_control']
+        elements_in_B = n_dim * m_dim
 
+        concat = layers.Concatenate()
         # state here is ? x 3 x 2
         nn = relu_layers(hparams['fc_layer_sizes'])
-        # right now we output N^2 + N*M elements for full A and B matrices
         num_elements_in_linear_model = elements_in_A + elements_in_B
-        h_to_params = layers.Dense(num_elements_in_linear_model, activation='sigmoid', name='constraints')
+        h_to_params = layers.Dense(num_elements_in_linear_model, activation=None, name='constraints')
 
-        def AB_params(states, actions):
-            # concat stat:e and action here
-            out_h = nn(states, actions)
+        def AB_params(_states, _actions):
+            # concat state and action here
+            _states = tf.squeeze(_states, squeeze_dims=2)
+            _state_actions = concat([_states, _actions])
+            out_h = nn(_state_actions)
             params = h_to_params(out_h)
             return params
 
@@ -52,13 +52,11 @@ class LocallyLinearNN:
                 s_t_flat = _gen_states[-1]
                 action_t = actions[:, t]
 
-                # First raster the previously predicted rope state into an image, then concat with smeared actions
-                # then pass to the AB network
-                # TODO: support concatenation with an SDF?
                 params_t = AB_params(s_t_flat, action_t)
 
                 A_t_params, B_t_params = tf.split(params_t, [elements_in_A, elements_in_B], axis=1)
                 A_t_per_point = tf.split(A_t_params, hparams['n_points'], axis=1)
+                A_t_params = tf.Print(A_t_params, [tf.shape(A_t_params)])
                 B_t_per_point = tf.split(B_t_params, hparams['n_points'], axis=1)
                 A_t_per_point = [tf.linalg.LinearOperatorFullMatrix(tf.reshape(_a_p, [-1, 2, 2])) for _a_p
                                  in A_t_per_point]
@@ -74,19 +72,17 @@ class LocallyLinearNN:
 
             stacked = tf.stack(_gen_states)
             stacked = tf.transpose(stacked, [1, 0, 2, 3])
+            stacked = tf.squeeze(stacked, squeeze_dims=3)
             return stacked
 
         gen_states = layers.Lambda(lambda args: dynamics(args), name='output_states')([states, actions])
 
-        if hparams['use_sdf']:
-            self.model_inputs = [sdf, sdf_resolution, sdf_origin, actions, states]
-        else:
-            self.model_inputs = [sdf_resolution, sdf_origin, actions, states]
+        self.model_inputs = [actions, states]
         self.keras_model = models.Model(inputs=self.model_inputs, outputs=gen_states)
         self.keras_model.compile(optimizer=tf.train.AdamOptimizer(),
-                                 loss='binary_crossentropy',
+                                 loss='mse',
                                  metrics=['accuracy'],
-                                # run_eagerly=True
+                                 # run_eagerly=True
                                  )
 
     def train(self, train_dataset, train_tf_dataset, val_dataset, val_tf_dataset, log_path, args):
@@ -155,7 +151,7 @@ class LocallyLinearNN:
     def load(checkpoint_directory):
         hparams_path = checkpoint_directory / 'hparams.json'
         model_hparams = json.load(open(hparams_path, 'r'))
-        model = LocallyLinearModel(model_hparams)
+        model = LocallyLinearNN(model_hparams)
         return model
 
     def save(self, checkpoint_directory):

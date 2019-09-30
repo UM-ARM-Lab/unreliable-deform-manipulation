@@ -14,7 +14,7 @@ from link_bot_classifiers.components.simple_cnn_layer import simple_cnn_relu_lay
 from link_bot_pycommon import experiments_util
 
 
-class LocallyLinearModel:
+class LocallyLinearCNN:
 
     def __init__(self, hparams):
         self.initial_epoch = 0
@@ -172,7 +172,7 @@ class LocallyLinearModel:
     def load(checkpoint_directory):
         hparams_path = checkpoint_directory / 'hparams.json'
         model_hparams = json.load(open(hparams_path, 'r'))
-        model = LocallyLinearModel(model_hparams)
+        model = LocallyLinearCNN(model_hparams)
         return model
 
     def save(self, checkpoint_directory):
