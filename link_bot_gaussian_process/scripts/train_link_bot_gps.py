@@ -132,7 +132,7 @@ def visualize(fwd_model, data_x, data_y):
 def multistep_evaluate(fwd_model, fwd_test_x, fwd_test_y):
     headers = ['error metric', 'min', 'max', 'mean', 'median', 'std']
     aggregate_metrics = error_metrics.multistep_fwd_model_error_metrics(fwd_model, fwd_test_x, fwd_test_y)
-    table = tabulate(aggregate_metrics, headers=headers, tablefmt='github', floatfmt='6.5f')
+    table = tabulate(aggregate_metrics, headers=headers, tablefmt='github', floatfmt='6.4f')
     print(Style.BRIGHT + "Multi-Step Error:" + Style.RESET_ALL)
     print(table)
 

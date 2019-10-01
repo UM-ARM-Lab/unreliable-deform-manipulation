@@ -45,7 +45,7 @@ def test(args):
         s_t = s_0
         prediction = [s_0]
         for action in actions:
-            # I've tuned beta on the no_obj_new training set
+            # I've tuned beta on the no_obj_new training set based on the total error
             beta = 0.70
             s_t = s_t + np.reshape(np.tile(np.eye(2), [3, 1]) @ action, [3, 2]) * dt * beta
             prediction.append(s_t)
@@ -61,10 +61,10 @@ def test(args):
         mid_errors.append(mid_error)
         tail_errors.append(tail_error)
         total_errors.append(total_error)
-    print("head error:  {:8.5f}m".format(np.mean(head_errors)))
-    print("mid error:   {:8.5f}m".format(np.mean(mid_errors)))
-    print("tail error:  {:8.5f}m".format(np.mean(tail_errors)))
-    print("total error: {:8.5f}m".format(np.mean(total_errors)))
+    print("head error:  {:8.4f}m".format(np.mean(head_errors)))
+    print("mid error:   {:8.4f}m".format(np.mean(mid_errors)))
+    print("tail error:  {:8.4f}m".format(np.mean(tail_errors)))
+    print("total error: {:8.4f}m".format(np.mean(total_errors)))
 
 
 def main():

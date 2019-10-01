@@ -18,16 +18,20 @@ def multistep_fwd_model_error_metrics(fwd_model, test_x, test_y):
     actions = test_x['actions'][0]
     true = test_y['output_states'][0]
     prediction, _ = link_bot_gp.predict(fwd_model, x0, actions)
+    prediction = prediction.reshape([-1, 3, 2])
+    true = true.reshape([-1, 3, 2])
 
-    tail_error = np.linalg.norm(prediction[:, 0:2] - true[:, 0:2], axis=1)
-    mid_error = np.linalg.norm(prediction[:, 2:4] - true[:, 2:4], axis=1)
-    head_error = np.linalg.norm(prediction[:, 4:6] - true[:, 4:6], axis=1)
-    total_node_error = tail_error + mid_error + head_error
+    error = np.linalg.norm(prediction - true, axis=2)
+    total_error = np.sum(error, axis=1)
+    tail_error = error[:, 0]
+    mid_error = error[:, 1]
+    head_error = error[:, 2]
+
     # each column goes [metric name, min, max, mean, median, std]
-    return np.array([make_row('tail MSE (m)', tail_error),
-                     make_row('mid MSE (m)', mid_error),
-                     make_row('head MSE (m)', head_error),
-                     make_row('total MSE (m)', total_node_error),
+    return np.array([make_row('tail error (m)', tail_error),
+                     make_row('mid error (m)', mid_error),
+                     make_row('head error (m)', head_error),
+                     make_row('total error (m)', total_error),
                      ], dtype=np.object)
 
 
