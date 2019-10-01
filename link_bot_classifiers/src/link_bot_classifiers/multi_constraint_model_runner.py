@@ -7,8 +7,8 @@ from keras.layers import Input, Concatenate, Lambda
 from keras.models import Model
 
 from link_bot_classifiers.base_classifier_runner import BaseClassifierRunner
-from link_bot_classifiers.components.distance_function_layer import distance_function_layer
-from link_bot_classifiers.components.sdf_function_layer import sdf_function_layer
+from moonshine.distance_function_layer import distance_function_layer
+from moonshine.sdf_function_layer import sdf_function_layer
 from link_bot_classifiers.label_types import LabelType
 
 

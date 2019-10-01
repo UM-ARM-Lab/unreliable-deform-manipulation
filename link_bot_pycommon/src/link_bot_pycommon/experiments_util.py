@@ -24,7 +24,7 @@ def make_log_dir(full_log_path: pathlib.Path):
     if "log_data" not in str(full_log_path):
         raise ValueError("Full log path must contain 'log_data'")
     if not full_log_path.exists():
-        full_log_path.mkdir()
+        full_log_path.mkdir(parents=True)
 
 
 def write_metadata(metadata, filename, log_path):

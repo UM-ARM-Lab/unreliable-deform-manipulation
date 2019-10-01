@@ -7,9 +7,9 @@ import tensorflow.keras.layers as layers
 import tensorflow.keras.models as models
 
 from link_bot_classifiers.base_classifier_runner import BaseClassifierRunner
-from link_bot_classifiers.components.action_smear_layer import action_smear_layer
-from link_bot_classifiers.components.raster_points_layer import RasterPoints
-from link_bot_classifiers.components.simple_cnn_layer import simple_cnn_relu_layer
+from moonshine.action_smear_layer import action_smear_layer
+from moonshine.raster_points_layer import RasterPoints
+from moonshine.simple_cnn_layer import simple_cnn_relu_layer
 
 
 class SimpleCNNModelRunner(BaseClassifierRunner):

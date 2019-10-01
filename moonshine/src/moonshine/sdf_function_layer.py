@@ -1,9 +1,9 @@
 import numpy as np
 from tensorflow.keras import layers
 
-from link_bot_classifiers.components.bias_layer import BiasLayer
-from link_bot_classifiers.components.out_of_bounds_regularization import OutOfBoundsRegularizer
-from link_bot_classifiers.components.sdf_lookup import SDFLookup
+from moonshine.bias_layer import BiasLayer
+from moonshine.out_of_bounds_regularization import OutOfBoundsRegularizer
+from moonshine.sdf_lookup import SDFLookup
 
 
 def sdf_function_layer(sdf_shape, fc_layer_sizes, beta, sigmoid_scale, output_name=None):

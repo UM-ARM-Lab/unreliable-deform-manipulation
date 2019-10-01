@@ -8,7 +8,7 @@ from keras.layers import Input
 
 from link_bot_classifiers import base_classifier_runner
 from link_bot_classifiers.base_classifier_runner import BaseClassifierRunner
-from link_bot_classifiers.components.distance_function_layer import distance_function_layer
+from moonshine.distance_function_layer import distance_function_layer
 from link_bot_classifiers.label_types import LabelType
 from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_pycommon import experiments_util

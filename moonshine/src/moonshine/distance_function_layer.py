@@ -1,7 +1,7 @@
 import tensorflow.keras.backend as K
 from tensorflow.keras import layers
 
-from link_bot_classifiers.components.distance_matrix_layer import DistanceMatrix
+from moonshine.distance_matrix_layer import DistanceMatrix
 
 
 def distance_function_layer(sigmoid_scale, n_points, output_name):

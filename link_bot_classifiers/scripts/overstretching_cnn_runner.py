@@ -10,7 +10,7 @@ import src.link_bot.link_bot_sdf_tools.src.link_bot_sdf_tools.link_bot_sdf_tools
 from link_bot_data.multi_environment_datasets import MultiEnvironmentDataset
 from link_bot_classifiers import base_classifier_runner
 from link_bot_classifiers.base_classifier_runner import BaseClassifierRunner
-from link_bot_classifiers.components.simple_cnn_layer import simple_cnn_relu_layer
+from moonshine.simple_cnn_layer import simple_cnn_relu_layer
 from link_bot_pycommon import experiments_util
 
 

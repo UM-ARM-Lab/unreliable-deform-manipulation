@@ -8,9 +8,9 @@ import tensorflow.keras.layers as layers
 from colorama import Fore, Style
 from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
-from link_bot_classifiers.components.raster_points_layer import RasterPoints
 from link_bot_pycommon import experiments_util
-from src.link_bot.moonshine.src.moonshine import gif_summary
+from moonshine import gif_summary
+from moonshine.draw_rope_layer import DrawRope
 
 
 class LocallyLinearNN(tf.keras.Model):
@@ -33,11 +33,11 @@ class LocallyLinearNN(tf.keras.Model):
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
         self.dense_layers.append(layers.Dense(self.num_elements_in_linear_model, activation=None, name='linear_params'))
 
-        self.raster_layer = RasterPoints(sdf_shape=[500, 500])
+        self.draw_layer = DrawRope(image_shape=[100, 100])
         # x, resolution, origin = inputs
 
-        self.image_origin = tf.zeros(shape=[hparams['sequence_length'], 2])
-        self.image_resolution = tf.ones(shape=[hparams['sequence_length'], 2]) * 0.02
+        self.image_origin = tf.constant([50, 50], dtype=tf.int64)
+        self.image_resolution = tf.constant([0.05, 0.05], dtype=tf.float32)
 
     def call(self, input_dict, training=None, mask=None):
         states = input_dict['states']
@@ -188,10 +188,8 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                 summary_true_states = summary_batch_y['output_states']
                 summary_pred_states = net(summary_batch_x)
                 fps = int(1000 / hparams['dt'])
-                pred_images = net.raster_layer([summary_pred_states, net.image_resolution, net.image_origin])
-                true_images = net.raster_layer([summary_true_states, net.image_resolution, net.image_origin])
-                pred_images = tf.cast(pred_images * 255, dtype=tf.uint8)
-                true_images = tf.cast(true_images * 255, dtype=tf.uint8)
+                pred_images = net.draw_layer([summary_pred_states, net.image_resolution, net.image_origin])
+                true_images = net.draw_layer([summary_true_states, net.image_resolution, net.image_origin])
                 gif_summary.gif_summary_v2('train_predictions', pred_images, fps=fps, max_outputs=5)
                 gif_summary.gif_summary_v2('train_true', true_images, fps=fps, max_outputs=5)
                 # gifs not showing. try using contrib.Summary

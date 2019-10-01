@@ -6,8 +6,8 @@ from keras.layers import Input, Concatenate, Dense
 from keras.models import Model
 
 from link_bot_classifiers.base_classifier_runner import BaseClassifierRunner
-from link_bot_classifiers.components.raster_points_layer import RasterPoints
-from link_bot_classifiers.components.simple_cnn_layer import simple_cnn_relu_layer
+from moonshine.raster_points_layer import RasterPoints
+from moonshine.simple_cnn_layer import simple_cnn_relu_layer
 
 
 class RasterCNNModelRunner(BaseClassifierRunner):

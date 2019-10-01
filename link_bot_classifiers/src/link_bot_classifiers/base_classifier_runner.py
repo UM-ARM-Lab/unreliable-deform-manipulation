@@ -14,11 +14,11 @@ from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStoppi
 
 from link_bot_classifiers import my_viz
 from link_bot_classifiers.callbacks import StopAtAccuracy, DebugCallback
-from link_bot_classifiers.components.bias_layer import BiasLayer
-from link_bot_classifiers.components.distance_matrix_layer import DistanceMatrix
-from link_bot_classifiers.components.out_of_bounds_regularization import OutOfBoundsRegularizer
-from link_bot_classifiers.components.raster_points_layer import RasterPoints
-from link_bot_classifiers.components.sdf_lookup import SDFLookup
+from moonshine.bias_layer import BiasLayer
+from moonshine.distance_matrix_layer import DistanceMatrix
+from moonshine.out_of_bounds_regularization import OutOfBoundsRegularizer
+from moonshine.raster_points_layer import RasterPoints
+from moonshine.sdf_lookup import SDFLookup
 from link_bot_classifiers.label_types import LabelType
 from link_bot_pycommon import experiments_util
 from video_prediction.datasets import dataset_utils
