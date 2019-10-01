@@ -240,9 +240,12 @@ class LocallyLinearNNWrapper:
         self.ckpt.restore(self.manager.latest_checkpoint)
 
     def predict(self, states, actions):
+        # inputs to the net must have a batch dimension
+        actions = np.expand_dims(actions, axis=0)
         test_x = {
-            'states': tf.covnert_to_tensor(states),
-            'actions': tf.covnert_to_tensor(actions),
+            'states': tf.convert_to_tensor(states),
+            'actions': tf.convert_to_tensor(actions),
         }
         prediction = self.net(test_x)
-        return prediction
+        predicted_points = prediction.numpy().reshape([self.model_hparams['sequence_length'], 3, 2])
+        return predicted_points

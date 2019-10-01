@@ -204,7 +204,7 @@ class LinkBotGP:
     def save(self, log_path, model_name):
         saver = gpf.saver.Saver()
 
-        full_log_path = os.path.join(os.getcwd(), 'log_data', log_path)
+        full_log_path = pathlib.Path.cwd() / 'log_data' / log_path
 
         experiments_util.make_log_dir(full_log_path)
         experiments_util.write_metadata(self.get_metadata(), model_name + '-metadata.json', log_path)
@@ -225,7 +225,7 @@ class LinkBotGP:
         print(Fore.CYAN + "Loading model from {}".format(model_path) + Fore.RESET)
         self.model = gpf.saver.Saver().load(model_path)
 
-        metadata = json.load(open(model_path / '-metadata.json', 'r'))
+        metadata = json.load(open((str(model_path) + '-metadata.json'), 'r'))
         self.metadata = metadata
         self.dataset_hparams = metadata['dataset_hparams']
         self.n_data_points = metadata['n_data_points']
@@ -282,65 +282,8 @@ class LinkBotGP:
 
         return min_u
 
-    def animate_validation(self,
-                           x_rope_configurations: np.ndarray,
-                           y_rope_configurations: np.ndarray,
-                           actions: np.ndarray,
-                           sdfs: Optional[np.ndarray] = None,
-                           arena_size: int = 2,
-                           linewidth: int = 2,
-                           interval: int = 250,
-                           arrow_width: float = 0.02):
-        fig = plt.figure(figsize=(10, 10))
-        ax = plt.gca()
-
-        x_0 = x_rope_configurations[0]
-        x_0_xs = [x_0[0], x_0[2], x_0[4]]
-        x_0_ys = [x_0[1], x_0[3], x_0[5]]
-        before = ax.plot(x_0_xs, x_0_ys, color='black', linewidth=linewidth, zorder=2)[0]
-
-        arrow = plt.Arrow(x_0[4], x_0[5], actions[0, 0], actions[0, 1], width=arrow_width, zorder=3)
-        patch = ax.add_patch(arrow)
-
-        ax.set_title("0")
-
-        x_0 = y_rope_configurations[0]
-        x_0_xs = [x_0[0], x_0[2], x_0[4]]
-        x_0_ys = [x_0[1], x_0[3], x_0[5]]
-        after = ax.plot(x_0_xs, x_0_ys, color='gray', linewidth=linewidth, zorder=1)[0]
-
-        if sdfs is not None:
-            img_handle = ax.imshow(sdfs[0], extent)
-
-        plt.xlabel("x (m)")
-        plt.ylabel("y (m)")
-        plt.axis("equal")
-        plt.xlim([-arena_size, arena_size])
-        plt.ylim([-arena_size, arena_size])
-
-        def update(i):
-            nonlocal patch
-
-            x_i = x_rope_configurations[i]
-            x_i_xs = [x_i[0], x_i[2], x_i[4]]
-            x_i_ys = [x_i[1], x_i[3], x_i[5]]
-            before.set_xdata(x_i_xs)
-            before.set_ydata(x_i_ys)
-
-            patch.remove()
-            arrow = plt.Arrow(x_i[4], x_i[5], actions[i, 0], actions[i, 1], width=arrow_width, zorder=3)
-            patch = ax.add_patch(arrow)
-
-            ax.set_title(i)
-
-            if sdfs:
-                img_handle.set_data(sdfs[i])
-
-            x_i = y_rope_configurations[i]
-            x_i_xs = [x_i[0], x_i[2], x_i[4]]
-            x_i_ys = [x_i[1], x_i[3], x_i[5]]
-            after.set_xdata(x_i_xs)
-            after.set_ydata(x_i_ys)
-
-        anim = FuncAnimation(fig, update, frames=x_rope_configurations.shape[0], interval=interval, repeat=True)
-        return anim
+    def predict(self, states, actions):
+        np_state = np.expand_dims(states[0, 0], axis=0)
+        prediction, _ = predict(self, np_state, actions)
+        predicted_points = prediction.reshape([-1, 3, 2])
+        return predicted_points

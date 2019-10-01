@@ -49,9 +49,9 @@ def train(args):
     num_validation_examples = 100
 
     if args.dataset_hparams_dict:
-        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
+        dataset_hparams_dict = json.load(args.dataset_hparams_dict.open('r'))
     else:
-        dataset_hparams_dict = json.load(open(args.indir / 'hparams.json', 'r'))
+        dataset_hparams_dict = json.load((args.indir / 'hparams.json').open('r'))
 
     train_x, train_y, train_fwd_gp_x, train_fwd_gp_y = load_data(sess,
                                                                  args.indir,
@@ -99,9 +99,9 @@ def eval(args):
     fwd_model.load(fwd_model_path)
 
     if args.dataset_hparams_dict:
-        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
+        dataset_hparams_dict = json.load(args.dataset_hparams_dict.open('r'))
     else:
-        dataset_hparams_dict = json.load(open(args.indir / 'hparams.json', 'r'))
+        dataset_hparams_dict = json.load((args.indir / 'hparams.json').open('r'))
 
     num_test_examples = 128
 

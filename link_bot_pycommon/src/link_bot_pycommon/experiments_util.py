@@ -33,5 +33,5 @@ def write_metadata(metadata, filename, log_path):
     make_log_dir(full_log_path)
 
     metadata_path = full_log_path / filename
-    metadata_file = open(metadata_path, 'w')
+    metadata_file = metadata_path.open('w')
     metadata_file.write(json.dumps(metadata, indent=2))
