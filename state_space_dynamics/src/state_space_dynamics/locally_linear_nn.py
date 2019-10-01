@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
+import tensorflow.contrib.eager as tfe
 from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
 from link_bot_pycommon import experiments_util
@@ -239,11 +240,15 @@ class LocallyLinearNNWrapper:
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)
 
-    def predict(self, states, actions):
+    def predict(self, first_state, actions):
         # inputs to the net must have a batch dimension
         actions = np.expand_dims(actions, axis=0)
+        states = tfe.Variable(initial_value=lambda: tf.zeros([1, self.net.input_sequence_length, first_state.shape[0]]),
+                              name='padded_states',
+                              trainable=False)
+        states = tf.assign(states[0, 0], first_state)
         test_x = {
-            'states': tf.convert_to_tensor(states),
+            'states': states,
             'actions': tf.convert_to_tensor(actions),
         }
         prediction = self.net(test_x)

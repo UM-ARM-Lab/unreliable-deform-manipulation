@@ -7,9 +7,8 @@ class RigidTranslationModel:
         self.beta = beta
         self.dt = dt
 
-    def predict(self, states, actions):
-        points = np.reshape(states, [-1, 3, 2])
-        s_0 = points[0]
+    def predict(self, first_state, actions):
+        s_0 = np.reshape(first_state, [3, 2])
         s_t = s_0
         prediction = [s_0]
         for action in actions:

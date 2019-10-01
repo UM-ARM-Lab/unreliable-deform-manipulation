@@ -282,8 +282,8 @@ class LinkBotGP:
 
         return min_u
 
-    def predict(self, states, actions):
-        np_state = np.expand_dims(states[0, 0], axis=0)
+    def predict(self, first_state, actions):
+        np_state = np.expand_dims(first_state, axis=0)
         prediction, _ = predict(self, np_state, actions)
         predicted_points = prediction.reshape([-1, 3, 2])
         return predicted_points
