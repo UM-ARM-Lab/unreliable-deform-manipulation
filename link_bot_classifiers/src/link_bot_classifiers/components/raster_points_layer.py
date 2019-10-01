@@ -9,10 +9,12 @@ class RasterPoints(tf.keras.layers.Layer):
         self.sdf_shape = sdf_shape
         self.n = None
         self.n_points = None
+        self.sequence_length = None
 
     def build(self, input_shapes):
         super(RasterPoints, self).build(input_shapes)
-        self.n = int(input_shapes[0][1])
+        self.sequence_length = int(input_shapes[0][1])
+        self.n = int(input_shapes[0][2])
         self.n_points = int(self.n // 2)
 
     def call(self, inputs, **kwargs):
@@ -25,25 +27,24 @@ class RasterPoints(tf.keras.layers.Layer):
 
         batch_size = tf.cast(tf.shape(x)[0], tf.int64)
         rope_images = tfe.Variable(
-            initial_value=lambda: tf.zeros([batch_size, self.sdf_shape[0], self.sdf_shape[1], self.n_points]),
+            initial_value=lambda: tf.zeros([batch_size, self.sequence_length, self.sdf_shape[0], self.sdf_shape[1], self.n_points]),
             name='rope_images',
             trainable=False)
-        row_y_indeces = tf.cast(points[:, :, 1] / resolution[:, 0:1] + origin[:, 0:1], tf.int64)
-        col_x_indeces = tf.cast(points[:, :, 0] / resolution[:, 1:2] + origin[:, 1:2], tf.int64)
-        batch_indeces = tf.reshape(tf.tile(tf.reshape(tf.range(batch_size), [-1, 1]), [1, self.n_points]), [-1])
-        row_indeces = tf.squeeze(row_y_indeces)
-        col_indeces = tf.squeeze(col_x_indeces)
-        point_channel_indeces = tf.tile(tf.range(self.n_points, dtype=tf.int64), [batch_size])
-        indices = tf.transpose(tf.stack([batch_indeces, row_indeces, col_indeces, point_channel_indeces]))
-        on_pixels = tf.gather_nd(rope_images, indices)
-        # rope_images = tf.assign(rope_images[batch_indeces, row_indeces, col_indeces, point_channel_indeces], 1)
-        # tf.assign(on_pixels, 1)
+        resolution = tf.tile(resolution, [batch_size, 1])
+        origin = tf.tile(origin, [batch_size, 1])
+        row_y_indices = tf.reshape(tf.cast(points[:, :, 1] / resolution[:, 0:1] + origin[:, 0:1], tf.int64), [-1])
+        col_x_indices = tf.reshape(tf.cast(points[:, :, 0] / resolution[:, 1:2] + origin[:, 1:2], tf.int64), [-1])
+        batch_indices = tf.reshape(tf.tile(tf.reshape(tf.range(batch_size), [-1, 1]), [1, self.n_points * self.sequence_length]),
+                                   [-1])
+        time_indices = tf.tile(
+            tf.reshape(tf.tile(tf.reshape(tf.range(self.sequence_length, dtype=tf.int64), [-1, 1]), [1, self.n_points]), [-1]), [batch_size])
+        row_indices = tf.squeeze(row_y_indices)
+        col_indices = tf.squeeze(col_x_indices)
+        point_channel_indices = tf.tile(tf.range(self.n_points, dtype=tf.int64), [batch_size * self.sequence_length])
+        indices = zip(batch_indices, time_indices, row_indices, col_indices, point_channel_indices)
+        for batch_idx, time_idx, row_idx, col_idx, channel_idx in indices:
+            rope_images = rope_images[batch_idx, time_idx, row_idx, col_idx, channel_idx].assign(1.0)
 
-        ones = tf.ones_like(indices[:, 0], dtype=tf.float32)
-        rope_images = tf.sparse.SparseTensor(indices=indices,
-                                             values=ones,
-                                             dense_shape=[batch_size, self.sdf_shape[0], self.sdf_shape[1], self.n_points])
-        rope_images = tf.sparse.to_dense(rope_images)
         return rope_images
 
     def get_config(self):

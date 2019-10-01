@@ -23,7 +23,8 @@ def make_log_dir(full_log_path: pathlib.Path):
     """ https://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python """
     if "log_data" not in str(full_log_path):
         raise ValueError("Full log path must contain 'log_data'")
-    full_log_path.mkdir()
+    if not full_log_path.exists():
+        full_log_path.mkdir()
 
 
 def write_metadata(metadata, filename, log_path):

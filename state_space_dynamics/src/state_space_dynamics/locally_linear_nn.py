@@ -8,7 +8,9 @@ import tensorflow.keras.layers as layers
 from colorama import Fore, Style
 from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
+from link_bot_classifiers.components.raster_points_layer import RasterPoints
 from link_bot_pycommon import experiments_util
+from src.link_bot.moonshine.src.moonshine import gif_summary
 
 
 class LocallyLinearNN(tf.keras.Model):
@@ -30,6 +32,12 @@ class LocallyLinearNN(tf.keras.Model):
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
         self.dense_layers.append(layers.Dense(self.num_elements_in_linear_model, activation=None, name='linear_params'))
+
+        self.raster_layer = RasterPoints(sdf_shape=[500, 500])
+        # x, resolution, origin = inputs
+
+        self.image_origin = tf.zeros(shape=[hparams['sequence_length'], 2])
+        self.image_resolution = tf.ones(shape=[hparams['sequence_length'], 2]) * 0.02
 
     def call(self, input_dict, training=None, mask=None):
         states = input_dict['states']
@@ -98,8 +106,14 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
     net = LocallyLinearNN(hparams=hparams)
     global_step = tf.train.get_or_create_global_step()
 
+    # If we're resuming a checkpoint, there is no new log path
+    if args.checkpoint is not None:
+        full_log_path = args.checkpoint
+    else:
+        full_log_path = pathlib.Path("log_data") / log_path
+
     ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
-    manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=3)
+    manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=3)
     ckpt.restore(manager.latest_checkpoint)
     if manager.latest_checkpoint:
         print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
@@ -108,11 +122,8 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         print("Did you forget a subdirectory?")
         return
 
-    manager = None
     writer = None
     if args.log is not None:
-        full_log_path = pathlib.Path("log_data") / log_path
-
         print(Fore.CYAN + "Logging to {}".format(full_log_path) + Fore.RESET)
 
         experiments_util.make_log_dir(full_log_path)
@@ -144,11 +155,13 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             # metrics are averaged across batches in the epoch
             batch_losses = []
             epoch_t0 = time.time()
-            for train_x, train_y in train_tf_dataset:
+            train_batch_x = None
+            train_batch_y = None
+            for train_batch_x, train_batch_y in train_tf_dataset:
                 batch_t0 = time.time()
-                true_train_states = train_y['output_states']
+                true_train_states = train_batch_y['output_states']
                 with tf.GradientTape() as tape:
-                    pred_states = net(train_x)
+                    pred_states = net(train_batch_x)
                     training_batch_loss = loss(y_true=true_train_states, y_pred=pred_states)
                 variables = net.trainable_variables
                 gradients = tape.gradient(training_batch_loss, variables)
@@ -170,6 +183,18 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             if args.log:
                 tf.contrib.summary.scalar("training loss", training_loss)
                 # TODO: show gifs of predictions in tensorboard
+                #  this just reuses whatever the last back from training was, which I think is fine
+                summary_batch_x, summary_batch_y = train_batch_x, train_batch_y
+                summary_true_states = summary_batch_y['output_states']
+                summary_pred_states = net(summary_batch_x)
+                fps = int(1000 / hparams['dt'])
+                pred_images = net.raster_layer([summary_pred_states, net.image_resolution, net.image_origin])
+                true_images = net.raster_layer([summary_true_states, net.image_resolution, net.image_origin])
+                pred_images = tf.cast(pred_images * 255, dtype=tf.uint8)
+                true_images = tf.cast(true_images * 255, dtype=tf.uint8)
+                gif_summary.gif_summary_v2('train_predictions', pred_images, fps=fps, max_outputs=5)
+                gif_summary.gif_summary_v2('train_true', true_images, fps=fps, max_outputs=5)
+                # gifs not showing. try using contrib.Summary
 
             ################
             # validation
