@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import os
 import pathlib
 import random
 import time
@@ -54,7 +53,7 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("gp_model_dir")
+    parser.add_argument("gp_model_dir", type=pathlib.Path)
     parser.add_argument("--outdir", help="output visualizations here", type=pathlib.Path)
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--no-plot', action='store_true')
@@ -69,7 +68,7 @@ def main():
         random.seed(args.seed)
 
     fwd_gp_model = link_bot_gp.LinkBotGP()
-    fwd_gp_model.load(os.path.join(args.gp_model_dir, 'fwd_model'))
+    fwd_gp_model.load(args.gp_model_dir / 'fwd_model')
 
     final_deltas = []
     for i in range(args.n_examples):

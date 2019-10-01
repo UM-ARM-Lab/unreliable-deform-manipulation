@@ -58,8 +58,8 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("gp_model_dir")
-    parser.add_argument("actions")
+    parser.add_argument("gp_model_dir", type=pathlib.Path)
+    parser.add_argument("actions", type=pathlib.Path)
     parser.add_argument("--outdir", help="output visualizations here", type=pathlib.Path)
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
@@ -83,7 +83,7 @@ def main():
     actions = np.genfromtxt(args.actions, delimiter=',')
 
     fwd_gp_model = link_bot_gp.LinkBotGP()
-    fwd_gp_model.load(os.path.join(args.gp_model_dir, 'fwd_model'))
+    fwd_gp_model.load(args.gp_model_dir / 'fwd_model')
     dt = fwd_gp_model.dataset_hparams['dt']
 
     s = np.expand_dims(initial_rope_configuration, axis=0)

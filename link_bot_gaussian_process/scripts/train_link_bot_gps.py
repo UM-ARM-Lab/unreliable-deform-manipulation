@@ -94,8 +94,7 @@ def eval(args):
     gpf.reset_default_session(config=config)
     sess = gpf.get_default_session()
 
-    fwd_model_path = os.path.join(args.model_dir, "fwd_model")
-
+    fwd_model_path = args.model_dir / "fwd_model"
     fwd_model = link_bot_gp.LinkBotGP()
     fwd_model.load(fwd_model_path)
 

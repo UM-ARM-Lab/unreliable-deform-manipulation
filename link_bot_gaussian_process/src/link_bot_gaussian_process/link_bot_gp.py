@@ -1,5 +1,6 @@
 import json
 import os
+import pathlib
 from time import time
 from typing import Optional, List
 
@@ -220,11 +221,11 @@ class LinkBotGP:
 
         saver.save(model_path, self.model)
 
-    def load(self, model_path):
+    def load(self, model_path: pathlib.Path):
         print(Fore.CYAN + "Loading model from {}".format(model_path) + Fore.RESET)
         self.model = gpf.saver.Saver().load(model_path)
 
-        metadata = json.load(open(model_path + '-metadata.json', 'r'))
+        metadata = json.load(open(model_path / '-metadata.json', 'r'))
         self.metadata = metadata
         self.dataset_hparams = metadata['dataset_hparams']
         self.n_data_points = metadata['n_data_points']

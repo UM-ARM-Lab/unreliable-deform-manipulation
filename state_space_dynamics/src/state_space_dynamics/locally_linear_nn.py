@@ -83,7 +83,7 @@ class LocallyLinearNN(tf.keras.Model):
 def eval(hparams, test_tf_dataset, args):
     net = LocallyLinearNN(hparams=hparams)
     ckpt = tf.train.Checkpoint(net=net)
-    manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=3)
+    manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=1)
     ckpt.restore(manager.latest_checkpoint)
     print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
 
@@ -227,3 +227,22 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             train_loop()
     else:
         train_loop()
+
+
+class LocallyLinearNNWrapper:
+
+    def __init__(self, path):
+        model_hparams_file = path / 'hparams.json'
+        self.model_hparams = json.load(open(model_hparams_file, 'r'))
+        self.net = LocallyLinearNN(hparams=self.model_hparams)
+        self.ckpt = tf.train.Checkpoint(net=self.net)
+        self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
+        self.ckpt.restore(self.manager.latest_checkpoint)
+
+    def predict(self, states, actions):
+        test_x = {
+            'states': tf.covnert_to_tensor(states),
+            'actions': tf.covnert_to_tensor(actions),
+        }
+        prediction = self.net(test_x)
+        return prediction
