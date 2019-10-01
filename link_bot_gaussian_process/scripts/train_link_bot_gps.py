@@ -9,7 +9,7 @@ import gpflow as gpf
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
+from colorama import Fore, Style
 from tabulate import tabulate
 
 from link_bot_gaussian_process import link_bot_gp, error_metrics, data_reformatting
@@ -112,8 +112,10 @@ def eval(args):
                                                                                  num_test_examples, sequence_length=10,
                                                                                  seed=args.seed)
     evaluate(fwd_model, test_fwd_gp_x, test_fwd_gp_y)
+    multistep_evaluate(fwd_model, long_test_x, long_test_y)
 
-    visualize(fwd_model, long_test_x, long_test_y)
+    if not args.no_plot:
+        visualize(fwd_model, long_test_x, long_test_y)
 
 
 def visualize(fwd_model, data_x, data_y):
@@ -125,6 +127,14 @@ def visualize(fwd_model, data_x, data_y):
         prediction, _ = link_bot_gp.predict(fwd_model, x0, ai)
         _ = link_bot_gp.animate_predict(prediction, yi, extent=[-2, 2, -2, 2], sdf=None, linewidth=2, example_idx=i)
         plt.show()
+
+
+def multistep_evaluate(fwd_model, fwd_test_x, fwd_test_y):
+    headers = ['error metric', 'min', 'max', 'mean', 'median', 'std']
+    aggregate_metrics = error_metrics.multistep_fwd_model_error_metrics(fwd_model, fwd_test_x, fwd_test_y)
+    table = tabulate(aggregate_metrics, headers=headers, tablefmt='github', floatfmt='6.5f')
+    print(Style.BRIGHT + "Multi-Step Error:" + Style.RESET_ALL)
+    print(table)
 
 
 def evaluate(fwd_model, fwd_test_x, fwd_test_y):
@@ -162,6 +172,7 @@ def main():
     eval_parser.add_argument('model_dir', type=pathlib.Path)
     eval_parser.add_argument('--dataset-hparams-dict')
     eval_parser.add_argument('--seed', type=int, default=0)
+    eval_parser.add_argument('--no-plot', action='store_true')
     eval_parser.add_argument('--verbose', action='store_true')
     eval_parser.set_defaults(func=eval)
 

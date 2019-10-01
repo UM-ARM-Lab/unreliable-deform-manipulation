@@ -33,10 +33,10 @@ def test(args):
                                                     seed=0,
                                                     batch_size=1)
 
-    mses = []
-    head_mses = []
-    mid_mses = []
-    tail_mses = []
+    total_errors = []
+    head_errors = []
+    mid_errors = []
+    tail_errors = []
     for x, y in tf_dataset:
         states = x['states'].numpy()
         actions = x['actions'].numpy().squeeze()
@@ -45,22 +45,26 @@ def test(args):
         s_t = s_0
         prediction = [s_0]
         for action in actions:
-            s_t = s_t + np.reshape(np.tile(np.eye(2), [3, 1]) @ action, [3, 2]) * dt
+            # I've tuned beta on the no_obj_new training set
+            beta = 0.70
+            s_t = s_t + np.reshape(np.tile(np.eye(2), [3, 1]) @ action, [3, 2]) * dt * beta
             prediction.append(s_t)
         prediction = np.array(prediction)
         true = y['output_states'].numpy().squeeze().reshape([-1, 3, 2])
-        mse = np.mean((prediction - true)**2)
-        head_mse = np.mean((prediction[:, 2] - true[:, 2])**2)
-        mid_mse = np.mean((prediction[:, 1] - true[:, 1])**2)
-        tail_mse = np.mean((prediction[:, 0] - true[:, 0])**2)
-        head_mses.append(head_mse)
-        mid_mses.append(mid_mse)
-        tail_mses.append(tail_mse)
-        mses.append(mse)
-    print("head MSE:    {:8.5f}m".format(np.mean(head_mses)))
-    print("mid MSE:     {:8.5f}m".format(np.mean(mid_mses)))
-    print("tail MSE:    {:8.5f}m".format(np.mean(tail_mses)))
-    print("overall MSE: {:8.5f}m".format(np.mean(mses)))
+
+        error = np.linalg.norm(prediction - true, axis=2)
+        total_error = np.sum(error, axis=1)
+        tail_error = error[:, 0]
+        mid_error = error[:, 1]
+        head_error = error[:, 2]
+        head_errors.append(head_error)
+        mid_errors.append(mid_error)
+        tail_errors.append(tail_error)
+        total_errors.append(total_error)
+    print("head error:  {:8.5f}m".format(np.mean(head_errors)))
+    print("mid error:   {:8.5f}m".format(np.mean(mid_errors)))
+    print("tail error:  {:8.5f}m".format(np.mean(tail_errors)))
+    print("total error: {:8.5f}m".format(np.mean(total_errors)))
 
 
 def main():
