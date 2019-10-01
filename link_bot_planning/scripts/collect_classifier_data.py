@@ -30,6 +30,7 @@ def collect_classifier_data(args):
     rospy.init_node('collect_classifier_data')
 
     fwd_model = model_utils.load_generic_model(args.model_dir, args.model_type)
+    # TODO: put this inside the generic model loader
     model_path_info = args.model_dir.parts[1:]
 
     dt = fwd_model.dt
@@ -228,9 +229,9 @@ def main():
     parser.add_argument("model_dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
     parser.add_argument("outdir", type=pathlib.Path)
-    parser.add_argument("--n-envs", type=int, default=2)
-    parser.add_argument("--n-targets-per-env", type=int, default=2)
-    parser.add_argument("--n-examples-per-record", type=int, default=2)
+    parser.add_argument("--n-envs", type=int, default=128)
+    parser.add_argument("--n-targets-per-env", type=int, default=10)
+    parser.add_argument("--n-examples-per-record", type=int, default=512)
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0)
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=60.0)

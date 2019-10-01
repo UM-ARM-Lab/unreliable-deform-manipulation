@@ -157,8 +157,7 @@ def evaluate_metrics(results):
         head_errors = []
         tail_errors = []
         mid_errors = []
-        for i, predicted_points_trajectory in enumerate(points_trajectories):
-            predicted_points = predicted_points_trajectory.reshape([-1, 3, 2])
+        for i, predicted_points in enumerate(points_trajectories):
             true_points = results['true'][i]
             error = np.linalg.norm(predicted_points - true_points, axis=2)
             total_error = np.sum(error, axis=1)

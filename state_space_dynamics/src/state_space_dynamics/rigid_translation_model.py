@@ -11,10 +11,10 @@ class RigidTranslationModel:
 
     def predict(self, first_states, actions):
         """
-        note that input_sequence_length = input_sequence_length - 1
-        :param first_states: [batch, 6]
-        :param actions: [batch, input_sequence_length, 2]
-        :return: [batch, sequence_length, 3, 2]
+        It's T+1 because it includes the first state
+        :param np_first_states: [batch, 6]
+        :param np_actions: [batch, T, 2]
+        :return: [batch, T+1, 3, 2]
         """
         s_0 = np.reshape(first_states, [-1, 3, 2])
         s_t = s_0

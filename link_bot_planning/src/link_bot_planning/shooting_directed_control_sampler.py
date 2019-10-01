@@ -42,21 +42,20 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
 
         min_distance = np.inf
         min_u = None
+        min_np_s_next = None
         for i in range(self.n_samples):
             theta = np.random.uniform(-np.pi, np.pi)
             u = np.array([[self.max_v * np.cos(theta), self.max_v * np.sin(theta)]])
-            print(np_s.shape, u.shape)
-            s_next = self.fwd_model.predict(np_s, u)
-            distance = np.linalg.norm(s_next - np_target)
+            points_next = self.fwd_model.predict(np_s, u)
+            np_s_next = points_next[:, 1].reshape([1, self.n_state])
+            distance = np.linalg.norm(np_s_next - np_target)
             if distance < min_distance:
                 min_distance = distance
                 min_u = u
-
-        print(np_s.shape, min_u.shape)
-        np_s_next = self.fwd_model.predict(np_s, min_u)
+                min_np_s_next = np_s_next
 
         from_numpy(min_u, control_out, self.n_control)
-        from_numpy(np_s_next, target_out, self.n_state)
+        from_numpy(min_np_s_next, target_out, self.n_state)
 
         # check validity
         duration_steps = 1

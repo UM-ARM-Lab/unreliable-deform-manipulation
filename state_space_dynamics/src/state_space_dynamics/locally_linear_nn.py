@@ -4,9 +4,9 @@ import time
 
 import numpy as np
 import tensorflow as tf
+import tensorflow.contrib.eager as tfe
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
-import tensorflow.contrib.eager as tfe
 from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
 from link_bot_pycommon import experiments_util
@@ -243,23 +243,28 @@ class LocallyLinearNNWrapper:
         self.n_state = 6
         self.n_control = 2
 
-    def predict(self, first_states, actions):
+    def predict(self, np_first_states, np_actions):
         """
-        note that input_sequence_length = input_sequence_length - 1
-        :param first_states: [batch, 6]
-        :param actions: [batch, input_sequence_length, 2]
-        :return: [batch, sequence_length, 3, 2]
+        It's T+1 because it includes the first state
+        :param np_first_states: [batch, 6]
+        :param np_actions: [batch, T, 2]
+        :return: [batch, T+1, 3, 2]
         """
-        actions = np.expand_dims(actions, axis=0)
-        batch = first_states.shape[0]
+        np_actions = np.expand_dims(np_actions, axis=0)
+        batch, T, _ = np_actions.shape
         states = tfe.Variable(initial_value=lambda: tf.zeros([batch, self.net.input_sequence_length, self.n_state]),
                               name='padded_states',
                               trainable=False)
-        states = tf.assign(states[:, 0], first_states)
+        actions = tfe.Variable(initial_value=lambda: tf.zeros([batch, self.net.input_sequence_length, self.n_control]),
+                               name='padded_controls',
+                               trainable=False)
+        states = tf.assign(states[:, 0], np_first_states)
+        actions = tf.assign(actions[:, :np_actions.shape[0]], np_actions)
         test_x = {
             'states': states,
-            'actions': tf.convert_to_tensor(actions),
+            'actions': actions,
         }
         predictions = self.net(test_x)
         predicted_points = predictions.numpy().reshape([-1, self.model_hparams['sequence_length'], 3, 2])
+        predicted_points = predicted_points[:, :T + 1]
         return predicted_points
