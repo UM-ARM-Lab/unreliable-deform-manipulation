@@ -97,7 +97,7 @@ def eval(hparams, test_tf_dataset, args):
         batch_test_loss = loss(y_true=true_test_states, y_pred=test_gen_states)
         test_losses.append(batch_test_loss)
     test_loss = np.mean(test_losses)
-    print("Test Loss: " + Style.BRIGHT + "{:8.4f}".format(test_loss) + Style.RESET_ALL)
+    print("Test Loss: " + Style.BRIGHT + "{:8.5f}".format(test_loss) + Style.RESET_ALL)
 
 
 def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
@@ -146,7 +146,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             batch_val_loss = loss(y_true=true_val_states, y_pred=val_gen_states)
             val_losses.append(batch_val_loss)
         val_loss = np.mean(val_losses)
-        print("Validation loss before any training: " + Style.BRIGHT + "{:8.4f}".format(val_loss) + Style.RESET_ALL)
+        print("Validation loss before any training: " + Style.BRIGHT + "{:8.5f}".format(val_loss) + Style.RESET_ALL)
 
         for epoch in range(args.epochs):
             ################
@@ -179,7 +179,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             dt_per_epoch = time.time() - epoch_t0
 
             training_loss = np.mean(batch_losses)
-            print("Epoch: {:5d}, Time {:4.1f}s, Training loss: {:8.4f}".format(epoch, dt_per_epoch, training_loss))
+            print("Epoch: {:5d}, Time {:4.1f}s, Training loss: {:8.5f}".format(epoch, dt_per_epoch, training_loss))
             if args.log:
                 tf.contrib.summary.scalar("training loss", training_loss)
                 # TODO: show gifs of predictions in tensorboard
@@ -206,7 +206,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                     val_losses.append(batch_val_loss)
                 val_loss = np.mean(val_losses)
                 tf.contrib.summary.scalar('validation loss', val_loss, step=int(ckpt.step))
-                print("\t\t\tValidation loss: " + Style.BRIGHT + "{:8.4f}".format(val_loss) + Style.RESET_ALL)
+                print("\t\t\tValidation loss: " + Style.BRIGHT + "{:8.5f}".format(val_loss) + Style.RESET_ALL)
 
             ################
             # Checkpoint
