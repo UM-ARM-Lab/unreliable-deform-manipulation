@@ -3,25 +3,21 @@ from matplotlib import animation
 from ompl import base as ob
 from ompl import control as oc
 
-from link_bot_planning.gp_directed_control_sampler import GPDirectedControlSampler, plot
 from link_bot_planning.link_bot_goal import LinkBotGoal
+from link_bot_planning.ompl_util import plot
+from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_planning.state_spaces import LinkBotControlSpace, TailStateSpaceSampler, from_numpy, to_numpy
 
 
-# TODO: don't use numpy arrays, or convert this code based to C++
-# How do I load my GP model in C++? I think I would have to implement inference from scratch.
+class ShootingRRT:
 
-
-class GPRRT:
-
-    def __init__(self, fwd_gp_model, inv_gp_model, constraint_checker_wrapper, dt, max_v, planner_timeout, n_state, env_w, env_h):
+    def __init__(self, fwd_model, constraint_checker_wrapper, dt, max_v, planner_timeout, n_state, env_w, env_h):
         self.constraint_checker_wrapper = constraint_checker_wrapper
-        self.fwd_gp_model = fwd_gp_model
-        self.inv_gp_model = inv_gp_model
+        self.fwd_model = fwd_model
         self.dt = dt
         self.planner_timeout = planner_timeout
-        self.n_state = self.fwd_gp_model.n_state
-        self.n_control = self.fwd_gp_model.n_control
+        self.n_state = self.fwd_model.n_state
+        self.n_control = self.fwd_model.n_control
         self.max_v = max_v
 
         self.extent = [-env_w / 2, env_w / 2, -env_h / 2, env_h / 2]
@@ -66,7 +62,7 @@ class GPRRT:
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
 
         self.si.setDirectedControlSamplerAllocator(
-            GPDirectedControlSampler.allocator(self.fwd_gp_model, self.inv_gp_model, self.max_v))
+            ShootingDirectedControlSampler.allocator(self.fwd_model, self.max_v))
 
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(False)
@@ -79,7 +75,7 @@ class GPRRT:
         np_s = to_numpy(start, self.n_state)
         np_u = to_numpy(control, self.n_control)
 
-        np_s_next = self.fwd_gp_model.fwd_act(np_s, np_u)
+        np_s_next = self.fwd_model.fwd_act(np_s, np_u)
 
         from_numpy(np_s_next, state_out, self.n_state)
 
@@ -167,8 +163,7 @@ class GPRRT:
             end_idx = np.random.randint(start_idx + 1, len(new_states))
             d_shortcut_end = new_states[end_idx]
 
-            success, new_shortcut_us, new_shortcut_ss, = GPDirectedControlSampler.shortcut(
-                d_shortcut_start, d_shortcut_end)
+            success, new_shortcut_us, new_shortcut_ss, = ShootingDirectedControlSampler.shortcut(d_shortcut_start, d_shortcut_end)
 
             if success:
                 # popping changes the indexes of everything, so we just pop at start_idx the right number of times
@@ -195,11 +190,11 @@ class GPRRT:
 
             if not np.allclose(s, ss[i]):
                 return False
-            constraint_violated = self.fwd_gp_model.constraint_violated(s.squeeze())
+            constraint_violated = self.fwd_model.constraint_violated(s.squeeze())
             if constraint_violated:
                 return False
 
-            s_next = self.fwd_gp_model.simple_dual_predict(s, u.reshape(2, 1))
+            s_next = self.fwd_model.simple_dual_predict(s, u.reshape(2, 1))
 
             s = s_next
 

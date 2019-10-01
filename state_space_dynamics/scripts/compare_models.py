@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 import argparse
 import json
-import time
-from colorama import Fore
 import pathlib
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from colorama import Fore
 from matplotlib.animation import FuncAnimation
 
-from link_bot_data.visualization import plottable_rope_configuration
 from link_bot_gaussian_process import link_bot_gp
 from state_space_dynamics.locally_linear_nn import LocallyLinearNNWrapper
 from state_space_dynamics.rigid_translation_model import RigidTranslationModel
@@ -92,8 +91,9 @@ def generate_results(outdir, models, tf_dataset, mode):
         for x, y in tf_dataset:
             states = x['states'].numpy()
             actions = x['actions'].numpy().squeeze()
-            first_state = states[0, 0]
-            predicted_points = model.predict(first_state, actions)
+            # this is supposed to give us a [batch, n_state] tensor
+            first_states = np.expand_dims(states[0, 0], axis=0)
+            predicted_points = model.predict(first_states, actions)[0]
             results[model_name].append(predicted_points)
 
     results_filename = outdir / 'results-{}-{}.npz'.format(mode, int(time.time()))

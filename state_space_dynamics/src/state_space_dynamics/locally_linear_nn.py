@@ -239,18 +239,27 @@ class LocallyLinearNNWrapper:
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)
+        self.dt = self.model_hparams['dt']
+        self.n_state = 6
+        self.n_control = 2
 
-    def predict(self, first_state, actions):
-        # inputs to the net must have a batch dimension
+    def predict(self, first_states, actions):
+        """
+        note that input_sequence_length = input_sequence_length - 1
+        :param first_states: [batch, 6]
+        :param actions: [batch, input_sequence_length, 2]
+        :return: [batch, sequence_length, 3, 2]
+        """
         actions = np.expand_dims(actions, axis=0)
-        states = tfe.Variable(initial_value=lambda: tf.zeros([1, self.net.input_sequence_length, first_state.shape[0]]),
+        batch = first_states.shape[0]
+        states = tfe.Variable(initial_value=lambda: tf.zeros([batch, self.net.input_sequence_length, self.n_state]),
                               name='padded_states',
                               trainable=False)
-        states = tf.assign(states[0, 0], first_state)
+        states = tf.assign(states[:, 0], first_states)
         test_x = {
             'states': states,
             'actions': tf.convert_to_tensor(actions),
         }
-        prediction = self.net(test_x)
-        predicted_points = prediction.numpy().reshape([self.model_hparams['sequence_length'], 3, 2])
+        predictions = self.net(test_x)
+        predicted_points = predictions.numpy().reshape([-1, self.model_hparams['sequence_length'], 3, 2])
         return predicted_points

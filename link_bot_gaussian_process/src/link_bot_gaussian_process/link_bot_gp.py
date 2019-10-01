@@ -18,7 +18,7 @@ from link_bot_gaussian_process.my_svgp import MySVGP
 from link_bot_pycommon import experiments_util
 
 
-def predict(fwd_model, np_state, np_controls, steps=None, initial_variance=0.00001):
+def predict_one(fwd_model, np_state, np_controls, steps=None, initial_variance=0.00001):
     if steps is None:
         steps = np_controls.shape[0] + 1
 
@@ -126,6 +126,7 @@ class LinkBotGP:
         self.rng_type = rng_type
         self.dataset_hparams = None
         self.metadata = None
+        self.dt = None
 
     def initialize_rng(self, min_steps, max_steps):
         self.min_steps = min_steps
@@ -234,6 +235,7 @@ class LinkBotGP:
         self.n_inducing_points = metadata['n_inducing_points']
         self.n_state = metadata['n_state']
         self.n_control = metadata['n_control']
+        self.dt = metadata['dataset_hparams']['dt']
         # load these from the metadata file?
         self.maximum_training_iterations = None
         self.model_def = None
@@ -282,8 +284,17 @@ class LinkBotGP:
 
         return min_u
 
-    def predict(self, first_state, actions):
-        np_state = np.expand_dims(first_state, axis=0)
-        prediction, _ = predict(self, np_state, actions)
-        predicted_points = prediction.reshape([-1, 3, 2])
-        return predicted_points
+    def predict(self, first_states, actions):
+        """
+        note that input_sequence_length = input_sequence_length - 1
+        :param first_states: [batch, 6]
+        :param actions: [batch, input_sequence_length, 2]
+        :return: [batch, sequence_length, 3, 2]
+        """
+        predictions = []
+        for first_state in first_states:
+            np_state = np.expand_dims(first_state, axis=0)
+            prediction, _ = predict_one(self, np_state, actions)
+            predicted_points = prediction.reshape([-1, 3, 2])
+            predictions.append(predicted_points)
+        return predictions

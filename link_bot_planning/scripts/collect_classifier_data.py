@@ -15,12 +15,11 @@ from colorama import Fore
 
 from link_bot_data import random_environment_data_utils
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_gaussian_process import link_bot_gp
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_sdf_data, get_local_sdf_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
-from link_bot_planning import gp_rrt
+from link_bot_planning import shooting_rrt, model_utils
 from link_bot_planning.goals import sample_goal
 from visual_mpc import gazebo_trajectory_execution
 
@@ -30,16 +29,15 @@ tf.enable_eager_execution()
 def collect_classifier_data(args):
     rospy.init_node('collect_classifier_data')
 
-    fwd_gp_model = link_bot_gp.LinkBotGP(ou.RNG)
-    fwd_gp_model.load(os.path.join(args.gp_model_dir, 'fwd_model'))
-    gp_model_path_info = args.gp_model_dir.parts[1:]
+    fwd_model = model_utils.load_generic_model(args.model_dir, args.model_type)
+    model_path_info = args.model_dir.parts[1:]
 
-    dt = fwd_gp_model.dataset_hparams['dt']
+    dt = fwd_model.dt
 
     assert args.env_w >= args.sdf_w
     assert args.env_h >= args.sdf_h
 
-    full_output_directory = random_environment_data_utils.data_directory(args.outdir, *gp_model_path_info)
+    full_output_directory = random_environment_data_utils.data_directory(args.outdir, *model_path_info)
     full_output_directory = pathlib.Path(full_output_directory)
     if not full_output_directory.is_dir():
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
@@ -71,15 +69,14 @@ def collect_classifier_data(args):
                 p_reject = 0.01
                 return p_reject
 
-    rrt = gp_rrt.GPRRT(fwd_gp_model=fwd_gp_model,
-                       inv_gp_model=None,
-                       constraint_checker_wrapper=ConstraintCheckerWrapper(),
-                       dt=dt,
-                       max_v=args.max_v,
-                       n_state=fwd_gp_model.n_state,
-                       planner_timeout=args.planner_timeout,
-                       env_w=args.env_w,
-                       env_h=args.env_h)
+    rrt = shooting_rrt.ShootingRRT(fwd_model=fwd_model,
+                                   constraint_checker_wrapper=ConstraintCheckerWrapper(),
+                                   dt=dt,
+                                   max_v=args.max_v,
+                                   n_state=fwd_model.n_state,
+                                   planner_timeout=args.planner_timeout,
+                                   env_w=args.env_w,
+                                   env_h=args.env_h)
 
     # Preallocate this array once
     examples = np.ndarray([args.n_examples_per_record], dtype=object)
@@ -159,10 +156,10 @@ def collect_classifier_data(args):
 
             if args.verbose >= 3:
                 # FOR THE TAIL
-                anim = link_bot_gp.animate_predict(prediction=planned_path,
-                                                   y_rope_configurations=actual_rope_configurations,
-                                                   sdf=full_sdf_data.sdf,
-                                                   extent=full_sdf_data.extent)
+                anim = fwd_model.animate_predict(prediction=planned_path,
+                                                 y_rope_configurations=actual_rope_configurations,
+                                                 sdf=full_sdf_data.sdf,
+                                                 extent=full_sdf_data.extent)
                 plt.show()
 
             # collect the transition pairs (s_t, s_{t+1}, \hat{s}_t, \hat{s}_{t+1})
@@ -228,7 +225,8 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("gp_model_dir", help="load this saved forward model file", type=pathlib.Path)
+    parser.add_argument("model_dir", help="load this saved forward model file", type=pathlib.Path)
+    parser.add_argument("model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-envs", type=int, default=2)
     parser.add_argument("--n-targets-per-env", type=int, default=2)
