@@ -259,7 +259,7 @@ class LocallyLinearNNWrapper:
                                name='padded_controls',
                                trainable=False)
         states = tf.assign(states[:, 0], np_first_states)
-        actions = tf.assign(actions[:, :np_actions.shape[0]], np_actions)
+        actions = tf.assign(actions[:, :np_actions.shape[1]], np_actions)
         test_x = {
             'states': states,
             'actions': actions,
@@ -267,4 +267,6 @@ class LocallyLinearNNWrapper:
         predictions = self.net(test_x)
         predicted_points = predictions.numpy().reshape([-1, self.model_hparams['sequence_length'], 3, 2])
         predicted_points = predicted_points[:, :T + 1]
+        # OMPL requires "doubles", which are float64, although our network outputs float32.
+        predicted_points = predicted_points.astype(np.float64)
         return predicted_points

@@ -4,7 +4,7 @@ from ompl import base as ob
 from ompl import control as oc
 
 from link_bot_planning.link_bot_goal import LinkBotGoal
-from link_bot_planning.ompl_util import plot
+from link_bot_planning.ompl_viz import plot
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_planning.state_spaces import LinkBotControlSpace, TailStateSpaceSampler, from_numpy, to_numpy
 

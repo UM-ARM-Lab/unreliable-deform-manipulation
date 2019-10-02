@@ -44,11 +44,11 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
 
     feature = {
         # These features don't change over time
-        'sdf/sdf': float_feature(local_sdf.flatten()),
-        'sdf/gradient': float_feature(local_sdf_gradient.flatten()),
-        'sdf/shape': int_feature(np.array(local_sdf.shape)),
-        'sdf/resolution': float_feature(sdf_data.resolution),
-        'sdf/origin': float_feature(local_sdf_origin),
+        'sdf/sdf': float_feature(local_sdf_data.sdf.flatten()),
+        'sdf/gradient': float_feature(local_sdf_data.gradient.flatten()),
+        'sdf/shape': int_feature(np.array(local_sdf_data.sdf.shape)),
+        'sdf/resolution': float_feature(full_sdf_data.resolution),
+        'sdf/origin': float_feature(local_sdf_data.origin),
         'sdf/head_points': float_feature(initial_head_point),
     }
 
@@ -138,7 +138,8 @@ def generate_trajs(args, full_output_directory, services):
 
         if not args.no_obstacles:
             objects = ['cheezits_box', 'tissue_box']
-            visual_mpc.gazebo_trajectory_execution.move_objects(services, objects, args.env_w, args.env_h, 'velocity', padding=0.1)
+            visual_mpc.gazebo_trajectory_execution.move_objects(services, objects, args.env_w, args.env_h, 'velocity',
+                                                                padding=0.1)
 
         # Generate a new trajectory
         example, percentage_violation, global_t_step, gripper1_target_x, gripper1_target_y = generate_traj(args, services, i,
@@ -215,8 +216,8 @@ def main():
     parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)
     parser.add_argument("outdir")
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
-    parser.add_argument('--env-w', type=float, default=1.0)
-    parser.add_argument('--env-h', type=float, default=1.0)
+    parser.add_argument('--env-w', type=float, default=6.0)
+    parser.add_argument('--env-h', type=float, default=6.0)
     parser.add_argument('--sdf-w', type=float, default=1.0)
     parser.add_argument('--sdf-h', type=float, default=1.0)
     parser.add_argument("--steps-per-traj", type=int, default=100)

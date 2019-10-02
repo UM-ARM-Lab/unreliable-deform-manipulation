@@ -107,7 +107,8 @@ def collect_classifier_data(args):
             head_idx = state.link_names.index("head")
             rope_configuration = gazebo_utils.points_to_config(state.points)
             head_point = state.points[head_idx]
-            tail_goal = sample_goal(args.env_w, args.env_h, head_point, env_padding=0.1)
+            # this is high because env 6 not 5!
+            tail_goal = sample_goal(args.env_w, args.env_h, head_point, env_padding=1.0)
 
             # Compute SDF Data after all objects have finished moving
             full_sdf_data = get_sdf_data(args.env_h, args.env_w, args.res, services)
@@ -155,7 +156,7 @@ def collect_classifier_data(args):
                 actual_rope_configurations.append(np_config)
             actual_rope_configurations = np.array(actual_rope_configurations)
 
-            if args.verbose >= 3:
+            if args.verbose >= 3 and hasattr(fwd_model, 'animate_predict'):
                 # FOR THE TAIL
                 anim = fwd_model.animate_predict(prediction=planned_path,
                                                  y_rope_configurations=actual_rope_configurations,
@@ -229,11 +230,11 @@ def main():
     parser.add_argument("model_dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
     parser.add_argument("outdir", type=pathlib.Path)
-    parser.add_argument("--n-envs", type=int, default=128)
+    parser.add_argument("--n-envs", type=int, default=32)
     parser.add_argument("--n-targets-per-env", type=int, default=10)
     parser.add_argument("--n-examples-per-record", type=int, default=512)
     parser.add_argument("--seed", '-s', type=int)
-    parser.add_argument('--verbose', '-v', action='count', default=0)
+    parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=60.0)
     parser.add_argument("--real-time-rate", type=float, default=1.0)
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')

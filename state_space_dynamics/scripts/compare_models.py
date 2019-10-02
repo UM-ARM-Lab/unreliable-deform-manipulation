@@ -53,10 +53,10 @@ def generate(args):
     llnn = LocallyLinearNNWrapper(args.llnn_dir)
 
     models = {
+        'LL-NN': llnn,
         'rigid-translation': rigid_translation,
         'GP no penalty': no_penalty_gp,
         'GP with penalty': penalty_gp,
-        'LL-NN': llnn,
     }
 
     results = generate_results(args.outdir, models, tf_dataset, args.mode)
