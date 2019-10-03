@@ -6,13 +6,13 @@ from matplotlib import animation
 from matplotlib.animation import FuncAnimation
 from matplotlib.lines import Line2D
 
-import link_bot_pycommon.args_enum
+import link_bot_pycommon.args
 from link_bot_classifiers import sdf_function_model
-from link_bot_pycommon import args_enum
+from link_bot_pycommon import args
 from link_bot_pycommon import link_bot_pycommon
 
 
-class PlotType(args_enum.ArgsEnum):
+class PlotType(args.ArgsEnum):
     none = auto()
     random_individual = auto()
     random_combined = auto()

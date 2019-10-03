@@ -76,7 +76,11 @@ def eval(args):
     model_hparams_file = args.checkpoint / 'hparams.json'
     model_hparams = json.load(open(model_hparams_file, 'r'))
     model_hparams['dt'] = dataset_hparams_dict['dt']
-    dataset_hparams_dict['sequence_length'] = model_hparams['sequence_length']
+    if args.sequence_length:
+        dataset_hparams_dict['sequence_length'] = args.sequence_length
+        model_hparams['sequence_length'] = args.sequence_length
+    else:
+        dataset_hparams_dict['sequence_length'] = model_hparams['sequence_length']
     dataset_hparams_dict['sdf_shape'] = model_hparams['sdf_shape']
 
     ###############
@@ -134,6 +138,7 @@ def main():
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
     eval_parser.add_argument('--dataset-hparams', type=str)
+    eval_parser.add_argument('--sequence-length', type=int, help='overrides hparams files')
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.set_defaults(func=eval)

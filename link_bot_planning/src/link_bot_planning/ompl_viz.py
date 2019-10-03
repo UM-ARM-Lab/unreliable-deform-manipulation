@@ -1,4 +1,3 @@
-import graph_tool.all as gt
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D

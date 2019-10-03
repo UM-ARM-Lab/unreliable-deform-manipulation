@@ -21,6 +21,7 @@ from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
 from link_bot_planning import shooting_rrt, model_utils
 from link_bot_planning.goals import sample_goal
+from link_bot_pycommon.args import my_formatter
 from visual_mpc import gazebo_trajectory_execution
 
 tf.enable_eager_execution()
@@ -226,25 +227,25 @@ def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=250)
     tf.logging.set_verbosity(tf.logging.FATAL)
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("model_dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
     parser.add_argument("outdir", type=pathlib.Path)
-    parser.add_argument("--n-envs", type=int, default=32)
-    parser.add_argument("--n-targets-per-env", type=int, default=10)
-    parser.add_argument("--n-examples-per-record", type=int, default=512)
+    parser.add_argument("--n-envs", type=int, default=32, help='number of environments')
+    parser.add_argument("--n-targets-per-env", type=int, default=10, help='number of targets/plans per environment')
+    parser.add_argument("--n-examples-per-record", type=int, default=512, help='examples per tfrecord')
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=60.0)
-    parser.add_argument("--real-time-rate", type=float, default=1.0)
+    parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     # Even though the arena is 5m, we need extra padding so that we can request a 1x1 meter local sdf at the corners
-    parser.add_argument('--env-w', type=float, default=6)
-    parser.add_argument('--env-h', type=float, default=6)
-    parser.add_argument('--sdf-w', type=float, default=1.0)
-    parser.add_argument('--sdf-h', type=float, default=1.0)
-    parser.add_argument('--max-v', type=float, default=0.15)
+    parser.add_argument('--env-w', type=float, default=6, help='environment width')
+    parser.add_argument('--env-h', type=float, default=6, help='environment height')
+    parser.add_argument('--sdf-w', type=float, default=1.0, help='local sdf width')
+    parser.add_argument('--sdf-h', type=float, default=1.0, help='local sdf width')
+    parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
 
     args = parser.parse_args()
 
