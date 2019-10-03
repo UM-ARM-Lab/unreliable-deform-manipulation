@@ -3,6 +3,7 @@ import pathlib
 import time
 
 import numpy as np
+import progressbar
 import tensorflow as tf
 import tensorflow.contrib.eager as tfe
 import tensorflow.keras.layers as layers
@@ -14,7 +15,7 @@ from moonshine import gif_summary
 from moonshine.draw_rope_layer import DrawRope
 
 
-class LocallyLinearNN(tf.keras.Model):
+class SimpleNN(tf.keras.Model):
 
     def __init__(self, hparams, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -24,18 +25,13 @@ class LocallyLinearNN(tf.keras.Model):
         self.n_dim = self.hparams['n_points'] * 2
         self.m_dim = self.hparams['n_control']
 
-        self.elements_in_A = self.hparams['n_points'] * (2 * 2)
-        self.elements_in_B = self.n_dim * self.m_dim
-        self.num_elements_in_linear_model = self.elements_in_A + self.elements_in_B
-
         self.concat = layers.Concatenate()
         self.dense_layers = []
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
-        self.dense_layers.append(layers.Dense(self.num_elements_in_linear_model, activation=None, name='linear_params'))
+        self.dense_layers.append(layers.Dense(self.n_dim, activation=None))
 
-        self.draw_layer = DrawRope(image_shape=[100, 100])
-        # x, resolution, origin = inputs
+        self.draw_layer = DrawRope(image_shape=[128, 128])
 
         self.image_origin = tf.constant([50, 50], dtype=tf.int64)
         self.image_resolution = tf.constant([0.05, 0.05], dtype=tf.float32)
@@ -55,23 +51,7 @@ class LocallyLinearNN(tf.keras.Model):
             z_t = _state_action_t
             for dense_layer in self.dense_layers:
                 z_t = dense_layer(z_t)
-            params_t = z_t
-
-            A_t_params, B_t_params = tf.split(params_t, [self.elements_in_A, self.elements_in_B], axis=1)
-            A_t_per_point = tf.split(A_t_params, self.hparams['n_points'], axis=1)
-            B_t_per_point = tf.split(B_t_params, self.hparams['n_points'], axis=1)
-            A_t_per_point = [tf.linalg.LinearOperatorFullMatrix(tf.reshape(_a_p, [-1, 2, 2])) for _a_p
-                             in A_t_per_point]
-            B_t_per_point = [tf.reshape(_b_p, [-1, 2, 2]) for _b_p in B_t_per_point]
-            # TODO: remove this? do we need an A matrix?
-            A_t = tf.linalg.LinearOperatorBlockDiag(A_t_per_point).to_dense("A_t")
-
-            B_t = tf.concat(B_t_per_point, axis=1)
-
-            u_t = tf.expand_dims(action_t, axis=-1)
-
-            # s_t_plus_1_flat = tf.linalg.matmul(A_t, s_t) + tf.linalg.matmul(B_t, u_t)
-            s_t_plus_1_flat = s_t + tf.linalg.matmul(B_t, u_t) * self.hparams['dt']
+            s_t_plus_1_flat = tf.expand_dims(z_t, axis=2)
 
             gen_states.append(s_t_plus_1_flat)
 
@@ -82,7 +62,7 @@ class LocallyLinearNN(tf.keras.Model):
 
 
 def eval(hparams, test_tf_dataset, args):
-    net = LocallyLinearNN(hparams=hparams)
+    net = SimpleNN(hparams=hparams)
     ckpt = tf.train.Checkpoint(net=net)
     manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=1)
     ckpt.restore(manager.latest_checkpoint)
@@ -111,7 +91,7 @@ def eval(hparams, test_tf_dataset, args):
 def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
     optimizer = tf.train.AdamOptimizer()
     loss = tf.keras.losses.MeanSquaredError()
-    net = LocallyLinearNN(hparams=hparams)
+    net = SimpleNN(hparams=hparams)
     global_step = tf.train.get_or_create_global_step()
 
     # If we're resuming a checkpoint, there is no new log path
@@ -165,7 +145,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             epoch_t0 = time.time()
             train_batch_x = None
             train_batch_y = None
-            for train_batch_x, train_batch_y in train_tf_dataset:
+            for train_batch_x, train_batch_y in progressbar.progressbar(train_tf_dataset):
                 batch_t0 = time.time()
                 true_train_states = train_batch_y['output_states']
                 with tf.GradientTape() as tape:
@@ -233,12 +213,12 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         train_loop()
 
 
-class LocallyLinearNNWrapper:
+class SimpleNNWrapper:
 
     def __init__(self, path):
         model_hparams_file = path / 'hparams.json'
         self.model_hparams = json.load(open(model_hparams_file, 'r'))
-        self.net = LocallyLinearNN(hparams=self.model_hparams)
+        self.net = SimpleNN(hparams=self.model_hparams)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)

@@ -1,0 +1,8 @@
+{
+  "model_class": "LocallyLinearNN",
+  "sdf_shape": [100, 100],
+  "n_control": 2,
+  "sequence_length": 100,
+  "n_points": 3,
+  "fc_layer_sizes": [16, 16]
+}

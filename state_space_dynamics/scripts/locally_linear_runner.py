@@ -29,7 +29,6 @@ def train(args):
     model_hparams = json.load(open(args.model_hparams, 'r'))
     model_hparams['dt'] = dataset_hparams_dict['dt']
     dataset_hparams_dict['sequence_length'] = model_hparams['sequence_length']
-    dataset_hparams_dict['sdf_shape'] = model_hparams['sdf_shape']
 
     ###############
     # Datasets
