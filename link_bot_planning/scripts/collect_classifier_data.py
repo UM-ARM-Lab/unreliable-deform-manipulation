@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import pathlib
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -94,6 +95,8 @@ def collect_classifier_data(args):
         'moving_box6': [-0.5, 2.0],
     }
     services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, inital_object_dict)
+
+    planning_times = []
     for traj_idx in range(args.n_envs):
         # generate a new environment by rearranging the obstacles
         objects = ['moving_box{}'.format(i) for i in range(1, 7)]
@@ -118,16 +121,22 @@ def collect_classifier_data(args):
             tail_goal_point = np.array(tail_goal)
 
             # plan to that target
-            if args.verbose >= 1:
-                print(Fore.CYAN + "Planning from {} to {}".format(start, tail_goal_point) + Fore.RESET)
             if args.verbose >= 2:
                 # tail start x,y and tail goal x,y
                 random_environment_data_utils.publish_markers(args,
                                                               tail_goal_point[0], tail_goal_point[1],
                                                               rope_configuration[0], rope_configuration[1],
                                                               marker_size=0.05)
+            if args.verbose >= 1:
+                print(Fore.CYAN + "Planning from {} to {}".format(start, tail_goal_point) + Fore.RESET)
+            if args.verbose <= 1:
+                print(".", end='')
 
+
+            t0 = time.time()
             planned_actions, planned_path, _ = rrt.plan(start, tail_goal_point, full_sdf_data.sdf, args.verbose)
+            planning_time = time.time() - t0
+            planning_times.append(planning_time)
 
             traj_req = LinkBotTrajectoryRequest()
             traj_req.dt = dt
@@ -219,6 +228,7 @@ def collect_classifier_data(args):
                     writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=args.compression_type)
                     writer.write(serialized_dataset)
                     print("saved {}".format(full_filename))
+                    print("Planning Time: {:7.3}s ({:6.3s}s)".format(np.mean(planning_times), np.std(planning_times)))
 
                     current_record_traj_idx = 0
 
@@ -233,7 +243,7 @@ def main():
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-envs", type=int, default=32, help='number of environments')
     parser.add_argument("--n-targets-per-env", type=int, default=10, help='number of targets/plans per environment')
-    parser.add_argument("--n-examples-per-record", type=int, default=512, help='examples per tfrecord')
+    parser.add_argument("--n-examples-per-record", type=int, default=128, help='examples per tfrecord')
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=60.0)
