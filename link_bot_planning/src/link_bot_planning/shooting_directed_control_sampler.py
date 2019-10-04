@@ -40,6 +40,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
 
         self.states_sampled_at.append(np_target)
 
+        import time
         min_distance = np.inf
         min_u = None
         min_np_s_next = None

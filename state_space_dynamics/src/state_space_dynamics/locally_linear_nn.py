@@ -20,7 +20,6 @@ class LocallyLinearNN(tf.keras.Model):
         super().__init__(*args, **kwargs)
         self.initial_epoch = 0
         self.hparams = NoDependency(hparams)
-        self.input_sequence_length = self.hparams['sequence_length'] - 1
         self.n_dim = self.hparams['n_points'] * 2
         self.m_dim = self.hparams['n_control']
 
@@ -43,10 +42,12 @@ class LocallyLinearNN(tf.keras.Model):
     def call(self, input_dict, training=None, mask=None):
         states = input_dict['states']
         actions = input_dict['actions']
-        s_0 = layers.Reshape(target_shape=[self.input_sequence_length, self.n_dim, 1])(states)[:, 0]
+        input_sequence_length = actions.shape[1]
+        s_0 = layers.Reshape(target_shape=[input_sequence_length, self.n_dim, 1])(states)[:, 0]
 
         gen_states = [s_0]
-        for t in range(self.input_sequence_length):
+        t0 = time.time()
+        for t in range(input_sequence_length):
             s_t = gen_states[-1]
             action_t = actions[:, t]
 
@@ -74,6 +75,7 @@ class LocallyLinearNN(tf.keras.Model):
             s_t_plus_1_flat = s_t + tf.linalg.matmul(B_t, u_t) * self.hparams['dt']
 
             gen_states.append(s_t_plus_1_flat)
+        # print(time.time() - t0)
 
         gen_states = tf.stack(gen_states)
         gen_states = tf.transpose(gen_states, [1, 0, 2, 3])
@@ -255,21 +257,14 @@ class LocallyLinearNNWrapper:
         """
         np_actions = np.expand_dims(np_actions, axis=0)
         batch, T, _ = np_actions.shape
-        states = tfe.Variable(initial_value=lambda: tf.zeros([batch, self.net.input_sequence_length, self.n_state]),
-                              name='padded_states',
-                              trainable=False)
-        actions = tfe.Variable(initial_value=lambda: tf.zeros([batch, self.net.input_sequence_length, self.n_control]),
-                               name='padded_controls',
-                               trainable=False)
-        states = tf.assign(states[:, 0], np_first_states)
-        actions = tf.assign(actions[:, :np_actions.shape[1]], np_actions)
+        states = tf.convert_to_tensor(np_first_states)
+        actions = tf.convert_to_tensor(np_actions)
         test_x = {
             'states': states,
             'actions': actions,
         }
         predictions = self.net(test_x)
-        predicted_points = predictions.numpy().reshape([-1, self.model_hparams['sequence_length'], 3, 2])
-        predicted_points = predicted_points[:, :T + 1]
+        predicted_points = predictions.numpy().reshape([batch, T + 1, 3, 2])
         # OMPL requires "doubles", which are float64, although our network outputs float32.
         predicted_points = predicted_points.astype(np.float64)
         return predicted_points
