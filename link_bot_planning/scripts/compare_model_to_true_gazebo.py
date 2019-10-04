@@ -72,7 +72,7 @@ def main():
     np.random.seed(args.seed)
     random.seed(args.seed)
 
-    rospy.init_node('compare_llnn_to_true_gazebo')
+    rospy.init_node('compare_to_true_gazebo')
 
     # Start Services
     services = gazebo_utils.GazeboServices()
