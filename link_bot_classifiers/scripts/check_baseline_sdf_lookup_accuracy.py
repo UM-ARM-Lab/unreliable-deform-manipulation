@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 
 import argparse
-import json
 import pathlib
 
-import gpflow as gpf
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
+from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import point_to_sdf_idx
-from video_prediction.datasets import dataset_utils
+
+tf.enable_eager_execution()
 
 
 def show_error(rope_config, action, image, sdf_image, x, y, predicted_violated, true_violated, signed_distance, vx, vy):
@@ -50,31 +50,20 @@ def main():
     parser.add_argument('--balance', action='store_true', help='subsample the datasets to make sure it is balanced')
     parser.add_argument('--cheat', action='store_true', help='forward propagate the configuration and check that too')
     parser.add_argument('--show', action='store_true', help='visualize')
+    parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
+    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
 
     args = parser.parse_args()
 
     np.random.seed(0)
     tf.random.set_random_seed(0)
 
-    config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=False, per_process_gpu_memory_fraction=0.1))
-    gpf.reset_default_session(config=config)
-    sess = gpf.get_default_session()
-
-    if args.dataset_hparams_dict:
-        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
-    else:
-        dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
-
-    dataset, train_inputs, steps_per_epoch = dataset_utils.get_inputs(args.input_dir,
-                                                                      'link_bot',
-                                                                      dataset_hparams_dict,
-                                                                      '',
-                                                                      mode='train',
-                                                                      epochs=1,
-                                                                      seed=0,
-                                                                      batch_size=1,
-                                                                      shuffle=False,
-                                                                      balance_constraints_label=args.balance)
+    classifier_dataset = ClassifierDataset(args.input_dir)
+    dataset = classifier_dataset.get_dataset(mode=args.mode,
+                                             shuffle=False,
+                                             num_epochs=1,
+                                             seed=0,
+                                             compression_type=args.compression_type)
 
     incorrect = 0
     correct = 0
@@ -82,12 +71,7 @@ def main():
     fn = 0
     tp = 0
     tn = 0
-    while True:
-        try:
-            x, y = sess.run(train_inputs)
-        except tf.errors.OutOfRangeError:
-            break
-
+    for x, y in dataset:
         rope_configuration = x['rope_configurations'].squeeze()
         sdf = x['sdf'].squeeze()
         resolution = x['sdf_resolution'].squeeze()

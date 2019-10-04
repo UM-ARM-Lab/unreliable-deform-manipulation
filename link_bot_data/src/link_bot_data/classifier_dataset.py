@@ -113,7 +113,7 @@ class ClassifierDataset:
         dataset = tf.data.TFRecordDataset(filenames, buffer_size=8 * 1024 * 1024, compression_type=compression_type)
 
         if shuffle:
-            dataset = dataset.apply(tf.contrib.data.shuffle_and_repeat(buffer_size=1024, count=num_epochs))
+            dataset = dataset.apply(tf.contrib.data.shuffle_and_repeat(buffer_size=1024, count=num_epochs, seed=seed))
         else:
             dataset = dataset.repeat(num_epochs)
 
