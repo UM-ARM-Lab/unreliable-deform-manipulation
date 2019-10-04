@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import argparse
+import json
+import pathlib
 
 import gpflow as gpf
 import matplotlib.pyplot as plt
@@ -8,6 +10,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_data.visualization import plot_rope_configuration
+from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import point_to_sdf_idx
 from video_prediction.datasets import dataset_utils
 
@@ -40,13 +43,13 @@ def main():
     np.set_printoptions(suppress=True, linewidth=250, precision=4, threshold=1000)
     tf.logging.set_verbosity(tf.logging.FATAL)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('indir')
-    parser.add_argument('dataset_hparams_dict')
-    parser.add_argument('--distance-threshold', type=float, default=0.02)
-    parser.add_argument('--balance', action='store_true')
-    parser.add_argument('--cheat', action='store_true')
-    parser.add_argument('--show', action='store_true')
+    parser = argparse.ArgumentParser(formatter_class=my_formatter)
+    parser.add_argument('input_dir', help='dataset directory', type=pathlib.Path)
+    parser.add_argument('--dataset-hparams-dict', help='override dataset hyperparams')
+    parser.add_argument('--distance-threshold', type=float, default=0.02, help='threshold for collision checking')
+    parser.add_argument('--balance', action='store_true', help='subsample the datasets to make sure it is balanced')
+    parser.add_argument('--cheat', action='store_true', help='forward propagate the configuration and check that too')
+    parser.add_argument('--show', action='store_true', help='visualize')
 
     args = parser.parse_args()
 
@@ -57,9 +60,14 @@ def main():
     gpf.reset_default_session(config=config)
     sess = gpf.get_default_session()
 
-    dataset, train_inputs, steps_per_epoch = dataset_utils.get_inputs(args.indir,
+    if args.dataset_hparams_dict:
+        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
+    else:
+        dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
+
+    dataset, train_inputs, steps_per_epoch = dataset_utils.get_inputs(args.input_dir,
                                                                       'link_bot',
-                                                                      args.dataset_hparams_dict,
+                                                                      dataset_hparams_dict,
                                                                       '',
                                                                       mode='train',
                                                                       epochs=1,

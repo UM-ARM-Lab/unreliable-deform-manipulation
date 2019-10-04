@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import argparse
 import pathlib
+import shutil
+
 import matplotlib.pyplot as plt
 
 import numpy as np
@@ -38,6 +40,10 @@ def main():
 
     full_output_directory = args.indir.parent / (args.indir.name + "-labeled")
     full_output_directory.mkdir(exist_ok=True)
+
+    # copy the hparams file
+    hparams_path = args.indir / 'hparams.json'
+    shutil.copy(hparams_path, full_output_directory)
 
     current_record_idx = 0
     examples = np.ndarray([args.n_examples_per_record], dtype=np.object)
