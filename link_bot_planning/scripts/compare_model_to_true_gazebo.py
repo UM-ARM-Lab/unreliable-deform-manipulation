@@ -16,31 +16,33 @@ from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import LinkBotStateRequest, WorldControlRequest
 from link_bot_planning import model_utils
-from state_space_dynamics.locally_linear_nn import LocallyLinearNNWrapper
+
+tf.enable_eager_execution()
 
 
-def visualize(args, predicted_traj, actual_traj):
+def visualize(args, predicted_points, actual_traj):
     fig, ax = plt.subplots(nrows=1, ncols=1)
 
     predicted_rope_handle, = ax.plot([], [], color='r', label='predicted')
     predicted_scatt = ax.scatter([], [], color='k', s=10)
     actual_rope_handle, = ax.plot([], [], color='b', label='actual')
     actual_scatt = ax.scatter([], [], color='k', s=10)
+    ax.axis('equal')
     ax.set_xlim([-5.0, 5.0])
     ax.set_ylim([-5.0, 5.0])
 
     def update(t):
-        predicted_rope_config = predicted_traj[t][0]
-        predicted_xs, predicted_ys = plottable_rope_configuration(predicted_rope_config)
+        predicted_xs = predicted_points[t, :, 0]
+        predicted_ys = predicted_points[t, :, 1]
         predicted_rope_handle.set_data(predicted_xs, predicted_ys)
         predicted_scatt.set_offsets([predicted_xs[-1], predicted_ys[-1]])
 
-        actual_rope_config = actual_traj[t][0]
+        actual_rope_config = actual_traj[t]
         actual_xs, actual_ys = plottable_rope_configuration(actual_rope_config)
         actual_rope_handle.set_data(actual_xs, actual_ys)
         actual_scatt.set_offsets([actual_xs[-1], actual_ys[-1]])
 
-    anim = animation.FuncAnimation(fig, update, interval=250, frames=len(predicted_traj))
+    anim = animation.FuncAnimation(fig, update, interval=250, frames=len(predicted_points))
 
     plt.legend()
     plt.tight_layout()
@@ -85,8 +87,8 @@ def main():
     fwd_model = model_utils.load_generic_model(args.model_dir, args.model_type)
     dt = fwd_model.dt
 
-    predicted_traj = fwd_model.predict(np.expand_dims(initial_rope_configuration, axis=0), np.expand_dims(actions, axis=0))
-    print(predicted_traj)
+    predicted_points = fwd_model.predict(np.expand_dims(initial_rope_configuration, axis=0), np.expand_dims(actions, axis=0))
+    predicted_points = predicted_points[0]
 
     # execute actions in gazebo
     action_msg = LinkBotVelocityAction()
@@ -106,9 +108,8 @@ def main():
         actual_traj.append(actual_config)
 
     actual_traj = np.array(actual_traj)
-    actual_traj = np.expand_dims(actual_traj, axis=1)
 
-    visualize(args, predicted_traj, actual_traj)
+    visualize(args, predicted_points, actual_traj)
 
 
 if __name__ == '__main__':
