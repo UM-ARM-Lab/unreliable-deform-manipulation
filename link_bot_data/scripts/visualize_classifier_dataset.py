@@ -15,11 +15,12 @@ def main():
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--is-labeled', action='store_true')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
 
     args = parser.parse_args()
 
-    classifier_dataset = ClassifierDataset(args.indir)
+    classifier_dataset = ClassifierDataset(args.indir, is_labeled=args.is_labeled)
     dataset = classifier_dataset.get_dataset(mode=args.mode,
                                              shuffle=args.shuffle,
                                              num_epochs=1,
@@ -33,12 +34,15 @@ def main():
         actual_sdf_extent = example_dict['actual_sdf/extent'].numpy()
         state = example_dict['state'].numpy()
         next_state = example_dict['next_state'].numpy()
-        action = example_dict['action'].numpy()
         planned_state = example_dict['planned_state'].numpy()
         planned_next_state = example_dict['planned_next_state'].numpy()
+        if args.is_labeled:
+            label = example_dict['label'].numpy()
+        else:
+            label = None
 
         plot_classifier_data(actual_sdf, actual_sdf_extent, next_state, planned_next_state, planned_sdf, planned_sdf_extent,
-                             planned_state, state, i)
+                             planned_state, state, i, label)
 
 
 if __name__ == '__main__':

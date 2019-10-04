@@ -5,7 +5,7 @@ from link_bot_data.visualization import plot_rope_configuration
 
 
 def plot_classifier_data(actual_sdf, actual_sdf_extent, next_state, planned_next_state, planned_sdf, planned_sdf_extent,
-                         planned_state, state, i=0):
+                         planned_state, state, i=0, label=None):
     fig = plt.figure()
     axes = plt.subplot()
     plt.imshow(np.flipud(planned_sdf) > 0, extent=planned_sdf_extent, zorder=1, vmin=0, vmax=1, cmap='viridis')
