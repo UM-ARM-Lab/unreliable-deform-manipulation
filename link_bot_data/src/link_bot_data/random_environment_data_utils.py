@@ -90,7 +90,7 @@ def plot_sdf_and_ovs(args, sdf_data, threshold, rope_configuration, sdf_constrai
                      combined_labels=None):
     plt.figure()
     binary = sdf_data.sdf < threshold
-    plt.imshow(np.flipud(binary.T), extent=sdf_data.extent)
+    plt.imshow(np.flipud(binary), extent=sdf_data.extent)
 
     xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
     ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
@@ -113,7 +113,7 @@ def plot_sdf_and_ovs(args, sdf_data, threshold, rope_configuration, sdf_constrai
 
     if args.show_sdf_data:
         plt.figure()
-        plt.imshow(np.flipud(sdf_data.sdf.T), extent=sdf_data.extent)
+        plt.imshow(np.flipud(sdf_data.sdf), extent=sdf_data.extent)
         subsample = 2
         x_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[0])
         y_range = np.arange(sdf_data.extent[0], sdf_data.extent[1], subsample * sdf_data.resolution[1])

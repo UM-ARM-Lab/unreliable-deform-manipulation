@@ -15,7 +15,18 @@ from link_bot_pycommon.link_bot_sdf_utils import point_to_sdf_idx
 tf.enable_eager_execution()
 
 
-def show_error(rope_config, action, image, sdf_image, x, y, predicted_violated, true_violated, signed_distance, vx, vy):
+def show_error(state,
+               next_state,
+               planned_state,
+               planned_next_state,
+               action,
+               sdf_image,
+               extent,
+               x,
+               y,
+               predicted_violated,
+               true_violated,
+               signed_distance):
     fig, ax = plt.subplots()
     arena_size = 0.5
 
@@ -25,17 +36,20 @@ def show_error(rope_config, action, image, sdf_image, x, y, predicted_violated, 
     ax.set_ylim([-arena_size, arena_size])
     ax.axis("equal")
 
-    ax.imshow(image, extent=[-0.53, 0.53, -0.53, 0.53], zorder=0)
-    ax.imshow(sdf_image, extent=[-0.5, 0.5, -0.5, 0.5], zorder=0, alpha=0.5)
+    ax.imshow(sdf_image, extent=extent, zorder=0, alpha=0.5)
 
-    plt.quiver(rope_config[4], rope_config[5], action[0], action[1], zorder=4)
+    plt.quiver(planned_state[4], planned_state[5], action[0], action[1], zorder=4)
 
-    plot_rope_configuration(ax, rope_config, linewidth=3, zorder=1, c='b')
-    plt.scatter(rope_config[4], rope_config[5], c='r' if predicted_violated else 'g', s=200, zorder=2)
+    plot_rope_configuration(ax, state, linewidth=3, zorder=1, c='r', label='state')
+    plot_rope_configuration(ax, next_state, linewidth=3, zorder=1, c='orange', label='next state')
+    plot_rope_configuration(ax, planned_state, linewidth=3, zorder=1, c='b', label='planned state')
+    plot_rope_configuration(ax, planned_next_state, linewidth=3, zorder=1, c='c', label='planned next state')
+
+    plt.scatter(planned_state[4], planned_state[5], c='r' if predicted_violated else 'g', s=200, zorder=2)
     plt.scatter(x, y, c='w', s=100, zorder=2)
-    plt.scatter(rope_config[4], rope_config[5], c='r' if true_violated else 'g', marker='*', s=150, zorder=3, linewidths=0.1,
+    plt.scatter(planned_state[4], planned_state[5], c='r' if true_violated else 'g', marker='*', s=150, zorder=3, linewidths=0.1,
                 edgecolors='k')
-    plt.title("{} {:.3f},{:.3f} {:.3f},{:.3f}".format(signed_distance, action[0], action[1], vx, vy))
+    plt.title("{:0.3}m ({:.3f},{:.3f})m/s".format(signed_distance, action[0], action[1]))
     plt.show()
 
 
@@ -58,7 +72,7 @@ def main():
     np.random.seed(0)
     tf.random.set_random_seed(0)
 
-    classifier_dataset = ClassifierDataset(args.input_dir)
+    classifier_dataset = ClassifierDataset(args.input_dir, is_labeled=True)
     dataset = classifier_dataset.get_dataset(mode=args.mode,
                                              shuffle=False,
                                              num_epochs=1,
@@ -71,55 +85,77 @@ def main():
     fn = 0
     tp = 0
     tn = 0
-    for x, y in dataset:
-        rope_configuration = x['rope_configurations'].squeeze()
-        sdf = x['sdf'].squeeze()
-        resolution = x['sdf_resolution'].squeeze()
-        image = x['images'].squeeze()
-        origin = x['sdf_origin'].squeeze()
-        action = x['actions'].squeeze()
-        post_action_velocity = x['post_action_velocity'].squeeze()
-        constraint = y['constraints'].squeeze()
+    for example_dict in dataset:
+        state = example_dict['state'].numpy().squeeze()
+        next_state = example_dict['next_state'].numpy().squeeze()
+        planned_state = example_dict['planned_state'].numpy().squeeze()
+        planned_next_state = example_dict['planned_next_state'].numpy().squeeze()
+        sdf = example_dict['planned_sdf/sdf'].numpy().squeeze()
+        extent = example_dict['planned_sdf/extent'].numpy().squeeze()
+        res = example_dict['res'].numpy().squeeze()
+        resolution = np.array([res, res])
+        origin = example_dict['planned_sdf/origin'].numpy().squeeze()
+        action = example_dict['action'].numpy().squeeze()
+        label = example_dict['label'].numpy().squeeze()
 
-        sdf_image = np.flipud(sdf.T) > 0
-        x = rope_configuration[4]
-        y = rope_configuration[5]
+        sdf_image = np.flipud(sdf) > 0
+        head_x = planned_state[4]
+        head_y = planned_state[5]
         if args.cheat:
             dx = action[0] * dataset.hparams.dt
             dy = action[1] * dataset.hparams.dt
-            x += dx
-            y += dy
-            x = min(max(x, -0.48), 0.48)
-            y = min(max(y, -0.48), 0.48)
-        row, col = point_to_sdf_idx(x, y, resolution=resolution, origin=origin)
+            head_y += dx
+            head_y += dy
+        row, col = point_to_sdf_idx(head_x, head_y, resolution=resolution, origin=origin)
         signed_distance = sdf[row, col]
-        predicted_violated = signed_distance < args.distance_threshold
+        predicted_in_collision = signed_distance < args.distance_threshold
 
-        if predicted_violated:
-            if constraint:
-                correct += 1
-                tp += 1
-            else:
+        if predicted_in_collision:
+            if label:
                 incorrect += 1
                 fp += 1
                 if args.show:
-                    show_error(rope_configuration, action, image, sdf_image, x, y, predicted_violated, constraint,
-                               signed_distance, post_action_velocity[0], post_action_velocity[1])
-        else:
-            if constraint:
-                incorrect += 1
-                fn += 1
-                if args.show:
-                    show_error(rope_configuration, action, image, sdf_image, x, y, predicted_violated, constraint,
-                               signed_distance, post_action_velocity[0], post_action_velocity[1])
+                    show_error(state,
+                               next_state,
+                               planned_state,
+                               planned_next_state,
+                               action,
+                               sdf_image,
+                               extent,
+                               head_x,
+                               head_y,
+                               predicted_in_collision,
+                               label,
+                               signed_distance)
             else:
                 correct += 1
+                tp += 1
+        else:
+            if label:
+                correct += 1
                 tn += 1
+            else:
+                incorrect += 1
+                fn += 1
+                # if args.show:
+                #     show_error(state,
+                #                next_state,
+                #                planned_state,
+                #                planned_next_state,
+                #                action,
+                #                sdf_image,
+                #                extent,
+                #                head_x,
+                #                head_y,
+                #                predicted_in_collision,
+                #                label,
+                #                signed_distance)
 
     accuracy = correct / (correct + incorrect)
+    print("accuracy: {:5.3f}".format(accuracy))
+
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
-    print("accuracy: {:5.3f}".format(accuracy))
     print("precision: {:5.3f}".format(precision))
     print("recall: {:5.3f}".format(recall))
 

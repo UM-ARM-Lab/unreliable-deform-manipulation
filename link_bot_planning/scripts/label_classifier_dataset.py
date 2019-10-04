@@ -81,7 +81,7 @@ def main():
                 'actual_sdf/extent': float_feature(example_dict['actual_sdf/extent'].numpy()),
                 'actual_sdf/origin': float_feature(example_dict['actual_sdf/origin'].numpy()),
                 'planned_sdf/sdf': float_feature(example_dict['planned_sdf/sdf'].numpy().flatten()),
-                'planned_sdf/extent': float_feature(example_dict['planned_sdf/origin'].numpy()),
+                'planned_sdf/extent': float_feature(example_dict['planned_sdf/extent'].numpy()),
                 'planned_sdf/origin': float_feature(example_dict['planned_sdf/origin'].numpy()),
                 'res': float_feature(example_dict['res'].numpy()), 'w_m': float_feature(example_dict['w_m'].numpy()),
                 'h_m': float_feature(example_dict['h_m'].numpy()), 'state': float_feature(example_dict['state'].numpy()),

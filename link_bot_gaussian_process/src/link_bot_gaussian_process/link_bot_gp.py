@@ -60,7 +60,7 @@ def animate_predict(prediction: np.ndarray,
 
     fig = plt.figure()
     if sdf is not None:
-        plt.imshow(np.flipud(sdf.T) > 0, extent=extent)
+        plt.imshow(np.flipud(sdf) > 0, extent=extent)
 
     pred_x_0 = prediction[0]
     pred_x_0_xs = [pred_x_0[0], pred_x_0[2], pred_x_0[4]]

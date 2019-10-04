@@ -1,11 +1,10 @@
+import json
 import pathlib
-import numpy as np
 import random
 
+import numpy as np
 import tensorflow as tf
-
-import json
-
+from colorama import Fore
 from google.protobuf.json_format import MessageToDict
 
 from link_bot_data.video_prediction_dataset_utils import float_feature
@@ -15,10 +14,14 @@ class ClassifierDataset:
 
     def __init__(self,
                  dataset_dir: pathlib.Path,
+                 is_labeled: bool = False,
                  ):
-
+        self.is_labeled = is_labeled
         self.dataset_dir = dataset_dir
         dataset_hparams_filename = dataset_dir / 'hparams.json'
+        if not self.is_labeled and 'labeled' in str(dataset_dir):
+            print(Fore.YELLOW + "I noticed 'labeled' in the dataset path, so I will attempt to load labels" + Fore.RESET)
+            self.is_labeled = True
         self.hparams = json.load(open(str(dataset_hparams_filename), 'r'))
 
     def parser(self, sdf_shape, n_state, n_action):
@@ -39,6 +42,8 @@ class ClassifierDataset:
                 'planned_state': tf.FixedLenFeature([n_state], tf.float32),
                 'planned_next_state': tf.FixedLenFeature([n_state], tf.float32),
             }
+            if self.is_labeled:
+                features['label'] = tf.FixedLenFeature([1], tf.float32)
             features = tf.parse_single_example(serialized_example, features=features)
 
             return features
