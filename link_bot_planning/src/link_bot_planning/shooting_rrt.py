@@ -51,7 +51,6 @@ class ShootingRRT:
         self.control_space.setBounds(control_bounds)
 
         self.ss = oc.SimpleSetup(self.control_space)
-        # self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
 
         self.si = self.ss.getSpaceInformation()
         self.si.setPropagationStepSize(self.dt)

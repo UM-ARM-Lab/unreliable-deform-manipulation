@@ -22,7 +22,7 @@ from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_sdf_data, get_local_sdf_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
-from link_bot_planning import shooting_rrt, model_utils
+from link_bot_planning import shooting_rrt, model_utils, classifier_utils
 from link_bot_planning.goals import sample_goal
 from link_bot_pycommon.args import my_formatter
 from visual_mpc import gazebo_trajectory_execution
@@ -35,11 +35,12 @@ def collect_classifier_data(args):
 
     fwd_model = model_utils.load_generic_model(args.fwd_model_dir, args.fwd_model_type)
     # TODO: put this inside the generic model loader
-    model_path_info = args.model_dir.parts[1:]
+    model_path_info = args.fwd_model_dir.parts[1:]
 
     dt = fwd_model.dt
 
-    validator_model = classifier_utils.load_generic_model(args.validator_model_dir, args.validator_model_type)
+    # When collecting our classifier dataset, we do not use a classifier
+    validator_model = classifier_utils.load_generic_model('', 'none')
 
     assert args.env_w >= args.sdf_w
     assert args.env_h >= args.sdf_h
@@ -232,8 +233,6 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
-    parser.add_argument("validator_model_dir", help="load this saved validator model file", type=pathlib.Path)
-    parser.add_argument("validator_model_type", choices=['cnn', 'nn'], default='cnn')
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-envs", type=int, default=32, help='number of environments')
     parser.add_argument("--n-targets-per-env", type=int, default=10, help='number of targets/plans per environment')

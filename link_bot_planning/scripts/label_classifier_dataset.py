@@ -17,10 +17,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('indir', type=pathlib.Path)
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
+    parser.add_argument('--n-examples-per-record', type=int, default=128)
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
-    parser.add_argument('--pre', type=float, default=1)
-    parser.add_argument('--post', type=float, default=1)
+    parser.add_argument('--pre', type=float, default=0.2516)
+    parser.add_argument('--post', type=float, default=0.2516)
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
 
     args = parser.parse_args()
@@ -36,18 +37,19 @@ def main():
     post_dists = []
 
     full_output_directory = args.indir.parent / (args.indir.name + "-labeled")
-    print(full_output_directory)
+    full_output_directory.mkdir(exist_ok=True)
 
     current_record_idx = 0
-    examples = np.ndarray()
-    for example_idx, example_dict in enumerate(dataset):
+    examples = np.ndarray([args.n_examples_per_record], dtype=np.object)
+    example_idx = 0
+    positive_labels = 0
+    negative_labels = 0
+    for example_dict in dataset:
         state = example_dict['state'].numpy()
         next_state = example_dict['next_state'].numpy()
         action = example_dict['action'].numpy()
         planned_state = example_dict['planned_state'].numpy()
         planned_next_state = example_dict['planned_next_state'].numpy()
-
-        # TODO: Try filtering out any examples where the start state is very far apart?
 
         # Compute the label for whether our model should be trusted
         pre_transition_distance = np.linalg.norm(state - planned_state)
@@ -56,16 +58,34 @@ def main():
         pre_dists.append(pre_transition_distance)
         post_dists.append(post_transition_distance)
 
-        if pre_transition_distance > args.pre or post_transition_distance > args.post:
-            label = 0
-        else:
+        if pre_transition_distance < args.pre and post_transition_distance < args.post:
             label = 1
+            positive_labels += 1
+        else:
+            label = 0
+            negative_labels += 1
 
-        features = dict((k, float_feature(v)) for k, v in example_dict)
-        print(features)
-        features['label'] = float_feature(np.array([label]))
+        # TODO: figure out a better way to do this
+        features = {
+            'actual_sdf/sdf': float_feature(example_dict['actual_sdf/sdf'].numpy().flatten()),
+            'actual_sdf/extent': float_feature(example_dict['actual_sdf/extent'].numpy()),
+            'actual_sdf/origin': float_feature(example_dict['actual_sdf/origin'].numpy()),
+            'planned_sdf/sdf': float_feature(example_dict['planned_sdf/sdf'].numpy().flatten()),
+            'planned_sdf/extent': float_feature(example_dict['planned_sdf/origin'].numpy()),
+            'planned_sdf/origin': float_feature(example_dict['planned_sdf/origin'].numpy()),
+            'res': float_feature(example_dict['res'].numpy()), 'w_m': float_feature(example_dict['w_m'].numpy()),
+            'h_m': float_feature(example_dict['h_m'].numpy()), 'state': float_feature(example_dict['state'].numpy()),
+            'next_state': float_feature(example_dict['next_state'].numpy()),
+            'action': float_feature(example_dict['action'].numpy()),
+            'planned_state': float_feature(example_dict['planned_state'].numpy()),
+            'planned_next_state': float_feature(example_dict['planned_next_state'].numpy()),
+            'label': float_feature(np.array([label]))
+        }
         example_proto = tf.train.Example(features=tf.train.Features(feature=features))
         example = example_proto.SerializeToString()
+        examples[current_record_idx] = example
+        current_record_idx += 1
+        example_idx += 1
 
         if current_record_idx == args.n_examples_per_record:
             # save to a TF record
@@ -79,8 +99,18 @@ def main():
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))
 
-    plt.hist(pre_dists, label='pre')
-    plt.hist(post_dists, label='post')
+            current_record_idx = 0
+
+    print("Positive labels: {}".format(positive_labels))
+    print("Negative labels: {}".format(negative_labels))
+    percent_positive = positive_labels / (positive_labels + negative_labels) * 100
+    print("Class balance : {:3.2f}% positive".format(percent_positive))
+
+    counts, _, _ = plt.hist(pre_dists, label='pre', alpha=0.5, bins=100)
+    max_count = np.max(counts)
+    plt.hist(post_dists, label='post', alpha=0.5, bins=100)
+    plt.plot([args.pre, args.pre], [0, max_count], label='pre threshold')
+    plt.plot([args.post, args.post], [0, max_count], label='post threshold', linestyle='--')
     plt.legend()
     plt.show()
 
