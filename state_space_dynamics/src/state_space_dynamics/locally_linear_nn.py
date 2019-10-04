@@ -4,7 +4,6 @@ import time
 
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.eager as tfe
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
 from tensorflow.python.training.checkpointable.data_structures import NoDependency
@@ -43,7 +42,7 @@ class LocallyLinearNN(tf.keras.Model):
         states = input_dict['states']
         actions = input_dict['actions']
         input_sequence_length = actions.shape[1]
-        s_0 = layers.Reshape(target_shape=[input_sequence_length, self.n_dim, 1])(states)[:, 0]
+        s_0 = tf.expand_dims(states[:, 0], axis=2)
 
         gen_states = [s_0]
         for t in range(input_sequence_length):
@@ -254,12 +253,14 @@ class LocallyLinearNNWrapper:
         :param np_actions: [batch, T, 2]
         :return: [batch, T+1, 3, 2]
         """
-        np_actions = np.expand_dims(np_actions, axis=0)
         batch, T, _ = np_actions.shape
         states = tf.convert_to_tensor(np_first_states, dtype=tf.float32)
+        states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
         actions = tf.convert_to_tensor(np_actions, dtype=tf.float32)
         test_x = {
+            # must be batch, T, 6
             'states': states,
+            # must be batch, T, 2
             'actions': actions,
         }
         predictions = self.net(test_x)

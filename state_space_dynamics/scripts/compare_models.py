@@ -53,10 +53,10 @@ def generate(args):
     llnn = LocallyLinearNNWrapper(args.llnn_dir)
 
     models = {
-        'LL-NN': llnn,
-        'rigid-translation': rigid_translation,
-        'GP no penalty': no_penalty_gp,
         'GP with penalty': penalty_gp,
+        'GP no penalty': no_penalty_gp,
+        'rigid-translation': rigid_translation,
+        'LL-NN': llnn,
     }
 
     results = generate_results(args.outdir, models, tf_dataset, args.mode)
@@ -90,7 +90,7 @@ def generate_results(outdir, models, tf_dataset, mode):
         results[model_name] = []
         for x, y in tf_dataset:
             states = x['states'].numpy()
-            actions = x['actions'].numpy().squeeze()
+            actions = x['actions'].numpy()
             # this is supposed to give us a [batch, n_state] tensor
             first_states = np.expand_dims(states[0, 0], axis=0)
             predicted_points = model.predict(first_states, actions)[0]

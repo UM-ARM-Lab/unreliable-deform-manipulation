@@ -248,7 +248,7 @@ def main():
     parser.add_argument("--n-examples-per-record", type=int, default=128, help='examples per tfrecord')
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
-    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=10.0)
+    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=5.0)
     parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')

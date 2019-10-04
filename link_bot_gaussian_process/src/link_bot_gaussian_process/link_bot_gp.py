@@ -284,7 +284,7 @@ class LinkBotGP:
 
         return min_u
 
-    def predict(self, first_states, actions):
+    def predict(self, first_states, batch_actions):
         """
         It's T+1 because it includes the first state
         :param np_first_states: [batch, 6]
@@ -292,7 +292,7 @@ class LinkBotGP:
         :return: [batch, T+1, 3, 2]
         """
         predictions = []
-        for first_state in first_states:
+        for first_state, actions in zip(first_states, batch_actions):
             np_state = np.expand_dims(first_state, axis=0)
             prediction, _ = predict_one(self, np_state, actions)
             predicted_points = prediction.reshape([-1, 3, 2])
