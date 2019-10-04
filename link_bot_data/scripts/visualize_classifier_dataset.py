@@ -15,12 +15,11 @@ def main():
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
-    parser.add_argument('--is-labeled', action='store_true')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
 
     args = parser.parse_args()
 
-    classifier_dataset = ClassifierDataset(args.indir, is_labeled=args.is_labeled)
+    classifier_dataset = ClassifierDataset(args.indir)
     dataset = classifier_dataset.get_dataset(mode=args.mode,
                                              shuffle=args.shuffle,
                                              num_epochs=1,
@@ -36,7 +35,7 @@ def main():
         next_state = example_dict['next_state'].numpy()
         planned_state = example_dict['planned_state'].numpy()
         planned_next_state = example_dict['planned_next_state'].numpy()
-        if args.is_labeled:
+        if classifier_dataset.is_labeled:
             label = example_dict['label'].numpy()
         else:
             label = None
