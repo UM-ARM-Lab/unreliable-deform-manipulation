@@ -40,7 +40,7 @@ class SimpleCNNModelRunner(BaseClassifierRunner):
                                  loss='binary_crossentropy',
                                  metrics=['accuracy'])
 
-    def violated(self, steps_per_epoch):
+    def check_motion(self, steps_per_epoch):
         # data is none here because the model "has no inputs" in the sense that it's wired directly to the tf dataset
         predicted_violated = (self.keras_model.predict(x=None, steps=steps_per_epoch) > 0.5).astype(np.bool)
         return predicted_violated

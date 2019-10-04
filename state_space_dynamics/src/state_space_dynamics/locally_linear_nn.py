@@ -190,8 +190,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             print("Epoch: {:5d}, Time {:4.1f}s, Training loss: {:8.5f}".format(epoch, dt_per_epoch, training_loss))
             if args.log:
                 tf.contrib.summary.scalar("training loss", training_loss)
-                # TODO: show gifs of predictions in tensorboard
-                #  this just reuses whatever the last back from training was, which I think is fine
                 summary_batch_x, summary_batch_y = train_batch_x, train_batch_y
                 summary_true_states = summary_batch_y['output_states']
                 summary_pred_states = net(summary_batch_x)
@@ -200,12 +198,11 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                 true_images = net.draw_layer([summary_true_states, net.image_resolution, net.image_origin])
                 gif_summary.gif_summary_v2('train_predictions', pred_images, fps=fps, max_outputs=5)
                 gif_summary.gif_summary_v2('train_true', true_images, fps=fps, max_outputs=5)
-                # gifs not showing. try using contrib.Summary
 
             ################
             # validation
             ################
-            if args.validation:
+            if epoch % args.validation_every == 0:
                 val_losses = []
                 for val_x, val_y in val_tf_dataset:
                     true_val_states = val_y['output_states']

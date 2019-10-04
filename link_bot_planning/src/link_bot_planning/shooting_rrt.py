@@ -4,6 +4,7 @@ from ompl import base as ob
 from ompl import control as oc
 
 from link_bot_planning.link_bot_goal import LinkBotGoal
+from link_bot_planning.my_motion_validator import MyMotionValidator
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_planning.state_spaces import LinkBotControlSpace, TailStateSpaceSampler, from_numpy, to_numpy
@@ -11,8 +12,7 @@ from link_bot_planning.state_spaces import LinkBotControlSpace, TailStateSpaceSa
 
 class ShootingRRT:
 
-    def __init__(self, fwd_model, constraint_checker_wrapper, dt, max_v, planner_timeout, n_state, env_w, env_h):
-        self.constraint_checker_wrapper = constraint_checker_wrapper
+    def __init__(self, fwd_model, validator_model, dt, max_v, planner_timeout, n_state, env_w, env_h):
         self.fwd_model = fwd_model
         self.dt = dt
         self.planner_timeout = planner_timeout
@@ -51,15 +51,16 @@ class ShootingRRT:
         self.control_space.setBounds(control_bounds)
 
         self.ss = oc.SimpleSetup(self.control_space)
-        self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
+        # self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.isStateValid))
 
         self.si = self.ss.getSpaceInformation()
         self.si.setPropagationStepSize(self.dt)
         self.si.setMinMaxControlDuration(1, 100)
+        motion_validator = MyMotionValidator(self.si, validator_model)
+        self.si.setMotionValidator(motion_validator)
 
         # use the default state propagator, it won't be called anyways because we use a directed control sampler
-        # self.ss.setStatePropagator(oc.StatePropagator(self.si))
-        self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
+        self.ss.setStatePropagator(oc.StatePropagator(self.si))
 
         self.si.setDirectedControlSamplerAllocator(
             ShootingDirectedControlSampler.allocator(self.fwd_model, self.max_v))
@@ -78,17 +79,6 @@ class ShootingRRT:
         np_s_next = self.fwd_model.fwd_act(np_s, np_u)
 
         from_numpy(np_s_next, state_out, self.n_state)
-
-    def isStateValid(self, state):
-        with self.constraint_checker_wrapper.get_graph().as_default():
-            # check if our model predicts that constraints are violated in this state
-            if not self.state_space.satisfiesBounds(state):
-                return False
-
-            np_state = to_numpy(state, self.n_state)
-            p_reject = self.constraint_checker_wrapper(np_state)
-            reject = np.random.uniform(0, 1) < p_reject
-            return not reject
 
     def plan(self, np_start, tail_goal_point, sdf, verbose=0):
         """

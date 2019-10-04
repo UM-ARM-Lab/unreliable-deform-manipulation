@@ -456,9 +456,9 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBot
     auto control_result = UpdateControl();
     res.actual_path.emplace_back(control_result.configuration);
 
-    // Wait until the setpoint is reached
-    auto const seconds_per_step = model_->GetWorld()->Physics()->GetUpdatePeriod();
+    auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
     auto const steps = static_cast<unsigned int>(req.dt / seconds_per_step);
+    // Wait until the setpoint is reached
     model_->GetWorld()->Step(steps);
   }
 

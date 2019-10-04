@@ -9,6 +9,7 @@ import sys
 import time
 
 import matplotlib.pyplot as plt
+import std_srvs
 import numpy as np
 import ompl.util as ou
 import rospy
@@ -32,11 +33,13 @@ tf.enable_eager_execution()
 def collect_classifier_data(args):
     rospy.init_node('collect_classifier_data')
 
-    fwd_model = model_utils.load_generic_model(args.model_dir, args.model_type)
+    fwd_model = model_utils.load_generic_model(args.fwd_model_dir, args.fwd_model_type)
     # TODO: put this inside the generic model loader
     model_path_info = args.model_dir.parts[1:]
 
     dt = fwd_model.dt
+
+    validator_model = classifier_utils.load_generic_model(args.validator_model_dir, args.validator_model_type)
 
     assert args.env_w >= args.sdf_w
     assert args.env_h >= args.sdf_h
@@ -54,27 +57,8 @@ def collect_classifier_data(args):
         }
         json.dump(options, of, indent=1)
 
-    ###########################################
-    #             Constraint Model            #
-    ###########################################
-    constraint_tf_graph = tf.Graph()
-    with constraint_tf_graph.as_default():
-
-        class ConstraintCheckerWrapper:
-
-            def __init__(self):
-                pass
-
-            @staticmethod
-            def get_graph():
-                return constraint_tf_graph
-
-            def __call__(self, np_state):
-                p_reject = 0.01
-                return p_reject
-
     rrt = shooting_rrt.ShootingRRT(fwd_model=fwd_model,
-                                   constraint_checker_wrapper=ConstraintCheckerWrapper(),
+                                   validator_model=validator_model,
                                    dt=dt,
                                    max_v=args.max_v,
                                    n_state=fwd_model.n_state,
@@ -87,7 +71,7 @@ def collect_classifier_data(args):
     example_idx = 0
     current_record_traj_idx = 0
 
-    inital_object_dict = {
+    initial_object_dict = {
         'moving_box1': [2.0, 0],
         'moving_box2': [-1.5, 0],
         'moving_box3': [-0.5, 1],
@@ -95,7 +79,11 @@ def collect_classifier_data(args):
         'moving_box5': [-1.5, - 2.0],
         'moving_box6': [-0.5, 2.0],
     }
-    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, inital_object_dict)
+    services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
+                                             real_time_rate=args.real_time_rate,
+                                             reset_world=True,
+                                             initial_object_dict=initial_object_dict)
+    services.pause(std_srvs.srv.EmptyRequest())
 
     planning_times = []
     for traj_idx in range(args.n_envs):
@@ -158,6 +146,8 @@ def collect_classifier_data(args):
                 print(Fore.CYAN + "Executing Plan.".format(tail_goal_point) + Fore.RESET)
 
             traj_res = services.execute_trajectory(traj_req)
+            services.pause(std_srvs.srv.EmptyRequest())
+
             # convert ros message into a T x n_state numpy matrix
             actual_rope_configurations = []
             for configuration in traj_res.actual_path:
@@ -230,7 +220,7 @@ def collect_classifier_data(args):
                     writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=args.compression_type)
                     writer.write(serialized_dataset)
                     print("saved {}".format(full_filename))
-                    print("Planning Time: {:7.3}s ({:6.3s}s)".format(np.mean(planning_times), np.std(planning_times)))
+                    print("Planning Time: {:7.3f}s ({:6.3f}s)".format(np.mean(planning_times), np.std(planning_times)))
 
                     current_record_traj_idx = 0
 
@@ -240,8 +230,10 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("model_dir", help="load this saved forward model file", type=pathlib.Path)
-    parser.add_argument("model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
+    parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
+    parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
+    parser.add_argument("validator_model_dir", help="load this saved validator model file", type=pathlib.Path)
+    parser.add_argument("validator_model_type", choices=['cnn', 'nn'], default='cnn')
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-envs", type=int, default=32, help='number of environments')
     parser.add_argument("--n-targets-per-env", type=int, default=10, help='number of targets/plans per environment')

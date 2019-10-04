@@ -6,21 +6,21 @@ import random
 import time
 
 import matplotlib.pyplot as plt
+import std_srvs
 import numpy as np
 import rospy
 import tensorflow as tf
 from matplotlib import animation
 
-from link_bot_data.visualization import plottable_rope_configuration
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.msg import LinkBotVelocityAction
-from link_bot_gazebo.srv import LinkBotStateRequest, WorldControlRequest
+from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
 from link_bot_planning import model_utils
 
 tf.enable_eager_execution()
 
 
-def visualize(args, predicted_points, actual_traj):
+def visualize(args, predicted_points, actual_points):
     fig, ax = plt.subplots(nrows=1, ncols=1)
 
     predicted_rope_handle, = ax.plot([], [], color='r', label='predicted')
@@ -37,8 +37,8 @@ def visualize(args, predicted_points, actual_traj):
         predicted_rope_handle.set_data(predicted_xs, predicted_ys)
         predicted_scatt.set_offsets([predicted_xs[-1], predicted_ys[-1]])
 
-        actual_rope_config = actual_traj[t]
-        actual_xs, actual_ys = plottable_rope_configuration(actual_rope_config)
+        actual_xs = actual_points[t, :, 0]
+        actual_ys = actual_points[t, :, 1]
         actual_rope_handle.set_data(actual_xs, actual_ys)
         actual_scatt.set_offsets([actual_xs[-1], actual_ys[-1]])
 
@@ -65,6 +65,7 @@ def main():
     parser.add_argument("actions", type=pathlib.Path, help='csv file of actions')
     parser.add_argument("--outdir", type=pathlib.Path, help="output visualizations here")
     parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--no-plot', action='store_true')
 
     args = parser.parse_args()
 
@@ -77,12 +78,14 @@ def main():
     # Start Services
     services = gazebo_utils.GazeboServices()
     services.reset_gazebo_environment(reset_model_poses=False)
+    services.pause(std_srvs.srv.EmptyRequest())
 
     state_req = LinkBotStateRequest()
     state = services.get_state.call(state_req)
     initial_rope_configuration = np.array([[p.x, p.y] for p in state.points]).flatten()
 
     actions = np.genfromtxt(args.actions, delimiter=',')
+    actions = np.atleast_2d(actions)
 
     fwd_model = model_utils.load_generic_model(args.model_dir, args.model_type)
     dt = fwd_model.dt
@@ -90,26 +93,30 @@ def main():
     predicted_points = fwd_model.predict(np.expand_dims(initial_rope_configuration, axis=0), np.expand_dims(actions, axis=0))
     predicted_points = predicted_points[0]
 
-    # execute actions in gazebo
-    action_msg = LinkBotVelocityAction()
-    actual_traj = [initial_rope_configuration]
+    traj_req = LinkBotTrajectoryRequest()
+    traj_req.dt = dt
     for action in actions:
-        # publish the command
+        action_msg = LinkBotVelocityAction()
         action_msg.gripper1_velocity.x = action[0]
         action_msg.gripper1_velocity.y = action[1]
-        services.velocity_action_pub.publish(action_msg)
+        traj_req.gripper1_traj.append(action_msg)
 
-        step = WorldControlRequest()
-        step.steps = int(dt / 0.001)  # assuming 0.001s of simulation time per step
-        services.world_control.call(step)  # this will block until stepping is complete
+    traj_res = services.execute_trajectory(traj_req)
 
-        state = services.get_state(state_req)
-        actual_config = gazebo_utils.points_to_config(state.points)
-        actual_traj.append(actual_config)
+    # convert ros message into a T x n_state numpy matrix
+    actual_points = []
+    for configuration in traj_res.actual_path:
+        points = []
+        for point in configuration.points:
+            points.append([point.x, point.y])
+        actual_points.append(points)
+    actual_points = np.array(actual_points)
 
-    actual_traj = np.array(actual_traj)
+    position_errors = np.linalg.norm(predicted_points - actual_points, axis=2)
+    print("mean error: {:5.3f}".format(np.mean(position_errors)))
 
-    visualize(args, predicted_points, actual_traj)
+    if not args.no_plot:
+        visualize(args, predicted_points, actual_points)
 
 
 if __name__ == '__main__':
