@@ -44,6 +44,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
         min_distance = np.inf
         min_u = None
         min_np_s_next = None
+        # t0 = time.time()
         for i in range(self.n_samples):
             theta = np.random.uniform(-np.pi, np.pi)
             u = np.array([[self.max_v * np.cos(theta), self.max_v * np.sin(theta)]])
@@ -62,5 +63,6 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
         duration_steps = 1
         if not self.si.isValid(target_out):
             duration_steps = 0
+        # print(time.time() - t0)
 
         return duration_steps

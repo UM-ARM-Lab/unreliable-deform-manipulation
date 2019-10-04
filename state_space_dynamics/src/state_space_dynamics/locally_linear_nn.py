@@ -46,7 +46,6 @@ class LocallyLinearNN(tf.keras.Model):
         s_0 = layers.Reshape(target_shape=[input_sequence_length, self.n_dim, 1])(states)[:, 0]
 
         gen_states = [s_0]
-        t0 = time.time()
         for t in range(input_sequence_length):
             s_t = gen_states[-1]
             action_t = actions[:, t]
@@ -75,7 +74,6 @@ class LocallyLinearNN(tf.keras.Model):
             s_t_plus_1_flat = s_t + tf.linalg.matmul(B_t, u_t) * self.hparams['dt']
 
             gen_states.append(s_t_plus_1_flat)
-        # print(time.time() - t0)
 
         gen_states = tf.stack(gen_states)
         gen_states = tf.transpose(gen_states, [1, 0, 2, 3])
@@ -101,7 +99,8 @@ def eval(hparams, test_tf_dataset, args):
         batch_test_loss = loss(y_true=test_true_states, y_pred=test_gen_states)
         test_gen_points = tf.reshape(test_gen_states, [test_gen_states.shape[0], test_gen_states.shape[1], 3, 2])
         test_true_points = tf.reshape(test_true_states, [test_true_states.shape[0], test_true_states.shape[1], 3, 2])
-        batch_test_position_error = tf.reduce_mean(tf.linalg.norm(test_gen_points - test_true_points, axis=3), axis=0)
+        position_errors = tf.linalg.norm(test_gen_points - test_true_points, axis=3)
+        batch_test_position_error = tf.reduce_mean(position_errors, axis=0)
         test_losses.append(batch_test_loss)
         test_position_errors.append(batch_test_position_error)
     test_loss = np.mean(test_losses)
@@ -257,8 +256,8 @@ class LocallyLinearNNWrapper:
         """
         np_actions = np.expand_dims(np_actions, axis=0)
         batch, T, _ = np_actions.shape
-        states = tf.convert_to_tensor(np_first_states)
-        actions = tf.convert_to_tensor(np_actions)
+        states = tf.convert_to_tensor(np_first_states, dtype=tf.float32)
+        actions = tf.convert_to_tensor(np_actions, dtype=tf.float32)
         test_x = {
             'states': states,
             'actions': actions,

@@ -103,7 +103,7 @@ def eval(args):
 
     try:
         ###############
-        # Etestuate
+        # Evaluate
         ###############
         module.eval(model_hparams, test_tf_dataset, args)
     except KeyboardInterrupt:
