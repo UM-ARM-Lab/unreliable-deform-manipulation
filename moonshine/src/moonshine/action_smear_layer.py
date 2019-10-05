@@ -2,9 +2,7 @@ import tensorflow as tf
 import tensorflow.keras.layers as layers
 
 
-def action_smear_layer(action, h, w):
-    _, input_sequence_length, action_dim = action.shape
-
+def action_smear_layer(input_sequence_length, action_dim, h, w):
     reshape = layers.Reshape(target_shape=[input_sequence_length, 1, 1, action_dim], name='smear_reshape')
     smear = layers.Lambda(function=lambda action_reshaped: tf.tile(action_reshaped, [1, 1, h, w, 1]),
                           name='spatial_tile')

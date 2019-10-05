@@ -11,7 +11,7 @@ tf.enable_eager_execution()
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('indir', type=pathlib.Path)
+    parser.add_argument('input_dir', type=pathlib.Path)
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
@@ -19,12 +19,11 @@ def main():
 
     args = parser.parse_args()
 
-    classifier_dataset = ClassifierDataset(args.indir)
+    classifier_dataset = ClassifierDataset(args.input_dir)
     dataset = classifier_dataset.get_dataset(mode=args.mode,
                                              shuffle=args.shuffle,
                                              num_epochs=1,
-                                             seed=args.seed,
-                                             compression_type=args.compression_type)
+                                             seed=args.seed)
 
     for i, example_dict in enumerate(dataset):
         planned_sdf = example_dict['planned_sdf/sdf'].numpy()

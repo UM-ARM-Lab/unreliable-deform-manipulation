@@ -8,4 +8,4 @@ setup_args = generate_distutils_setup(
     packages=['link_bot_classifiers'],
     package_dir={'': 'src'})
 
-setup(requires=['keras', 'np', 'tensorflow'], **setup_args)
+setup(requires=['progressbar2', 'keras', 'np', 'tensorflow'], **setup_args)

@@ -17,7 +17,6 @@ class LocallyLinearNN(tf.keras.Model):
 
     def __init__(self, hparams, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.initial_epoch = 0
         self.hparams = NoDependency(hparams)
         self.n_dim = self.hparams['n_points'] * 2
         self.m_dim = self.hparams['n_control']
@@ -87,7 +86,6 @@ def eval(hparams, test_tf_dataset, args):
     ckpt.restore(manager.latest_checkpoint)
     print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
 
-    # TODO: should we make sure that we use the same loss upon restoring the checkpoint?
     loss = tf.keras.losses.MeanSquaredError()
 
     test_losses = []

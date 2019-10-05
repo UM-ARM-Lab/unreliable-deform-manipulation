@@ -7,9 +7,9 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
+import link_bot_classifiers
+from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon import experiments_util
-from state_space_dynamics import get_model_module
-from video_prediction.datasets import dataset_utils
 
 tf.enable_eager_execution()
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -21,47 +21,34 @@ def train(args):
     else:
         log_path = None
 
-    if args.dataset_hparams_dict:
-        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
-    else:
-        dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
-
     model_hparams = json.load(open(args.model_hparams, 'r'))
-    model_hparams['dt'] = dataset_hparams_dict['dt']
-    dataset_hparams_dict['sequence_length'] = model_hparams['sequence_length']
 
     ###############
     # Datasets
     ###############
-    train_dataset, train_tf_dataset = dataset_utils.get_dataset(args.input_dir,
-                                                                'state_space',
-                                                                dataset_hparams_dict,
-                                                                args.dataset_hparams,
-                                                                shuffle=False,
-                                                                mode='train',
-                                                                epochs=1,  # we handle epochs in our training loop
-                                                                seed=args.seed,
-                                                                batch_size=args.batch_size)
-    val_dataset, val_tf_dataset = dataset_utils.get_dataset(args.input_dir,
-                                                            'state_space',
-                                                            dataset_hparams_dict,
-                                                            args.dataset_hparams,
-                                                            shuffle=False,
-                                                            mode='val',
-                                                            epochs=1,
-                                                            seed=args.seed,
-                                                            batch_size=args.batch_size)
+    train_classifier_dataset = ClassifierDataset(args.input_dir)
+    train_dataset = train_classifier_dataset.get_dataset(mode='train',
+                                                         shuffle=True,
+                                                         num_epochs=1,
+                                                         seed=args.seed,
+                                                         batch_size=args.batch_size)
+    val_classifier_dataset = ClassifierDataset(args.input_dir)
+    val_dataset = val_classifier_dataset.get_dataset(mode='val',
+                                                     shuffle=False,
+                                                     num_epochs=1,
+                                                     seed=args.seed,
+                                                     batch_size=args.batch_size)
 
     ###############
     # Model
     ###############
-    module = get_model_module(model_hparams['model_class'])
+    module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
 
     try:
         ###############
         # Train
         ###############
-        module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args)
+        module.train(model_hparams, train_dataset, val_dataset, log_path, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
@@ -75,37 +62,28 @@ def eval(args):
 
     model_hparams_file = args.checkpoint / 'hparams.json'
     model_hparams = json.load(open(model_hparams_file, 'r'))
-    model_hparams['dt'] = dataset_hparams_dict['dt']
-    if args.sequence_length:
-        dataset_hparams_dict['sequence_length'] = args.sequence_length
-        model_hparams['sequence_length'] = args.sequence_length
-    else:
-        dataset_hparams_dict['sequence_length'] = model_hparams['sequence_length']
     dataset_hparams_dict['sdf_shape'] = model_hparams['sdf_shape']
 
     ###############
     # Dataset
     ###############
-    test_dataset, test_tf_dataset = dataset_utils.get_dataset(args.input_dir,
-                                                              'state_space',
-                                                              dataset_hparams_dict,
-                                                              args.dataset_hparams,
-                                                              shuffle=False,
-                                                              mode='test',
-                                                              epochs=1,
-                                                              seed=args.seed,
-                                                              batch_size=args.batch_size)
+    test_classifier_dataset = ClassifierDataset(args.input_dir)
+    test_dataset = test_classifier_dataset.get_dataset(mode='test',
+                                                       shuffle=False,
+                                                       num_epochs=1,
+                                                       seed=args.seed,
+                                                       batch_size=args.batch_size)
 
     ###############
     # Model
     ###############
-    module = get_model_module(model_hparams['model_class'])
+    module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
 
     try:
         ###############
         # Evaluate
         ###############
-        module.eval(model_hparams, test_tf_dataset, args)
+        module.eval(model_hparams, test_dataset, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
@@ -138,7 +116,6 @@ def main():
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
     eval_parser.add_argument('--dataset-hparams', type=str)
-    eval_parser.add_argument('--sequence-length', type=int, help='overrides hparams files. must be >=2')
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.set_defaults(func=eval)

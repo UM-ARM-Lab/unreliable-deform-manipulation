@@ -94,13 +94,14 @@ class ClassifierDataset:
     def get_dataset(self,
                     mode: str,
                     num_epochs: int,
-                    compression_type: str,
                     shuffle: bool = True,
                     seed: int = 0,
+                    batch_size: int = 32,
                     ):
 
         filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format(mode))]
 
+        compression_type = self.hparams['compression_type']
         options = tf.python_io.TFRecordOptions(compression_type=compression_type)
         example = next(tf.python_io.tf_record_iterator(filenames[0], options=options))
         dict_message = MessageToDict(tf.train.Example.FromString(example))
@@ -123,5 +124,7 @@ class ClassifierDataset:
             dataset = dataset.repeat(num_epochs)
 
         dataset = dataset.map(self.parser(sdf_shape, n_state, n_action))
+        if batch_size > 0 and batch_size is not None:
+            dataset = dataset.batch(batch_size)
 
         return dataset

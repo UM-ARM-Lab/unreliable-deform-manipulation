@@ -49,6 +49,7 @@ def main():
                                                  num_epochs=1,
                                                  shuffle=args.shuffle,
                                                  seed=args.seed,
+                                                 batch_size=0,
                                                  compression_type=args.compression_type)
 
         current_record_idx = 0

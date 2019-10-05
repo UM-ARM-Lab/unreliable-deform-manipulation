@@ -77,6 +77,7 @@ def main():
                                              shuffle=False,
                                              num_epochs=1,
                                              seed=0,
+                                             batch_size=0,
                                              compression_type=args.compression_type)
 
     incorrect = 0

@@ -53,10 +53,10 @@ def collect_classifier_data(args):
 
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
-            'dt': dt,
-            'args': dict([(k, str(v)) for k, v in vars(args).items()])
+            'dt': dt
         }
-        json.dump(options, of, indent=1)
+        options.update(dict([(k, str(v)) for k, v in vars(args).items()]))
+        json.dump(options, of, indent=2)
 
     rrt = shooting_rrt.ShootingRRT(fwd_model=fwd_model,
                                    validator_model=validator_model,

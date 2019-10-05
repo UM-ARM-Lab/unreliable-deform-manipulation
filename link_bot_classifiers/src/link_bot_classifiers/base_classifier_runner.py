@@ -9,51 +9,11 @@ import sys
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
-from tensorflow.keras.backend import set_session
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
 
 from link_bot_classifiers import my_viz
 from link_bot_classifiers.callbacks import StopAtAccuracy, DebugCallback
-from moonshine.bias_layer import BiasLayer
-from moonshine.distance_matrix_layer import DistanceMatrix
-from moonshine.out_of_bounds_regularization import OutOfBoundsRegularizer
-from moonshine.raster_points_layer import RasterPoints
-from moonshine.sdf_lookup import SDFLookup
-from link_bot_classifiers.label_types import LabelType
 from link_bot_pycommon import experiments_util
 from video_prediction.datasets import dataset_utils
-
-custom_objects = {
-    'BiasLayer': BiasLayer,
-    'SDFLookup': SDFLookup,
-    'DistanceMatrix': DistanceMatrix,
-    'RasterPoints': RasterPoints,
-    'OutOfBoundsRegularizer': OutOfBoundsRegularizer,
-}
-
-
-class ConstraintTypeMapping:
-
-    def __call__(self, combined_str):
-        k, v = combined_str.split(":=")
-        # check that the string is a valid enum
-        try:
-            label_type = LabelType[k]
-        except KeyError:
-            print(Fore.RED + "{} is not a valid LabelType. Choose one of:".format(label_type))
-            for label_type in LabelType:
-                print('  ' + label_type.name)
-            print(Fore.RESET)
-            sys.exit(-2)
-        try:
-            label_type = LabelType[v]
-        except KeyError:
-            print(Fore.RED + "{} is not a valid LabelType. Choose one of:".format(label_type))
-            for label_type in LabelType:
-                print('  ' + label_type.name)
-            print(Fore.RESET)
-            sys.exit(-2)
-        return k, v
 
 
 def base_parser():

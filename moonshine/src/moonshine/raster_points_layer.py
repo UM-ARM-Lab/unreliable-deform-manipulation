@@ -19,19 +19,17 @@ class RasterPoints(tf.keras.layers.Layer):
 
     def call(self, inputs, **kwargs):
         """
-        :param x: [sequence_length, n_points * 2], [sequence_length, 2], [sequence_length, 2]
+        :param x: [batch_size, sequence_length, n_points * 2], [batch_size, sequence_length, 2], [batch_size, sequence_length, 2]
         :return: sdf_shape
         """
         x, resolution, origin = inputs
-        points = tf.reshape(x, [-1, self.n_points, 2], name='points_reshape')
-
         batch_size = tf.cast(tf.shape(x)[0], tf.int64)
+        points = tf.reshape(x, [batch_size, self.sequence_length, self.n_points, 2], name='points_reshape')
+
         rope_images = tfe.Variable(
             initial_value=lambda: tf.zeros([batch_size, self.sequence_length, self.sdf_shape[0], self.sdf_shape[1], self.n_points]),
             name='rope_images',
             trainable=False)
-        resolution = tf.tile(resolution, [batch_size, 1])
-        origin = tf.tile(origin, [batch_size, 1])
         row_y_indices = tf.reshape(tf.cast(points[:, :, 1] / resolution[:, 0:1] + origin[:, 0:1], tf.int64), [-1])
         col_x_indices = tf.reshape(tf.cast(points[:, :, 0] / resolution[:, 1:2] + origin[:, 1:2], tf.int64), [-1])
         batch_indices = tf.reshape(tf.tile(tf.reshape(tf.range(batch_size), [-1, 1]), [1, self.n_points * self.sequence_length]),
