@@ -163,7 +163,6 @@ def format_inverse_data(data, traj_idx_start=0, traj_idx_end=-1, examples_per_tr
     start_indeces = np.random.randint(1, max_n_steps, size=(n_traj * examples_per_traj))
     end_indeces = np.random.randint(1, max_n_steps, size=(n_traj * examples_per_traj))
     for i in np.argwhere(start_indeces > end_indeces):
-        # DEBUGGING:
         # https://stackoverflow.com/questions/14836228/is-there-a-standardized-method-to-swap-two-variables-in-python
         # yes, this is correct.
         start_indeces[i], end_indeces[i] = end_indeces[i], start_indeces[i]

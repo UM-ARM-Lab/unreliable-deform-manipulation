@@ -1,6 +1,7 @@
 import json
 import pathlib
 import random
+from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -94,9 +95,9 @@ class ClassifierDataset:
     def get_dataset(self,
                     mode: str,
                     num_epochs: int,
+                    batch_size: Optional[int],
                     shuffle: bool = True,
                     seed: int = 0,
-                    batch_size: int = 32,
                     ):
 
         filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format(mode))]
@@ -120,7 +121,7 @@ class ClassifierDataset:
             dataset = dataset.repeat(num_epochs)
 
         dataset = dataset.map(self.parser(sdf_shape, n_state, n_action))
-        if batch_size > 0 and batch_size is not None:
+        if batch_size is not None and batch_size > 0:
             dataset = dataset.batch(batch_size)
 
         return dataset

@@ -25,7 +25,7 @@ def show_error(state,
                x,
                y,
                predicted_violated,
-               true_violated,
+               label_model_reliable,
                signed_distance):
     fig, ax = plt.subplots()
     arena_size = 0.5
@@ -38,18 +38,19 @@ def show_error(state,
 
     ax.imshow(sdf_image, extent=extent, zorder=0, alpha=0.5)
 
-    plt.quiver(planned_state[4], planned_state[5], action[0], action[1], zorder=4)
+    # plt.quiver(planned_state[4], planned_state[5], action[0], action[1], zorder=4)
 
     plot_rope_configuration(ax, state, linewidth=3, zorder=1, c='r', label='state')
     plot_rope_configuration(ax, next_state, linewidth=3, zorder=1, c='orange', label='next state')
     plot_rope_configuration(ax, planned_state, linewidth=3, zorder=1, c='b', label='planned state')
     plot_rope_configuration(ax, planned_next_state, linewidth=3, zorder=1, c='c', label='planned next state')
 
-    plt.scatter(planned_state[4], planned_state[5], c='r' if predicted_violated else 'g', s=200, zorder=2)
+    plt.scatter(planned_state[4], planned_state[5], c='r' if predicted_violated else 'g', s=200, zorder=2, label='pred')
     plt.scatter(x, y, c='w', s=100, zorder=2)
-    plt.scatter(planned_state[4], planned_state[5], c='r' if true_violated else 'g', marker='*', s=150, zorder=3, linewidths=0.1,
-                edgecolors='k')
+    plt.scatter(planned_state[4], planned_state[5], c='g' if label_model_reliable else 'r', marker='*', s=150, zorder=3, linewidths=0.1,
+                edgecolors='k', label='true')
     plt.title("{:0.3}m ({:.3f},{:.3f})m/s".format(signed_distance, action[0], action[1]))
+    plt.legend()
     plt.show()
 
 
@@ -77,8 +78,8 @@ def main():
                                              shuffle=False,
                                              num_epochs=1,
                                              seed=0,
-                                             batch_size=0,
-                                             compression_type=args.compression_type)
+                                             batch_size=None,  # nobatching
+                                             )
 
     incorrect = 0
     correct = 0
@@ -97,7 +98,7 @@ def main():
         resolution = np.array([res, res])
         origin = example_dict['planned_sdf/origin'].numpy().squeeze()
         action = example_dict['action'].numpy().squeeze()
-        label = example_dict['label'].numpy().squeeze()
+        label_model_is_reliable = example_dict['label'].numpy().squeeze()
 
         sdf_image = np.flipud(sdf) > 0
         head_x = planned_state[4]
@@ -112,7 +113,7 @@ def main():
         predicted_in_collision = signed_distance < args.distance_threshold
 
         if predicted_in_collision:
-            if label:
+            if label_model_is_reliable:
                 incorrect += 1
                 fp += 1
                 if args.show:
@@ -126,31 +127,31 @@ def main():
                                head_x,
                                head_y,
                                predicted_in_collision,
-                               label,
+                               label_model_is_reliable,
                                signed_distance)
             else:
                 correct += 1
                 tp += 1
         else:
-            if label:
+            if label_model_is_reliable:
                 correct += 1
                 tn += 1
             else:
                 incorrect += 1
                 fn += 1
-                # if args.show:
-                #     show_error(state,
-                #                next_state,
-                #                planned_state,
-                #                planned_next_state,
-                #                action,
-                #                sdf_image,
-                #                extent,
-                #                head_x,
-                #                head_y,
-                #                predicted_in_collision,
-                #                label,
-                #                signed_distance)
+                if args.show:
+                    show_error(state,
+                               next_state,
+                               planned_state,
+                               planned_next_state,
+                               action,
+                               sdf_image,
+                               extent,
+                               head_x,
+                               head_y,
+                               predicted_in_collision,
+                               label_model_is_reliable,
+                               signed_distance)
 
     accuracy = correct / (correct + incorrect)
     print("accuracy: {:5.3f}".format(accuracy))

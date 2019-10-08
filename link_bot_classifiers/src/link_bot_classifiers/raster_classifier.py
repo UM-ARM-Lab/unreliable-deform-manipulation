@@ -2,19 +2,19 @@
 from __future__ import print_function
 
 import json
-import progressbar
+import matplotlib.pyplot as plt
+import pathlib
 import time
 
 import numpy as np
+import progressbar
 import tensorflow as tf
-import pathlib
-from colorama import Fore, Style
 import tensorflow.keras.layers as layers
+from colorama import Fore, Style
 from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
 from link_bot_pycommon import experiments_util
 from moonshine.raster_points_layer import RasterPoints
-from moonshine.simple_cnn_layer import simple_cnn_relu_layer
 
 
 class RasterClassifier(tf.keras.Model):
@@ -25,7 +25,13 @@ class RasterClassifier(tf.keras.Model):
         self.m_dim = self.hparams['n_control']
 
         self.raster = RasterPoints(self.hparams['sdf_shape'])
-        self.cnn = simple_cnn_relu_layer(self.hparams['conv_filters'], self.hparams['fc_layer_sizes'])
+        self.conv1 = layers.Conv2D(16, [5, 5], activation='relu')
+        self.pool1 = layers.MaxPool2D(2)
+        self.conv2 = layers.Conv2D(8, [3, 3], activation='relu')
+        self.pool2 = layers.MaxPool2D(2)
+        self.conv_flatten = layers.Flatten()
+        self.dense1 = layers.Dense(16, activation='relu')
+        self.dense2 = layers.Dense(16, activation='relu')
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
     def call(self, input_dict, training=None, mask=None):
@@ -56,12 +62,33 @@ class RasterClassifier(tf.keras.Model):
         planned_next_rope_image = tf.reshape(planned_next_rope_image, image_shape)
 
         # batch, h, w, channel
-        concat = tf.concat((planned_rope_image, planned_next_rope_image, planned_sdf), axis=3)
+        concat_image = tf.concat((planned_rope_image, planned_next_rope_image, planned_sdf), axis=3)
 
         # feed into a CNN
-        out_h = self.cnn(concat)
+        conv_h1 = self.conv1(concat_image)
+        conv_z1 = self.pool1(conv_h1)
+        conv_h2 = self.conv2(conv_z1)
+        conv_z2 = self.pool2(conv_h2)
+        conv_output = self.conv_flatten(conv_z2)
+        h1 = self.dense1(conv_output)
+        h2 = self.dense2(h1)
+        out_h = h2
+
+        # conv_h = concat_image
+        # for conv, pool in self.conv_layers:
+        #     conv_z = conv(conv_h)
+        #     conv_h = pool(conv_z)
+        #     print(conv.weights)
+        #
+        # conv_output = self.conv_flatten(conv_h)
+        #
+        # fc_h = conv_output
+        # for dense in self.dense_layers:
+        #     fc_h = dense(fc_h)
+        # out_h = fc_h
+
         accept_probability = self.output_layer(out_h)
-        return accept_probability
+        return planned_rope_image, planned_next_rope_image, planned_sdf, accept_probability
 
 
 def eval(hparams, test_tf_dataset, args):
@@ -79,18 +106,18 @@ def eval(hparams, test_tf_dataset, args):
     accuracy.reset_states()
     for test_example_dict in test_tf_dataset:
         test_labels = test_example_dict['label']
-        test_predictions = net(test_example_dict)
+        test_predictions = net(test_example_dict)[-1]
         batch_test_loss = loss(y_true=test_labels, y_pred=test_predictions)
         accuracy.update_state(y_true=test_labels, y_pred=test_predictions)
         test_losses.append(batch_test_loss)
     test_loss = np.mean(test_losses)
-    test_accuracy = accuracy.result() * 100
+    test_accuracy = accuracy.result().numpy() * 100
     print("Test Loss:     {:7.4f}".format(test_loss))
     print("Test Accuracy: {:5.3f}%".format(test_accuracy))
 
 
 def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
-    optimizer = tf.train.AdamOptimizer()
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.0001)
     loss = tf.keras.losses.BinaryCrossentropy()
     accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
     net = RasterClassifier(hparams=hparams)
@@ -126,18 +153,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
 
     def train_loop():
-        ################
-        # test the loss before any training occurs
-        ################
-        val_losses = []
-        for val_example_dict_batch in val_tf_dataset:
-            val_true_labels_batch = val_example_dict_batch['label']
-            val_predictions_batch = net(val_example_dict_batch)
-            val_loss_batch = loss(y_true=val_true_labels_batch, y_pred=val_predictions_batch)
-            val_losses.append(val_loss_batch)
-        val_loss = np.mean(val_losses)
-        print("Validation loss before any training: " + Style.BRIGHT + "{:7.4f}".format(val_loss) + Style.RESET_ALL)
-
         for epoch in range(args.epochs):
             ################
             # train
@@ -147,33 +162,56 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             epoch_t0 = time.time()
             accuracy.reset_states()
             for train_example_dict_batch in progressbar.progressbar(train_tf_dataset):
+                step = global_step.numpy()
                 batch_t0 = time.time()
                 train_true_labels_batch = train_example_dict_batch['label']
+
                 with tf.GradientTape() as tape:
-                    train_predictions_batch = net(train_example_dict_batch)
+                    fwd_result = net(train_example_dict_batch)
+                    i1, i2, sdf, train_predictions_batch = fwd_result
                     training_batch_loss = loss(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
-                    accuracy.update_state(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
                 variables = net.trainable_variables
                 gradients = tape.gradient(training_batch_loss, variables)
                 optimizer.apply_gradients(zip(gradients, variables))
                 batch_losses.append(training_batch_loss.numpy())
+                accuracy.update_state(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
 
-                global_step.assign_add(1)
-
-                if args.log:
+                if args.log and step % args.log_grad_every == 0:
                     for grad, var in zip(gradients, variables):
-                        tf.contrib.summary.histogram(var.name + '_grad', grad, step=int(ckpt.step))
+                        tf.contrib.summary.histogram(var.name + '_grad', grad, step=step)
+
+                ####################
+                # Update global step
+                ####################
+                global_step.assign_add(1)
+                step = global_step.numpy()
+
+                if args.verbose >= 4:
+                    plt.figure()
+                    bin = np.tile(sdf[0].numpy() > 0, [1, 1, 3]) * 1.0
+                    i1 = i1[0].numpy()
+                    i2 = i2[0].numpy()
+                    i1_mask = np.tile(i1.sum(axis=2, keepdims=True) > 0, [1, 1, 3])
+                    i2_mask = np.tile(i2.sum(axis=2, keepdims=True) > 0, [1, 1, 3])
+                    mask = (1 - np.logical_or(i1_mask, i2_mask).astype(np.float32))
+                    masked = bin * mask
+                    new_image = masked + i1 + i2
+                    plt.imshow(new_image)
+                    plt.title(train_true_labels_batch[0].numpy()[0])
+                    plt.show()
+
+
                 dt_per_step = time.time() - batch_t0
                 if args.verbose >= 3:
                     print("{:4.1f}ms/step".format(dt_per_step * 1000.0))
-            dt_per_epoch = time.time() - epoch_t0
 
             training_loss = np.mean(batch_losses)
-            print("Epoch: {:5d}, Training Loss: {:7.4f}, Training Accuracy: {:5.2f}%".format(epoch, dt_per_epoch, training_loss))
+            training_accuracy = accuracy.result().numpy() * 100
+            log_msg = "Epoch: {:5d}, Training Loss: {:7.4f}, Training Accuracy: {:5.2f}%"
+            print(log_msg.format(epoch, training_loss, training_accuracy))
             if args.log:
-                training_accuracy = accuracy.result() * 100
-                tf.contrib.summary.scalar('training accuracy', training_accuracy, step=int(ckpt.step))
-                tf.contrib.summary.scalar("training loss", training_loss, step=int(ckpt.step))
+                tf.contrib.summary.scalar('training accuracy', training_accuracy, step=step)
+                tf.contrib.summary.scalar("training loss", training_loss, step=step)
 
             ################
             # validation
@@ -183,12 +221,12 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                 accuracy.reset_states()
                 for val_example_dict_batch in val_tf_dataset:
                     val_true_labels_batch = val_example_dict_batch['label']
-                    val_predictions_batch = net(val_example_dict_batch)
+                    val_predictions_batch = net(val_example_dict_batch)[-1]
                     val_loss_batch = loss(y_true=val_true_labels_batch, y_pred=val_predictions_batch)
                     accuracy.update_state(y_true=val_true_labels_batch, y_pred=val_predictions_batch)
                     val_losses.append(val_loss_batch)
                 val_loss = np.mean(val_losses)
-                val_accuracy = accuracy.result() * 100
+                val_accuracy = accuracy.result().numpy() * 100
                 tf.contrib.summary.scalar('validation loss', val_loss, step=int(ckpt.step))
                 tf.contrib.summary.scalar('validation accuracy', val_accuracy, step=int(ckpt.step))
                 format_message = "Validation Loss: " + Style.BRIGHT + "{:7.4f}" + Style.RESET_ALL
@@ -237,7 +275,7 @@ class RasterClassifierWrapper:
             'res': tf.convert_to_tensor(local_sdf_data.resolution[0]),
             'planned_sdf/origin': tf.convert_to_tensor(local_sdf_data.origin, dtype=tf.int64),
         }
-        accept_probabilities = self.net(test_x)
+        accept_probabilities = self.net(test_x)[-1]
         accept_probabilities = accept_probabilities.numpy()
         accept_probabilities = accept_probabilities.as_type(np.float64)
         return accept_probabilities

@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--no-plot', action='store_true', help='only print statistics')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
 
     args = parser.parse_args()
@@ -26,6 +27,8 @@ def main():
                                              batch_size=1,
                                              seed=args.seed)
 
+    positive_count = 0
+    negative_count = 0
     for i, example_dict in enumerate(dataset):
         planned_sdf = example_dict['planned_sdf/sdf'].numpy().squeeze()
         planned_sdf_extent = example_dict['planned_sdf/extent'].numpy().squeeze()
@@ -37,11 +40,19 @@ def main():
         planned_next_state = example_dict['planned_next_state'].numpy().squeeze()
         if classifier_dataset.is_labeled:
             label = example_dict['label'].numpy().squeeze()
+            if label:
+                positive_count += 1
+            else:
+                negative_count += 1
         else:
             label = None
 
-        plot_classifier_data(actual_sdf, actual_sdf_extent, next_state, planned_next_state, planned_sdf, planned_sdf_extent,
-                             planned_state, state, i, label)
+        if not args.no_plot:
+            plot_classifier_data(actual_sdf, actual_sdf_extent, next_state, planned_next_state, planned_sdf, planned_sdf_extent,
+                                 planned_state, state, i, label)
+
+    class_balance = positive_count / (positive_count + negative_count) * 100
+    print("Class balance: {:4.1f}% positive".format(class_balance))
 
 
 if __name__ == '__main__':

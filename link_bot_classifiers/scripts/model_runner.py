@@ -11,7 +11,10 @@ import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon import experiments_util
 
-tf.enable_eager_execution()
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.ConfigProto(gpu_options=gpu_options)
+tf.enable_eager_execution(config=config)
+
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 
@@ -28,7 +31,8 @@ def train(args):
     ###############
     train_classifier_dataset = ClassifierDataset(args.input_dir)
     train_dataset = train_classifier_dataset.get_dataset(mode='train',
-                                                         shuffle=True,
+                                                         shuffle=False,
+                                                         # shuffle=True, FIXME: DEBUGGING
                                                          num_epochs=1,
                                                          seed=args.seed,
                                                          batch_size=args.batch_size)
@@ -90,6 +94,7 @@ def eval(args):
 
 
 def main():
+    np.set_printoptions(linewidth=250)
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, default=None)
 
@@ -107,6 +112,7 @@ def main():
     train_parser.add_argument('--epochs', type=int, default=100)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
+    train_parser.add_argument('--log-grad-every', type=int, help='report validation every this many steps/batches', default=1000)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=10)
     train_parser.add_argument('--debug', action='store_true')
     train_parser.set_defaults(func=train)
