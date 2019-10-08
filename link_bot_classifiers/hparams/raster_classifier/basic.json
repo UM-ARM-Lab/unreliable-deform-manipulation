@@ -2,7 +2,7 @@
   "model_class": "raster",
   "n_control": 2,
   "sdf_shape": [100, 100],
-  "fc_layer_sizes": [16, 16],
+  "fc_layer_sizes": [32, 32],
   "conv_filters": [
     [16, [5, 5]],
     [16, [3, 3]]

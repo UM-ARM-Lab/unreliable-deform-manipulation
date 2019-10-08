@@ -14,8 +14,9 @@ def plot_classifier_data(actual_sdf, actual_sdf_extent, next_state, planned_next
     plot_rope_configuration(axes, next_state, c='orange', label='next state', zorder=3)
     plot_rope_configuration(axes, planned_state, c='blue', label='planned state', zorder=4)
     plot_rope_configuration(axes, planned_next_state, c='cyan', label='planned next state', zorder=5)
-    label_color = 'g' if label else 'r'
-    plt.plot([-5, 5, 5, -5, -5], [-5, -5, 5, 5, -5], c=label_color, linewidth=6)
+    if label is not None:
+        label_color = 'g' if label else 'r'
+        plt.plot([-5, 5, 5, -5, -5], [-5, -5, 5, 5, -5], c=label_color, linewidth=6)
     plt.axis("equal")
     plt.xlim(-5, 5)
     plt.ylim(-5, 5)

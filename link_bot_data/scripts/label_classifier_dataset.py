@@ -4,23 +4,21 @@ import pathlib
 import shutil
 
 import matplotlib.pyplot as plt
-
 import numpy as np
 import tensorflow as tf
 
-from link_bot_data import random_environment_data_utils
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.video_prediction_dataset_utils import float_feature
 
-tf.enable_eager_execution()
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.ConfigProto(gpu_options=gpu_options)
+tf.enable_eager_execution(config=config)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('indir', type=pathlib.Path)
-    parser.add_argument('--n-examples-per-record', type=int, default=128)
-    parser.add_argument('--shuffle', action='store_true')
-    parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--n-examples-per-record', type=int, default=512)
     parser.add_argument('--no-plot', action='store_true')
     parser.add_argument('--pre', type=float, default=0.23)
     parser.add_argument('--post', type=float, default=0.23)
@@ -45,12 +43,7 @@ def main():
         full_output_directory.mkdir(exist_ok=True)
 
         classifier_dataset = ClassifierDataset(args.indir)
-        dataset = classifier_dataset.get_dataset(mode=mode,
-                                                 num_epochs=1,
-                                                 shuffle=args.shuffle,
-                                                 seed=args.seed,
-                                                 batch_size=0,
-                                                 compression_type=args.compression_type)
+        dataset = classifier_dataset.get_dataset(mode=mode, num_epochs=1, batch_size=0)
 
         current_record_idx = 0
         examples = np.ndarray([args.n_examples_per_record], dtype=np.object)
@@ -58,7 +51,6 @@ def main():
         for example_dict in dataset:
             state = example_dict['state'].numpy()
             next_state = example_dict['next_state'].numpy()
-            action = example_dict['action'].numpy()
             planned_state = example_dict['planned_state'].numpy()
             planned_next_state = example_dict['planned_next_state'].numpy()
 
@@ -84,8 +76,10 @@ def main():
                 'planned_sdf/sdf': float_feature(example_dict['planned_sdf/sdf'].numpy().flatten()),
                 'planned_sdf/extent': float_feature(example_dict['planned_sdf/extent'].numpy()),
                 'planned_sdf/origin': float_feature(example_dict['planned_sdf/origin'].numpy()),
-                'res': float_feature(example_dict['res'].numpy()), 'w_m': float_feature(example_dict['w_m'].numpy()),
-                'h_m': float_feature(example_dict['h_m'].numpy()), 'state': float_feature(example_dict['state'].numpy()),
+                'res': float_feature(example_dict['res'].numpy()),
+                'w_m': float_feature(example_dict['w_m'].numpy()),
+                'h_m': float_feature(example_dict['h_m'].numpy()),
+                'state': float_feature(example_dict['state'].numpy()),
                 'next_state': float_feature(example_dict['next_state'].numpy()),
                 'action': float_feature(example_dict['action'].numpy()),
                 'planned_state': float_feature(example_dict['planned_state'].numpy()),

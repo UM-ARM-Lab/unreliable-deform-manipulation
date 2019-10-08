@@ -102,16 +102,12 @@ class ClassifierDataset:
         filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format(mode))]
 
         compression_type = self.hparams['compression_type']
-        options = tf.python_io.TFRecordOptions(compression_type=compression_type)
-        example = next(tf.python_io.tf_record_iterator(filenames[0], options=options))
-        dict_message = MessageToDict(tf.train.Example.FromString(example))
-        feature = dict_message['features']['feature']
-        res = feature['res']['floatList']['value'][0]
-        h = int(feature['h_m']['floatList']['value'][0] / res)
-        w = int(feature['w_m']['floatList']['value'][0] / res)
-        sdf_shape = [h, w]
-        n_state = len(feature['state']['floatList']['value'])
-        n_action = len(feature['action']['floatList']['value'])
+        sdf_rows = int(self.hparams['sdf_rows'])
+        sdf_cols = int(self.hparams['sdf_cols'])
+        sdf_shape = [sdf_rows, sdf_cols]
+
+        n_state = int(self.hparams['n_state'])
+        n_action = int(self.hparams['n_action'])
 
         if shuffle:
             random.shuffle(filenames)

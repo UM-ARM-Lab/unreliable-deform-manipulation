@@ -27,7 +27,9 @@ from link_bot_planning.goals import sample_goal
 from link_bot_pycommon.args import my_formatter
 from visual_mpc import gazebo_trajectory_execution
 
-tf.enable_eager_execution()
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.ConfigProto(gpu_options=gpu_options)
+tf.enable_eager_execution(config=config)
 
 
 def collect_classifier_data(args):
@@ -42,9 +44,6 @@ def collect_classifier_data(args):
     # When collecting our classifier dataset, we do not use a classifier
     validator_model = classifier_utils.load_generic_model('', 'none')
 
-    assert args.env_w >= args.sdf_w
-    assert args.env_h >= args.sdf_h
-
     full_output_directory = random_environment_data_utils.data_directory(args.outdir, *model_path_info)
     full_output_directory = pathlib.Path(full_output_directory)
     if not full_output_directory.is_dir():
@@ -53,7 +52,9 @@ def collect_classifier_data(args):
 
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
-            'dt': dt
+            'dt': dt,
+            'n_state': 6,
+            'n_action': 2,
         }
         options.update(dict([(k, str(v)) for k, v in vars(args).items()]))
         json.dump(options, of, indent=2)
@@ -177,8 +178,8 @@ def collect_classifier_data(args):
                 actual_head_point = state[4:6]
                 planner_head_point = planned_state[4:6]
                 # compute the local SDF, which may be different for the state in the planner and the state in the real rollout
-                actual_local_sdf_data = get_local_sdf_data(args.sdf_h, args.sdf_w, actual_head_point, full_sdf_data)
-                planner_local_sdf_data = get_local_sdf_data(args.sdf_h, args.sdf_w, planner_head_point, full_sdf_data)
+                actual_local_sdf_data = get_local_sdf_data(args.sdf_rows, args.sdf_cols, actual_head_point, full_sdf_data)
+                planner_local_sdf_data = get_local_sdf_data(args.sdf_rows, args.sdf_cols, planner_head_point, full_sdf_data)
 
                 example = ClassifierDataset.make_serialized_example(actual_local_sdf_data.sdf,
                                                                     actual_local_sdf_data.extent,
@@ -186,8 +187,8 @@ def collect_classifier_data(args):
                                                                     planner_local_sdf_data.sdf,
                                                                     planner_local_sdf_data.extent,
                                                                     planner_local_sdf_data.origin,
-                                                                    args.sdf_h,  # meters
-                                                                    args.sdf_w,  # meters
+                                                                    args.sdf_rows,  # meters
+                                                                    args.sdf_cols,  # meters
                                                                     args.res,
                                                                     state,
                                                                     next_state,
@@ -241,13 +242,13 @@ def main():
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=5.0)
     parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
-    parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
+    parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     # Even though the arena is 5m, we need extra padding so that we can request a 1x1 meter local sdf at the corners
-    parser.add_argument('--env-w', type=float, default=6, help='environment width')
-    parser.add_argument('--env-h', type=float, default=6, help='environment height')
-    parser.add_argument('--sdf-w', type=float, default=1.0, help='local sdf width')
-    parser.add_argument('--sdf-h', type=float, default=1.0, help='local sdf width')
+    parser.add_argument('--env-w', type=float, default=12, help='environment width')
+    parser.add_argument('--env-h', type=float, default=12, help='environment height')
+    parser.add_argument('--sdf-cols', type=float, default=100, help='local sdf width')
+    parser.add_argument('--sdf-rows', type=float, default=100, help='local sdf width')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
 
     args = parser.parse_args()

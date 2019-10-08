@@ -119,7 +119,7 @@ def rowcol_to_xy(services, row, col):
 
 def setup_gazebo_env(verbose: int,
                      real_time_rate: float,
-                     reset_world : bool = True,
+                     reset_world: bool = True,
                      initial_object_dict: Optional[Dict] = None):
     # fire up services
     services = GazeboServices()
@@ -226,23 +226,28 @@ def get_sdf_data(env_h: float,
     return full_sdf_data
 
 
-def get_local_sdf_data(sdf_h: float,
-                       sdf_w: float,
+def get_local_sdf_data(sdf_rows: float,
+                       sdf_cols: float,
                        origin_point,
                        full_sdf_data: link_bot_sdf_utils.SDF):
     """
-    :param sdf_h: meters
-    :param sdf_w: meters
+    :param sdf_rows: indices
+    :param sdf_cols: indices
     :param origin_point: (x,y) meters
     :param full_sdf_data: SDF object for full SDF
     :return: SDF object for local sdf
     """
-    local_sdf_bounds, _ = link_bot_sdf_utils.bounds_from_env_size(sdf_w,
-                                                                  sdf_h,
-                                                                  origin_point,
-                                                                  full_sdf_data.resolution,
-                                                                  full_sdf_data.origin)
-    row_min, row_max, col_min, col_max = local_sdf_bounds
+    r, c = link_bot_sdf_utils.point_to_sdf_idx(origin_point[0], origin_point[1], full_sdf_data.resolution, full_sdf_data.origin)
+    if sdf_rows % 2 == 0:
+        row_min = r - sdf_rows // 2
+        row_max = r + sdf_rows // 2
+        col_min = c - sdf_cols // 2
+        col_max = c + sdf_cols // 2
+    else:
+        row_min = r - sdf_rows // 2
+        row_max = r + sdf_rows // 2 + 1
+        col_min = c - sdf_cols // 2
+        col_max = c + sdf_cols // 2 + 1
     local_sdf = full_sdf_data.sdf[row_min:row_max, col_min:col_max]
     local_sdf_gradient = full_sdf_data.gradient[row_min:row_max, col_min:col_max]
 

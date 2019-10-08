@@ -23,19 +23,20 @@ def main():
     dataset = classifier_dataset.get_dataset(mode=args.mode,
                                              shuffle=args.shuffle,
                                              num_epochs=1,
+                                             batch_size=1,
                                              seed=args.seed)
 
     for i, example_dict in enumerate(dataset):
-        planned_sdf = example_dict['planned_sdf/sdf'].numpy()
-        planned_sdf_extent = example_dict['planned_sdf/extent'].numpy()
-        actual_sdf = example_dict['actual_sdf/sdf'].numpy()
-        actual_sdf_extent = example_dict['actual_sdf/extent'].numpy()
-        state = example_dict['state'].numpy()
-        next_state = example_dict['next_state'].numpy()
-        planned_state = example_dict['planned_state'].numpy()
-        planned_next_state = example_dict['planned_next_state'].numpy()
+        planned_sdf = example_dict['planned_sdf/sdf'].numpy().squeeze()
+        planned_sdf_extent = example_dict['planned_sdf/extent'].numpy().squeeze()
+        actual_sdf = example_dict['actual_sdf/sdf'].numpy().squeeze()
+        actual_sdf_extent = example_dict['actual_sdf/extent'].numpy().squeeze()
+        state = example_dict['state'].numpy().squeeze()
+        next_state = example_dict['next_state'].numpy().squeeze()
+        planned_state = example_dict['planned_state'].numpy().squeeze()
+        planned_next_state = example_dict['planned_next_state'].numpy().squeeze()
         if classifier_dataset.is_labeled:
-            label = example_dict['label'].numpy()
+            label = example_dict['label'].numpy().squeeze()
         else:
             label = None
 
