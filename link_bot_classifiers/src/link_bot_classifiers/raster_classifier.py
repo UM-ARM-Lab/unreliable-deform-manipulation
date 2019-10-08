@@ -149,7 +149,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             # metrics are averaged across batches in the epoch
             batch_losses = []
             accuracy.reset_states()
-            # for train_example_dict_batch in train_tf_dataset:
             for train_example_dict_batch in progressbar.progressbar(train_tf_dataset):
                 step = global_step.numpy()
                 train_true_labels_batch = train_example_dict_batch['label']
