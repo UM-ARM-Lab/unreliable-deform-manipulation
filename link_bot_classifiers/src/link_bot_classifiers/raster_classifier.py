@@ -2,10 +2,9 @@
 from __future__ import print_function
 
 import json
-import matplotlib.pyplot as plt
 import pathlib
-import time
 
+import matplotlib.pyplot as plt
 import numpy as np
 import progressbar
 import tensorflow as tf
@@ -50,9 +49,11 @@ class RasterClassifier(tf.keras.Model):
         planned_sdf_origin = tf.expand_dims(planned_sdf_origin, axis=1)
         # convert from (batch, 1, 1) -> (batch, 1, 2)
         planned_sdf_resolution = tf.tile(tf.expand_dims(planned_sdf_resolution, axis=1), [1, 1, 2])
+
         # raster each state into an image
         planned_rope_image = self.raster([planned_state, planned_sdf_resolution, planned_sdf_origin])
         planned_next_rope_image = self.raster([planned_next_state, planned_sdf_resolution, planned_sdf_origin])
+
         # remove time index
         image_shape = [planned_rope_image.shape[0],
                        planned_rope_image.shape[2],
@@ -73,19 +74,6 @@ class RasterClassifier(tf.keras.Model):
         h1 = self.dense1(conv_output)
         h2 = self.dense2(h1)
         out_h = h2
-
-        # conv_h = concat_image
-        # for conv, pool in self.conv_layers:
-        #     conv_z = conv(conv_h)
-        #     conv_h = pool(conv_z)
-        #     print(conv.weights)
-        #
-        # conv_output = self.conv_flatten(conv_h)
-        #
-        # fc_h = conv_output
-        # for dense in self.dense_layers:
-        #     fc_h = dense(fc_h)
-        # out_h = fc_h
 
         accept_probability = self.output_layer(out_h)
         return planned_rope_image, planned_next_rope_image, planned_sdf, accept_probability
@@ -120,6 +108,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
     optimizer = tf.train.AdamOptimizer(learning_rate=0.0001)
     loss = tf.keras.losses.BinaryCrossentropy()
     accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
+    batch_accuracy = tf.keras.metrics.BinaryAccuracy(name='batch_accuracy')
     net = RasterClassifier(hparams=hparams)
     global_step = tf.train.get_or_create_global_step()
 
@@ -159,11 +148,10 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             ################
             # metrics are averaged across batches in the epoch
             batch_losses = []
-            epoch_t0 = time.time()
             accuracy.reset_states()
+            # for train_example_dict_batch in train_tf_dataset:
             for train_example_dict_batch in progressbar.progressbar(train_tf_dataset):
                 step = global_step.numpy()
-                batch_t0 = time.time()
                 train_true_labels_batch = train_example_dict_batch['label']
 
                 with tf.GradientTape() as tape:
@@ -181,14 +169,15 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                         for grad, var in zip(gradients, variables):
                             tf.contrib.summary.histogram(var.name + '_grad', grad, step=step)
                     if step % args.log_scalars_every == 0:
-                        tf.contrib.summary.scalar('batch accuracy', accuracy.result(), step=step)
+                        batch_accuracy.reset_states()
+                        batch_accuracy.update_state(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
+                        tf.contrib.summary.scalar('batch accuracy', batch_accuracy.result(), step=step)
                         tf.contrib.summary.scalar("batch loss", training_batch_loss, step=step)
 
                 ####################
                 # Update global step
                 ####################
                 global_step.assign_add(1)
-                step = global_step.numpy()
 
                 if args.verbose >= 4:
                     plt.figure()
@@ -203,11 +192,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                     plt.imshow(new_image)
                     plt.title(train_true_labels_batch[0].numpy()[0])
                     plt.show()
-
-
-                dt_per_step = time.time() - batch_t0
-                if args.verbose >= 3:
-                    print("{:4.1f}ms/step".format(dt_per_step * 1000.0))
 
             training_loss = np.mean(batch_losses)
             training_accuracy = accuracy.result().numpy() * 100
@@ -241,8 +225,9 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                 save_path = manager.save()
                 print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(int(ckpt.step), save_path) + Fore.RESET)
 
-        save_path = manager.save()
-        print(Fore.CYAN + "Step {:6d}: Saved final checkpoint {}".format(int(ckpt.step), save_path) + Fore.RESET)
+        if args.log:
+            save_path = manager.save()
+            print(Fore.CYAN + "Step {:6d}: Saved final checkpoint {}".format(int(ckpt.step), save_path) + Fore.RESET)
 
     if args.log:
         with writer.as_default(), tf.contrib.summary.always_record_summaries():
