@@ -29,6 +29,7 @@ def main():
 
     positive_count = 0
     negative_count = 0
+    count = 0
     for i, example_dict in enumerate(dataset):
         planned_sdf = example_dict['planned_sdf/sdf'].numpy().squeeze()
         planned_sdf_extent = example_dict['planned_sdf/extent'].numpy().squeeze()
@@ -47,11 +48,13 @@ def main():
         else:
             label = None
 
+        count += 1
         if not args.no_plot:
             plot_classifier_data(actual_sdf, actual_sdf_extent, next_state, planned_next_state, planned_sdf, planned_sdf_extent,
                                  planned_state, state, i, label)
 
-    class_balance = positive_count / (positive_count + negative_count) * 100
+    class_balance = positive_count / count * 100
+    print("Number of examples: {}".format(count))
     print("Class balance: {:4.1f}% positive".format(class_balance))
 
 

@@ -43,7 +43,9 @@ class RasterPoints(tf.keras.layers.Layer):
         point_channel_indices = tf.tile(tf.range(self.n_points, dtype=tf.int64), [batch_size * self.sequence_length])
         indices = zip(batch_indices, time_indices, row_indices, col_indices, point_channel_indices)
         for batch_idx, time_idx, row_idx, col_idx, channel_idx in indices:
-            rope_images = rope_images[batch_idx, time_idx, row_idx, col_idx, channel_idx].assign(1.0)
+            # TODO: make the local SDF bigger
+            if 0 <= row_idx < self.sdf_shape[0] and 0 <= col_idx < self.sdf_shape[1]:
+                rope_images = rope_images[batch_idx, time_idx, row_idx, col_idx, channel_idx].assign(1.0)
 
         return rope_images
 

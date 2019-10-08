@@ -176,9 +176,13 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                 batch_losses.append(training_batch_loss.numpy())
                 accuracy.update_state(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
 
-                if args.log and step % args.log_grad_every == 0:
-                    for grad, var in zip(gradients, variables):
-                        tf.contrib.summary.histogram(var.name + '_grad', grad, step=step)
+                if args.log:
+                    if step % args.log_grad_every == 0:
+                        for grad, var in zip(gradients, variables):
+                            tf.contrib.summary.histogram(var.name + '_grad', grad, step=step)
+                    if step % args.log_scalars_every == 0:
+                        tf.contrib.summary.scalar('batch accuracy', accuracy.result(), step=step)
+                        tf.contrib.summary.scalar("batch loss", training_batch_loss, step=step)
 
                 ####################
                 # Update global step
@@ -209,9 +213,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             training_accuracy = accuracy.result().numpy() * 100
             log_msg = "Epoch: {:5d}, Training Loss: {:7.4f}, Training Accuracy: {:5.2f}%"
             print(log_msg.format(epoch, training_loss, training_accuracy))
-            if args.log:
-                tf.contrib.summary.scalar('training accuracy', training_accuracy, step=step)
-                tf.contrib.summary.scalar("training loss", training_loss, step=step)
 
             ################
             # validation
