@@ -65,7 +65,7 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
             gripper1_target_x, gripper1_target_y = sample_goal(args.env_w, args.env_h, head_point, env_padding=0.25)
             if args.verbose:
                 print('gripper target:', gripper1_target_x, gripper1_target_y)
-                random_environment_data_utils.publish_marker(args, gripper1_target_x, gripper1_target_y, marker_size=0.05)
+                random_environment_data_utils.publish_marker(gripper1_target_x, gripper1_target_y, marker_size=0.05)
 
         image = np.copy(np.frombuffer(state.camera_image.data, dtype=np.uint8)).reshape([64, 64, 3])
 

@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 from matplotlib import animation
 from ompl import base as ob
@@ -79,7 +81,7 @@ class ShootingRRT:
 
         from_numpy(np_s_next, state_out, self.n_state)
 
-    def plan(self, np_start, tail_goal_point, sdf, verbose=0):
+    def plan(self, np_start, tail_goal_point, sdf, verbose=0) -> Tuple[np.ndarray, np.ndarray, float]:
         """
         :param np_start: 1 by n matrix
         :param tail_goal_point:  1 by n matrix
@@ -96,47 +98,44 @@ class ShootingRRT:
         self.ss.clear()
         self.ss.setStartState(start)
         self.ss.setGoal(goal)
-        try:
-            solved = self.ss.solve(self.planner_timeout)
-            planning_time = self.ss.getLastPlanComputationTime()
+        solved = self.ss.solve(self.planner_timeout)
+        planning_time = self.ss.getLastPlanComputationTime()
+
+        if verbose >= 2:
+            print("Planning time: {}".format(planning_time))
+
+        if solved:
+            ompl_path = self.ss.getSolutionPath()
+
+            np_states = np.ndarray((ompl_path.getStateCount(), self.n_state))
+            np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
+            for i, state in enumerate(ompl_path.getStates()):
+                np_states[i] = to_numpy(state, self.n_state)
+            for i, control in enumerate(ompl_path.getControls()):
+                np_controls[i] = to_numpy(control, self.n_control)
+
+            # Verification
+            # verified = self.verify(np_controls, np_states)
+            # if not verified:
+            #     print("ERROR! NOT VERIFIED!")
+
+            # SMOOTHING
+            # np_states, np_controls = self.smooth(np_states, np_controls, verbose)
 
             if verbose >= 2:
-                print("Planning time: {}".format(planning_time))
+                planner_data = ob.PlannerData(self.si)
+                self.planner.getPlannerData(planner_data)
+                plot(planner_data, sdf, np_start, tail_goal_point, np_states, np_controls, self.n_state, self.extent)
+                final_error = np.linalg.norm(np_states[-1, 0:2] - tail_goal_point)
+                lengths = [np.linalg.norm(np_states[i] - np_states[i - 1]) for i in range(1, len(np_states))]
+                path_length = np.sum(lengths)
+                duration = self.dt * len(np_states)
+                print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
+                    final_error, path_length, len(np_states), duration))
 
-            if solved:
-                ompl_path = self.ss.getSolutionPath()
+            return np_controls, np_states, planning_time
 
-                np_states = np.ndarray((ompl_path.getStateCount(), self.n_state))
-                np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
-                for i, state in enumerate(ompl_path.getStates()):
-                    np_states[i] = to_numpy(state, self.n_state)
-                for i, control in enumerate(ompl_path.getControls()):
-                    np_controls[i] = to_numpy(control, self.n_control)
-
-                # Verification
-                # verified = self.verify(np_controls, np_states)
-                # if not verified:
-                #     print("ERROR! NOT VERIFIED!")
-
-                # SMOOTHING
-                # np_states, np_controls = self.smooth(np_states, np_controls, verbose)
-
-                if verbose >= 2:
-                    planner_data = ob.PlannerData(self.si)
-                    self.planner.getPlannerData(planner_data)
-                    plot(planner_data, sdf, np_start, tail_goal_point, np_states, np_controls, self.n_state, self.extent)
-                    final_error = np.linalg.norm(np_states[-1, 0:2] - tail_goal_point)
-                    lengths = [np.linalg.norm(np_states[i] - np_states[i - 1]) for i in range(1, len(np_states))]
-                    path_length = np.sum(lengths)
-                    duration = self.dt * len(np_states)
-                    print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
-                        final_error, path_length, len(np_states), duration))
-
-                return np_controls, np_states, planning_time
-            else:
-                raise RuntimeError("No Solution found from {} to {}".format(start, goal))
-        except RuntimeError:
-            return None, None, -1
+        raise RuntimeError("No Solution found from {} to {}".format(start, goal))
 
     def smooth(self, np_states, np_controls, iters=50, verbose=0):
         new_states = list(np_states)

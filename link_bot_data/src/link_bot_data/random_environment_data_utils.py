@@ -12,14 +12,14 @@ from colorama import Fore
 from ignition import markers
 
 
-def publish_marker(args, target_x, target_y, marker_size=0.01):
+def publish_marker(target_x, target_y, marker_size=0.01):
     target_marker = markers.make_marker(rgb=[1, 0, 0], id=1, scale=marker_size)
     target_marker.pose.position.x = target_x
     target_marker.pose.position.y = target_y
     markers.publish(target_marker)
 
 
-def publish_markers(args, target_x, target_y, rope_x, rope_y, marker_size=0.01):
+def publish_markers(target_x, target_y, rope_x, rope_y, marker_size=0.01):
     target_marker = markers.make_marker(rgb=[0, 1, 0], id=1, scale=marker_size)
     target_marker.pose.position.x = target_x
     target_marker.pose.position.y = target_y
@@ -121,5 +121,3 @@ def plot_sdf_and_ovs(args, sdf_data, threshold, rope_configuration, sdf_constrai
         dx = sdf_data.gradient[::subsample, ::subsample, 0]
         dy = sdf_data.gradient[::subsample, ::subsample, 1]
         plt.quiver(x, y, dx, dy, units='x', scale=10)
-
-

@@ -72,7 +72,7 @@ def eval(args):
     # Dataset
     ###############
     test_classifier_dataset = ClassifierDataset(args.input_dir)
-    test_dataset = test_classifier_dataset.get_dataset(mode='test',
+    test_dataset = test_classifier_dataset.get_dataset(mode=args.mode,
                                                        shuffle=False,
                                                        num_epochs=1,
                                                        seed=args.seed,
@@ -122,6 +122,7 @@ def main():
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
     eval_parser.add_argument('--dataset-hparams', type=str)
+    eval_parser.add_argument('--mode', type=str, choices=['test', 'val', 'train'], default='test')
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.set_defaults(func=eval)

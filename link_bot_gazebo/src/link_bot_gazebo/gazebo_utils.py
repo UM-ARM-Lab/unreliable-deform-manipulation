@@ -226,8 +226,8 @@ def get_sdf_data(env_h: float,
     return full_sdf_data
 
 
-def get_local_sdf_data(sdf_rows: float,
-                       sdf_cols: float,
+def get_local_sdf_data(sdf_rows: int,
+                       sdf_cols: int,
                        origin_point,
                        full_sdf_data: link_bot_sdf_utils.SDF):
     """
