@@ -18,9 +18,8 @@ from colorama import Fore
 from link_bot_data import random_environment_data_utils
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.srv import LinkBotTrajectoryResponse
 from link_bot_planning import shooting_rrt_mpc
-from link_bot_planning.shooting_rrt_mpc import PlannerParams, SDFParams, EnvParams
+from link_bot_planning.params import PlannerParams, SDFParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -29,7 +28,7 @@ config = tf.ConfigProto(gpu_options=gpu_options)
 tf.enable_eager_execution(config=config)
 
 
-class ClasssifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
+class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
 
     # TODO: group these arguments more
     def __init__(self,
@@ -93,8 +92,6 @@ class ClasssifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
 
         self.planning_times = []
 
-        rospy.init_node('collect_classifier_data')
-
     def on_plan_complete(self,
                          planned_path: np.ndarray,
                          tail_goal_point: np.ndarray,
@@ -108,21 +105,11 @@ class ClasssifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
     def on_execution_complete(self,
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
-                              actual_local_sdfs: List[link_bot_sdf_utils.SDF],
                               planner_local_sdfs: List[link_bot_sdf_utils.SDF],
-                              trajectory_execution_result: LinkBotTrajectoryResponse):
-        # convert ros message into a T x n_state numpy matrix
-        actual_rope_configurations = []
-        for configuration in trajectory_execution_result.actual_path:
-            np_config = []
-            for point in configuration.points:
-                np_config.append(point.x)
-                np_config.append(point.y)
-            actual_rope_configurations.append(np_config)
-        actual_rope_configurations = np.array(actual_rope_configurations)
-
-        states = actual_rope_configurations[:-1]
-        next_states = actual_rope_configurations[1:]
+                              actual_local_sdfs: List[link_bot_sdf_utils.SDF],
+                              actual_path: np.ndarray):
+        states = actual_path[:-1]
+        next_states = actual_path[1:]
         planned_states = planned_path[:-1]
         planned_next_states = planned_path[1:]
         d = zip(states, next_states, planned_actions, planned_states, planned_next_states, actual_local_sdfs, planner_local_sdfs)
@@ -211,6 +198,8 @@ def main():
                            real_time_rate=args.real_time_rate,
                            goal_padding=0.0)
 
+    rospy.init_node('collect_classifier_data')
+
     initial_object_dict = {
         'moving_box1': [2.0, 0],
         'moving_box2': [-1.5, 0],
@@ -226,7 +215,7 @@ def main():
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
-    data_collector = ClasssifierDataCollector(
+    data_collector = ClassifierDataCollector(
         fwd_model_dir=args.fwd_model_dir,
         fwd_model_type=args.fwd_model_type,
         validator_model_dir=pathlib.Path(),

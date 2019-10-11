@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List
 
 import numpy as np
 from matplotlib import animation
@@ -8,8 +8,9 @@ from ompl import control as oc
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning.link_bot_goal import LinkBotGoal
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
-from link_bot_planning.shooting_rrt_mpc import EnvParams, SDFParams, PlannerParams
-from link_bot_planning.state_spaces import LinkBotControlSpace, ValidRopeConfigurationSampler, from_numpy, to_numpy
+from link_bot_planning.params import EnvParams, SDFParams, PlannerParams
+from link_bot_planning.state_spaces import ValidRopeConfigurationSampler, from_numpy, to_numpy
+from link_bot_pycommon import link_bot_sdf_utils
 
 
 class ShootingRRT:
@@ -33,7 +34,6 @@ class ShootingRRT:
         self.services = services
 
         self.state_space = ob.RealVectorStateSpace(n_state)
-        self.state_space.setName("rope configuration space")
         bounds = ob.RealVectorBounds(self.n_state)
         bounds.setLow(0, -self.env_params.w / 2)
         bounds.setLow(1, -self.env_params.h / 2)
@@ -49,6 +49,12 @@ class ShootingRRT:
         bounds.setHigh(5, self.env_params.h / 2)
         self.state_space.setBounds(bounds)
 
+        # self.state_space = ob.CompoundStateSpace()
+        # the rope is just 6 real numbers with no bounds
+        # self.state_space.addSubspace(ob.RealVectorStateSpace(n_state))
+        # the local environment is a rows*cols flat vector of numbers from 0 to 1
+        # self.state_space.addSubspace(ob.RealVectorStateSpace(n_local_sdf))
+
         # Only sample configurations which are known to be valid, i.e. not overstretched.
         def state_sampler_allocator(state_space):
             # this length comes from the SDF file textured_link_bot.sdf
@@ -57,7 +63,7 @@ class ShootingRRT:
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(state_sampler_allocator))
 
-        self.control_space = LinkBotControlSpace(self.state_space, self.n_control)
+        self.control_space = oc.RealVectorControlSpace(self.state_space, self.n_control)
         control_bounds = ob.RealVectorBounds(2)
         control_bounds.setLow(-self.planner_params.max_v)
         control_bounds.setHigh(self.planner_params.max_v)
@@ -87,8 +93,7 @@ class ShootingRRT:
         self.writer = self.Writer(fps=30, metadata=dict(artist='Me'), bitrate=1800)
 
     def plan(self, np_start: np.ndarray,
-             tail_goal_point: np.ndarray,
-             verbose: int = 0) -> Tuple[np.ndarray, np.ndarray, float]:
+             tail_goal_point: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[link_bot_sdf_utils.SDF]]:
         """
         :param services: from gazebo_utils
         :param np_start: 1 by n matrix
@@ -99,7 +104,7 @@ class ShootingRRT:
         # create start and goal states
         start = ob.State(self.state_space)
         from_numpy(np_start, start, self.n_state)
-        epsilon = 0.10
+        epsilon = 0.01
         goal = LinkBotGoal(self.si, epsilon, tail_goal_point)
 
         self.ss.clear()
@@ -112,8 +117,9 @@ class ShootingRRT:
 
             np_states = np.ndarray((ompl_path.getStateCount(), self.n_state))
             np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
+            planner_local_sdfs = []
             for i, state in enumerate(ompl_path.getStates()):
-                np_states[i] = to_numpy(state, self.n_state)
+                np_states[i] = to_numpy(state[0], self.n_state)
             for i, control in enumerate(ompl_path.getControls()):
                 np_controls[i] = to_numpy(control, self.n_control)
 

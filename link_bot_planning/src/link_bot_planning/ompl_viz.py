@@ -4,17 +4,16 @@ from matplotlib.lines import Line2D
 from ompl import base as ob
 
 from link_bot_data.visualization import plot_rope_configuration
-from link_bot_planning.gp_directed_control_sampler import GPDirectedControlSampler
 from link_bot_planning.state_spaces import to_numpy
 
 
-def plot(planner_data, sdf, goal, planned_path, planned_actions, extent):
+def plot(sampler, planner_data, sdf, goal, planned_path, planned_actions, extent):
     plt.figure()
     ax = plt.gca()
     n_state = planned_path.shape[1]
     plt.imshow(np.flipud(sdf) > 0, extent=extent)
 
-    for state_sampled_at in GPDirectedControlSampler.states_sampled_at:
+    for state_sampled_at in sampler.states_sampled_at:
         xs = [state_sampled_at[0, 0], state_sampled_at[0, 2], state_sampled_at[0, 4]]
         ys = [state_sampled_at[0, 1], state_sampled_at[0, 3], state_sampled_at[0, 5]]
         plt.plot(xs, ys, label='sampled states', linewidth=0.5, c='b', alpha=0.5, zorder=1)

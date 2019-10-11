@@ -5,7 +5,7 @@ import numpy as np
 
 from link_bot_gazebo.gazebo_utils import get_local_sdf_data, GazeboServices
 from link_bot_planning.my_motion_validator import MotionClassifier
-from link_bot_planning.shooting_rrt_mpc import SDFParams
+from link_bot_planning.params import SDFParams
 from link_bot_planning.state_spaces import to_numpy, from_numpy
 
 
@@ -82,15 +82,15 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
             np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
             # check that the motion is valid
-            local_sdf_data = get_local_sdf_data(sdf_cols=self.sdf_params.local_w_cols,
-                                                sdf_rows=self.sdf_params.local_h_rows,
-                                                res=self.sdf_params.res,
-                                                origin_point=head_point,
-                                                services=self.services)
-
-            accept_probability = self.classifier_model.predict(local_sdf_data, np_s, np_s_next)
-            if self.rng_.uniform01() >= accept_probability:
-                continue
+            # local_sdf_data = get_local_sdf_data(sdf_cols=self.sdf_params.local_w_cols,
+            #                                     sdf_rows=self.sdf_params.local_h_rows,
+            #                                     res=self.sdf_params.res,
+            #                                     origin_point=head_point,
+            #                                     services=self.services)
+            #
+            # accept_probability = self.classifier_model.predict(local_sdf_data, np_s, np_s_next)
+            # if self.rng_.uniform01() >= accept_probability:
+            #     continue
 
             # keep if it's the best we've seen
             distance = np.linalg.norm(np_s_next - np_target)

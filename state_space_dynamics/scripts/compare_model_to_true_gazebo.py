@@ -93,6 +93,7 @@ def main():
     predicted_points = fwd_model.predict(np.expand_dims(initial_rope_configuration, axis=0), np.expand_dims(actions, axis=0))
     predicted_points = predicted_points[0]
 
+    # TODO refactor to use common code with shooting_rrt_mpc.ShootingRRTMPC
     traj_req = LinkBotTrajectoryRequest()
     traj_req.dt = dt
     for action in actions:
