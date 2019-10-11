@@ -17,12 +17,17 @@ def state_cost(s, goal):
 
 
 def make_random_rope_configuration(extent, length=0.5):
+    """
+    First sample a head point, then sample angles for the other points
+    :param extent: bounds of the environment [xmin, xmax, ymin, ymax] (meters)
+    :param length: length of each segment of the rope (meters)
+    :return:
+    """
     while True:
         theta_1 = np.random.uniform(-np.pi, np.pi)
         theta_2 = np.random.uniform(-np.pi, np.pi)
-        # don't put the head so close to the edge that the tail could be off the map
-        head_x = np.random.uniform(extent[0] + 2.0 * length, extent[1] - 2.0 * length)
-        head_y = np.random.uniform(extent[2] + 2.0 * length, extent[3] - 2.0 * length)
+        head_x = np.random.uniform(extent[0], extent[1])
+        head_y = np.random.uniform(extent[2], extent[3])
 
         rope_configuration = np.zeros(6)
         rope_configuration[4] = head_x

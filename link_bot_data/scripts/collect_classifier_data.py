@@ -2,21 +2,22 @@
 from __future__ import division, print_function
 
 import argparse
-import matplotlib.pyplot as plt
-import rospy
 import json
 import os
 import pathlib
-from colorama import Fore
 from typing import Optional, List
 
+import matplotlib.pyplot as plt
 import numpy as np
 import ompl.util as ou
+import rospy
+import std_srvs
 import tensorflow as tf
+from colorama import Fore
 
 from link_bot_data import random_environment_data_utils
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_gazebo.gazebo_utils import get_local_sdf_data
+from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.srv import LinkBotTrajectoryResponse
 from link_bot_planning import shooting_rrt_mpc
 from link_bot_planning.shooting_rrt_mpc import PlannerParams, SDFParams, EnvParams
@@ -210,6 +211,21 @@ def main():
                            real_time_rate=args.real_time_rate,
                            goal_padding=0.0)
 
+    initial_object_dict = {
+        'moving_box1': [2.0, 0],
+        'moving_box2': [-1.5, 0],
+        'moving_box3': [-0.5, 1],
+        'moving_box4': [1.5, - 2],
+        'moving_box5': [-1.5, - 2.0],
+        'moving_box6': [-0.5, 2.0],
+    }
+
+    services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
+                                             real_time_rate=env_params.real_time_rate,
+                                             reset_world=True,
+                                             initial_object_dict=initial_object_dict)
+    services.pause(std_srvs.srv.EmptyRequest())
+
     data_collector = ClasssifierDataCollector(
         fwd_model_dir=args.fwd_model_dir,
         fwd_model_type=args.fwd_model_type,
@@ -225,6 +241,7 @@ def main():
         compression_type=args.compression_type,
         outdir=args.outdir
     )
+
     data_collector.run()
 
 

@@ -14,7 +14,7 @@ from dataclasses_json import dataclass_json
 from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import get_sdf_data
+from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest, LinkBotTrajectoryResponse
 from link_bot_planning import classifier_utils, model_utils, shooting_rrt
@@ -67,6 +67,7 @@ class ShootingRRTMPC:
                  planner_params: PlannerParams,
                  sdf_params: SDFParams,
                  env_params: EnvParams,
+                 services: GazeboServices,
                  ):
         self.fwd_model_dir = fwd_model_dir
         self.fwd_model_type = fwd_model_type
@@ -78,6 +79,7 @@ class ShootingRRTMPC:
         self.env_params = env_params
         self.planner_params = planner_params
         self.verbose = verbose
+        self.services = services
 
         self.fwd_model = model_utils.load_generic_model(self.fwd_model_dir, self.fwd_model_type)
         self.classifier_model = NoneClassifier()
@@ -88,31 +90,18 @@ class ShootingRRTMPC:
         self.rrt = shooting_rrt.ShootingRRT(fwd_model=self.fwd_model,
                                             classifier_model=self.classifier_model,
                                             dt=self.fwd_model.dt,
-                                            max_v=self.planner_params.max_v,
                                             n_state=self.fwd_model.n_state,
-                                            planner_timeout=self.planner_params.timeout,
-                                            env_w=self.env_params.w,
-                                            env_h=self.env_params.h)
+                                            planner_params=self.planner_params,
+                                            sdf_params=sdf_params,
+                                            env_params=env_params,
+                                            services=services,
+                                            )
 
     def run(self):
-        initial_object_dict = {
-            'moving_box1': [2.0, 0],
-            'moving_box2': [-1.5, 0],
-            'moving_box3': [-0.5, 1],
-            'moving_box4': [1.5, - 2],
-            'moving_box5': [-1.5, - 2.0],
-            'moving_box6': [-0.5, 2.0],
-        }
-        services = gazebo_utils.setup_gazebo_env(verbose=self.verbose,
-                                                 real_time_rate=self.env_params.real_time_rate,
-                                                 reset_world=True,
-                                                 initial_object_dict=initial_object_dict)
-        services.pause(std_srvs.srv.EmptyRequest())
-
         for traj_idx in range(self.n_envs):
             # generate a new environment by rearranging the obstacles
             objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            gazebo_trajectory_execution.move_objects(services, objects, self.env_params.w, self.env_params.h, 'velocity',
+            gazebo_trajectory_execution.move_objects(self.services, objects, self.env_params.w, self.env_params.h, 'velocity',
                                                      padding=0.5)
 
             # generate a bunch of plans to random goals
@@ -120,7 +109,7 @@ class ShootingRRTMPC:
 
             for plan_idx in range(self.n_targets_per_env):
                 # generate a random target
-                state = services.get_state(state_req)
+                state = self.services.get_state(state_req)
                 head_idx = state.link_names.index("head")
                 rope_configuration = gazebo_utils.points_to_config(state.points)
                 head_point = state.points[head_idx]
@@ -140,7 +129,7 @@ class ShootingRRTMPC:
                     print(Fore.CYAN + "Planning from {} to {}".format(start, tail_goal_point) + Fore.RESET)
 
                 t0 = time.time()
-                planned_actions, planned_path, _ = self.rrt.plan(start, tail_goal_point, full_sdf_data, self.verbose)
+                planned_actions, planned_path, _ = self.rrt.plan(start, tail_goal_point, self.verbose)
                 planning_time = time.time() - t0
                 self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_sdf_data, planning_time)
 
@@ -161,8 +150,8 @@ class ShootingRRTMPC:
                 if self.verbose >= 2:
                     print(Fore.CYAN + "Executing Plan.".format(tail_goal_point) + Fore.RESET)
 
-                trajectory_execution_result = services.execute_trajectory(trajectory_execution_request)
-                services.pause(std_srvs.srv.EmptyRequest())
+                trajectory_execution_result = self.services.execute_trajectory(trajectory_execution_request)
+                self.services.pause(std_srvs.srv.EmptyRequest())
 
                 self.on_execution_complete(planned_path,
                                            planned_actions,

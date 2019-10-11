@@ -5,51 +5,62 @@ from matplotlib import animation
 from ompl import base as ob
 from ompl import control as oc
 
+from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning.link_bot_goal import LinkBotGoal
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
-from link_bot_planning.state_spaces import LinkBotControlSpace, TailStateSpaceSampler, from_numpy, to_numpy
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_planning.shooting_rrt_mpc import EnvParams, SDFParams, PlannerParams
+from link_bot_planning.state_spaces import LinkBotControlSpace, ValidRopeConfigurationSampler, from_numpy, to_numpy
 
 
 class ShootingRRT:
 
-    def __init__(self, fwd_model, classifier_model, dt, max_v, planner_timeout, n_state, env_w, env_h):
+    def __init__(self, fwd_model,
+                 classifier_model,
+                 dt: float,
+                 n_state: int,
+                 planner_params: PlannerParams,
+                 sdf_params: SDFParams,
+                 env_params: EnvParams,
+                 services: GazeboServices):
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.dt = dt
-        self.planner_timeout = planner_timeout
         self.n_state = self.fwd_model.n_state
         self.n_control = self.fwd_model.n_control
-        self.max_v = max_v
+        self.sdf_params = sdf_params
+        self.env_params = env_params
+        self.planner_params = planner_params
+        self.services = services
 
-        self.extent = [-env_w / 2, env_w / 2, -env_h / 2, env_h / 2]
         self.state_space = ob.RealVectorStateSpace(n_state)
         self.state_space.setName("rope configuration space")
         bounds = ob.RealVectorBounds(self.n_state)
-        bounds.setLow(0, -env_w / 2)
-        bounds.setLow(1, -env_h / 2)
-        bounds.setLow(2, -env_w / 2)
-        bounds.setLow(3, -env_h / 2)
-        bounds.setLow(4, -env_w / 2)
-        bounds.setLow(5, -env_h / 2)
-        bounds.setHigh(0, env_w / 2)
-        bounds.setHigh(1, env_h / 2)
-        bounds.setHigh(2, env_w / 2)
-        bounds.setHigh(3, env_h / 2)
-        bounds.setHigh(4, env_w / 2)
-        bounds.setHigh(5, env_h / 2)
+        bounds.setLow(0, -self.env_params.w / 2)
+        bounds.setLow(1, -self.env_params.h / 2)
+        bounds.setLow(2, -self.env_params.w / 2)
+        bounds.setLow(3, -self.env_params.h / 2)
+        bounds.setLow(4, -self.env_params.w / 2)
+        bounds.setLow(5, -self.env_params.h / 2)
+        bounds.setHigh(0, self.env_params.w / 2)
+        bounds.setHigh(1, self.env_params.h / 2)
+        bounds.setHigh(2, self.env_params.w / 2)
+        bounds.setHigh(3, self.env_params.h / 2)
+        bounds.setHigh(4, self.env_params.w / 2)
+        bounds.setHigh(5, self.env_params.h / 2)
         self.state_space.setBounds(bounds)
 
+        # Only sample configurations which are known to be valid, i.e. not overstretched.
         def state_sampler_allocator(state_space):
-            sampler = TailStateSpaceSampler(state_space, self.extent)
+            # this length comes from the SDF file textured_link_bot.sdf
+            sampler = ValidRopeConfigurationSampler(state_space, extent=self.env_params.extent, link_length=0.24)
             return sampler
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(state_sampler_allocator))
 
         self.control_space = LinkBotControlSpace(self.state_space, self.n_control)
         control_bounds = ob.RealVectorBounds(2)
-        control_bounds.setLow(-max_v)
-        control_bounds.setHigh(max_v)
+        control_bounds.setLow(-self.planner_params.max_v)
+        control_bounds.setHigh(self.planner_params.max_v)
         self.control_space.setBounds(control_bounds)
 
         self.ss = oc.SimpleSetup(self.control_space)
@@ -62,7 +73,11 @@ class ShootingRRT:
         self.ss.setStatePropagator(oc.StatePropagator(self.si))
 
         self.si.setDirectedControlSamplerAllocator(
-            ShootingDirectedControlSampler.allocator(self.fwd_model, self.classifier_model, self.max_v))
+            ShootingDirectedControlSampler.allocator(self.fwd_model,
+                                                     self.classifier_model,
+                                                     self.services,
+                                                     self.sdf_params,
+                                                     self.planner_params.max_v))
 
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(False)
@@ -71,24 +86,15 @@ class ShootingRRT:
         self.Writer = animation.writers['ffmpeg']
         self.writer = self.Writer(fps=30, metadata=dict(artist='Me'), bitrate=1800)
 
-    def propagate(self, start, control, duration, state_out):
-        np_s = to_numpy(start, self.n_state)
-        np_u = to_numpy(control, self.n_control)
-
-        np_s_next = self.fwd_model.fwd_act(np_s, np_u)
-
-        from_numpy(np_s_next, state_out, self.n_state)
-
     def plan(self, np_start: np.ndarray,
              tail_goal_point: np.ndarray,
-             full_sdf_data: link_bot_sdf_utils.SDF,
              verbose: int = 0) -> Tuple[np.ndarray, np.ndarray, float]:
         """
-        :param full_sdf_data: full sdf
+        :param services: from gazebo_utils
         :param np_start: 1 by n matrix
         :param tail_goal_point:  1 by n matrix
         :param verbose: an integer, lower means less verbose
-        :return:
+        :return: controls, states
         """
         # create start and goal states
         start = ob.State(self.state_space)
@@ -99,11 +105,7 @@ class ShootingRRT:
         self.ss.clear()
         self.ss.setStartState(start)
         self.ss.setGoal(goal)
-        solved = self.ss.solve(self.planner_timeout)
-        planning_time = self.ss.getLastPlanComputationTime()
-
-        if verbose >= 2:
-            print("Planning time: {}".format(planning_time))
+        solved = self.ss.solve(self.planner_params.timeout)
 
         if solved:
             ompl_path = self.ss.getSolutionPath()
@@ -115,6 +117,8 @@ class ShootingRRT:
             for i, control in enumerate(ompl_path.getControls()):
                 np_controls[i] = to_numpy(control, self.n_control)
 
+            # TODO: how to get the local SDFs out of the planner?
+
             # Verification
             # verified = self.verify(np_controls, np_states)
             # if not verified:
@@ -123,7 +127,7 @@ class ShootingRRT:
             # SMOOTHING
             # np_states, np_controls = self.smooth(np_states, np_controls, verbose)
 
-            return np_controls, np_states, planning_time
+            return np_controls, np_states, planner_local_sdfs
 
         raise RuntimeError("No Solution found from {} to {}".format(start, goal))
 

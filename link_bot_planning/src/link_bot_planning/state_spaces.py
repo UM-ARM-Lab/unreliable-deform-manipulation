@@ -61,7 +61,7 @@ class TailStateSpace(ob.RealVectorStateSpace):
         self.setDimensionName(1, 'tail_y')
 
     def allocator(self, state_space):
-        sampler = TailStateSpaceSampler(state_space, self.extent)
+        sampler = ValidRopeConfigurationSampler(state_space, self.extent)
         return sampler
 
     # def allocState(self):
@@ -73,15 +73,16 @@ class TailStateSpace(ob.RealVectorStateSpace):
     #     super(TailStateSpace, self).freeState(state)
 
 
-class TailStateSpaceSampler(ob.RealVectorStateSampler):
+class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
 
-    def __init__(self, state_space, extent):
-        super(TailStateSpaceSampler, self).__init__(state_space)
+    def __init__(self, state_space, extent, link_length):
+        super(ValidRopeConfigurationSampler, self).__init__(state_space)
         self.extent = extent
+        self.link_length
 
     def sampleUniform(self, state_out):
         # passing 0 length will make it possible the sample things out of the bounds of the arena
-        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent, length=0)
+        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent, length=self.link_length)
         state_out[0] = random_rope_configuration[0]
         state_out[1] = random_rope_configuration[1]
         state_out[2] = random_rope_configuration[2]
