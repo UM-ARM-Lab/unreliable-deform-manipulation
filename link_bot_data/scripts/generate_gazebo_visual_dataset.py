@@ -15,7 +15,7 @@ from colorama import Fore
 import visual_mpc.gazebo_trajectory_execution
 from link_bot_data.video_prediction_dataset_utils import bytes_feature, float_feature, int_feature
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import get_sdf_data, get_local_sdf_data
+from link_bot_gazebo.gazebo_utils import get_local_sdf_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_planning.goals import sample_goal
 
@@ -39,15 +39,18 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
     initial_head_point = np.array([state.points[head_idx].x, state.points[head_idx].y])
 
     # Compute SDF Data
-    full_sdf_data = get_sdf_data(args.env_h, args.env_w, args.res, services)
-    local_sdf_data = get_local_sdf_data(args.sdf_h, args.sdf_w, initial_head_point, full_sdf_data)
+    local_sdf_data = get_local_sdf_data(sdf_cols=args.sdf_cols,
+                                        sdf_rows=args.sdf_rows,
+                                        res=args.res,
+                                        origin_point=initial_head_point,
+                                        services=services)
 
     feature = {
         # These features don't change over time
         'sdf/sdf': float_feature(local_sdf_data.sdf.flatten()),
         'sdf/gradient': float_feature(local_sdf_data.gradient.flatten()),
         'sdf/shape': int_feature(np.array(local_sdf_data.sdf.shape)),
-        'sdf/resolution': float_feature(full_sdf_data.resolution),
+        'sdf/resolution': float_feature(local_sdf_data.resolution),
         'sdf/origin': float_feature(local_sdf_data.origin),
         'sdf/head_points': float_feature(initial_head_point),
     }
@@ -175,8 +178,6 @@ def generate(args):
     rospy.init_node('gazebo_small_with_images')
 
     assert args.n_trajs % args.n_trajs_per_file == 0, "num trajs must be multiple of {}".format(args.n_trajs_per_file)
-    assert args.env_w >= args.sdf_w
-    assert args.env_h >= args.sdf_h
 
     full_output_directory = random_environment_data_utils.data_directory(args.outdir, args.n_trajs)
     if not os.path.isdir(full_output_directory) and args.verbose:
@@ -186,8 +187,8 @@ def generate(args):
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': DT,
-            'sdf_w': args.sdf_w,
-            'sdf_h': args.sdf_h,
+            'sdf_cols': args.sdf_cols,
+            'sdf_rows': args.sdf_rows,
             'env_w': args.env_w,
             'env_h': args.env_h,
             'compression_type': args.compression_type
@@ -218,8 +219,8 @@ def main():
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=6.0)
     parser.add_argument('--env-h', type=float, default=6.0)
-    parser.add_argument('--sdf-w', type=float, default=1.0)
-    parser.add_argument('--sdf-h', type=float, default=1.0)
+    parser.add_argument('--sdf-cols', type=int, default=100)
+    parser.add_argument('--sdf-rows', type=int, default=100)
     parser.add_argument("--steps-per-traj", type=int, default=100)
     parser.add_argument("--steps-per-target", type=int, default=25)
     parser.add_argument("--start-idx-offset", type=int, default=0)

@@ -6,16 +6,16 @@ from ompl import base as ob
 from ompl import control as oc
 
 from link_bot_planning.link_bot_goal import LinkBotGoal
-from link_bot_planning.my_motion_validator import MyMotionValidator
-from link_bot_planning.ompl_viz import plot
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_planning.state_spaces import LinkBotControlSpace, TailStateSpaceSampler, from_numpy, to_numpy
+from link_bot_pycommon import link_bot_sdf_utils
 
 
 class ShootingRRT:
 
-    def __init__(self, fwd_model, validator_model, dt, max_v, planner_timeout, n_state, env_w, env_h):
+    def __init__(self, fwd_model, classifier_model, dt, max_v, planner_timeout, n_state, env_w, env_h):
         self.fwd_model = fwd_model
+        self.classifier_model = classifier_model
         self.dt = dt
         self.planner_timeout = planner_timeout
         self.n_state = self.fwd_model.n_state
@@ -57,14 +57,12 @@ class ShootingRRT:
         self.si = self.ss.getSpaceInformation()
         self.si.setPropagationStepSize(self.dt)
         self.si.setMinMaxControlDuration(1, 100)
-        motion_validator = MyMotionValidator(self.si, validator_model)
-        self.si.setMotionValidator(motion_validator)
 
         # use the default state propagator, it won't be called anyways because we use a directed control sampler
         self.ss.setStatePropagator(oc.StatePropagator(self.si))
 
         self.si.setDirectedControlSamplerAllocator(
-            ShootingDirectedControlSampler.allocator(self.fwd_model, self.max_v))
+            ShootingDirectedControlSampler.allocator(self.fwd_model, self.classifier_model, self.max_v))
 
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(False)
@@ -81,11 +79,14 @@ class ShootingRRT:
 
         from_numpy(np_s_next, state_out, self.n_state)
 
-    def plan(self, np_start, tail_goal_point, sdf, verbose=0) -> Tuple[np.ndarray, np.ndarray, float]:
+    def plan(self, np_start: np.ndarray,
+             tail_goal_point: np.ndarray,
+             full_sdf_data: link_bot_sdf_utils.SDF,
+             verbose: int = 0) -> Tuple[np.ndarray, np.ndarray, float]:
         """
+        :param full_sdf_data: full sdf
         :param np_start: 1 by n matrix
         :param tail_goal_point:  1 by n matrix
-        :param sdf:
         :param verbose: an integer, lower means less verbose
         :return:
         """
@@ -121,17 +122,6 @@ class ShootingRRT:
 
             # SMOOTHING
             # np_states, np_controls = self.smooth(np_states, np_controls, verbose)
-
-            if verbose >= 2:
-                planner_data = ob.PlannerData(self.si)
-                self.planner.getPlannerData(planner_data)
-                plot(planner_data, sdf, np_start, tail_goal_point, np_states, np_controls, self.n_state, self.extent)
-                final_error = np.linalg.norm(np_states[-1, 0:2] - tail_goal_point)
-                lengths = [np.linalg.norm(np_states[i] - np_states[i - 1]) for i in range(1, len(np_states))]
-                path_length = np.sum(lengths)
-                duration = self.dt * len(np_states)
-                print("Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s".format(
-                    final_error, path_length, len(np_states), duration))
 
             return np_controls, np_states, planning_time
 

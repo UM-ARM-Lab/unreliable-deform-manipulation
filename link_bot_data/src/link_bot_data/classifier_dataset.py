@@ -6,7 +6,6 @@ from typing import Optional
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
-from google.protobuf.json_format import MessageToDict
 
 from link_bot_data.video_prediction_dataset_utils import float_feature
 

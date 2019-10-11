@@ -3,12 +3,15 @@ from __future__ import division, print_function
 
 import pathlib
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 
 import numpy as np
 import std_srvs
 from colorama import Fore
+from dataclasses_json import dataclass_json
 
+from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_sdf_data
@@ -20,20 +23,28 @@ from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import gazebo_trajectory_execution
 
 
+# TODO: make external method for turning on and off visualization options (ros param server?, RQT GUI?)
+@dataclass_json
 @dataclass
 class PlannerParams:
     timeout: float
     max_v: float
 
 
+@dataclass_json
 @dataclass
 class EnvParams:
     w: float
     h: float
     real_time_rate: float
     goal_padding: float
+    extent: List[float] = field(init=False)
+
+    def __post_init__(self):
+        self.extent = [-self.w, self.w, -self.h, self.h]
 
 
+@dataclass_json
 @dataclass
 class SDFParams:
     full_h_m: float
@@ -69,12 +80,13 @@ class ShootingRRTMPC:
         self.verbose = verbose
 
         self.fwd_model = model_utils.load_generic_model(self.fwd_model_dir, self.fwd_model_type)
+        self.classifier_model = NoneClassifier()
         # TODO: put this inside the generic model loader
         self.model_path_info = self.fwd_model_dir.parts[1:]
         self.validator_model = classifier_utils.load_generic_model(self.validator_model_dir, self.validator_model_type)
 
         self.rrt = shooting_rrt.ShootingRRT(fwd_model=self.fwd_model,
-                                            validator_model=self.validator_model,
+                                            classifier_model=self.classifier_model,
                                             dt=self.fwd_model.dt,
                                             max_v=self.planner_params.max_v,
                                             n_state=self.fwd_model.n_state,
@@ -115,9 +127,6 @@ class ShootingRRTMPC:
                 tail_goal = sample_goal(self.env_params.w, self.env_params.h, head_point,
                                         env_padding=self.env_params.goal_padding)
 
-                # Compute SDF Data after all objects have finished moving
-                full_sdf_data = get_sdf_data(self.sdf_params.full_h_m, self.sdf_params.full_w_m, self.sdf_params.res, services)
-
                 start = np.expand_dims(np.array(rope_configuration), axis=0)
                 tail_goal_point = np.array(tail_goal)
 
@@ -131,9 +140,9 @@ class ShootingRRTMPC:
                     print(Fore.CYAN + "Planning from {} to {}".format(start, tail_goal_point) + Fore.RESET)
 
                 t0 = time.time()
-                planned_actions, planned_path, _ = self.rrt.plan(start, tail_goal_point, full_sdf_data.sdf, self.verbose)
+                planned_actions, planned_path, _ = self.rrt.plan(start, tail_goal_point, full_sdf_data, self.verbose)
                 planning_time = time.time() - t0
-                self.on_plan_complete(planned_path, planned_actions, planning_time)
+                self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_sdf_data, planning_time)
 
                 trajectory_execution_request = LinkBotTrajectoryRequest()
                 trajectory_execution_request.dt = self.fwd_model.dt
@@ -155,17 +164,24 @@ class ShootingRRTMPC:
                 trajectory_execution_result = services.execute_trajectory(trajectory_execution_request)
                 services.pause(std_srvs.srv.EmptyRequest())
 
-                self.on_execution_complete(planned_path, planned_actions, full_sdf_data, trajectory_execution_result)
+                self.on_execution_complete(planned_path,
+                                           planned_actions,
+                                           actual_local_sdfs,
+                                           planner_local_sdfs,
+                                           trajectory_execution_result)
 
     def on_plan_complete(self,
                          planned_path: np.ndarray,
+                         tail_goal_point: np.ndarray,
                          planned_actions: np.ndarray,
+                         full_sdf_data: link_bot_sdf_utils.SDF,
                          planning_time: float):
         pass
 
     def on_execution_complete(self,
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
-                              full_sdf_data: link_bot_sdf_utils.SDF,
+                              actual_local_sdfs: List[link_bot_sdf_utils.SDF],
+                              planner_local_sdfs: List[link_bot_sdf_utils.SDF],
                               trajectory_execution_result: LinkBotTrajectoryResponse):
         pass

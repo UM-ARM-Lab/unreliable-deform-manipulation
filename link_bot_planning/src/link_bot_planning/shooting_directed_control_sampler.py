@@ -1,14 +1,22 @@
 import ompl.util as ou
 from ompl import control as oc
+from ompl import base as ob
 import numpy as np
 
+from link_bot_gazebo.gazebo_utils import get_sdf_data
+from link_bot_planning.my_motion_validator import MotionClassifier
 from link_bot_planning.state_spaces import to_numpy, from_numpy
 
 
 class ShootingDirectedControlSampler(oc.DirectedControlSampler):
     states_sampled_at = []
 
-    def __init__(self, si, fwd_model, max_v, n_samples):
+    def __init__(self,
+                 si: ob.StateSpace,
+                 fwd_model,
+                 classifier_model: MotionClassifier,
+                 max_v: float,
+                 n_samples: int):
         super(ShootingDirectedControlSampler, self).__init__(si)
         self.si = si
         self.name_ = 'shooting_dcs'
@@ -16,6 +24,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
         self.max_v = max_v
         self.n_samples = n_samples
         self.fwd_model = fwd_model
+        self.classifier_model = classifier_model
         self.state_space = self.si.getStateSpace()
         self.control_space = self.si.getControlSpace()
         self.n_state = self.state_space.getDimension()
@@ -24,13 +33,22 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
         self.max_steps = int(self.si.getMaxControlDuration())
 
     @classmethod
-    def alloc(cls, si, fwd_model, max_v, n_samples):
-        return cls(si, fwd_model, max_v, n_samples)
+    def alloc(cls,
+              si: ob.StateSpace,
+              fwd_model,
+              classifier_model: MotionClassifier,
+              max_v: float,
+              n_samples: int):
+        return cls(si, fwd_model, classifier_model, max_v, n_samples)
 
     @classmethod
-    def allocator(cls, fwd_model, max_v, n_samples=10):
-        def partial(si):
-            return cls.alloc(si, fwd_model, max_v, n_samples)
+    def allocator(cls,
+                  fwd_model,
+                  classifier_model: MotionClassifier,
+                  max_v: float,
+                  n_samples: int = 10):
+        def partial(si: ob.StateSpace):
+            return cls.alloc(si, fwd_model, classifier_model, max_v, n_samples)
 
         return oc.DirectedControlSamplerAllocator(partial)
 
@@ -40,17 +58,29 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
 
         self.states_sampled_at.append(np_target)
 
-        import time
         min_distance = np.inf
         min_u = None
         min_np_s_next = None
-        # t0 = time.time()
         for i in range(self.n_samples):
+            # sample a random action
             theta = np.random.uniform(-np.pi, np.pi)
             u = np.array([[self.max_v * np.cos(theta), self.max_v * np.sin(theta)]])
             batch_u = np.expand_dims(u, axis=0)
+
+            # use the forward model to predict the next configuration
             points_next = self.fwd_model.predict(np_s, batch_u)
             np_s_next = points_next[:, 1].reshape([1, self.n_state])
+
+            # check that the motion is valid
+            # TODO: get local sdf from the state or cheat and pass it in before planning somehow
+            # Compute SDF Data after all objects have finished moving
+            full_sdf_data = get_sdf_data(self.sdf_params.full_h_m, self.sdf_params.full_w_m, self.sdf_params.res, services)
+
+            # accept_probability = self.classifier_model.predict(local_sdf_data, np_s, np_s_next)
+            # if self.rng_.uniform01() >= accept_probability:
+            #     continue
+
+            # keep if it's the best we've seen
             distance = np.linalg.norm(np_s_next - np_target)
             if distance < min_distance:
                 min_distance = distance
@@ -64,6 +94,5 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
         duration_steps = 1
         if not self.si.isValid(target_out):
             duration_steps = 0
-        # print(time.time() - t0)
 
         return duration_steps

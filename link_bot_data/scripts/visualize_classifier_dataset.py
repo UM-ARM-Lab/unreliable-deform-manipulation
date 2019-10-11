@@ -2,6 +2,7 @@
 import tensorflow as tf
 import argparse
 import pathlib
+import matplotlib.pyplot as plt
 
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_planning.visualization import plot_classifier_data
@@ -50,8 +51,19 @@ def main():
 
         count += 1
         if not args.no_plot:
-            plot_classifier_data(actual_sdf, actual_sdf_extent, next_state, planned_next_state, planned_sdf, planned_sdf_extent,
-                                 planned_state, state, i, label)
+            title = "Example {}".format(i)
+            plot_classifier_data(
+                actual_sdf=actual_sdf,
+                actual_sdf_extent=actual_sdf_extent,
+                next_state=next_state,
+                planned_next_state=planned_next_state,
+                planned_sdf=planned_sdf,
+                planned_sdf_extent=planned_sdf_extent,
+                planned_state=planned_state,
+                state=state,
+                title=title,
+                label=label)
+            plt.show()
 
     class_balance = positive_count / count * 100
     print("Number of examples: {}".format(count))

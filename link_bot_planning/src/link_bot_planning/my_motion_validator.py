@@ -1,10 +1,12 @@
-import ompl.base as ob
+import numpy as np
+
+from link_bot_pycommon import link_bot_sdf_utils
 
 
-class MyMotionValidator(ob.MotionValidator):
+class MotionClassifier:
 
-    def __init__(self, si, validator_model):
-        super(MyMotionValidator, self).__init__(si)
+    def __init__(self):
+        self.model_hparams = {}
 
-    def checkMotion(self, s1, s2):
-        return True
+    def predict(self, local_sdf_data: link_bot_sdf_utils.SDF, s1: np.ndarray, s2: np.ndarray):
+        pass

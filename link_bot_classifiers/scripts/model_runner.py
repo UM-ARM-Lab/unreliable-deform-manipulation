@@ -24,7 +24,7 @@ def train(args):
     else:
         log_path = None
 
-    model_hparams = json.load(open(args.model_hparams, 'r'))
+    model_hparams = json.load(args.model_hparams.open('r'))
 
     ###############
     # Datasets
@@ -60,12 +60,12 @@ def train(args):
 
 def eval(args):
     if args.dataset_hparams_dict:
-        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
+        dataset_hparams_dict = json.load(args.dataset_hparams_dict.open('r'))
     else:
-        dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
+        dataset_hparams_dict = json.load((args.input_dir / 'hparams.json').open('r'))
 
     model_hparams_file = args.checkpoint / 'hparams.json'
-    model_hparams = json.load(open(model_hparams_file, 'r'))
+    model_hparams = json.load(model_hparams_file.open('r'))
     dataset_hparams_dict['sdf_shape'] = model_hparams['sdf_shape']
 
     ###############

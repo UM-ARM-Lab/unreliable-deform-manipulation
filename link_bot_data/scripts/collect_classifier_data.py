@@ -8,7 +8,7 @@ import json
 import os
 import pathlib
 from colorama import Fore
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import ompl.util as ou
@@ -68,12 +68,20 @@ class ClasssifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
         else:
             self.full_output_directory = None
 
-        with open(pathlib.Path(self.full_output_directory) / 'hparams.json', 'w') as of:
-            # FIXME: add all arguments to the constructor here
+        with (self.full_output_directory / 'hparams.json').open('w') as of:
             options = {
-                'dt': self.env_params.dt,
+                'dt': self.fwd_model.dt,
                 'n_state': 6,
                 'n_action': 2,
+                'compression_type': compression_type,
+                'fwd_model_dir': fwd_model_dir,
+                'fwd_model_type': fwd_model_type,
+                'n_envs': n_envs,
+                'n_targets_per_env': n_targets_per_env,
+                'verbose': verbose,
+                'planner_params': planner_params.to_json(),
+                'env_params': env_params.to_json(),
+                'sdf_params': sdf_params.to_json(),
             }
             json.dump(options, of, indent=2)
 
@@ -88,7 +96,9 @@ class ClasssifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
 
     def on_plan_complete(self,
                          planned_path: np.ndarray,
+                         tail_goal_point: np.ndarray,
                          planned_actions: np.ndarray,
+                         full_sdf_data: link_bot_sdf_utils.SDF,
                          planning_time: float):
         self.planning_times.append(planning_time)
         if len(self.planning_times) % 16 == 0:
@@ -97,7 +107,8 @@ class ClasssifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
     def on_execution_complete(self,
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
-                              full_sdf_data: link_bot_sdf_utils.SDF,
+                              actual_local_sdfs: List[link_bot_sdf_utils.SDF],
+                              planner_local_sdfs: List[link_bot_sdf_utils.SDF],
                               trajectory_execution_result: LinkBotTrajectoryResponse):
         # convert ros message into a T x n_state numpy matrix
         actual_rope_configurations = []
@@ -113,20 +124,8 @@ class ClasssifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
         next_states = actual_rope_configurations[1:]
         planned_states = planned_path[:-1]
         planned_next_states = planned_path[1:]
-        for (state, next_state, action, planned_state, planned_next_state) in zip(states, next_states, planned_actions,
-                                                                                  planned_states, planned_next_states):
-            actual_head_point = state[4:6]
-            planner_head_point = planned_state[4:6]
-            # compute the local SDF, which may be different for the state in the planner and the state in the real rollout
-            actual_local_sdf_data = get_local_sdf_data(self.sdf_params.local_h_rows,
-                                                       self.sdf_params.local_w_cols,
-                                                       actual_head_point,
-                                                       full_sdf_data)
-            planner_local_sdf_data = get_local_sdf_data(self.sdf_params.local_h_rows,
-                                                        self.sdf_params.local_w_cols,
-                                                        planner_head_point,
-                                                        full_sdf_data)
-
+        d = zip(states, next_states, planned_actions, planned_states, planned_next_states, actual_local_sdfs, planner_local_sdfs)
+        for (state, next_state, action, planned_state, planned_next_state, actual_local_sdf_data, planner_local_sdf_data) in d:
             example = ClassifierDataset.make_serialized_example(actual_local_sdf_data.sdf,
                                                                 actual_local_sdf_data.extent,
                                                                 actual_local_sdf_data.origin,
@@ -146,8 +145,6 @@ class ClasssifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                 plt.figure()
                 plt.imshow(planner_local_sdf_data.image > 0, extent=planner_local_sdf_data.extent, zorder=1, alpha=0.5)
                 plt.imshow(actual_local_sdf_data.image > 0, extent=actual_local_sdf_data.extent, zorder=1, alpha=0.5)
-                plt.scatter(actual_head_point[0], actual_head_point[1], zorder=2)
-                plt.scatter(planner_head_point[0], planner_head_point[1], zorder=3)
                 plt.axis("equal")
                 plt.xlabel("x (m)")
                 plt.ylabel("y (m)")
@@ -181,28 +178,22 @@ def main():
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-envs", type=int, default=32, help='number of environments')
     parser.add_argument("--n-targets-per-env", type=int, default=10, help='number of targets/plans per environment')
-    parser.add_argument("--n-examples-per-record", type=int, default=128, help='examples per tfrecord')
-    parser.add_argument("--seed", '-s', type=int)
+    parser.add_argument("--n-examples-per-record", type=int, default=1024, help='examples per tfrecord')
+    parser.add_argument("--seed", '-s', type=int, default=1)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
-    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=5.0)
-    parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
+    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=10.0)
+    parser.add_argument("--real-time-rate", type=float, default=10.0, help='real time rate')
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
-    # Even though the arena is 5m, we need extra padding so that we can request a 1x1 meter local sdf at the corners
-    parser.add_argument('--env-w', type=float, default=6, help='environment width')
+    parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--full-sdf-w', type=float, default=15, help='environment width')
     parser.add_argument('--full-sdf-h', type=float, default=15, help='environment height')
-    parser.add_argument('--sdf-cols', type=float, default=100, help='local sdf width')
-    parser.add_argument('--sdf-rows', type=float, default=100, help='local sdf width')
+    parser.add_argument('--sdf-cols', type=int, default=100, help='local sdf width')
+    parser.add_argument('--sdf-rows', type=int, default=100, help='local sdf width')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
 
     args = parser.parse_args()
-
-    if args.seed is None:
-        args.seed = np.random.randint(0, 10000)
-        print("Using seed: ", args.seed)
-    np.random.seed(args.seed)
 
     np.random.seed(args.seed)
     ou.RNG.setSeed(args.seed)
@@ -211,8 +202,8 @@ def main():
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v)
     sdf_params = SDFParams(full_h_m=args.env_h,
                            full_w_m=args.env_w,
-                           local_h_rows=args.sdf_h,
-                           local_w_cols=args.sdf_w,
+                           local_h_rows=args.sdf_rows,
+                           local_w_cols=args.sdf_cols,
                            res=args.res)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
@@ -224,13 +215,13 @@ def main():
         fwd_model_type=args.fwd_model_type,
         validator_model_dir=pathlib.Path(),
         validator_model_type='none',
-        n_envs=args.n_env,
+        n_envs=args.n_envs,
         n_targets_per_env=args.n_targets_per_env,
         verbose=args.verbose,
         planner_params=planner_params,
         sdf_params=sdf_params,
         env_params=env_params,
-        n_examples_per_record=args.n_examples_per_records,
+        n_examples_per_record=args.n_examples_per_record,
         compression_type=args.compression_type,
         outdir=args.outdir
     )

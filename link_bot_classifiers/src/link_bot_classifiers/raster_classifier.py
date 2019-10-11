@@ -12,7 +12,9 @@ import tensorflow.keras.layers as layers
 from colorama import Fore, Style
 from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
-from link_bot_pycommon import experiments_util
+from link_bot_planning.my_motion_validator import MotionClassifier
+from link_bot_planning.visualization import plot_classifier_data
+from link_bot_pycommon import experiments_util, link_bot_sdf_utils
 from moonshine.raster_points_layer import RasterPoints
 
 
@@ -135,7 +137,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         experiments_util.make_log_dir(full_log_path)
 
         hparams_path = full_log_path / "hparams.json"
-        with open(hparams_path, 'w') as hparams_file:
+        with hparams_path.open('w') as hparams_file:
             hparams['log path'] = str(full_log_path)
             hparams_file.write(json.dumps(hparams, indent=2))
 
@@ -235,26 +237,27 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         train_loop()
 
 
-class RasterClassifierWrapper:
+class RasterClassifierWrapper(MotionClassifier):
 
-    def __init__(self, path):
+    def __init__(self, path: pathlib.Path):
+        super().__init__()
         model_hparams_file = path / 'hparams.json'
-        self.model_hparams = json.load(open(model_hparams_file, 'r'))
+        self.model_hparams = json.load(model_hparams_file.open('r'))
         self.net = RasterClassifier(hparams=self.model_hparams)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)
         self.n_control = 2
 
-    def check_motion(self, local_sdf_data, np_s1, np_s2):
+    def predict(self, local_sdf_data: link_bot_sdf_utils.SDF, s1: np.ndarray, s2: np.ndarray):
         """
-        :param np_s1: [batch, 6] float64
-        :param np_s2: [batch, T, 2] float64
+        :param s1: [batch, 6] float64
+        :param s2: [batch, 6] float64
         :return: [batch, 1] float64
         """
         test_x = {
-            'planned_state': tf.convert_to_tensor(np_s1, dtype=tf.float32),
-            'planned_next_state': tf.convert_to_tensor(np_s2, dtype=tf.float32),
+            'planned_state': tf.convert_to_tensor(s1, dtype=tf.float32),
+            'planned_next_state': tf.convert_to_tensor(s2, dtype=tf.float32),
             # TODO: consider making this binary occupancy grid instead of SDF
             'planned_sdf/sdf': tf.convert_to_tensor(local_sdf_data.sdf, dtype=tf.float32),
             'res': tf.convert_to_tensor(local_sdf_data.resolution[0]),
@@ -263,4 +266,19 @@ class RasterClassifierWrapper:
         accept_probabilities = self.net(test_x)[-1]
         accept_probabilities = accept_probabilities.numpy()
         accept_probabilities = accept_probabilities.as_type(np.float64)
+
+        print(accept_probabilities)
+        title = "p(accept) = {}".format(accept_probabilities)
+        plot_classifier_data(planned_sdf=test_x['planned_sdf/sdf'],
+                             planned_sdf_extent=test_x['planned_sdf/extent'],
+                             planned_state=test_x['planned_state'],
+                             planned_next_state=test_x['planned_next_state'],
+                             actual_sdf=None,
+                             actual_sdf_extent=None,
+                             state=None,
+                             next_state=None,
+                             title=title,
+                             label=None)
+        plt.show()
+
         return accept_probabilities

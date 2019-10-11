@@ -1,7 +1,7 @@
 import pathlib
 
 from link_bot_classifiers.none_classifier import NoneClassifier
-from link_bot_classifiers.raster_classifier import RasterClassifier
+from link_bot_classifiers.raster_classifier import RasterClassifierWrapper
 
 
 def load_generic_model(model_dir: pathlib.Path, model_type: str):
@@ -12,8 +12,7 @@ def load_generic_model(model_dir: pathlib.Path, model_type: str):
     :return:
     """
     if model_type == 'raster':
-        cnn = RasterClassifier(model_dir)
-        return cnn
+        return RasterClassifierWrapper(model_dir)
     elif model_type == 'none':
         # this dt here is sort of made up
         return NoneClassifier()
