@@ -185,15 +185,15 @@ def xy_to_row_col(services, x, y, z):
 
 
 def get_sdf_and_gradient(services: GazeboServices,
-                         env_w: float = 1.0,
-                         env_h: float = 1.0,
+                         env_w_cols: int,
+                         env_h_rows: int,
                          res: float = 0.01,
                          center_x: float = 0,
                          center_y: float = 0):
     sdf_request = ComputeSDF2Request()
     sdf_request.resolution = res
-    sdf_request.y_height = env_h
-    sdf_request.x_width = env_w
+    sdf_request.h_rows = env_h_rows
+    sdf_request.w_cols = env_w_cols
     sdf_request.center.x = center_x
     sdf_request.center.y = center_y
     sdf_request.min_z = 0.01
@@ -207,6 +207,8 @@ def get_sdf_and_gradient(services: GazeboServices,
                                                              sdf_response.gradient.layout.dim[1].size,
                                                              sdf_response.gradient.layout.dim[2].size])
     gradient = np.transpose(gradient, [1, 0, 2])
+
+    # TODO: make this service take number of rows & columns instead of sizes in meters
     return gradient, sdf, sdf_response
 
 
@@ -241,11 +243,9 @@ def get_local_sdf_data(sdf_rows: int,
     :param services: from gazebo_utils
     :return: SDF object for local sdf
     """
-    env_w = sdf_cols * res
-    env_h = sdf_rows * res
     gradient, sdf, sdf_response = get_sdf_and_gradient(services,
-                                                       env_w=env_w,
-                                                       env_h=env_h,
+                                                       env_h_rows=sdf_rows,
+                                                       env_w_cols=sdf_cols,
                                                        res=res,
                                                        center_x=origin_point[0],
                                                        center_y=origin_point[1])

@@ -19,7 +19,7 @@ services = gazebo_utils.GazeboServices()
 h_rows = 100
 w_cols = 100
 res = 0.03
-sdf_data = get_local_sdf_data(sdf_rows=h_rows, sdf_cols=w_cols, res=res, origin_point=np.array([0, -1]), services=services)
+sdf_data = get_local_sdf_data(sdf_rows=h_rows, sdf_cols=w_cols, res=res, origin_point=np.array([0, 0]), services=services)
 
 plt.figure()
 plt.imshow(sdf_data.image < 0.0, extent=sdf_data.extent)

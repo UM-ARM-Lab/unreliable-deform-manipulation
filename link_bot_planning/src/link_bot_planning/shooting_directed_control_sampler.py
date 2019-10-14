@@ -70,6 +70,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
         min_distance = np.inf
         min_u = None
         min_np_s_next = None
+        min_local_sdf = None
         for i in range(self.n_samples):
             # sample a random action
             theta = np.random.uniform(-np.pi, np.pi)

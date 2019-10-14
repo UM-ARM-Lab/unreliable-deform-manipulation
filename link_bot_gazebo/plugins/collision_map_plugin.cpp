@@ -68,13 +68,13 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
 
   auto get_sdf2 = [&](link_bot_gazebo::ComputeSDF2Request &req, link_bot_gazebo::ComputeSDF2Response &res) {
     if (req.request_new) {
-      compute_sdf(req.x_width, req.y_height, req.center, req.resolution, req.robot_name, req.min_z, req.max_z);
+      compute_sdf(req.h_rows, req.w_cols, req.center, req.resolution, req.robot_name, req.min_z, req.max_z);
     }
-    res.h = req.y_height;
-    res.w = req.x_width;
+    res.h_rows = req.h_rows;
+    res.w_cols = req.w_cols;
     res.res = std::vector<float>(2, req.resolution);
-    auto const origin_x_coordinate = static_cast<int>(req.x_width / 2 / req.resolution);
-    auto const origin_y_coordinate = static_cast<int>(req.y_height / 2 / req.resolution);
+    auto const origin_x_coordinate = static_cast<int>(req.w_cols / 2);
+    auto const origin_y_coordinate = static_cast<int>(req.h_rows / 2);
     std::vector<int> origin_vec{origin_x_coordinate, origin_y_coordinate};
     res.origin = origin_vec;
     res.sdf = sdf_.GetImmutableRawData();
@@ -201,13 +201,15 @@ void CollisionMapPlugin::QueueThread()
   }
 }
 
-void CollisionMapPlugin::compute_sdf(float x_width, float y_height, geometry_msgs::Point center, float resolution,
+void CollisionMapPlugin::compute_sdf(int64_t h_rows, int64_t w_cols, geometry_msgs::Point center, float resolution,
                                      std::string const &robot_name, float min_z, float max_z, bool verbose)
 {
   Eigen::Isometry3d origin_transform = Eigen::Isometry3d::Identity();
+  auto const x_width = resolution * w_cols;
+  auto const y_height = resolution * h_rows;
   origin_transform.translation() = Eigen::Vector3d{center.x - x_width / 2, center.y - y_height / 2, 0};
   // hard coded for 1-cell in Z
-  grid_ = sdf_tools::CollisionMapGrid(origin_transform, "/gazebo_world", resolution, x_width, y_height, resolution,
+  grid_ = sdf_tools::CollisionMapGrid(origin_transform, "/gazebo_world", resolution, w_cols, h_rows, 1l,
                                       oob_value);
   ignition::math::Vector3d start, end;
   start.Z(max_z);

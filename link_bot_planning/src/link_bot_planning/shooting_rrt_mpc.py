@@ -14,7 +14,7 @@ from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data, get_local_sdf_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
-from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest, LinkBotTrajectoryResponse
+from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
 from link_bot_planning import classifier_utils, model_utils, shooting_rrt
 from link_bot_planning.goals import sample_goal
 from link_bot_planning.params import PlannerParams, SDFParams, EnvParams

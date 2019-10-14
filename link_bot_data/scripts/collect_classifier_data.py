@@ -18,6 +18,7 @@ from colorama import Fore
 from link_bot_data import random_environment_data_utils
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_gazebo import gazebo_utils
+from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import shooting_rrt_mpc
 from link_bot_planning.params import PlannerParams, SDFParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
@@ -44,6 +45,7 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                  env_params: EnvParams,
                  n_examples_per_record: int,
                  compression_type: str,
+                 services: GazeboServices,
                  outdir: Optional[pathlib.Path] = None):
         super().__init__(fwd_model_dir,
                          fwd_model_type,
@@ -54,7 +56,8 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                          verbose,
                          planner_params,
                          sdf_params,
-                         env_params)
+                         env_params,
+                         services=services)
         self.n_examples_per_record = n_examples_per_record
         self.compression_type = compression_type
         self.outdir = outdir
@@ -74,7 +77,7 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                 'n_state': 6,
                 'n_action': 2,
                 'compression_type': compression_type,
-                'fwd_model_dir': fwd_model_dir,
+                'fwd_model_dir': str(fwd_model_dir),
                 'fwd_model_type': fwd_model_type,
                 'n_envs': n_envs,
                 'n_targets_per_env': n_targets_per_env,
@@ -228,7 +231,8 @@ def main():
         env_params=env_params,
         n_examples_per_record=args.n_examples_per_record,
         compression_type=args.compression_type,
-        outdir=args.outdir
+        outdir=args.outdir,
+        services=services,
     )
 
     data_collector.run()

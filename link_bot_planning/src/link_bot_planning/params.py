@@ -26,7 +26,6 @@ class EnvParams:
         This assumes the origin of the environment is also the center of the extent
         """
         self.extent = [-self.w / 2, self.w / 2, -self.h / 2, self.h / 2]
-        print(self.extent)
 
 
 @dataclass_json

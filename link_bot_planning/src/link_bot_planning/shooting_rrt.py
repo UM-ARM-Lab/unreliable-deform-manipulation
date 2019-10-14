@@ -1,15 +1,15 @@
 from typing import Tuple, List
 
 import numpy as np
-from matplotlib import animation
 from ompl import base as ob
 from ompl import control as oc
 
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_sdf_data
 from link_bot_planning.link_bot_goal import LinkBotGoal
-from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_planning.params import EnvParams, SDFParams, PlannerParams
-from link_bot_planning.state_spaces import ValidRopeConfigurationSampler, from_numpy, to_numpy
+from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
+from link_bot_planning.state_spaces import to_numpy, \
+    ValidRopeConfigurationCompoundSampler, from_numpy_compound
 from link_bot_pycommon import link_bot_sdf_utils
 
 
@@ -33,7 +33,12 @@ class ShootingRRT:
         self.planner_params = planner_params
         self.services = services
 
-        self.state_space = ob.RealVectorStateSpace(n_state)
+        self.state_space = ob.CompoundStateSpace()
+        self.n_local_sdf = self.sdf_params.local_w_cols * self.sdf_params.local_h_rows
+        self.local_sdf_space = ob.RealVectorStateSpace(self.n_local_sdf)
+        self.local_sdf_space.setBounds(-10, 10)
+
+        self.config_space = ob.RealVectorStateSpace(n_state)
         bounds = ob.RealVectorBounds(self.n_state)
         bounds.setLow(0, -self.env_params.w / 2)
         bounds.setLow(1, -self.env_params.h / 2)
@@ -47,33 +52,31 @@ class ShootingRRT:
         bounds.setHigh(3, self.env_params.h / 2)
         bounds.setHigh(4, self.env_params.w / 2)
         bounds.setHigh(5, self.env_params.h / 2)
-        self.state_space.setBounds(bounds)
+        self.config_space.setBounds(bounds)
 
-        # self.state_space = ob.CompoundStateSpace()
         # the rope is just 6 real numbers with no bounds
-        # self.state_space.addSubspace(ob.RealVectorStateSpace(n_state))
+        self.state_space.addSubspace(self.config_space, weight=1.0)
         # the local environment is a rows*cols flat vector of numbers from 0 to 1
-        # self.state_space.addSubspace(ob.RealVectorStateSpace(n_local_sdf))
+        self.state_space.addSubspace(self.local_sdf_space, weight=0.0)
 
         # Only sample configurations which are known to be valid, i.e. not overstretched.
         def state_sampler_allocator(state_space):
             # this length comes from the SDF file textured_link_bot.sdf
-            sampler = ValidRopeConfigurationSampler(state_space, extent=self.env_params.extent, link_length=0.24)
+            # sampler = ValidRopeConfigurationSampler(state_space, extent=self.env_params.extent, link_length=0.24)
+            sampler = ValidRopeConfigurationCompoundSampler(state_space, extent=self.env_params.extent, link_length=0.24)
             return sampler
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(state_sampler_allocator))
 
-        self.control_space = oc.RealVectorControlSpace(self.state_space, self.n_control)
         control_bounds = ob.RealVectorBounds(2)
         control_bounds.setLow(-self.planner_params.max_v)
         control_bounds.setHigh(self.planner_params.max_v)
+        self.control_space = oc.RealVectorControlSpace(self.state_space, self.n_control)
         self.control_space.setBounds(control_bounds)
 
         self.ss = oc.SimpleSetup(self.control_space)
 
         self.si = self.ss.getSpaceInformation()
-        self.si.setPropagationStepSize(self.dt)
-        self.si.setMinMaxControlDuration(1, 100)
 
         # use the default state propagator, it won't be called anyways because we use a directed control sampler
         self.ss.setStatePropagator(oc.StatePropagator(self.si))
@@ -89,21 +92,29 @@ class ShootingRRT:
         self.planner.setIntermediateStates(False)
         self.ss.setPlanner(self.planner)
 
-        self.Writer = animation.writers['ffmpeg']
-        self.writer = self.Writer(fps=30, metadata=dict(artist='Me'), bitrate=1800)
-
     def plan(self, np_start: np.ndarray,
              tail_goal_point: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[link_bot_sdf_utils.SDF]]:
         """
-        :param services: from gazebo_utils
         :param np_start: 1 by n matrix
         :param tail_goal_point:  1 by n matrix
-        :param verbose: an integer, lower means less verbose
         :return: controls, states
         """
         # create start and goal states
-        start = ob.State(self.state_space)
-        from_numpy(np_start, start, self.n_state)
+        start_local_sdf = get_local_sdf_data(sdf_rows=self.sdf_params.local_h_rows,
+                                             sdf_cols=self.sdf_params.local_w_cols,
+                                             res=self.sdf_params.res,
+                                             origin_point=np.array([np_start[0, 4], np_start[0, 5]]),
+                                             services=self.services)
+        compound_start = ob.CompoundState(self.state_space)
+        for i in range(self.n_state):
+            compound_start()[0][i] = np_start[0, i]
+        compound_start()[1][0] = np.pi
+        start_local_sdf_flat_double = start_local_sdf.sdf.flatten().astype(np.float64)
+        for sdf_idx in range(self.n_local_sdf):
+            sdf_value = start_local_sdf_flat_double[sdf_idx]
+            compound_start()[1][sdf_idx] = sdf_value
+        # from_numpy_compound(np_start, start_local_sdf, compound_start(), self.n_state)
+        start = ob.State(compound_start)
         epsilon = 0.01
         goal = LinkBotGoal(self.si, epsilon, tail_goal_point)
 
