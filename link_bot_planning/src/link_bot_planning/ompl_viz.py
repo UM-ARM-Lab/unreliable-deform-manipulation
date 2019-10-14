@@ -3,8 +3,16 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 from ompl import base as ob
 
+from geometry_msgs.msg import Point
 from link_bot_data.visualization import plot_rope_configuration
+from link_bot_gazebo.gazebo_utils import GazeboServices
+from visualization_msgs.msg import MarkerArray, Marker
+from link_bot_pycommon.link_bot_sdf_utils import SDF
 from link_bot_planning.state_spaces import to_numpy
+
+
+def rviz_plot(services):
+    pass
 
 
 def plot(sampler, planner_data, sdf, goal, planned_path, planned_actions, extent):
@@ -35,7 +43,8 @@ def plot(sampler, planner_data, sdf, goal, planned_path, planned_actions, extent
         s = v.getState()
         edges_map = ob.mapUintToPlannerDataEdge()
 
-        np_s = to_numpy(s, n_state)
+        # TODO: this assumes the specific compound state space I'm testing at the moment. Get the subspace by name maybe?
+        np_s = to_numpy(s[0], n_state)
         plt.scatter(np_s[0, 0], np_s[0, 1], s=15, c='orange', zorder=2, alpha=0.5, label='tail')
 
         if len(edges_map.keys()) == 0:
@@ -45,7 +54,7 @@ def plot(sampler, planner_data, sdf, goal, planned_path, planned_actions, extent
         for vertex_index2 in edges_map.keys():
             v2 = planner_data.getVertex(vertex_index2)
             s2 = v2.getState()
-            np_s2 = to_numpy(s2, n_state)
+            np_s2 = to_numpy(s2[0], n_state)
             plt.plot([np_s[0, 0], np_s2[0, 0]], [np_s[0, 1], np_s2[0, 1]], c='white', label='tree', zorder=1)
 
     plt.xlabel("x")
@@ -68,3 +77,43 @@ def plot(sampler, planner_data, sdf, goal, planned_path, planned_actions, extent
     plt.legend(custom_lines,
                ['sampled rope configurations', 'start', 'goal', 'final path', 'controls', 'full rope', 'search tree'])
     plt.show()
+
+
+def add_sampled_configuration(services: GazeboServices,
+                              np_s: np.ndarray,
+                              u: np.ndarray,
+                              np_s_reached: np.ndarray,
+                              sdf_data: SDF):
+    markers = MarkerArray()
+
+    pre_marker = Marker()
+    pre_marker.header.frame_id = '/world'
+    pre_marker.scale.x = 1
+    tail = Point()
+    tail.x = np_s[0, 0]
+    tail.y = np_s[0, 1]
+    tail.z = 0
+    mid = Point()
+    mid.x = np_s[0, 2]
+    mid.y = np_s[0, 3]
+    mid.z = 0
+    head = Point()
+    head.x = np_s[0, 4]
+    head.y = np_s[0, 5]
+    head.z = 0
+    pre_marker.points.append(tail)
+    pre_marker.points.append(mid)
+    pre_marker.points.append(head)
+    pre_marker.type = Marker.LINE_STRIP
+    pre_marker.color.r = 1.0
+    pre_marker.color.g = 0.0
+    pre_marker.color.b = 0.0
+    pre_marker.color.a = 1.0
+
+    post_marker = Marker()
+    post_marker.header.frame_id = '/world'
+
+    markers.markers.append(pre_marker)
+    markers.markers.append(post_marker)
+    services.rviz_sampled_configurations.publish(markers)
+    return None

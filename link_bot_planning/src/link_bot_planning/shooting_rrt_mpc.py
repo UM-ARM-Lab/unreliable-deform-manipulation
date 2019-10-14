@@ -72,6 +72,9 @@ class ShootingRRTMPC:
             gazebo_trajectory_execution.move_objects(self.services, objects, self.env_params.w, self.env_params.h, 'velocity',
                                                      padding=0.5)
 
+            # TODO: should I have this here? It's just for visualization
+            full_sdf_data = get_sdf_data(env_h=10, env_w=10, res=0.03, services=self.services)
+
             # generate a bunch of plans to random goals
             state_req = LinkBotStateRequest()
 
@@ -102,9 +105,6 @@ class ShootingRRTMPC:
                 if self.verbose >= 1:
                     print("Planning time: {:5.3f}s".format(planning_time))
 
-                # TODO: should I have this? It's just for visualization, but using the local sdfs would mean drawing
-                # hundreds of images which is probably slow?
-                full_sdf_data = get_sdf_data(env_h=10, env_w=10, res=0.03, services=self.services)
                 self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_sdf_data, planning_time)
 
                 trajectory_execution_request = LinkBotTrajectoryRequest()
@@ -140,7 +140,7 @@ class ShootingRRTMPC:
                     actual_local_sdf = get_local_sdf_data(sdf_rows=self.sdf_params.local_h_rows,
                                                           sdf_cols=self.sdf_params.local_w_cols,
                                                           res=self.sdf_params.res,
-                                                          origin_point=actual_head_point,
+                                                          center_point=actual_head_point,
                                                           services=self.services)
                     actual_local_sdfs.append(actual_local_sdf)
                 actual_path = np.array(actual_path)

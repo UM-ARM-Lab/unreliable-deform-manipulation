@@ -42,7 +42,7 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
     local_sdf_data = get_local_sdf_data(sdf_cols=args.sdf_cols,
                                         sdf_rows=args.sdf_rows,
                                         res=args.res,
-                                        origin_point=initial_head_point,
+                                        center_point=initial_head_point,
                                         services=services)
 
     feature = {

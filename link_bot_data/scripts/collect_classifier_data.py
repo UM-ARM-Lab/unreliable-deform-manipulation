@@ -9,6 +9,7 @@ from typing import Optional, List
 
 import matplotlib.pyplot as plt
 import numpy as np
+from ompl import base as ob
 import ompl.util as ou
 import rospy
 import std_srvs
@@ -19,8 +20,10 @@ from link_bot_data import random_environment_data_utils
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import shooting_rrt_mpc
+from link_bot_planning import shooting_rrt_mpc, visualization
+from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, SDFParams, EnvParams
+from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -102,6 +105,14 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                          full_sdf_data: link_bot_sdf_utils.SDF,
                          planning_time: float):
         self.planning_times.append(planning_time)
+
+        if self.verbose >= 2:
+            # TODO: make planner_data an argument to this function
+            planner_data = ob.PlannerData(self.rrt.si)
+            self.rrt.planner.getPlannerData(planner_data)
+            plot(ShootingDirectedControlSampler, planner_data, full_sdf_data.sdf, tail_goal_point, planned_path, planned_actions,
+                 full_sdf_data.extent)
+
         if len(self.planning_times) % 16 == 0:
             print("Planning Time: {:7.3f}s ({:6.3f}s)".format(np.mean(self.planning_times), np.std(self.planning_times)))
 
@@ -117,6 +128,19 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
         planned_next_states = planned_path[1:]
         d = zip(states, next_states, planned_actions, planned_states, planned_next_states, actual_local_sdfs, planner_local_sdfs)
         for (state, next_state, action, planned_state, planned_next_state, actual_local_sdf_data, planner_local_sdf_data) in d:
+
+            visualization.plot_classifier_data(planner_local_sdf_data.sdf,
+                                               planner_local_sdf_data.extent,
+                                               planned_state,
+                                               planned_next_state,
+                                               actual_local_sdf_data.sdf,
+                                               actual_local_sdf_data.extent,
+                                               state,
+                                               next_state,
+                                               "",
+                                               label=None)
+            plt.show()
+
             example = ClassifierDataset.make_serialized_example(actual_local_sdf_data.sdf,
                                                                 actual_local_sdf_data.extent,
                                                                 actual_local_sdf_data.origin,
@@ -143,6 +167,7 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
 
             self.examples[self.current_record_traj_idx] = example
             self.current_record_traj_idx += 1
+            print(".", end="")
             self.example_idx += 1
 
             if self.current_record_traj_idx == self.n_examples_per_record:
@@ -155,6 +180,7 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                 full_filename = self.full_output_directory / record_filename
                 writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=self.compression_type)
                 writer.write(serialized_dataset)
+                print()
                 print("saved {}".format(full_filename))
                 self.current_record_traj_idx = 0
 

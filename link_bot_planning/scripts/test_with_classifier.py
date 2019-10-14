@@ -14,7 +14,6 @@ from colorama import Fore
 from ompl import base as ob
 
 from link_bot_data import random_environment_data_utils
-from link_bot_gazebo.srv import LinkBotTrajectoryResponse
 from link_bot_planning import shooting_rrt_mpc
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, SDFParams, EnvParams

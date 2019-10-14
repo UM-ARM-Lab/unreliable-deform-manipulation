@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from colorama import Fore
 
@@ -6,9 +8,13 @@ def sdf_indeces_to_point(rowcols, resolution, origin):
     return (rowcols - origin) * resolution
 
 
-def sdf_idx_to_point(row, col, resolution, origin):
-    x = (col - origin[0]) * resolution[0]
-    y = (row - origin[1]) * resolution[1]
+def sdf_idx_to_point(row: int,
+                     col: int,
+                     resolution: np.ndarray,
+                     origin: np.ndarray):
+    """ row the col """
+    y = (row - origin[0]) * resolution[0]
+    x = (col - origin[1]) * resolution[1]
     return np.array([y, x])
 
 
@@ -22,14 +28,19 @@ def bounds_from_env_size(sdf_w, sdf_h, new_origin, resolution, origin):
     return [rmin, rmax, cmin, cmax], [xmin, xmax, ymin, ymax]
 
 
-def sdf_bounds(sdf, resolution, origin, offset=None):
+def center_point_to_origin_indices(h_rows: int,
+                                   w_cols: int,
+                                   center_x: float,
+                                   center_y: float,
+                                   res: float):
+    sdf_00_x = center_x - w_cols / 2 * res
+    sdf_00_y = center_y - h_rows / 2 * res
+    return np.array([int(-sdf_00_x / res), int(-sdf_00_y / res)])
+
+
+def sdf_bounds(sdf, resolution, origin):
     xmin, ymin = sdf_idx_to_point(0, 0, resolution, origin)
     xmax, ymax = sdf_idx_to_point(sdf.shape[0], sdf.shape[1], resolution, origin)
-    if offset:
-        xmin -= offset
-        ymin -= offset
-        xmax += offset
-        ymax += offset
     return [xmin, xmax, ymin, ymax]
 
 
@@ -41,9 +52,14 @@ def point_to_sdf_idx(x, y, resolution, origin):
 
 class SDF:
 
-    def __init__(self, sdf, gradient, resolution, origin):
+    def __init__(self,
+                 sdf: np.ndarray,
+                 gradient: Optional[np.ndarray],
+                 resolution: np.ndarray,
+                 origin: np.ndarray):
         self.sdf = sdf.astype(np.float32)
-        self.gradient = gradient.astype(np.float32)
+        if gradient is not None:
+            self.gradient = gradient.astype(np.float32)
         self.resolution = resolution.astype(np.float32)
         # Origin means the indeces (row/col) of the world point (0, 0)
         self.origin = origin.astype(np.float32)

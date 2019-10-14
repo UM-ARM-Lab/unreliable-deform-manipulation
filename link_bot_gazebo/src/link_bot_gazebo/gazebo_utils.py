@@ -8,6 +8,7 @@ import std_srvs
 from colorama import Fore
 from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
+from visualization_msgs.msg import MarkerArray, Marker
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest
 from link_bot_gazebo.msg import Position2dAction, \
@@ -27,6 +28,8 @@ def points_to_config(points):
 class GazeboServices:
 
     def __init__(self):
+        self.rviz_sampled_configurations = rospy.Publisher("/ompl_viz/sampled_configurations", MarkerArray, queue_size=10)
+        self.rviz_sdfs = rospy.Publisher("/ompl_viz/sdfs", MarkerArray, queue_size=10)
         self.velocity_action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
         self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotJointConfiguration, queue_size=10)
         self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
@@ -223,7 +226,9 @@ def get_sdf_data(env_h: float,
     :param services: from gazebo_utils
     :return: SDF object for full sdf
     """
-    gradient, sdf, sdf_response = get_sdf_and_gradient(services, env_w=env_w, env_h=env_h, res=res)
+    env_h_rows = int(env_h / res)
+    env_w_cols = int(env_w / res)
+    gradient, sdf, sdf_response = get_sdf_and_gradient(services, env_w_cols=env_w_cols, env_h_rows=env_h_rows, res=res)
     resolution = np.array(sdf_response.res)
     origin = np.array(sdf_response.origin)
     full_sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)
@@ -233,13 +238,13 @@ def get_sdf_data(env_h: float,
 def get_local_sdf_data(sdf_rows: int,
                        sdf_cols: int,
                        res: float,
-                       origin_point: np.ndarray,
+                       center_point: np.ndarray,
                        services: GazeboServices):
     """
     :param sdf_rows: indices
     :param sdf_cols: indices
     :param res: meters
-    :param origin_point: (x,y) meters
+    :param center_point: (x,y) meters
     :param services: from gazebo_utils
     :return: SDF object for local sdf
     """
@@ -247,8 +252,8 @@ def get_local_sdf_data(sdf_rows: int,
                                                        env_h_rows=sdf_rows,
                                                        env_w_cols=sdf_cols,
                                                        res=res,
-                                                       center_x=origin_point[0],
-                                                       center_y=origin_point[1])
+                                                       center_x=center_point[0],
+                                                       center_y=center_point[1])
     resolution = np.array(sdf_response.res)
     origin = np.array(sdf_response.origin)
     local_sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)

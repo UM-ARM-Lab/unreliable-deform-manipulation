@@ -1,16 +1,18 @@
 import ompl.util as ou
 from ompl import control as oc
 from ompl import base as ob
+import matplotlib.pyplot as plt
 import numpy as np
 
+from link_bot_data.visualization import plot_rope_configuration
 from link_bot_gazebo.gazebo_utils import get_local_sdf_data, GazeboServices
+from link_bot_planning import ompl_viz
 from link_bot_planning.my_motion_validator import MotionClassifier
 from link_bot_planning.params import SDFParams
 from link_bot_planning.state_spaces import to_numpy, from_numpy
 
 
 class ShootingDirectedControlSampler(oc.DirectedControlSampler):
-    states_sampled_at = []
 
     def __init__(self,
                  si: ob.StateSpace,
@@ -32,10 +34,17 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
         self.sdf_params = sdf_params
         self.state_space = self.si.getStateSpace()
         self.control_space = self.si.getControlSpace()
-        self.n_state = self.state_space.getDimension()
+        self.n_state = self.state_space.getSubspace(0).getDimension()
+        self.n_local_sdf = self.state_space.getSubspace(1).getDimension()
         self.n_control = self.control_space.getDimension()
-        self.min_steps = int(self.si.getMinControlDuration())
-        self.max_steps = int(self.si.getMaxControlDuration())
+        self.internal = ShootingDirectedControlSamplerInternal(self.fwd_model,
+                                                               self.classifier_model,
+                                                               self.services,
+                                                               self.sdf_params,
+                                                               self.max_v,
+                                                               self.n_samples,
+                                                               self.n_state,
+                                                               self.n_local_sdf)
 
     @classmethod
     def alloc(cls,
@@ -61,47 +70,26 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
 
         return oc.DirectedControlSamplerAllocator(partial)
 
-    def sampleTo(self, control_out, previous_control, state, target_out):
-        np_s = to_numpy(state, self.n_state)
-        np_target = to_numpy(target_out, self.n_state)
+    def sampleTo(self,
+                 control_out,  # TODO: how to annotate the type of this?
+                 previous_control,
+                 state: ob.CompoundStateInternal,
+                 target_out: ob.CompoundStateInternal):
+        np_s = to_numpy(state[0], self.n_state)
+        np_target = to_numpy(target_out[0], self.n_state)
+        np_s_reached, u, sdf_data = self.internal.sampleTo(np_s, np_target)
 
-        self.states_sampled_at.append(np_target)
+        from_numpy(u, control_out, self.n_control)
+        from_numpy(np_s_reached, target_out[0], self.n_state)
+        sdf = sdf_data.sdf.flatten().astype(np.float64)
+        for sdf_idx in range(self.n_local_sdf):
+            sdf_value = sdf[sdf_idx]
+            target_out[1][sdf_idx] = sdf_value
+        origin = sdf_data.origin.astype(np.float64)
+        from_numpy(origin, target_out[2], 2)
 
-        min_distance = np.inf
-        min_u = None
-        min_np_s_next = None
-        min_local_sdf = None
-        for i in range(self.n_samples):
-            # sample a random action
-            theta = np.random.uniform(-np.pi, np.pi)
-            u = np.array([[self.max_v * np.cos(theta), self.max_v * np.sin(theta)]])
-            batch_u = np.expand_dims(u, axis=0)
-
-            # use the forward model to predict the next configuration
-            head_point = np_s[0, 4:5]
-            points_next = self.fwd_model.predict(np_s, batch_u)
-            np_s_next = points_next[:, 1].reshape([1, self.n_state])
-
-            # check that the motion is valid
-            # local_sdf_data = get_local_sdf_data(sdf_cols=self.sdf_params.local_w_cols,
-            #                                     sdf_rows=self.sdf_params.local_h_rows,
-            #                                     res=self.sdf_params.res,
-            #                                     origin_point=head_point,
-            #                                     services=self.services)
-            #
-            # accept_probability = self.classifier_model.predict(local_sdf_data, np_s, np_s_next)
-            # if self.rng_.uniform01() >= accept_probability:
-            #     continue
-
-            # keep if it's the best we've seen
-            distance = np.linalg.norm(np_s_next - np_target)
-            if distance < min_distance:
-                min_distance = distance
-                min_u = u
-                min_np_s_next = np_s_next
-
-        from_numpy(min_u, control_out, self.n_control)
-        from_numpy(min_np_s_next, target_out, self.n_state)
+        # visualize
+        # ompl_viz.add_sampled_configuration(np_s, u, np_s_reached, sdf_data)
 
         # check validity
         duration_steps = 1
@@ -109,3 +97,66 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
             duration_steps = 0
 
         return duration_steps
+
+
+class ShootingDirectedControlSamplerInternal:
+    states_sampled_at = []
+
+    def __init__(self,
+                 fwd_model,
+                 classifier_model: MotionClassifier,
+                 services: GazeboServices,
+                 sdf_params: SDFParams,
+                 max_v: float,
+                 n_samples: int,
+                 n_state: int,
+                 n_local_sdf: int):
+        self.rng_ = ou.RNG()
+        self.max_v = max_v
+        self.n_samples = n_samples
+        self.fwd_model = fwd_model
+        self.classifier_model = classifier_model
+        self.services = services
+        self.sdf_params = sdf_params
+        self.n_state = n_state
+        self.n_local_sdf = n_local_sdf
+
+    def sampleTo(self,
+                 state: np.ndarray,
+                 target: np.ndarray):
+        self.states_sampled_at.append(target)
+
+        head_point = state[0, 4:6]
+        local_sdf_data = get_local_sdf_data(sdf_cols=self.sdf_params.local_w_cols,
+                                            sdf_rows=self.sdf_params.local_h_rows,
+                                            res=self.sdf_params.res,
+                                            center_point=head_point,
+                                            services=self.services)
+
+        min_distance = np.inf
+        min_u = None
+        min_np_s_next = None
+        for i in range(self.n_samples):
+            # sample a random action
+            theta = np.random.uniform(-np.pi, np.pi)
+            u = np.array([[self.max_v * np.cos(theta), self.max_v * np.sin(theta)]])
+            batch_u = np.expand_dims(u, axis=0)
+
+            # use the forward model to predict the next configuration
+            points_next = self.fwd_model.predict(state, batch_u)
+            np_s_next = points_next[:, 1].reshape([1, self.n_state])
+
+            # check that the motion is valid
+            #
+            # accept_probability = self.classifier_model.predict(local_sdf_data, state, np_s_next)
+            # if self.rng_.uniform01() >= accept_probability:
+            #     continue
+
+            # keep if it's the best we've seen
+            distance = np.linalg.norm(np_s_next - target)
+            if distance < min_distance:
+                min_distance = distance
+                min_u = u
+                min_np_s_next = np_s_next
+
+        return min_np_s_next, min_u, local_sdf_data

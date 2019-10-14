@@ -2,7 +2,6 @@ from typing import List
 
 import numpy as np
 from ompl import base as ob
-from ompl import control as oc
 
 from link_bot_pycommon import link_bot_pycommon
 
@@ -14,7 +13,7 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
         self.extent = extent
         self.link_length = link_length
 
-    def sampleUniform(self, state_out: ob.State):
+    def sampleUniform(self, state_out: ob.AbstractState):
         # passing 0 length will make it possible the sample things out of the bounds of the arena
         random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent, length=self.link_length)
         state_out[0] = random_rope_configuration[0]
@@ -32,7 +31,7 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         self.extent = extent
         self.link_length = link_length
 
-    def sampleUniform(self, state_out: ob.State):
+    def sampleUniform(self, state_out: ob.CompoundStateInternal):
         # passing 0 length will make it possible the sample things out of the bounds of the arena
         random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent, length=self.link_length)
         state_out[0][0] = random_rope_configuration[0]
@@ -41,8 +40,6 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         state_out[0][3] = random_rope_configuration[3]
         state_out[0][4] = random_rope_configuration[4]
         state_out[0][5] = random_rope_configuration[5]
-        # FIXME:
-        state_out[1] = np.random.uniform(0, 1, 100 * 100)
 
 
 def to_numpy(state_or_control, dim):
@@ -52,14 +49,18 @@ def to_numpy(state_or_control, dim):
     return np_state_or_control
 
 
+def to_numpy_sdf(sdf_state, h_rows, w_cols):
+    np_sdf = np.ndarray((h_rows, w_cols))
+    for r, c in np.ndindex(h_rows, w_cols):
+        i = (h_rows * r) + c
+        np_sdf[r, c] = sdf_state[i]
+    return np_sdf
+
+
 def from_numpy(np_state_or_control, out, dim):
-    for i in range(dim):
-        out[i] = np_state_or_control[0, i]
-
-
-def from_numpy_compound(np_state, local_sdf, compound_start, state_dim):
-    for i in range(state_dim):
-        compound_start[0][i] = np_state[0, i]
-    for i, sdf_value in enumerate(local_sdf.sdf.flatten().astype(np.float64)):
-        compound_start[1][i] = sdf_value
-    print(compound_start[1])
+    if np_state_or_control.ndim == 2:
+        for i in range(dim):
+            out[i] = np_state_or_control[0, i]
+    else:
+        for i in range(dim):
+            out[i] = np_state_or_control[i]

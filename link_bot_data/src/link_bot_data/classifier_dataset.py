@@ -8,6 +8,7 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_data.video_prediction_dataset_utils import float_feature
+from link_bot_planning.params import SDFParams, EnvParams, PlannerParams
 
 
 class ClassifierDataset:
@@ -23,6 +24,9 @@ class ClassifierDataset:
             print(Fore.YELLOW + "I noticed 'labeled' in the dataset path, so I will attempt to load labels" + Fore.RESET)
             self.is_labeled = True
         self.hparams = json.load(open(str(dataset_hparams_filename), 'r'))
+        self.hparams['sdf_params'] = SDFParams.from_json(self.hparams['sdf_params'])
+        self.hparams['env_params'] = EnvParams.from_json(self.hparams['env_params'])
+        self.hparams['planner_params'] = PlannerParams.from_json(self.hparams['planner_params'])
 
     def parser(self, sdf_shape, n_state, n_action):
         def _parser(serialized_example):
@@ -102,8 +106,8 @@ class ClassifierDataset:
         filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format(mode))]
 
         compression_type = self.hparams['compression_type']
-        sdf_rows = int(self.hparams['sdf_rows'])
-        sdf_cols = int(self.hparams['sdf_cols'])
+        sdf_rows = int(self.hparams['sdf_params'].local_h_rows)
+        sdf_cols = int(self.hparams['sdf_params'].local_w_cols)
         sdf_shape = [sdf_rows, sdf_cols]
 
         n_state = int(self.hparams['n_state'])
