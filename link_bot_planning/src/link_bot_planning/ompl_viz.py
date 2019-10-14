@@ -19,7 +19,7 @@ def plot(sampler, planner_data, sdf, goal, planned_path, planned_actions, extent
     plt.figure()
     ax = plt.gca()
     n_state = planned_path.shape[1]
-    plt.imshow(np.flipud(sdf) > 0, extent=extent)
+    plt.imshow(np.flipud(sdf), extent=extent)
 
     for state_sampled_at in sampler.states_sampled_at:
         xs = [state_sampled_at[0, 0], state_sampled_at[0, 2], state_sampled_at[0, 4]]

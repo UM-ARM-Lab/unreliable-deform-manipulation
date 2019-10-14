@@ -15,7 +15,7 @@ from link_bot_gazebo.msg import Position2dAction, \
     LinkBotVelocityAction, ObjectAction, LinkBotJointConfiguration
 from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
     InverseCameraProjection, InverseCameraProjectionRequest, CameraProjection, CameraProjectionRequest, ComputeSDF2Request, \
-    LinkBotPositionAction, LinkBotPath, LinkBotTrajectory
+    LinkBotPositionAction, LinkBotPath, LinkBotTrajectory, ComputeOccupancy, ComputeOccupancyRequest
 from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.numpy_point import NumpyPoint
@@ -43,6 +43,7 @@ class GazeboServices:
         self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
         self.compute_sdf = None
         self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
+        self.compute_occupancy = rospy.ServiceProxy('/occupancy', ComputeOccupancy)
         self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
         self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", std_srvs.srv.Empty)
@@ -187,6 +188,28 @@ def xy_to_row_col(services, x, y, z):
     return NumpyPoint(int(res.rowcol.x_col), int(res.rowcol.y_row))
 
 
+def get_occupancy(services: GazeboServices,
+                  env_w_cols: int,
+                  env_h_rows: int,
+                  res: float = 0.01,
+                  center_x: float = 0,
+                  center_y: float = 0):
+    request = ComputeOccupancyRequest()
+    request.resolution = res
+    request.h_rows = env_h_rows
+    request.w_cols = env_w_cols
+    request.center.x = center_x
+    request.center.y = center_y
+    request.min_z = 0.01
+    request.max_z = 2.00
+    request.robot_name = 'link_bot'
+    request.request_new = True
+    response = services.compute_occupancy(request)
+    grid = np.array(response.grid).reshape([response.w_cols, response.h_rows])
+    grid = grid.T
+    return grid, response
+
+
 def get_sdf_and_gradient(services: GazeboServices,
                          env_w_cols: int,
                          env_h_rows: int,
@@ -211,7 +234,6 @@ def get_sdf_and_gradient(services: GazeboServices,
                                                              sdf_response.gradient.layout.dim[2].size])
     gradient = np.transpose(gradient, [1, 0, 2])
 
-    # TODO: make this service take number of rows & columns instead of sizes in meters
     return gradient, sdf, sdf_response
 
 
@@ -258,3 +280,28 @@ def get_local_sdf_data(sdf_rows: int,
     origin = np.array(sdf_response.origin)
     local_sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)
     return local_sdf_data
+
+
+def get_local_occupancy_data(rows: int,
+                             cols: int,
+                             res: float,
+                             center_point: np.ndarray,
+                             services: GazeboServices):
+    """
+    :param rows: indices
+    :param cols: indices
+    :param res: meters
+    :param center_point: (x,y) meters
+    :param services: from gazebo_utils
+    :return: SDF object for local sdf
+    """
+    grid, response = get_occupancy(services,
+                                   env_h_rows=rows,
+                                   env_w_cols=cols,
+                                   res=res,
+                                   center_x=center_point[0],
+                                   center_y=center_point[1])
+    resolution = np.array(response.res)
+    origin = np.array(response.origin)
+    local_occupancy_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=resolution, origin=origin)
+    return local_occupancy_data

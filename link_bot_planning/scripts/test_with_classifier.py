@@ -81,8 +81,8 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
     def on_execution_complete(self,
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
-                              planner_local_sdfs: List[link_bot_sdf_utils.SDF],
-                              actual_local_sdfs: List[link_bot_sdf_utils.SDF],
+                              planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
+                              actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_path: np.ndarray):
         pass
 
@@ -105,10 +105,8 @@ def main():
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
-    parser.add_argument('--full-sdf-w', type=float, default=15, help='environment width')
-    parser.add_argument('--full-sdf-h', type=float, default=15, help='environment height')
-    parser.add_argument('--sdf-cols', type=float, default=100, help='local sdf width')
-    parser.add_argument('--sdf-rows', type=float, default=100, help='local sdf width')
+    parser.add_argument('--local-env-cols', type=float, default=100, help='local env width')
+    parser.add_argument('--local-env-rows', type=float, default=100, help='local env width')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
 
     args = parser.parse_args()
@@ -124,8 +122,8 @@ def main():
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v)
     sdf_params = SDFParams(full_h_m=args.env_h,
                            full_w_m=args.env_w,
-                           local_h_rows=args.sdf_rows,
-                           local_w_cols=args.sdf_cols,
+                           local_h_rows=args.local_env_rows,
+                           local_w_cols=args.local_env_cols,
                            res=args.res)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,

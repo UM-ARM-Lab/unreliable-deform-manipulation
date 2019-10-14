@@ -4,11 +4,11 @@ import numpy as np
 from ompl import base as ob
 from ompl import control as oc
 
-from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_sdf_data
+from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
 from link_bot_planning.params import EnvParams, SDFParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
-from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_sdf
+from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env
 from link_bot_pycommon import link_bot_sdf_utils
 
 
@@ -33,12 +33,12 @@ class ShootingRRT:
         self.services = services
 
         self.state_space = ob.CompoundStateSpace()
-        self.n_local_sdf = self.sdf_params.local_w_cols * self.sdf_params.local_h_rows
-        self.local_sdf_space = ob.RealVectorStateSpace(self.n_local_sdf)
-        self.local_sdf_space.setBounds(-10, 10)
+        self.n_local_env = self.sdf_params.local_w_cols * self.sdf_params.local_h_rows
+        self.local_sdf_space = ob.RealVectorStateSpace(self.n_local_env)
+        self.local_sdf_space.setBounds(0, 10)
 
         self.local_sdf_origin_space = ob.RealVectorStateSpace(2)
-        self.local_sdf_origin_space.setBounds(-10000.0, 10000.0)
+        self.local_sdf_origin_space.setBounds(-10000.1, 10000.0)
 
         self.config_space = ob.RealVectorStateSpace(n_state)
         bounds = ob.RealVectorBounds(self.n_state)
@@ -97,28 +97,28 @@ class ShootingRRT:
         self.ss.setPlanner(self.planner)
 
     def plan(self, np_start: np.ndarray,
-             tail_goal_point: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[link_bot_sdf_utils.SDF]]:
+             tail_goal_point: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[link_bot_sdf_utils.OccupancyData]]:
         """
         :param np_start: 1 by n matrix
         :param tail_goal_point:  1 by n matrix
         :return: controls, states
         """
         # create start and goal states
-        start_local_sdf = get_local_sdf_data(sdf_rows=self.sdf_params.local_h_rows,
-                                             sdf_cols=self.sdf_params.local_w_cols,
-                                             res=self.sdf_params.res,
-                                             center_point=np.array([np_start[0, 4], np_start[0, 5]]),
-                                             services=self.services)
+        start_local_occupancy = get_local_occupancy_data(rows=self.sdf_params.local_h_rows,
+                                                         cols=self.sdf_params.local_w_cols,
+                                                         res=self.sdf_params.res,
+                                                         center_point=np.array([np_start[0, 4], np_start[0, 5]]),
+                                                         services=self.services)
         compound_start = ob.CompoundState(self.state_space)
         for i in range(self.n_state):
             compound_start()[0][i] = np_start[0, i]
-        start_local_sdf_flat_double = start_local_sdf.sdf.flatten().astype(np.float64)
-        for sdf_idx in range(self.n_local_sdf):
-            sdf_value = start_local_sdf_flat_double[sdf_idx]
-            compound_start()[1][sdf_idx] = sdf_value
-        start_local_sdf_origin_double = start_local_sdf.origin.astype(np.float64)
-        compound_start()[2][0] = start_local_sdf_origin_double[0]
-        compound_start()[2][1] = start_local_sdf_origin_double[1]
+        start_local_occupancy_flat_double = start_local_occupancy.data.flatten().astype(np.float64)
+        for idx in range(self.n_local_env):
+            occupancy_value = start_local_occupancy_flat_double[idx]
+            compound_start()[1][idx] = occupancy_value
+        start_local_occupancy_origin_double = start_local_occupancy.origin.astype(np.float64)
+        compound_start()[2][0] = start_local_occupancy_origin_double[0]
+        compound_start()[2][1] = start_local_occupancy_origin_double[1]
 
         start = ob.State(compound_start)
         epsilon = 0.01
@@ -134,15 +134,15 @@ class ShootingRRT:
 
             np_states = np.ndarray((ompl_path.getStateCount(), self.n_state))
             np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
-            planner_local_sdfs = []
+            planner_local_envs = []
             for i, state in enumerate(ompl_path.getStates()):
                 np_s = to_numpy(state[0], self.n_state)
                 np_states[i] = np_s
-                sdf = to_numpy_sdf(state[1], self.sdf_params.local_h_rows, self.sdf_params.local_w_cols)
+                grid = to_numpy_local_env(state[1], self.sdf_params.local_h_rows, self.sdf_params.local_w_cols)
                 res_2d = np.array([self.sdf_params.res, self.sdf_params.res])
                 origin = to_numpy(state[2], 2)[0]
-                planner_local_sdf = link_bot_sdf_utils.SDF(sdf, None, res_2d, origin)
-                planner_local_sdfs.append(planner_local_sdf)
+                planner_local_env = link_bot_sdf_utils.OccupancyData(grid, res_2d, origin)
+                planner_local_envs.append(planner_local_env)
             for i, control in enumerate(ompl_path.getControls()):
                 np_controls[i] = to_numpy(control, self.n_control)
 
@@ -156,7 +156,7 @@ class ShootingRRT:
             # SMOOTHING
             # np_states, np_controls = self.smooth(np_states, np_controls, verbose)
 
-            return np_controls, np_states, planner_local_sdfs
+            return np_controls, np_states, planner_local_envs
 
         raise RuntimeError("No Solution found from {} to {}".format(start, goal))
 

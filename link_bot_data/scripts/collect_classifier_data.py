@@ -119,34 +119,22 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
     def on_execution_complete(self,
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
-                              planner_local_sdfs: List[link_bot_sdf_utils.SDF],
-                              actual_local_sdfs: List[link_bot_sdf_utils.SDF],
+                              planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
+                              actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_path: np.ndarray):
         states = actual_path[:-1]
         next_states = actual_path[1:]
         planned_states = planned_path[:-1]
         planned_next_states = planned_path[1:]
-        d = zip(states, next_states, planned_actions, planned_states, planned_next_states, actual_local_sdfs, planner_local_sdfs)
-        for (state, next_state, action, planned_state, planned_next_state, actual_local_sdf_data, planner_local_sdf_data) in d:
+        d = zip(states, next_states, planned_actions, planned_states, planned_next_states, actual_local_envs, planner_local_envs)
+        for (state, next_state, action, planned_state, planned_next_state, actual_local_env_data, planner_local_grid_data) in d:
 
-            visualization.plot_classifier_data(planner_local_sdf_data.sdf,
-                                               planner_local_sdf_data.extent,
-                                               planned_state,
-                                               planned_next_state,
-                                               actual_local_sdf_data.sdf,
-                                               actual_local_sdf_data.extent,
-                                               state,
-                                               next_state,
-                                               "",
-                                               label=None)
-            plt.show()
-
-            example = ClassifierDataset.make_serialized_example(actual_local_sdf_data.sdf,
-                                                                actual_local_sdf_data.extent,
-                                                                actual_local_sdf_data.origin,
-                                                                planner_local_sdf_data.sdf,
-                                                                planner_local_sdf_data.extent,
-                                                                planner_local_sdf_data.origin,
+            example = ClassifierDataset.make_serialized_example(actual_local_env_data.data,
+                                                                actual_local_env_data.extent,
+                                                                actual_local_env_data.origin,
+                                                                planner_local_grid_data.data,
+                                                                planner_local_grid_data.extent,
+                                                                planner_local_grid_data.origin,
                                                                 self.sdf_params.local_h_rows,
                                                                 self.sdf_params.local_w_cols,
                                                                 self.sdf_params.res,
@@ -158,8 +146,8 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
 
             if self.verbose >= 4:
                 plt.figure()
-                plt.imshow(planner_local_sdf_data.image > 0, extent=planner_local_sdf_data.extent, zorder=1, alpha=0.5)
-                plt.imshow(actual_local_sdf_data.image > 0, extent=actual_local_sdf_data.extent, zorder=1, alpha=0.5)
+                plt.imshow(planner_local_grid_data.image > 0, extent=planner_local_grid_data.extent, zorder=1, alpha=0.5)
+                plt.imshow(actual_local_env_data.image > 0, extent=actual_local_env_data.extent, zorder=1, alpha=0.5)
                 plt.axis("equal")
                 plt.xlabel("x (m)")
                 plt.ylabel("y (m)")
@@ -204,10 +192,8 @@ def main():
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
-    parser.add_argument('--full-sdf-w', type=float, default=15, help='environment width')
-    parser.add_argument('--full-sdf-h', type=float, default=15, help='environment height')
-    parser.add_argument('--sdf-cols', type=int, default=100, help='local sdf width')
-    parser.add_argument('--sdf-rows', type=int, default=100, help='local sdf width')
+    parser.add_argument('--local-env-cols', type=int, default=100, help='local env width')
+    parser.add_argument('--local-env-rows', type=int, default=100, help='local env width')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
 
     args = parser.parse_args()
@@ -219,8 +205,8 @@ def main():
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v)
     sdf_params = SDFParams(full_h_m=args.env_h,
                            full_w_m=args.env_w,
-                           local_h_rows=args.sdf_rows,
-                           local_w_cols=args.sdf_cols,
+                           local_h_rows=args.local_env_rows,
+                           local_w_cols=args.local_env_cols,
                            res=args.res)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,

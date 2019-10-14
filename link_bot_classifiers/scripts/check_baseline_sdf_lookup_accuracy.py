@@ -10,7 +10,7 @@ import tensorflow as tf
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.link_bot_sdf_utils import point_to_sdf_idx
+from link_bot_pycommon.link_bot_sdf_utils import point_to_idx
 
 tf.enable_eager_execution()
 
@@ -100,7 +100,7 @@ def main():
         action = example_dict['action'].numpy().squeeze()
         label_model_is_reliable = example_dict['label'].numpy().squeeze()
 
-        sdf_image = np.flipud(sdf) > 0
+        sdf_image = np.flipud(sdf)
         head_x = planned_state[4]
         head_y = planned_state[5]
         if args.cheat:
@@ -108,7 +108,7 @@ def main():
             dy = action[1] * dataset.hparams.dt
             head_y += dx
             head_y += dy
-        row, col = point_to_sdf_idx(head_x, head_y, resolution=resolution, origin=origin)
+        row, col = point_to_idx(head_x, head_y, resolution=resolution, origin=origin)
         signed_distance = sdf[row, col]
         predicted_in_collision = signed_distance < args.distance_threshold
 

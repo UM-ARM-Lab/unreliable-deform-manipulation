@@ -12,7 +12,7 @@ from colorama import Fore
 from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data, get_local_sdf_data
+from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data, get_local_occupancy_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
 from link_bot_planning import classifier_utils, model_utils, shooting_rrt
@@ -100,7 +100,7 @@ class ShootingRRTMPC:
                     print(Fore.CYAN + "Planning from {} to {}".format(start, tail_goal_point) + Fore.RESET)
 
                 t0 = time.time()
-                planned_actions, planned_path, planner_local_sdfs = self.rrt.plan(start, tail_goal_point)
+                planned_actions, planned_path, planner_local_envs = self.rrt.plan(start, tail_goal_point)
                 planning_time = time.time() - t0
                 if self.verbose >= 1:
                     print("Planning time: {:5.3f}s".format(planning_time))
@@ -128,7 +128,7 @@ class ShootingRRTMPC:
                 self.services.pause(std_srvs.srv.EmptyRequest())
 
                 actual_path = []
-                actual_local_sdfs = []
+                actual_local_envs = []
                 for configuration in trajectory_execution_result.actual_path:
                     np_config = []
                     for point in configuration.points:
@@ -137,18 +137,18 @@ class ShootingRRTMPC:
                     actual_path.append(np_config)
 
                     actual_head_point = np.array([np_config[4], np_config[5]])
-                    actual_local_sdf = get_local_sdf_data(sdf_rows=self.sdf_params.local_h_rows,
-                                                          sdf_cols=self.sdf_params.local_w_cols,
-                                                          res=self.sdf_params.res,
-                                                          center_point=actual_head_point,
-                                                          services=self.services)
-                    actual_local_sdfs.append(actual_local_sdf)
+                    actual_local_env = get_local_occupancy_data(rows=self.sdf_params.local_h_rows,
+                                                                cols=self.sdf_params.local_w_cols,
+                                                                res=self.sdf_params.res,
+                                                                center_point=actual_head_point,
+                                                                services=self.services)
+                    actual_local_envs.append(actual_local_env)
                 actual_path = np.array(actual_path)
 
                 self.on_execution_complete(planned_path,
                                            planned_actions,
-                                           planner_local_sdfs,
-                                           actual_local_sdfs,
+                                           planner_local_envs,
+                                           actual_local_envs,
                                            actual_path)
 
     def on_plan_complete(self,
@@ -162,7 +162,7 @@ class ShootingRRTMPC:
     def on_execution_complete(self,
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
-                              planner_local_sdfs: List[link_bot_sdf_utils.SDF],
-                              actual_local_sdfs: List[link_bot_sdf_utils.SDF],
+                              planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
+                              actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_path: np.ndarray):
         pass

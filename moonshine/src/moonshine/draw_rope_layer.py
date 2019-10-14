@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from bresenham import bresenham
 
-from link_bot_pycommon.link_bot_sdf_utils import point_to_sdf_idx
+from link_bot_pycommon.link_bot_sdf_utils import point_to_idx
 
 
 class DrawRope(tf.keras.layers.Layer):
@@ -38,9 +38,9 @@ class DrawRope(tf.keras.layers.Layer):
         rope_images = np.zeros([batch_size, self.sequence_length, self.image_shape[0], self.image_shape[1], 3], dtype=np.uint8)
         for batch_idx, points in enumerate(batch_points):
             for t_idx, points_t in enumerate(points):
-                r0, c0 = point_to_sdf_idx(points_t[0, 0], points_t[0, 1], resolution, origin)
-                r1, c1 = point_to_sdf_idx(points_t[1, 0], points_t[1, 1], resolution, origin)
-                r2, c2 = point_to_sdf_idx(points_t[2, 0], points_t[2, 1], resolution, origin)
+                r0, c0 = point_to_idx(points_t[0, 0], points_t[0, 1], resolution, origin)
+                r1, c1 = point_to_idx(points_t[1, 0], points_t[1, 1], resolution, origin)
+                r2, c2 = point_to_idx(points_t[2, 0], points_t[2, 1], resolution, origin)
                 for c, r in bresenham(c0, r0, c1, r1):
                     rope_images[batch_idx, t_idx, r, c, :] = 128
                 for c, r in bresenham(c1, r1, c2, r2):

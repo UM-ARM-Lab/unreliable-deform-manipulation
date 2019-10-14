@@ -4,27 +4,26 @@ import numpy as np
 from colorama import Fore
 
 
-def sdf_indeces_to_point(rowcols, resolution, origin):
+def indeces_to_point(rowcols, resolution, origin):
     return (rowcols - origin) * resolution
 
-
-def sdf_idx_to_point(row: int,
-                     col: int,
-                     resolution: np.ndarray,
-                     origin: np.ndarray):
+def idx_to_point(row: int,
+                 col: int,
+                 resolution: np.ndarray,
+                 origin: np.ndarray):
     """ row the col """
     y = (row - origin[0]) * resolution[0]
     x = (col - origin[1]) * resolution[1]
     return np.array([y, x])
 
 
-def bounds_from_env_size(sdf_w, sdf_h, new_origin, resolution, origin):
-    xmin = -sdf_w / 2 + new_origin[0]
-    ymin = -sdf_h / 2 + new_origin[1]
-    xmax = sdf_w / 2 + new_origin[0]
-    ymax = sdf_h / 2 + new_origin[1]
-    rmin, cmin = point_to_sdf_idx(xmin, ymin, resolution, origin)
-    rmax, cmax = point_to_sdf_idx(xmax, ymax, resolution, origin)
+def bounds_from_env_size(w_cols, h_rows, new_origin, resolution, origin):
+    xmin = -w_cols / 2 + new_origin[0]
+    ymin = -h_rows / 2 + new_origin[1]
+    xmax = w_cols / 2 + new_origin[0]
+    ymax = h_rows / 2 + new_origin[1]
+    rmin, cmin = point_to_idx(xmin, ymin, resolution, origin)
+    rmax, cmax = point_to_idx(xmax, ymax, resolution, origin)
     return [rmin, rmax, cmin, cmax], [xmin, xmax, ymin, ymax]
 
 
@@ -33,21 +32,37 @@ def center_point_to_origin_indices(h_rows: int,
                                    center_x: float,
                                    center_y: float,
                                    res: float):
-    sdf_00_x = center_x - w_cols / 2 * res
-    sdf_00_y = center_y - h_rows / 2 * res
-    return np.array([int(-sdf_00_x / res), int(-sdf_00_y / res)])
+    env_00_x = center_x - w_cols / 2 * res
+    env_00_y = center_y - h_rows / 2 * res
+    return np.array([int(-env_00_x / res), int(-env_00_y / res)])
 
 
-def sdf_bounds(sdf, resolution, origin):
-    xmin, ymin = sdf_idx_to_point(0, 0, resolution, origin)
-    xmax, ymax = sdf_idx_to_point(sdf.shape[0], sdf.shape[1], resolution, origin)
+def bounds(rows, cols, resolution, origin):
+    xmin, ymin = idx_to_point(0, 0, resolution, origin)
+    xmax, ymax = idx_to_point(rows, cols, resolution, origin)
     return [xmin, xmax, ymin, ymax]
 
 
-def point_to_sdf_idx(x, y, resolution, origin):
+def point_to_idx(x, y, resolution, origin):
     col = int(x / resolution[1] + origin[1])
     row = int(y / resolution[0] + origin[0])
     return row, col
+
+
+class OccupancyData:
+
+    def __init__(self,
+                 data: np.ndarray,
+                 resolution: np.ndarray,
+                 origin: np.ndarray):
+        self.data = data.astype(np.float32)
+        self.resolution = resolution.astype(np.float32)
+        # Origin means the indeces (row/col) of the world point (0, 0)
+        self.origin = origin.astype(np.float32)
+        self.extent = bounds(self.data.shape[0], self.data.shape[1], resolution, origin)
+        # NOTE: when displaying an SDF as an image, matplotlib assumes rows increase going down,
+        #  but rows correspond to y which increases going up
+        self.image = np.flipud(self.data)
 
 
 class SDF:
@@ -63,7 +78,7 @@ class SDF:
         self.resolution = resolution.astype(np.float32)
         # Origin means the indeces (row/col) of the world point (0, 0)
         self.origin = origin.astype(np.float32)
-        self.extent = sdf_bounds(sdf, resolution, origin)
+        self.extent = bounds(sdf.shape[0], sdf.shape[1], resolution, origin)
         # NOTE: when displaying an SDF as an image, matplotlib assumes rows increase going down,
         #  but rows correspond to y which increases going up
         self.image = np.flipud(sdf)
@@ -115,6 +130,6 @@ def make_rope_images(sdf_data, rope_configurations):
         for j in range(n_rope_points):
             px = rope_configurations[i, 2 * j]
             py = rope_configurations[i, 2 * j + 1]
-            row, col = point_to_sdf_idx(px, py, sdf_data.resolution, sdf_data.origin)
+            row, col = point_to_idx(px, py, sdf_data.resolution, sdf_data.origin)
             rope_images[i, row, col, j] = 1
     return rope_images

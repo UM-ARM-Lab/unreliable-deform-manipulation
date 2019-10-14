@@ -182,7 +182,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
 
                 if args.verbose >= 4:
                     plt.figure()
-                    bin = np.tile(sdf[0].numpy() > 0, [1, 1, 3]) * 1.0
+                    bin = np.tile(sdf[0].numpy(), [1, 1, 3]) * 1.0
                     i1 = i1[0].numpy()
                     i2 = i2[0].numpy()
                     i1_mask = np.tile(i1.sum(axis=2, keepdims=True) > 0, [1, 1, 3])
@@ -269,12 +269,12 @@ class RasterClassifierWrapper(MotionClassifier):
 
         print(accept_probabilities)
         title = "p(accept) = {}".format(accept_probabilities)
-        plot_classifier_data(planned_sdf=test_x['planned_sdf/sdf'],
-                             planned_sdf_extent=test_x['planned_sdf/extent'],
+        plot_classifier_data(planned_env=test_x['planned_sdf/sdf'],
+                             planned_env_extent=test_x['planned_sdf/extent'],
                              planned_state=test_x['planned_state'],
                              planned_next_state=test_x['planned_next_state'],
-                             actual_sdf=None,
-                             actual_sdf_extent=None,
+                             actual_env=None,
+                             actual_env_extent=None,
                              state=None,
                              next_state=None,
                              title=title,

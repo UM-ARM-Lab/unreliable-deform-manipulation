@@ -49,7 +49,7 @@ def to_numpy(state_or_control, dim):
     return np_state_or_control
 
 
-def to_numpy_sdf(sdf_state, h_rows, w_cols):
+def to_numpy_local_env(sdf_state, h_rows, w_cols):
     np_sdf = np.ndarray((h_rows, w_cols))
     for r, c in np.ndindex(h_rows, w_cols):
         i = (h_rows * r) + c

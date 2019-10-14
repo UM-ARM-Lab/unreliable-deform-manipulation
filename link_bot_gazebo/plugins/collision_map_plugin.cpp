@@ -1,5 +1,6 @@
 #include <cnpy/cnpy.h>
 #include <link_bot_gazebo/ComputeSDF2.h>
+#include <link_bot_gazebo/ComputeOccupancy.h>
 #include <link_bot_gazebo/QuerySDF.h>
 #include <link_bot_gazebo/WriteSDF.h>
 #include <link_bot_sdf_tools/ComputeSDF.h>
@@ -19,6 +20,7 @@ using namespace gazebo;
 
 const sdf_tools::COLLISION_CELL CollisionMapPlugin::oob_value{-10000};
 const sdf_tools::COLLISION_CELL CollisionMapPlugin::occupied_value{1};
+const sdf_tools::COLLISION_CELL CollisionMapPlugin::unoccupied_value{0};
 
 void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
 {
@@ -111,6 +113,41 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     return true;
   };
 
+  auto get_occupancy = [&](link_bot_gazebo::ComputeOccupancyRequest &req, link_bot_gazebo::ComputeOccupancyResponse &res) {
+    if (req.request_new) {
+      compute_sdf(req.h_rows, req.w_cols, req.center, req.resolution, req.robot_name, req.min_z, req.max_z);
+    }
+    res.h_rows = req.h_rows;
+    res.w_cols = req.w_cols;
+    res.res = std::vector<float>(2, req.resolution);
+
+    auto const grid_00_x = req.center.x - static_cast<float>(req.w_cols) * req.resolution / 2.0;
+    auto const grid_00_y = req.center.y - static_cast<float>(req.h_rows) * req.resolution / 2.0;
+    auto const origin_x_coordinate = static_cast<int>(-grid_00_x / req.resolution);
+    auto const origin_y_coordinate = static_cast<int>(-grid_00_y / req.resolution);
+
+    std::vector<int> origin_vec{origin_x_coordinate, origin_y_coordinate};
+    res.origin = origin_vec;
+    auto const grid_float = [&]() {
+      auto const &data = grid_.GetImmutableRawData();
+      std::vector<float> flat;
+      for (auto const &d : data) {
+        flat.emplace_back(d.occupancy);
+      }
+      return flat;
+    }();
+    res.grid = grid_float;
+    std_msgs::MultiArrayDimension row_dim;
+    row_dim.label = "row";
+    row_dim.size = grid_.GetNumXCells();
+    row_dim.stride = 1;
+    std_msgs::MultiArrayDimension col_dim;
+    col_dim.label = "col";
+    col_dim.size = grid_.GetNumYCells();
+    col_dim.stride = 1;
+    return true;
+  };
+
   ros_node_ = std::make_unique<ros::NodeHandle>("collision_map_plugin");
 
   gazebo_sdf_viz_pub_ = ros_node_->advertise<visualization_msgs::Marker>("gazebo_sdf_viz", 1);
@@ -137,6 +174,12 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     auto so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ComputeSDF2>("/sdf2", get_sdf2, ros::VoidConstPtr(),
                                                                                  &queue_);
     get_service2_ = ros_node_->advertiseService(so);
+  }
+
+  {
+    auto so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ComputeOccupancy>("/occupancy", get_occupancy, ros::VoidConstPtr(),
+                                                                                 &queue_);
+    get_occupancy_service_ = ros_node_->advertiseService(so);
   }
 
   ros_queue_thread_ = std::thread(std::bind(&CollisionMapPlugin::QueueThread, this));
@@ -235,6 +278,9 @@ void CollisionMapPlugin::compute_sdf(int64_t h_rows, int64_t w_cols, geometry_ms
       ray->GetIntersection(dist, entityName);
       if (not entityName.empty() and (robot_name.empty() or entityName.find(robot_name) != 0)) {
         grid_.SetValue(x_idx, y_idx, 0, occupied_value);
+      }
+      else {
+        grid_.SetValue(x_idx, y_idx, 0, unoccupied_value);
       }
     }
   }

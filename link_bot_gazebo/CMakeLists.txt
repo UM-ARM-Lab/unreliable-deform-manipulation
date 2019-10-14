@@ -32,6 +32,7 @@ add_service_files(
         LinkBotPositionAction.srv
         LinkBotPath.srv
         LinkBotTrajectory.srv
+        ComputeOccupancy.srv
 )
 
 generate_messages(

@@ -28,6 +28,7 @@ class CollisionMapPlugin : public WorldPlugin {
   ros::ServiceServer query_service_;
   ros::ServiceServer get_service_;
   ros::ServiceServer get_service2_;
+  ros::ServiceServer get_occupancy_service_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
   gazebo::physics::RayShapePtr ray;
@@ -39,6 +40,7 @@ class CollisionMapPlugin : public WorldPlugin {
 
   static const sdf_tools::COLLISION_CELL oob_value;
   static const sdf_tools::COLLISION_CELL occupied_value;
+  static const sdf_tools::COLLISION_CELL unoccupied_value;
 
  public:
   void Load(physics::WorldPtr world, sdf::ElementPtr _sdf) override;
