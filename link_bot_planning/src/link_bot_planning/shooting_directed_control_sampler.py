@@ -122,8 +122,8 @@ class ShootingDirectedControlSamplerInternal:
         self.states_sampled_at.append(target)
 
         head_point = state[0, 4:6]
-        local_env_data = get_local_occupancy_data(cols=self.local_env_params.local_w_cols,
-                                                        rows=self.local_env_params.local_h_rows,
+        local_env_data = get_local_occupancy_data(cols=self.local_env_params.w_cols,
+                                                        rows=self.local_env_params.h_rows,
                                                         res=self.local_env_params.res,
                                                         center_point=head_point,
                                                         services=self.services)

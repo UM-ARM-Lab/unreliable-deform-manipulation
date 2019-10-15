@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 import argparse
+import numpy as np
 import pathlib
 
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from link_bot_classifiers import none_classifier
 from link_bot_data.visualization import plot_rope_configuration
@@ -13,12 +15,18 @@ from link_bot_planning.shooting_directed_control_sampler import ShootingDirected
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_pycommon import make_random_rope_configuration
 
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.01)
+config = tf.ConfigProto(gpu_options=gpu_options)
+tf.enable_eager_execution(config=config)
+
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
     parser.add_argument("--n-samples", type=int, help='number of actions to sample', default=10)
+    parser.add_argument("--n-examples", type=int, help='number of examples to run', default=10)
+    parser.add_argument("--no-plot", action='store_true')
 
     args = parser.parse_args()
 
@@ -39,16 +47,44 @@ def main():
                                                              n_state=6,
                                                              n_local_env=100 * 100)
 
-    initial_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5])
-    target_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5])
+    examples_with_negative_improvement = 0
+    worst_regression = 0
+    for i in range(args.n_examples):
+        initial_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5])
+        target_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5])
 
-    reached_state, u, local_env = control_sampler.sampleTo(initial_state, target_state)
+        reached_state, u, local_env = control_sampler.sampleTo(np.expand_dims(initial_state, 0), np.expand_dims(target_state, 0))
+        reached_state = np.squeeze(reached_state)
+        u = np.squeeze(u)
 
-    plt.figure()
-    ax = plt.gca()
-    plot_rope_configuration(ax, initial_state, c='r', label='initial')
-    plot_rope_configuration(ax, target_state, c='g', label='target')
-    plot_rope_configuration(ax, reached_state, c='b', label='reached')
+        pre_tail_distance = np.linalg.norm(target_state[0:2] - initial_state[0:2])
+        post_tail_distance = np.linalg.norm(target_state[0:2] - reached_state[0:2])
+        improvement = pre_tail_distance - post_tail_distance
+
+        if improvement < 0:
+            examples_with_negative_improvement += 1
+
+            if improvement < worst_regression:
+                worst_regression = improvement
+
+            if not args.no_plot:
+                plt.figure()
+                ax = plt.gca()
+                plt.axis("equal")
+                plot_rope_configuration(ax, initial_state, c='r', label='initial')
+                plot_rope_configuration(ax, target_state, c='g', label='target')
+                plot_rope_configuration(ax, reached_state, c='b', label='reached')
+                plt.scatter(initial_state[4], initial_state[5], c='k')
+                plt.scatter(target_state[4], target_state[5], c='k')
+                plt.scatter(reached_state[4], reached_state[5], c='k')
+                plt.quiver(initial_state[4], initial_state[5], u[0], u[1])
+                plt.title("improvement: {:5.3}m".format(improvement))
+                plt.legend()
+                plt.show()
+
+    msg = "Found {} examples out of {} where we couldn't sample any controls that moved us towards the target configuration"
+    print(msg.format(examples_with_negative_improvement, args.n_examples))
+    print("Worst regression: {:5.3f}".format(worst_regression))
 
 
 if __name__ == '__main__':
