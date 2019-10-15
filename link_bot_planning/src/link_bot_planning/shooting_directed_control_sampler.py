@@ -75,7 +75,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
                  target_out: ob.CompoundStateInternal):
         np_s = to_numpy(state[0], self.n_state)
         np_target = to_numpy(target_out[0], self.n_state)
-        np_s_reached, u, local_env_data = self.internal.sampleTo(np_s, np_target)
+        np_s_reached, u, local_env_data, no_progress = self.internal.sampleTo(np_s, np_target)
 
         from_numpy(u, control_out, self.n_control)
         from_numpy(np_s_reached, target_out[0], self.n_state)
@@ -86,9 +86,9 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
         origin = local_env_data.origin.astype(np.float64)
         from_numpy(origin, target_out[2], 2)
 
-        # check validity
         duration_steps = 1
-        if not self.si.isValid(target_out):
+        # check validity, and if no progress was made don't add it either
+        if (not self.si.isValid(target_out)) or no_progress:
             duration_steps = 0
 
         return duration_steps
@@ -118,17 +118,18 @@ class ShootingDirectedControlSamplerInternal:
 
     def sampleTo(self,
                  state: np.ndarray,
-                 target: np.ndarray) -> [np.ndarray, np.ndarray, link_bot_sdf_utils.OccupancyData]:
+                 target: np.ndarray) -> [np.ndarray, np.ndarray, link_bot_sdf_utils.OccupancyData, bool]:
         self.states_sampled_at.append(target)
 
         head_point = state[0, 4:6]
         local_env_data = get_local_occupancy_data(cols=self.local_env_params.w_cols,
-                                                        rows=self.local_env_params.h_rows,
-                                                        res=self.local_env_params.res,
-                                                        center_point=head_point,
-                                                        services=self.services)
+                                                  rows=self.local_env_params.h_rows,
+                                                  res=self.local_env_params.res,
+                                                  center_point=head_point,
+                                                  services=self.services)
 
         # first test what doing nothing would do
+        no_progress = True
         min_distance = np.linalg.norm(state[0, 0:2] - target[0, 0:2])
         best_u = np.zeros((1, 2))
         best_next_state = state
@@ -152,8 +153,9 @@ class ShootingDirectedControlSamplerInternal:
             # NOTE: distance here is based on the TAIL ONLY
             distance = np.linalg.norm(next_state[0, 0:2] - target[0, 0:2])
             if distance < min_distance:
+                no_progress = False
                 min_distance = distance
                 best_u = u
                 best_next_state = next_state
 
-        return best_next_state, best_u, local_env_data
+        return best_next_state, best_u, local_env_data, no_progress

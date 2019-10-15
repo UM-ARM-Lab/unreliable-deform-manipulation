@@ -47,44 +47,34 @@ def main():
                                                              n_state=6,
                                                              n_local_env=100 * 100)
 
-    examples_with_negative_improvement = 0
-    worst_regression = 0
+    n_no_progress = 0
     for i in range(args.n_examples):
         initial_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5])
         target_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5])
 
-        reached_state, u, local_env = control_sampler.sampleTo(np.expand_dims(initial_state, 0), np.expand_dims(target_state, 0))
+        reached_state, u, local_env, no_progress = control_sampler.sampleTo(np.expand_dims(initial_state, 0), np.expand_dims(target_state, 0))
         reached_state = np.squeeze(reached_state)
         u = np.squeeze(u)
 
-        pre_tail_distance = np.linalg.norm(target_state[0:2] - initial_state[0:2])
-        post_tail_distance = np.linalg.norm(target_state[0:2] - reached_state[0:2])
-        improvement = pre_tail_distance - post_tail_distance
+        if no_progress:
+            n_no_progress += 1
 
-        if improvement < 0:
-            examples_with_negative_improvement += 1
-
-            if improvement < worst_regression:
-                worst_regression = improvement
-
-            if not args.no_plot:
-                plt.figure()
-                ax = plt.gca()
-                plt.axis("equal")
-                plot_rope_configuration(ax, initial_state, c='r', label='initial')
-                plot_rope_configuration(ax, target_state, c='g', label='target')
-                plot_rope_configuration(ax, reached_state, c='b', label='reached')
-                plt.scatter(initial_state[4], initial_state[5], c='k')
-                plt.scatter(target_state[4], target_state[5], c='k')
-                plt.scatter(reached_state[4], reached_state[5], c='k')
-                plt.quiver(initial_state[4], initial_state[5], u[0], u[1])
-                plt.title("improvement: {:5.3}m".format(improvement))
-                plt.legend()
-                plt.show()
+        if not args.no_plot:
+            plt.figure()
+            ax = plt.gca()
+            plt.axis("equal")
+            plot_rope_configuration(ax, initial_state, c='r', label='initial')
+            plot_rope_configuration(ax, target_state, c='g', label='target')
+            plot_rope_configuration(ax, reached_state, c='b', label='reached')
+            plt.scatter(initial_state[4], initial_state[5], c='k')
+            plt.scatter(target_state[4], target_state[5], c='k')
+            plt.scatter(reached_state[4], reached_state[5], c='k')
+            plt.quiver(initial_state[4], initial_state[5], u[0], u[1])
+            plt.legend()
+            plt.show()
 
     msg = "Found {} examples out of {} where we couldn't sample any controls that moved us towards the target configuration"
-    print(msg.format(examples_with_negative_improvement, args.n_examples))
-    print("Worst regression: {:5.3f}".format(worst_regression))
+    print(msg.format(n_no_progress, args.n_examples))
 
 
 if __name__ == '__main__':
