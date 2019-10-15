@@ -22,7 +22,7 @@ from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import shooting_rrt_mpc, visualization
 from link_bot_planning.ompl_viz import plot
-from link_bot_planning.params import PlannerParams, SDFParams, EnvParams
+from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
@@ -34,7 +34,6 @@ tf.enable_eager_execution(config=config)
 
 class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
 
-    # TODO: group these arguments more
     def __init__(self,
                  fwd_model_dir: pathlib.Path,
                  fwd_model_type: str,
@@ -44,7 +43,7 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                  n_targets_per_env: int,
                  verbose: int,
                  planner_params: PlannerParams,
-                 sdf_params: SDFParams,
+                 sdf_params: LocalEnvParams,
                  env_params: EnvParams,
                  n_examples_per_record: int,
                  compression_type: str,
@@ -103,13 +102,11 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                          tail_goal_point: np.ndarray,
                          planned_actions: np.ndarray,
                          full_sdf_data: link_bot_sdf_utils.SDF,
+                         planner_data: ob.PlannerData,
                          planning_time: float):
         self.planning_times.append(planning_time)
 
         if self.verbose >= 2:
-            # TODO: make planner_data an argument to this function
-            planner_data = ob.PlannerData(self.rrt.si)
-            self.rrt.planner.getPlannerData(planner_data)
             plot(ShootingDirectedControlSampler, planner_data, full_sdf_data.sdf, tail_goal_point, planned_path, planned_actions,
                  full_sdf_data.extent)
 
@@ -203,11 +200,11 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v)
-    sdf_params = SDFParams(full_h_m=args.env_h,
-                           full_w_m=args.env_w,
-                           local_h_rows=args.local_env_rows,
-                           local_w_cols=args.local_env_cols,
-                           res=args.res)
+    sdf_params = LocalEnvParams(full_h_m=args.env_h,
+                                full_w_m=args.env_w,
+                                local_h_rows=args.local_env_rows,
+                                local_w_cols=args.local_env_cols,
+                                res=args.res)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,

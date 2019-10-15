@@ -31,8 +31,7 @@ def train(args):
     ###############
     train_classifier_dataset = ClassifierDataset(args.input_dir)
     train_dataset = train_classifier_dataset.get_dataset(mode='train',
-                                                         shuffle=False,
-                                                         # shuffle=True, FIXME: DEBUGGING
+                                                         shuffle=True,
                                                          num_epochs=1,
                                                          seed=args.seed,
                                                          batch_size=args.batch_size)

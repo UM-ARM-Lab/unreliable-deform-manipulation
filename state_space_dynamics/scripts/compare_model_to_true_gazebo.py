@@ -16,6 +16,7 @@ from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
 from link_bot_planning import model_utils
+from link_bot_planning.params import LocalEnvParams
 
 tf.enable_eager_execution()
 
@@ -87,31 +88,18 @@ def main():
     actions = np.genfromtxt(args.actions, delimiter=',')
     actions = np.atleast_2d(actions)
 
-    fwd_model = model_utils.load_generic_model(args.model_dir, args.model_type)
+    fwd_model, _ = model_utils.load_generic_model(args.model_dir, args.model_type)
     dt = fwd_model.dt
 
     predicted_points = fwd_model.predict(np.expand_dims(initial_rope_configuration, axis=0), np.expand_dims(actions, axis=0))
     predicted_points = predicted_points[0]
 
-    # TODO refactor to use common code with shooting_rrt_mpc.ShootingRRTMPC
-    traj_req = LinkBotTrajectoryRequest()
-    traj_req.dt = dt
-    for action in actions:
-        action_msg = LinkBotVelocityAction()
-        action_msg.gripper1_velocity.x = action[0]
-        action_msg.gripper1_velocity.y = action[1]
-        traj_req.gripper1_traj.append(action_msg)
+    trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(dt, actions)
+    traj_res = services.execute_trajectory(trajectory_execution_request)
 
-    traj_res = services.execute_trajectory(traj_req)
-
-    # convert ros message into a T x n_state numpy matrix
-    actual_points = []
-    for configuration in traj_res.actual_path:
-        points = []
-        for point in configuration.points:
-            points.append([point.x, point.y])
-        actual_points.append(points)
-    actual_points = np.array(actual_points)
+    actual_points = gazebo_utils.trajectory_execution_response_to_numpy(traj_res,
+                                                                        None,
+                                                                        services)
 
     position_errors = np.linalg.norm(predicted_points - actual_points, axis=2)
     print("mean error: {:5.3f}".format(np.mean(position_errors)))

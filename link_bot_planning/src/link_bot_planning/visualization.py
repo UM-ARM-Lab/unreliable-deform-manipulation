@@ -37,8 +37,8 @@ def plot_classifier_data(
         plt.plot([-2.5, 2.5, 2.5, -2.5, -2.5], [-2.5, -2.5, 2.5, 2.5, -2.5], c=label_color, linewidth=6)
 
     plt.axis("equal")
-    plt.xlim(-2.5, 5)
-    plt.ylim(-2.5, 2.5)
+    plt.xlim(-2.5, 2.5)
+    # plt.ylim(-2.5, 2.5)
     plt.title(title)
     plt.xlabel("x (m)")
     plt.ylabel("y (m)")

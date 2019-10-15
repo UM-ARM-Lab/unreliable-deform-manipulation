@@ -6,7 +6,7 @@ from ompl import control as oc
 
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
-from link_bot_planning.params import EnvParams, SDFParams, PlannerParams
+from link_bot_planning.params import EnvParams, LocalEnvParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env
 from link_bot_pycommon import link_bot_sdf_utils
@@ -19,7 +19,7 @@ class ShootingRRT:
                  dt: float,
                  n_state: int,
                  planner_params: PlannerParams,
-                 sdf_params: SDFParams,
+                 sdf_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices):
         self.fwd_model = fwd_model
@@ -145,8 +145,6 @@ class ShootingRRT:
                 planner_local_envs.append(planner_local_env)
             for i, control in enumerate(ompl_path.getControls()):
                 np_controls[i] = to_numpy(control, self.n_control)
-
-            # TODO: how to get the local SDFs out of the planner?
 
             # Verification
             # verified = self.verify(np_controls, np_states)

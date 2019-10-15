@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Optional, Dict
+from typing import Optional, Dict, Iterable, List
 
 import numpy as np
 import rospy
@@ -15,7 +15,9 @@ from link_bot_gazebo.msg import Position2dAction, \
     LinkBotVelocityAction, ObjectAction, LinkBotJointConfiguration
 from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
     InverseCameraProjection, InverseCameraProjectionRequest, CameraProjection, CameraProjectionRequest, ComputeSDF2Request, \
-    LinkBotPositionAction, LinkBotPath, LinkBotTrajectory, ComputeOccupancy, ComputeOccupancyRequest
+    LinkBotPositionAction, LinkBotPath, LinkBotTrajectory, ComputeOccupancy, ComputeOccupancyRequest, LinkBotTrajectoryRequest, \
+    LinkBotTrajectoryResponse
+from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.numpy_point import NumpyPoint
@@ -305,3 +307,39 @@ def get_local_occupancy_data(rows: int,
     origin = np.array(response.origin)
     local_occupancy_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=resolution, origin=origin)
     return local_occupancy_data
+
+
+def make_trajectory_execution_request(dt: float, actions: Iterable) -> LinkBotTrajectoryRequest:
+    trajectory_execution_request = LinkBotTrajectoryRequest()
+    trajectory_execution_request.dt = dt
+    for action in actions:
+        action_msg = LinkBotVelocityAction()
+        action_msg.gripper1_velocity.x = action[0]
+        action_msg.gripper1_velocity.y = action[1]
+        trajectory_execution_request.gripper1_traj.append(action_msg)
+
+    return trajectory_execution_request
+
+
+def trajectory_execution_response_to_numpy(trajectory_execution_result: LinkBotTrajectoryResponse,
+                                           local_env_params: Optional[LocalEnvParams],
+                                           services: GazeboServices) -> [np.ndarray, List[link_bot_sdf_utils.OccupancyData]]:
+    actual_path = []
+    actual_local_envs = []
+    for configuration in trajectory_execution_result.actual_path:
+        np_config = []
+        for point in configuration.points:
+            np_config.append(point.x)
+            np_config.append(point.y)
+        actual_path.append(np_config)
+
+        actual_head_point = np.array([np_config[4], np_config[5]])
+        if local_env_params is None:
+            actual_local_env = get_local_occupancy_data(rows=local_env_params.local_h_rows,
+                                                        cols=local_env_params.local_w_cols,
+                                                        res=local_env_params.res,
+                                                        center_point=actual_head_point,
+                                                        services=services)
+            actual_local_envs.append(actual_local_env)
+    actual_path = np.array(actual_path)
+    return actual_path, actual_local_envs

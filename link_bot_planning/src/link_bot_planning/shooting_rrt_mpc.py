@@ -6,18 +6,18 @@ import time
 from typing import List
 
 import numpy as np
+from ompl import base as ob
 import std_srvs
 from colorama import Fore
 
 from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data, get_local_occupancy_data
-from link_bot_gazebo.msg import LinkBotVelocityAction
-from link_bot_gazebo.srv import LinkBotStateRequest, LinkBotTrajectoryRequest
+from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
+from link_bot_gazebo.srv import LinkBotStateRequest
 from link_bot_planning import classifier_utils, model_utils, shooting_rrt
 from link_bot_planning.goals import sample_goal
-from link_bot_planning.params import PlannerParams, SDFParams, EnvParams
+from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import gazebo_trajectory_execution
 
@@ -33,7 +33,7 @@ class ShootingRRTMPC:
                  n_targets_per_env: int,
                  verbose: int,
                  planner_params: PlannerParams,
-                 sdf_params: SDFParams,
+                 sdf_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  ):
@@ -49,10 +49,8 @@ class ShootingRRTMPC:
         self.verbose = verbose
         self.services = services
 
-        self.fwd_model = model_utils.load_generic_model(self.fwd_model_dir, self.fwd_model_type)
+        self.fwd_model, self.model_path_info = model_utils.load_generic_model(self.fwd_model_dir, self.fwd_model_type)
         self.classifier_model = NoneClassifier()
-        # TODO: put this inside the generic model loader
-        self.model_path_info = self.fwd_model_dir.parts[1:]
         self.validator_model = classifier_utils.load_generic_model(self.validator_model_dir, self.validator_model_type)
 
         self.rrt = shooting_rrt.ShootingRRT(fwd_model=self.fwd_model,
@@ -105,46 +103,27 @@ class ShootingRRTMPC:
                 if self.verbose >= 1:
                     print("Planning time: {:5.3f}s".format(planning_time))
 
-                self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_sdf_data, planning_time)
+                planner_data = ob.PlannerData(self.rrt.si)
+                self.rrt.planner.getPlannerData(planner_data)
+                self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_sdf_data, planning_time, planner_data)
 
-                trajectory_execution_request = LinkBotTrajectoryRequest()
-                trajectory_execution_request.dt = self.fwd_model.dt
                 if self.verbose >= 4:
                     print("Planned actions: {}".format(planned_actions))
                     print("Planned path: {}".format(planned_path))
 
-                for action in planned_actions:
-                    action_msg = LinkBotVelocityAction()
-                    action_msg.gripper1_velocity.x = action[0]
-                    action_msg.gripper1_velocity.y = action[1]
-                    trajectory_execution_request.gripper1_traj.append(action_msg)
+                trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(self.fwd_model.dt, planned_actions)
 
                 # execute the plan, collecting the states that actually occurred
                 #  TODO: Consider executing just a few steps, so that our start states don't diverge too much
                 if self.verbose >= 2:
                     print(Fore.CYAN + "Executing Plan.".format(tail_goal_point) + Fore.RESET)
 
-                trajectory_execution_result = self.services.execute_trajectory(trajectory_execution_request)
+                traj_exec_response = self.services.execute_trajectory(trajectory_execution_request)
                 self.services.pause(std_srvs.srv.EmptyRequest())
 
-                actual_path = []
-                actual_local_envs = []
-                for configuration in trajectory_execution_result.actual_path:
-                    np_config = []
-                    for point in configuration.points:
-                        np_config.append(point.x)
-                        np_config.append(point.y)
-                    actual_path.append(np_config)
-
-                    actual_head_point = np.array([np_config[4], np_config[5]])
-                    actual_local_env = get_local_occupancy_data(rows=self.sdf_params.local_h_rows,
-                                                                cols=self.sdf_params.local_w_cols,
-                                                                res=self.sdf_params.res,
-                                                                center_point=actual_head_point,
-                                                                services=self.services)
-                    actual_local_envs.append(actual_local_env)
-                actual_path = np.array(actual_path)
-
+                actual_path, actual_local_envs = gazebo_utils.trajectory_execution_response_to_numpy(traj_exec_response,
+                                                                                                     self.sdf_params,
+                                                                                                     self.services)
                 self.on_execution_complete(planned_path,
                                            planned_actions,
                                            planner_local_envs,
@@ -156,6 +135,7 @@ class ShootingRRTMPC:
                          tail_goal_point: np.ndarray,
                          planned_actions: np.ndarray,
                          full_sdf_data: link_bot_sdf_utils.SDF,
+                         planner_data: ob.PlannerData,
                          planning_time: float):
         pass
 

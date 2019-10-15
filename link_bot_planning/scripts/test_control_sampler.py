@@ -14,9 +14,10 @@ def main():
 
     args = parser.parse_args()
 
-    fwd_model = model_utils.load_generic_model(args.fwd_model_dir, args.fwd_model_type)
+    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir, args.fwd_model_type)
 
-    control_sampler = ShootingDirectedControlSamplerInternal(n_state=6, n_local_env=100 * 100)
+    control_sampler = ShootingDirectedControlSamplerInternal(n_state=6,
+                                                             n_local_env=100 * 100)
 
 
 if __name__ == '__main__':

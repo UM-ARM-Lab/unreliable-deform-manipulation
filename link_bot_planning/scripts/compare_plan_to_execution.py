@@ -20,7 +20,7 @@ from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
 from link_bot_planning import shooting_rrt_mpc
 from link_bot_planning.ompl_viz import plot
-from link_bot_planning.params import EnvParams, SDFParams, PlannerParams
+from link_bot_planning.params import EnvParams, LocalEnvParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_pycommon import link_bot_sdf_utils
 
@@ -61,13 +61,12 @@ def plot_comparison(outdir, planned_path, actual_rope_configurations, full_sdf_d
 
 class Executor(shooting_rrt_mpc.ShootingRRTMPC):
 
-    # TODO: group these arguments more
     def __init__(self,
                  fwd_model_dir: pathlib.Path,
                  fwd_model_type: str,
                  verbose: int,
                  planner_params: PlannerParams,
-                 sdf_params: SDFParams,
+                 sdf_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  outdir: pathlib.Path):
@@ -89,10 +88,8 @@ class Executor(shooting_rrt_mpc.ShootingRRTMPC):
                          tail_goal_point: np.ndarray,
                          planned_actions: np.ndarray,
                          full_sdf_data: link_bot_sdf_utils.SDF,
+                         planner_data: ob.PlannerData,
                          planning_time: float):
-        # TODO: make planner_data an argument to this function
-        planner_data = ob.PlannerData(self.rrt.si)
-        self.rrt.planner.getPlannerData(planner_data)
         sampler = ShootingDirectedControlSampler
         plot(sampler, planner_data, full_sdf_data.sdf, tail_goal_point, planned_path, planned_actions, full_sdf_data.extent)
         final_error = np.linalg.norm(planned_path[-1, 0:2] - tail_goal_point)
@@ -139,11 +136,11 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v)
-    sdf_params = SDFParams(full_h_m=args.env_h,
-                           full_w_m=args.env_w,
-                           local_h_rows=args.sdf_rows,
-                           local_w_cols=args.sdf_cols,
-                           res=args.res)
+    sdf_params = LocalEnvParams(full_h_m=args.env_h,
+                                full_w_m=args.env_w,
+                                local_h_rows=args.sdf_rows,
+                                local_w_cols=args.sdf_cols,
+                                res=args.res)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,

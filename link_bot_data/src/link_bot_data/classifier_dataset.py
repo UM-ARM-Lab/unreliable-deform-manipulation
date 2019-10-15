@@ -8,7 +8,7 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_data.video_prediction_dataset_utils import float_feature
-from link_bot_planning.params import SDFParams, EnvParams, PlannerParams
+from link_bot_planning.params import LocalEnvParams, EnvParams, PlannerParams
 
 
 class ClassifierDataset:
@@ -24,7 +24,7 @@ class ClassifierDataset:
             print(Fore.YELLOW + "I noticed 'labeled' in the dataset path, so I will attempt to load labels" + Fore.RESET)
             self.is_labeled = True
         self.hparams = json.load(open(str(dataset_hparams_filename), 'r'))
-        self.hparams['sdf_params'] = SDFParams.from_json(self.hparams['sdf_params'])
+        self.hparams['sdf_params'] = LocalEnvParams.from_json(self.hparams['sdf_params'])
         self.hparams['env_params'] = EnvParams.from_json(self.hparams['env_params'])
         self.hparams['planner_params'] = PlannerParams.from_json(self.hparams['planner_params'])
 

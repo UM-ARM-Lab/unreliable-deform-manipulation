@@ -7,7 +7,7 @@ from ompl import control as oc
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.my_motion_validator import MotionClassifier
-from link_bot_planning.params import SDFParams
+from link_bot_planning.params import LocalEnvParams
 from link_bot_planning.state_spaces import to_numpy, from_numpy
 
 
@@ -18,7 +18,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
                  fwd_model,
                  classifier_model: MotionClassifier,
                  services: GazeboServices,
-                 sdf_params: SDFParams,
+                 sdf_params: LocalEnvParams,
                  max_v: float,
                  n_samples: int):
         super(ShootingDirectedControlSampler, self).__init__(si)
@@ -51,7 +51,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
               fwd_model,
               classifier_model: MotionClassifier,
               services: GazeboServices,
-              sdf_params: SDFParams,
+              sdf_params: LocalEnvParams,
               max_v: float,
               n_samples: int):
         return cls(si, fwd_model, classifier_model, services, sdf_params, max_v, n_samples)
@@ -61,7 +61,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
                   fwd_model,
                   classifier_model: MotionClassifier,
                   services: GazeboServices,
-                  sdf_params: SDFParams,
+                  sdf_params: LocalEnvParams,
                   max_v: float,
                   n_samples: int = 10):
         def partial(si: ob.StateSpace):
@@ -87,18 +87,6 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
         origin = local_env_data.origin.astype(np.float64)
         from_numpy(origin, target_out[2], 2)
 
-        # FIXME: Debugging
-        if np.max(local_env_data.data) == np.min(local_env_data.data):
-            print("failure!")
-            plt.figure()
-            ax = plt.gca()
-            plt.imshow(local_env_data.image, extent=local_env_data.extent)
-            plot_rope_configuration(ax, np_s[0], c='r')
-            plot_rope_configuration(ax, np_s_reached[0], c='b', label='reached')
-            plot_rope_configuration(ax, np_target[0], c='g', label='target')
-            plt.legend()
-            plt.show()
-
         # check validity
         duration_steps = 1
         if not self.si.isValid(target_out):
@@ -114,7 +102,7 @@ class ShootingDirectedControlSamplerInternal:
                  fwd_model,
                  classifier_model: MotionClassifier,
                  services: GazeboServices,
-                 sdf_params: SDFParams,
+                 sdf_params: LocalEnvParams,
                  max_v: float,
                  n_samples: int,
                  n_state: int,

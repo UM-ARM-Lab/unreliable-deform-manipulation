@@ -30,7 +30,7 @@ class EnvParams:
 
 @dataclass_json
 @dataclass
-class SDFParams:
+class LocalEnvParams:
     full_h_m: float
     full_w_m: float
     local_h_rows: int

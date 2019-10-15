@@ -38,23 +38,23 @@ class RasterClassifier(tf.keras.Model):
     def call(self, input_dict, training=None, mask=None):
         planned_state = input_dict['planned_state']
         planned_next_state = input_dict['planned_next_state']
-        planned_sdf = input_dict['planned_sdf/sdf']
-        planned_sdf_resolution = input_dict['res']
-        planned_sdf_origin = input_dict['planned_sdf/origin']
+        planned_local_env = input_dict['planned_local_env/env']
+        planned_local_env_resolution = input_dict['res']
+        planned_local_env_origin = input_dict['planned_local_env/origin']
 
         # add channel index
-        planned_sdf = tf.expand_dims(planned_sdf, axis=3)
+        planned_local_env = tf.expand_dims(planned_local_env, axis=3)
 
         # add time index into everything
         planned_state = tf.expand_dims(planned_state, axis=1)
         planned_next_state = tf.expand_dims(planned_next_state, axis=1)
-        planned_sdf_origin = tf.expand_dims(planned_sdf_origin, axis=1)
+        planned_local_env_origin = tf.expand_dims(planned_local_env_origin, axis=1)
         # convert from (batch, 1, 1) -> (batch, 1, 2)
-        planned_sdf_resolution = tf.tile(tf.expand_dims(planned_sdf_resolution, axis=1), [1, 1, 2])
+        planned_local_env_resolution = tf.tile(tf.expand_dims(planned_local_env_resolution, axis=1), [1, 1, 2])
 
         # raster each state into an image
-        planned_rope_image = self.raster([planned_state, planned_sdf_resolution, planned_sdf_origin])
-        planned_next_rope_image = self.raster([planned_next_state, planned_sdf_resolution, planned_sdf_origin])
+        planned_rope_image = self.raster([planned_state, planned_local_env_resolution, planned_local_env_origin])
+        planned_next_rope_image = self.raster([planned_next_state, planned_local_env_resolution, planned_local_env_origin])
 
         # remove time index
         image_shape = [planned_rope_image.shape[0],
@@ -65,7 +65,7 @@ class RasterClassifier(tf.keras.Model):
         planned_next_rope_image = tf.reshape(planned_next_rope_image, image_shape)
 
         # batch, h, w, channel
-        concat_image = tf.concat((planned_rope_image, planned_next_rope_image, planned_sdf), axis=3)
+        concat_image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env), axis=3)
 
         # feed into a CNN
         conv_h1 = self.conv1(concat_image)
@@ -78,14 +78,13 @@ class RasterClassifier(tf.keras.Model):
         out_h = h2
 
         accept_probability = self.output_layer(out_h)
-        return planned_rope_image, planned_next_rope_image, planned_sdf, accept_probability
+        return planned_rope_image, planned_next_rope_image, planned_local_env, accept_probability
 
 
 def eval(hparams, test_tf_dataset, args):
     net = RasterClassifier(hparams=hparams)
     accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
     ckpt = tf.train.Checkpoint(net=net)
-    # TODO: add accuracy metrics
     manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=1)
     ckpt.restore(manager.latest_checkpoint)
     print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
@@ -157,7 +156,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
 
                 with tf.GradientTape() as tape:
                     fwd_result = net(train_example_dict_batch)
-                    i1, i2, sdf, train_predictions_batch = fwd_result
+                    i1, i2, local_env, train_predictions_batch = fwd_result
                     training_batch_loss = loss(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
                 variables = net.trainable_variables
                 gradients = tape.gradient(training_batch_loss, variables)
@@ -182,7 +181,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
 
                 if args.verbose >= 4:
                     plt.figure()
-                    bin = np.tile(sdf[0].numpy(), [1, 1, 3]) * 1.0
+                    bin = np.tile(local_env[0].numpy(), [1, 1, 3]) * 1.0
                     i1 = i1[0].numpy()
                     i2 = i2[0].numpy()
                     i1_mask = np.tile(i1.sum(axis=2, keepdims=True) > 0, [1, 1, 3])
@@ -249,7 +248,7 @@ class RasterClassifierWrapper(MotionClassifier):
         self.ckpt.restore(self.manager.latest_checkpoint)
         self.n_control = 2
 
-    def predict(self, local_sdf_data: link_bot_sdf_utils.SDF, s1: np.ndarray, s2: np.ndarray):
+    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, s1: np.ndarray, s2: np.ndarray):
         """
         :param s1: [batch, 6] float64
         :param s2: [batch, 6] float64
@@ -258,10 +257,10 @@ class RasterClassifierWrapper(MotionClassifier):
         test_x = {
             'planned_state': tf.convert_to_tensor(s1, dtype=tf.float32),
             'planned_next_state': tf.convert_to_tensor(s2, dtype=tf.float32),
-            # TODO: consider making this binary occupancy grid instead of SDF
-            'planned_sdf/sdf': tf.convert_to_tensor(local_sdf_data.sdf, dtype=tf.float32),
-            'res': tf.convert_to_tensor(local_sdf_data.resolution[0]),
-            'planned_sdf/origin': tf.convert_to_tensor(local_sdf_data.origin, dtype=tf.int64),
+            'planned_local_env/env': tf.convert_to_tensor(local_env_data.data, dtype=tf.float32),
+            'res': tf.convert_to_tensor(local_env_data.resolution[0]),
+            'planned_local_env/origin': tf.convert_to_tensor(local_env_data.origin, dtype=tf.int64),
+            'planned_local_env/extent': tf.convert_to_tensor(local_env_data.extent, dtype=tf.int64),
         }
         accept_probabilities = self.net(test_x)[-1]
         accept_probabilities = accept_probabilities.numpy()
@@ -269,8 +268,8 @@ class RasterClassifierWrapper(MotionClassifier):
 
         print(accept_probabilities)
         title = "p(accept) = {}".format(accept_probabilities)
-        plot_classifier_data(planned_env=test_x['planned_sdf/sdf'],
-                             planned_env_extent=test_x['planned_sdf/extent'],
+        plot_classifier_data(planned_env=test_x['planned_local_env/env'],
+                             planned_env_extent=test_x['planned_local_env/extent'],
                              planned_state=test_x['planned_state'],
                              planned_next_state=test_x['planned_next_state'],
                              actual_env=None,
