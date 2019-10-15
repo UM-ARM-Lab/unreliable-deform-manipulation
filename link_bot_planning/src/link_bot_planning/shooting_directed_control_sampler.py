@@ -7,6 +7,7 @@ from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_dat
 from link_bot_planning.my_motion_validator import MotionClassifier
 from link_bot_planning.params import LocalEnvParams
 from link_bot_planning.state_spaces import to_numpy, from_numpy
+from link_bot_pycommon import link_bot_sdf_utils
 
 
 class ShootingDirectedControlSampler(oc.DirectedControlSampler):
@@ -117,11 +118,11 @@ class ShootingDirectedControlSamplerInternal:
 
     def sampleTo(self,
                  state: np.ndarray,
-                 target: np.ndarray):
+                 target: np.ndarray) -> [np.ndarray, np.ndarray, link_bot_sdf_utils.OccupancyData]:
         self.states_sampled_at.append(target)
 
         head_point = state[0, 4:6]
-        local_occupancy_data = get_local_occupancy_data(cols=self.local_env_params.local_w_cols,
+        local_env_data = get_local_occupancy_data(cols=self.local_env_params.local_w_cols,
                                                         rows=self.local_env_params.local_h_rows,
                                                         res=self.local_env_params.res,
                                                         center_point=head_point,
@@ -141,10 +142,10 @@ class ShootingDirectedControlSamplerInternal:
             np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
             # check that the motion is valid
-            #
-            # accept_probability = self.classifier_model.predict(local_env_data, state, np_s_next)
-            # if self.rng_.uniform01() >= accept_probability:
-            #     continue
+            accept_probability = self.classifier_model.predict(local_env_data, state, np_s_next)
+            if self.rng_.uniform01() > accept_probability:
+                # reject
+                continue
 
             # keep if it's the best we've seen
             distance = np.linalg.norm(np_s_next - target)
@@ -153,4 +154,4 @@ class ShootingDirectedControlSamplerInternal:
                 min_u = u
                 min_np_s_next = np_s_next
 
-        return min_np_s_next, min_u, local_occupancy_data
+        return min_np_s_next, min_u, local_env_data

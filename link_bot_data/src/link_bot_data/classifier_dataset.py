@@ -106,8 +106,8 @@ class ClassifierDataset:
         filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format(mode))]
 
         compression_type = self.hparams['compression_type']
-        local_env_rows = int(self.hparams['local_env_params'].local_h_rows)
-        local_env_cols = int(self.hparams['local_env_params'].local_w_cols)
+        local_env_rows = int(self.hparams['local_env_params'].h_rows)
+        local_env_cols = int(self.hparams['local_env_params'].w_cols)
         local_env_shape = [local_env_rows, local_env_cols]
 
         n_state = int(self.hparams['n_state'])

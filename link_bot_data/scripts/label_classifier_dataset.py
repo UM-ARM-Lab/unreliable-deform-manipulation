@@ -18,7 +18,7 @@ tf.enable_eager_execution(config=config)
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('indir', type=pathlib.Path)
-    parser.add_argument('--n-examples-per-record', type=int, default=512)
+    parser.add_argument('--n-examples-per-record', type=int, default=1024)
     parser.add_argument('--no-plot', action='store_true')
     parser.add_argument('--pre', type=float, default=0.23)
     parser.add_argument('--post', type=float, default=0.23)
