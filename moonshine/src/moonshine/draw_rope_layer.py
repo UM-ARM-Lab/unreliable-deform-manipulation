@@ -23,7 +23,7 @@ class DrawRope(tf.keras.layers.Layer):
     def call(self, inputs, **kwargs):
         """
         :param x: [sequence_length, n_points * 2], [sequence_length, 2], [sequence_length, 2]
-        :return: sdf_shape
+        :return: local_env_shape
         """
         x, resolution, origin = inputs
         batch_size = int(tf.cast(tf.shape(x)[0], tf.int64))

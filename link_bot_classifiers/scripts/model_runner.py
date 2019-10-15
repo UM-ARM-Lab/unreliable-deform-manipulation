@@ -65,7 +65,7 @@ def eval(args):
 
     model_hparams_file = args.checkpoint / 'hparams.json'
     model_hparams = json.load(model_hparams_file.open('r'))
-    dataset_hparams_dict['sdf_shape'] = model_hparams['sdf_shape']
+    dataset_hparams_dict['local_env_shape'] = model_hparams['local_env_shape']
 
     ###############
     # Dataset

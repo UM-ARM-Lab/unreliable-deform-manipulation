@@ -25,7 +25,7 @@ class RasterClassifier(tf.keras.Model):
         self.hparams = NoDependency(hparams)
         self.m_dim = self.hparams['n_control']
 
-        self.raster = RasterPoints(self.hparams['sdf_shape'])
+        self.raster = RasterPoints(self.hparams['local_env_shape'])
         self.conv1 = layers.Conv2D(16, [5, 5], activation='relu')
         self.pool1 = layers.MaxPool2D(2)
         self.conv2 = layers.Conv2D(8, [3, 3], activation='relu')

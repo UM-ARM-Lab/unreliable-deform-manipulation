@@ -72,12 +72,12 @@ def main():
         example_idx = 0
         for example_dict in dataset:
             features = {
-                'actual_sdf/sdf': float_feature(example_dict['actual_sdf/sdf'].numpy().flatten()),
-                'actual_sdf/extent': float_feature(example_dict['actual_sdf/extent'].numpy()),
-                'actual_sdf/origin': float_feature(example_dict['actual_sdf/origin'].numpy()),
-                'planned_sdf/sdf': float_feature(example_dict['planned_sdf/sdf'].numpy().flatten()),
-                'planned_sdf/extent': float_feature(example_dict['planned_sdf/extent'].numpy()),
-                'planned_sdf/origin': float_feature(example_dict['planned_sdf/origin'].numpy()),
+                'actual_local_env/env': float_feature(example_dict['actual_local_env/env'].numpy().flatten()),
+                'actual_local_env/extent': float_feature(example_dict['actual_local_env/extent'].numpy()),
+                'actual_local_env/origin': float_feature(example_dict['actual_local_env/origin'].numpy()),
+                'planned_local_env/env': float_feature(example_dict['planned_local_env/env'].numpy().flatten()),
+                'planned_local_env/extent': float_feature(example_dict['planned_local_env/extent'].numpy()),
+                'planned_local_env/origin': float_feature(example_dict['planned_local_env/origin'].numpy()),
                 'res': float_feature(example_dict['res'].numpy()),
                 'w_m': float_feature(example_dict['w_m'].numpy()),
                 'h_m': float_feature(example_dict['h_m'].numpy()),

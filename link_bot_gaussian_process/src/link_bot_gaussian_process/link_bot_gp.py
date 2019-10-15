@@ -44,14 +44,14 @@ def predict_one(fwd_model, np_state, np_controls, steps=None, initial_variance=0
 def animate_predict(prediction: np.ndarray,
                     y_rope_configurations: np.ndarray,
                     extent: List[float],
-                    sdf: Optional[np.ndarray] = None,
+                    local_env: Optional[np.ndarray] = None,
                     linewidth: float = 6,
                     example_idx: int = None):
     """
     :param prediction: Tx6 array
     :param y_rope_configurations: Tx6 array
     :param extent: [xmin, xmax, ymin, ymax]
-    :param sdf:
+    :param local_env:
     :param linewidth:
     :param example_idx:
     :return:
@@ -59,8 +59,8 @@ def animate_predict(prediction: np.ndarray,
     T = prediction.shape[0]
 
     fig = plt.figure()
-    if sdf is not None:
-        plt.imshow(np.flipud(sdf) > 0, extent=extent)
+    if local_env is not None:
+        plt.imshow(np.flipud(local_env) > 0, extent=extent)
 
     pred_x_0 = prediction[0]
     pred_x_0_xs = [pred_x_0[0], pred_x_0[2], pred_x_0[4]]
