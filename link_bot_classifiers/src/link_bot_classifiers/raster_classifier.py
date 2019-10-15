@@ -105,10 +105,24 @@ def eval(hparams, test_tf_dataset, args):
     print("Test Accuracy: {:5.3f}%".format(test_accuracy))
 
 
+def check_validation(val_tf_dataset, loss, net):
+    val_losses = []
+    val_accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
+    val_accuracy.reset_states()
+    for val_example_dict_batch in val_tf_dataset:
+        val_true_labels_batch = val_example_dict_batch['label']
+        val_predictions_batch = net(val_example_dict_batch)[-1]
+        val_loss_batch = loss(y_true=val_true_labels_batch, y_pred=val_predictions_batch)
+        val_accuracy.update_state(y_true=val_true_labels_batch, y_pred=val_predictions_batch)
+        val_losses.append(val_loss_batch)
+    val_losses = np.array(val_losses)
+    return val_losses, val_accuracy
+
+
 def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
     optimizer = tf.train.AdamOptimizer(learning_rate=0.0001)
     loss = tf.keras.losses.BinaryCrossentropy()
-    accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
+    train_epoch_accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
     batch_accuracy = tf.keras.metrics.BinaryAccuracy(name='batch_accuracy')
     net = RasterClassifier(hparams=hparams)
     global_step = tf.train.get_or_create_global_step()
@@ -149,7 +163,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             ################
             # metrics are averaged across batches in the epoch
             batch_losses = []
-            accuracy.reset_states()
+            train_epoch_accuracy.reset_states()
             for train_example_dict_batch in progressbar.progressbar(train_tf_dataset):
                 step = global_step.numpy()
                 train_true_labels_batch = train_example_dict_batch['label']
@@ -162,7 +176,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                 gradients = tape.gradient(training_batch_loss, variables)
                 optimizer.apply_gradients(zip(gradients, variables))
                 batch_losses.append(training_batch_loss.numpy())
-                accuracy.update_state(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
+                train_epoch_accuracy.update_state(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
 
                 if args.log:
                     if step % args.log_grad_every == 0:
@@ -194,7 +208,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                     plt.show()
 
             training_loss = np.mean(batch_losses)
-            training_accuracy = accuracy.result().numpy() * 100
+            training_accuracy = train_epoch_accuracy.result().numpy() * 100
             log_msg = "Epoch: {:5d}, Training Loss: {:7.4f}, Training Accuracy: {:5.2f}%"
             print(log_msg.format(epoch, training_loss, training_accuracy))
 
@@ -202,21 +216,14 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             # validation
             ################
             if args.log and epoch % args.validation_every == 0:
-                val_losses = []
-                accuracy.reset_states()
-                for val_example_dict_batch in val_tf_dataset:
-                    val_true_labels_batch = val_example_dict_batch['label']
-                    val_predictions_batch = net(val_example_dict_batch)[-1]
-                    val_loss_batch = loss(y_true=val_true_labels_batch, y_pred=val_predictions_batch)
-                    accuracy.update_state(y_true=val_true_labels_batch, y_pred=val_predictions_batch)
-                    val_losses.append(val_loss_batch)
-                val_loss = np.mean(val_losses)
-                val_accuracy = accuracy.result().numpy() * 100
-                tf.contrib.summary.scalar('validation loss', val_loss, step=int(ckpt.step))
+                val_losses, val_accuracy = check_validation(val_tf_dataset, loss, net)
+                mean_val_loss = np.mean(val_losses)
+                val_accuracy = val_accuracy.result().numpy() * 100
+                tf.contrib.summary.scalar('validation loss', mean_val_loss, step=int(ckpt.step))
                 tf.contrib.summary.scalar('validation accuracy', val_accuracy, step=int(ckpt.step))
                 format_message = "Validation Loss: " + Style.BRIGHT + "{:7.4f}" + Style.RESET_ALL
                 format_message += " Accuracy: " + Style.BRIGHT + "{:5.3f}%" + Style.RESET_ALL
-                print(format_message.format(val_loss, val_accuracy) + Style.RESET_ALL)
+                print(format_message.format(mean_val_loss, val_accuracy) + Style.RESET_ALL)
 
             ################
             # Checkpoint
@@ -248,8 +255,9 @@ class RasterClassifierWrapper(MotionClassifier):
         self.ckpt.restore(self.manager.latest_checkpoint)
         self.n_control = 2
 
-    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, s1: np.ndarray, s2: np.ndarray):
+    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, s1: np.ndarray, s2: np.ndarray) -> float:
         """
+        :param local_env_data:
         :param s1: [batch, 6] float64
         :param s2: [batch, 6] float64
         :return: [batch, 1] float64
