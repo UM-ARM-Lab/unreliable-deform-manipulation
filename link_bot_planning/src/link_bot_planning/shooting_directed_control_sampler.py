@@ -128,9 +128,10 @@ class ShootingDirectedControlSamplerInternal:
                                                         center_point=head_point,
                                                         services=self.services)
 
-        min_distance = np.inf
-        min_u = None
-        min_np_s_next = None
+        # first test what doing nothing would do
+        min_distance = np.linalg.norm(state[0, 0:2] - target[0, 0:2])
+        best_u = np.zeros((1, 2))
+        best_next_state = state
         for i in range(self.n_samples):
             # sample a random action
             theta = np.random.uniform(-np.pi, np.pi)
@@ -139,19 +140,20 @@ class ShootingDirectedControlSamplerInternal:
 
             # use the forward model to predict the next configuration
             points_next = self.fwd_model.predict(state, batch_u)
-            np_s_next = points_next[:, 1].reshape([1, self.n_state])
+            next_state = points_next[:, 1].reshape([1, self.n_state])
 
             # check that the motion is valid
-            accept_probability = self.classifier_model.predict(local_env_data, state, np_s_next)
+            accept_probability = self.classifier_model.predict(local_env_data, state, next_state)
             if self.rng_.uniform01() > accept_probability:
                 # reject
                 continue
 
             # keep if it's the best we've seen
-            distance = np.linalg.norm(np_s_next - target)
+            # NOTE: distance here is based on the TAIL ONLY
+            distance = np.linalg.norm(next_state[0, 0:2] - target[0, 0:2])
             if distance < min_distance:
                 min_distance = distance
-                min_u = u
-                min_np_s_next = np_s_next
+                best_u = u
+                best_next_state = next_state
 
-        return min_np_s_next, min_u, local_env_data
+        return best_next_state, best_u, local_env_data
