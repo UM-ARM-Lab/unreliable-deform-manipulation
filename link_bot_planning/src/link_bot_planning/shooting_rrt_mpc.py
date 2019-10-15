@@ -33,7 +33,7 @@ class ShootingRRTMPC:
                  n_targets_per_env: int,
                  verbose: int,
                  planner_params: PlannerParams,
-                 sdf_params: LocalEnvParams,
+                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  ):
@@ -43,7 +43,7 @@ class ShootingRRTMPC:
         self.validator_model_type = validator_model_type
         self.n_envs = n_envs
         self.n_targets_per_env = n_targets_per_env
-        self.sdf_params = sdf_params
+        self.local_env_params = local_env_params
         self.env_params = env_params
         self.planner_params = planner_params
         self.verbose = verbose
@@ -58,7 +58,7 @@ class ShootingRRTMPC:
                                             dt=self.fwd_model.dt,
                                             n_state=self.fwd_model.n_state,
                                             planner_params=self.planner_params,
-                                            sdf_params=sdf_params,
+                                            local_env_params=local_env_params,
                                             env_params=env_params,
                                             services=services,
                                             )
@@ -122,7 +122,7 @@ class ShootingRRTMPC:
                 self.services.pause(std_srvs.srv.EmptyRequest())
 
                 actual_path, actual_local_envs = gazebo_utils.trajectory_execution_response_to_numpy(traj_exec_response,
-                                                                                                     self.sdf_params,
+                                                                                                     self.local_env_params,
                                                                                                      self.services)
                 self.on_execution_complete(planned_path,
                                            planned_actions,

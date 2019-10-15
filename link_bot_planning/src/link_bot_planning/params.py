@@ -31,8 +31,6 @@ class EnvParams:
 @dataclass_json
 @dataclass
 class LocalEnvParams:
-    full_h_m: float
-    full_w_m: float
-    local_h_rows: int
-    local_w_cols: int
+    h_rows: int
+    w_cols: int
     res: float

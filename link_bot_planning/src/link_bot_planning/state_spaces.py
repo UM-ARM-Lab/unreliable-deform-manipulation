@@ -42,22 +42,22 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         state_out[0][5] = random_rope_configuration[5]
 
 
-def to_numpy(state_or_control, dim):
+def to_numpy(state_or_control, dim: int):
     np_state_or_control = np.ndarray((1, dim))
     for i in range(dim):
         np_state_or_control[0, i] = state_or_control[i]
     return np_state_or_control
 
 
-def to_numpy_local_env(sdf_state, h_rows, w_cols):
-    np_sdf = np.ndarray((h_rows, w_cols))
+def to_numpy_local_env(local_env_state: ob.AbstractState, h_rows: int, w_cols: int):
+    np_local_env = np.ndarray((h_rows, w_cols))
     for r, c in np.ndindex(h_rows, w_cols):
         i = (h_rows * r) + c
-        np_sdf[r, c] = sdf_state[i]
-    return np_sdf
+        np_local_env[r, c] = local_env_state[i]
+    return np_local_env
 
 
-def from_numpy(np_state_or_control, out, dim):
+def from_numpy(np_state_or_control: np.ndarray, out, dim: int):
     if np_state_or_control.ndim == 2:
         for i in range(dim):
             out[i] = np_state_or_control[0, i]

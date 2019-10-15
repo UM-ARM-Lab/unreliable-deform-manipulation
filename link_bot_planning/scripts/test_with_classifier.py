@@ -38,7 +38,7 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
                  n_targets: int,
                  verbose: int,
                  planner_params: PlannerParams,
-                 sdf_params: LocalEnvParams,
+                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  outdir: Optional[pathlib.Path] = None):
@@ -50,7 +50,7 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
                          n_targets_per_env=n_targets,
                          verbose=verbose,
                          planner_params=planner_params,
-                         sdf_params=sdf_params,
+                         local_env_params=local_env_params,
                          env_params=env_params,
                          services=services)
         self.outdir = outdir
@@ -117,11 +117,9 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v)
-    sdf_params = LocalEnvParams(full_h_m=args.env_h,
-                                full_w_m=args.env_w,
-                                local_h_rows=args.local_env_rows,
-                                local_w_cols=args.local_env_cols,
-                                res=args.res)
+    local_env_params = LocalEnvParams(h_rows=args.local_env_rows,
+                                      w_cols=args.local_env_cols,
+                                      res=args.res)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,
@@ -152,7 +150,7 @@ def main():
         n_targets=args.n_targets,
         verbose=args.verbose,
         planner_params=planner_params,
-        sdf_params=sdf_params,
+        local_env_params=local_env_params,
         env_params=env_params,
         outdir=args.outdir,
         services=services,

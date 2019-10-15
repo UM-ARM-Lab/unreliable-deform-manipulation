@@ -43,7 +43,7 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                  n_targets_per_env: int,
                  verbose: int,
                  planner_params: PlannerParams,
-                 sdf_params: LocalEnvParams,
+                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  n_examples_per_record: int,
                  compression_type: str,
@@ -57,7 +57,7 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                          n_targets_per_env,
                          verbose,
                          planner_params,
-                         sdf_params,
+                         local_env_params,
                          env_params,
                          services=services)
         self.n_examples_per_record = n_examples_per_record
@@ -86,7 +86,7 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                 'verbose': verbose,
                 'planner_params': planner_params.to_json(),
                 'env_params': env_params.to_json(),
-                'sdf_params': sdf_params.to_json(),
+                'local_env_params': local_env_params.to_json(),
             }
             json.dump(options, of, indent=2)
 
@@ -132,9 +132,9 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                                                                 planner_local_grid_data.data,
                                                                 planner_local_grid_data.extent,
                                                                 planner_local_grid_data.origin,
-                                                                self.sdf_params.local_h_rows,
-                                                                self.sdf_params.local_w_cols,
-                                                                self.sdf_params.res,
+                                                                self.local_env_params.local_h_rows,
+                                                                self.local_env_params.local_w_cols,
+                                                                self.local_env_params.res,
                                                                 state,
                                                                 next_state,
                                                                 action,
@@ -200,10 +200,8 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v)
-    sdf_params = LocalEnvParams(full_h_m=args.env_h,
-                                full_w_m=args.env_w,
-                                local_h_rows=args.local_env_rows,
-                                local_w_cols=args.local_env_cols,
+    local_env_params = LocalEnvParams(h_rows=args.local_env_rows,
+                                w_cols=args.local_env_cols,
                                 res=args.res)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
@@ -236,7 +234,7 @@ def main():
         n_targets_per_env=args.n_targets_per_env,
         verbose=args.verbose,
         planner_params=planner_params,
-        sdf_params=sdf_params,
+        local_env_params=local_env_params,
         env_params=env_params,
         n_examples_per_record=args.n_examples_per_record,
         compression_type=args.compression_type,

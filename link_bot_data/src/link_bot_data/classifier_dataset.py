@@ -24,17 +24,17 @@ class ClassifierDataset:
             print(Fore.YELLOW + "I noticed 'labeled' in the dataset path, so I will attempt to load labels" + Fore.RESET)
             self.is_labeled = True
         self.hparams = json.load(open(str(dataset_hparams_filename), 'r'))
-        self.hparams['sdf_params'] = LocalEnvParams.from_json(self.hparams['sdf_params'])
+        self.hparams['local_env_params'] = LocalEnvParams.from_json(self.hparams['local_env_params'])
         self.hparams['env_params'] = EnvParams.from_json(self.hparams['env_params'])
         self.hparams['planner_params'] = PlannerParams.from_json(self.hparams['planner_params'])
 
-    def parser(self, sdf_shape, n_state, n_action):
+    def parser(self, local_env_shape, n_state, n_action):
         def _parser(serialized_example):
             features = {
-                'actual_local_env/env': tf.FixedLenFeature(sdf_shape, tf.float32),
+                'actual_local_env/env': tf.FixedLenFeature(local_env_shape, tf.float32),
                 'actual_local_env/extent': tf.FixedLenFeature([4], tf.float32),
                 'actual_local_env/origin': tf.FixedLenFeature([2], tf.float32),
-                'planned_local_env/env': tf.FixedLenFeature(sdf_shape, tf.float32),
+                'planned_local_env/env': tf.FixedLenFeature(local_env_shape, tf.float32),
                 'planned_local_env/extent': tf.FixedLenFeature([4], tf.float32),
                 'planned_local_env/origin': tf.FixedLenFeature([2], tf.float32),
                 'res': tf.FixedLenFeature([1], tf.float32),
@@ -106,9 +106,9 @@ class ClassifierDataset:
         filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format(mode))]
 
         compression_type = self.hparams['compression_type']
-        sdf_rows = int(self.hparams['sdf_params'].local_h_rows)
-        sdf_cols = int(self.hparams['sdf_params'].local_w_cols)
-        sdf_shape = [sdf_rows, sdf_cols]
+        local_env_rows = int(self.hparams['local_env_params'].local_h_rows)
+        local_env_cols = int(self.hparams['local_env_params'].local_w_cols)
+        local_env_shape = [local_env_rows, local_env_cols]
 
         n_state = int(self.hparams['n_state'])
         n_action = int(self.hparams['n_action'])
@@ -123,7 +123,7 @@ class ClassifierDataset:
         else:
             dataset = dataset.repeat(num_epochs)
 
-        dataset = dataset.map(self.parser(sdf_shape, n_state, n_action))
+        dataset = dataset.map(self.parser(local_env_shape, n_state, n_action))
         if batch_size is not None and batch_size > 0:
             dataset = dataset.batch(batch_size)
 

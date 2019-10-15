@@ -19,7 +19,7 @@ class ShootingRRT:
                  dt: float,
                  n_state: int,
                  planner_params: PlannerParams,
-                 sdf_params: LocalEnvParams,
+                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices):
         self.fwd_model = fwd_model
@@ -27,18 +27,18 @@ class ShootingRRT:
         self.dt = dt
         self.n_state = self.fwd_model.n_state
         self.n_control = self.fwd_model.n_control
-        self.sdf_params = sdf_params
+        self.local_env_params = local_env_params
         self.env_params = env_params
         self.planner_params = planner_params
         self.services = services
 
         self.state_space = ob.CompoundStateSpace()
-        self.n_local_env = self.sdf_params.local_w_cols * self.sdf_params.local_h_rows
-        self.local_sdf_space = ob.RealVectorStateSpace(self.n_local_env)
-        self.local_sdf_space.setBounds(0, 10)
+        self.n_local_env = self.local_env_params.local_w_cols * self.local_env_params.local_h_rows
+        self.local_env_space = ob.RealVectorStateSpace(self.n_local_env)
+        self.local_env_space.setBounds(0, 10)
 
-        self.local_sdf_origin_space = ob.RealVectorStateSpace(2)
-        self.local_sdf_origin_space.setBounds(-10000.1, 10000.0)
+        self.local_env_origin_space = ob.RealVectorStateSpace(2)
+        self.local_env_origin_space.setBounds(-10000.1, 10000.0)
 
         self.config_space = ob.RealVectorStateSpace(n_state)
         bounds = ob.RealVectorBounds(self.n_state)
@@ -59,9 +59,9 @@ class ShootingRRT:
         # the rope is just 6 real numbers with no bounds
         self.state_space.addSubspace(self.config_space, weight=1.0)
         # the local environment is a rows*cols flat vector of numbers from 0 to 1
-        self.state_space.addSubspace(self.local_sdf_space, weight=0.0)
+        self.state_space.addSubspace(self.local_env_space, weight=0.0)
         # origin
-        self.state_space.addSubspace(self.local_sdf_origin_space, weight=0.0)
+        self.state_space.addSubspace(self.local_env_origin_space, weight=0.0)
 
         # Only sample configurations which are known to be valid, i.e. not overstretched.
         def state_sampler_allocator(state_space):
@@ -89,7 +89,7 @@ class ShootingRRT:
             ShootingDirectedControlSampler.allocator(self.fwd_model,
                                                      self.classifier_model,
                                                      self.services,
-                                                     self.sdf_params,
+                                                     self.local_env_params,
                                                      self.planner_params.max_v))
 
         self.planner = oc.RRT(self.si)
@@ -104,9 +104,9 @@ class ShootingRRT:
         :return: controls, states
         """
         # create start and goal states
-        start_local_occupancy = get_local_occupancy_data(rows=self.sdf_params.local_h_rows,
-                                                         cols=self.sdf_params.local_w_cols,
-                                                         res=self.sdf_params.res,
+        start_local_occupancy = get_local_occupancy_data(rows=self.local_env_params.local_h_rows,
+                                                         cols=self.local_env_params.local_w_cols,
+                                                         res=self.local_env_params.res,
                                                          center_point=np.array([np_start[0, 4], np_start[0, 5]]),
                                                          services=self.services)
         compound_start = ob.CompoundState(self.state_space)
@@ -138,8 +138,8 @@ class ShootingRRT:
             for i, state in enumerate(ompl_path.getStates()):
                 np_s = to_numpy(state[0], self.n_state)
                 np_states[i] = np_s
-                grid = to_numpy_local_env(state[1], self.sdf_params.local_h_rows, self.sdf_params.local_w_cols)
-                res_2d = np.array([self.sdf_params.res, self.sdf_params.res])
+                grid = to_numpy_local_env(state[1], self.local_env_params.local_h_rows, self.local_env_params.local_w_cols)
+                res_2d = np.array([self.local_env_params.res, self.local_env_params.res])
                 origin = to_numpy(state[2], 2)[0]
                 planner_local_env = link_bot_sdf_utils.OccupancyData(grid, res_2d, origin)
                 planner_local_envs.append(planner_local_env)

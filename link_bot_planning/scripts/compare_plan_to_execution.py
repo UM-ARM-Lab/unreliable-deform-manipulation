@@ -66,7 +66,7 @@ class Executor(shooting_rrt_mpc.ShootingRRTMPC):
                  fwd_model_type: str,
                  verbose: int,
                  planner_params: PlannerParams,
-                 sdf_params: LocalEnvParams,
+                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  outdir: pathlib.Path):
@@ -78,7 +78,7 @@ class Executor(shooting_rrt_mpc.ShootingRRTMPC):
                          n_targets_per_env=1,
                          verbose=verbose,
                          planner_params=planner_params,
-                         sdf_params=sdf_params,
+                         local_env_params=local_env_params,
                          env_params=env_params,
                          services=services)
         self.outdir = outdir
@@ -123,10 +123,8 @@ def main():
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
-    parser.add_argument('--full-sdf-w', type=float, default=15, help='environment width')
-    parser.add_argument('--full-sdf-h', type=float, default=15, help='environment height')
-    parser.add_argument('--sdf-cols', type=float, default=100, help='local sdf width')
-    parser.add_argument('--sdf-rows', type=float, default=100, help='local sdf width')
+    parser.add_argument('--local-env-cols', type=float, default=100, help='local env cols')
+    parser.add_argument('--local-env-rows', type=float, default=100, help='local env rows')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
 
     args = parser.parse_args()
@@ -136,11 +134,9 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v)
-    sdf_params = LocalEnvParams(full_h_m=args.env_h,
-                                full_w_m=args.env_w,
-                                local_h_rows=args.sdf_rows,
-                                local_w_cols=args.sdf_cols,
-                                res=args.res)
+    local_env_params = LocalEnvParams(h_rows=args.local_env_rows,
+                                      w_cols=args.local_env_cols,
+                                      res=args.res)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,
@@ -168,7 +164,7 @@ def main():
         fwd_model_type=args.fwd_model_type,
         verbose=args.verbose,
         planner_params=planner_params,
-        sdf_params=sdf_params,
+        local_env_params=local_env_params,
         env_params=env_params,
         outdir=args.outdir,
         services=services,
