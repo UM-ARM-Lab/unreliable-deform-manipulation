@@ -10,4 +10,4 @@ class NoneClassifier(MotionClassifier):
         super().__init__()
 
     def predict(self, local_sdf_data: link_bot_sdf_utils.SDF, s1: np.ndarray, s2: np.ndarray):
-        return True
+        return 1.0

@@ -147,6 +147,7 @@ class ShootingDirectedControlSamplerInternal:
             accept_probability = self.classifier_model.predict(local_env_data, state, next_state)
             if self.rng_.uniform01() > accept_probability:
                 # reject
+                print("Rejecting sample!")
                 continue
 
             # keep if it's the best we've seen
