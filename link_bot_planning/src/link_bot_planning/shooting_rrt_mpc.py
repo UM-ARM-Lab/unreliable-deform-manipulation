@@ -105,7 +105,7 @@ class ShootingRRTMPC:
 
                 planner_data = ob.PlannerData(self.rrt.si)
                 self.rrt.planner.getPlannerData(planner_data)
-                self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_sdf_data, planning_time, planner_data)
+                self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_sdf_data, planner_data, planning_time)
 
                 if self.verbose >= 4:
                     print("Planned actions: {}".format(planned_actions))

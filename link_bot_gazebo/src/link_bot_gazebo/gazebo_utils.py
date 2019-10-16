@@ -334,9 +334,9 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result: LinkBotT
         actual_path.append(np_config)
 
         actual_head_point = np.array([np_config[4], np_config[5]])
-        if local_env_params is None:
-            actual_local_env = get_local_occupancy_data(rows=local_env_params.local_h_rows,
-                                                        cols=local_env_params.local_w_cols,
+        if local_env_params is not None:
+            actual_local_env = get_local_occupancy_data(rows=local_env_params.h_rows,
+                                                        cols=local_env_params.w_cols,
                                                         res=local_env_params.res,
                                                         center_point=actual_head_point,
                                                         services=services)

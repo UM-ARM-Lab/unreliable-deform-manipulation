@@ -159,6 +159,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
     elif args.log:
         full_log_path = pathlib.Path("log_data") / log_path
 
+    if args.checkpoint is not None:
         ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
         manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=3)
         ckpt.restore(manager.latest_checkpoint)

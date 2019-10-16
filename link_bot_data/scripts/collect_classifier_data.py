@@ -132,8 +132,8 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                                                                 planner_local_grid_data.data,
                                                                 planner_local_grid_data.extent,
                                                                 planner_local_grid_data.origin,
-                                                                self.local_env_params.local_h_rows,
-                                                                self.local_env_params.local_w_cols,
+                                                                self.local_env_params.h_rows,
+                                                                self.local_env_params.w_cols,
                                                                 self.local_env_params.res,
                                                                 state,
                                                                 next_state,
@@ -152,7 +152,6 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
 
             self.examples[self.current_record_traj_idx] = example
             self.current_record_traj_idx += 1
-            print(".", end="")
             self.example_idx += 1
 
             if self.current_record_traj_idx == self.n_examples_per_record:
@@ -201,8 +200,8 @@ def main():
 
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v)
     local_env_params = LocalEnvParams(h_rows=args.local_env_rows,
-                                w_cols=args.local_env_cols,
-                                res=args.res)
+                                      w_cols=args.local_env_cols,
+                                      res=args.res)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,

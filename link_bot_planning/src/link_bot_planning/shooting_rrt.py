@@ -33,7 +33,7 @@ class ShootingRRT:
         self.services = services
 
         self.state_space = ob.CompoundStateSpace()
-        self.n_local_env = self.local_env_params.local_w_cols * self.local_env_params.local_h_rows
+        self.n_local_env = self.local_env_params.w_cols * self.local_env_params.h_rows
         self.local_env_space = ob.RealVectorStateSpace(self.n_local_env)
         self.local_env_space.setBounds(0, 10)
 
@@ -104,8 +104,8 @@ class ShootingRRT:
         :return: controls, states
         """
         # create start and goal states
-        start_local_occupancy = get_local_occupancy_data(rows=self.local_env_params.local_h_rows,
-                                                         cols=self.local_env_params.local_w_cols,
+        start_local_occupancy = get_local_occupancy_data(rows=self.local_env_params.h_rows,
+                                                         cols=self.local_env_params.w_cols,
                                                          res=self.local_env_params.res,
                                                          center_point=np.array([np_start[0, 4], np_start[0, 5]]),
                                                          services=self.services)
@@ -138,7 +138,7 @@ class ShootingRRT:
             for i, state in enumerate(ompl_path.getStates()):
                 np_s = to_numpy(state[0], self.n_state)
                 np_states[i] = np_s
-                grid = to_numpy_local_env(state[1], self.local_env_params.local_h_rows, self.local_env_params.local_w_cols)
+                grid = to_numpy_local_env(state[1], self.local_env_params.h_rows, self.local_env_params.w_cols)
                 res_2d = np.array([self.local_env_params.res, self.local_env_params.res])
                 origin = to_numpy(state[2], 2)[0]
                 planner_local_env = link_bot_sdf_utils.OccupancyData(grid, res_2d, origin)
