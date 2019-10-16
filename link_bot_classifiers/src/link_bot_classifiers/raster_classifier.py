@@ -10,6 +10,7 @@ import progressbar
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
+from tensorflow.keras.regularizers import l1
 from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
 from link_bot_planning.my_motion_validator import MotionClassifier
@@ -26,13 +27,13 @@ class RasterClassifier(tf.keras.Model):
         self.m_dim = self.hparams['n_control']
 
         self.raster = RasterPoints(self.hparams['local_env_shape'])
-        self.conv1 = layers.Conv2D(16, [5, 5], activation='relu')
+        self.conv1 = layers.Conv2D(16, [5, 5], activation='relu', activity_regularizer=l1(.001))
         self.pool1 = layers.MaxPool2D(2)
-        self.conv2 = layers.Conv2D(8, [3, 3], activation='relu')
+        self.conv2 = layers.Conv2D(8, [3, 3], activation='relu', activity_regularizer=l1(.001))
         self.pool2 = layers.MaxPool2D(2)
         self.conv_flatten = layers.Flatten()
-        self.dense1 = layers.Dense(16, activation='relu')
-        self.dense2 = layers.Dense(16, activation='relu')
+        self.dense1 = layers.Dense(16, activation='relu', activity_regularizer=l1(.001))
+        self.dense2 = layers.Dense(16, activation='relu', activity_regularizer=l1(.001))
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
     def call(self, input_dict, training=None, mask=None):

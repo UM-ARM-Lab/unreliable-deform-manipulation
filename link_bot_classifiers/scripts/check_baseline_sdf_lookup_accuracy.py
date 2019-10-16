@@ -20,7 +20,7 @@ def show_error(state,
                planned_state,
                planned_next_state,
                action,
-               sdf_image,
+               local_env_image,
                extent,
                x,
                y,
@@ -36,7 +36,7 @@ def show_error(state,
     ax.set_ylim([-arena_size, arena_size])
     ax.axis("equal")
 
-    ax.imshow(sdf_image, extent=extent, zorder=0, alpha=0.5)
+    ax.imshow(local_env_image, extent=extent, zorder=0, alpha=0.5)
 
     # plt.quiver(planned_state[4], planned_state[5], action[0], action[1], zorder=4)
 
@@ -47,7 +47,8 @@ def show_error(state,
 
     plt.scatter(planned_state[4], planned_state[5], c='r' if predicted_violated else 'g', s=200, zorder=2, label='pred')
     plt.scatter(x, y, c='w', s=100, zorder=2)
-    plt.scatter(planned_state[4], planned_state[5], c='g' if label_model_reliable else 'r', marker='*', s=150, zorder=3, linewidths=0.1,
+    plt.scatter(planned_state[4], planned_state[5], c='g' if label_model_reliable else 'r', marker='*', s=150, zorder=3,
+                linewidths=0.1,
                 edgecolors='k', label='true')
     plt.title("{:0.3}m ({:.3f},{:.3f})m/s".format(signed_distance, action[0], action[1]))
     plt.legend()
@@ -87,20 +88,22 @@ def main():
     fn = 0
     tp = 0
     tn = 0
+    neg = 0
+    pos = 0
     for example_dict in dataset:
         state = example_dict['state'].numpy().squeeze()
         next_state = example_dict['next_state'].numpy().squeeze()
         planned_state = example_dict['planned_state'].numpy().squeeze()
         planned_next_state = example_dict['planned_next_state'].numpy().squeeze()
-        sdf = example_dict['planned_sdf/sdf'].numpy().squeeze()
-        extent = example_dict['planned_sdf/extent'].numpy().squeeze()
+        local_env = example_dict['planned_local_env/env'].numpy().squeeze()
+        extent = example_dict['planned_local_env/extent'].numpy().squeeze()
         res = example_dict['res'].numpy().squeeze()
         resolution = np.array([res, res])
-        origin = example_dict['planned_sdf/origin'].numpy().squeeze()
+        origin = example_dict['planned_local_env/origin'].numpy().squeeze()
         action = example_dict['action'].numpy().squeeze()
         label_model_is_reliable = example_dict['label'].numpy().squeeze()
 
-        sdf_image = np.flipud(sdf)
+        local_env_image = np.flipud(local_env)
         head_x = planned_state[4]
         head_y = planned_state[5]
         if args.cheat:
@@ -109,10 +112,15 @@ def main():
             head_y += dx
             head_y += dy
         row, col = point_to_idx(head_x, head_y, resolution=resolution, origin=origin)
-        signed_distance = sdf[row, col]
+
+        signed_distance = local_env[row, col]
         predicted_in_collision = signed_distance < args.distance_threshold
 
         if predicted_in_collision:
+            if label_model_is_reliable:
+                pos += 1
+            else:
+                neg += 1
             if label_model_is_reliable:
                 incorrect += 1
                 fp += 1
@@ -122,7 +130,7 @@ def main():
                                planned_state,
                                planned_next_state,
                                action,
-                               sdf_image,
+                               local_env_image,
                                extent,
                                head_x,
                                head_y,
@@ -145,13 +153,16 @@ def main():
                                planned_state,
                                planned_next_state,
                                action,
-                               sdf_image,
+                               local_env_image,
                                extent,
                                head_x,
                                head_y,
                                predicted_in_collision,
                                label_model_is_reliable,
                                signed_distance)
+
+    class_balance = pos / (neg + pos) * 100
+    print("Class balance: {:4.1f}%".format(class_balance))
 
     accuracy = correct / (correct + incorrect)
     print("accuracy: {:5.3f}".format(accuracy))
