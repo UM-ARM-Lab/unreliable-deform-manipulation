@@ -10,7 +10,7 @@ import progressbar
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
-from tensorflow.keras.regularizers import l1
+from tensorflow import keras
 from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
 from link_bot_planning.my_motion_validator import MotionClassifier
@@ -26,34 +26,34 @@ class RasterClassifier(tf.keras.Model):
         self.hparams = NoDependency(hparams)
         self.m_dim = self.hparams['n_control']
 
-        # TODO: consider writing wrapper layers that take in hparams and configure the layers accordingly
-        #  this might make it the code less messy and still allow for the network to be defined easily in a json file
         self.raster = RasterPoints(self.hparams['local_env_shape'])
-        self.conv1 = layers.Conv2D(16,
-                                   [5, 5],
-                                   activation='relu',
-                                   kernel_regularizer=l1(self.hparams['kernel_reg']),
-                                   bias_regularizer=l1(self.hparams['bias_reg']),
-                                   activity_regularizer=l1(self.hparams['activity_reg']))
-        self.pool1 = layers.MaxPool2D(2)
-        self.conv2 = layers.Conv2D(8,
-                                   [3, 3],
-                                   activation='relu',
-                                   kernel_regularizer=l1(self.hparams['kernel_reg']),
-                                   bias_regularizer=l1(self.hparams['bias_reg']),
-                                   activity_regularizer=l1(self.hparams['activity_reg']))
-        self.pool2 = layers.MaxPool2D(2)
+        self.conv_layers = []
+        self.pool_layers = []
+        for n_filters, kernel_size in self.hparams['conv_filters']:
+            conv = layers.Conv2D(n_filters,
+                                 kernel_size,
+                                 activation='relu',
+                                 kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
+                                 bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']),
+                                 activity_regularizer=keras.regularizers.l1(self.hparams['activity_reg']))
+            pool = layers.MaxPool2D(2)
+            self.conv_layers.append(conv)
+            self.pool_layers.append(pool)
+
         self.conv_flatten = layers.Flatten()
-        self.dense1 = layers.Dense(16,
-                                   activation='relu',
-                                   kernel_regularizer=l1(self.hparams['kernel_reg']),
-                                   bias_regularizer=l1(self.hparams['bias_reg']),
-                                   activity_regularizer=l1(self.hparams['activity_reg']))
-        self.dense2 = layers.Dense(16,
-                                   activation='relu',
-                                   kernel_regularizer=l1(self.hparams['kernel_reg']),
-                                   bias_regularizer=l1(self.hparams['bias_reg']),
-                                   activity_regularizer=l1(self.hparams['activity_reg']))
+
+        self.dense_layers = []
+        self.dropout_layers = []
+        for hidden_size in self.hparams['fc_layer_sizes']:
+            dropout = layers.Dropout(rate=self.hparams['dropout_rate'])
+            dense = layers.Dense(hidden_size,
+                                 activation='relu',
+                                 kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
+                                 bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']),
+                                 activity_regularizer=keras.regularizers.l1(self.hparams['activity_reg']))
+            self.dropout_layers.append(dropout)
+            self.dense_layers.append(dense)
+
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
     def call(self, input_dict, training=None, mask=None):
@@ -89,14 +89,19 @@ class RasterClassifier(tf.keras.Model):
         concat_image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env), axis=3)
 
         # feed into a CNN
-        conv_h1 = self.conv1(concat_image)
-        conv_z1 = self.pool1(conv_h1)
-        conv_h2 = self.conv2(conv_z1)
-        conv_z2 = self.pool2(conv_h2)
-        conv_output = self.conv_flatten(conv_z2)
-        h1 = self.dense1(conv_output)
-        h2 = self.dense2(h1)
-        out_h = h2
+        conv_z = concat_image
+        for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
+            conv_h = conv_layer(conv_z)
+            conv_z = pool_layer(conv_h)
+        out_conv_z = conv_z
+
+        conv_output = self.conv_flatten(out_conv_z)
+
+        z = conv_output
+        for dropout_layer, dense_layer in zip(self.dropout_layers, self.dense_layers):
+            h = dropout_layer(z)
+            z = dense_layer(h)
+        out_h = z
 
         accept_probability = self.output_layer(out_h)
         return planned_rope_image, planned_next_rope_image, planned_local_env, accept_probability
