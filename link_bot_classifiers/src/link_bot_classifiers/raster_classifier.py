@@ -41,6 +41,7 @@ class RasterClassifier(tf.keras.Model):
             self.pool_layers.append(pool)
 
         self.conv_flatten = layers.Flatten()
+        self.batch_norm = layers.BatchNormalization()
 
         self.dense_layers = []
         self.dropout_layers = []
@@ -96,6 +97,9 @@ class RasterClassifier(tf.keras.Model):
         out_conv_z = conv_z
 
         conv_output = self.conv_flatten(out_conv_z)
+
+        if self.hparams['batch_norm']:
+            conv_output = self.batch_norm(conv_output)
 
         z = conv_output
         for dropout_layer, dense_layer in zip(self.dropout_layers, self.dense_layers):
@@ -156,6 +160,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
     # If we're resuming a checkpoint, there is no new log path
     if args.checkpoint is not None:
         full_log_path = args.checkpoint
+
     elif args.log:
         full_log_path = pathlib.Path("log_data") / log_path
 
