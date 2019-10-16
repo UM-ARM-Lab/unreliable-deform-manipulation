@@ -9,5 +9,6 @@
   "kernel_reg": 0.1,
   "bias_reg": 1e-5,
   "activity_reg": 1e-5,
-  "dropout_rate": 0.0
+  "dropout_rate": 0.0,
+  "batch_norm": false
 }

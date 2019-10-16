@@ -7,8 +7,9 @@
     [16, [5, 5]],
     [16, [3, 3]]
   ],
-  "dropout_rate": 0.5,
+  "dropout_rate": 0.0,
   "kernel_reg": 1e-5,
   "bias_reg": 1e-5,
-  "activity_reg": 1e-5
+  "activity_reg": 1e-5,
+  "batch_norm": false
 }

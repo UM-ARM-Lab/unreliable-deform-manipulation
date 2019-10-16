@@ -6,9 +6,9 @@
   "conv_filters": [
     [6, [9, 9]]
   ],
-  "kernel_reg": 1e-5,
-  "bias_reg": 1e-5,
-  "activity_reg": 0.1,
-  "dropout_rate": 0.0,
-  "batch_norm": false
+  "kernel_reg": 0.5,
+  "bias_reg": 0.5,
+  "activity_reg": 0.5,
+  "dropout_rate": 0.5,
+  "batch_norm": true
 }
