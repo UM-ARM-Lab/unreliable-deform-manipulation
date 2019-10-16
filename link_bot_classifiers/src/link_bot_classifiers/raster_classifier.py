@@ -26,14 +26,34 @@ class RasterClassifier(tf.keras.Model):
         self.hparams = NoDependency(hparams)
         self.m_dim = self.hparams['n_control']
 
+        # TODO: consider writing wrapper layers that take in hparams and configure the layers accordingly
+        #  this might make it the code less messy and still allow for the network to be defined easily in a json file
         self.raster = RasterPoints(self.hparams['local_env_shape'])
-        self.conv1 = layers.Conv2D(16, [5, 5], activation='relu', activity_regularizer=l1(.001))
+        self.conv1 = layers.Conv2D(16,
+                                   [5, 5],
+                                   activation='relu',
+                                   kernel_regularizer=l1(self.hparams['kernel_reg']),
+                                   bias_regularizer=l1(self.hparams['bias_reg']),
+                                   activity_regularizer=l1(self.hparams['activity_reg']))
         self.pool1 = layers.MaxPool2D(2)
-        self.conv2 = layers.Conv2D(8, [3, 3], activation='relu', activity_regularizer=l1(.001))
+        self.conv2 = layers.Conv2D(8,
+                                   [3, 3],
+                                   activation='relu',
+                                   kernel_regularizer=l1(self.hparams['kernel_reg']),
+                                   bias_regularizer=l1(self.hparams['bias_reg']),
+                                   activity_regularizer=l1(self.hparams['activity_reg']))
         self.pool2 = layers.MaxPool2D(2)
         self.conv_flatten = layers.Flatten()
-        self.dense1 = layers.Dense(16, activation='relu', activity_regularizer=l1(.001))
-        self.dense2 = layers.Dense(16, activation='relu', activity_regularizer=l1(.001))
+        self.dense1 = layers.Dense(16,
+                                   activation='relu',
+                                   kernel_regularizer=l1(self.hparams['kernel_reg']),
+                                   bias_regularizer=l1(self.hparams['bias_reg']),
+                                   activity_regularizer=l1(self.hparams['activity_reg']))
+        self.dense2 = layers.Dense(16,
+                                   activation='relu',
+                                   kernel_regularizer=l1(self.hparams['kernel_reg']),
+                                   bias_regularizer=l1(self.hparams['bias_reg']),
+                                   activity_regularizer=l1(self.hparams['activity_reg']))
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
     def call(self, input_dict, training=None, mask=None):

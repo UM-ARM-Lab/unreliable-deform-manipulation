@@ -7,6 +7,6 @@
     [6, [9, 9]]
   ],
   "kernel_reg": 0.0,
-  "bias_reg": 0.0,
+  "bias_reg": 0.1,
   "activity_reg": 0.0
 }
