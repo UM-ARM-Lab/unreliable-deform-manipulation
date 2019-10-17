@@ -197,7 +197,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             batch_losses = []
             train_epoch_accuracy.reset_states()
             for train_example_dict_batch in progressbar.progressbar(train_tf_dataset):
-                step = global_step.numpy()
+                step = int(global_step.numpy())
                 train_true_labels_batch = train_example_dict_batch['label']
 
                 with tf.GradientTape() as tape:
@@ -251,8 +251,8 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                 val_losses, val_accuracy = check_validation(val_tf_dataset, loss, net)
                 mean_val_loss = np.mean(val_losses)
                 val_accuracy = val_accuracy.result().numpy() * 100
-                tf.contrib.summary.scalar('validation loss', mean_val_loss, step=int(ckpt.step))
-                tf.contrib.summary.scalar('validation accuracy', val_accuracy, step=int(ckpt.step))
+                tf.contrib.summary.scalar('validation loss', mean_val_loss, step=step)
+                tf.contrib.summary.scalar('validation accuracy', val_accuracy, step=step)
                 format_message = "Validation Loss: " + Style.BRIGHT + "{:7.4f}" + Style.RESET_ALL
                 format_message += " Accuracy: " + Style.BRIGHT + "{:5.3f}%" + Style.RESET_ALL
                 print(format_message.format(mean_val_loss, val_accuracy) + Style.RESET_ALL)
@@ -262,11 +262,11 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             ################
             if args.log and epoch % args.save_freq == 0:
                 save_path = manager.save()
-                print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(int(ckpt.step), save_path) + Fore.RESET)
+                print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(step, save_path) + Fore.RESET)
 
         if args.log:
             save_path = manager.save()
-            print(Fore.CYAN + "Step {:6d}: Saved final checkpoint {}".format(int(ckpt.step), save_path) + Fore.RESET)
+            print(Fore.CYAN + "Step {:6d}: Saved final checkpoint {}".format(step, save_path) + Fore.RESET)
 
     if args.log:
         with writer.as_default(), tf.contrib.summary.always_record_summaries():
