@@ -16,6 +16,7 @@ from tensorflow.python.training.checkpointable.data_structures import NoDependen
 from link_bot_planning.my_motion_validator import MotionClassifier
 from link_bot_planning.visualization import plot_classifier_data
 from link_bot_pycommon import experiments_util, link_bot_sdf_utils
+from moonshine.numpy_utils import add_batch
 from moonshine.raster_points_layer import RasterPoints
 
 
@@ -58,6 +59,9 @@ class RasterClassifier(tf.keras.Model):
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
     def call(self, input_dict, training=None, mask=None):
+        """
+        we expect res to be [batch_size, 1]
+        """
         planned_state = input_dict['planned_state']
         planned_next_state = input_dict['planned_next_state']
         planned_local_env = input_dict['planned_local_env/env']
@@ -276,7 +280,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
 
 class RasterClassifierWrapper(MotionClassifier):
 
-    def __init__(self, path: pathlib.Path):
+    def __init__(self, path: pathlib.Path, show: bool = False):
         super().__init__()
         model_hparams_file = path / 'hparams.json'
         self.model_hparams = json.load(model_hparams_file.open('r'))
@@ -285,6 +289,7 @@ class RasterClassifierWrapper(MotionClassifier):
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)
         self.n_control = 2
+        self.show = show
 
     def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, s1: np.ndarray, s2: np.ndarray) -> float:
         """
@@ -294,29 +299,29 @@ class RasterClassifierWrapper(MotionClassifier):
         :return: [batch, 1] float64
         """
         test_x = {
-            'planned_state': tf.convert_to_tensor(s1, dtype=tf.float32),
-            'planned_next_state': tf.convert_to_tensor(s2, dtype=tf.float32),
-            'planned_local_env/env': tf.convert_to_tensor(local_env_data.data, dtype=tf.float32),
-            'res': tf.convert_to_tensor(local_env_data.resolution[0]),
-            'planned_local_env/origin': tf.convert_to_tensor(local_env_data.origin, dtype=tf.int64),
-            'planned_local_env/extent': tf.convert_to_tensor(local_env_data.extent, dtype=tf.int64),
+            'planned_state': tf.convert_to_tensor(add_batch(s1, 1), dtype=tf.float32),
+            'planned_next_state': tf.convert_to_tensor(add_batch(s2, 1), dtype=tf.float32),
+            'planned_local_env/env': tf.convert_to_tensor(add_batch(local_env_data.data, 2), dtype=tf.float32),
+            'res': tf.convert_to_tensor(add_batch(local_env_data.resolution[0:1], 1)),
+            'planned_local_env/origin': tf.convert_to_tensor(add_batch(local_env_data.origin, 1), dtype=tf.float32),
+            'planned_local_env/extent': tf.convert_to_tensor(add_batch(local_env_data.extent, 1), dtype=tf.float32),
         }
         accept_probabilities = self.net(test_x)[-1]
         accept_probabilities = accept_probabilities.numpy()
-        accept_probabilities = accept_probabilities.as_type(np.float64)
+        accept_probabilities = accept_probabilities.astype(np.float64)[0, 0]
 
-        print(accept_probabilities)
-        title = "p(accept) = {}".format(accept_probabilities)
-        plot_classifier_data(planned_env=test_x['planned_local_env/env'],
-                             planned_env_extent=test_x['planned_local_env/extent'],
-                             planned_state=test_x['planned_state'],
-                             planned_next_state=test_x['planned_next_state'],
-                             actual_env=None,
-                             actual_env_extent=None,
-                             state=None,
-                             next_state=None,
-                             title=title,
-                             label=None)
-        plt.show()
+        title = "p(accept) = {:5.3f}".format(accept_probabilities)
+        if self.show:
+            plot_classifier_data(planned_env=local_env_data.data,
+                                 planned_env_extent=local_env_data.extent,
+                                 planned_state=s1[0],
+                                 planned_next_state=s2[0],
+                                 actual_env=None,
+                                 actual_env_extent=None,
+                                 state=None,
+                                 next_state=None,
+                                 title=title,
+                                 label=None)
+            plt.show()
 
         return accept_probabilities
