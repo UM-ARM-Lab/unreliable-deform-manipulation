@@ -164,16 +164,15 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
     elif args.log:
         full_log_path = pathlib.Path("log_data") / log_path
 
-    if args.checkpoint is not None:
-        ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
-        manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=3)
-        ckpt.restore(manager.latest_checkpoint)
-        if manager.latest_checkpoint:
-            print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
-        elif args.checkpoint:
-            print(Fore.RED + "Failed to restore from checkpoint directory {}".format(args.checkpoint) + Fore.RESET)
-            print("Did you forget a subdirectory?")
-            return
+    ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
+    manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=3)
+    ckpt.restore(manager.latest_checkpoint)
+    if manager.latest_checkpoint:
+        print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
+    elif args.checkpoint:
+        print(Fore.RED + "Failed to restore from checkpoint directory {}".format(args.checkpoint) + Fore.RESET)
+        print("Did you forget a subdirectory?")
+        return
 
     writer = None
     if args.log is not None:
@@ -219,6 +218,19 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                         batch_accuracy.update_state(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
                         tf.contrib.summary.scalar('batch accuracy', batch_accuracy.result(), step=step)
                         tf.contrib.summary.scalar("batch loss", training_batch_loss, step=step)
+                    ################
+                    # validation
+                    ################
+                    if step % args.validation_every == 0:
+                        val_losses, val_accuracy = check_validation(val_tf_dataset, loss, net)
+                        mean_val_loss = np.mean(val_losses)
+                        val_accuracy = val_accuracy.result().numpy() * 100
+                        tf.contrib.summary.scalar('validation loss', mean_val_loss, step=step)
+                        tf.contrib.summary.scalar('validation accuracy', val_accuracy, step=step)
+                        format_message = "Validation Loss: " + Style.BRIGHT + "{:7.4f}" + Style.RESET_ALL
+                        format_message += " Accuracy: " + Style.BRIGHT + "{:5.3f}%" + Style.RESET_ALL
+                        print(format_message.format(mean_val_loss, val_accuracy) + Style.RESET_ALL)
+
 
                 ####################
                 # Update global step
@@ -243,19 +255,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             training_accuracy = train_epoch_accuracy.result().numpy() * 100
             log_msg = "Epoch: {:5d}, Training Loss: {:7.4f}, Training Accuracy: {:5.2f}%"
             print(log_msg.format(epoch, training_loss, training_accuracy))
-
-            ################
-            # validation
-            ################
-            if args.log and epoch % args.validation_every == 0:
-                val_losses, val_accuracy = check_validation(val_tf_dataset, loss, net)
-                mean_val_loss = np.mean(val_losses)
-                val_accuracy = val_accuracy.result().numpy() * 100
-                tf.contrib.summary.scalar('validation loss', mean_val_loss, step=step)
-                tf.contrib.summary.scalar('validation accuracy', val_accuracy, step=step)
-                format_message = "Validation Loss: " + Style.BRIGHT + "{:7.4f}" + Style.RESET_ALL
-                format_message += " Accuracy: " + Style.BRIGHT + "{:5.3f}%" + Style.RESET_ALL
-                print(format_message.format(mean_val_loss, val_accuracy) + Style.RESET_ALL)
 
             ################
             # Checkpoint

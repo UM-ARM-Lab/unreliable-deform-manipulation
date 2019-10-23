@@ -95,7 +95,6 @@ def eval(args):
 def main():
     np.set_printoptions(linewidth=250)
     parser = argparse.ArgumentParser()
-    parser.add_argument('--seed', type=int, default=None)
 
     subparsers = parser.add_subparsers()
 
@@ -112,9 +111,10 @@ def main():
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-grad-every', type=int, help='gradients hists every this many steps/batches', default=1000)
-    train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=100)
-    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=4)
+    train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=500)
+    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=2000)
     train_parser.set_defaults(func=train)
+    train_parser.add_argument('--seed', type=int, default=None)
 
     eval_parser = subparsers.add_parser('eval')
     eval_parser.add_argument('input_dir', type=pathlib.Path)
@@ -125,6 +125,7 @@ def main():
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.set_defaults(func=eval)
+    eval_parser.add_argument('--seed', type=int, default=None)
 
     args = parser.parse_args()
 
