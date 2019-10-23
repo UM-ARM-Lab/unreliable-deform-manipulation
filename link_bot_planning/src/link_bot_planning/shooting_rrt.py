@@ -6,6 +6,7 @@ from ompl import control as oc
 
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
+from link_bot_planning.ompl_viz import VizObject
 from link_bot_planning.params import EnvParams, LocalEnvParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env
@@ -21,7 +22,8 @@ class ShootingRRT:
                  planner_params: PlannerParams,
                  local_env_params: LocalEnvParams,
                  env_params: EnvParams,
-                 services: GazeboServices):
+                 services: GazeboServices,
+                 viz_object: VizObject):
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.dt = dt
@@ -31,6 +33,7 @@ class ShootingRRT:
         self.env_params = env_params
         self.planner_params = planner_params
         self.services = services
+        self.viz_object = viz_object
 
         self.state_space = ob.CompoundStateSpace()
         self.n_local_env = self.local_env_params.w_cols * self.local_env_params.h_rows
@@ -89,6 +92,7 @@ class ShootingRRT:
             ShootingDirectedControlSampler.allocator(self.fwd_model,
                                                      self.classifier_model,
                                                      self.services,
+                                                     self.viz_object,
                                                      self.local_env_params,
                                                      self.planner_params.max_v))
 

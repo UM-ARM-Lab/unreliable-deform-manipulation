@@ -15,7 +15,7 @@ from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
 from link_bot_gazebo.srv import LinkBotStateRequest
-from link_bot_planning import classifier_utils, model_utils, shooting_rrt
+from link_bot_planning import classifier_utils, model_utils, shooting_rrt, ompl_viz
 from link_bot_planning.goals import sample_goal
 from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
@@ -27,8 +27,8 @@ class ShootingRRTMPC:
     def __init__(self,
                  fwd_model_dir: pathlib.Path,
                  fwd_model_type: str,
-                 validator_model_dir: pathlib.Path,
-                 validator_model_type: str,
+                 classifier_model_dir: pathlib.Path,
+                 classifier_model_type: str,
                  n_envs: int,
                  n_targets_per_env: int,
                  verbose: int,
@@ -39,8 +39,8 @@ class ShootingRRTMPC:
                  ):
         self.fwd_model_dir = fwd_model_dir
         self.fwd_model_type = fwd_model_type
-        self.validator_model_dir = validator_model_dir
-        self.validator_model_type = validator_model_type
+        self.classifier_model_dir = classifier_model_dir
+        self.classifier_model_type = classifier_model_type
         self.n_envs = n_envs
         self.n_targets_per_env = n_targets_per_env
         self.local_env_params = local_env_params
@@ -50,8 +50,8 @@ class ShootingRRTMPC:
         self.services = services
 
         self.fwd_model, self.model_path_info = model_utils.load_generic_model(self.fwd_model_dir, self.fwd_model_type)
-        self.classifier_model = NoneClassifier()
-        self.validator_model = classifier_utils.load_generic_model(self.validator_model_dir, self.validator_model_type)
+        self.classifier_model = classifier_utils.load_generic_model(self.classifier_model_dir, self.classifier_model_type)
+        self.viz_object = ompl_viz.VizObject()
 
         self.rrt = shooting_rrt.ShootingRRT(fwd_model=self.fwd_model,
                                             classifier_model=self.classifier_model,
@@ -61,6 +61,7 @@ class ShootingRRTMPC:
                                             local_env_params=local_env_params,
                                             env_params=env_params,
                                             services=services,
+                                            viz_object=self.viz_object,
                                             )
 
     def run(self):

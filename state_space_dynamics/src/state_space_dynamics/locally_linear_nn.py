@@ -237,6 +237,8 @@ class LocallyLinearNNWrapper:
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)
+        if self.manager.latest_checkpoint:
+            print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.dt = self.model_hparams['dt']
         self.n_state = 6
         self.n_control = 2

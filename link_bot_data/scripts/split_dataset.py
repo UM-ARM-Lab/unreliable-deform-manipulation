@@ -3,6 +3,7 @@
 import random
 import argparse
 import shutil
+import os
 import pathlib
 
 def main():
@@ -11,6 +12,10 @@ def main():
     parser.add_argument("--fraction-validation", '-v', type=float, help="fraction of files to put in validation", default=0.05)
     parser.add_argument("--fraction-testing", '-t', type=float, help="fraction of files to put in validation", default=0.05)
     args = parser.parse_args()
+
+    os.makedirs(args.input_dir / 'train', exist_ok=True)
+    os.makedirs(args.input_dir / 'test', exist_ok=True)
+    os.makedirs(args.input_dir / 'val', exist_ok=True)
 
     all_files = list(args.input_dir.glob("*.tfrecords"))
     n_files = len(all_files)

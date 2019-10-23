@@ -11,17 +11,13 @@ from link_bot_pycommon.link_bot_sdf_utils import SDF
 from link_bot_planning.state_spaces import to_numpy
 
 
-def rviz_plot(services):
-    pass
-
-
-def plot(sampler, planner_data, local_env, goal, planned_path, planned_actions, extent):
+def plot(viz_object, planner_data, environment, goal, planned_path, planned_actions, extent):
     plt.figure()
     ax = plt.gca()
     n_state = planned_path.shape[1]
-    plt.imshow(np.flipud(local_env), extent=extent)
+    plt.imshow(np.flipud(environment), extent=extent)
 
-    for state_sampled_at in sampler.states_sampled_at:
+    for state_sampled_at in viz_object.states_sampled_at:
         xs = [state_sampled_at[0, 0], state_sampled_at[0, 2], state_sampled_at[0, 4]]
         ys = [state_sampled_at[0, 1], state_sampled_at[0, 3], state_sampled_at[0, 5]]
         plt.plot(xs, ys, label='sampled states', linewidth=0.5, c='b', alpha=0.5, zorder=1)
@@ -34,8 +30,8 @@ def plot(sampler, planner_data, local_env, goal, planned_path, planned_actions, 
 
     # Visualize actions
     # the -1 excludes the final configuration, where there is no corresponding action
-    plt.quiver(planned_path[:-1, 4], planned_path[:-1, 5], planned_actions[:, 0], planned_actions[:, 1],
-               width=0.001, zorder=2, color='k', alpha=0.2)
+    # plt.quiver(planned_path[:-1, 4], planned_path[:-1, 5], planned_actions[:, 0], planned_actions[:, 1],
+    #            width=0.001, zorder=2, color='k', alpha=0.2)
 
     for vertex_index in range(planner_data.numVertices()):
         v = planner_data.getVertex(vertex_index)
@@ -68,14 +64,13 @@ def plot(sampler, planner_data, local_env, goal, planned_path, planned_actions, 
         Line2D([0], [0], color='r', lw=1),
         Line2D([0], [0], color='g', lw=1),
         Line2D([0], [0], color='cyan', lw=1),
-        Line2D([0], [0], color='k', lw=1),
         Line2D([0], [0], color='orange', lw=1),
         Line2D([0], [0], color='orange', lw=1),
         Line2D([0], [0], color='white', lw=1),
     ]
 
     plt.legend(custom_lines,
-               ['sampled rope configurations', 'start', 'goal', 'final path', 'controls', 'full rope', 'search tree'])
+               ['sampled rope configurations', 'start', 'goal', 'final path', 'full rope', 'search tree'])
     plt.show()
 
 
@@ -117,3 +112,9 @@ def add_sampled_configuration(services: GazeboServices,
     markers.markers.append(post_marker)
     services.rviz_sampled_configurations.publish(markers)
     return None
+
+
+class VizObject:
+
+    def __init__(self):
+        self.states_sampled_at = []

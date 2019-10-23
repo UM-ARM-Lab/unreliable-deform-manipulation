@@ -42,6 +42,7 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                  n_envs: int,
                  n_targets_per_env: int,
                  verbose: int,
+                 seed: int,
                  planner_params: PlannerParams,
                  local_env_params: LocalEnvParams,
                  env_params: EnvParams,
@@ -75,6 +76,7 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
 
         with (self.full_output_directory / 'hparams.json').open('w') as of:
             options = {
+                'seed': seed,
                 'dt': self.fwd_model.dt,
                 'n_state': 6,
                 'n_action': 2,
@@ -180,7 +182,7 @@ def main():
     parser.add_argument("--n-envs", type=int, default=32, help='number of environments')
     parser.add_argument("--n-targets-per-env", type=int, default=10, help='number of targets/plans per environment')
     parser.add_argument("--n-examples-per-record", type=int, default=1024, help='examples per tfrecord')
-    parser.add_argument("--seed", '-s', type=int, default=1)
+    parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=10.0)
     parser.add_argument("--real-time-rate", type=float, default=10.0, help='real time rate')
@@ -194,6 +196,9 @@ def main():
 
     args = parser.parse_args()
 
+    if args.seed is None:
+        args.seed = np.random.randint(0, 100000)
+    print("random seed:", args.seed)
     np.random.seed(args.seed)
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
@@ -232,6 +237,7 @@ def main():
         n_envs=args.n_envs,
         n_targets_per_env=args.n_targets_per_env,
         verbose=args.verbose,
+        seed=args.seed,
         planner_params=planner_params,
         local_env_params=local_env_params,
         env_params=env_params,

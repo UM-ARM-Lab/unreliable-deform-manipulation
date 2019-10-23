@@ -5,6 +5,7 @@ from ompl import control as oc
 
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.my_motion_validator import MotionClassifier
+from link_bot_planning.ompl_viz import VizObject
 from link_bot_planning.params import LocalEnvParams
 from link_bot_planning.state_spaces import to_numpy, from_numpy
 from link_bot_pycommon import link_bot_sdf_utils
@@ -17,6 +18,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
                  fwd_model,
                  classifier_model: MotionClassifier,
                  services: GazeboServices,
+                 viz_object: VizObject,
                  local_env_params: LocalEnvParams,
                  max_v: float,
                  n_samples: int):
@@ -29,6 +31,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.services = services
+        self.viz_object = viz_object
         self.local_env_params = local_env_params
         self.state_space = self.si.getStateSpace()
         self.control_space = self.si.getControlSpace()
@@ -38,6 +41,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
         self.internal = ShootingDirectedControlSamplerInternal(self.fwd_model,
                                                                self.classifier_model,
                                                                self.services,
+                                                               self.viz_object,
                                                                self.local_env_params,
                                                                self.max_v,
                                                                self.n_samples,
@@ -50,21 +54,23 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
               fwd_model,
               classifier_model: MotionClassifier,
               services: GazeboServices,
+              viz_object: VizObject,
               local_env_params: LocalEnvParams,
               max_v: float,
               n_samples: int):
-        return cls(si, fwd_model, classifier_model, services, local_env_params, max_v, n_samples)
+        return cls(si, fwd_model, classifier_model, services, viz_object, local_env_params, max_v, n_samples)
 
     @classmethod
     def allocator(cls,
                   fwd_model,
                   classifier_model: MotionClassifier,
                   services: GazeboServices,
+                  viz_object: VizObject,
                   local_env_params: LocalEnvParams,
                   max_v: float,
                   n_samples: int = 10):
         def partial(si: ob.StateSpace):
-            return cls.alloc(si, fwd_model, classifier_model, services, local_env_params, max_v, n_samples)
+            return cls.alloc(si, fwd_model, classifier_model, services, viz_object, local_env_params, max_v, n_samples)
 
         return oc.DirectedControlSamplerAllocator(partial)
 
@@ -95,12 +101,12 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
 
 
 class ShootingDirectedControlSamplerInternal:
-    states_sampled_at = []
 
     def __init__(self,
                  fwd_model,
                  classifier_model: MotionClassifier,
                  services: GazeboServices,
+                 viz_object: VizObject,
                  local_env_params: LocalEnvParams,
                  max_v: float,
                  n_samples: int,
@@ -112,6 +118,7 @@ class ShootingDirectedControlSamplerInternal:
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.services = services
+        self.viz_object = viz_object
         self.local_env_params = local_env_params
         self.n_state = n_state
         self.n_local_env = n_local_env
@@ -119,7 +126,7 @@ class ShootingDirectedControlSamplerInternal:
     def sampleTo(self,
                  state: np.ndarray,
                  target: np.ndarray) -> [np.ndarray, np.ndarray, link_bot_sdf_utils.OccupancyData, bool]:
-        self.states_sampled_at.append(target)
+        self.viz_object.states_sampled_at.append(target)
 
         head_point = state[0, 4:6]
         local_env_data = get_local_occupancy_data(cols=self.local_env_params.w_cols,
@@ -147,7 +154,6 @@ class ShootingDirectedControlSamplerInternal:
             accept_probability = self.classifier_model.predict(local_env_data, state, next_state)
             if self.rng_.uniform01() > accept_probability:
                 # reject
-                print("Rejecting sample!")
                 continue
 
             # keep if it's the best we've seen

@@ -127,16 +127,20 @@ def eval(hparams, test_tf_dataset, args):
 
     test_losses = []
     accuracy.reset_states()
+    test_predictions = []
     for test_example_dict in test_tf_dataset:
-        test_labels = test_example_dict['label']
-        test_predictions = net(test_example_dict)[-1]
-        batch_test_loss = loss(y_true=test_labels, y_pred=test_predictions)
-        accuracy.update_state(y_true=test_labels, y_pred=test_predictions)
+        test_batch_labels = test_example_dict['label']
+        test_batch_predictions = net(test_example_dict)[-1]
+        test_predictions.append(test_batch_predictions.numpy().flatten())
+        batch_test_loss = loss(y_true=test_batch_labels, y_pred=test_batch_predictions)
+        accuracy.update_state(y_true=test_batch_labels, y_pred=test_batch_predictions)
         test_losses.append(batch_test_loss)
     test_loss = np.mean(test_losses)
     test_accuracy = accuracy.result().numpy() * 100
     print("Test Loss:     {:7.4f}".format(test_loss))
     print("Test Accuracy: {:5.3f}%".format(test_accuracy))
+
+    np.savetxt('test_predictions.txt', test_predictions)
 
 
 def check_validation(val_tf_dataset, loss, net):
@@ -287,6 +291,8 @@ class RasterClassifierWrapper(MotionClassifier):
         self.net = RasterClassifier(hparams=self.model_hparams)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
+        if self.manager.latest_checkpoint:
+            print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.ckpt.restore(self.manager.latest_checkpoint)
         self.n_control = 2
         self.show = show

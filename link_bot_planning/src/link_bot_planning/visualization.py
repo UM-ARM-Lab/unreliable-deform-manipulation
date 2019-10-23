@@ -15,7 +15,6 @@ def plot_classifier_data(
         next_state,
         title,
         label=None):
-
     plt.figure()
     ax = plt.gca()
 
@@ -29,7 +28,8 @@ def plot_classifier_data(
 
     plot_rope_configuration(ax, planned_state, c='blue', label='planned state', zorder=4)
     plot_rope_configuration(ax, planned_next_state, c='cyan', label='planned next state', zorder=5)
-    ax.scatter(state[4], state[5], c='k')
+    if state is not None:
+        ax.scatter(state[4], state[5], c='k')
     ax.scatter(planned_state[4], planned_state[5], c='k')
 
     if label is not None:

@@ -8,8 +8,8 @@ from typing import Optional, List
 
 import numpy as np
 import ompl.util as ou
-import std_srvs
 import rospy
+import std_srvs
 import tensorflow as tf
 from colorama import Fore
 from ompl import base as ob
@@ -33,8 +33,8 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
     def __init__(self,
                  fwd_model_dir: pathlib.Path,
                  fwd_model_type: str,
-                 validator_model_dir: pathlib.Path,
-                 validator_model_type: str,
+                 classifier_model_dir: pathlib.Path,
+                 classifier_model_type: str,
                  n_targets: int,
                  verbose: int,
                  planner_params: PlannerParams,
@@ -44,8 +44,8 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
                  outdir: Optional[pathlib.Path] = None):
         super().__init__(fwd_model_dir=fwd_model_dir,
                          fwd_model_type=fwd_model_type,
-                         validator_model_dir=validator_model_dir,
-                         validator_model_type=validator_model_type,
+                         classifier_model_dir=classifier_model_dir,
+                         classifier_model_type=classifier_model_type,
                          n_envs=1,
                          n_targets_per_env=n_targets,
                          verbose=verbose,
@@ -71,7 +71,8 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
                          full_sdf_data: link_bot_sdf_utils.SDF,
                          planner_data: ob.PlannerData,
                          planning_time: float):
-        plot(planner_data, full_sdf_data.sdf, tail_goal_point, planned_path, planned_actions, self.env_params.extent)
+        plot(self.viz_object, planner_data, full_sdf_data.sdf > 0, tail_goal_point, planned_path, planned_actions,
+             full_sdf_data.extent)
         final_error = np.linalg.norm(planned_path[-1, 0:2] - tail_goal_point)
         lengths = [np.linalg.norm(planned_path[i] - planned_path[i - 1]) for i in range(1, len(planned_path))]
         path_length = np.sum(lengths)
@@ -95,8 +96,8 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="forward model", type=pathlib.Path)
     parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
-    parser.add_argument("validator_model_dir", help="validator", type=pathlib.Path)
-    parser.add_argument("validator_model_type", choices=['none', 'raster'], default='raster')
+    parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
+    parser.add_argument("classifier_model_type", choices=['none', 'raster'], default='raster')
     parser.add_argument("--outdir", type=pathlib.Path)
     parser.add_argument("--n-targets", type=int, default=1, help='number of targets/plans')
     parser.add_argument("--seed", '-s', type=int, default=3)
@@ -145,8 +146,8 @@ def main():
     tester = TestWithClassifier(
         fwd_model_dir=args.fwd_model_dir,
         fwd_model_type=args.fwd_model_type,
-        validator_model_dir=args.validator_model_dir,
-        validator_model_type=args.validator_model_type,
+        classifier_model_dir=args.classifier_model_dir,
+        classifier_model_type=args.classifier_model_type,
         n_targets=args.n_targets,
         verbose=args.verbose,
         planner_params=planner_params,
