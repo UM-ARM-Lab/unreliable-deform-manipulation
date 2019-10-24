@@ -34,8 +34,11 @@ def main():
     negative_count = 0
     count = 0
     for i, example_dict in enumerate(dataset):
+        res = example_dict['res'].numpy().squeeze()
+        res = np.array([res, res])
         planned_local_env = example_dict['planned_local_env/env'].numpy().squeeze()
         planned_local_env_extent = example_dict['planned_local_env/extent'].numpy().squeeze()
+        planned_local_env_origin = example_dict['planned_local_env/origin'].numpy().squeeze()
         actual_local_env = example_dict['actual_local_env/env'].numpy().squeeze()
         actual_local_env_extent = example_dict['actual_local_env/extent'].numpy().squeeze()
         state = example_dict['state'].numpy().squeeze()
@@ -66,6 +69,8 @@ def main():
                 planned_env=planned_local_env,
                 planned_env_extent=planned_local_env_extent,
                 planned_state=planned_state,
+                planned_env_origin=planned_local_env_origin,
+                res=res,
                 state=state,
                 title=title,
                 label=label)

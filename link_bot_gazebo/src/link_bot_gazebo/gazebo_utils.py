@@ -288,14 +288,14 @@ def get_local_occupancy_data(rows: int,
                              cols: int,
                              res: float,
                              center_point: np.ndarray,
-                             services: GazeboServices):
+                             services: GazeboServices) -> link_bot_sdf_utils.OccupancyData:
     """
     :param rows: indices
     :param cols: indices
     :param res: meters
     :param center_point: (x,y) meters
     :param services: from gazebo_utils
-    :return: SDF object for local sdf
+    :return: OcucpancyData object for local sdf
     """
     grid, response = get_occupancy(services,
                                    env_h_rows=rows,

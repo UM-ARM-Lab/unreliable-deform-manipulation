@@ -123,10 +123,10 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
 
     auto const grid_00_x = req.center.x - static_cast<float>(req.w_cols) * req.resolution / 2.0;
     auto const grid_00_y = req.center.y - static_cast<float>(req.h_rows) * req.resolution / 2.0;
-    auto const origin_x_coordinate = static_cast<int>(-grid_00_x / req.resolution);
-    auto const origin_y_coordinate = static_cast<int>(-grid_00_y / req.resolution);
+    auto const origin_x_col = static_cast<int>(-grid_00_x / req.resolution);
+    auto const origin_y_row = static_cast<int>(-grid_00_y / req.resolution);
 
-    std::vector<int> origin_vec{origin_x_coordinate, origin_y_coordinate};
+    std::vector<int> origin_vec{origin_y_row, origin_x_col};
     res.origin = origin_vec;
     auto const grid_float = [&]() {
       auto const &data = grid_.GetImmutableRawData();

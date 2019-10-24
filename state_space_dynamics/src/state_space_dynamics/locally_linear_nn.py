@@ -248,7 +248,7 @@ class LocallyLinearNNWrapper:
         It's T+1 because it includes the first state
         :param np_first_states: [batch, 6]
         :param np_actions: [batch, T, 2]
-        :return: [batch, T+1, 3, 2]
+        :return: [batch, T+1, 3, 2] includes the initial state
         """
         batch, T, _ = np_actions.shape
         states = tf.convert_to_tensor(np_first_states, dtype=tf.float32)

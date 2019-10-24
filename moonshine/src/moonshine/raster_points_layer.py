@@ -29,8 +29,8 @@ class RasterPoints(tf.keras.layers.Layer):
         np_rope_images = np.zeros(
             [batch_size, self.sequence_length, self.local_env_shape[0], self.local_env_shape[1], self.n_points])
 
-        row_y_indices = tf.reshape(tf.cast(points[:, :, :, 1] / resolution[:, :, 0:1] + origin[:, :, 0:1], tf.int64), [-1])
-        col_x_indices = tf.reshape(tf.cast(points[:, :, :, 0] / resolution[:, :, 1:2] + origin[:, :, 1:2], tf.int64), [-1])
+        row_y_indices = tf.reshape(tf.cast(points[:, :, :, 1] / resolution[:, :, 0:1] + origin[:, :, 1:2], tf.int64), [-1])
+        col_x_indices = tf.reshape(tf.cast(points[:, :, :, 0] / resolution[:, :, 1:2] + origin[:, :, 0:1], tf.int64), [-1])
         batch_indices = tf.reshape(tf.tile(tf.reshape(tf.range(batch_size), [-1, 1]), [1, self.n_points * self.sequence_length]),
                                    [-1])
         time_indices = tf.tile(

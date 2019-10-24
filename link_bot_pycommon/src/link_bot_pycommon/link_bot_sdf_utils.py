@@ -7,21 +7,21 @@ from colorama import Fore
 def indeces_to_point(rowcols, resolution, origin):
     return (rowcols - origin) * resolution
 
+
 def idx_to_point(row: int,
                  col: int,
                  resolution: np.ndarray,
                  origin: np.ndarray):
-    """ row the col """
     y = (row - origin[0]) * resolution[0]
     x = (col - origin[1]) * resolution[1]
-    return np.array([y, x])
+    return np.array([x, y])
 
 
 def bounds_from_env_size(w_cols, h_rows, new_origin, resolution, origin):
-    xmin = -w_cols / 2 + new_origin[0]
-    ymin = -h_rows / 2 + new_origin[1]
-    xmax = w_cols / 2 + new_origin[0]
-    ymax = h_rows / 2 + new_origin[1]
+    xmin = -w_cols / 2 + new_origin[1]
+    ymin = -h_rows / 2 + new_origin[0]
+    xmax = w_cols / 2 + new_origin[1]
+    ymax = h_rows / 2 + new_origin[0]
     rmin, cmin = point_to_idx(xmin, ymin, resolution, origin)
     rmax, cmax = point_to_idx(xmax, ymax, resolution, origin)
     return [rmin, rmax, cmin, cmax], [xmin, xmax, ymin, ymax]

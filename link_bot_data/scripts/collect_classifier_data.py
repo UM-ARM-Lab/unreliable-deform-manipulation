@@ -9,18 +9,18 @@ from typing import Optional, List
 
 import matplotlib.pyplot as plt
 import numpy as np
-from ompl import base as ob
 import ompl.util as ou
 import rospy
 import std_srvs
 import tensorflow as tf
 from colorama import Fore
+from ompl import base as ob
 
 from link_bot_data import random_environment_data_utils
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import shooting_rrt_mpc, visualization
+from link_bot_planning import shooting_rrt_mpc
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
@@ -177,7 +177,7 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
-    parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
+    parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'rigid'], default='llnn')
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-envs", type=int, default=32, help='number of environments')
     parser.add_argument("--n-targets-per-env", type=int, default=10, help='number of targets/plans per environment')
