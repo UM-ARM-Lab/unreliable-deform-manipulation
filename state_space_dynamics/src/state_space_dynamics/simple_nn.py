@@ -21,7 +21,6 @@ class SimpleNN(tf.keras.Model):
         super().__init__(*args, **kwargs)
         self.initial_epoch = 0
         self.hparams = NoDependency(hparams)
-        self.input_sequence_length = self.hparams['sequence_length'] - 1
         self.n_dim = self.hparams['n_points'] * 2
         self.m_dim = self.hparams['n_control']
 
@@ -39,10 +38,11 @@ class SimpleNN(tf.keras.Model):
     def call(self, input_dict, training=None, mask=None):
         states = input_dict['states']
         actions = input_dict['actions']
-        s_0 = layers.Reshape(target_shape=[self.input_sequence_length, self.n_dim, 1])(states)[:, 0]
+        input_sequence_length = actions.shape[1]
+        s_0 = tf.expand_dims(states[:, 0], axis=2)
 
         gen_states = [s_0]
-        for t in range(self.input_sequence_length):
+        for t in range(input_sequence_length):
             s_t = gen_states[-1]
             action_t = actions[:, t]
 
@@ -234,23 +234,18 @@ class SimpleNNWrapper:
         :param np_actions: [batch, T, 2]
         :return: [batch, T+1, 3, 2]
         """
-        np_actions = np.expand_dims(np_actions, axis=0)
         batch, T, _ = np_actions.shape
-        states = tfe.Variable(initial_value=lambda: tf.zeros([batch, self.net.input_sequence_length, self.n_state]),
-                              name='padded_states',
-                              trainable=False)
-        actions = tfe.Variable(initial_value=lambda: tf.zeros([batch, self.net.input_sequence_length, self.n_control]),
-                               name='padded_controls',
-                               trainable=False)
-        states = tf.assign(states[:, 0], np_first_states)
-        actions = tf.assign(actions[:, :np_actions.shape[1]], np_actions)
+        states = tf.convert_to_tensor(np_first_states, dtype=tf.float32)
+        states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
+        actions = tf.convert_to_tensor(np_actions, dtype=tf.float32)
         test_x = {
+            # must be batch, T, 6
             'states': states,
+            # must be batch, T, 2
             'actions': actions,
         }
         predictions = self.net(test_x)
-        predicted_points = predictions.numpy().reshape([-1, self.model_hparams['sequence_length'], 3, 2])
-        predicted_points = predicted_points[:, :T + 1]
+        predicted_points = predictions.numpy().reshape([batch, T + 1, 3, 2])
         # OMPL requires "doubles", which are float64, although our network outputs float32.
         predicted_points = predicted_points.astype(np.float64)
         return predicted_points

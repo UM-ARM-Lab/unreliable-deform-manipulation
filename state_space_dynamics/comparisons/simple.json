@@ -1,0 +1,14 @@
+{
+  "Simple NN": {
+    "model_dir": "log_data/simple_nn/October_24_09-36-47_9a19752a30/",
+    "model_type": "nn"
+  },
+  "Rigid Translation": {
+    "model_dir": "log_data/rigid_translation",
+    "model_type": "rigid"
+  },
+  "LL-NN": {
+    "model_dir": "log_data/short_horizon_good/October_01_09-50-23_171a36c2e7/",
+    "model_type": "llnn"
+  }
+}

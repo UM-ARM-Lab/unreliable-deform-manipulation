@@ -10,9 +10,7 @@ import tensorflow as tf
 from colorama import Fore
 from matplotlib.animation import FuncAnimation
 
-from link_bot_gaussian_process import link_bot_gp
-from state_space_dynamics.locally_linear_nn import LocallyLinearNNWrapper
-from state_space_dynamics.rigid_translation_model import RigidTranslationModel
+from link_bot_planning import model_utils
 from video_prediction.datasets import dataset_utils
 
 tf.enable_eager_execution()
@@ -20,10 +18,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 def generate(args):
-    if args.dataset_hparams_dict:
-        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
-    else:
-        dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
+    dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
 
     ###############
     # Datasets
@@ -33,31 +28,39 @@ def generate(args):
     dataset, tf_dataset = dataset_utils.get_dataset(args.input_dir,
                                                     'state_space',
                                                     dataset_hparams_dict,
-                                                    args.dataset_hparams,
+                                                    '',
                                                     shuffle=False,
                                                     mode=args.mode,
                                                     epochs=1,
                                                     seed=0,
                                                     batch_size=1)
 
-    no_penalty_gp_path = args.no_penalty_gp_dir / "fwd_model"
-    no_penalty_gp = link_bot_gp.LinkBotGP()
-    no_penalty_gp.load(no_penalty_gp_path)
+    comparison_info = json.load(args.comparison.open("r"))
+    models = {}
+    for name, model_info in comparison_info.items():
+        model_dir = pathlib.Path(model_info['model_dir'])
+        model_type = model_info['model_type']
+        model, _ = model_utils.load_generic_model(model_dir, model_type)
+        models[name] = model
 
-    penalty_gp_path = args.penalty_gp_dir / "fwd_model"
-    penalty_gp = link_bot_gp.LinkBotGP()
-    penalty_gp.load(penalty_gp_path)
+    # no_penalty_gp_path = args.no_penalty_gp_dir / "fwd_model"
+    # no_penalty_gp = link_bot_gp.LinkBotGP()
+    # no_penalty_gp.load(no_penalty_gp_path)
+    #
+    # penalty_gp_path = args.penalty_gp_dir / "fwd_model"
+    # penalty_gp = link_bot_gp.LinkBotGP()
+    # penalty_gp.load(penalty_gp_path)
+    #
+    # rigid_translation = RigidTranslationModel(beta=0.7, dt=dt)
+    #
+    # llnn = LocallyLinearNNWrapper(args.llnn_dir)
 
-    rigid_translation = RigidTranslationModel(beta=0.7, dt=dt)
-
-    llnn = LocallyLinearNNWrapper(args.llnn_dir)
-
-    models = {
-        'GP with penalty': penalty_gp,
-        'GP no penalty': no_penalty_gp,
-        'rigid-translation': rigid_translation,
-        'LL-NN': llnn,
-    }
+    # models = {
+    #     'GP with penalty': penalty_gp,
+    #     'GP no penalty': no_penalty_gp,
+    #     'rigid-translation': rigid_translation,
+    #     'LL-NN': llnn,
+    # }
 
     results = generate_results(args.outdir, models, tf_dataset, args.mode)
 
@@ -187,12 +190,8 @@ def main():
 
     generate_parser = subparsers.add_parser('generate')
     generate_parser.add_argument('input_dir', type=pathlib.Path)
-    generate_parser.add_argument('no_penalty_gp_dir', type=pathlib.Path)
-    generate_parser.add_argument('penalty_gp_dir', type=pathlib.Path)
-    generate_parser.add_argument('llnn_dir', type=pathlib.Path)
+    generate_parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
     generate_parser.add_argument('outdir', type=pathlib.Path)
-    generate_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
-    generate_parser.add_argument('--dataset-hparams', type=str)
     generate_parser.add_argument('--sequence-length', type=int, default=10)
     generate_parser.add_argument('--no-plot', action='store_true')
     generate_parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test')
