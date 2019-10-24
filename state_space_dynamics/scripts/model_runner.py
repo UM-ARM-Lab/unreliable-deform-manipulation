@@ -149,6 +149,7 @@ def main():
         seed = np.random.randint(0, 10000)
     else:
         seed = args.seed
+    print("Random seed: {}".format(seed))
     np.random.seed(seed)
     tf.random.set_random_seed(seed)
 
