@@ -119,6 +119,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         hparams_path = full_log_path / "hparams.json"
         with open(hparams_path, 'w') as hparams_file:
             hparams['log path'] = str(full_log_path)
+            hparams['dataset'] = str(args.input_dir)
             hparams_file.write(json.dumps(hparams, indent=2))
 
         writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
@@ -185,7 +186,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             ################
             # validation
             ################
-            if args.validation:
+            if epoch % args.validation_every == 0:
                 val_losses = []
                 for val_x, val_y in val_tf_dataset:
                     true_val_states = val_y['output_states']

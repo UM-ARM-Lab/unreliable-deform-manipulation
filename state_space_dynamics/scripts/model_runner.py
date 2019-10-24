@@ -37,7 +37,7 @@ def train(args):
                                                                 'state_space',
                                                                 dataset_hparams_dict,
                                                                 args.dataset_hparams,
-                                                                shuffle=False,
+                                                                shuffle=True,
                                                                 mode='train',
                                                                 epochs=1,  # we handle epochs in our training loop
                                                                 seed=args.seed,
@@ -129,7 +129,7 @@ def main():
     train_parser.add_argument('--epochs', type=int, default=100)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
-    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=10)
+    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=4)
     train_parser.add_argument('--debug', action='store_true')
     train_parser.set_defaults(func=train)
 
