@@ -20,7 +20,13 @@ h_rows = 100
 w_cols = 100
 res = 0.03
 
-occupancy_data = get_local_occupancy_data(rows=h_rows, cols=w_cols, res=res, center_point=np.array([0, 0]), services=services)
+occupancy_data = get_local_occupancy_data(rows=h_rows,
+                                          cols=w_cols,
+                                          res=res,
+                                          center_point=np.array([-0.0827, -0.5]), services=services)
+
+print(occupancy_data.origin)
+print(occupancy_data.extent)
 
 plt.figure()
 plt.imshow(occupancy_data.image, extent=occupancy_data.extent)

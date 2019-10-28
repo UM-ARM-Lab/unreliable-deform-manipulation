@@ -6,11 +6,10 @@ import time
 from typing import List
 
 import numpy as np
-from ompl import base as ob
 import std_srvs
 from colorama import Fore
+from ompl import base as ob
 
-from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data

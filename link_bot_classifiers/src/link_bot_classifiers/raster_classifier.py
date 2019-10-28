@@ -87,6 +87,7 @@ class RasterClassifier(tf.keras.Model):
         plt.imshow(np.flipud(planned_rope_image.numpy().squeeze()))
         plt.figure()
         plt.imshow(np.flipud(planned_next_rope_image.numpy().squeeze()))
+        plt.show()
 
         # remove time index
         image_shape = [planned_rope_image.shape[0],
@@ -310,7 +311,6 @@ class RasterClassifierWrapper(MotionClassifier):
         :param s2: [batch, 6] float64
         :return: [batch, 1] float64
         """
-        print(local_env_data.origin)
         test_x = {
             'planned_state': tf.convert_to_tensor(add_batch(s1, 1), dtype=tf.float32),
             'planned_next_state': tf.convert_to_tensor(add_batch(s2, 1), dtype=tf.float32),
