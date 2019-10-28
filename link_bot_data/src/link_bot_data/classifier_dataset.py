@@ -69,7 +69,9 @@ class ClassifierDataset:
                            next_state,
                            action,
                            planned_state,
-                           planned_next_state):
+                           planned_next_state,
+                           traj_idx,
+                           time_idx):
         features = {
             'actual_local_env/env': float_feature(actual_local_env.flatten()),
             'actual_local_env/extent': float_feature(np.array(actual_local_env_extent)),
@@ -85,6 +87,8 @@ class ClassifierDataset:
             'action': float_feature(action),
             'planned_state': float_feature(planned_state),
             'planned_next_state': float_feature(planned_next_state),
+            'traj_idx': float_feature(np.array([traj_idx])),
+            'time_idx': float_feature(np.array([time_idx])),
         }
         return features
 

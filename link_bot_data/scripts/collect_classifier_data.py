@@ -95,9 +95,10 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
         # This is for saving data
         self.examples = np.ndarray([n_examples_per_record], dtype=object)
         self.example_idx = 0
-        self.current_record_traj_idx = 0
+        self.current_example_idx = 0
 
         self.planning_times = []
+        self.traj_idx = 0
 
     def on_plan_complete(self,
                          planned_path: np.ndarray,
@@ -126,6 +127,7 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
         planned_states = planned_path[:-1]
         planned_next_states = planned_path[1:]
         d = zip(states, next_states, planned_actions, planned_states, planned_next_states, actual_local_envs, planner_local_envs)
+        time_idx = 0
         for (state, next_state, action, planned_state, planned_next_state, actual_local_env_data, planner_local_grid_data) in d:
 
             example = ClassifierDataset.make_serialized_example(actual_local_env_data.data,
@@ -141,7 +143,9 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                                                                 next_state,
                                                                 action,
                                                                 planned_state,
-                                                                planned_next_state)
+                                                                planned_next_state,
+                                                                self.traj_idx,
+                                                                time_idx)
 
             if self.verbose >= 4:
                 plt.figure()
@@ -152,11 +156,11 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                 plt.ylabel("y (m)")
                 plt.show()
 
-            self.examples[self.current_record_traj_idx] = example
-            self.current_record_traj_idx += 1
+            self.examples[self.current_example_idx] = example
+            self.current_example_idx += 1
             self.example_idx += 1
 
-            if self.current_record_traj_idx == self.n_examples_per_record:
+            if self.current_example_idx == self.n_examples_per_record:
                 # save to a TF record
                 serialized_dataset = tf.data.Dataset.from_tensor_slices((self.examples))
 
@@ -168,7 +172,11 @@ class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
                 writer.write(serialized_dataset)
                 print()
                 print("saved {}".format(full_filename))
-                self.current_record_traj_idx = 0
+                self.current_example_idx = 0
+
+            time_idx += 1
+
+        self.traj_idx += 1
 
 
 def main():
@@ -190,8 +198,8 @@ def main():
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
-    parser.add_argument('--local-env-cols', type=int, default=100, help='local env width')
-    parser.add_argument('--local-env-rows', type=int, default=100, help='local env width')
+    parser.add_argument('--local-env-cols', type=int, default=50, help='local env width')
+    parser.add_argument('--local-env-rows', type=int, default=50, help='local env width')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
 
     args = parser.parse_args()

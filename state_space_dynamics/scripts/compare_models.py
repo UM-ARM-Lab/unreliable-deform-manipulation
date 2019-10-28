@@ -24,7 +24,6 @@ def generate(args):
     # Datasets
     ###############
     dataset_hparams_dict['sequence_length'] = args.sequence_length
-    dt = dataset_hparams_dict['dt']
     dataset, tf_dataset = dataset_utils.get_dataset(args.input_dir,
                                                     'state_space',
                                                     dataset_hparams_dict,
@@ -42,25 +41,6 @@ def generate(args):
         model_type = model_info['model_type']
         model, _ = model_utils.load_generic_model(model_dir, model_type)
         models[name] = model
-
-    # no_penalty_gp_path = args.no_penalty_gp_dir / "fwd_model"
-    # no_penalty_gp = link_bot_gp.LinkBotGP()
-    # no_penalty_gp.load(no_penalty_gp_path)
-    #
-    # penalty_gp_path = args.penalty_gp_dir / "fwd_model"
-    # penalty_gp = link_bot_gp.LinkBotGP()
-    # penalty_gp.load(penalty_gp_path)
-    #
-    # rigid_translation = RigidTranslationModel(beta=0.7, dt=dt)
-    #
-    # llnn = LocallyLinearNNWrapper(args.llnn_dir)
-
-    # models = {
-    #     'GP with penalty': penalty_gp,
-    #     'GP no penalty': no_penalty_gp,
-    #     'rigid-translation': rigid_translation,
-    #     'LL-NN': llnn,
-    # }
 
     results = generate_results(args.outdir, models, tf_dataset, args.mode)
 
@@ -85,13 +65,14 @@ def generate_results(outdir, models, tf_dataset, mode):
     results = {
         'true': []
     }
-    for x, y in tf_dataset:
+    for x, y in tf_dataset.take(128):
         true_points = y['output_states'].numpy().squeeze().reshape([-1, 3, 2])
         results['true'].append(true_points)
 
     for model_name, model in models.items():
         results[model_name] = []
-        for x, y in tf_dataset:
+        print("generating results for {}".format(model_name))
+        for x, y in tf_dataset.take(128):
             states = x['states'].numpy()
             actions = x['actions'].numpy()
             # this is supposed to give us a [batch, n_state] tensor
