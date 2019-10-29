@@ -88,7 +88,9 @@ def main():
                 'action': float_feature(example_dict['action'].numpy()),
                 'planned_state': float_feature(example_dict['planned_state'].numpy()),
                 'planned_next_state': float_feature(example_dict['planned_next_state'].numpy()),
-                'label': float_feature(np.array([label]))
+                'label': float_feature(np.array([label])),
+                # 'traj_idx': float_feature(example_dict['traj_idx'].numpy()),
+                # 'time_idx': float_feature(example_dict['time_idx'].numpy()),
             }
             example_proto = tf.train.Example(features=tf.train.Features(feature=features))
             example = example_proto.SerializeToString()

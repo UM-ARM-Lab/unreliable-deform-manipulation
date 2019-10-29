@@ -2,10 +2,7 @@ import numpy as np
 
 from link_bot_gaussian_process import link_bot_gp
 from link_bot_pycommon import link_bot_pycommon
-
-
-def make_row(metric_name, e):
-    return [metric_name, np.min(e), np.max(e), np.mean(e), np.median(e), np.std(e)]
+from link_bot_pycommon.metric_utils import make_row
 
 
 def multistep_fwd_model_error_metrics(fwd_model, test_x, test_y):

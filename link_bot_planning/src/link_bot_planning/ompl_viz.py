@@ -56,8 +56,8 @@ def plot(viz_object, planner_data, environment, goal, planned_path, planned_acti
     plt.xlabel("x")
     plt.ylabel("y")
     plt.axis("equal")
-    plt.xlim(extent[0:2])
-    plt.ylim(extent[2:4])
+    plt.xlim([-2.5, 2.5])
+    plt.ylim([-2.5, 2.5])
 
     custom_lines = [
         Line2D([0], [0], color='b', lw=1),

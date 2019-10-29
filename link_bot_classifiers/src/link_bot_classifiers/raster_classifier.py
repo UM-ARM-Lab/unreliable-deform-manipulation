@@ -82,13 +82,6 @@ class RasterClassifier(tf.keras.Model):
         planned_rope_image = self.raster([planned_state, planned_local_env_resolution, planned_local_env_origin])
         planned_next_rope_image = self.raster([planned_next_state, planned_local_env_resolution, planned_local_env_origin])
 
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.imshow(np.flipud(planned_rope_image.numpy().squeeze()))
-        plt.figure()
-        plt.imshow(np.flipud(planned_next_rope_image.numpy().squeeze()))
-        plt.show()
-
         # remove time index
         image_shape = [planned_rope_image.shape[0],
                        planned_rope_image.shape[2],

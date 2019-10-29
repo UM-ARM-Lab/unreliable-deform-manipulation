@@ -72,7 +72,7 @@ def generate_envs(args, full_output_directory, generate_env, save_dict_extras=No
         dataset.save(dataset_filename)
 
 
-def data_directory(outdir, *names):
+def data_directory(outdir: pathlib.Path, *names):
     repo = git.Repo(search_parent_directories=True)
     sha = repo.head.object.hexsha[:10]
     format_string = "{}_{}_" + "{}_" * (len(names) - 1) + "{}"
