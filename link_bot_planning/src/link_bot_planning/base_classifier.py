@@ -3,7 +3,7 @@ import numpy as np
 from link_bot_pycommon import link_bot_sdf_utils
 
 
-class MotionClassifier:
+class BaseClassifier:
 
     def __init__(self):
         self.model_hparams = {}

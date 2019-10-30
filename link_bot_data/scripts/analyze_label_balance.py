@@ -9,6 +9,7 @@ import tensorflow as tf
 
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.video_prediction_dataset_utils import float_feature
+from link_bot_planning.visualization import plot_classifier_data
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.ConfigProto(gpu_options=gpu_options)
@@ -47,6 +48,16 @@ def main():
         planned_state = example_dict['planned_state'].numpy()
         planned_next_state = example_dict['planned_next_state'].numpy()
 
+        # for visualization only
+        res = example_dict['res'].numpy().squeeze()
+        res = np.array([res, res])
+        planned_local_env = example_dict['planned_local_env/env'].numpy().squeeze()
+        planned_local_env_extent = example_dict['planned_local_env/extent'].numpy().squeeze()
+        planned_local_env_origin = example_dict['planned_local_env/origin'].numpy().squeeze()
+        actual_local_env = example_dict['actual_local_env/env'].numpy().squeeze()
+        actual_local_env_extent = example_dict['actual_local_env/extent'].numpy().squeeze()
+        label = example_dict['label'].numpy().squeeze()
+
         # Compute the label for whether our model should be trusted
         pre_transition_distance = np.linalg.norm(state - planned_state)
         post_transition_distance = np.linalg.norm(next_state - planned_next_state)
@@ -67,6 +78,21 @@ def main():
                 n_both_close += 1
             elif not post_close:
                 n_pre_close_post_far += 1
+
+                # plot_classifier_data(
+                #     actual_env=actual_local_env,
+                #     actual_env_extent=actual_local_env_extent,
+                #     next_state=next_state,
+                #     planned_next_state=planned_next_state,
+                #     planned_env=planned_local_env,
+                #     planned_env_extent=planned_local_env_extent,
+                #     planned_state=planned_state,
+                #     planned_env_origin=planned_local_env_origin,
+                #     res=res,
+                #     state=state,
+                #     title='',
+                #     label=label)
+                # plt.show()
         elif not pre_close:
             if post_close:
                 n_pre_far_post_close += 1

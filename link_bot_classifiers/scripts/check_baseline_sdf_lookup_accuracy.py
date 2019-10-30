@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
+from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.visualization import plot_rope_configuration
+from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.link_bot_sdf_utils import point_to_idx
 
 tf.enable_eager_execution()
 
@@ -22,8 +23,6 @@ def show_error(state,
                action,
                local_env_image,
                extent,
-               x,
-               y,
                predicted_violated,
                label_model_reliable):
     fig, ax = plt.subplots()
@@ -45,7 +44,6 @@ def show_error(state,
     plot_rope_configuration(ax, planned_next_state, linewidth=3, zorder=1, c='c', label='planned next state')
 
     plt.scatter(planned_state[4], planned_state[5], c='r' if predicted_violated else 'g', s=200, zorder=2, label='pred')
-    plt.scatter(x, y, c='w', s=100, zorder=2)
     plt.scatter(planned_state[4], planned_state[5], c='g' if label_model_reliable else 'r', marker='*', s=150, zorder=3,
                 linewidths=0.1,
                 edgecolors='k', label='true')
@@ -62,7 +60,6 @@ def main():
     parser.add_argument('input_dir', help='dataset directory', type=pathlib.Path)
     parser.add_argument('--dataset-hparams-dict', help='override dataset hyperparams')
     parser.add_argument('--balance', action='store_true', help='subsample the datasets to make sure it is balanced')
-    parser.add_argument('--cheat', action='store_true', help='forward propagate the configuration and check that too')
     parser.add_argument('--show-fn', action='store_true', help='visualize')
     parser.add_argument('--show-fp', action='store_true', help='visualize')
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
@@ -80,6 +77,8 @@ def main():
                                              seed=0,
                                              batch_size=None,  # nobatching
                                              )
+
+    collision_classifier = CollisionCheckerClassifier()
 
     incorrect = 0
     correct = 0
@@ -103,56 +102,14 @@ def main():
         label = example_dict['label'].numpy().squeeze()
 
         local_env_image = np.flipud(local_env)
-        tail_x = planned_state[0]
-        tail_y = planned_state[1]
-        mid_x = planned_state[2]
-        mid_y = planned_state[3]
-        head_x = planned_state[4]
-        head_y = planned_state[5]
-        next_tail_x = planned_next_state[0]
-        next_tail_y = planned_next_state[1]
-        next_mid_x = planned_next_state[2]
-        next_mid_y = planned_next_state[3]
-        next_head_x = planned_next_state[4]
-        next_head_y = planned_next_state[5]
-        if args.cheat:
-            dx = action[0] * dataset.hparams.dt
-            dy = action[1] * dataset.hparams.dt
-            head_y += dx
-            head_y += dy
-        tail_row, tail_col = point_to_idx(tail_x, tail_y, resolution=resolution, origin=origin)
-        mid_row, mid_col = point_to_idx(mid_x, mid_y, resolution=resolution, origin=origin)
-        head_row, head_col = point_to_idx(head_x, head_y, resolution=resolution, origin=origin)
-        next_tail_row, next_tail_col = point_to_idx(next_tail_x, next_tail_y, resolution=resolution, origin=origin)
-        next_mid_row, next_mid_col = point_to_idx(next_mid_x, next_mid_y, resolution=resolution, origin=origin)
-        next_head_row, next_head_col = point_to_idx(next_head_x, next_head_y, resolution=resolution, origin=origin)
-
-        try:
-            tail_d = local_env[tail_row, tail_col]
-        except IndexError:
-            tail_d = np.inf
-        try:
-            next_tail_d = local_env[next_tail_row, next_tail_col]
-        except IndexError:
-            next_tail_d = np.inf
-        try:
-            mid_d = local_env[mid_row, mid_col]
-        except IndexError:
-            mid_d = np.inf
-        try:
-            next_mid_d = local_env[next_mid_row, next_mid_col]
-        except IndexError:
-            next_mid_d = np.inf
-        head_d = local_env[head_row, head_col]
-        next_head_d = local_env[next_head_row, next_head_col]
-        # prediction == 1 means not in collision
-        prediction = not (tail_d or mid_d or head_d or next_tail_d or next_mid_d or next_head_d)
 
         if label:
             pos += 1
         else:
             neg += 1
 
+        local_env_data = link_bot_sdf_utils.OccupancyData(local_env, resolution, origin)
+        prediction = collision_classifier.predict(local_env_data, planned_state, planned_next_state)
         if prediction == 1:
             if label == 1:
                 correct += 1
@@ -161,8 +118,8 @@ def main():
                 incorrect += 1
                 fp += 1
                 if args.show_fp:
-                    show_error(state, next_state, planned_state, planned_next_state, action, local_env_image, extent, head_x,
-                               head_y, prediction, label)
+                    show_error(state, next_state, planned_state, planned_next_state, action, local_env_image, extent, prediction,
+                               label)
         elif prediction == 0:
             if label == 0:
                 correct += 1
@@ -171,8 +128,8 @@ def main():
                 incorrect += 1
                 fn += 1
                 if args.show_fn:
-                    show_error(state, next_state, planned_state, planned_next_state, action, local_env_image, extent, head_x,
-                               head_y, prediction, label)
+                    show_error(state, next_state, planned_state, planned_next_state, action, local_env_image, extent,
+                               prediction, label)
 
     print("Confusion Matrix:")
     print("|                      | label 0 | label 1 |")

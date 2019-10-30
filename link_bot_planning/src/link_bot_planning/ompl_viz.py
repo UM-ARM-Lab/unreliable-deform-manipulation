@@ -1,3 +1,5 @@
+from typing import Iterable
+
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
@@ -11,27 +13,39 @@ from link_bot_pycommon.link_bot_sdf_utils import SDF
 from link_bot_planning.state_spaces import to_numpy
 
 
-def plot(viz_object, planner_data, environment, goal, planned_path, planned_actions, extent):
+class VizObject:
+
+    def __init__(self):
+        self.states_sampled_at = []
+        self.rejected_samples = []
+
+
+def plot(viz_object: VizObject,
+         planner_data: ob.PlannerData,
+         environment: np.ndarray,
+         goal: np.ndarray,
+         planned_path: np.ndarray,
+         planned_actions: np.ndarray,
+         extent: Iterable):
+    del planned_actions
+
     plt.figure()
     ax = plt.gca()
     n_state = planned_path.shape[1]
     plt.imshow(np.flipud(environment), extent=extent)
 
     for state_sampled_at in viz_object.states_sampled_at:
-        xs = [state_sampled_at[0, 0], state_sampled_at[0, 2], state_sampled_at[0, 4]]
-        ys = [state_sampled_at[0, 1], state_sampled_at[0, 3], state_sampled_at[0, 5]]
-        plt.plot(xs, ys, label='sampled states', linewidth=0.5, c='b', alpha=0.5, zorder=1)
+        plot_rope_configuration(ax, state_sampled_at[0], label='sampled states', linewidth=0.5, c='b', alpha=0.2, zorder=1)
+
+    for rejected_state in viz_object.rejected_samples:
+        plot_rope_configuration(ax, rejected_state[0], label='states rejected by classifier', linewidth=0.5, c='r', alpha=0.5,
+                                zorder=1)
 
     start = planned_path[0]
     plt.scatter(start[0], start[1], label='start', s=100, c='r', zorder=1)
     plt.scatter(goal[0], goal[1], label='goal', s=100, c='g', zorder=1)
     for rope_configuration in planned_path:
         plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=2, c='cyan', alpha=0.75, zorder=4)
-
-    # Visualize actions
-    # the -1 excludes the final configuration, where there is no corresponding action
-    # plt.quiver(planned_path[:-1, 4], planned_path[:-1, 5], planned_actions[:, 0], planned_actions[:, 1],
-    #            width=0.001, zorder=2, color='k', alpha=0.2)
 
     for vertex_index in range(planner_data.numVertices()):
         v = planner_data.getVertex(vertex_index)
@@ -112,9 +126,3 @@ def add_sampled_configuration(services: GazeboServices,
     markers.markers.append(post_marker)
     services.rviz_sampled_configurations.publish(markers)
     return None
-
-
-class VizObject:
-
-    def __init__(self):
-        self.states_sampled_at = []

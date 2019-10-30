@@ -35,7 +35,9 @@ class ShootingRRTMPC:
                  local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
+                 no_execution: bool
                  ):
+        self.no_execution = no_execution
         self.fwd_model_dir = fwd_model_dir
         self.fwd_model_type = fwd_model_type
         self.classifier_model_dir = classifier_model_dir
@@ -114,21 +116,22 @@ class ShootingRRTMPC:
                 trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(self.fwd_model.dt, planned_actions)
 
                 # execute the plan, collecting the states that actually occurred
-                #  TODO: Consider executing just a few steps, so that our start states don't diverge too much
-                if self.verbose >= 2:
-                    print(Fore.CYAN + "Executing Plan.".format(tail_goal_point) + Fore.RESET)
+                if not self.no_execution:
+                    #  TODO: Consider executing just a few steps, so that our start states don't diverge too much
+                    if self.verbose >= 2:
+                        print(Fore.CYAN + "Executing Plan.".format(tail_goal_point) + Fore.RESET)
 
-                traj_exec_response = self.services.execute_trajectory(trajectory_execution_request)
-                self.services.pause(std_srvs.srv.EmptyRequest())
+                    traj_exec_response = self.services.execute_trajectory(trajectory_execution_request)
+                    self.services.pause(std_srvs.srv.EmptyRequest())
 
-                actual_path, actual_local_envs = gazebo_utils.trajectory_execution_response_to_numpy(traj_exec_response,
-                                                                                                     self.local_env_params,
-                                                                                                     self.services)
-                self.on_execution_complete(planned_path,
-                                           planned_actions,
-                                           planner_local_envs,
-                                           actual_local_envs,
-                                           actual_path)
+                    actual_path, actual_local_envs = gazebo_utils.trajectory_execution_response_to_numpy(traj_exec_response,
+                                                                                                         self.local_env_params,
+                                                                                                         self.services)
+                    self.on_execution_complete(planned_path,
+                                               planned_actions,
+                                               planner_local_envs,
+                                               actual_local_envs,
+                                               actual_path)
 
     def on_plan_complete(self,
                          planned_path: np.ndarray,

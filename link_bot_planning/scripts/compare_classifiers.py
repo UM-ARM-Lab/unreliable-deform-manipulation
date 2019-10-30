@@ -57,7 +57,8 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
                          planner_params=planner_params,
                          local_env_params=local_env_params,
                          env_params=env_params,
-                         services=services)
+                         services=services,
+                         no_execution=False)
         self.outdir = outdir
         self.seed = seed
 

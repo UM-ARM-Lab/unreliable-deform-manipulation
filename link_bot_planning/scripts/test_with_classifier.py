@@ -41,6 +41,7 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
                  local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
+                 no_execution: bool,
                  outdir: Optional[pathlib.Path] = None):
         super().__init__(fwd_model_dir=fwd_model_dir,
                          fwd_model_type=fwd_model_type,
@@ -52,7 +53,8 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
                          planner_params=planner_params,
                          local_env_params=local_env_params,
                          env_params=env_params,
-                         services=services)
+                         services=services,
+                         no_execution=no_execution)
         self.outdir = outdir
 
         if outdir is not None:
@@ -99,6 +101,7 @@ def main():
     parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
     parser.add_argument("classifier_model_type", choices=['none', 'raster'], default='raster')
     parser.add_argument("--outdir", type=pathlib.Path)
+    parser.add_argument("--no-execute", action='store_true', help='do not execute the plan')
     parser.add_argument("--n-targets", type=int, default=1, help='number of targets/plans')
     parser.add_argument("--seed", '-s', type=int, default=3)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
@@ -155,6 +158,7 @@ def main():
         env_params=env_params,
         outdir=args.outdir,
         services=services,
+        no_execution=args.no_execution
     )
     tester.run()
 

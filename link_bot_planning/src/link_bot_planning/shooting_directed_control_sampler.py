@@ -4,7 +4,7 @@ from ompl import base as ob
 from ompl import control as oc
 
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
-from link_bot_planning.my_motion_validator import MotionClassifier
+from link_bot_planning.base_classifier import BaseClassifier
 from link_bot_planning.ompl_viz import VizObject
 from link_bot_planning.params import LocalEnvParams
 from link_bot_planning.state_spaces import to_numpy, from_numpy
@@ -16,7 +16,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
     def __init__(self,
                  si: ob.StateSpace,
                  fwd_model,
-                 classifier_model: MotionClassifier,
+                 classifier_model: BaseClassifier,
                  services: GazeboServices,
                  viz_object: VizObject,
                  local_env_params: LocalEnvParams,
@@ -52,7 +52,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
     def alloc(cls,
               si: ob.StateSpace,
               fwd_model,
-              classifier_model: MotionClassifier,
+              classifier_model: BaseClassifier,
               services: GazeboServices,
               viz_object: VizObject,
               local_env_params: LocalEnvParams,
@@ -63,7 +63,7 @@ class ShootingDirectedControlSampler(oc.DirectedControlSampler):
     @classmethod
     def allocator(cls,
                   fwd_model,
-                  classifier_model: MotionClassifier,
+                  classifier_model: BaseClassifier,
                   services: GazeboServices,
                   viz_object: VizObject,
                   local_env_params: LocalEnvParams,
@@ -104,7 +104,7 @@ class ShootingDirectedControlSamplerInternal:
 
     def __init__(self,
                  fwd_model,
-                 classifier_model: MotionClassifier,
+                 classifier_model: BaseClassifier,
                  services: GazeboServices,
                  viz_object: VizObject,
                  local_env_params: LocalEnvParams,
@@ -154,6 +154,7 @@ class ShootingDirectedControlSamplerInternal:
             accept_probability = self.classifier_model.predict(local_env_data, state, next_state)
             if self.rng_.uniform01() > accept_probability:
                 # reject
+                self.viz_object.rejected_samples.append(next_state)
                 continue
 
             # keep if it's the best we've seen

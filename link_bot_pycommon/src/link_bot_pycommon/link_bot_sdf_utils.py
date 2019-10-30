@@ -55,6 +55,12 @@ class OccupancyData:
                  data: np.ndarray,
                  resolution: np.ndarray,
                  origin: np.ndarray):
+        """
+
+        :param data:
+        :param resolution: should be [res_y, res_x]
+        :param origin:
+        """
         self.data = data.astype(np.float32)
         self.resolution = resolution.astype(np.float32)
         # Origin means the indeces (row/col) of the world point (0, 0)

@@ -72,15 +72,16 @@ class Executor(shooting_rrt_mpc.ShootingRRTMPC):
                  outdir: pathlib.Path):
         super().__init__(fwd_model_dir=fwd_model_dir,
                          fwd_model_type=fwd_model_type,
-                         validator_model_dir=pathlib.Path(),
-                         validator_model_type='none',
+                         classifier_model_dir=pathlib.Path(),
+                         classifier_model_type='none',
                          n_envs=1,
                          n_targets_per_env=1,
                          verbose=verbose,
                          planner_params=planner_params,
                          local_env_params=local_env_params,
                          env_params=env_params,
-                         services=services)
+                         services=services,
+                         no_execution=False)
         self.outdir = outdir
 
     def on_plan_complete(self,

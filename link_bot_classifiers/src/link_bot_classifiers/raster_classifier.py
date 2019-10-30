@@ -13,7 +13,7 @@ from colorama import Fore, Style
 from tensorflow import keras
 from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
-from link_bot_planning.my_motion_validator import MotionClassifier
+from link_bot_planning.base_classifier import BaseClassifier
 from link_bot_planning.visualization import plot_classifier_data
 from link_bot_pycommon import experiments_util, link_bot_sdf_utils
 from moonshine.numpy_utils import add_batch
@@ -282,7 +282,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         train_loop()
 
 
-class RasterClassifierWrapper(MotionClassifier):
+class RasterClassifierWrapper(BaseClassifier):
 
     def __init__(self, path: pathlib.Path, show: bool = False):
         super().__init__()

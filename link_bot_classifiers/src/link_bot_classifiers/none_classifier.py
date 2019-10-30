@@ -1,13 +1,13 @@
 import numpy as np
 
-from link_bot_planning.my_motion_validator import MotionClassifier
+from link_bot_planning.base_classifier import BaseClassifier
 from link_bot_pycommon import link_bot_sdf_utils
 
 
-class NoneClassifier(MotionClassifier):
+class NoneClassifier(BaseClassifier):
 
     def __init__(self):
         super().__init__()
 
-    def predict(self, local_sdf_data: link_bot_sdf_utils.SDF, s1: np.ndarray, s2: np.ndarray):
+    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, s1: np.ndarray, s2: np.ndarray) -> float:
         return 1.0
