@@ -37,7 +37,7 @@ def train(args):
                                                          batch_size=args.batch_size)
     val_classifier_dataset = ClassifierDataset(args.input_dir)
     val_dataset = val_classifier_dataset.get_dataset(mode='val',
-                                                     shuffle=False,
+                                                     shuffle=True,
                                                      num_epochs=1,
                                                      seed=args.seed,
                                                      batch_size=args.batch_size)
@@ -107,7 +107,7 @@ def main():
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--summary-freq', type=int, default=1)
     train_parser.add_argument('--save-freq', type=int, default=1)
-    train_parser.add_argument('--epochs', type=int, default=30)
+    train_parser.add_argument('--epochs', type=int, default=50)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-grad-every', type=int, help='gradients hists every this many steps/batches', default=1000)

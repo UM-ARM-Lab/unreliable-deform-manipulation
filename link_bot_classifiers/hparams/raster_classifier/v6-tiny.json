@@ -1,0 +1,14 @@
+{
+  "model_class": "raster",
+  "n_control": 2,
+  "local_env_shape": [50, 50],
+  "fc_layer_sizes": [],
+  "conv_filters": [
+    [6, [3, 3]]
+  ],
+  "kernel_reg": 0.05,
+  "bias_reg": 0.05,
+  "activity_reg": 0.05,
+  "dropout_rate": 0.5,
+  "batch_norm": false
+}
