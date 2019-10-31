@@ -11,18 +11,18 @@ class CollisionCheckerClassifier(BaseClassifier):
         super().__init__()
 
     def predict(self, local_env: link_bot_sdf_utils.OccupancyData, s1: np.ndarray, s2: np.ndarray) -> float:
-        tail_x = s1[0]
-        tail_y = s1[1]
-        mid_x = s1[2]
-        mid_y = s1[3]
-        head_x = s1[4]
-        head_y = s1[5]
-        next_tail_x = s2[0]
-        next_tail_y = s2[1]
-        next_mid_x = s2[2]
-        next_mid_y = s2[3]
-        next_head_x = s2[4]
-        next_head_y = s2[5]
+        tail_x = s1[:, 0]
+        tail_y = s1[:, 1]
+        mid_x = s1[:, 2]
+        mid_y = s1[:, 3]
+        head_x = s1[:, 4]
+        head_y = s1[:, 5]
+        next_tail_x = s2[:, 0]
+        next_tail_y = s2[:, 1]
+        next_mid_x = s2[:, 2]
+        next_mid_y = s2[:, 3]
+        next_head_x = s2[:, 4]
+        next_head_y = s2[:, 5]
 
         tail_row, tail_col = point_to_idx(tail_x, tail_y, local_env.resolution, origin=local_env.origin)
         mid_row, mid_col = point_to_idx(mid_x, mid_y, local_env.resolution, origin=local_env.origin)

@@ -128,6 +128,10 @@ def eval(hparams, test_tf_dataset, args):
     test_losses = []
     accuracy.reset_states()
     test_predictions = []
+    tn = 0
+    fn = 0
+    fp = 0
+    tp = 0
     for test_example_dict in test_tf_dataset:
         test_batch_labels = test_example_dict['label']
         test_batch_predictions = net(test_example_dict)[-1]
@@ -135,10 +139,27 @@ def eval(hparams, test_tf_dataset, args):
         batch_test_loss = loss(y_true=test_batch_labels, y_pred=test_batch_predictions)
         accuracy.update_state(y_true=test_batch_labels, y_pred=test_batch_predictions)
         test_losses.append(batch_test_loss)
+
+        for pred, label in zip(test_batch_predictions, test_batch_labels):
+            pred_bin = int(pred.numpy() > 0.5)
+            label = label.numpy()[0]
+            if pred_bin == 1 and label == 1:
+                tp += 1
+            elif pred_bin == 0 and label == 1:
+                fn += 1
+            elif pred_bin == 1 and label == 0:
+                fp += 1
+            elif pred_bin == 0 and label == 0:
+                tn += 1
+
     test_loss = np.mean(test_losses)
     test_accuracy = accuracy.result().numpy() * 100
     print("Test Loss:     {:7.4f}".format(test_loss))
     print("Test Accuracy: {:5.3f}%".format(test_accuracy))
+
+    print("|        | label 0 | label 1 |")
+    print("| pred 0 | {:6d} | {:6d} |".format(tn, fn))
+    print("| pred 1 | {:6d} | {:6d} |".format(fp, tp))
 
     np.savetxt('test_predictions.txt', test_predictions)
 
@@ -238,7 +259,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                         format_message = "Validation Loss: " + Style.BRIGHT + "{:7.4f}" + Style.RESET_ALL
                         format_message += " Accuracy: " + Style.BRIGHT + "{:5.3f}%" + Style.RESET_ALL
                         print(format_message.format(mean_val_loss, val_accuracy) + Style.RESET_ALL)
-
 
                 ####################
                 # Update global step

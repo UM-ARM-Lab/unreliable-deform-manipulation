@@ -10,6 +10,7 @@ import std_srvs
 from colorama import Fore
 from ompl import base as ob
 
+from ignition import markers
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
@@ -65,6 +66,9 @@ class ShootingRRTMPC:
                                             viz_object=self.viz_object,
                                             )
 
+        # remove all markers
+        markers.remove_all()
+
     def run(self):
         for traj_idx in range(self.n_envs):
             # generate a new environment by rearranging the obstacles
@@ -84,8 +88,8 @@ class ShootingRRTMPC:
                 head_idx = state.link_names.index("head")
                 initial_rope_configuration = gazebo_utils.points_to_config(state.points)
                 head_point = state.points[head_idx]
-                tail_goal = sample_goal(self.env_params.w, self.env_params.h, head_point,
-                                        env_padding=self.env_params.goal_padding)
+                tail_goal = self.get_goal(self.env_params.w, self.env_params.h, head_point,
+                                          env_padding=self.env_params.goal_padding)
 
                 start = np.expand_dims(np.array(initial_rope_configuration), axis=0)
                 tail_goal_point = np.array(tail_goal)
@@ -100,7 +104,14 @@ class ShootingRRTMPC:
                     print(Fore.CYAN + "Planning from {} to {}".format(start, tail_goal_point) + Fore.RESET)
 
                 t0 = time.time()
-                planned_actions, planned_path, planner_local_envs = self.rrt.plan(start, tail_goal_point)
+                try:
+                    planned_actions, planned_path, planner_local_envs = self.rrt.plan(start, tail_goal_point)
+                except RuntimeError:
+                    # this means the start was considered invalid, so we just skip this and move to a new environment
+                    print(Fore.RED + "Start was classified to be invalid. Skipping this environment." + Fore.RESET)
+                    # this ensures we always get the right total number of environments
+                    traj_idx -= 1
+                    break
                 planning_time = time.time() - t0
                 if self.verbose >= 1:
                     print("Planning time: {:5.3f}s".format(planning_time))
@@ -132,6 +143,9 @@ class ShootingRRTMPC:
                                                planner_local_envs,
                                                actual_local_envs,
                                                actual_path)
+
+    def get_goal(self, w, h, head_point, env_padding):
+        return sample_goal(w, h, head_point, env_padding)
 
     def on_plan_complete(self,
                          planned_path: np.ndarray,

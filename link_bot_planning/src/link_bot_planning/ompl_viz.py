@@ -85,7 +85,6 @@ def plot(viz_object: VizObject,
 
     plt.legend(custom_lines,
                ['sampled rope configurations', 'start', 'goal', 'final path', 'full rope', 'search tree'])
-    plt.show()
 
 
 def add_sampled_configuration(services: GazeboServices,

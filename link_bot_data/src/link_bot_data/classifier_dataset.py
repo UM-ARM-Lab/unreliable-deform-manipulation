@@ -1,7 +1,7 @@
 import json
 import pathlib
 import random
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import tensorflow as tf
@@ -104,11 +104,31 @@ class ClassifierDataset:
                     num_epochs: int,
                     batch_size: Optional[int],
                     shuffle: bool = True,
-                    seed: int = 0,
-                    ):
-
+                    seed: int = 0):
         filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format(mode))]
+        return self.get_dataset_from_records(filenames, num_epochs, batch_size, shuffle, seed)
 
+    def get_dataset_all_modes(self,
+                              num_epochs: int,
+                              batch_size: Optional[int],
+                              shuffle: bool = True,
+                              seed: int = 0):
+        train_filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format('train'))]
+        test_filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format('test'))]
+        val_filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format('val'))]
+
+        all_filenames = train_filenames
+        all_filenames.extend(test_filenames)
+        all_filenames.extend(val_filenames)
+
+        return self.get_dataset_from_records(all_filenames, num_epochs, batch_size, shuffle, seed)
+
+    def get_dataset_from_records(self,
+                                 records: List[str],
+                                 num_epochs: int,
+                                 batch_size: Optional[int],
+                                 shuffle: bool = True,
+                                 seed: int = 0):
         compression_type = self.hparams['compression_type']
         local_env_rows = int(self.hparams['local_env_params'].h_rows)
         local_env_cols = int(self.hparams['local_env_params'].w_cols)
@@ -118,9 +138,9 @@ class ClassifierDataset:
         n_action = int(self.hparams['n_action'])
 
         if shuffle:
-            random.shuffle(filenames)
+            random.shuffle(records)
 
-        dataset = tf.data.TFRecordDataset(filenames, buffer_size=8 * 1024 * 1024, compression_type=compression_type)
+        dataset = tf.data.TFRecordDataset(records, buffer_size=8 * 1024 * 1024, compression_type=compression_type)
 
         if shuffle:
             dataset = dataset.apply(tf.contrib.data.shuffle_and_repeat(buffer_size=1024, count=num_epochs, seed=seed))

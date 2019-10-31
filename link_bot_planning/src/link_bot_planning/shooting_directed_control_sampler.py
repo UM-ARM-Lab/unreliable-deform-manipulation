@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import ompl.util as ou
 from ompl import base as ob
@@ -128,6 +130,8 @@ class ShootingDirectedControlSamplerInternal:
                  target: np.ndarray) -> [np.ndarray, np.ndarray, link_bot_sdf_utils.OccupancyData, bool]:
         self.viz_object.states_sampled_at.append(target)
 
+        # t0 = time.time()
+
         head_point = state[0, 4:6]
         local_env_data = get_local_occupancy_data(cols=self.local_env_params.w_cols,
                                                   rows=self.local_env_params.h_rows,
@@ -165,5 +169,8 @@ class ShootingDirectedControlSamplerInternal:
                 min_distance = distance
                 best_u = u
                 best_next_state = next_state
+
+        # dt = time.time() - t0
+        # print("{:5.3f}s".format(dt))
 
         return best_next_state, best_u, local_env_data, no_progress

@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 import argparse
 import pathlib
-import shutil
 
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.video_prediction_dataset_utils import float_feature
-from link_bot_planning.visualization import plot_classifier_data
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.ConfigProto(gpu_options=gpu_options)
@@ -21,8 +17,8 @@ def main():
     parser.add_argument('indir', type=pathlib.Path)
     parser.add_argument('--n-examples-per-record', type=int, default=1024)
     parser.add_argument('--no-plot', action='store_true')
-    parser.add_argument('--pre', type=float, default=0.23)
-    parser.add_argument('--post', type=float, default=0.23)
+    parser.add_argument('--pre', type=float, default=0.2)
+    parser.add_argument('--post', type=float, default=0.2)
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
     parser.add_argument("--skip", action='store_true', help="do not write labels, only analyze")

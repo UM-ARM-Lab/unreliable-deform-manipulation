@@ -20,8 +20,8 @@ def main():
     parser.add_argument('indir', type=pathlib.Path)
     parser.add_argument('--n-examples-per-record', type=int, default=1024)
     parser.add_argument('--no-plot', action='store_true')
-    parser.add_argument('--pre', type=float, default=0.23)
-    parser.add_argument('--post', type=float, default=0.23)
+    parser.add_argument('--pre', type=float, default=0.2)
+    parser.add_argument('--post', type=float, default=0.2)
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     parser.add_argument("--skip", action='store_true', help="do not write labels, only analyze")
 
@@ -65,12 +65,25 @@ def main():
             pre_close = pre_transition_distance < args.pre
             post_close = post_transition_distance < args.post
 
-            if pre_close and post_close:
+            ###########################################################
+            # if pre_close and post_close:
+            #     label = 1
+            #     positive_labels += 1
+            # else:
+            #     label = 0
+            #     negative_labels += 1
+
+            ###########################################################
+            if not pre_close:
+                # don't add the example to the labeled training dataset
+                continue
+            if post_close:
                 label = 1
                 positive_labels += 1
             else:
                 label = 0
                 negative_labels += 1
+            ###########################################################
 
             # TODO: figure out a better way to do this
             features = {

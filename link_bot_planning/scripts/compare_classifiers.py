@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 from __future__ import division, print_function
 
-import time
 import argparse
-import os
 import json
 import pathlib
+import time
 from typing import Optional, List
 
+import matplotlib.pyplot as plt
 import numpy as np
 import ompl.util as ou
 import rospy
@@ -62,7 +62,6 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
         self.outdir = outdir
         self.seed = seed
 
-
         self.metrics = {
             "fwd_model_dir": str(fwd_model_dir),
             "fwd_model_type": fwd_model_type,
@@ -76,9 +75,10 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
             "seed": self.seed,
             "metrics": [],
         }
-        root = self.outdir / self.classifier_model_type
-        root.mkdir(parents=True)
-        self.metrics_filename = root / 'metrics.json'
+        self.root = self.outdir / self.classifier_model_type
+        self.root.mkdir(parents=True)
+        self.metrics_filename = self.root / 'metrics.json'
+        self.successfully_completed_plan_idx = 0
 
     def on_plan_complete(self,
                          planned_path: np.ndarray,
@@ -91,11 +91,6 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
         lengths = [np.linalg.norm(planned_path[i] - planned_path[i - 1]) for i in range(1, len(planned_path))]
         path_length = np.sum(lengths)
         duration = self.fwd_model.dt * len(planned_path)
-        if self.verbose >= 1:
-            msg = "Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s"
-            print(msg.format(final_error, path_length, len(planned_path), duration))
-            plot(self.viz_object, planner_data, full_sdf_data.sdf > 0, tail_goal_point, planned_path, planned_actions,
-                 full_sdf_data.extent)
 
         metrics_for_plan = {
             'planning_time': planning_time,
@@ -105,6 +100,18 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
         self.metrics['metrics'].append(metrics_for_plan)
         metrics_file = self.metrics_filename.open('w')
         json.dump(self.metrics, metrics_file)
+
+        full_binary = full_sdf_data.sdf > 0
+        plot(self.viz_object, planner_data, full_binary, tail_goal_point, planned_path, planned_actions, full_sdf_data.extent)
+        plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
+        plt.savefig(plan_viz_path)
+
+        if self.verbose >= 1:
+            msg = "Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s"
+            print(msg.format(final_error, path_length, len(planned_path), duration))
+            plt.show()
+
+        self.successfully_completed_plan_idx += 1
 
     def on_execution_complete(self,
                               planned_path: np.ndarray,
@@ -123,9 +130,9 @@ def main():
     parser.add_argument("fwd_model_dir", help="forward model", type=pathlib.Path)
     parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
     parser.add_argument("classifier_1_model_dir", help="classifier", type=pathlib.Path)
-    parser.add_argument("classifier_1_model_type", choices=['none', 'raster'])
+    parser.add_argument("classifier_1_model_type", choices=['none', 'collision', 'raster'])
     parser.add_argument("classifier_2_model_dir", help="classifier", type=pathlib.Path)
-    parser.add_argument("classifier_2_model_type", choices=['none', 'raster'])
+    parser.add_argument("classifier_2_model_type", choices=['none', 'collision', 'raster'])
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-targets", type=int, default=10, help='number of targets/plans per env')
     parser.add_argument("--n-envs", type=int, default=10, help='number of envs')

@@ -109,7 +109,9 @@ def main():
             neg += 1
 
         local_env_data = link_bot_sdf_utils.OccupancyData(local_env, resolution, origin)
-        prediction = collision_classifier.predict(local_env_data, planned_state, planned_next_state)
+        prediction = collision_classifier.predict(local_env_data,
+                                                  np.expand_dims(planned_state, axis=0),
+                                                  np.expand_dims(planned_next_state, axis=0))
         if prediction == 1:
             if label == 1:
                 correct += 1

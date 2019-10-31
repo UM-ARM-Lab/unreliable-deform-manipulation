@@ -6,6 +6,7 @@ import os
 import pathlib
 from typing import Optional, List
 
+import matplotlib.pyplot as plt
 import numpy as np
 import ompl.util as ou
 import rospy
@@ -14,6 +15,7 @@ import tensorflow as tf
 from colorama import Fore
 from ompl import base as ob
 
+from ignition import markers
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
@@ -73,14 +75,23 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
                          full_sdf_data: link_bot_sdf_utils.SDF,
                          planner_data: ob.PlannerData,
                          planning_time: float):
-        plot(self.viz_object, planner_data, full_sdf_data.sdf > 0, tail_goal_point, planned_path, planned_actions,
-             full_sdf_data.extent)
         final_error = np.linalg.norm(planned_path[-1, 0:2] - tail_goal_point)
         lengths = [np.linalg.norm(planned_path[i] - planned_path[i - 1]) for i in range(1, len(planned_path))]
         path_length = np.sum(lengths)
         duration = self.fwd_model.dt * len(planned_path)
+
+        if self.verbose >= 2:
+            planned_final_tail_point_msg = markers.make_marker(id=3, rgb=[0, 0, 1], scale=0.05)
+            planned_final_tail_point_msg.pose.position.x = planned_path[-1][0]
+            planned_final_tail_point_msg.pose.position.y = planned_path[-1][1]
+            markers.publish(planned_final_tail_point_msg)
+
         msg = "Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s"
         print(msg.format(final_error, path_length, len(planned_path), duration))
+
+        plot(self.viz_object, planner_data, full_sdf_data.sdf > 0, tail_goal_point, planned_path, planned_actions,
+             full_sdf_data.extent)
+        plt.show()
 
     def on_execution_complete(self,
                               planned_path: np.ndarray,
@@ -99,9 +110,9 @@ def main():
     parser.add_argument("fwd_model_dir", help="forward model", type=pathlib.Path)
     parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
     parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
-    parser.add_argument("classifier_model_type", choices=['none', 'raster'], default='raster')
+    parser.add_argument("classifier_model_type", choices=['none', 'raster', 'collision'], default='raster')
     parser.add_argument("--outdir", type=pathlib.Path)
-    parser.add_argument("--no-execute", action='store_true', help='do not execute the plan')
+    parser.add_argument("--no-execution", action='store_true', help='do not execute the plan')
     parser.add_argument("--n-targets", type=int, default=1, help='number of targets/plans')
     parser.add_argument("--seed", '-s', type=int, default=3)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")

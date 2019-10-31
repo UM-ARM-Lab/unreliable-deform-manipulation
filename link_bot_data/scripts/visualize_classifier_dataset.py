@@ -33,6 +33,8 @@ def main():
     positive_count = 0
     negative_count = 0
     count = 0
+    regression_with_label_1 = []
+    regression_with_label_0 = []
     for i, example_dict in enumerate(dataset):
         res = example_dict['res'].numpy().squeeze()
         res = np.array([res, res])
@@ -56,8 +58,14 @@ def main():
 
         count += 1
 
-        if np.max(actual_local_env) == np.min(actual_local_env):
-            print("failure!")
+        pre_transition_distance = np.linalg.norm(state - planned_state)
+        post_transition_distance = np.linalg.norm(next_state - planned_next_state)
+
+        regression = post_transition_distance - pre_transition_distance
+        if label:
+            regression_with_label_1.append(regression)
+        else:
+            regression_with_label_0.append(regression)
 
         if not args.no_plot:
             title = "Example {}".format(i)
@@ -79,6 +87,10 @@ def main():
     class_balance = positive_count / count * 100
     print("Number of examples: {}".format(count))
     print("Class balance: {:4.1f}% positive".format(class_balance))
+
+    print("mean median min")
+    print('label 1', np.mean(regression_with_label_1), np.median(regression_with_label_1), np.min(regression_with_label_1))
+    print('label 0', np.mean(regression_with_label_0), np.median(regression_with_label_0), np.min(regression_with_label_0))
 
 
 if __name__ == '__main__':

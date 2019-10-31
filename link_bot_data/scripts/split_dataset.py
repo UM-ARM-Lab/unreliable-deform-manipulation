@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-import random
 import argparse
-import shutil
 import os
 import pathlib
+import random
+import shutil
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -38,6 +39,6 @@ def main():
         out = args.input_dir / 'val' / val_file.name
         shutil.move(val_file, out)
 
+
 if __name__ == '__main__':
     main()
-
