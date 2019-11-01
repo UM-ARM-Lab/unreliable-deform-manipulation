@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_data.video_prediction_dataset_utils import float_feature
+from link_bot_data.link_bot_dataset_utils import float_feature, balance_x_dataset
 from link_bot_planning.params import LocalEnvParams, EnvParams, PlannerParams
 
 
@@ -104,15 +104,17 @@ class ClassifierDataset:
                     num_epochs: int,
                     batch_size: Optional[int],
                     shuffle: bool = True,
-                    seed: int = 0):
+                    seed: int = 0,
+                    balance_key: Optional[str] = None):
         filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format(mode))]
-        return self.get_dataset_from_records(filenames, num_epochs, batch_size, shuffle, seed)
+        return self.get_dataset_from_records(filenames, num_epochs, batch_size, shuffle, seed, balance_key)
 
     def get_dataset_all_modes(self,
                               num_epochs: int,
                               batch_size: Optional[int],
                               shuffle: bool = True,
-                              seed: int = 0):
+                              seed: int = 0,
+                              balance_key: Optional[str] = None):
         train_filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format('train'))]
         test_filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format('test'))]
         val_filenames = [str(filename) for filename in self.dataset_dir.glob("{}/*.tfrecords".format('val'))]
@@ -121,14 +123,15 @@ class ClassifierDataset:
         all_filenames.extend(test_filenames)
         all_filenames.extend(val_filenames)
 
-        return self.get_dataset_from_records(all_filenames, num_epochs, batch_size, shuffle, seed)
+        return self.get_dataset_from_records(all_filenames, num_epochs, batch_size, shuffle, seed, balance_key)
 
     def get_dataset_from_records(self,
                                  records: List[str],
                                  num_epochs: int,
                                  batch_size: Optional[int],
                                  shuffle: bool = True,
-                                 seed: int = 0):
+                                 seed: int = 0,
+                                 balance_key: Optional[str] = None):
         compression_type = self.hparams['compression_type']
         local_env_rows = int(self.hparams['local_env_params'].h_rows)
         local_env_cols = int(self.hparams['local_env_params'].w_cols)
@@ -148,6 +151,10 @@ class ClassifierDataset:
             dataset = dataset.repeat(num_epochs)
 
         dataset = dataset.map(self.parser(local_env_shape, n_state, n_action))
+
+        if balance_key is not None:
+            dataset = balance_x_dataset(dataset, balance_key)
+
         if batch_size is not None and batch_size > 0:
             dataset = dataset.batch(batch_size)
 

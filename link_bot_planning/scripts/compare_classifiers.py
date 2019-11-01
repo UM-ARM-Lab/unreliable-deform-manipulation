@@ -19,7 +19,7 @@ from ompl import base as ob
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import shooting_rrt_mpc
+from link_bot_planning import my_mpc
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
@@ -30,7 +30,7 @@ config = tf.ConfigProto(gpu_options=gpu_options)
 tf.enable_eager_execution(config=config)
 
 
-class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
+class TestWithClassifier(my_mpc.myMPC):
 
     def __init__(self,
                  fwd_model_dir: pathlib.Path,
@@ -77,6 +77,7 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
         }
         self.root = self.outdir / self.classifier_model_type
         self.root.mkdir(parents=True)
+        print(Fore.CYAN + str(self.root) + Fore.RESET)
         self.metrics_filename = self.root / 'metrics.json'
         self.successfully_completed_plan_idx = 0
 
@@ -91,6 +92,8 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
         lengths = [np.linalg.norm(planned_path[i] - planned_path[i - 1]) for i in range(1, len(planned_path))]
         path_length = np.sum(lengths)
         duration = self.fwd_model.dt * len(planned_path)
+
+        print(self.successfully_completed_plan_idx)
 
         metrics_for_plan = {
             'planning_time': planning_time,

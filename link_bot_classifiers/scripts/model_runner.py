@@ -34,13 +34,15 @@ def train(args):
                                                          shuffle=True,
                                                          num_epochs=1,
                                                          seed=args.seed,
-                                                         batch_size=args.batch_size)
+                                                         batch_size=args.batch_size,
+                                                         balance_key=args.balance_key)
     val_classifier_dataset = ClassifierDataset(args.input_dir)
     val_dataset = val_classifier_dataset.get_dataset(mode='val',
                                                      shuffle=True,
                                                      num_epochs=1,
                                                      seed=args.seed,
-                                                     batch_size=args.batch_size)
+                                                     batch_size=args.batch_size,
+                                                     balance_key=args.balance_key)
 
     ###############
     # Model
@@ -75,7 +77,8 @@ def eval(args):
                                                        shuffle=False,
                                                        num_epochs=1,
                                                        seed=args.seed,
-                                                       batch_size=args.batch_size)
+                                                       batch_size=args.batch_size,
+                                                       balance_key=args.balance_key)
 
     ###############
     # Model
@@ -113,6 +116,7 @@ def main():
     train_parser.add_argument('--log-grad-every', type=int, help='gradients hists every this many steps/batches', default=1000)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=500)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=2000)
+    train_parser.add_argument('--balance-key', help='use this key in the y of dataset to balance classes')
     train_parser.set_defaults(func=train)
     train_parser.add_argument('--seed', type=int, default=None)
 
@@ -124,6 +128,7 @@ def main():
     eval_parser.add_argument('--mode', type=str, choices=['test', 'val', 'train'], default='test')
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
+    eval_parser.add_argument('--balance-key', help='use this key in the y of dataset to balance classes')
     eval_parser.set_defaults(func=eval)
     eval_parser.add_argument('--seed', type=int, default=None)
 

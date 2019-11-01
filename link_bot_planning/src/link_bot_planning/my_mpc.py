@@ -15,20 +15,17 @@ from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
 from link_bot_gazebo.srv import LinkBotStateRequest
-from link_bot_planning import classifier_utils, model_utils, shooting_rrt, ompl_viz
+from link_bot_planning import classifier_utils, model_utils, ompl_viz
 from link_bot_planning.goals import sample_goal
 from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import gazebo_trajectory_execution
 
 
-class ShootingRRTMPC:
+class myMPC:
 
     def __init__(self,
-                 fwd_model_dir: pathlib.Path,
-                 fwd_model_type: str,
-                 classifier_model_dir: pathlib.Path,
-                 classifier_model_type: str,
+                 planner,
                  n_envs: int,
                  n_targets_per_env: int,
                  verbose: int,
@@ -38,11 +35,7 @@ class ShootingRRTMPC:
                  services: GazeboServices,
                  no_execution: bool
                  ):
-        self.no_execution = no_execution
-        self.fwd_model_dir = fwd_model_dir
-        self.fwd_model_type = fwd_model_type
-        self.classifier_model_dir = classifier_model_dir
-        self.classifier_model_type = classifier_model_type
+        self.planner = planner
         self.n_envs = n_envs
         self.n_targets_per_env = n_targets_per_env
         self.local_env_params = local_env_params
@@ -50,21 +43,7 @@ class ShootingRRTMPC:
         self.planner_params = planner_params
         self.verbose = verbose
         self.services = services
-
-        self.fwd_model, self.model_path_info = model_utils.load_generic_model(self.fwd_model_dir, self.fwd_model_type)
-        self.classifier_model = classifier_utils.load_generic_model(self.classifier_model_dir, self.classifier_model_type)
-        self.viz_object = ompl_viz.VizObject()
-
-        self.rrt = shooting_rrt.ShootingRRT(fwd_model=self.fwd_model,
-                                            classifier_model=self.classifier_model,
-                                            dt=self.fwd_model.dt,
-                                            n_state=self.fwd_model.n_state,
-                                            planner_params=self.planner_params,
-                                            local_env_params=local_env_params,
-                                            env_params=env_params,
-                                            services=services,
-                                            viz_object=self.viz_object,
-                                            )
+        self.no_execution = no_execution
 
         # remove all markers
         markers.remove_all()
@@ -105,7 +84,7 @@ class ShootingRRTMPC:
 
                 t0 = time.time()
                 try:
-                    planned_actions, planned_path, planner_local_envs = self.rrt.plan(start, tail_goal_point)
+                    planned_actions, planned_path, planner_local_envs = self.planner.plan(start, tail_goal_point)
                 except RuntimeError:
                     # this means the start was considered invalid, so we just skip this and move to a new environment
                     print(Fore.RED + "Start was classified to be invalid. Skipping this environment." + Fore.RESET)
@@ -116,15 +95,15 @@ class ShootingRRTMPC:
                 if self.verbose >= 1:
                     print("Planning time: {:5.3f}s".format(planning_time))
 
-                planner_data = ob.PlannerData(self.rrt.si)
-                self.rrt.planner.getPlannerData(planner_data)
+                planner_data = ob.PlannerData(self.planner.si)
+                self.planner.planner.getPlannerData(planner_data)
                 self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_sdf_data, planner_data, planning_time)
 
                 if self.verbose >= 4:
                     print("Planned actions: {}".format(planned_actions))
                     print("Planned path: {}".format(planned_path))
 
-                trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(self.fwd_model.dt, planned_actions)
+                trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(self.planner.fwd_model.dt, planned_actions)
 
                 # execute the plan, collecting the states that actually occurred
                 if not self.no_execution:

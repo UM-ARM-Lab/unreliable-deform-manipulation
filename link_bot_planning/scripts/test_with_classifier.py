@@ -19,7 +19,7 @@ from ignition import markers
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import shooting_rrt_mpc
+from link_bot_planning import my_mpc
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
@@ -30,7 +30,7 @@ config = tf.ConfigProto(gpu_options=gpu_options)
 tf.enable_eager_execution(config=config)
 
 
-class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
+class TestWithClassifier(my_mpc.myMPC):
 
     def __init__(self,
                  fwd_model_dir: pathlib.Path,
@@ -45,10 +45,8 @@ class TestWithClassifier(shooting_rrt_mpc.ShootingRRTMPC):
                  services: GazeboServices,
                  no_execution: bool,
                  outdir: Optional[pathlib.Path] = None):
-        super().__init__(fwd_model_dir=fwd_model_dir,
-                         fwd_model_type=fwd_model_type,
-                         classifier_model_dir=classifier_model_dir,
-                         classifier_model_type=classifier_model_type,
+
+        super().__init__(planner=planner,
                          n_envs=1,
                          n_targets_per_env=n_targets,
                          verbose=verbose,

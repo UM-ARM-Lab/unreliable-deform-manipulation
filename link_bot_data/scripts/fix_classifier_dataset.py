@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.video_prediction_dataset_utils import float_feature
+from link_bot_data.link_bot_dataset_utils import float_feature
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.ConfigProto(gpu_options=gpu_options)

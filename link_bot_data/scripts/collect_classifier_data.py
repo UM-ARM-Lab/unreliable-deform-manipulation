@@ -20,7 +20,7 @@ from link_bot_data import random_environment_data_utils
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import shooting_rrt_mpc
+from link_bot_planning import my_mpc
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
@@ -32,7 +32,7 @@ config = tf.ConfigProto(gpu_options=gpu_options)
 tf.enable_eager_execution(config=config)
 
 
-class ClassifierDataCollector(shooting_rrt_mpc.ShootingRRTMPC):
+class ClassifierDataCollector(my_mpc.myMPC):
 
     def __init__(self,
                  fwd_model_dir: pathlib.Path,

@@ -18,7 +18,7 @@ from matplotlib.animation import FuncAnimation
 from link_bot_data.visualization import plottable_rope_configuration
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
-from link_bot_planning import shooting_rrt_mpc
+from link_bot_planning import my_mpc
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import EnvParams, LocalEnvParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
@@ -59,7 +59,7 @@ def plot_comparison(outdir, planned_path, actual_rope_configurations, full_sdf_d
     plt.show()
 
 
-class Executor(shooting_rrt_mpc.ShootingRRTMPC):
+class Executor(my_mpc.myMPC):
 
     def __init__(self,
                  fwd_model_dir: pathlib.Path,

@@ -14,6 +14,7 @@ def multistep_fwd_model_error_metrics(fwd_model, test_x, test_y):
     x0 = np.expand_dims(x0, 0)
     actions = test_x['actions'][0]
     true = test_y['output_states'][0]
+    print(true.shape)
     prediction, _ = link_bot_gp.predict_one(fwd_model, x0, actions)
     prediction = prediction.reshape([-1, 3, 2])
     true = true.reshape([-1, 3, 2])
