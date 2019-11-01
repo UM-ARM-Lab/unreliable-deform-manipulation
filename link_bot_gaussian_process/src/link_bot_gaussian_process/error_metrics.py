@@ -10,16 +10,14 @@ def multistep_fwd_model_error_metrics(fwd_model, test_x, test_y):
     compute the euclidean distance for each node in pred_y[i] to each node in test_y[i],
     averaged over all i using the max likelihood prediction
     """
-    x0 = test_x['states'][0, 0]
-    x0 = np.expand_dims(x0, 0)
-    actions = test_x['actions'][0]
-    true = test_y['output_states'][0]
-    print(true.shape)
-    prediction, _ = link_bot_gp.predict_one(fwd_model, x0, actions)
-    prediction = prediction.reshape([-1, 3, 2])
+    x0 = test_x['states'][:, 0]
+    actions = test_x['actions']
+    true = test_y['output_states']
+    predictions = link_bot_gp.predict_batch(fwd_model, x0, actions)
+    predictions = predictions.reshape([-1, 3, 2])
     true = true.reshape([-1, 3, 2])
 
-    error = np.linalg.norm(prediction - true, axis=2)
+    error = np.linalg.norm(predictions - true, axis=2)
     total_error = np.sum(error, axis=1)
     tail_error = error[:, 0]
     mid_error = error[:, 1]

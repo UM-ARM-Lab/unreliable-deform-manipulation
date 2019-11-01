@@ -18,6 +18,34 @@ from link_bot_gaussian_process.my_svgp import MySVGP
 from link_bot_pycommon import experiments_util
 
 
+def predict_batch(fwd_model, np_states, np_controls, steps=None):
+    """
+    :param fwd_model:
+    :param np_states: batch x n_state
+    :param np_controls: batch x n_control
+    :param steps:
+    :return:
+    """
+    if steps is None:
+        steps = np_controls.shape[1] + 1
+
+    x_t = np.copy(np_states)
+    batch = np_states.shape[0]
+
+    predictions = np.zeros((batch, steps, np_states.shape[1]))
+    predictions[:, 0] = np_states
+    for t in range(steps - 1):
+        predictions[:, t + 1] = x_t
+        x_t_relative = data_reformatting.make_relative_to_head(x_t)[:, :-2]
+        combined_x_t_relative = np.hstack((x_t_relative, np_controls[:, t]))
+
+        mu_delta_x_t_plus_1s, _ = fwd_model.model.predict_y(combined_x_t_relative)
+
+        x_t = x_t + mu_delta_x_t_plus_1s
+
+    return predictions
+
+
 def predict_one(fwd_model, np_state, np_controls, steps=None, initial_variance=0.00001):
     if steps is None:
         steps = np_controls.shape[0] + 1
@@ -32,6 +60,7 @@ def predict_one(fwd_model, np_state, np_controls, steps=None, initial_variance=0
         prediction[t + 1] = x_t
         x_t_relative = data_reformatting.make_relative_to_head(x_t)[:, :-2]
         combined_x_t_relative = np.hstack((x_t_relative, [np_controls[t]]))
+        print(combined_x_t_relative.shape)
 
         mu_delta_x_t_plus_1s, variance = fwd_model.model.predict_y(combined_x_t_relative)
         variances[t + 1] = variance
