@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from __future__ import division, print_function
 
-import pathlib
 import time
 from typing import List
 
@@ -15,7 +14,6 @@ from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
 from link_bot_gazebo.srv import LinkBotStateRequest
-from link_bot_planning import classifier_utils, model_utils, ompl_viz
 from link_bot_planning.goals import sample_goal
 from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
@@ -103,7 +101,8 @@ class myMPC:
                     print("Planned actions: {}".format(planned_actions))
                     print("Planned path: {}".format(planned_path))
 
-                trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(self.planner.fwd_model.dt, planned_actions)
+                trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(self.planner.fwd_model.dt,
+                                                                                              planned_actions)
 
                 # execute the plan, collecting the states that actually occurred
                 if not self.no_execution:

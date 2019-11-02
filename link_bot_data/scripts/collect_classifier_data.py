@@ -35,10 +35,7 @@ tf.enable_eager_execution(config=config)
 class ClassifierDataCollector(my_mpc.myMPC):
 
     def __init__(self,
-                 fwd_model_dir: pathlib.Path,
-                 fwd_model_type: str,
-                 validator_model_dir: pathlib.Path,
-                 validator_model_type: str,
+                 planner,
                  n_envs: int,
                  n_targets_per_env: int,
                  verbose: int,
@@ -50,17 +47,15 @@ class ClassifierDataCollector(my_mpc.myMPC):
                  compression_type: str,
                  services: GazeboServices,
                  outdir: Optional[pathlib.Path] = None):
-        super().__init__(fwd_model_dir,
-                         fwd_model_type,
-                         validator_model_dir,
-                         validator_model_type,
+        super().__init__(planner,
                          n_envs,
                          n_targets_per_env,
                          verbose,
                          planner_params,
                          local_env_params,
                          env_params,
-                         services=services)
+                         services=services,
+                         no_execution=False)
         self.n_examples_per_record = n_examples_per_record
         self.compression_type = compression_type
         self.outdir = outdir

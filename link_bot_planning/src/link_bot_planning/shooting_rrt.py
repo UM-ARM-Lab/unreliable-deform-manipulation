@@ -6,6 +6,7 @@ from ompl import control as oc
 
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
+from link_bot_planning.mpc_planners import MyPlanner
 from link_bot_planning.ompl_viz import VizObject
 from link_bot_planning.params import EnvParams, LocalEnvParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
@@ -13,17 +14,25 @@ from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompo
 from link_bot_pycommon import link_bot_sdf_utils
 
 
-class ShootingRRT:
+class ShootingRRT(MyPlanner):
 
-    def __init__(self, fwd_model,
+    def __init__(self,
+                 fwd_model,
                  classifier_model,
                  dt: float,
-                 n_state: int,
                  planner_params: PlannerParams,
                  local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  viz_object: VizObject):
+        super().__init__(fwd_model,
+                         classifier_model,
+                         dt,
+                         planner_params,
+                         local_env_params,
+                         env_params,
+                         services,
+                         viz_object)
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.dt = dt
@@ -43,7 +52,7 @@ class ShootingRRT:
         self.local_env_origin_space = ob.RealVectorStateSpace(2)
         self.local_env_origin_space.setBounds(-10000.1, 10000.0)
 
-        self.config_space = ob.RealVectorStateSpace(n_state)
+        self.config_space = ob.RealVectorStateSpace(self.n_state)
         bounds = ob.RealVectorBounds(self.n_state)
         bounds.setLow(0, -self.env_params.w / 2)
         bounds.setLow(1, -self.env_params.h / 2)

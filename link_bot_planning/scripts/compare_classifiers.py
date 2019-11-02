@@ -20,8 +20,10 @@ from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import my_mpc
+from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
+from link_bot_planning.shooting_rrt import ShootingRRT
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -33,6 +35,7 @@ tf.enable_eager_execution(config=config)
 class TestWithClassifier(my_mpc.myMPC):
 
     def __init__(self,
+                 planner: ob.Planner,
                  fwd_model_dir: pathlib.Path,
                  fwd_model_type: str,
                  classifier_model_dir: pathlib.Path,
@@ -47,18 +50,16 @@ class TestWithClassifier(my_mpc.myMPC):
                  seed: int,
                  outdir: Optional[pathlib.Path] = None,
                  ):
-        super().__init__(fwd_model_dir=fwd_model_dir,
-                         fwd_model_type=fwd_model_type,
-                         classifier_model_dir=classifier_model_dir,
-                         classifier_model_type=classifier_model_type,
-                         n_envs=n_envs,
-                         n_targets_per_env=n_targets,
-                         verbose=verbose,
-                         planner_params=planner_params,
-                         local_env_params=local_env_params,
-                         env_params=env_params,
-                         services=services,
-                         no_execution=False)
+        super().__init__(
+            planner,
+            n_envs=n_envs,
+            n_targets_per_env=n_targets,
+            verbose=verbose,
+            planner_params=planner_params,
+            local_env_params=local_env_params,
+            env_params=env_params,
+            services=services,
+            no_execution=False)
         self.outdir = outdir
         self.seed = seed
 
@@ -75,7 +76,7 @@ class TestWithClassifier(my_mpc.myMPC):
             "seed": self.seed,
             "metrics": [],
         }
-        self.root = self.outdir / self.classifier_model_type
+        self.root = self.outdir / classifier_model_type
         self.root.mkdir(parents=True)
         print(Fore.CYAN + str(self.root) + Fore.RESET)
         self.metrics_filename = self.root / 'metrics.json'
@@ -91,7 +92,7 @@ class TestWithClassifier(my_mpc.myMPC):
         final_error = np.linalg.norm(planned_path[-1, 0:2] - tail_goal_point)
         lengths = [np.linalg.norm(planned_path[i] - planned_path[i - 1]) for i in range(1, len(planned_path))]
         path_length = np.sum(lengths)
-        duration = self.fwd_model.dt * len(planned_path)
+        duration = self.planner.fwd_model.dt * len(planned_path)
 
         print(self.successfully_completed_plan_idx)
 
@@ -101,13 +102,17 @@ class TestWithClassifier(my_mpc.myMPC):
             'path_length': path_length,
         }
         self.metrics['metrics'].append(metrics_for_plan)
+        print(self.metrics)
         metrics_file = self.metrics_filename.open('w')
-        json.dump(self.metrics, metrics_file)
+        json.dump(self.metrics, metrics_file, indent=1)
 
         full_binary = full_sdf_data.sdf > 0
-        plot(self.viz_object, planner_data, full_binary, tail_goal_point, planned_path, planned_actions, full_sdf_data.extent)
+        plt.figure()
+        ax = plt.gca()
+        plot(ax, self.planner.viz_object, planner_data, full_binary, tail_goal_point, planned_path, planned_actions,
+             full_sdf_data.extent)
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
-        plt.savefig(plan_viz_path)
+        plt.savefig(plan_viz_path, dpi=600)
 
         if self.verbose >= 1:
             msg = "Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s"
@@ -189,7 +194,18 @@ def main():
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
+    planner = get_planner(planner_class=ShootingRRT,
+                          fwd_model_dir=args.fwd_model_dir,
+                          fwd_model_type=args.fwd_model_type,
+                          classifier_model_dir=args.classifier_1_model_dir,
+                          classifier_model_type=args.classifier_1_model_type,
+                          planner_params=planner_params,
+                          local_env_params=local_env_params,
+                          env_params=env_params,
+                          services=services)
+
     classifier_1_tester = TestWithClassifier(
+        planner=planner,
         fwd_model_dir=args.fwd_model_dir,
         fwd_model_type=args.fwd_model_type,
         classifier_model_dir=args.classifier_1_model_dir,

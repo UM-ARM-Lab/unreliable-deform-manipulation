@@ -20,7 +20,8 @@ class VizObject:
         self.rejected_samples = []
 
 
-def plot(viz_object: VizObject,
+def plot(ax,
+         viz_object: VizObject,
          planner_data: ob.PlannerData,
          environment: np.ndarray,
          goal: np.ndarray,
@@ -28,11 +29,8 @@ def plot(viz_object: VizObject,
          planned_actions: np.ndarray,
          extent: Iterable):
     del planned_actions
-
-    plt.figure()
-    ax = plt.gca()
     n_state = planned_path.shape[1]
-    plt.imshow(np.flipud(environment), extent=extent)
+    ax.imshow(np.flipud(environment), extent=extent)
 
     for state_sampled_at in viz_object.states_sampled_at:
         plot_rope_configuration(ax, state_sampled_at[0], label='sampled states', linewidth=0.5, c='b', alpha=0.2, zorder=1)
@@ -42,8 +40,8 @@ def plot(viz_object: VizObject,
                                 zorder=1)
 
     start = planned_path[0]
-    plt.scatter(start[0], start[1], label='start', s=100, c='r', zorder=1)
-    plt.scatter(goal[0], goal[1], label='goal', s=100, c='g', zorder=1)
+    ax.scatter(start[0], start[1], label='start', s=100, c='r', zorder=1)
+    ax.scatter(goal[0], goal[1], label='goal', s=100, c='g', zorder=1)
     for rope_configuration in planned_path:
         plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=2, c='cyan', alpha=0.75, zorder=4)
 
@@ -55,7 +53,7 @@ def plot(viz_object: VizObject,
 
         # TODO: this assumes the specific compound state space I'm testing at the moment. Get the subspace by name maybe?
         np_s = to_numpy(s[0], n_state)
-        plt.scatter(np_s[0, 0], np_s[0, 1], s=15, c='orange', zorder=2, alpha=0.5, label='tail')
+        ax.scatter(np_s[0, 0], np_s[0, 1], s=15, c='orange', zorder=2, alpha=0.5, label='tail')
 
         if len(edges_map.keys()) == 0:
             plot_rope_configuration(ax, np_s[0], linewidth=1, c='orange', alpha=0.2, zorder=2, label='full rope')
@@ -65,13 +63,13 @@ def plot(viz_object: VizObject,
             v2 = planner_data.getVertex(vertex_index2)
             s2 = v2.getState()
             np_s2 = to_numpy(s2[0], n_state)
-            plt.plot([np_s[0, 0], np_s2[0, 0]], [np_s[0, 1], np_s2[0, 1]], c='white', label='tree', zorder=1)
+            ax.plot([np_s[0, 0], np_s2[0, 0]], [np_s[0, 1], np_s2[0, 1]], c='white', label='tree', zorder=1)
 
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.axis("equal")
-    plt.xlim([-2.5, 2.5])
-    plt.ylim([-2.5, 2.5])
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.axis("equal")
+    ax.set_xlim([-2.5, 2.5])
+    ax.set_ylim([-2.5, 2.5])
 
     custom_lines = [
         Line2D([0], [0], color='b', lw=1),
@@ -83,8 +81,8 @@ def plot(viz_object: VizObject,
         Line2D([0], [0], color='white', lw=1),
     ]
 
-    plt.legend(custom_lines,
-               ['sampled rope configurations', 'start', 'goal', 'final path', 'full rope', 'search tree'])
+    ax.legend(custom_lines,
+              ['sampled rope configurations', 'start', 'goal', 'final path', 'full rope', 'search tree'])
 
 
 def add_sampled_configuration(services: GazeboServices,
