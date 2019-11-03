@@ -129,6 +129,9 @@ class ShootingDirectedControlSamplerInternal:
                  state: np.ndarray,
                  target: np.ndarray) -> [np.ndarray, np.ndarray, link_bot_sdf_utils.OccupancyData, bool]:
         self.viz_object.states_sampled_at.append(target)
+        """
+        Given a target rope configuration sampled by the planner, try to find a valid 
+        """
 
         # t0 = time.time()
 

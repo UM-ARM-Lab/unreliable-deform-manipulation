@@ -1,16 +1,15 @@
 from typing import Iterable
 
 import numpy as np
-from matplotlib import pyplot as plt
+from geometry_msgs.msg import Point
 from matplotlib.lines import Line2D
 from ompl import base as ob
+from visualization_msgs.msg import MarkerArray, Marker
 
-from geometry_msgs.msg import Point
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from visualization_msgs.msg import MarkerArray, Marker
-from link_bot_pycommon.link_bot_sdf_utils import SDF
 from link_bot_planning.state_spaces import to_numpy
+from link_bot_pycommon.link_bot_sdf_utils import SDF
 
 
 class VizObject:
@@ -18,6 +17,10 @@ class VizObject:
     def __init__(self):
         self.states_sampled_at = []
         self.rejected_samples = []
+
+    def clear(self):
+        self.states_sampled_at.clear()
+        self.rejected_samples.clear()
 
 
 def plot(ax,

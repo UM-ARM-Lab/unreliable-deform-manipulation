@@ -15,6 +15,7 @@ from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
 from link_bot_gazebo.srv import LinkBotStateRequest
 from link_bot_planning.goals import sample_goal
+from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import gazebo_trajectory_execution
@@ -23,19 +24,18 @@ from visual_mpc import gazebo_trajectory_execution
 class myMPC:
 
     def __init__(self,
-                 planner,
-                 n_envs: int,
-                 n_targets_per_env: int,
+                 planner: MyPlanner,
+                 n_total_plans: int,
+                 n_plans_per_env: int,
                  verbose: int,
                  planner_params: PlannerParams,
                  local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
-                 no_execution: bool
-                 ):
+                 no_execution: bool):
         self.planner = planner
-        self.n_envs = n_envs
-        self.n_targets_per_env = n_targets_per_env
+        self.n_total_plans = n_total_plans
+        self.n_plans_per_env = n_plans_per_env
         self.local_env_params = local_env_params
         self.env_params = env_params
         self.planner_params = planner_params
@@ -47,7 +47,8 @@ class myMPC:
         markers.remove_all()
 
     def run(self):
-        for traj_idx in range(self.n_envs):
+        total_plan_idx = 0
+        while True:
             # generate a new environment by rearranging the obstacles
             objects = ['moving_box{}'.format(i) for i in range(1, 7)]
             gazebo_trajectory_execution.move_objects(self.services, objects, self.env_params.w, self.env_params.h, 'velocity',
@@ -59,7 +60,9 @@ class myMPC:
             # generate a bunch of plans to random goals
             state_req = LinkBotStateRequest()
 
-            for plan_idx in range(self.n_targets_per_env):
+            # for plan_idx in range(self.n_targets_per_env):
+            plan_idx = 0
+            while True:
                 # generate a random target
                 state = self.services.get_state(state_req)
                 head_idx = state.link_names.index("head")
@@ -86,8 +89,6 @@ class myMPC:
                 except RuntimeError:
                     # this means the start was considered invalid, so we just skip this and move to a new environment
                     print(Fore.RED + "Start was classified to be invalid. Skipping this environment." + Fore.RESET)
-                    # this ensures we always get the right total number of environments
-                    traj_idx -= 1
                     break
                 planning_time = time.time() - t0
                 if self.verbose >= 1:
@@ -118,9 +119,21 @@ class myMPC:
                                                                                                          self.services)
                     self.on_execution_complete(planned_path,
                                                planned_actions,
+                                               tail_goal_point,
                                                planner_local_envs,
                                                actual_local_envs,
-                                               actual_path)
+                                               actual_path,
+                                               full_sdf_data,
+                                               planner_data,
+                                               planning_time)
+
+                plan_idx += 1
+                total_plan_idx += 1
+                if plan_idx == self.n_plans_per_env:
+                    break
+
+            if total_plan_idx == self.n_total_plans:
+                break
 
     def get_goal(self, w, h, head_point, env_padding):
         return sample_goal(w, h, head_point, env_padding)
@@ -137,7 +150,11 @@ class myMPC:
     def on_execution_complete(self,
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
+                              tail_goal_point: np.ndarray,
                               planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_path: np.ndarray):
+                              actual_path: np.ndarray,
+                              full_sdf_data: link_bot_sdf_utils.SDF,
+                              planner_data: ob.PlannerData,
+                              planning_time: float):
         pass

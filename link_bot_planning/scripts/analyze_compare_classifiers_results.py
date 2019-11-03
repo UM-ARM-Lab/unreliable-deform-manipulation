@@ -42,12 +42,11 @@ def main():
         metrics_filename = subfolder / 'metrics.json'
         metrics = json.load(metrics_filename.open("r"))
         data = metrics.pop('metrics')
-        meta = metrics
 
         data = invert_dict(data)
         planning_times = data['planning_time']
         path_length = data['path_length']
-        final_errors = data['final_error']
+        final_errors = data['final_execution_error']
 
         headers = ['error metric', 'min', 'max', 'mean', 'median', 'std']
         aggregate_metrics = error_metrics(planning_times, path_length, final_errors)

@@ -20,10 +20,12 @@ from link_bot_data import random_environment_data_utils
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import my_mpc
+from link_bot_planning import my_mpc, model_utils
+from link_bot_planning.mpc_planners import MyPlanner, get_planner
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
+from link_bot_planning.shooting_rrt import ShootingRRT
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -35,9 +37,11 @@ tf.enable_eager_execution(config=config)
 class ClassifierDataCollector(my_mpc.myMPC):
 
     def __init__(self,
-                 planner,
-                 n_envs: int,
-                 n_targets_per_env: int,
+                 planner: MyPlanner,
+                 fwd_model_dir: pathlib.Path,
+                 fwd_model_type: str,
+                 n_total_plans: int,
+                 n_plans_per_env: int,
                  verbose: int,
                  seed: int,
                  planner_params: PlannerParams,
@@ -48,20 +52,23 @@ class ClassifierDataCollector(my_mpc.myMPC):
                  services: GazeboServices,
                  outdir: Optional[pathlib.Path] = None):
         super().__init__(planner,
-                         n_envs,
-                         n_targets_per_env,
+                         n_total_plans,
+                         n_plans_per_env,
                          verbose,
                          planner_params,
                          local_env_params,
                          env_params,
                          services=services,
                          no_execution=False)
+        self.fwd_model_dir = fwd_model_dir
+        self.fwd_model_type = fwd_model_type
         self.n_examples_per_record = n_examples_per_record
         self.compression_type = compression_type
         self.outdir = outdir
 
         if outdir is not None:
-            self.full_output_directory = random_environment_data_utils.data_directory(self.outdir, *self.model_path_info)
+            model_path_info = model_utils.load_generic_model(self.fwd_model_dir, self.fwd_model_type)
+            self.full_output_directory = random_environment_data_utils.data_directory(self.outdir, *model_path_info)
             self.full_output_directory = pathlib.Path(self.full_output_directory)
             if not self.full_output_directory.is_dir():
                 print(Fore.YELLOW + "Creating output directory: {}".format(self.full_output_directory) + Fore.RESET)
@@ -72,14 +79,14 @@ class ClassifierDataCollector(my_mpc.myMPC):
         with (self.full_output_directory / 'hparams.json').open('w') as of:
             options = {
                 'seed': seed,
-                'dt': self.fwd_model.dt,
+                'dt': self.planner.fwd_model.dt,
                 'n_state': 6,
                 'n_action': 2,
                 'compression_type': compression_type,
-                'fwd_model_dir': str(fwd_model_dir),
-                'fwd_model_type': fwd_model_type,
-                'n_envs': n_envs,
-                'n_targets_per_env': n_targets_per_env,
+                'fwd_model_dir': str(self.fwd_model_dir),
+                'fwd_model_type': self.fwd_model_type,
+                'n_envs': n_total_plans,
+                'n_targets_per_env': n_plans_per_env,
                 'verbose': verbose,
                 'planner_params': planner_params.to_json(),
                 'env_params': env_params.to_json(),
@@ -114,9 +121,13 @@ class ClassifierDataCollector(my_mpc.myMPC):
     def on_execution_complete(self,
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
+                              tail_goal_point: np.ndarray,
                               planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_path: np.ndarray):
+                              actual_path: np.ndarray,
+                              full_sdf_data: link_bot_sdf_utils.SDF,
+                              planner_data: ob.PlannerData,
+                              planning_time: float):
         states = actual_path[:-1]
         next_states = actual_path[1:]
         planned_states = planned_path[:-1]
@@ -232,13 +243,22 @@ def main():
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
+    planner = get_planner(planner_class=ShootingRRT,
+                          fwd_model_dir=args.fwd_model_dir,
+                          fwd_model_type=args.fwd_model_type,
+                          classifier_model_dir=args.classifier_model_dir,
+                          classifier_model_type=args.classifier_model_type,
+                          planner_params=planner_params,
+                          local_env_params=local_env_params,
+                          env_params=env_params,
+                          services=services)
+
     data_collector = ClassifierDataCollector(
+        planner=planner,
         fwd_model_dir=args.fwd_model_dir,
         fwd_model_type=args.fwd_model_type,
-        validator_model_dir=pathlib.Path(),
-        validator_model_type='none',
-        n_envs=args.n_envs,
-        n_targets_per_env=args.n_targets_per_env,
+        n_total_plans=args.n_envs,
+        n_plans_per_env=args.n_targets_per_env,
         verbose=args.verbose,
         seed=args.seed,
         planner_params=planner_params,

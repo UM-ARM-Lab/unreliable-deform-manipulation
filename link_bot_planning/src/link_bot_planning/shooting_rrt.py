@@ -6,7 +6,7 @@ from ompl import control as oc
 
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
-from link_bot_planning.mpc_planners import MyPlanner
+from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import VizObject
 from link_bot_planning.params import EnvParams, LocalEnvParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
@@ -134,10 +134,10 @@ class ShootingRRT(MyPlanner):
         compound_start()[2][1] = start_local_occupancy_origin_double[1]
 
         start = ob.State(compound_start)
-        epsilon = 0.01
-        goal = LinkBotCompoundGoal(self.si, epsilon, tail_goal_point)
+        goal = LinkBotCompoundGoal(self.si, self.planner_params.goal_threshold, tail_goal_point)
 
         self.ss.clear()
+        self.viz_object.clear()
         self.ss.setStartState(start)
         self.ss.setGoal(goal)
         solved = self.ss.solve(self.planner_params.timeout)

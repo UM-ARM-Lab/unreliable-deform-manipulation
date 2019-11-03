@@ -26,8 +26,6 @@ tensorflow.enable_eager_execution(config=conf)
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 
-DT = 0.25  # seconds per time step
-
 
 def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gripper1_target_y):
     state_req = LinkBotStateRequest()
@@ -84,7 +82,7 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
 
         # let the simulator run
         step = WorldControlRequest()
-        step.steps = int(DT / 0.001)  # assuming 0.001s per simulation step
+        step.steps = int(args.dt / 0.001)  # assuming 0.001s per simulation step
         services.world_control(step)  # this will block until stepping is complete
 
         post_action_state = services.get_state(state_req)
@@ -186,7 +184,7 @@ def generate(args):
 
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
-            'dt': DT,
+            'dt': args.dt,
             'sdf_cols': args.sdf_cols,
             'sdf_rows': args.sdf_rows,
             'env_w': args.env_w,
@@ -216,6 +214,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)
     parser.add_argument("outdir")
+    parser.add_argument('--dt', type=float, default=0.25)
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=6.0)
     parser.add_argument('--env-h', type=float, default=6.0)

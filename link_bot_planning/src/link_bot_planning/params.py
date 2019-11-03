@@ -10,6 +10,7 @@ from dataclasses_json import dataclass_json
 class PlannerParams:
     timeout: float
     max_v: float
+    goal_threshold: float
 
 
 @dataclass_json
