@@ -79,7 +79,6 @@ def eval(args):
         model_hparams['sequence_length'] = args.sequence_length
     else:
         dataset_hparams_dict['sequence_length'] = model_hparams['sequence_length']
-    dataset_hparams_dict['local_env_shape'] = model_hparams['local_env_shape']
 
     ###############
     # Dataset

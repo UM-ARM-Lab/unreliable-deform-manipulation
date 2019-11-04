@@ -1,7 +1,5 @@
 {
   "model_class": "LocallyLinearNN",
-  "use_sdf": false,
-  "sdf_shape": [100, 100],
   "n_control": 2,
   "instability_penalty": 1.0,
   "sequence_length": 10,
