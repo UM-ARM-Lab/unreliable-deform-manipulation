@@ -115,8 +115,10 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
     # If we're resuming a checkpoint, there is no new log path
     if args.checkpoint is not None:
         full_log_path = args.checkpoint
-    else:
+    elif args.log:
         full_log_path = pathlib.Path("log_data") / log_path
+    else:
+        full_log_path = '/tmp'
 
     ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
     manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=3)

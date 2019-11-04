@@ -34,7 +34,6 @@ def train(args):
     # Datasets
     ###############
     train_dataset, train_tf_dataset = link_bot_dataset_utils.get_dataset(args.input_dir,
-                                                                         'state_space',
                                                                          dataset_hparams_dict,
                                                                          args.dataset_hparams,
                                                                          shuffle=True,
@@ -43,7 +42,6 @@ def train(args):
                                                                          seed=args.seed,
                                                                          batch_size=args.batch_size)
     val_dataset, val_tf_dataset = link_bot_dataset_utils.get_dataset(args.input_dir,
-                                                                     'state_space',
                                                                      dataset_hparams_dict,
                                                                      args.dataset_hparams,
                                                                      shuffle=False,

@@ -6,6 +6,7 @@ from typing import Union, Optional
 
 import tensorflow as tf
 
+from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from video_prediction.datasets import get_dataset_class
 
 
@@ -97,7 +98,6 @@ def balance_xy_dataset(dataset, key):
 
 # TODO: deduplicate with video_prediction
 def get_dataset(dataset_directory: str,
-                dataset_class_name: str,
                 dataset_hparams_dict: Union[str, dict],
                 dataset_hparams: str,
                 mode: str,
@@ -109,16 +109,15 @@ def get_dataset(dataset_directory: str,
     if isinstance(dataset_hparams_dict, str):
         dataset_hparams_dict = json.load(open(dataset_hparams_dict, 'r'))
 
-    dataset_class = get_dataset_class(dataset_class_name)
-    my_dataset = dataset_class(dataset_directory,
-                               mode=mode,
-                               num_epochs=epochs,
-                               seed=seed,
-                               hparams_dict=dataset_hparams_dict,
-                               hparams=dataset_hparams)
+    my_dataset = LinkBotStateSpaceDataset(dataset_directory,
+                                          mode=mode,
+                                          num_epochs=epochs,
+                                          seed=seed,
+                                          hparams_dict=dataset_hparams_dict,
+                                          hparams=dataset_hparams)
 
     if balance_key is not None:
-        tf_dataset = my_dataset.make_dataset(batch_size=batch_size, use_batches=False)
+        tf_dataset = my_dataset.make_dataset(batch_size=batch_size)
         tf_dataset = balance_xy_dataset(tf_dataset, balance_key)
         tf_dataset = tf_dataset.batch(batch_size)
     else:
