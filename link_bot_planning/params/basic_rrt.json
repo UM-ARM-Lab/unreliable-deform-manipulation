@@ -9,5 +9,6 @@
   "env_h": 5.0,
   "local_env_cols": 100,
   "local_env_rows": 100,
-  "max_v": 0.15
+  "max_v": 0.15,
+  "goal_threshold": 0.2
 }

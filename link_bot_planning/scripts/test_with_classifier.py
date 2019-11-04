@@ -99,7 +99,7 @@ def main():
 
     params = json.load(args.params.open("r"))
 
-    planner_params = PlannerParams(timeout=args.planner_timeout, max_v=params['max_v'], goal_threshold=params.goal_threshold)
+    planner_params = PlannerParams(timeout=args.planner_timeout, max_v=params['max_v'], goal_threshold=params['goal_threshold'])
     local_env_params = LocalEnvParams(h_rows=params['local_env_rows'],
                                       w_cols=params['local_env_cols'],
                                       res=params['res'])

@@ -202,7 +202,8 @@ def generate(args):
         'cheezits_box': [0.24, -0.24],
         'tissue_box': [0.24, 0.24],
     }
-    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, inital_object_dict)
+    # services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, inital_object_dict)
+    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, None)
 
     generate_trajs(args, full_output_directory, services)
 
