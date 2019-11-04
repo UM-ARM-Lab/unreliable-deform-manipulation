@@ -8,8 +8,8 @@ import tensorflow as tf
 from colorama import Fore
 
 import state_space_dynamics
+from link_bot_data import link_bot_dataset_utils
 from link_bot_pycommon import experiments_util
-from video_prediction.datasets import dataset_utils
 
 tf.enable_eager_execution()
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -33,24 +33,24 @@ def train(args):
     ###############
     # Datasets
     ###############
-    train_dataset, train_tf_dataset = dataset_utils.get_dataset(args.input_dir,
-                                                                'state_space',
-                                                                dataset_hparams_dict,
-                                                                args.dataset_hparams,
-                                                                shuffle=True,
-                                                                mode='train',
-                                                                epochs=1,  # we handle epochs in our training loop
-                                                                seed=args.seed,
-                                                                batch_size=args.batch_size)
-    val_dataset, val_tf_dataset = dataset_utils.get_dataset(args.input_dir,
-                                                            'state_space',
-                                                            dataset_hparams_dict,
-                                                            args.dataset_hparams,
-                                                            shuffle=False,
-                                                            mode='val',
-                                                            epochs=1,
-                                                            seed=args.seed,
-                                                            batch_size=args.batch_size)
+    train_dataset, train_tf_dataset = link_bot_dataset_utils.get_dataset(args.input_dir,
+                                                                         'state_space',
+                                                                         dataset_hparams_dict,
+                                                                         args.dataset_hparams,
+                                                                         shuffle=True,
+                                                                         mode='train',
+                                                                         epochs=1,  # we handle epochs in our training loop
+                                                                         seed=args.seed,
+                                                                         batch_size=args.batch_size)
+    val_dataset, val_tf_dataset = link_bot_dataset_utils.get_dataset(args.input_dir,
+                                                                     'state_space',
+                                                                     dataset_hparams_dict,
+                                                                     args.dataset_hparams,
+                                                                     shuffle=False,
+                                                                     mode='val',
+                                                                     epochs=1,
+                                                                     seed=args.seed,
+                                                                     batch_size=args.batch_size)
 
     ###############
     # Model
