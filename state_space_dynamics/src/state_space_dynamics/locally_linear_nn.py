@@ -56,13 +56,13 @@ class LocallyLinearNN(tf.keras.Model):
             params_t = z_t
 
             A_t_params, B_t_params = tf.split(params_t, [self.elements_in_A, self.elements_in_B], axis=1)
-            A_t_per_point = tf.split(A_t_params, self.hparams['n_points'], axis=1)
+            # A_t_per_point = tf.split(A_t_params, self.hparams['n_points'], axis=1)
             B_t_per_point = tf.split(B_t_params, self.hparams['n_points'], axis=1)
-            A_t_per_point = [tf.linalg.LinearOperatorFullMatrix(tf.reshape(_a_p, [-1, 2, 2])) for _a_p
-                             in A_t_per_point]
+            # A_t_per_point = [tf.linalg.LinearOperatorFullMatrix(tf.reshape(_a_p, [-1, 2, 2])) for _a_p
+            #                  in A_t_per_point]
             B_t_per_point = [tf.reshape(_b_p, [-1, 2, 2]) for _b_p in B_t_per_point]
             # TODO: remove this? do we need an A matrix?
-            A_t = tf.linalg.LinearOperatorBlockDiag(A_t_per_point).to_dense("A_t")
+            # A_t = tf.linalg.LinearOperatorBlockDiag(A_t_per_point).to_dense("A_t")
 
             B_t = tf.concat(B_t_per_point, axis=1)
 

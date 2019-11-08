@@ -89,7 +89,6 @@ class SST(MyPlanner):
         # Only sample configurations which are known to be valid, i.e. not overstretched.
         def state_sampler_allocator(state_space):
             # this length comes from the SDF file textured_link_bot.sdf
-            # sampler = ValidRopeConfigurationSampler(state_space, extent=self.env_params.extent, link_length=0.24)
             sampler = ValidRopeConfigurationCompoundSampler(state_space, extent=self.env_params.extent, link_length=0.24)
             return sampler
 
@@ -107,8 +106,7 @@ class SST(MyPlanner):
 
         # SST will use this to propagate things
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
-        # self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
-        self.mv = ClassifierMotionValidator(self.si)
+        self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
         self.si.setMotionValidator(self.mv)
 
         self.planner = oc.SST(self.si)
@@ -117,6 +115,9 @@ class SST(MyPlanner):
         # self.planner.setPruningRadius(1.0)
         self.si.setPropagationStepSize(self.fwd_model.dt)
         self.si.setMinMaxControlDuration(1, 50)
+
+    def is_valid(self, state):
+        return True
 
     def propagate(self, start, control, duration, state_out):
         np_s = to_numpy(start[0], self.n_state)

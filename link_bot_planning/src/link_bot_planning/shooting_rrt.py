@@ -78,7 +78,6 @@ class ShootingRRT(MyPlanner):
         # Only sample configurations which are known to be valid, i.e. not overstretched.
         def state_sampler_allocator(state_space):
             # this length comes from the SDF file textured_link_bot.sdf
-            # sampler = ValidRopeConfigurationSampler(state_space, extent=self.env_params.extent, link_length=0.24)
             sampler = ValidRopeConfigurationCompoundSampler(state_space, extent=self.env_params.extent, link_length=0.24)
             return sampler
 
