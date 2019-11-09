@@ -4,6 +4,7 @@ from __future__ import division, print_function
 import argparse
 import json
 import pathlib
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -77,6 +78,19 @@ class TestWithClassifier(my_mpc.myMPC):
              full_sdf_data.extent)
         plt.show()
 
+    def on_execution_complete(self,
+                              planned_path: np.ndarray,
+                              planned_actions: np.ndarray,
+                              tail_goal_point: np.ndarray,
+                              planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
+                              actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
+                              actual_path: np.ndarray,
+                              full_sdf_data: link_bot_sdf_utils.SDF,
+                              planner_data: ob.PlannerData,
+                              planning_time: float):
+        final_execution_error = np.linalg.norm(actual_path[-1, 0:2] - tail_goal_point)
+        print('final execution error {:0.3f}'.format(final_execution_error))
+
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=250)
@@ -89,6 +103,7 @@ def main():
     parser.add_argument("--no-execution", action='store_true', help='do not execute, only plan')
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=15.0)
+    parser.add_argument("--goal-threshold", help="distance for tail in meters", type=float)
     parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
 
     args = parser.parse_args()
@@ -99,7 +114,8 @@ def main():
 
     params = json.load(args.params.open("r"))
 
-    planner_params = PlannerParams(timeout=args.planner_timeout, max_v=params['max_v'], goal_threshold=params['goal_threshold'])
+    goal_threshold = args.goal_threshold if args.goal_threshold is not None else params['goal_threshold']
+    planner_params = PlannerParams(timeout=args.planner_timeout, max_v=params['max_v'], goal_threshold=goal_threshold)
     local_env_params = LocalEnvParams(h_rows=params['local_env_rows'],
                                       w_cols=params['local_env_cols'],
                                       res=params['res'])

@@ -10,7 +10,7 @@ from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import VizObject
 from link_bot_planning.params import EnvParams, LocalEnvParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
-from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env
+from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env, from_numpy
 from link_bot_pycommon import link_bot_sdf_utils
 
 
@@ -94,19 +94,54 @@ class ShootingRRT(MyPlanner):
         self.si = self.ss.getSpaceInformation()
 
         # use the default state propagator, it won't be called anyways because we use a directed control sampler
-        self.ss.setStatePropagator(oc.StatePropagator(self.si))
+        self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
+        self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
 
-        self.si.setDirectedControlSamplerAllocator(
-            ShootingDirectedControlSampler.allocator(self.fwd_model,
-                                                     self.classifier_model,
-                                                     self.services,
-                                                     self.viz_object,
-                                                     self.local_env_params,
-                                                     self.planner_params.max_v))
-
+        # self.si.setDirectedControlSamplerAllocator(
+        #     ShootingDirectedControlSampler.allocator(self.fwd_model,
+        #                                              self.classifier_model,
+        #                                              self.services,
+        #                                              self.viz_object,
+        #                                              self.local_env_params,
+        #                                              self.planner_params.max_v))
         self.planner = oc.RRT(self.si)
-        self.planner.setIntermediateStates(False)
+        self.planner.setIntermediateStates(True)  # this is necessary!
         self.ss.setPlanner(self.planner)
+        self.si.setPropagationStepSize(self.fwd_model.dt)
+        self.si.setMinMaxControlDuration(1, 50)
+
+    def is_valid(self, state):
+        np_s1 = to_numpy(state[0], self.n_state)
+        h1 = np_s1[0, 4:6]
+        local_env_data = get_local_occupancy_data(cols=self.local_env_params.w_cols,
+                                                  rows=self.local_env_params.h_rows,
+                                                  res=self.local_env_params.res,
+                                                  center_point=h1,
+                                                  services=self.services)
+        accept_probability = self.classifier_model.predict_state_only(local_env_data, np_s1)
+        return accept_probability > 0.5
+
+    def propagate(self, start, control, duration, state_out):
+        np_s = to_numpy(start[0], self.n_state)
+        np_u = np.expand_dims(to_numpy(control, self.n_control), axis=0)
+
+        # use the forward model to predict the next configuration
+        points_next = self.fwd_model.predict(np_s, np_u)
+        np_s_next = points_next[:, 1].reshape([1, self.n_state])
+
+        from_numpy(np_s_next, state_out[0], self.n_state)
+        next_head_point = np_s_next[0, 4:6]
+        local_env_data = get_local_occupancy_data(cols=self.local_env_params.w_cols,
+                                                  rows=self.local_env_params.h_rows,
+                                                  res=self.local_env_params.res,
+                                                  center_point=next_head_point,
+                                                  services=self.services)
+        local_env = local_env_data.data.flatten().astype(np.float64)
+        for idx in range(self.n_local_env):
+            occupancy_value = local_env[idx]
+            state_out[1][idx] = occupancy_value
+        origin = local_env_data.origin.astype(np.float64)
+        from_numpy(origin, state_out[2], 2)
 
     def plan(self, np_start: np.ndarray,
              tail_goal_point: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[link_bot_sdf_utils.OccupancyData]]:
@@ -155,7 +190,8 @@ class ShootingRRT(MyPlanner):
                 origin = to_numpy(state[2], 2)[0]
                 planner_local_env = link_bot_sdf_utils.OccupancyData(grid, res_2d, origin)
                 planner_local_envs.append(planner_local_env)
-            for i, control in enumerate(ompl_path.getControls()):
+            for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
+                # duration seems to always be 1 for control::RRT
                 np_controls[i] = to_numpy(control, self.n_control)
 
             # Verification

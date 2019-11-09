@@ -10,8 +10,8 @@ import tensorflow as tf
 from colorama import Fore
 from matplotlib.animation import FuncAnimation
 
+from link_bot_data import link_bot_dataset_utils
 from link_bot_planning import model_utils
-from video_prediction.datasets import dataset_utils
 
 tf.enable_eager_execution()
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -24,15 +24,14 @@ def generate(args):
     # Datasets
     ###############
     dataset_hparams_dict['sequence_length'] = args.sequence_length
-    dataset, tf_dataset = dataset_utils.get_dataset(args.input_dir,
-                                                    'state_space',
-                                                    dataset_hparams_dict,
-                                                    '',
-                                                    shuffle=False,
-                                                    mode=args.mode,
-                                                    epochs=1,
-                                                    seed=0,
-                                                    batch_size=1)
+    dataset, tf_dataset = link_bot_dataset_utils.get_dataset(args.input_dir,
+                                                             dataset_hparams_dict=dataset_hparams_dict,
+                                                             dataset_hparams='',
+                                                             shuffle=False,
+                                                             mode=args.mode,
+                                                             epochs=1,
+                                                             seed=0,
+                                                             batch_size=1)
 
     comparison_info = json.load(args.comparison.open("r"))
     models = {}

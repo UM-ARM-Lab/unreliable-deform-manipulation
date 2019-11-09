@@ -39,9 +39,11 @@ class LinkBotCompoundGoal(ob.GoalSampleableRegion):
         """
         Uses the distance between the tail point and the goal point
         """
-        return np.linalg.norm([state[0][0] - self.tail_x, state[0][1] - self.tail_y])
+        dtg = np.linalg.norm([state[0][0] - self.tail_x, state[0][1] - self.tail_y])
+        return dtg
 
     def sampleGoal(self, state_out: ob.CompoundStateInternal):
+        print("goal being sampled...")
         sampler = self.getSpaceInformation().allocStateSampler()
         # sampe a random valid rope configuration
         sampler.sampleUniform(state_out)

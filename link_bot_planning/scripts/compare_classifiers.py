@@ -141,7 +141,7 @@ def main():
     parser.add_argument("classifier_2_model_type", choices=['none', 'collision', 'raster'])
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-total-plans", type=int, default=10, help='total number of plans')
-    parser.add_argument("--n-plans-per-env", type=int, default=10, help='number of targets/plans per env')
+    parser.add_argument("--n-plans-per-env", type=int, default=5, help='number of targets/plans per env')
     parser.add_argument("--seed", '-s', type=int, default=3)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=15.0)

@@ -129,10 +129,10 @@ class myMPC:
 
                 plan_idx += 1
                 total_plan_idx += 1
-                if plan_idx == self.n_plans_per_env:
+                if plan_idx >= self.n_plans_per_env or total_plan_idx >= self.n_total_plans:
                     break
 
-            if total_plan_idx == self.n_total_plans:
+            if total_plan_idx >= self.n_total_plans:
                 break
 
     def get_goal(self, w, h, head_point, env_padding):

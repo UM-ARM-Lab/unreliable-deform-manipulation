@@ -340,8 +340,8 @@ class RasterClassifierWrapper(BaseClassifier):
         accept_probabilities = accept_probabilities.numpy()
         accept_probabilities = accept_probabilities.astype(np.float64)[0, 0]
 
-        title = "p(accept) = {:5.3f}".format(accept_probabilities)
         if self.show:
+            title = "p(accept) = {:5.3f}".format(accept_probabilities)
             plot_classifier_data(planned_env=local_env_data.data,
                                  planned_env_extent=local_env_data.extent,
                                  planned_state=s1[0],
@@ -353,5 +353,24 @@ class RasterClassifierWrapper(BaseClassifier):
                                  title=title,
                                  label=None)
             plt.show()
+
+        return accept_probabilities
+
+    def predict_state_only(self, local_env_data: link_bot_sdf_utils.OccupancyData, s1: np.ndarray) -> float:
+        """
+        :param local_env_data:
+        :param s1: [batch, 6] float64
+        :return: [batch, 1] float64
+        """
+        test_x = {
+            'planned_state': tf.convert_to_tensor(add_batch(s1, 1), dtype=tf.float32),
+            'planned_local_env/env': tf.convert_to_tensor(add_batch(local_env_data.data, 2), dtype=tf.float32),
+            'res': tf.convert_to_tensor(add_batch(local_env_data.resolution[0:1], 1)),
+            'planned_local_env/origin': tf.convert_to_tensor(add_batch(local_env_data.origin, 1), dtype=tf.float32),
+            'planned_local_env/extent': tf.convert_to_tensor(add_batch(local_env_data.extent, 1), dtype=tf.float32),
+        }
+        accept_probabilities = self.net(test_x)[-1]
+        accept_probabilities = accept_probabilities.numpy()
+        accept_probabilities = accept_probabilities.astype(np.float64)[0, 0]
 
         return accept_probabilities

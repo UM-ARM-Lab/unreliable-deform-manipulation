@@ -1,7 +1,7 @@
 from typing import Tuple, List
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from ompl import base as ob
 from ompl import control as oc
 
@@ -107,7 +107,6 @@ class SST(MyPlanner):
         # SST will use this to propagate things
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
-        self.si.setMotionValidator(self.mv)
 
         self.planner = oc.SST(self.si)
         self.ss.setPlanner(self.planner)
@@ -117,7 +116,17 @@ class SST(MyPlanner):
         self.si.setMinMaxControlDuration(1, 50)
 
     def is_valid(self, state):
-        return True
+        np_s1 = to_numpy(state[0], self.n_state)
+        h1 = np_s1[0, 4:6]
+        local_env_data = get_local_occupancy_data(cols=self.local_env_params.w_cols,
+                                                  rows=self.local_env_params.h_rows,
+                                                  res=self.local_env_params.res,
+                                                  center_point=h1,
+                                                  services=self.services)
+        plt.imshow(local_env_data.image)
+        plt.show()
+        accept_probability = self.classifier_model.predict_state_only(local_env_data, np_s1)
+        return accept_probability > 0.5
 
     def propagate(self, start, control, duration, state_out):
         np_s = to_numpy(start[0], self.n_state)

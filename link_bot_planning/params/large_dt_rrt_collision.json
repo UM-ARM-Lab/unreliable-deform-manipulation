@@ -1,9 +1,9 @@
 {
-  "fwd_model_dir": "llnn/large_dt/November_04_09-26-44_84ccbfb7fe",
+  "fwd_model_dir": "./llnn/large_dt/November_04_09-26-44_84ccbfb7fe/",
   "fwd_model_type": "llnn",
   "classifier_model_dir": "",
   "classifier_model_type": "collision",
-  "planner": "SST",
+  "planner": "ShootingRRT",
   "res": 0.05,
   "env_w": 5.0,
   "env_h": 5.0,
@@ -12,4 +12,3 @@
   "max_v": 0.15,
   "goal_threshold": 0.2
 }
-

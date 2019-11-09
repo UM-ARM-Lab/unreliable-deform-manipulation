@@ -11,3 +11,6 @@ class NoneClassifier(BaseClassifier):
 
     def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, s1: np.ndarray, s2: np.ndarray) -> float:
         return 1.0
+
+    def predict_state_only(self, local_env_data: link_bot_sdf_utils.OccupancyData, s1: np.ndarray) -> float:
+        return 1.0
