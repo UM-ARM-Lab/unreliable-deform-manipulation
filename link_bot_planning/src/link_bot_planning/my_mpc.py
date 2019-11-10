@@ -48,6 +48,7 @@ class myMPC:
 
     def run(self):
         total_plan_idx = 0
+        initial_poses_in_collision = 0
         while True:
             # generate a new environment by rearranging the obstacles
             objects = ['moving_box{}'.format(i) for i in range(1, 7)]
@@ -89,6 +90,7 @@ class myMPC:
                 except RuntimeError:
                     # this means the start was considered invalid, so we just skip this and move to a new environment
                     print(Fore.RED + "Start was classified to be invalid. Skipping this environment." + Fore.RESET)
+                    initial_poses_in_collision += 1
                     break
                 planning_time = time.time() - t0
                 if self.verbose >= 1:
@@ -135,6 +137,8 @@ class myMPC:
             if total_plan_idx >= self.n_total_plans:
                 break
 
+        self.on_complete(initial_poses_in_collision)
+
     def get_goal(self, w, h, head_point, env_padding):
         return sample_goal(w, h, head_point, env_padding)
 
@@ -157,4 +161,7 @@ class myMPC:
                               full_sdf_data: link_bot_sdf_utils.SDF,
                               planner_data: ob.PlannerData,
                               planning_time: float):
+        pass
+
+    def on_complete(self, initial_poses_in_collision):
         pass

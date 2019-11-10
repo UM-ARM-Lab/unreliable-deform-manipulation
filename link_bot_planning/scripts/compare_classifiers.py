@@ -32,7 +32,7 @@ config = tf.ConfigProto(gpu_options=gpu_options)
 tf.enable_eager_execution(config=config)
 
 
-class TestWithClassifier(my_mpc.myMPC):
+class ComputeClassifierMetrics(my_mpc.myMPC):
 
     def __init__(self,
                  planner: MyPlanner,
@@ -47,6 +47,7 @@ class TestWithClassifier(my_mpc.myMPC):
                  local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
+                 comparison_item_idx: int,
                  seed: int,
                  outdir: Optional[pathlib.Path] = None,
                  ):
@@ -77,7 +78,8 @@ class TestWithClassifier(my_mpc.myMPC):
             "seed": self.seed,
             "metrics": [],
         }
-        self.root = self.outdir / self.classifier_model_type
+        subfolder = "{}_{}".format(self.classifier_model_type, comparison_item_idx)
+        self.root = self.outdir / subfolder
         self.root.mkdir(parents=True)
         print(Fore.CYAN + str(self.root) + Fore.RESET)
         self.metrics_filename = self.root / 'metrics.json'
@@ -127,6 +129,11 @@ class TestWithClassifier(my_mpc.myMPC):
 
         self.successfully_completed_plan_idx += 1
 
+    def on_complete(self, initial_poses_in_collision):
+        self.metrics['initial_poses_in_collision'] = initial_poses_in_collision
+        metrics_file = self.metrics_filename.open('w')
+        json.dump(self.metrics, metrics_file, indent=1)
+
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=250)
@@ -135,10 +142,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="forward model", type=pathlib.Path)
     parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
-    parser.add_argument("classifier_1_model_dir", help="classifier", type=pathlib.Path)
-    parser.add_argument("classifier_1_model_type", choices=['none', 'collision', 'raster'])
-    parser.add_argument("classifier_2_model_dir", help="classifier", type=pathlib.Path)
-    parser.add_argument("classifier_2_model_type", choices=['none', 'collision', 'raster'])
+    parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-total-plans", type=int, default=10, help='total number of plans')
     parser.add_argument("--n-plans-per-env", type=int, default=5, help='number of targets/plans per env')
@@ -149,8 +153,6 @@ def main():
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
-    parser.add_argument('--local-env-cols', type=float, default=100, help='local env width')
-    parser.add_argument('--local-env-rows', type=float, default=100, help='local env width')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
 
     args = parser.parse_args()
@@ -166,15 +168,6 @@ def main():
         print(Fore.YELLOW + "Creating output directory: {}".format(common_output_directory) + Fore.RESET)
         common_output_directory.mkdir(parents=True)
 
-    planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v, goal_threshold=0.1)
-    local_env_params = LocalEnvParams(h_rows=args.local_env_rows,
-                                      w_cols=args.local_env_cols,
-                                      res=args.res)
-    env_params = EnvParams(w=args.env_w,
-                           h=args.env_h,
-                           real_time_rate=args.real_time_rate,
-                           goal_padding=0.0)
-
     rospy.init_node("compare_classifiers")
 
     initial_object_dict = {
@@ -187,77 +180,57 @@ def main():
     }
 
     services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
-                                             real_time_rate=env_params.real_time_rate,
+                                             real_time_rate=args.real_time_rate,
                                              reset_world=True,
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
-    planner1 = get_planner(planner_class_str='ShootingRRT',
-                           fwd_model_dir=args.fwd_model_dir,
-                           fwd_model_type=args.fwd_model_type,
-                           classifier_model_dir=args.classifier_1_model_dir,
-                           classifier_model_type=args.classifier_1_model_type,
-                           planner_params=planner_params,
-                           local_env_params=local_env_params,
-                           env_params=env_params,
-                           services=services)
+    comparisons = json.load(args.comparison.open("r"))
+    for comparison_idx, item_of_comparison in enumerate(comparisons):
+        classifier_model_dir = pathlib.Path(item_of_comparison['classifier_model_dir'])
+        classifier_model_type = item_of_comparison['classifier_model_type']
 
-    planner2 = get_planner(planner_class_str='ShootingRRT',
-                           fwd_model_dir=args.fwd_model_dir,
-                           fwd_model_type=args.fwd_model_type,
-                           classifier_model_dir=args.classifier_2_model_dir,
-                           classifier_model_type=args.classifier_2_model_type,
-                           planner_params=planner_params,
-                           local_env_params=local_env_params,
-                           env_params=env_params,
-                           services=services)
+        model_hparams_file = classifier_model_dir / 'hparams.json'
+        model_hparams = json.load(model_hparams_file.open('r'))
+        local_env_rows, local_env_cols = model_hparams['local_env_shape']
 
-    classifier_1_tester = TestWithClassifier(
-        planner=planner1,
-        fwd_model_dir=args.fwd_model_dir,
-        fwd_model_type=args.fwd_model_type,
-        classifier_model_dir=args.classifier_1_model_dir,
-        classifier_model_type=args.classifier_1_model_type,
-        n_plans_per_env=args.n_plans_per_env,
-        n_total_plans=args.n_total_plans,
-        verbose=args.verbose,
-        planner_params=planner_params,
-        local_env_params=local_env_params,
-        env_params=env_params,
-        services=services,
-        seed=args.seed,
-        outdir=common_output_directory,
-    )
-    classifier_1_tester.run()
+        planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v, goal_threshold=0.1)
+        local_env_params = LocalEnvParams(h_rows=local_env_rows,
+                                          w_cols=local_env_cols,
+                                          res=args.res)
+        env_params = EnvParams(w=args.env_w,
+                               h=args.env_h,
+                               real_time_rate=args.real_time_rate,
+                               goal_padding=0.0)
 
-    # Reset everything
-    np.random.seed(args.seed)
-    ou.RNG.setSeed(args.seed)
-    ou.setLogLevel(ou.LOG_ERROR)
+        planner = get_planner(planner_class_str='ShootingRRT',
+                              fwd_model_dir=args.fwd_model_dir,
+                              fwd_model_type=args.fwd_model_type,
+                              classifier_model_dir=classifier_model_dir,
+                              classifier_model_type=classifier_model_type,
+                              planner_params=planner_params,
+                              local_env_params=local_env_params,
+                              env_params=env_params,
+                              services=services)
 
-    services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
-                                             real_time_rate=env_params.real_time_rate,
-                                             reset_world=True,
-                                             initial_object_dict=initial_object_dict)
-    services.pause(std_srvs.srv.EmptyRequest())
-
-    classifier_2_tester = TestWithClassifier(
-        planner=planner2,
-        fwd_model_dir=args.fwd_model_dir,
-        fwd_model_type=args.fwd_model_type,
-        classifier_model_dir=args.classifier_2_model_dir,
-        classifier_model_type=args.classifier_2_model_type,
-        n_plans_per_env=args.n_plans_per_env,
-        n_total_plans=args.n_total_plans,
-        verbose=args.verbose,
-        planner_params=planner_params,
-        local_env_params=local_env_params,
-        env_params=env_params,
-        services=services,
-        seed=args.seed,
-        outdir=common_output_directory,
-    )
-    classifier_2_tester.run()
+        runner = ComputeClassifierMetrics(
+            planner=planner,
+            fwd_model_dir=args.fwd_model_dir,
+            fwd_model_type=args.fwd_model_type,
+            classifier_model_dir=classifier_model_dir,
+            classifier_model_type=classifier_model_type,
+            n_plans_per_env=args.n_plans_per_env,
+            n_total_plans=args.n_total_plans,
+            verbose=args.verbose,
+            planner_params=planner_params,
+            local_env_params=local_env_params,
+            env_params=env_params,
+            services=services,
+            seed=args.seed,
+            outdir=common_output_directory,
+            comparison_item_idx=comparison_idx
+        )
+        runner.run()
 
 
 if __name__ == '__main__':

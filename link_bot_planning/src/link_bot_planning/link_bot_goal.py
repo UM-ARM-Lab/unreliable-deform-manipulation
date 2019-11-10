@@ -43,7 +43,6 @@ class LinkBotCompoundGoal(ob.GoalSampleableRegion):
         return dtg
 
     def sampleGoal(self, state_out: ob.CompoundStateInternal):
-        print("goal being sampled...")
         sampler = self.getSpaceInformation().allocStateSampler()
         # sampe a random valid rope configuration
         sampler.sampleUniform(state_out)
