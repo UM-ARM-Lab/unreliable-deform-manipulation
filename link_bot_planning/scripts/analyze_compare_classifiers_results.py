@@ -54,6 +54,8 @@ def main():
     subfolders = args.results_dir.iterdir()
     final_errors_comparisons = {}
     for subfolder in subfolders:
+        if not subfolder.is_dir():
+            continue
         metrics_filename = subfolder / 'metrics.json'
         metrics = json.load(metrics_filename.open("r"))
         data = metrics.pop('metrics')

@@ -1,0 +1,15 @@
+[
+  {
+    "classifier_model_dir": "",
+    "classifier_model_type": "none"
+  },
+  {
+    "classifier_model_dir": "",
+    "classifier_model_type": "collision"
+  },
+  {
+    "classifier_model_dir": "classifiers/state-only/November_08_12-45-58_e138c7b6ae/",
+    "classifier_model_type": "raster"
+  }
+]
+

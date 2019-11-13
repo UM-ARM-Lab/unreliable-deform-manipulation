@@ -191,8 +191,13 @@ def main():
         classifier_model_type = item_of_comparison['classifier_model_type']
 
         model_hparams_file = classifier_model_dir / 'hparams.json'
-        model_hparams = json.load(model_hparams_file.open('r'))
-        local_env_rows, local_env_cols = model_hparams['local_env_shape']
+        if model_hparams_file.exists():
+            model_hparams = json.load(model_hparams_file.open('r'))
+            local_env_rows, local_env_cols = model_hparams['local_env_shape']
+        else:
+            local_env_shape = [50, 50]
+            local_env_rows, local_env_cols = local_env_shape
+            print(Fore.YELLOW + "no model hparams, assuming local env is {}".format(local_env_shape) + Fore.RESET)
 
         planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v, goal_threshold=0.1)
         local_env_params = LocalEnvParams(h_rows=local_env_rows,

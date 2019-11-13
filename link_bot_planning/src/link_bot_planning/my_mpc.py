@@ -55,6 +55,9 @@ class myMPC:
             gazebo_trajectory_execution.move_objects(self.services, objects, self.env_params.w, self.env_params.h, 'velocity',
                                                      padding=0.5)
 
+            # nudge the rope so it is hopefully not in collision?
+            gazebo_utils.nudge_rope()
+
             # TODO: should I have this here? It's just for visualization
             full_sdf_data = get_sdf_data(env_h=10, env_w=10, res=0.03, services=self.services)
 

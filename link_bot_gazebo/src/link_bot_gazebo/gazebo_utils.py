@@ -343,3 +343,8 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result: LinkBotT
             actual_local_envs.append(actual_local_env)
     actual_path = np.array(actual_path)
     return actual_path, actual_local_envs
+
+
+def nudge_rope():
+    # TODO: pick a random direction and kick the rope
+    pass
