@@ -83,6 +83,8 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
         self.root.mkdir(parents=True)
         print(Fore.CYAN + str(self.root) + Fore.RESET)
         self.metrics_filename = self.root / 'metrics.json'
+        self.failures_root = self.root / 'failures'
+        self.n_failures = 0
         self.successfully_completed_plan_idx = 0
 
     def on_execution_complete(self,
@@ -133,6 +135,24 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
         self.metrics['initial_poses_in_collision'] = initial_poses_in_collision
         metrics_file = self.metrics_filename.open('w')
         json.dump(self.metrics, metrics_file, indent=1)
+
+    def on_planner_failure(self, start, tail_goal_point, full_sdf_data):
+        self.n_failures += 1
+        folder = self.failures_root / str(self.n_failures)
+        folder.mkdir(parents=True)
+        image_file = (folder / 'full_sdf.png')
+        info_file = (folder / 'info.json').open('w')
+        info = {
+            'start': start.tolist(),
+            'tail_goal_point': tail_goal_point.tolist(),
+            'sdf': {
+                'res': full_sdf_data.resolution.tolist(),
+                'origin': full_sdf_data.origin.tolist(),
+                'extent': full_sdf_data.extent,
+            },
+        }
+        json.dump(info, info_file, indent=1)
+        plt.imsave(image_file, full_sdf_data.image)
 
 
 def main():

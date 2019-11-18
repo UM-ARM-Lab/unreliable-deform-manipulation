@@ -56,7 +56,7 @@ class myMPC:
                                                      padding=0.5)
 
             # nudge the rope so it is hopefully not in collision?
-            gazebo_utils.nudge_rope()
+            self.services.nudge_rope()
 
             # TODO: should I have this here? It's just for visualization
             full_sdf_data = get_sdf_data(env_h=10, env_w=10, res=0.03, services=self.services)
@@ -93,6 +93,7 @@ class myMPC:
                 except RuntimeError:
                     # this means the start was considered invalid, so we just skip this and move to a new environment
                     print(Fore.RED + "Start was classified to be invalid. Skipping this environment." + Fore.RESET)
+                    self.on_planner_failure(start, tail_goal_point, full_sdf_data)
                     initial_poses_in_collision += 1
                     break
                 planning_time = time.time() - t0
@@ -167,4 +168,10 @@ class myMPC:
         pass
 
     def on_complete(self, initial_poses_in_collision):
+        pass
+
+    def on_planner_failure(self,
+                           start: np.ndarray,
+                           tail_goal_point: np.ndarray,
+                           full_sdf_data: link_bot_sdf_utils.OccupancyData):
         pass

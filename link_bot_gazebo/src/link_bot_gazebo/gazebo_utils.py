@@ -10,9 +10,9 @@ from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
 from visualization_msgs.msg import MarkerArray, Marker
 
-from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest
-from link_bot_gazebo.msg import Position2dAction, \
-    LinkBotVelocityAction, ObjectAction, LinkBotJointConfiguration
+from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest, \
+    ApplyBodyWrench, ApplyBodyWrenchRequest
+from link_bot_gazebo.msg import Position2dAction, LinkBotVelocityAction, ObjectAction, LinkBotJointConfiguration
 from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
     InverseCameraProjection, InverseCameraProjectionRequest, CameraProjection, CameraProjectionRequest, ComputeSDF2Request, \
     LinkBotPositionAction, LinkBotPath, LinkBotTrajectory, ComputeOccupancy, ComputeOccupancyRequest, LinkBotTrajectoryRequest, \
@@ -52,6 +52,7 @@ class GazeboServices:
         self.position_action = rospy.ServiceProxy("/link_bot_position_action", LinkBotPositionAction)
         self.execute_path = rospy.ServiceProxy("/link_bot_execute_path", LinkBotPath)
         self.execute_trajectory = rospy.ServiceProxy("/link_bot_execute_trajectory", LinkBotTrajectory)
+        self.apply_body_wrench = rospy.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
         self.services_to_wait_for = [
             '/world_control',
             '/link_bot_state',
@@ -113,6 +114,18 @@ class GazeboServices:
         context_states = initial_context_states
         context_actions = np.zeros([context_length - 1, action_dim])
         return context_images, context_states, context_actions
+
+    def nudge_rope(self):
+        nudge = ApplyBodyWrenchRequest()
+        nudge.duration.secs = 0
+        nudge.duration.nsecs = 50000000
+        nudge.body_name = 'link_bot::head'
+        angle = np.random.uniform(-np.pi, np.pi)
+        magnitude = 10  # newtons
+        nudge.wrench.force.x = np.cos(angle) * magnitude
+        nudge.wrench.force.y = np.sin(angle) * magnitude
+
+        self.apply_body_wrench(nudge)
 
 
 def rowcol_to_xy(services, row, col):
@@ -343,8 +356,3 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result: LinkBotT
             actual_local_envs.append(actual_local_env)
     actual_path = np.array(actual_path)
     return actual_path, actual_local_envs
-
-
-def nudge_rope():
-    # TODO: pick a random direction and kick the rope
-    pass
