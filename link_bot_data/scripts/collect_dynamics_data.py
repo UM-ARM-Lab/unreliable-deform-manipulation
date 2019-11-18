@@ -13,9 +13,9 @@ import tensorflow
 from colorama import Fore
 
 import visual_mpc.gazebo_trajectory_execution
-from link_bot_data.link_bot_dataset_utils import bytes_feature, float_feature, int_feature
+from link_bot_data.link_bot_dataset_utils import bytes_feature, float_feature
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import get_local_sdf_data
+from link_bot_gazebo.gazebo_utils import get_local_occupancy_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_planning.goals import sample_goal
 
@@ -27,34 +27,13 @@ from link_bot_data import random_environment_data_utils
 from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 
 
-def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gripper1_target_y):
+def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gripper1_target_y):
     state_req = LinkBotStateRequest()
     action_msg = LinkBotVelocityAction()
 
-    # Center SDF at the current head position
-    state = services.get_state(state_req)
-    head_idx = state.link_names.index("head")
-    initial_head_point = np.array([state.points[head_idx].x, state.points[head_idx].y])
-
-    # Compute SDF Data
-    local_sdf_data = get_local_sdf_data(sdf_cols=args.sdf_cols,
-                                        sdf_rows=args.sdf_rows,
-                                        res=args.res,
-                                        center_point=initial_head_point,
-                                        services=services)
-
-    feature = {
-        # These features don't change over time
-        'sdf/sdf': float_feature(local_sdf_data.sdf.flatten()),
-        'sdf/gradient': float_feature(local_sdf_data.gradient.flatten()),
-        'sdf/shape': int_feature(np.array(local_sdf_data.sdf.shape)),
-        'sdf/resolution': float_feature(local_sdf_data.resolution),
-        'sdf/origin': float_feature(local_sdf_data.origin),
-        'sdf/head_points': float_feature(initial_head_point),
-    }
-
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
-    for t in range(args.steps_per_traj):
+    feature = {}
+    for time_idx in range(args.steps_per_traj):
         # Query the current state
         state = services.get_state(state_req)
         head_idx = state.link_names.index("head")
@@ -94,25 +73,45 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
             at_constraint_boundary = False
 
         if args.verbose:
-            print("{} {:0.4f} {:0.4f} {:0.4f} {:0.4f} {}".format(t,
+            print("{} {:0.4f} {:0.4f} {:0.4f} {:0.4f} {}".format(time_idx,
                                                                  gripper1_target_vx,
                                                                  gripper1_target_vy,
                                                                  post_action_state.gripper1_velocity.x,
                                                                  post_action_state.gripper1_velocity.y,
                                                                  at_constraint_boundary))
 
-        combined_constraint_labels[t, 0] = at_constraint_boundary
+        combined_constraint_labels[time_idx, 0] = at_constraint_boundary
 
         # format the tf feature
-        feature['{}/image_aux1/encoded'.format(t)] = bytes_feature(image.tobytes())
-        feature['{}/endeffector_pos'.format(t)] = float_feature(np.array([head_point.x, head_point.y]))
-        feature['{}/1/velocity'.format(t)] = float_feature(np.array([state.gripper1_velocity.x, state.gripper1_velocity.y]))
-        feature['{}/1/post_action_velocity'.format(t)] = float_feature(np.array([post_action_state.gripper1_velocity.x,
-                                                                                 post_action_state.gripper1_velocity.y]))
-        feature['{}/1/force'.format(t)] = float_feature(np.array([state.gripper1_force.x, state.gripper1_force.y]))
-        feature['{}/rope_configuration'.format(t)] = float_feature(rope_configuration.flatten())
-        feature['{}/action'.format(t)] = float_feature(np.array([gripper1_target_vx, gripper1_target_vy]))
-        feature['{}/constraint'.format(t)] = float_feature(np.array([float(at_constraint_boundary)]))
+        head_np = np.array([head_point.x, head_point.y])
+        local_env_data = get_local_occupancy_data(args.local_env_rows,
+                                                  args.local_env_cols,
+                                                  args.res,
+                                                  center_point=head_np,
+                                                  services=services)
+
+        # for compatibility with video prediction
+        feature['{}/image_aux1/encoded'.format(time_idx)] = bytes_feature(image.tobytes())
+        feature['{}/endeffector_pos'.format(time_idx)] = float_feature(head_np)
+        # for debugging/visualizing the constraint label
+        feature['{}/1/velocity'.format(time_idx)] = float_feature(
+            np.array([state.gripper1_velocity.x, state.gripper1_velocity.y]))
+        feature['{}/1/post_action_velocity'.format(time_idx)] = float_feature(
+            np.array([post_action_state.gripper1_velocity.x, post_action_state.gripper1_velocity.y]))
+        feature['{}/1/force'.format(time_idx)] = float_feature(np.array([state.gripper1_force.x, state.gripper1_force.y]))
+        # for learning dynamics in rope configuration space
+        feature['{}/rope_configuration'.format(time_idx)] = float_feature(rope_configuration.flatten())
+        feature['{}/state'.format(time_idx)] = float_feature(rope_configuration.flatten())
+        feature['{}/action'.format(time_idx)] = float_feature(np.array([gripper1_target_vx, gripper1_target_vy]))
+        feature['{}/constraint'.format(time_idx)] = float_feature(np.array([float(at_constraint_boundary)]))
+        feature['{}/actual_local_env/env'.format(time_idx)] = float_feature(local_env_data.data.flatten())
+        feature['{}/actual_local_env/extent'.format(time_idx)] = float_feature(np.array(local_env_data.extent))
+        feature['{}/actual_local_env/origin'.format(time_idx)] = float_feature(local_env_data.origin)
+        feature['{}/res'.format(time_idx)] = float_feature(np.array([local_env_data.resolution[0]]))
+        feature['{}/local_env_rows'.format(time_idx)] = float_feature(np.array([local_env_data.data.shape[0]]))
+        feature['{}/local_env_cols'.format(time_idx)] = float_feature(np.array([local_env_data.data.shape[1]]))
+        feature['{}/traj_idx'.format(time_idx)] = float_feature(np.array([traj_idx]))
+        feature['{}/time_idx'.format(time_idx)] = float_feature(np.array([time_idx]))
 
         global_t_step += 1
 
@@ -120,7 +119,7 @@ def generate_traj(args, services, env_idx, global_t_step, gripper1_target_x, gri
     percentage_positive = n_positive * 100.0 / combined_constraint_labels.shape[0]
 
     if args.verbose:
-        print(Fore.GREEN + "Trajectory {} Complete".format(env_idx) + Fore.RESET)
+        print(Fore.GREEN + "Trajectory {} Complete".format(traj_idx) + Fore.RESET)
 
     example_proto = tensorflow.train.Example(features=tensorflow.train.Features(feature=feature))
     # TODO: include documentation *inside* the tfrecords file describing what each feature is
@@ -173,7 +172,7 @@ def generate_trajs(args, full_output_directory, services):
 
 
 def generate(args):
-    rospy.init_node('gazebo_small_with_images')
+    rospy.init_node('collect_dynamics_data')
 
     assert args.n_trajs % args.n_trajs_per_file == 0, "num trajs must be multiple of {}".format(args.n_trajs_per_file)
 
@@ -185,8 +184,8 @@ def generate(args):
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': args.dt,
-            'sdf_cols': args.sdf_cols,
-            'sdf_rows': args.sdf_rows,
+            'local_env_cols': args.local_env_cols,
+            'local_env_rows': args.local_env_rows,
             'env_w': args.env_w,
             'env_h': args.env_h,
             'compression_type': args.compression_type
@@ -198,12 +197,14 @@ def generate(args):
         print("Using seed: ", args.seed)
     np.random.seed(args.seed)
 
-    inital_object_dict = {
-        'cheezits_box': [0.24, -0.24],
-        'tissue_box': [0.24, 0.24],
-    }
-    # services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, inital_object_dict)
-    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, None)
+    if not args.no_obstacles:
+        inital_object_dict = {
+            'cheezits_box': [0.24, -0.24],
+            'tissue_box': [0.24, 0.24],
+        }
+        services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, True, inital_object_dict)
+    else:
+        services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, True, None)
 
     generate_trajs(args, full_output_directory, services)
 
@@ -215,12 +216,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)
     parser.add_argument("outdir")
-    parser.add_argument('--dt', type=float, default=0.25)
+    parser.add_argument('--dt', type=float, default=1.00)
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=6.0)
     parser.add_argument('--env-h', type=float, default=6.0)
-    parser.add_argument('--sdf-cols', type=int, default=100)
-    parser.add_argument('--sdf-rows', type=int, default=100)
+    parser.add_argument('--local_env-cols', type=int, default=100)
+    parser.add_argument('--local_env-rows', type=int, default=100)
     parser.add_argument("--steps-per-traj", type=int, default=100)
     parser.add_argument("--steps-per-target", type=int, default=25)
     parser.add_argument("--start-idx-offset", type=int, default=0)

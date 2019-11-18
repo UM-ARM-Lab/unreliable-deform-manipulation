@@ -8,7 +8,7 @@ import std_srvs
 from colorama import Fore
 from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
-from visualization_msgs.msg import MarkerArray, Marker
+from visualization_msgs.msg import MarkerArray
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest, \
     ApplyBodyWrench, ApplyBodyWrenchRequest
@@ -138,7 +138,7 @@ def rowcol_to_xy(services, row, col):
 
 def setup_gazebo_env(verbose: int,
                      real_time_rate: float,
-                     reset_world: bool = True,
+                     reset_world: Optional[bool] = True,
                      initial_object_dict: Optional[Dict] = None):
     # fire up services
     services = GazeboServices()

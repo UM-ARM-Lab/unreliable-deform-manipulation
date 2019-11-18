@@ -161,7 +161,7 @@ class BaseStateSpaceDataset(object):
             for k, v in state_like_sliced_seqs.items():
                 # chop off the last time step since that's not part of the input
                 input_dict[k] = v[:-1]
-            output_dict = {'output_states': state_like_sliced_seqs['states']}
+            output_dict = {'output_states': state_like_sliced_seqs['state']}
             input_dict.update(action_like_sliced_seqs)
             return input_dict, output_dict
 

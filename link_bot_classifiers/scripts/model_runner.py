@@ -47,6 +47,8 @@ def train(args):
     ###############
     # Model
     ###############
+    model_hparams['res'] = train_classifier_dataset.hparams['local_env_params'].res
+    model_hparams['training_dataset'] = str(args.input_dir)
     module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
 
     try:

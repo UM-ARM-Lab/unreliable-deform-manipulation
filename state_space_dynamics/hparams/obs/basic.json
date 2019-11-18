@@ -1,0 +1,11 @@
+{
+  "model_class": "ObstacleLLNN",
+  "n_control": 2,
+  "sequence_length": 10,
+  "n_points": 3,
+  "conv_filters": [
+    [8, [5, 5]],
+    [8, [5, 5]]
+  ],
+  "fc_layer_sizes": [16, 16]
+}

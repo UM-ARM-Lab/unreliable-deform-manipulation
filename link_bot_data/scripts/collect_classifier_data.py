@@ -21,11 +21,11 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import my_mpc, model_utils
-from link_bot_planning.mpc_planners import MyPlanner, get_planner
+from link_bot_planning.mpc_planners import get_planner
+from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
-from link_bot_planning.shooting_rrt import ShootingRRT
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -243,7 +243,7 @@ def main():
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
-    planner = get_planner(planner_class=ShootingRRT,
+    planner = get_planner(planner_class_str='ShootingRRT',
                           fwd_model_dir=args.fwd_model_dir,
                           fwd_model_type=args.fwd_model_type,
                           classifier_model_dir=args.classifier_model_dir,

@@ -24,6 +24,7 @@ def main():
 
     filenames = [str(filename) for filename in args.input_dir.glob("{}/*.tfrecords".format(args.mode))]
     options = tf.python_io.TFRecordOptions(compression_type=hparams['compression_type'])
+    to_print = []
     for filename in filenames:
         example = next(tf.python_io.tf_record_iterator(filename, options=options))
         dict_message = MessageToDict(tf.train.Example.FromString(example))
@@ -34,9 +35,13 @@ def main():
             feature_value = feature_value[type_name]
             if 'value' in feature_value.keys():
                 feature_value = feature_value['value']
-                print(feature_name, len(feature_value))
+                to_print.append([feature_name, len(feature_value)])
             else:
                 print(Fore.RED + "Empty feature: {}, {}".format(feature_name, feature_value) + Fore.RESET)
+
+    to_print = sorted(to_print)
+    for items in to_print:
+        print(items)
 
 
 if __name__ == '__main__':

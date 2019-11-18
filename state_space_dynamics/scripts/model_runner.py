@@ -83,15 +83,14 @@ def eval(args):
     ###############
     # Dataset
     ###############
-    test_dataset, test_tf_dataset = dataset_utils.get_dataset(args.input_dir,
-                                                              'state_space',
-                                                              dataset_hparams_dict,
-                                                              args.dataset_hparams,
-                                                              shuffle=False,
-                                                              mode='test',
-                                                              epochs=1,
-                                                              seed=args.seed,
-                                                              batch_size=args.batch_size)
+    test_dataset, test_tf_dataset = link_bot_dataset_utils.get_dataset(args.input_dir,
+                                                                       dataset_hparams_dict,
+                                                                       args.dataset_hparams,
+                                                                       shuffle=False,
+                                                                       mode='test',
+                                                                       epochs=1,
+                                                                       seed=args.seed,
+                                                                       batch_size=args.batch_size)
 
     ###############
     # Model

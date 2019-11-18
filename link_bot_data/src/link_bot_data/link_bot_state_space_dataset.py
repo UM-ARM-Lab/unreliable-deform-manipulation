@@ -9,14 +9,16 @@ class LinkBotStateSpaceDataset(StateSpaceDataset):
     def __init__(self, *args, **kwargs):
         super(LinkBotStateSpaceDataset, self).__init__(*args, **kwargs)
 
-        self.state_like_names_and_shapes['states'] = '%d/rope_configuration', (self.hparams.rope_config_dim,)
+        self.state_like_names_and_shapes['state'] = '%d/state', (self.hparams.rope_config_dim,)
         self.action_like_names_and_shapes['actions'] = '%d/action', (2,)
-        self.state_like_names_and_shapes['constraints'] = '%d/constraint', (1,)
-        self.state_like_names_and_shapes['velocity'] = '%d/1/velocity', (2,)
-        self.state_like_names_and_shapes['post_action_velocity'] = '%d/1/post_action_velocity', (2,)
-        # self.trajectory_constant_names_and_shapes['sdf'] = 'sdf/sdf', [self.hparams.sdf_shape[0], self.hparams.sdf_shape[1], 1]
-        self.trajectory_constant_names_and_shapes['sdf_resolution'] = 'sdf/resolution', (2,)
-        self.trajectory_constant_names_and_shapes['sdf_origin'] = 'sdf/origin', (2,)
+
+        # local environment stuff
+        self.state_like_names_and_shapes['res'] = '%d/res', (1,)
+        self.state_like_names_and_shapes['actual_local_env/origin'] = '%d/actual_local_env/origin', (2,)
+        self.state_like_names_and_shapes['actual_local_env/extent'] = '%d/actual_local_env/extent', (4,)
+        self.state_like_names_and_shapes['actual_local_env/env'] = '%d/actual_local_env/env', (
+            self.hparams.local_env_rows, self.hparams.local_env_cols)
+
         self._infer_seq_length_and_setup()
 
     def get_default_hparams_dict(self):
@@ -24,8 +26,8 @@ class LinkBotStateSpaceDataset(StateSpaceDataset):
         hparams = dict(
             sequence_length=12,
             free_space_only=False,
-            sdf_rows=101,
-            sdf_cols=101,
+            local_env_rows=50,
+            local_env_cols=50,
             rope_config_dim=6,
         )
         return dict(itertools.chain(default_hparams.items(), hparams.items()))
