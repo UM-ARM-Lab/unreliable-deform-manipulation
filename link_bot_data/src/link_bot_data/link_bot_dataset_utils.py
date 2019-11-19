@@ -1,13 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 
-import json
-from typing import Union, Optional
-
 import tensorflow as tf
-
-from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
-from video_prediction.datasets import get_dataset_class
 
 
 def bytes_feature(value):
@@ -94,33 +88,3 @@ def balance_xy_dataset(dataset, key):
     balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
     return balanced_dataset
-
-
-# TODO: deduplicate with video_prediction
-def get_dataset(dataset_directory: str,
-                dataset_hparams_dict: Union[str, dict],
-                dataset_hparams: str,
-                mode: str,
-                epochs: Optional[int],
-                batch_size: int,
-                seed: int,
-                balance_key: Optional[str] = None,
-                shuffle: bool = True):
-    if isinstance(dataset_hparams_dict, str):
-        dataset_hparams_dict = json.load(open(dataset_hparams_dict, 'r'))
-
-    my_dataset = LinkBotStateSpaceDataset(dataset_directory,
-                                          mode=mode,
-                                          num_epochs=epochs,
-                                          seed=seed,
-                                          hparams_dict=dataset_hparams_dict,
-                                          hparams=dataset_hparams)
-
-    if balance_key is not None:
-        tf_dataset = my_dataset.make_dataset(batch_size=batch_size)
-        tf_dataset = balance_xy_dataset(tf_dataset, balance_key)
-        tf_dataset = tf_dataset.batch(batch_size)
-    else:
-        tf_dataset = my_dataset.make_dataset(batch_size, shuffle=shuffle)
-
-    return my_dataset, tf_dataset

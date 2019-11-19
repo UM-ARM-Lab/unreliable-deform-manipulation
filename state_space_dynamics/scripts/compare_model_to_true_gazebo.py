@@ -65,7 +65,7 @@ def main():
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--n-trajs', type=int, default=100)
     parser.add_argument('--n-actions-per-traj', type=int, default=100)
-    parser.add_argument('--p-kink', type=int, default=0.1)
+    parser.add_argument('--n_parallel_calls-kink', type=int, default=0.1)
     parser.add_argument('--no-plot', action='store_true')
 
     args = parser.parse_args()

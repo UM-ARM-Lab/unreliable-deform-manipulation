@@ -14,7 +14,7 @@ with warnings.catch_warnings():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('input_dir')
+    parser.add_argument('dataset_dir')
     parser.add_argument('dataset_hparams_dict')
     parser.add_argument('mode', choices=['train', 'val', 'test'])
     parser.add_argument('--dataset-hparams')

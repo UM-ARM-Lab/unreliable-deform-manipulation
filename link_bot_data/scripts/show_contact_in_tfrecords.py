@@ -12,7 +12,7 @@ from video_prediction.datasets import LinkBotDataset
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_dir", help="directory of tfrecords")
+    parser.add_argument("dataset_dir", help="directory of tfrecords")
     parser.add_argument("dataset_hparams_dict", type=str, help="json file of hyperparameters")
     parser.add_argument("n_examples", type=int)
     parser.add_argument("--verbose", action='store_true')

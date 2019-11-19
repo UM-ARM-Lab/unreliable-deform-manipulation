@@ -9,6 +9,7 @@ from colorama import Fore
 
 import state_space_dynamics
 from link_bot_data import link_bot_dataset_utils
+from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_pycommon import experiments_util
 
 tf.enable_eager_execution()
@@ -33,22 +34,20 @@ def train(args):
     ###############
     # Datasets
     ###############
-    train_dataset, train_tf_dataset = link_bot_dataset_utils.get_dataset(args.input_dir,
-                                                                         dataset_hparams_dict,
-                                                                         args.dataset_hparams,
-                                                                         shuffle=True,
-                                                                         mode='train',
-                                                                         epochs=1,  # we handle epochs in our training loop
-                                                                         seed=args.seed,
-                                                                         batch_size=args.batch_size)
-    val_dataset, val_tf_dataset = link_bot_dataset_utils.get_dataset(args.input_dir,
-                                                                     dataset_hparams_dict,
-                                                                     args.dataset_hparams,
-                                                                     shuffle=False,
-                                                                     mode='val',
-                                                                     epochs=1,
-                                                                     seed=args.seed,
-                                                                     batch_size=args.batch_size)
+    train_dataset = LinkBotStateSpaceDataset(args.input_dir)
+    train_dataset, train_tf_dataset = train_dataset.cf_get_dataset(mode='train',
+                                                                   shuffle=True,
+                                                                   num_epochs=1,  # we handle epochs in our training loop
+                                                                   seed=args.seed,
+                                                                   batch_size=args.batch_size)
+    val_dataset, val_tf_dataset = link_bot_dataset_utils.get_state_space_dataset(args.input_dir,
+                                                                                 dataset_hparams_dict,
+                                                                                 args.dataset_hparams,
+                                                                                 shuffle=False,
+                                                                                 mode='val',
+                                                                                 epochs=1,
+                                                                                 seed=args.seed,
+                                                                                 batch_size=args.batch_size)
 
     ###############
     # Model
@@ -83,14 +82,14 @@ def eval(args):
     ###############
     # Dataset
     ###############
-    test_dataset, test_tf_dataset = link_bot_dataset_utils.get_dataset(args.input_dir,
-                                                                       dataset_hparams_dict,
-                                                                       args.dataset_hparams,
-                                                                       shuffle=False,
-                                                                       mode='test',
-                                                                       epochs=1,
-                                                                       seed=args.seed,
-                                                                       batch_size=args.batch_size)
+    test_dataset, test_tf_dataset = link_bot_dataset_utils.get_state_space_dataset(args.input_dir,
+                                                                                   dataset_hparams_dict,
+                                                                                   args.dataset_hparams,
+                                                                                   shuffle=False,
+                                                                                   mode='test',
+                                                                                   epochs=1,
+                                                                                   seed=args.seed,
+                                                                                   batch_size=args.batch_size)
 
     ###############
     # Model
@@ -114,7 +113,7 @@ def main():
     subparsers = parser.add_subparsers()
 
     train_parser = subparsers.add_parser('train')
-    train_parser.add_argument('input_dir', type=pathlib.Path)
+    train_parser.add_argument('dataset_dir', type=pathlib.Path)
     train_parser.add_argument('model_hparams', type=pathlib.Path)
     train_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
     train_parser.add_argument('--dataset-hparams', type=str)
@@ -130,7 +129,7 @@ def main():
     train_parser.set_defaults(func=train)
 
     eval_parser = subparsers.add_parser('eval')
-    eval_parser.add_argument('input_dir', type=pathlib.Path)
+    eval_parser.add_argument('dataset_dir', type=pathlib.Path)
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
     eval_parser.add_argument('--dataset-hparams', type=str)

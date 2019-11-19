@@ -14,22 +14,22 @@ tf.enable_eager_execution(config=config)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('input_dir', type=pathlib.Path)
+    parser.add_argument('dataset_dir', type=pathlib.Path)
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train')
 
     args = parser.parse_args()
 
-    dataset_hparams_filename = args.input_dir / 'hparams.json'
+    dataset_hparams_filename = args.dataset_dir / 'hparams.json'
     hparams = json.load(open(str(dataset_hparams_filename), 'r'))
 
-    filenames = [str(filename) for filename in args.input_dir.glob("{}/*.tfrecords".format(args.mode))]
+    filenames = [str(filename) for filename in args.dataset_dir.glob("{}/*.tfrecords".format(args.mode))]
     options = tf.python_io.TFRecordOptions(compression_type=hparams['compression_type'])
-    to_print = []
     for filename in filenames:
         example = next(tf.python_io.tf_record_iterator(filename, options=options))
         dict_message = MessageToDict(tf.train.Example.FromString(example))
         feature = dict_message['features']['feature']
 
+        to_print = []
         for feature_name, feature_value in feature.items():
             type_name = list(feature_value.keys())[0]
             feature_value = feature_value[type_name]
@@ -39,9 +39,9 @@ def main():
             else:
                 print(Fore.RED + "Empty feature: {}, {}".format(feature_name, feature_value) + Fore.RESET)
 
-    to_print = sorted(to_print)
-    for items in to_print:
-        print(items)
+        to_print = sorted(to_print)
+        for items in to_print:
+            print(items)
 
 
 if __name__ == '__main__':

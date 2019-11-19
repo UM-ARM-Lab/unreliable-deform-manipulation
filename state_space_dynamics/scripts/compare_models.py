@@ -24,14 +24,14 @@ def generate(args):
     # Datasets
     ###############
     dataset_hparams_dict['sequence_length'] = args.sequence_length
-    dataset, tf_dataset = link_bot_dataset_utils.get_dataset(args.input_dir,
-                                                             dataset_hparams_dict=dataset_hparams_dict,
-                                                             dataset_hparams='',
-                                                             shuffle=False,
-                                                             mode=args.mode,
-                                                             epochs=1,
-                                                             seed=0,
-                                                             batch_size=1)
+    dataset, tf_dataset = link_bot_dataset_utils.get_state_space_dataset(args.input_dir,
+                                                                         dataset_hparams_dict=dataset_hparams_dict,
+                                                                         dataset_hparams='',
+                                                                         shuffle=False,
+                                                                         mode=args.mode,
+                                                                         epochs=1,
+                                                                         seed=0,
+                                                                         batch_size=1)
 
     comparison_info = json.load(args.comparison.open("r"))
     models = {}
@@ -169,7 +169,7 @@ def main():
     subparsers = parser.add_subparsers()
 
     generate_parser = subparsers.add_parser('generate')
-    generate_parser.add_argument('input_dir', type=pathlib.Path)
+    generate_parser.add_argument('dataset_dir', type=pathlib.Path)
     generate_parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
     generate_parser.add_argument('outdir', type=pathlib.Path)
     generate_parser.add_argument('--sequence-length', type=int, default=10)

@@ -75,7 +75,7 @@ def main():
         plt.title(subfolder.name)
         plt.hist(final_errors)
 
-    print(Style.BRIGHT + "p-value matrix" + Style.RESET_ALL)
+    print(Style.BRIGHT + "n_parallel_calls-value matrix" + Style.RESET_ALL)
     print(dict_to_pvale_table(final_errors_comparisons))
 
 

@@ -130,7 +130,7 @@ def plot_approximation(model, X, Y, prior, posterior):
     axes[0, 0].set_ylim(-1, 1)
     hist_ax_00.set_ylim(-1, 1)
     axes[1, 1].set_xlabel(r"$\tilde{x}_t$")
-    axes[1, 1].set_ylabel(r"$p(\tilde{x}_{t+1})$")
+    axes[1, 1].set_ylabel(r"$n_parallel_calls(\tilde{x}_{t+1})$")
     axes[1, 1].set_ylim(0, 2)
     hist_ax_11.set_ylim(0, 150)
     axes[0, 0].set_ylabel(r"$\tilde{x}_{t+1}$")

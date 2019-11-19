@@ -141,15 +141,15 @@ def main():
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
-    planner = get_planner(planner_class_str=params['planner'],
-                          fwd_model_dir=pathlib.Path(params['fwd_model_dir']),
-                          fwd_model_type=params['fwd_model_type'],
-                          classifier_model_dir=pathlib.Path(params['classifier_model_dir']),
-                          classifier_model_type=params['classifier_model_type'],
-                          planner_params=planner_params,
-                          local_env_params=local_env_params,
-                          env_params=env_params,
-                          services=services)
+    planner, _ = get_planner(planner_class_str=params['planner'],
+                             fwd_model_dir=pathlib.Path(params['fwd_model_dir']),
+                             fwd_model_type=params['fwd_model_type'],
+                             classifier_model_dir=pathlib.Path(params['classifier_model_dir']),
+                             classifier_model_type=params['classifier_model_type'],
+                             planner_params=planner_params,
+                             local_env_params=local_env_params,
+                             env_params=env_params,
+                             services=services)
 
     tester = TestWithClassifier(
         planner=planner,

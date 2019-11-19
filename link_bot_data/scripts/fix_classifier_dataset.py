@@ -38,7 +38,7 @@ def main():
         full_output_directory.mkdir(exist_ok=True)
 
         classifier_dataset = ClassifierDataset(args.indir)
-        dataset = classifier_dataset.get_dataset(mode=mode, num_epochs=1, batch_size=0)
+        dataset = classifier_dataset.cf_get_dataset(mode=mode, num_epochs=1, batch_size=0)
 
         current_record_idx = 0
         examples = np.ndarray([args.n_examples_per_record], dtype=np.object)

@@ -229,7 +229,7 @@ def main():
                                real_time_rate=args.real_time_rate,
                                goal_padding=0.0)
 
-        planner = get_planner(planner_class_str='ShootingRRT',
+        planner, _ = get_planner(planner_class_str='ShootingRRT',
                               fwd_model_dir=args.fwd_model_dir,
                               fwd_model_type=args.fwd_model_type,
                               classifier_model_dir=classifier_model_dir,

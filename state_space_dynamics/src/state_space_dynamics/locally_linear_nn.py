@@ -9,8 +9,6 @@ from colorama import Fore, Style
 from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
 from link_bot_pycommon import experiments_util
-from moonshine import gif_summary
-from moonshine.draw_rope_layer import DrawRope
 
 
 class LocallyLinearNN(tf.keras.Model):
@@ -30,9 +28,6 @@ class LocallyLinearNN(tf.keras.Model):
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
         self.dense_layers.append(layers.Dense(self.num_elements_in_linear_model, activation=None, name='linear_params'))
-
-        self.draw_layer = DrawRope(image_shape=[100, 100])
-        # x, resolution, origin = inputs
 
         self.image_origin = tf.constant([50, 50], dtype=tf.int64)
         self.image_resolution = tf.constant([0.05, 0.05], dtype=tf.float32)
@@ -56,19 +51,13 @@ class LocallyLinearNN(tf.keras.Model):
             params_t = z_t
 
             A_t_params, B_t_params = tf.split(params_t, [self.elements_in_A, self.elements_in_B], axis=1)
-            # A_t_per_point = tf.split(A_t_params, self.hparams['n_points'], axis=1)
             B_t_per_point = tf.split(B_t_params, self.hparams['n_points'], axis=1)
-            # A_t_per_point = [tf.linalg.LinearOperatorFullMatrix(tf.reshape(_a_p, [-1, 2, 2])) for _a_p
-            #                  in A_t_per_point]
             B_t_per_point = [tf.reshape(_b_p, [-1, 2, 2]) for _b_p in B_t_per_point]
-            # TODO: remove this? do we need an A matrix?
-            # A_t = tf.linalg.LinearOperatorBlockDiag(A_t_per_point).to_dense("A_t")
 
             B_t = tf.concat(B_t_per_point, axis=1)
 
             u_t = tf.expand_dims(action_t, axis=-1)
 
-            # s_t_plus_1_flat = tf.linalg.matmul(A_t, s_t) + tf.linalg.matmul(B_t, u_t)
             s_t_plus_1_flat = s_t + tf.linalg.matmul(B_t, u_t) * self.hparams['dt']
 
             gen_states.append(s_t_plus_1_flat)
@@ -164,7 +153,9 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             # metrics are averaged across batches in the epoch
             batch_losses = []
             epoch_t0 = time.time()
+            # noinspection PyUnusedLocal
             train_batch_x = None
+            # noinspection PyUnusedLocal
             train_batch_y = None
             for train_batch_x, train_batch_y in train_tf_dataset:
                 batch_t0 = time.time()
@@ -192,14 +183,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             print("Epoch: {:5d}, Time {:4.1f}s, Training loss: {:8.5f}".format(epoch, dt_per_epoch, training_loss))
             if args.log:
                 tf.contrib.summary.scalar("training loss", training_loss)
-                #summary_batch_x, summary_batch_y = train_batch_x, train_batch_y
-                #summary_true_states = summary_batch_y['output_states']
-                #summary_pred_states = net(summary_batch_x)
-                #fps = int(1.0 / hparams['dt'])
-                #pred_images = net.draw_layer([summary_pred_states, net.image_resolution, net.image_origin])
-                #true_images = net.draw_layer([summary_true_states, net.image_resolution, net.image_origin])
-                #gif_summary.gif_summary_v2('train_predictions', pred_images, fps=fps, max_outputs=4)
-                #gif_summary.gif_summary_v2('train_true', true_images, fps=fps, max_outputs=4)
 
             ################
             # validation

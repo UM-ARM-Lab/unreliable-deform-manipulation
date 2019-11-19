@@ -44,12 +44,13 @@ def main():
         full_output_directory.mkdir(exist_ok=True)
 
         classifier_dataset = ClassifierDataset(args.indir)
-        dataset = classifier_dataset.get_dataset(mode=mode, num_epochs=1, batch_size=0, shuffle=False)
+        dataset = classifier_dataset.get_dataset(mode=mode, batch_size=0, shuffle=False)
 
         current_record_idx = 0
         examples = np.ndarray([args.n_examples_per_record], dtype=np.object)
         example_idx = 0
         for example_dict in dataset:
+            print(example_dict.keys())
             state = example_dict['state'].numpy()
             next_state = example_dict['next_state'].numpy()
             planned_state = example_dict['planned_state'].numpy()
@@ -86,25 +87,8 @@ def main():
             ###########################################################
 
             # TODO: figure out a better way to do this
-            features = {
-                'actual_local_env/env': float_feature(example_dict['actual_local_env/env'].numpy().flatten()),
-                'actual_local_env/extent': float_feature(example_dict['actual_local_env/extent'].numpy()),
-                'actual_local_env/origin': float_feature(example_dict['actual_local_env/origin'].numpy()),
-                'planned_local_env/env': float_feature(example_dict['planned_local_env/env'].numpy().flatten()),
-                'planned_local_env/extent': float_feature(example_dict['planned_local_env/extent'].numpy()),
-                'planned_local_env/origin': float_feature(example_dict['planned_local_env/origin'].numpy()),
-                'res': float_feature(example_dict['res'].numpy()),
-                'w_m': float_feature(example_dict['w_m'].numpy()),
-                'h_m': float_feature(example_dict['h_m'].numpy()),
-                'state': float_feature(example_dict['state'].numpy()),
-                'next_state': float_feature(example_dict['next_state'].numpy()),
-                'action': float_feature(example_dict['action'].numpy()),
-                'planned_state': float_feature(example_dict['planned_state'].numpy()),
-                'planned_next_state': float_feature(example_dict['planned_next_state'].numpy()),
-                'label': float_feature(np.array([label])),
-                # 'traj_idx': float_feature(example_dict['traj_idx'].numpy()),
-                # 'time_idx': float_feature(example_dict['time_idx'].numpy()),
-            }
+            features = ClassifierDataset.copy_features(example_dict)
+            features['label'] = float_feature(np.array([label]))
             example_proto = tf.train.Example(features=tf.train.Features(feature=features))
             example = example_proto.SerializeToString()
             examples[current_record_idx] = example

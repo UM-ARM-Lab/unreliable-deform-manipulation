@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import json
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -9,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 from matplotlib.animation import FuncAnimation
 
-from link_bot_data import link_bot_dataset_utils
+from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_pycommon.args import my_formatter
 
@@ -22,25 +21,22 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument('input_dir', type=pathlib.Path, help='dataset directory')
+    parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
 
     args = parser.parse_args()
 
     np.random.seed(0)
     tf.random.set_random_seed(0)
 
-    dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
-    train_dataset, train_tf_dataset = link_bot_dataset_utils.get_dataset(args.input_dir,
-                                                                         dataset_hparams_dict,
-                                                                         'sequence_length=100',
-                                                                         shuffle=False,
-                                                                         mode='train',
-                                                                         epochs=1,  # we handle epochs in our training loop
-                                                                         seed=1,
-                                                                         batch_size=1)
+    dataset = LinkBotStateSpaceDataset(args.dataset_dir)
+    train_dataset = dataset.get_dataset(shuffle=False,
+                                        mode='train',
+                                        seed=1,
+                                        batch_size=1)
 
     i = 0
-    for input_data, output_data in train_tf_dataset:
+    for input_data, output_data in train_dataset:
+        # TODO: should I have xy?
         rope_configurations = input_data['state'].numpy().squeeze()
         actions = input_data['actions'].numpy().squeeze()
         local_envs = input_data['actual_local_env/env'].numpy().squeeze()
@@ -78,7 +74,8 @@ def main():
 
             ax.set_title("{} {}".format(i, t))
 
-        anim = FuncAnimation(fig, update, frames=actions.shape[0], interval=1000, repeat=True)
+        interval = 1000 * dataset.hparams['dt']
+        anim = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
         plt.show()
 
         i += 1

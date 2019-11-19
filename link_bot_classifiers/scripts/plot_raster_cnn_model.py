@@ -83,7 +83,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("plot_type", type=plotting.PlotType.from_string, choices=list(plotting.PlotType))
-    parser.add_argument("input_dir", help="directory of tfrecords")
+    parser.add_argument("dataset_dir", help="directory of tfrecords")
     parser.add_argument("dataset", type=str, help="dataset class name")
     parser.add_argument("dataset_hparams_dict", type=str, help="json file of hyperparameters")
     parser.add_argument("checkpoint")

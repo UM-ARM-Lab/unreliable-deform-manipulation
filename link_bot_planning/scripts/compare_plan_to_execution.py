@@ -165,15 +165,15 @@ def main():
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
-    planner = get_planner(planner_class=ShootingRRT,
-                          fwd_model_dir=args.fwd_model_dir,
-                          fwd_model_type=args.fwd_model_type,
-                          classifier_model_dir=args.classifier_model_dir,
-                          classifier_model_type=args.classifier_model_type,
-                          planner_params=planner_params,
-                          local_env_params=local_env_params,
-                          env_params=env_params,
-                          services=services)
+    planner, _ = get_planner(planner_class_str='ShootingRRT',
+                             fwd_model_dir=args.fwd_model_dir,
+                             fwd_model_type=args.fwd_model_type,
+                             classifier_model_dir=args.classifier_model_dir,
+                             classifier_model_type=args.classifier_model_type,
+                             planner_params=planner_params,
+                             local_env_params=local_env_params,
+                             env_params=env_params,
+                             services=services)
 
     executer = Executor(
         planner=planner,

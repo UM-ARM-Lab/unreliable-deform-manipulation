@@ -37,4 +37,4 @@ def get_planner(planner_class_str: str,
                             services=services,
                             viz_object=viz_object,
                             )
-    return planner
+    return planner, model_path_info

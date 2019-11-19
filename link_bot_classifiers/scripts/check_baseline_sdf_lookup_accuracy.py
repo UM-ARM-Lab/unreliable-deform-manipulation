@@ -57,7 +57,7 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument('input_dir', help='dataset directory', type=pathlib.Path)
+    parser.add_argument('dataset_dir', help='dataset directory', type=pathlib.Path)
     parser.add_argument('--dataset-hparams-dict', help='override dataset hyperparams')
     parser.add_argument('--balance', action='store_true', help='subsample the datasets to make sure it is balanced')
     parser.add_argument('--show-fn', action='store_true', help='visualize')
@@ -71,12 +71,12 @@ def main():
     tf.random.set_random_seed(0)
 
     classifier_dataset = ClassifierDataset(args.input_dir, is_labeled=True)
-    dataset = classifier_dataset.get_dataset(mode=args.mode,
-                                             shuffle=False,
-                                             num_epochs=1,
-                                             seed=0,
-                                             batch_size=None,  # nobatching
-                                             )
+    dataset = classifier_dataset.cf_get_dataset(mode=args.mode,
+                                                shuffle=False,
+                                                num_epochs=1,
+                                                seed=0,
+                                                batch_size=None,  # nobatching
+                                                )
 
     collision_classifier = CollisionCheckerClassifier()
 

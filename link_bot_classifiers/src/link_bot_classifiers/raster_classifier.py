@@ -341,7 +341,7 @@ class RasterClassifierWrapper(BaseClassifier):
         accept_probabilities = accept_probabilities.astype(np.float64)[0, 0]
 
         if self.show:
-            title = "p(accept) = {:5.3f}".format(accept_probabilities)
+            title = "n_parallel_calls(accept) = {:5.3f}".format(accept_probabilities)
             plot_classifier_data(planned_env=local_env_data.data,
                                  planned_env_extent=local_env_data.extent,
                                  planned_state=s1[0],

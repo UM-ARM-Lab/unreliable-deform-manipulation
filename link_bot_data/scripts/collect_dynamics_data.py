@@ -18,6 +18,7 @@ from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_local_occupancy_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_planning.goals import sample_goal
+from link_bot_planning.params import LocalEnvParams
 
 opts = tensorflow.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.ConfigProto(gpu_options=opts)
@@ -181,14 +182,18 @@ def generate(args):
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)
 
+    local_env_params = LocalEnvParams(h_rows=args.local_env_rows, w_cols=args.local_env_cols, res=args.res)
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': args.dt,
-            'local_env_cols': args.local_env_cols,
-            'local_env_rows': args.local_env_rows,
+            'local_env_params': local_env_params.to_json(),
             'env_w': args.env_w,
             'env_h': args.env_h,
-            'compression_type': args.compression_type
+            'compression_type': args.compression_type,
+            'sequence_length': args.steps_per_traj,
+            'n_state': 6,
+            'n_action': 2,
+            'filter_free_space_only': False,
         }
         json.dump(options, of, indent=1)
 
@@ -220,8 +225,8 @@ def main():
     parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=6.0)
     parser.add_argument('--env-h', type=float, default=6.0)
-    parser.add_argument('--local_env-cols', type=int, default=100)
-    parser.add_argument('--local_env-rows', type=int, default=100)
+    parser.add_argument('--local_env-cols', type=int, default=50)
+    parser.add_argument('--local_env-rows', type=int, default=50)
     parser.add_argument("--steps-per-traj", type=int, default=100)
     parser.add_argument("--steps-per-target", type=int, default=25)
     parser.add_argument("--start-idx-offset", type=int, default=0)

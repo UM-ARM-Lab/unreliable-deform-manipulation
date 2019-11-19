@@ -33,7 +33,7 @@ def count(input_dir, mode):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('input_dir', type=pathlib.Path)
+    parser.add_argument('dataset_dir', type=pathlib.Path)
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
 
     args = parser.parse_args()
@@ -45,9 +45,9 @@ def main():
 
     # Load the entire dataset, all modes
     classifier_dataset = ClassifierDataset(args.input_dir)
-    train_dataset = classifier_dataset.get_dataset(mode='train', num_epochs=1, batch_size=0)
-    val_dataset = classifier_dataset.get_dataset(mode='val', num_epochs=1, batch_size=0)
-    test_dataset = classifier_dataset.get_dataset(mode='test', num_epochs=1, batch_size=0)
+    train_dataset = classifier_dataset.cf_get_dataset(mode='train', num_epochs=1, batch_size=0)
+    val_dataset = classifier_dataset.cf_get_dataset(mode='val', num_epochs=1, batch_size=0)
+    test_dataset = classifier_dataset.cf_get_dataset(mode='test', num_epochs=1, batch_size=0)
     tmp_dataset = train_dataset.concatenate(val_dataset)
     full_dataset = tmp_dataset.concatenate((test_dataset))
     full_dataset = full_dataset.shuffle(buffer_size=1024)

@@ -30,19 +30,19 @@ def train(args):
     # Datasets
     ###############
     train_classifier_dataset = ClassifierDataset(args.input_dir)
-    train_dataset = train_classifier_dataset.get_dataset(mode='train',
-                                                         shuffle=True,
-                                                         num_epochs=1,
-                                                         seed=args.seed,
-                                                         batch_size=args.batch_size,
-                                                         balance_key=args.balance_key)
+    train_dataset = train_classifier_dataset.cf_get_dataset(mode='train',
+                                                            shuffle=True,
+                                                            num_epochs=1,
+                                                            seed=args.seed,
+                                                            batch_size=args.batch_size,
+                                                            balance_key=args.balance_key)
     val_classifier_dataset = ClassifierDataset(args.input_dir)
-    val_dataset = val_classifier_dataset.get_dataset(mode='val',
-                                                     shuffle=True,
-                                                     num_epochs=1,
-                                                     seed=args.seed,
-                                                     batch_size=args.batch_size,
-                                                     balance_key=args.balance_key)
+    val_dataset = val_classifier_dataset.cf_get_dataset(mode='val',
+                                                        shuffle=True,
+                                                        num_epochs=1,
+                                                        seed=args.seed,
+                                                        batch_size=args.batch_size,
+                                                        balance_key=args.balance_key)
 
     ###############
     # Model
@@ -75,12 +75,12 @@ def eval(args):
     # Dataset
     ###############
     test_classifier_dataset = ClassifierDataset(args.input_dir)
-    test_dataset = test_classifier_dataset.get_dataset(mode=args.mode,
-                                                       shuffle=False,
-                                                       num_epochs=1,
-                                                       seed=args.seed,
-                                                       batch_size=args.batch_size,
-                                                       balance_key=args.balance_key)
+    test_dataset = test_classifier_dataset.cf_get_dataset(mode=args.mode,
+                                                          shuffle=False,
+                                                          num_epochs=1,
+                                                          seed=args.seed,
+                                                          batch_size=args.batch_size,
+                                                          balance_key=args.balance_key)
 
     ###############
     # Model
@@ -104,7 +104,7 @@ def main():
     subparsers = parser.add_subparsers()
 
     train_parser = subparsers.add_parser('train')
-    train_parser.add_argument('input_dir', type=pathlib.Path)
+    train_parser.add_argument('dataset_dir', type=pathlib.Path)
     train_parser.add_argument('model_hparams', type=pathlib.Path)
     train_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
     train_parser.add_argument('--dataset-hparams', type=str)
@@ -123,7 +123,7 @@ def main():
     train_parser.add_argument('--seed', type=int, default=None)
 
     eval_parser = subparsers.add_parser('eval')
-    eval_parser.add_argument('input_dir', type=pathlib.Path)
+    eval_parser.add_argument('dataset_dir', type=pathlib.Path)
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
     eval_parser.add_argument('--dataset-hparams', type=str)
