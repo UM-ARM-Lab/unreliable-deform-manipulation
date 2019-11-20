@@ -105,7 +105,10 @@ class ClassifierDataCollector(my_mpc.myMPC):
         #  compatible for training a dynamics function, which assume fixed-length training sequences, we pick a length
         #  and chunk sequence plans. This means a trajectory can contain transitions from sequential plans,
         #  i.e not all from the same plan.
-        self.current_features = {}
+        self.current_features = {
+            'local_env_rows': float_feature(np.array([self.local_env_params.h_rows])),
+            'local_env_cols': float_feature(np.array([self.local_env_params.w_cols]))
+        }
 
         # This is for saving data
         self.examples = np.ndarray([n_examples_per_record], dtype=object)
@@ -147,6 +150,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
         d = zip(states, next_states, planned_actions, planned_states, planned_next_states, actual_local_envs, planner_local_envs)
         for time_idx, data_t in enumerate(d):
             state, next_state, action, planned_state, planned_next_state, actual_local_env, planned_local_env = data_t
+
             self.current_features['{}/state'.format(self.example_step_idx)] = float_feature(state)
             self.current_features['{}/action'.format(self.example_step_idx)] = float_feature(action)
             self.current_features['{}/actual_local_env/env'.format(self.example_step_idx)] = float_feature(
@@ -156,10 +160,6 @@ class ClassifierDataCollector(my_mpc.myMPC):
             self.current_features['{}/actual_local_env/origin'.format(self.example_step_idx)] = float_feature(
                 actual_local_env.origin)
             self.current_features['{}/res'.format(self.example_step_idx)] = float_feature(np.array([self.local_env_params.res]))
-            self.current_features['{}/local_env_rows'.format(self.example_step_idx)] = float_feature(
-                np.array([self.local_env_params.h_rows]))
-            self.current_features['{}/local_env_cols'.format(self.example_step_idx)] = float_feature(
-                np.array([self.local_env_params.w_cols]))
             self.current_features['{}/traj_idx'.format(self.example_step_idx)] = float_feature(np.array([self.traj_idx]))
             self.current_features['{}/time_idx '.format(time_idx)] = float_feature(np.array([self.example_step_idx]))
             self.current_features['{}/planned_state'.format(self.example_step_idx)] = float_feature(planned_state)

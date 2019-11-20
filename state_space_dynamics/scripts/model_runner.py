@@ -8,7 +8,6 @@ import tensorflow as tf
 from colorama import Fore
 
 import state_space_dynamics
-from link_bot_data import link_bot_dataset_utils
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_pycommon import experiments_util
 
@@ -22,36 +21,25 @@ def train(args):
     else:
         log_path = None
 
-    if args.dataset_hparams_dict:
-        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
-    else:
-        dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
-
+    # Model parameters
     model_hparams = json.load(open(args.model_hparams, 'r'))
-    model_hparams['dt'] = dataset_hparams_dict['dt']
-    dataset_hparams_dict['sequence_length'] = model_hparams['sequence_length']
 
-    ###############
     # Datasets
-    ###############
-    train_dataset = LinkBotStateSpaceDataset(args.input_dir)
-    train_dataset, train_tf_dataset = train_dataset.cf_get_dataset(mode='train',
-                                                                   shuffle=True,
-                                                                   num_epochs=1,  # we handle epochs in our training loop
-                                                                   seed=args.seed,
-                                                                   batch_size=args.batch_size)
-    val_dataset, val_tf_dataset = link_bot_dataset_utils.get_state_space_dataset(args.input_dir,
-                                                                                 dataset_hparams_dict,
-                                                                                 args.dataset_hparams,
-                                                                                 shuffle=False,
-                                                                                 mode='val',
-                                                                                 epochs=1,
-                                                                                 seed=args.seed,
-                                                                                 batch_size=args.batch_size)
+    train_dataset = LinkBotStateSpaceDataset(args.dataset_dir)
+    train_tf_dataset = train_dataset.get_dataset(mode='train',
+                                                 shuffle=True,
+                                                 seed=args.seed,
+                                                 sequence_length=model_hparams['sequence_length'],
+                                                 batch_size=args.batch_size)
+    val_dataset = LinkBotStateSpaceDataset(args.dataset_dir)
+    val_tf_dataset = val_dataset.get_dataset(mode='val',
+                                             shuffle=False,
+                                             seed=args.seed,
+                                             sequence_length=model_hparams['sequence_length'],
+                                             batch_size=args.batch_size)
 
-    ###############
-    # Model
-    ###############
+    # Copy some parameters of the dataset into the model
+    model_hparams['dt'] = train_dataset.hparams['dt']
     module = state_space_dynamics.get_model_module(model_hparams['model_class'])
 
     try:
@@ -65,35 +53,22 @@ def train(args):
 
 
 def eval(args):
-    if args.dataset_hparams_dict:
-        dataset_hparams_dict = json.load(open(args.dataset_hparams_dict, 'r'))
-    else:
-        dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
-
-    model_hparams_file = args.checkpoint / 'hparams.json'
-    model_hparams = json.load(open(model_hparams_file, 'r'))
-    model_hparams['dt'] = dataset_hparams_dict['dt']
-    if args.sequence_length:
-        dataset_hparams_dict['sequence_length'] = args.sequence_length
-        model_hparams['sequence_length'] = args.sequence_length
-    else:
-        dataset_hparams_dict['sequence_length'] = model_hparams['sequence_length']
-
     ###############
     # Dataset
     ###############
-    test_dataset, test_tf_dataset = link_bot_dataset_utils.get_state_space_dataset(args.input_dir,
-                                                                                   dataset_hparams_dict,
-                                                                                   args.dataset_hparams,
-                                                                                   shuffle=False,
-                                                                                   mode='test',
-                                                                                   epochs=1,
-                                                                                   seed=args.seed,
-                                                                                   batch_size=args.batch_size)
+    test_dataset = LinkBotStateSpaceDataset(args.dataset_dir)
+    test_tf_dataset = test_dataset.get_dataset(mode='test',
+                                               shuffle=False,
+                                               seed=args.seed,
+                                               batch_size=args.batch_size)
 
     ###############
     # Model
     ###############
+    model_hparams_file = args.checkpoint / 'hparams.json'
+    model_hparams = json.load(open(model_hparams_file, 'r'))
+    model_hparams['dt'] = test_dataset.hparams['dt']
+
     module = state_space_dynamics.get_model_module(model_hparams['model_class'])
 
     try:
@@ -115,8 +90,6 @@ def main():
     train_parser = subparsers.add_parser('train')
     train_parser.add_argument('dataset_dir', type=pathlib.Path)
     train_parser.add_argument('model_hparams', type=pathlib.Path)
-    train_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
-    train_parser.add_argument('--dataset-hparams', type=str)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=32)
     train_parser.add_argument('--summary-freq', type=int, default=5)
@@ -131,9 +104,6 @@ def main():
     eval_parser = subparsers.add_parser('eval')
     eval_parser.add_argument('dataset_dir', type=pathlib.Path)
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
-    eval_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
-    eval_parser.add_argument('--dataset-hparams', type=str)
-    eval_parser.add_argument('--sequence-length', type=int, help='overrides hparams files. must be >=2')
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.set_defaults(func=eval)

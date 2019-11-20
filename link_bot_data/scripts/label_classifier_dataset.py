@@ -87,7 +87,7 @@ def main():
             ###########################################################
 
             # TODO: figure out a better way to do this
-            features = ClassifierDataset.copy_features(example_dict)
+            features = []
             features['label'] = float_feature(np.array([label]))
             example_proto = tf.train.Example(features=tf.train.Features(feature=features))
             example = example_proto.SerializeToString()

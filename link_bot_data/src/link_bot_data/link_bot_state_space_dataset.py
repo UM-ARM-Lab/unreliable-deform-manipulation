@@ -1,5 +1,4 @@
 import pathlib
-from typing import Optional
 
 from link_bot_data.state_space_dataset import StateSpaceDataset
 from link_bot_planning.params import LocalEnvParams
@@ -9,7 +8,7 @@ class LinkBotStateSpaceDataset(StateSpaceDataset):
     def __init__(self, dataset_dir: pathlib.Path):
         super(LinkBotStateSpaceDataset, self).__init__(dataset_dir)
 
-        self.state_like_names_and_shapes['state'] = '%d/state', (self.hparams['n_state'],)
+        self.state_like_names_and_shapes['states'] = '%d/state', (self.hparams['n_state'],)
         self.action_like_names_and_shapes['actions'] = '%d/action', (2,)
 
         # local environment stuff

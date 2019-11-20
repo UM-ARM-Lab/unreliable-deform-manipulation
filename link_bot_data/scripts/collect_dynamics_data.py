@@ -33,7 +33,10 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
     action_msg = LinkBotVelocityAction()
 
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
-    feature = {}
+    feature = {
+        'local_env_rows': float_feature(np.array([args.local_env_rows])),
+        'local_env_cols': float_feature(np.array([args.local_env_cols]))
+    }
     for time_idx in range(args.steps_per_traj):
         # Query the current state
         state = services.get_state(state_req)
@@ -109,8 +112,6 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
         feature['{}/actual_local_env/extent'.format(time_idx)] = float_feature(np.array(local_env_data.extent))
         feature['{}/actual_local_env/origin'.format(time_idx)] = float_feature(local_env_data.origin)
         feature['{}/res'.format(time_idx)] = float_feature(np.array([local_env_data.resolution[0]]))
-        feature['{}/local_env_rows'.format(time_idx)] = float_feature(np.array([local_env_data.data.shape[0]]))
-        feature['{}/local_env_cols'.format(time_idx)] = float_feature(np.array([local_env_data.data.shape[1]]))
         feature['{}/traj_idx'.format(time_idx)] = float_feature(np.array([traj_idx]))
         feature['{}/time_idx'.format(time_idx)] = float_feature(np.array([time_idx]))
 

@@ -10,7 +10,7 @@ import tensorflow as tf
 from colorama import Fore
 from matplotlib.animation import FuncAnimation
 
-from link_bot_data import link_bot_dataset_utils
+from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_planning import model_utils
 
 tf.enable_eager_execution()
@@ -18,20 +18,15 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 def generate(args):
-    dataset_hparams_dict = json.load(open(args.input_dir / 'hparams.json', 'r'))
-
     ###############
     # Datasets
     ###############
-    dataset_hparams_dict['sequence_length'] = args.sequence_length
-    dataset, tf_dataset = link_bot_dataset_utils.get_state_space_dataset(args.input_dir,
-                                                                         dataset_hparams_dict=dataset_hparams_dict,
-                                                                         dataset_hparams='',
-                                                                         shuffle=False,
-                                                                         mode=args.mode,
-                                                                         epochs=1,
-                                                                         seed=0,
-                                                                         batch_size=1)
+    dataset = LinkBotStateSpaceDataset(args.dataset_dir)
+    dataset, tf_dataset = dataset.get_dataset(mode=args.mode,
+                                              shuffle=False,
+                                              seed=0,
+                                              batch_size=1,
+                                              sequence_length=args.sequence_length)
 
     comparison_info = json.load(args.comparison.open("r"))
     models = {}

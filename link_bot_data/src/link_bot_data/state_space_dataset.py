@@ -3,7 +3,6 @@ from __future__ import division, print_function
 
 import json
 import pathlib
-from collections import OrderedDict
 from typing import List, Optional
 
 import numpy as np
@@ -22,6 +21,22 @@ def make_mask(T, S):
     return mask[:, :P]
 
 
+def get_max_sequence_length(records, compression_type):
+    options = tf.python_io.TFRecordOptions(compression_type=compression_type)
+    example = next(tf.python_io.tf_record_iterator(records[0], options=options))
+    dict_message = MessageToDict(tf.train.Example.FromString(example))
+    feature = dict_message['features']['feature']
+    max_sequence_length = 0
+    for feature_name in feature.keys():
+        try:
+            # plus 1 because time is 0 indexed here
+            time_str = feature_name.split("/")[0]
+            max_sequence_length = max(max_sequence_length, int(time_str) + 1)
+        except ValueError:
+            pass
+    return max_sequence_length
+
+
 class BaseStateSpaceDataset:
     def __init__(self, dataset_dir: pathlib.Path):
         self.dataset_dir = dataset_dir
@@ -30,30 +45,10 @@ class BaseStateSpaceDataset:
 
         self.max_sequence_length = 0
 
-        self.state_like_names_and_shapes = OrderedDict()
-        self.action_like_names_and_shapes = OrderedDict()
-        self.trajectory_constant_names_and_shapes = OrderedDict()
+        self.state_like_names_and_shapes = {}
+        self.action_like_names_and_shapes = {}
+        self.trajectory_constant_names_and_shapes = {}
         self.start_mask = None
-
-    def set_max_sequence_length(self, records):
-        options = tf.python_io.TFRecordOptions(compression_type=self.hparams['compression_type'])
-        example = next(tf.python_io.tf_record_iterator(records[0], options=options))
-        dict_message = MessageToDict(tf.train.Example.FromString(example))
-        feature = dict_message['features']['feature']
-        self.max_sequence_length = 0
-        for feature_name in feature.keys():
-            try:
-                # plus 1 because time is 0 indexed here
-                time_str = feature_name.split("/")[0]
-                self.max_sequence_length = max(self.max_sequence_length, int(time_str) + 1)
-            except ValueError:
-                pass
-
-        # set sequence_length to the longest possible if it is not specified
-        if not self.hparams['sequence_length']:
-            self.hparams['sequence_length'] = self.max_sequence_length
-            msg = "sequence length not specified, assuming mas sequence length: {}".format(self.max_sequence_length)
-            print(Fore.YELLOW + msg + Fore.RESET)
 
     def parser(self, serialized_example):
         """
@@ -67,12 +62,14 @@ class BaseStateSpaceDataset:
                     batch_size: int,
                     seed: int,
                     shuffle: bool = True,
+                    sequence_length: Optional[int] = None,
                     n_parallel_calls: int = None) -> tf.data.Dataset:
         records = [str(filename) for filename in (self.dataset_dir / mode).glob("*.tfrecords")]
         return self.get_dataset_from_records(records,
                                              batch_size=batch_size,
                                              seed=seed,
                                              shuffle=shuffle,
+                                             sequence_length=sequence_length,
                                              n_parallel_calls=n_parallel_calls)
 
     def get_dataset_all_modes(self,
@@ -99,18 +96,27 @@ class BaseStateSpaceDataset:
                                  batch_size: int,
                                  seed: int,
                                  shuffle: bool = True,
+                                 sequence_length: Optional[int] = None,
+                                 balance_key: str = None,
                                  n_parallel_calls: int = None,
-                                 balance_key: str = None) -> tf.data.Dataset:
-        self.set_max_sequence_length(records)
+                                 ) -> tf.data.Dataset:
 
-        self.start_mask = make_mask(self.max_sequence_length, self.hparams['sequence_length'])
+        self.max_sequence_length = get_max_sequence_length(records, self.hparams['compression_type'])
+
+        if sequence_length is None:
+            # set sequence_length to the longest possible if it is not specified
+            sequence_length = self.max_sequence_length
+            msg = "sequence length not specified, assuming max sequence length: {}".format(self.max_sequence_length)
+            print(Fore.YELLOW + msg + Fore.RESET)
+
+        self.start_mask = make_mask(self.max_sequence_length, sequence_length)
 
         dataset = tf.data.TFRecordDataset(records, buffer_size=8 * 1024 * 1024,
                                           compression_type=self.hparams['compression_type'])
 
         if shuffle:
             # TODO: tune buffer size for performance
-            dataset = dataset.apply(dataset.shuffle(buffer_size=1024, seed=seed))
+            dataset = dataset.shuffle(buffer_size=1024, seed=seed)
 
         def has_valid_index(constraints_seq):
             valid_start_onehot = constraints_seq.squeeze() @ self.start_mask
@@ -131,12 +137,12 @@ class BaseStateSpaceDataset:
             for k, v in state_like_sliced_seqs.items():
                 # chop off the last time step since that's not part of the input
                 input_dict[k] = v[:-1]
-            output_dict = {'output_states': state_like_sliced_seqs['state']}
+            output_dict = {'output_states': state_like_sliced_seqs['states']}
             input_dict.update(action_like_sliced_seqs)
             return input_dict, output_dict
 
         def _slice_sequences(state_like_seqs, action_like_seqs):
-            return self.slice_sequences(state_like_seqs, action_like_seqs)
+            return self.slice_sequences(state_like_seqs, action_like_seqs, sequence_length=sequence_length)
 
         dataset = dataset.map(self.parser, num_parallel_calls=n_parallel_calls)
 
@@ -145,13 +151,24 @@ class BaseStateSpaceDataset:
 
         dataset = dataset.map(_slice_sequences, num_parallel_calls=n_parallel_calls)
         dataset = dataset.map(_reorganize_dict, num_parallel_calls=n_parallel_calls)
-        dataset = dataset.batch(batch_size, drop_remainder=True)
-        dataset = dataset.prefetch(batch_size)
 
         if balance_key is not None:
             dataset = balance_xy_dataset(dataset, balance_key)
 
-        dataset = dataset.batch(batch_size)
+        dataset_size = 0
+        for _ in dataset:
+            dataset_size += batch_size
+
+        dataset = dataset.batch(batch_size, drop_remainder=False)
+        dataset = dataset.prefetch(batch_size)
+
+        # sanity check that the dataset isn't empty, which can happen when debugging if batch size is bigger than dataset size
+        empty = True
+        for _ in dataset:
+            empty = False
+            break
+        if empty:
+            raise RuntimeError("Dataset is empty! batch size: {}, dataset size: {}".format(batch_size, dataset_size))
 
         return dataset
 
@@ -170,13 +187,11 @@ class BaseStateSpaceDataset:
 
         return state_like_tensors, action_like_tensors
 
-    def slice_sequences(self, state_like_seqs, action_like_seqs):
+    def slice_sequences(self, state_like_seqs, action_like_seqs, sequence_length: int):
         """
-        Slices sequences of length `example_sequence_length` into subsequences
-        of length `sequence_length`. The dicts of sequences are updated
+        Slices sequences into subsequences of length `sequence_length`. The dicts of sequences are updated
         in-place and the same dicts are returned.
         """
-        sequence_length = self.hparams['sequence_length']
 
         def choose_random_valid_start_index(constraints_seq):
             valid_start_onehot = constraints_seq.squeeze() @ self.start_mask
@@ -195,8 +210,8 @@ class BaseStateSpaceDataset:
         state_like_t_slice = slice(t_start, t_start + sequence_length, 1)
         action_like_t_slice = slice(t_start, t_start + sequence_length - 1)
 
-        state_like_sliced_seqs = OrderedDict()
-        action_like_sliced_seqs = OrderedDict()
+        state_like_sliced_seqs = {}
+        action_like_sliced_seqs = {}
         for example_name, seq in state_like_seqs.items():
             sliced_seq = seq[state_like_t_slice]
             sliced_seq.set_shape([sequence_length] + seq.shape.as_list()[1:])
@@ -208,7 +223,9 @@ class BaseStateSpaceDataset:
 
         return state_like_sliced_seqs, action_like_sliced_seqs
 
-    def copy_features(self, example_dict):
+    @staticmethod
+    def copy_features(example_dict):
+        # this needs to take
         # TODO: implement this
         raise NotImplementedError()
 
@@ -240,8 +257,8 @@ class StateSpaceDataset(BaseStateSpaceDataset):
         # parse all the features of all time steps together
         features = tf.parse_single_example(serialized_example, features=features)
 
-        state_like_seqs = OrderedDict([(example_name, []) for example_name in self.state_like_names_and_shapes])
-        action_like_seqs = OrderedDict([(example_name, []) for example_name in self.action_like_names_and_shapes])
+        state_like_seqs = dict([(example_name, []) for example_name in self.state_like_names_and_shapes])
+        action_like_seqs = dict([(example_name, []) for example_name in self.action_like_names_and_shapes])
 
         for i in range(self.max_sequence_length):
             for example_name, (name, shape) in self.state_like_names_and_shapes.items():
