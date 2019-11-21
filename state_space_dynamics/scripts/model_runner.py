@@ -33,7 +33,7 @@ def train(args):
                                                  batch_size=args.batch_size)
     val_dataset = LinkBotStateSpaceDataset(args.dataset_dir)
     val_tf_dataset = val_dataset.get_dataset(mode='val',
-                                             shuffle=False,
+                                             shuffle=True,
                                              seed=args.seed,
                                              sequence_length=model_hparams['sequence_length'],
                                              batch_size=args.batch_size)

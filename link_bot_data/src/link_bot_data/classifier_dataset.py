@@ -101,10 +101,9 @@ class ClassifierDataset(StateSpaceDataset):
             post_close = post_transition_distance < self.hparams['labeling']['threshold']
             transition['label'] = None  # yes this is necessary. You can't add a key to a dict inside a py_func conditionally
             if post_close:
-                transition['label'] = tf.convert_to_tensor(1, dtype=tf.float32)
+                transition['label'] = tf.convert_to_tensor([1], dtype=tf.float32)
             else:
-                transition['label'] = tf.convert_to_tensor(0, dtype=tf.float32)
-
+                transition['label'] = tf.convert_to_tensor([0], dtype=tf.float32)
             return transition
 
         def _filter_pre_far_transitions(transition):

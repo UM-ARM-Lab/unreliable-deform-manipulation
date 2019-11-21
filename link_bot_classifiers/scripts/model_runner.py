@@ -11,11 +11,11 @@ import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon import experiments_util
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
-config = tf.ConfigProto(gpu_options=gpu_options)
-tf.enable_eager_execution(config=config)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.5)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+tf.compat.v1.enable_eager_execution(config=config)
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 def train(args):
@@ -29,69 +29,57 @@ def train(args):
     ###############
     # Datasets
     ###############
-    train_classifier_dataset = ClassifierDataset(args.input_dir)
-    train_dataset = train_classifier_dataset.cf_get_dataset(mode='train',
-                                                            shuffle=True,
-                                                            num_epochs=1,
-                                                            seed=args.seed,
-                                                            batch_size=args.batch_size,
-                                                            balance_key=args.balance_key)
-    val_classifier_dataset = ClassifierDataset(args.input_dir)
-    val_dataset = val_classifier_dataset.cf_get_dataset(mode='val',
-                                                        shuffle=True,
-                                                        num_epochs=1,
-                                                        seed=args.seed,
-                                                        batch_size=args.batch_size,
-                                                        balance_key=args.balance_key)
+    train_dataset = ClassifierDataset(args.dataset_dir)
+    train_tf_dataset = train_dataset.get_dataset(mode='train',
+                                                 shuffle=True,
+                                                 seed=args.seed,
+                                                 batch_size=args.batch_size,
+                                                 balance_key=args.balance_key)
+    val_dataset = ClassifierDataset(args.dataset_dir)
+    val_tf_dataset = val_dataset.get_dataset(mode='val',
+                                             shuffle=True,
+                                             seed=args.seed,
+                                             batch_size=args.batch_size,
+                                             balance_key=args.balance_key)
 
     ###############
     # Model
     ###############
-    model_hparams['res'] = train_classifier_dataset.hparams['local_env_params'].res
-    model_hparams['training_dataset'] = str(args.input_dir)
+    model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
     module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
 
     try:
         ###############
         # Train
         ###############
-        module.train(model_hparams, train_dataset, val_dataset, log_path, args)
+        module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
 
 
 def eval(args):
-    if args.dataset_hparams_dict:
-        dataset_hparams_dict = json.load(args.dataset_hparams_dict.open('r'))
-    else:
-        dataset_hparams_dict = json.load((args.input_dir / 'hparams.json').open('r'))
-
-    model_hparams_file = args.checkpoint / 'hparams.json'
-    model_hparams = json.load(model_hparams_file.open('r'))
-    dataset_hparams_dict['local_env_shape'] = model_hparams['local_env_shape']
-
     ###############
     # Dataset
     ###############
-    test_classifier_dataset = ClassifierDataset(args.input_dir)
-    test_dataset = test_classifier_dataset.cf_get_dataset(mode=args.mode,
-                                                          shuffle=False,
-                                                          num_epochs=1,
-                                                          seed=args.seed,
-                                                          batch_size=args.batch_size,
-                                                          balance_key=args.balance_key)
+    test_dataset = ClassifierDataset(args.dataset_dir)
+    test_tf_dataset = test_dataset.get_dataset(mode=args.mode,
+                                               shuffle=False,
+                                               seed=args.seed,
+                                               batch_size=args.batch_size,
+                                               balance_key=args.balance_key)
 
     ###############
     # Model
     ###############
+    model_hparams = json.load(args.model_hparams.open('r'))
     module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
 
     try:
         ###############
         # Evaluate
         ###############
-        module.eval(model_hparams, test_dataset, args)
+        module.eval(model_hparams, test_tf_dataset, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass

@@ -147,7 +147,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
                 'res': full_sdf_data.resolution.tolist(),
                 'origin': full_sdf_data.origin.tolist(),
                 'extent': full_sdf_data.extent,
-                'date': full_sdf_data.data.tolist(),
+                'data': full_sdf_data.data.tolist(),
             },
         }
         json.dump(info, info_file, indent=1)

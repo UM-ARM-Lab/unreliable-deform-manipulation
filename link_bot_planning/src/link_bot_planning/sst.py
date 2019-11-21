@@ -1,6 +1,5 @@
 from typing import Tuple, List
 
-import matplotlib.pyplot as plt
 import numpy as np
 from ompl import base as ob
 from ompl import control as oc
@@ -12,28 +11,6 @@ from link_bot_planning.ompl_viz import VizObject
 from link_bot_planning.params import EnvParams, PlannerParams
 from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env, from_numpy
 from link_bot_pycommon import link_bot_sdf_utils
-
-
-# TODO: expose a way to use a motion validator from python?
-class ClassifierMotionValidator(ob.MotionValidator):
-
-    def __init__(self, si):
-        super().__init__(si)
-
-    def checkMotion(self, s1, s2):
-        print("motion?")
-        np_s1 = to_numpy(s1[0], self.n_state)
-        np_s2 = to_numpy(s2[0], self.n_state)
-        h1 = np_s1[0, 4:6]
-        local_env_data = get_local_occupancy_data(cols=self.local_env_params.w_cols,
-                                                  rows=self.local_env_params.h_rows,
-                                                  res=self.local_env_params.res,
-                                                  center_point=h1,
-                                                  services=self.services)
-        plt.imshow(local_env_data.image)
-        plt.show()
-        accept_probability = self.classifier_model.predict(local_env_data, np_s1, np_s2)
-        return self.rng_.uniform01() <= accept_probability
 
 
 class SST(MyPlanner):
@@ -103,29 +80,17 @@ class SST(MyPlanner):
 
         # SST will use this to propagate things
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
-        self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
 
         self.planner = oc.SST(self.si)
         self.ss.setPlanner(self.planner)
-        # self.planner.setRange(1.0)
-        # self.planner.setPruningRadius(1.0)
         self.si.setPropagationStepSize(self.fwd_model.dt)
         self.si.setMinMaxControlDuration(1, 50)
 
-    def is_valid(self, state):
-        np_s1 = to_numpy(state[0], self.n_state)
-        h1 = np_s1[0, 4:6]
-        local_env_data = get_local_occupancy_data(cols=self.fwd_model.local_env_params.w_cols,
-                                                  rows=self.fwd_model.local_env_params.h_rows,
-                                                  res=self.fwd_model.local_env_params.res,
-                                                  center_point=h1,
-                                                  services=self.services)
-        plt.imshow(local_env_data.image)
-        plt.show()
-        accept_probability = self.classifier_model.predict_state_only(local_env_data, np_s1)
-        return accept_probability > 0.5
-
     def propagate(self, start, control, duration, state_out):
+        print(duration)
+        # NOTE: one sneaky way to do edge validator would be to set state_out to be something
+        #  out of bounds other otherwise invalid, and do edge validation inside this function.
+        #  this would also be slightly more efficient since we would not have to get the local environment multiple times
         np_s = to_numpy(start[0], self.n_state)
         np_u = np.expand_dims(to_numpy(control, self.n_control), axis=0)
         head_point = np_s[0, 4:6]
@@ -139,19 +104,28 @@ class SST(MyPlanner):
         points_next = self.fwd_model.predict(local_env_data=local_env_data, first_states=np_s, actions=np_u)
         np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
-        from_numpy(np_s_next, state_out[0], self.n_state)
-        next_head_point = np_s_next[0, 4:6]
-        local_env_data = get_local_occupancy_data(cols=self.fwd_model.local_env_params.w_cols,
-                                                  rows=self.fwd_model.local_env_params.h_rows,
-                                                  res=self.fwd_model.local_env_params.res,
-                                                  center_point=next_head_point,
-                                                  services=self.services)
-        local_env = local_env_data.data.flatten().astype(np.float64)
-        for idx in range(self.n_local_env):
-            occupancy_value = local_env[idx]
-            state_out[1][idx] = occupancy_value
-        origin = local_env_data.origin.astype(np.float64)
-        from_numpy(origin, state_out[2], 2)
+        # validate the edge
+        accept_probability = self.classifier_model.predict(local_env_data, np_s, np_s_next)
+        edge_is_valid = np.random.uniform(0, 1) <= accept_probability
+
+        # copy the result into the ompl state data structure
+        if not edge_is_valid:
+            # This will ensure this edge is not added to the tree
+            state_out[0][0] = np.infty
+        else:
+            from_numpy(np_s_next, state_out[0], self.n_state)
+            next_head_point = np_s_next[0, 4:6]
+            local_env_data = get_local_occupancy_data(cols=self.fwd_model.local_env_params.w_cols,
+                                                      rows=self.fwd_model.local_env_params.h_rows,
+                                                      res=self.fwd_model.local_env_params.res,
+                                                      center_point=next_head_point,
+                                                      services=self.services)
+            local_env = local_env_data.data.flatten().astype(np.float64)
+            for idx in range(self.n_local_env):
+                occupancy_value = local_env[idx]
+                state_out[1][idx] = occupancy_value
+            origin = local_env_data.origin.astype(np.float64)
+            from_numpy(origin, state_out[2], 2)
 
     def plan(self, np_start: np.ndarray,
              tail_goal_point: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[link_bot_sdf_utils.OccupancyData]]:

@@ -152,7 +152,6 @@ class ClassifierDataCollector(my_mpc.myMPC):
         d = zip(states, next_states, planned_actions, planned_states, planned_next_states, actual_local_envs, planner_local_envs)
         for time_idx, data_t in enumerate(d):
             state, next_state, action, planned_state, planned_next_state, actual_local_env, planned_local_env = data_t
-            print("adding features for time {}".format(self.example_step_idx))
             self.current_features['{}/state'.format(self.example_step_idx)] = float_feature(state)
             self.current_features['{}/action'.format(self.example_step_idx)] = float_feature(action)
             self.current_features['{}/actual_local_env/env'.format(self.example_step_idx)] = float_feature(

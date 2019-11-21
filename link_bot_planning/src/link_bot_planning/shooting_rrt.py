@@ -8,7 +8,7 @@ from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_dat
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import VizObject
-from link_bot_planning.params import EnvParams, LocalEnvParams, PlannerParams
+from link_bot_planning.params import EnvParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env, from_numpy
 from link_bot_pycommon import link_bot_sdf_utils
@@ -87,61 +87,41 @@ class ShootingRRT(MyPlanner):
 
         self.si = self.ss.getSpaceInformation()
 
-        # use the default state propagator, it won't be called anyways because we use a directed control sampler
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
-        self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
 
-        # self.si.setDirectedControlSamplerAllocator(
-        #     ShootingDirectedControlSampler.allocator(self.fwd_model,
-        #                                              self.classifier_model,
-        #                                              self.services,
-        #                                              self.viz_object,
-        #                                              self.fwd_model.local_env_params,
-        #                                              self.planner_params.max_v))
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(True)  # this is necessary!
         self.ss.setPlanner(self.planner)
         self.si.setPropagationStepSize(self.fwd_model.dt)
         self.si.setMinMaxControlDuration(1, 50)
 
-    def is_valid(self, state):
-        np_s1 = to_numpy(state[0], self.n_state)
-        h1 = np_s1[0, 4:6]
-        local_env_data = get_local_occupancy_data(cols=self.fwd_model.local_env_params.w_cols,
-                                                  rows=self.fwd_model.local_env_params.h_rows,
-                                                  res=self.fwd_model.local_env_params.res,
-                                                  center_point=h1,
-                                                  services=self.services)
-        accept_probability = self.classifier_model.predict_state_only(local_env_data, np_s1)
-        return accept_probability > 0.5
-
     def propagate(self, start, control, duration, state_out):
+        del duration  # unused
         np_s = to_numpy(start[0], self.n_state)
         np_u = np.expand_dims(to_numpy(control, self.n_control), axis=0)
-        head_point = np_s[0, 4:6]
-        local_env_data = get_local_occupancy_data(cols=self.fwd_model.local_env_params.w_cols,
-                                                  rows=self.fwd_model.local_env_params.h_rows,
-                                                  res=self.fwd_model.local_env_params.res,
-                                                  center_point=head_point,
-                                                  services=self.services)
+        local_env_data = self.get_local_env_at(np_s[0, 4], np_s[0, 5])
 
         # use the forward model to predict the next configuration
         points_next = self.fwd_model.predict(local_env_data=local_env_data, first_states=np_s, actions=np_u)
         np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
-        from_numpy(np_s_next, state_out[0], self.n_state)
-        next_head_point = np_s_next[0, 4:6]
-        local_env_data_next = get_local_occupancy_data(cols=self.fwd_model.local_env_params.w_cols,
-                                                       rows=self.fwd_model.local_env_params.h_rows,
-                                                       res=self.fwd_model.local_env_params.res,
-                                                       center_point=next_head_point,
-                                                       services=self.services)
-        local_env = local_env_data_next.data.flatten().astype(np.float64)
-        for idx in range(self.n_local_env):
-            occupancy_value = local_env[idx]
-            state_out[1][idx] = occupancy_value
-        origin = local_env_data_next.origin.astype(np.float64)
-        from_numpy(origin, state_out[2], 2)
+        # validate the edge
+        accept_probability = self.classifier_model.predict(local_env_data, np_s, np_s_next)
+        edge_is_valid = np.random.uniform(0, 1) <= accept_probability
+
+        # copy the result into the ompl state data structure
+        if not edge_is_valid:
+            # This will ensure this edge is not added to the tree
+            state_out[0][0] = np.infty
+        else:
+            from_numpy(np_s_next, state_out[0], self.n_state)
+            local_env_data = self.get_local_env_at(np_s_next[0, 4], np_s_next[0, 5])
+            local_env = local_env_data.data.flatten().astype(np.float64)
+            for idx in range(self.n_local_env):
+                occupancy_value = local_env[idx]
+                state_out[1][idx] = occupancy_value
+            origin = local_env_data.origin.astype(np.float64)
+            from_numpy(origin, state_out[2], 2)
 
     def plan(self, np_start: np.ndarray,
              tail_goal_point: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[link_bot_sdf_utils.OccupancyData]]:
@@ -151,11 +131,7 @@ class ShootingRRT(MyPlanner):
         :return: controls, states
         """
         # create start and goal states
-        start_local_occupancy = get_local_occupancy_data(rows=self.fwd_model.local_env_params.h_rows,
-                                                         cols=self.fwd_model.local_env_params.w_cols,
-                                                         res=self.fwd_model.local_env_params.res,
-                                                         center_point=np.array([np_start[0, 4], np_start[0, 5]]),
-                                                         services=self.services)
+        start_local_occupancy = self.get_local_env_at(np_start[0, 4], np_start[0, 5])
         compound_start = ob.CompoundState(self.state_space)
         for i in range(self.n_state):
             compound_start()[0][i] = np_start[0, i]
@@ -192,20 +168,20 @@ class ShootingRRT(MyPlanner):
                 planner_local_env = link_bot_sdf_utils.OccupancyData(grid, res_2d, origin)
                 planner_local_envs.append(planner_local_env)
             for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
-                # duration seems to always be 1 for control::RRT
+                # duration is always be 1 for control::RRT, not so for control::SST
                 np_controls[i] = to_numpy(control, self.n_control)
-
-            # Verification
-            # verified = self.verify(np_controls, np_states)
-            # if not verified:
-            #     print("ERROR! NOT VERIFIED!")
-
-            # SMOOTHING
-            # np_states, np_controls = self.smooth(np_states, np_controls, verbose)
 
             return np_controls, np_states, planner_local_envs
 
         raise RuntimeError("No Solution found from {} to {}".format(start, goal))
+
+    def get_local_env_at(self, x: float, y: float):
+        center_point = np.array([x, y])
+        return get_local_occupancy_data(rows=self.fwd_model.local_env_params.h_rows,
+                                        cols=self.fwd_model.local_env_params.w_cols,
+                                        res=self.fwd_model.local_env_params.res,
+                                        center_point=center_point,
+                                        services=self.services)
 
     def smooth(self, np_states, np_controls, iters=50, verbose=0):
         new_states = list(np_states)

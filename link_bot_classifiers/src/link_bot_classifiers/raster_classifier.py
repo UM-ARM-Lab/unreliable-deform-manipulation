@@ -23,7 +23,7 @@ class RasterClassifier(tf.keras.Model):
 
     def __init__(self, hparams, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.hparams = tf.compat.checkpoint.NoDependency(hparams)
+        self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
         self.m_dim = self.hparams['n_control']
 
         self.raster = RasterPoints(self.hparams['local_env_shape'])
@@ -62,9 +62,9 @@ class RasterClassifier(tf.keras.Model):
         we expect res to be [batch_size, 1]
         """
         planned_state = input_dict['planned_state']
-        # planned_next_state = input_dict['planned_next_state']
+        planned_next_state = input_dict['planned_state_next']
         planned_local_env = input_dict['planned_local_env/env']
-        planned_local_env_resolution = input_dict['res']
+        planned_local_env_resolution = input_dict['resolution']
         planned_local_env_origin = input_dict['planned_local_env/origin']
 
         # add channel index
@@ -72,14 +72,15 @@ class RasterClassifier(tf.keras.Model):
 
         # add time index into everything
         planned_state = tf.expand_dims(planned_state, axis=1)
-        # planned_next_state = tf.expand_dims(planned_next_state, axis=1)
+        planned_next_state = tf.expand_dims(planned_next_state, axis=1)
         planned_local_env_origin = tf.expand_dims(planned_local_env_origin, axis=1)
         # convert from (batch, 1, 1) -> (batch, 1, 2)
         planned_local_env_resolution = tf.tile(tf.expand_dims(planned_local_env_resolution, axis=1), [1, 1, 2])
 
         # raster each state into an image
+        print(planned_state)
         planned_rope_image = self.raster([planned_state, planned_local_env_resolution, planned_local_env_origin])
-        # planned_next_rope_image = self.raster([planned_next_state, planned_local_env_resolution, planned_local_env_origin])
+        planned_next_rope_image = self.raster([planned_next_state, planned_local_env_resolution, planned_local_env_origin])
 
         # remove time index
         image_shape = [planned_rope_image.shape[0],
@@ -87,11 +88,10 @@ class RasterClassifier(tf.keras.Model):
                        planned_rope_image.shape[3],
                        planned_rope_image.shape[4]]
         planned_rope_image = tf.reshape(planned_rope_image, image_shape)
-        # planned_next_rope_image = tf.reshape(planned_next_rope_image, image_shape)
+        planned_next_rope_image = tf.reshape(planned_next_rope_image, image_shape)
 
         # batch, h, w, channel
-        # concat_image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env), axis=3)
-        concat_image = tf.concat((planned_rope_image, planned_local_env), axis=3)
+        concat_image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env), axis=3)
 
         # feed into a CNN
         conv_z = concat_image
@@ -112,57 +112,7 @@ class RasterClassifier(tf.keras.Model):
         out_h = z
 
         accept_probability = self.output_layer(out_h)
-        return planned_rope_image, planned_local_env, accept_probability
-        # return planned_rope_image, planned_next_rope_image, planned_local_env, accept_probability
-
-
-def eval(hparams, test_tf_dataset, args):
-    net = RasterClassifier(hparams=hparams)
-    accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
-    ckpt = tf.train.Checkpoint(net=net)
-    manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=1)
-    ckpt.restore(manager.latest_checkpoint)
-    print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
-
-    loss = tf.keras.losses.BinaryCrossentropy()
-
-    test_losses = []
-    accuracy.reset_states()
-    test_predictions = []
-    tn = 0
-    fn = 0
-    fp = 0
-    tp = 0
-    for test_example_dict in test_tf_dataset:
-        test_batch_labels = test_example_dict['label']
-        test_batch_predictions = net(test_example_dict)[-1]
-        test_predictions.append(test_batch_predictions.numpy().flatten())
-        batch_test_loss = loss(y_true=test_batch_labels, y_pred=test_batch_predictions)
-        accuracy.update_state(y_true=test_batch_labels, y_pred=test_batch_predictions)
-        test_losses.append(batch_test_loss)
-
-        for pred, label in zip(test_batch_predictions, test_batch_labels):
-            pred_bin = int(pred.numpy() > 0.5)
-            label = label.numpy()[0]
-            if pred_bin == 1 and label == 1:
-                tp += 1
-            elif pred_bin == 0 and label == 1:
-                fn += 1
-            elif pred_bin == 1 and label == 0:
-                fp += 1
-            elif pred_bin == 0 and label == 0:
-                tn += 1
-
-    test_loss = np.mean(test_losses)
-    test_accuracy = accuracy.result().numpy() * 100
-    print("Test Loss:     {:7.4f}".format(test_loss))
-    print("Test Accuracy: {:5.3f}%".format(test_accuracy))
-
-    print("|        | label 0 | label 1 |")
-    print("| pred 0 | {:6d} | {:6d} |".format(tn, fn))
-    print("| pred 1 | {:6d} | {:6d} |".format(fp, tp))
-
-    np.savetxt('test_predictions.txt', test_predictions)
+        return planned_rope_image, planned_next_rope_image, planned_local_env, accept_probability
 
 
 def check_validation(val_tf_dataset, loss, net):
@@ -214,6 +164,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         hparams_path = full_log_path / "hparams.json"
         with hparams_path.open('w') as hparams_file:
             hparams['log path'] = str(full_log_path)
+            hparams['dataset'] = str(args.dataset_dir)
             hparams_file.write(json.dumps(hparams, indent=2))
 
         writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
@@ -232,7 +183,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
 
                 with tf.GradientTape() as tape:
                     fwd_result = net(train_example_dict_batch)
-                    i1, local_env, train_predictions_batch = fwd_result
+                    i1, i2, local_env, train_predictions_batch = fwd_result
                     training_batch_loss = loss(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
                 variables = net.trainable_variables
                 gradients = tape.gradient(training_batch_loss, variables)
@@ -271,11 +222,11 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                     plt.figure()
                     bin = np.tile(local_env[0].numpy(), [1, 1, 3]) * 1.0
                     i1 = i1[0].numpy()
-                    # i2 = i2[0].numpy()
+                    i2 = i2[0].numpy()
                     i1_mask = np.tile(i1.sum(axis=2, keepdims=True) > 0, [1, 1, 3])
-                    # i2_mask = np.tile(i2.sum(axis=2, keepdims=True) > 0, [1, 1, 3])
-                    # mask = (1 - np.logical_or(i1_mask, i2_mask).astype(np.float32))
-                    mask = (1 - i1_mask.astype(np.float32))
+                    i2_mask = np.tile(i2.sum(axis=2, keepdims=True) > 0, [1, 1, 3])
+                    mask = (1 - np.logical_or(i1_mask, i2_mask).astype(np.float32))
+                    # mask = (1 - i1_mask.astype(np.float32))
                     masked = bin * mask
                     new_image = masked + i1
                     plt.imshow(new_image)
@@ -303,6 +254,55 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             train_loop()
     else:
         train_loop()
+
+
+def eval(hparams, test_tf_dataset, args):
+    net = RasterClassifier(hparams=hparams)
+    accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
+    ckpt = tf.train.Checkpoint(net=net)
+    manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=1)
+    ckpt.restore(manager.latest_checkpoint)
+    print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
+
+    loss = tf.keras.losses.BinaryCrossentropy()
+
+    test_losses = []
+    accuracy.reset_states()
+    test_predictions = []
+    tn = 0
+    fn = 0
+    fp = 0
+    tp = 0
+    for test_example_dict in test_tf_dataset:
+        test_batch_labels = test_example_dict['label']
+        test_batch_predictions = net(test_example_dict)[-1]
+        test_predictions.append(test_batch_predictions.numpy().flatten())
+        batch_test_loss = loss(y_true=test_batch_labels, y_pred=test_batch_predictions)
+        accuracy.update_state(y_true=test_batch_labels, y_pred=test_batch_predictions)
+        test_losses.append(batch_test_loss)
+
+        for pred, label in zip(test_batch_predictions, test_batch_labels):
+            pred_bin = int(pred.numpy() > 0.5)
+            label = label.numpy()[0]
+            if pred_bin == 1 and label == 1:
+                tp += 1
+            elif pred_bin == 0 and label == 1:
+                fn += 1
+            elif pred_bin == 1 and label == 0:
+                fp += 1
+            elif pred_bin == 0 and label == 0:
+                tn += 1
+
+    test_loss = np.mean(test_losses)
+    test_accuracy = accuracy.result().numpy() * 100
+    print("Test Loss:     {:7.4f}".format(test_loss))
+    print("Test Accuracy: {:5.3f}%".format(test_accuracy))
+
+    print("|        | label 0 | label 1 |")
+    print("| pred 0 | {:6d} | {:6d} |".format(tn, fn))
+    print("| pred 1 | {:6d} | {:6d} |".format(fp, tp))
+
+    np.savetxt('test_predictions.txt', test_predictions)
 
 
 class RasterClassifierWrapper(BaseClassifier):

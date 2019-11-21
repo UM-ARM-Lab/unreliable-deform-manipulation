@@ -63,13 +63,15 @@ class BaseStateSpaceDataset:
                     seed: int,
                     shuffle: bool = True,
                     sequence_length: Optional[int] = None,
-                    n_parallel_calls: int = None) -> tf.data.Dataset:
+                    n_parallel_calls: int = None,
+                    balance_key: Optional[str] = None) -> tf.data.Dataset:
         records = [str(filename) for filename in (self.dataset_dir / mode).glob("*.tfrecords")]
         return self.get_dataset_from_records(records,
                                              batch_size=batch_size,
                                              seed=seed,
                                              shuffle=shuffle,
                                              sequence_length=sequence_length,
+                                             balance_key=balance_key,
                                              n_parallel_calls=n_parallel_calls)
 
     def get_dataset_all_modes(self,
