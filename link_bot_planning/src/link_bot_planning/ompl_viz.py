@@ -64,19 +64,6 @@ def plot(ax,
     ax.set_xlim([-2.5, 2.5])
     ax.set_ylim([-2.5, 2.5])
 
-    custom_lines = [
-        Line2D([0], [0], color='b', lw=1),
-        Line2D([0], [0], color='r', lw=1),
-        Line2D([0], [0], color='g', lw=1),
-        Line2D([0], [0], color='cyan', lw=1),
-        Line2D([0], [0], color='orange', lw=1),
-        Line2D([0], [0], color='orange', lw=1),
-        Line2D([0], [0], color='white', lw=1),
-    ]
-
-    ax.legend(custom_lines,
-              ['sampled rope configurations', 'start', 'goal', 'final path', 'full rope', 'search tree'])
-
 
 def add_sampled_configuration(services: GazeboServices,
                               np_s: np.ndarray,

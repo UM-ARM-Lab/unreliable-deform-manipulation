@@ -1,0 +1,11 @@
+{
+  "fwd_model_dir": "./llnn/large_dt/November_04_09-26-44_84ccbfb7fe/",
+  "fwd_model_type": "llnn",
+  "classifier_model_dir": "classifiers/v6-new/October_30_15-37-56_c0af676a6b/",
+  "classifier_model_type": "raster",
+  "planner": "SST",
+  "max_v": 0.15,
+  "goal_threshold": 0.1,
+  "env_w": 5.0,
+  "env_h": 5.0
+}

@@ -91,7 +91,6 @@ class SST(MyPlanner):
         return self.state_space.getSubspace(0).satisfiesBounds(state[0])
 
     def propagate(self, start, control, duration, state_out):
-        print(duration)
         # NOTE: one sneaky way to do edge validator would be to set state_out to be something
         #  out of bounds other otherwise invalid, and do edge validation inside this function.
         #  this would also be slightly more efficient since we would not have to get the local environment multiple times
