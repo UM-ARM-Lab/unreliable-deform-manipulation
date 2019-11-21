@@ -111,7 +111,9 @@ class SST(MyPlanner):
         # copy the result into the ompl state data structure
         if not edge_is_valid:
             # This will ensure this edge is not added to the tree
-            state_out[0][0] = np.infty
+            print("invalid edge!")
+            for i in range(self.n_state):
+                state_out[0][i] = 1000
         else:
             from_numpy(np_s_next, state_out[0], self.n_state)
             next_head_point = np_s_next[0, 4:6]

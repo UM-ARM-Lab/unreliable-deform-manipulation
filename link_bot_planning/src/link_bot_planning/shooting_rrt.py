@@ -41,26 +41,27 @@ class ShootingRRT(MyPlanner):
         self.state_space = ob.CompoundStateSpace()
         self.n_local_env = self.fwd_model.local_env_params.w_cols * self.fwd_model.local_env_params.h_rows
         self.local_env_space = ob.RealVectorStateSpace(self.n_local_env)
-        self.local_env_space.setBounds(0, 10)
+        epsilon = 1e-3
+        self.local_env_space.setBounds(-epsilon, 1 + epsilon)
 
         self.local_env_origin_space = ob.RealVectorStateSpace(2)
-        self.local_env_origin_space.setBounds(-10000.1, 10000.0)
+        self.local_env_origin_space.setBounds(-10000, 10000)
 
         self.config_space = ob.RealVectorStateSpace(self.n_state)
-        bounds = ob.RealVectorBounds(self.n_state)
-        bounds.setLow(0, -self.env_params.w / 2)
-        bounds.setLow(1, -self.env_params.h / 2)
-        bounds.setLow(2, -self.env_params.w / 2)
-        bounds.setLow(3, -self.env_params.h / 2)
-        bounds.setLow(4, -self.env_params.w / 2)
-        bounds.setLow(5, -self.env_params.h / 2)
-        bounds.setHigh(0, self.env_params.w / 2)
-        bounds.setHigh(1, self.env_params.h / 2)
-        bounds.setHigh(2, self.env_params.w / 2)
-        bounds.setHigh(3, self.env_params.h / 2)
-        bounds.setHigh(4, self.env_params.w / 2)
-        bounds.setHigh(5, self.env_params.h / 2)
-        self.config_space.setBounds(bounds)
+        self.config_space_bounds = ob.RealVectorBounds(self.n_state)
+        self.config_space_bounds.setLow(0, -self.env_params.w / 2)
+        self.config_space_bounds.setLow(1, -self.env_params.h / 2)
+        self.config_space_bounds.setLow(2, -self.env_params.w / 2)
+        self.config_space_bounds.setLow(3, -self.env_params.h / 2)
+        self.config_space_bounds.setLow(4, -self.env_params.w / 2)
+        self.config_space_bounds.setLow(5, -self.env_params.h / 2)
+        self.config_space_bounds.setHigh(0, self.env_params.w / 2)
+        self.config_space_bounds.setHigh(1, self.env_params.h / 2)
+        self.config_space_bounds.setHigh(2, self.env_params.w / 2)
+        self.config_space_bounds.setHigh(3, self.env_params.h / 2)
+        self.config_space_bounds.setHigh(4, self.env_params.w / 2)
+        self.config_space_bounds.setHigh(5, self.env_params.h / 2)
+        self.config_space.setBounds(self.config_space_bounds)
 
         # the rope is just 6 real numbers with no bounds
         self.state_space.addSubspace(self.config_space, weight=1.0)
@@ -88,12 +89,16 @@ class ShootingRRT(MyPlanner):
         self.si = self.ss.getSpaceInformation()
 
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
+        self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
 
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(True)  # this is necessary!
         self.ss.setPlanner(self.planner)
         self.si.setPropagationStepSize(self.fwd_model.dt)
         self.si.setMinMaxControlDuration(1, 50)
+
+    def is_valid(self, state):
+        return self.state_space.getSubspace(0).satisfiesBounds(state[0])
 
     def propagate(self, start, control, duration, state_out):
         del duration  # unused
@@ -112,7 +117,7 @@ class ShootingRRT(MyPlanner):
         # copy the result into the ompl state data structure
         if not edge_is_valid:
             # This will ensure this edge is not added to the tree
-            state_out[0][0] = np.infty
+            state_out[0][0] = 1000
         else:
             from_numpy(np_s_next, state_out[0], self.n_state)
             local_env_data = self.get_local_env_at(np_s_next[0, 4], np_s_next[0, 5])

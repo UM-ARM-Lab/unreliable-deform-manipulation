@@ -21,7 +21,7 @@ from link_bot_planning import my_mpc
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
-from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
+from link_bot_planning.params import PlannerParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
