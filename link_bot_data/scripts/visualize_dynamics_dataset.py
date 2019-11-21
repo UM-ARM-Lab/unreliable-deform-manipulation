@@ -37,10 +37,10 @@ def main():
     i = 0
     for input_data, output_data in train_dataset:
         # TODO: should I have xy?
-        rope_configurations = input_data['states'].numpy().squeeze()
-        actions = input_data['actions'].numpy().squeeze()
-        local_envs = input_data['actual_local_env/env'].numpy().squeeze()
-        extents = input_data['actual_local_env/extent'].numpy().squeeze()
+        rope_configurations = input_data['state_s'].numpy().squeeze()
+        actions = input_data['action_s'].numpy().squeeze()
+        local_envs = input_data['actual_local_env_s/env'].numpy().squeeze()
+        extents = input_data['actual_local_env_s/extent'].numpy().squeeze()
 
         fig, ax = plt.subplots()
         arrow_width = 0.02

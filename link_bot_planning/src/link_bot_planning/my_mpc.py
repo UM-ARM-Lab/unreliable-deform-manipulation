@@ -16,7 +16,7 @@ from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
 from link_bot_gazebo.srv import LinkBotStateRequest
 from link_bot_planning.goals import sample_goal
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
+from link_bot_planning.params import PlannerParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import gazebo_trajectory_execution
 
@@ -29,14 +29,12 @@ class myMPC:
                  n_plans_per_env: int,
                  verbose: int,
                  planner_params: PlannerParams,
-                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  no_execution: bool):
         self.planner = planner
         self.n_total_plans = n_total_plans
         self.n_plans_per_env = n_plans_per_env
-        self.local_env_params = local_env_params
         self.env_params = env_params
         self.planner_params = planner_params
         self.verbose = verbose
@@ -120,8 +118,9 @@ class myMPC:
                     traj_exec_response = self.services.execute_trajectory(trajectory_execution_request)
                     self.services.pause(std_srvs.srv.EmptyRequest())
 
+                    local_env_params = self.planner.fwd_model.local_env_params
                     actual_path, actual_local_envs = gazebo_utils.trajectory_execution_response_to_numpy(traj_exec_response,
-                                                                                                         self.local_env_params,
+                                                                                                         local_env_params,
                                                                                                          self.services)
                     self.on_execution_complete(planned_path,
                                                planned_actions,

@@ -24,7 +24,7 @@ from link_bot_planning import my_mpc
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
-from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
+from link_bot_planning.params import PlannerParams, EnvParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
@@ -46,7 +46,6 @@ class ClassifierDataCollector(my_mpc.myMPC):
                  verbose: int,
                  seed: int,
                  planner_params: PlannerParams,
-                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  n_steps_per_example: int,
                  n_examples_per_record: int,
@@ -58,7 +57,6 @@ class ClassifierDataCollector(my_mpc.myMPC):
                          n_plans_per_env,
                          verbose,
                          planner_params,
-                         local_env_params,
                          env_params,
                          services=services,
                          no_execution=False)
@@ -69,6 +67,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
         self.n_steps_per_example = n_steps_per_example
         self.compression_type = compression_type
         self.outdir = outdir
+        self.local_env_params = self.planner.fwd_model.local_env_params
 
         if outdir is not None:
             self.full_output_directory = random_environment_data_utils.data_directory(self.outdir, *self.fwd_model_info)
@@ -81,21 +80,24 @@ class ClassifierDataCollector(my_mpc.myMPC):
 
         with (self.full_output_directory / 'hparams.json').open('w') as of:
             options = {
-                'seed': seed,
                 'dt': self.planner.fwd_model.dt,
-                'n_state': 6,
-                'n_action': 2,
+                'seed': seed,
                 'compression_type': compression_type,
-                'fwd_model_dir': str(self.fwd_model_dir),
-                'fwd_model_type': self.fwd_model_type,
                 'n_total_plans': n_total_plans,
                 'n_plans_per_env': n_plans_per_env,
                 'verbose': verbose,
                 'planner_params': planner_params.to_json(),
                 'env_params': env_params.to_json(),
-                'local_env_params': local_env_params.to_json(),
-                'sequence_length': self.n_steps_per_example,
+                'local_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
+                'steps_per_example': self.n_steps_per_example,
+                'fwd_model_dir': str(self.fwd_model_dir),
+                'fwd_model_type': self.fwd_model_type,
+                'fwd_model_hparams': self.planner.fwd_model.hparams,
                 'filter_free_space_only': False,
+                'labeling': {
+                    'threshold': 0.2,
+                    'discard_pre_far': True
+                }
             }
             json.dump(options, of, indent=2)
 
@@ -150,7 +152,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
         d = zip(states, next_states, planned_actions, planned_states, planned_next_states, actual_local_envs, planner_local_envs)
         for time_idx, data_t in enumerate(d):
             state, next_state, action, planned_state, planned_next_state, actual_local_env, planned_local_env = data_t
-
+            print("adding features for time {}".format(self.example_step_idx))
             self.current_features['{}/state'.format(self.example_step_idx)] = float_feature(state)
             self.current_features['{}/action'.format(self.example_step_idx)] = float_feature(action)
             self.current_features['{}/actual_local_env/env'.format(self.example_step_idx)] = float_feature(
@@ -161,7 +163,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                 actual_local_env.origin)
             self.current_features['{}/res'.format(self.example_step_idx)] = float_feature(np.array([self.local_env_params.res]))
             self.current_features['{}/traj_idx'.format(self.example_step_idx)] = float_feature(np.array([self.traj_idx]))
-            self.current_features['{}/time_idx '.format(time_idx)] = float_feature(np.array([self.example_step_idx]))
+            self.current_features['{}/time_idx '.format(self.example_step_idx)] = float_feature(np.array([time_idx]))
             self.current_features['{}/planned_state'.format(self.example_step_idx)] = float_feature(planned_state)
             self.current_features['{}/planned_local_env/env'.format(self.example_step_idx)] = float_feature(
                 planned_local_env.data.flatten())
@@ -191,6 +193,11 @@ class ClassifierDataCollector(my_mpc.myMPC):
                 self.examples[self.current_example_idx] = example
                 self.current_example_idx += 1
                 self.example_idx += 1
+                # reset the current features
+                self.current_features = {
+                    'local_env_rows': float_feature(np.array([self.local_env_params.h_rows])),
+                    'local_env_cols': float_feature(np.array([self.local_env_params.w_cols]))
+                }
 
             if self.current_example_idx == self.n_examples_per_record:
                 # save to a tf record
@@ -224,12 +231,9 @@ def main():
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=10.0)
     parser.add_argument("--real-time-rate", type=float, default=10.0, help='real time rate')
-    parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
-    parser.add_argument("--compression-type", choices=['', 'zlib', 'gzip'], default='zlib')
+    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
-    parser.add_argument('--local-env-cols', type=int, default=50, help='local env width')
-    parser.add_argument('--local-env-rows', type=int, default=50, help='local env width')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
     parser.add_argument('--goal-threshold', type=float, default=0.10, help='goal threshold')
 
@@ -243,9 +247,6 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v, goal_threshold=args.goal_threshold)
-    local_env_params = LocalEnvParams(h_rows=args.local_env_rows,
-                                      w_cols=args.local_env_cols,
-                                      res=args.res)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,
@@ -274,7 +275,6 @@ def main():
                                           classifier_model_dir=pathlib.Path(),
                                           classifier_model_type='none',
                                           planner_params=planner_params,
-                                          local_env_params=local_env_params,
                                           env_params=env_params,
                                           services=services)
 
@@ -288,7 +288,6 @@ def main():
         verbose=args.verbose,
         seed=args.seed,
         planner_params=planner_params,
-        local_env_params=local_env_params,
         env_params=env_params,
         n_steps_per_example=args.n_steps_per_example,
         n_examples_per_record=args.n_examples_per_record,

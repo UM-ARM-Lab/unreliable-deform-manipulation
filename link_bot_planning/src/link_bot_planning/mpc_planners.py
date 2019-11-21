@@ -2,7 +2,7 @@ import pathlib
 
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import model_utils, classifier_utils, ompl_viz
-from link_bot_planning.params import EnvParams, LocalEnvParams, PlannerParams
+from link_bot_planning.params import EnvParams, PlannerParams
 from link_bot_planning.shooting_rrt import ShootingRRT
 from link_bot_planning.sst import SST
 
@@ -13,7 +13,6 @@ def get_planner(planner_class_str: str,
                 classifier_model_dir: pathlib.Path,
                 classifier_model_type: str,
                 planner_params: PlannerParams,
-                local_env_params: LocalEnvParams,
                 env_params: EnvParams,
                 services: GazeboServices,
                 ):
@@ -30,9 +29,7 @@ def get_planner(planner_class_str: str,
 
     planner = planner_class(fwd_model=fwd_model,
                             classifier_model=classifier_model,
-                            dt=fwd_model.dt,
                             planner_params=planner_params,
-                            local_env_params=local_env_params,
                             env_params=env_params,
                             services=services,
                             viz_object=viz_object,

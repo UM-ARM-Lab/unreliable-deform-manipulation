@@ -67,7 +67,6 @@ class Executor(my_mpc.myMPC):
                  planner: MyPlanner,
                  verbose: int,
                  planner_params: PlannerParams,
-                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  outdir: pathlib.Path):
@@ -77,7 +76,6 @@ class Executor(my_mpc.myMPC):
             n_plans_per_env=1,
             verbose=verbose,
             planner_params=planner_params,
-            local_env_params=local_env_params,
             env_params=env_params,
             services=services,
             no_execution=False)
@@ -126,11 +124,8 @@ def main():
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=30.0)
     parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
-    parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
-    parser.add_argument('--local-env-cols', type=float, default=100, help='local env cols')
-    parser.add_argument('--local-env-rows', type=float, default=100, help='local env rows')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
 
     args = parser.parse_args()
@@ -140,9 +135,6 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v, goal_threshold=0.1)
-    local_env_params = LocalEnvParams(h_rows=args.local_env_rows,
-                                      w_cols=args.local_env_cols,
-                                      res=args.res)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,
@@ -171,7 +163,6 @@ def main():
                              classifier_model_dir=args.classifier_model_dir,
                              classifier_model_type=args.classifier_model_type,
                              planner_params=planner_params,
-                             local_env_params=local_env_params,
                              env_params=env_params,
                              services=services)
 
@@ -179,7 +170,6 @@ def main():
         planner=planner,
         verbose=args.verbose,
         planner_params=planner_params,
-        local_env_params=local_env_params,
         env_params=env_params,
         outdir=args.outdir,
         services=services,

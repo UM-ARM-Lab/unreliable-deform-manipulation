@@ -23,37 +23,34 @@ def main():
 
     args = parser.parse_args()
 
-    classifier_dataset = ClassifierDataset(args.input_dir)
-    dataset = classifier_dataset.cf_get_dataset(mode=args.mode,
-                                                shuffle=args.shuffle,
-                                                batch_size=1,
-                                                seed=args.seed)
+    classifier_dataset = ClassifierDataset(args.dataset_dir)
+    dataset = classifier_dataset.get_dataset(mode=args.mode,
+                                             shuffle=args.shuffle,
+                                             batch_size=1,
+                                             seed=args.seed)
 
     positive_count = 0
     negative_count = 0
     count = 0
     regression_with_label_1 = []
     regression_with_label_0 = []
-    for i, example_dict in enumerate(dataset):
-        res = example_dict['res'].numpy().squeeze()
+    for i, example in enumerate(dataset):
+        res = example['resolution'].numpy().squeeze()
         res = np.array([res, res])
-        planned_local_env = example_dict['planned_local_env/env'].numpy().squeeze()
-        planned_local_env_extent = example_dict['planned_local_env/extent'].numpy().squeeze()
-        planned_local_env_origin = example_dict['planned_local_env/origin'].numpy().squeeze()
-        actual_local_env = example_dict['actual_local_env/env'].numpy().squeeze()
-        actual_local_env_extent = example_dict['actual_local_env/extent'].numpy().squeeze()
-        state = example_dict['state'].numpy().squeeze()
-        next_state = example_dict['next_state'].numpy().squeeze()
-        planned_state = example_dict['planned_state'].numpy().squeeze()
-        planned_next_state = example_dict['planned_next_state'].numpy().squeeze()
-        if classifier_dataset.is_labeled:
-            label = example_dict['label'].numpy().squeeze()
-            if label:
-                positive_count += 1
-            else:
-                negative_count += 1
+        planned_local_env = example['planned_local_env/env'].numpy().squeeze()
+        planned_local_env_extent = example['planned_local_env/extent'].numpy().squeeze()
+        planned_local_env_origin = example['planned_local_env/origin'].numpy().squeeze()
+        actual_local_env = example['actual_local_env/env'].numpy().squeeze()
+        actual_local_env_extent = example['actual_local_env/extent'].numpy().squeeze()
+        state = example['state'].numpy().squeeze()
+        next_state = example['state_next'].numpy().squeeze()
+        planned_state = example['planned_state'].numpy().squeeze()
+        planned_next_state = example['planned_state_next'].numpy().squeeze()
+        label = example['label'].numpy().squeeze()
+        if label:
+            positive_count += 1
         else:
-            label = None
+            negative_count += 1
 
         count += 1
 

@@ -11,9 +11,8 @@ import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
 from tensorflow import keras
-from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
-from link_bot_planning.base_classifier import BaseClassifier
+from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_planning.visualization import plot_classifier_data
 from link_bot_pycommon import experiments_util, link_bot_sdf_utils
 from moonshine.numpy_utils import add_batch
@@ -24,7 +23,7 @@ class RasterClassifier(tf.keras.Model):
 
     def __init__(self, hparams, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.hparams = NoDependency(hparams)
+        self.hparams = tf.compat.checkpoint.NoDependency(hparams)
         self.m_dim = self.hparams['n_control']
 
         self.raster = RasterPoints(self.hparams['local_env_shape'])

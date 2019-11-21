@@ -23,7 +23,7 @@ from link_bot_planning import my_mpc
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
-from link_bot_planning.params import PlannerParams, LocalEnvParams, EnvParams
+from link_bot_planning.params import PlannerParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -44,7 +44,6 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
                  n_total_plans: int,
                  verbose: int,
                  planner_params: PlannerParams,
-                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  comparison_item_idx: int,
@@ -57,7 +56,6 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             n_plans_per_env=n_plans_per_env,
             verbose=verbose,
             planner_params=planner_params,
-            local_env_params=local_env_params,
             env_params=env_params,
             services=services,
             no_execution=False)
@@ -73,7 +71,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             "n_total_plans": n_total_plans,
             "n_targets": n_plans_per_env,
             "planner_params": planner_params.to_json(),
-            "local_env_params": local_env_params.to_json(),
+            "local_env_params": self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
             "env_params": env_params.to_json(),
             "seed": self.seed,
             "metrics": [],
@@ -171,7 +169,6 @@ def main():
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=15.0)
     parser.add_argument("--real-time-rate", type=float, default=10.0, help='real time rate')
-    parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
@@ -211,33 +208,20 @@ def main():
         classifier_model_dir = pathlib.Path(item_of_comparison['classifier_model_dir'])
         classifier_model_type = item_of_comparison['classifier_model_type']
 
-        model_hparams_file = classifier_model_dir / 'hparams.json'
-        if model_hparams_file.exists():
-            model_hparams = json.load(model_hparams_file.open('r'))
-            local_env_rows, local_env_cols = model_hparams['local_env_shape']
-        else:
-            local_env_shape = [50, 50]
-            local_env_rows, local_env_cols = local_env_shape
-            print(Fore.YELLOW + "no model hparams, assuming local env is {}".format(local_env_shape) + Fore.RESET)
-
         planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v, goal_threshold=0.1)
-        local_env_params = LocalEnvParams(h_rows=local_env_rows,
-                                          w_cols=local_env_cols,
-                                          res=args.res)
         env_params = EnvParams(w=args.env_w,
                                h=args.env_h,
                                real_time_rate=args.real_time_rate,
                                goal_padding=0.0)
 
         planner, _ = get_planner(planner_class_str='ShootingRRT',
-                              fwd_model_dir=args.fwd_model_dir,
-                              fwd_model_type=args.fwd_model_type,
-                              classifier_model_dir=classifier_model_dir,
-                              classifier_model_type=classifier_model_type,
-                              planner_params=planner_params,
-                              local_env_params=local_env_params,
-                              env_params=env_params,
-                              services=services)
+                                 fwd_model_dir=args.fwd_model_dir,
+                                 fwd_model_type=args.fwd_model_type,
+                                 classifier_model_dir=classifier_model_dir,
+                                 classifier_model_type=classifier_model_type,
+                                 planner_params=planner_params,
+                                 env_params=env_params,
+                                 services=services)
 
         runner = ComputeClassifierMetrics(
             planner=planner,
@@ -249,7 +233,6 @@ def main():
             n_total_plans=args.n_total_plans,
             verbose=args.verbose,
             planner_params=planner_params,
-            local_env_params=local_env_params,
             env_params=env_params,
             services=services,
             seed=args.seed,

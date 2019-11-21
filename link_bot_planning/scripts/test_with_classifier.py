@@ -37,7 +37,6 @@ class TestWithClassifier(my_mpc.myMPC):
                  n_targets: int,
                  verbose: int,
                  planner_params: PlannerParams,
-                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  no_execution: bool):
@@ -46,7 +45,6 @@ class TestWithClassifier(my_mpc.myMPC):
                          n_plans_per_env=n_targets,
                          verbose=verbose,
                          planner_params=planner_params,
-                         local_env_params=local_env_params,
                          env_params=env_params,
                          services=services,
                          no_execution=no_execution)
@@ -116,9 +114,6 @@ def main():
 
     goal_threshold = args.goal_threshold if args.goal_threshold is not None else params['goal_threshold']
     planner_params = PlannerParams(timeout=args.planner_timeout, max_v=params['max_v'], goal_threshold=goal_threshold)
-    local_env_params = LocalEnvParams(h_rows=params['local_env_rows'],
-                                      w_cols=params['local_env_cols'],
-                                      res=params['res'])
     env_params = EnvParams(w=params['env_w'],
                            h=params['env_h'],
                            real_time_rate=args.real_time_rate,
@@ -147,7 +142,6 @@ def main():
                              classifier_model_dir=pathlib.Path(params['classifier_model_dir']),
                              classifier_model_type=params['classifier_model_type'],
                              planner_params=planner_params,
-                             local_env_params=local_env_params,
                              env_params=env_params,
                              services=services)
 
@@ -156,7 +150,6 @@ def main():
         n_targets=args.n_targets,
         verbose=args.verbose,
         planner_params=planner_params,
-        local_env_params=local_env_params,
         env_params=env_params,
         services=services,
         no_execution=args.no_execution

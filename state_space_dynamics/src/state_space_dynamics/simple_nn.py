@@ -5,12 +5,11 @@ import time
 import numpy as np
 import progressbar
 import tensorflow as tf
-import tensorflow.contrib.eager as tfe
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
-from tensorflow.python.training.checkpointable.data_structures import NoDependency
 
-from link_bot_pycommon import experiments_util
+from state_space_dynamics.base_forward_model import BaseForwardModel
+from link_bot_pycommon import experiments_util, link_bot_sdf_utils
 from moonshine import gif_summary
 from moonshine.draw_rope_layer import DrawRope
 
@@ -20,7 +19,7 @@ class SimpleNN(tf.keras.Model):
     def __init__(self, hparams, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.initial_epoch = 0
-        self.hparams = NoDependency(hparams)
+        self.hparams = tf.compat.checkpoint.NoDependency(hparams)
         self.n_dim = self.hparams['n_points'] * 2
         self.m_dim = self.hparams['n_control']
 
@@ -214,30 +213,22 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         train_loop()
 
 
-class SimpleNNWrapper:
+class SimpleNNWrapper(BaseForwardModel):
 
-    def __init__(self, path):
-        model_hparams_file = path / 'hparams.json'
-        self.model_hparams = json.load(open(model_hparams_file, 'r'))
-        self.net = SimpleNN(hparams=self.model_hparams)
+    def __init__(self, model_dir: pathlib.Path):
+        super().__init__(model_dir)
+        self.net = SimpleNN(hparams=self.hparams)
         self.ckpt = tf.train.Checkpoint(net=self.net)
-        self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
+        self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)
-        self.dt = self.model_hparams['dt']
-        self.n_state = 6
-        self.n_control = 2
+        self.dt = self.hparams['dt']
 
-    def predict(self, np_first_states, np_actions):
-        """
-        It's T+1 because it includes the first state
-        :param np_first_states: [batch, 6]
-        :param np_actions: [batch, T, 2]
-        :return: [batch, T+1, 3, 2]
-        """
-        batch, T, _ = np_actions.shape
-        states = tf.convert_to_tensor(np_first_states, dtype=tf.float32)
+    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, first_states: np.ndarray,
+                actions: np.ndarray) -> np.ndarray:
+        batch, T, _ = actions.shape
+        states = tf.convert_to_tensor(first_states, dtype=tf.float32)
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
-        actions = tf.convert_to_tensor(np_actions, dtype=tf.float32)
+        actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {
             # must be batch, T, 6
             'states': states,

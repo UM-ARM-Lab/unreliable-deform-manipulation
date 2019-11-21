@@ -19,33 +19,27 @@ class ShootingRRT(MyPlanner):
     def __init__(self,
                  fwd_model,
                  classifier_model,
-                 dt: float,
                  planner_params: PlannerParams,
-                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  viz_object: VizObject):
         super().__init__(fwd_model,
                          classifier_model,
-                         dt,
                          planner_params,
-                         local_env_params,
                          env_params,
                          services,
                          viz_object)
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
-        self.dt = dt
         self.n_state = self.fwd_model.n_state
         self.n_control = self.fwd_model.n_control
-        self.local_env_params = local_env_params
         self.env_params = env_params
         self.planner_params = planner_params
         self.services = services
         self.viz_object = viz_object
 
         self.state_space = ob.CompoundStateSpace()
-        self.n_local_env = self.local_env_params.w_cols * self.local_env_params.h_rows
+        self.n_local_env = self.fwd_model.local_env_params.w_cols * self.fwd_model.local_env_params.h_rows
         self.local_env_space = ob.RealVectorStateSpace(self.n_local_env)
         self.local_env_space.setBounds(0, 10)
 
@@ -102,7 +96,7 @@ class ShootingRRT(MyPlanner):
         #                                              self.classifier_model,
         #                                              self.services,
         #                                              self.viz_object,
-        #                                              self.local_env_params,
+        #                                              self.fwd_model.local_env_params,
         #                                              self.planner_params.max_v))
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(True)  # this is necessary!
@@ -113,9 +107,9 @@ class ShootingRRT(MyPlanner):
     def is_valid(self, state):
         np_s1 = to_numpy(state[0], self.n_state)
         h1 = np_s1[0, 4:6]
-        local_env_data = get_local_occupancy_data(cols=self.local_env_params.w_cols,
-                                                  rows=self.local_env_params.h_rows,
-                                                  res=self.local_env_params.res,
+        local_env_data = get_local_occupancy_data(cols=self.fwd_model.local_env_params.w_cols,
+                                                  rows=self.fwd_model.local_env_params.h_rows,
+                                                  res=self.fwd_model.local_env_params.res,
                                                   center_point=h1,
                                                   services=self.services)
         accept_probability = self.classifier_model.predict_state_only(local_env_data, np_s1)
@@ -124,23 +118,29 @@ class ShootingRRT(MyPlanner):
     def propagate(self, start, control, duration, state_out):
         np_s = to_numpy(start[0], self.n_state)
         np_u = np.expand_dims(to_numpy(control, self.n_control), axis=0)
+        head_point = np_s[0, 4:6]
+        local_env_data = get_local_occupancy_data(cols=self.fwd_model.local_env_params.w_cols,
+                                                  rows=self.fwd_model.local_env_params.h_rows,
+                                                  res=self.fwd_model.local_env_params.res,
+                                                  center_point=head_point,
+                                                  services=self.services)
 
         # use the forward model to predict the next configuration
-        points_next = self.fwd_model.predict(np_s, np_u)
+        points_next = self.fwd_model.predict(local_env_data=local_env_data, first_states=np_s, actions=np_u)
         np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
         from_numpy(np_s_next, state_out[0], self.n_state)
         next_head_point = np_s_next[0, 4:6]
-        local_env_data = get_local_occupancy_data(cols=self.local_env_params.w_cols,
-                                                  rows=self.local_env_params.h_rows,
-                                                  res=self.local_env_params.res,
-                                                  center_point=next_head_point,
-                                                  services=self.services)
-        local_env = local_env_data.data.flatten().astype(np.float64)
+        local_env_data_next = get_local_occupancy_data(cols=self.fwd_model.local_env_params.w_cols,
+                                                       rows=self.fwd_model.local_env_params.h_rows,
+                                                       res=self.fwd_model.local_env_params.res,
+                                                       center_point=next_head_point,
+                                                       services=self.services)
+        local_env = local_env_data_next.data.flatten().astype(np.float64)
         for idx in range(self.n_local_env):
             occupancy_value = local_env[idx]
             state_out[1][idx] = occupancy_value
-        origin = local_env_data.origin.astype(np.float64)
+        origin = local_env_data_next.origin.astype(np.float64)
         from_numpy(origin, state_out[2], 2)
 
     def plan(self, np_start: np.ndarray,
@@ -151,9 +151,9 @@ class ShootingRRT(MyPlanner):
         :return: controls, states
         """
         # create start and goal states
-        start_local_occupancy = get_local_occupancy_data(rows=self.local_env_params.h_rows,
-                                                         cols=self.local_env_params.w_cols,
-                                                         res=self.local_env_params.res,
+        start_local_occupancy = get_local_occupancy_data(rows=self.fwd_model.local_env_params.h_rows,
+                                                         cols=self.fwd_model.local_env_params.w_cols,
+                                                         res=self.fwd_model.local_env_params.res,
                                                          center_point=np.array([np_start[0, 4], np_start[0, 5]]),
                                                          services=self.services)
         compound_start = ob.CompoundState(self.state_space)
@@ -185,8 +185,9 @@ class ShootingRRT(MyPlanner):
             for i, state in enumerate(ompl_path.getStates()):
                 np_s = to_numpy(state[0], self.n_state)
                 np_states[i] = np_s
-                grid = to_numpy_local_env(state[1], self.local_env_params.h_rows, self.local_env_params.w_cols)
-                res_2d = np.array([self.local_env_params.res, self.local_env_params.res])
+                grid = to_numpy_local_env(state[1], self.fwd_model.local_env_params.h_rows,
+                                          self.fwd_model.local_env_params.w_cols)
+                res_2d = np.array([self.fwd_model.local_env_params.res, self.fwd_model.local_env_params.res])
                 origin = to_numpy(state[2], 2)[0]
                 planner_local_env = link_bot_sdf_utils.OccupancyData(grid, res_2d, origin)
                 planner_local_envs.append(planner_local_env)

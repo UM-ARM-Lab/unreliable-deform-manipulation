@@ -9,13 +9,14 @@ import gpflow.multioutput.features as mf
 import gpflow.multioutput.kernels as mk
 import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image
+from ompl import util as ou
 from colorama import Fore
 from matplotlib.animation import FuncAnimation
 
+from state_space_dynamics.base_forward_model import BaseForwardModel
 from link_bot_gaussian_process import data_reformatting
 from link_bot_gaussian_process.my_svgp import MySVGP
-from link_bot_pycommon import experiments_util
+from link_bot_pycommon import experiments_util, link_bot_sdf_utils
 
 
 def predict_batch(fwd_model, np_states, np_controls, steps=None):
@@ -140,6 +141,9 @@ class LinkBotGP:
 
     def __init__(self, rng_type=None):
         """ you have to called either train or load before any of the other methods """
+        super().__init__()
+        # TODO: clean up GP hparams. Make more similar to other dynamics models.
+        #  make there be less duplication between fields and the hparams dict
         self.n_data_points = None  # number of data points
         self.n_inputs = None  # input dimensionality
         self.n_outputs = None  # output dimensionality
@@ -253,7 +257,7 @@ class LinkBotGP:
 
     def load(self, model_path: pathlib.Path):
         print(Fore.CYAN + "Loading model from {}".format(model_path) + Fore.RESET)
-        self.model = gpf.saver.Saver().load(model_path)
+        self.model = gpf.saver.Saver().load(model_path / 'fwd_model')
 
         metadata = json.load(open((str(model_path) + '-metadata.json'), 'r'))
         self.metadata = metadata
@@ -313,17 +317,24 @@ class LinkBotGP:
 
         return min_u
 
-    def predict(self, first_states, batch_actions):
-        """
-        It's T+1 because it includes the first state
-        :param np_first_states: [batch, 6]
-        :param np_actions: [batch, T, 2]
-        :return: [batch, T+1, 3, 2]
-        """
+    def predict(self, first_states: np.ndarray, actions: np.ndarray) -> np.ndarray:
         predictions = []
-        for first_state, actions in zip(first_states, batch_actions):
+        for first_state, actions in zip(first_states, actions):
             np_state = np.expand_dims(first_state, axis=0)
             prediction, _ = predict_one(self, np_state, actions)
             predicted_points = prediction.reshape([-1, 3, 2])
             predictions.append(predicted_points)
+        predictions = np.ndarray(predictions)
         return predictions
+
+
+class GPWrapper(BaseForwardModel):
+
+    def __init__(self, model_dir: pathlib.Path):
+        super().__init__(model_dir)
+        self.fwd_model = LinkBotGP(ou.RNG)
+        self.fwd_model.load(model_dir)
+
+    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, first_states: np.ndarray,
+                actions: np.ndarray) -> np.ndarray:
+        return self.fwd_model.predict(first_states, actions)

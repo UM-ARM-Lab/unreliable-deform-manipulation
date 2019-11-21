@@ -1,6 +1,6 @@
 import numpy as np
 
-from link_bot_planning.base_classifier import BaseClassifier
+from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_pycommon import link_bot_sdf_utils
 
 

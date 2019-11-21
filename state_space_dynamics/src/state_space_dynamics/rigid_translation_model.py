@@ -1,23 +1,30 @@
+import pathlib
+from typing import Optional
+
 import numpy as np
 
+from state_space_dynamics.base_forward_model import BaseForwardModel
+from link_bot_pycommon import link_bot_sdf_utils
 
-class RigidTranslationModel:
 
-    def __init__(self, beta, dt):
-        self.beta = beta
-        self.dt = dt
-        self.n_state = 6
-        self.n_control = 2
+class RigidTranslationModel(BaseForwardModel):
 
-    def predict(self, first_states, batch_actions):
-        """
-        It's T+1 because it includes the first state
-        :param np_first_states: [batch, 6]
-        :param np_actions: [batch, T, 2]
-        :return: [batch, T+1, 3, 2]
-        """
+    def __init__(self, model_dir: pathlib.Path, beta: Optional[float] = None, dt: Optional[float] = None):
+        super().__init__(model_dir)
+        if beta is None:
+            self.beta = self.hparams['beta']
+        else:
+            self.beta = beta
+
+        if dt is None:
+            self.dt = self.hparams['dt']
+        else:
+            self.dt = dt
+
+    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, first_states: np.ndarray,
+                actions: np.ndarray) -> np.ndarray:
         predictions = []
-        for first_state, actions in zip(first_states, batch_actions):
+        for first_state, actions in zip(first_states, actions):
             s_0 = np.reshape(first_state, [3, 2])
             prediction = [s_0]
             s_t = s_0

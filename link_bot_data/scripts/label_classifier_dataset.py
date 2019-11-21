@@ -10,9 +10,9 @@ import tensorflow as tf
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import float_feature
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
-config = tf.ConfigProto(gpu_options=gpu_options)
-tf.enable_eager_execution(config=config)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+tf.compat.v1.enable_eager_execution(config=config)
 
 
 def main():
@@ -44,17 +44,17 @@ def main():
         full_output_directory.mkdir(exist_ok=True)
 
         classifier_dataset = ClassifierDataset(args.indir)
-        dataset = classifier_dataset.get_dataset(mode=mode, batch_size=0, shuffle=False)
+        tf_dataset = classifier_dataset.get_dataset(mode=mode, batch_size=1, shuffle=False, seed=1)
 
         current_record_idx = 0
         examples = np.ndarray([args.n_examples_per_record], dtype=np.object)
         example_idx = 0
-        for example_dict in dataset:
-            print(example_dict.keys())
-            state = example_dict['state'].numpy()
-            next_state = example_dict['next_state'].numpy()
-            planned_state = example_dict['planned_state'].numpy()
-            planned_next_state = example_dict['planned_next_state'].numpy()
+        # FIXME: what if we compute the label on the fly? Using dataset.map or something?
+        for example_dict in tf_dataset:
+            state = example_dict['state'].numpy().squeeze()
+            next_state = example_dict['state_next'].numpy().squeeze()
+            planned_state = example_dict['planned_state'].numpy().squeeze()
+            planned_next_state = example_dict['planned_state_next'].numpy().squeeze()
 
             # Compute the label for whether our model should be trusted
             pre_transition_distance = np.linalg.norm(state - planned_state)
@@ -86,8 +86,9 @@ def main():
                 negative_labels += 1
             ###########################################################
 
-            # TODO: figure out a better way to do this
-            features = []
+            # TODO: figure out a better way to copy/convert from example_dict to a feature dictonary that we can serialize
+            #  it should somehow use the classifier_dataset traj/state/action like names and shapes structures
+            features = classifier_dataset.convert_example_to_features_dict(example_dict)
             features['label'] = float_feature(np.array([label]))
             example_proto = tf.train.Example(features=tf.train.Features(feature=features))
             example = example_proto.SerializeToString()

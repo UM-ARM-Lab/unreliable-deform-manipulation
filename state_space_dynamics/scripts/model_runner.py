@@ -38,8 +38,8 @@ def train(args):
                                              sequence_length=model_hparams['sequence_length'],
                                              batch_size=args.batch_size)
 
-    # Copy some parameters of the dataset into the model
-    model_hparams['dt'] = train_dataset.hparams['dt']
+    # Copy parameters of the dataset into the model
+    model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
     module = state_space_dynamics.get_model_module(model_hparams['model_class'])
 
     try:

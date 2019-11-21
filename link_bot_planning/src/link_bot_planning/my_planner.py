@@ -3,29 +3,26 @@ from typing import Tuple, List
 import numpy as np
 import ompl.base as ob
 
+from state_space_dynamics.base_forward_model import BaseForwardModel
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning.ompl_viz import VizObject
-from link_bot_planning.params import LocalEnvParams, PlannerParams, EnvParams
+from link_bot_planning.params import PlannerParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 
 
 class MyPlanner:
 
     def __init__(self,
-                 fwd_model,
+                 fwd_model: BaseForwardModel,
                  classifier_model,
-                 dt: float,
                  planner_params: PlannerParams,
-                 local_env_params: LocalEnvParams,
                  env_params: EnvParams,
                  services: GazeboServices,
                  viz_object: VizObject):
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
-        self.dt = dt
         self.n_state = self.fwd_model.n_state
         self.n_control = self.fwd_model.n_control
-        self.local_env_params = local_env_params
         self.env_params = env_params
         self.planner_params = planner_params
         self.services = services

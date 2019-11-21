@@ -223,7 +223,7 @@ def main():
     parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)
     parser.add_argument("outdir")
     parser.add_argument('--dt', type=float, default=1.00)
-    parser.add_argument('--res', '-r', type=float, default=0.01, help='size of cells in meters')
+    parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=6.0)
     parser.add_argument('--env-h', type=float, default=6.0)
     parser.add_argument('--local_env-cols', type=int, default=50)

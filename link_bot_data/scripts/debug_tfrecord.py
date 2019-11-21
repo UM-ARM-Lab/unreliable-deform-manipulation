@@ -43,6 +43,10 @@ def main():
         for items in to_print:
             print(items)
 
+        key = input(Fore.CYAN + "press enter to see an example from the next record file... (q to quit) " + Fore.RESET)
+        if key == 'q':
+            break
+
 
 if __name__ == '__main__':
     main()
