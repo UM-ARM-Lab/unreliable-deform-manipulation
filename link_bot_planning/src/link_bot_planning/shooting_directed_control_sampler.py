@@ -5,7 +5,7 @@ from ompl import control as oc
 
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_classifiers.base_classifier import BaseClassifier
-from link_bot_planning.ompl_viz import VizObject
+from link_bot_planning.viz_object import VizObject
 from link_bot_planning.params import LocalEnvParams
 from link_bot_planning.state_spaces import to_numpy, from_numpy
 from link_bot_pycommon import link_bot_sdf_utils

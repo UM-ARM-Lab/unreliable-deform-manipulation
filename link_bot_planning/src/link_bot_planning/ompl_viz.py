@@ -9,18 +9,8 @@ from visualization_msgs.msg import MarkerArray, Marker
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning.state_spaces import to_numpy
+from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon.link_bot_sdf_utils import SDF
-
-
-class VizObject:
-
-    def __init__(self):
-        self.states_sampled_at = []
-        self.rejected_samples = []
-
-    def clear(self):
-        self.states_sampled_at.clear()
-        self.rejected_samples.clear()
 
 
 def plot(ax,
@@ -36,10 +26,10 @@ def plot(ax,
     ax.imshow(np.flipud(environment), extent=extent)
 
     for state_sampled_at in viz_object.states_sampled_at:
-        plot_rope_configuration(ax, state_sampled_at[0], label='sampled states', linewidth=0.5, c='b', alpha=0.2, zorder=1)
+        plot_rope_configuration(ax, state_sampled_at, label='sampled states', linewidth=0.5, c='b', alpha=0.2, zorder=1)
 
     for rejected_state in viz_object.rejected_samples:
-        plot_rope_configuration(ax, rejected_state[0], label='states rejected by classifier', linewidth=0.5, c='r', alpha=0.5,
+        plot_rope_configuration(ax, rejected_state, label='states rejected by classifier', linewidth=0.5, c='r', alpha=0.5,
                                 zorder=1)
 
     start = planned_path[0]

@@ -1,5 +1,6 @@
 import pathlib
 
+import link_bot_planning.viz_object
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import model_utils, classifier_utils, ompl_viz
 from link_bot_planning.params import EnvParams, PlannerParams
@@ -18,7 +19,7 @@ def get_planner(planner_class_str: str,
                 ):
     fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, fwd_model_type)
     classifier_model = classifier_utils.load_generic_model(classifier_model_dir, classifier_model_type)
-    viz_object = ompl_viz.VizObject()
+    viz_object = link_bot_planning.viz_object.VizObject()
 
     if planner_class_str == 'ShootingRRT':
         planner_class = ShootingRRT

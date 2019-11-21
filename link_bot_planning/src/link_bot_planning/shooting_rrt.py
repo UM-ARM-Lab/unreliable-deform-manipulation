@@ -7,7 +7,7 @@ from ompl import control as oc
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.ompl_viz import VizObject
+from link_bot_planning.viz_object import VizObject
 from link_bot_planning.params import EnvParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env, from_numpy
@@ -73,7 +73,8 @@ class ShootingRRT(MyPlanner):
         # Only sample configurations which are known to be valid, i.e. not overstretched.
         def state_sampler_allocator(state_space):
             # this length comes from the SDF file textured_link_bot.sdf
-            sampler = ValidRopeConfigurationCompoundSampler(state_space, extent=self.env_params.extent, link_length=0.24)
+            sampler = ValidRopeConfigurationCompoundSampler(state_space, self.viz_object, extent=self.env_params.extent,
+                                                            link_length=0.24)
             return sampler
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(state_sampler_allocator))
@@ -101,7 +102,7 @@ class ShootingRRT(MyPlanner):
         return self.state_space.getSubspace(0).satisfiesBounds(state[0])
 
     def propagate(self, start, control, duration, state_out):
-        del duration  # unused
+        del duration  # unused, mult-step propogation is handled inside propagateWhileValid
         np_s = to_numpy(start[0], self.n_state)
         np_u = np.expand_dims(to_numpy(control, self.n_control), axis=0)
         local_env_data = self.get_local_env_at(np_s[0, 4], np_s[0, 5])
@@ -117,6 +118,7 @@ class ShootingRRT(MyPlanner):
         # copy the result into the ompl state data structure
         if not edge_is_valid:
             # This will ensure this edge is not added to the tree
+            self.viz_object.rejected_samples.append(np_s_next[0])
             state_out[0][0] = 1000
         else:
             from_numpy(np_s_next, state_out[0], self.n_state)

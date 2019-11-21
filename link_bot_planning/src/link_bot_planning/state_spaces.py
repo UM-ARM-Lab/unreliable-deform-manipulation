@@ -3,15 +3,17 @@ from typing import List
 import numpy as np
 from ompl import base as ob
 
+from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_pycommon
 
 
 class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
 
-    def __init__(self, state_space, extent: List[float], link_length: float):
+    def __init__(self, state_space, viz_object: VizObject, extent: List[float], link_length: float):
         super(ValidRopeConfigurationSampler, self).__init__(state_space)
         self.extent = extent
         self.link_length = link_length
+        self.viz_object = viz_object
 
     def sampleUniform(self, state_out: ob.AbstractState):
         # passing 0 length will make it possible the sample things out of the bounds of the arena
@@ -22,14 +24,16 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
         state_out[3] = random_rope_configuration[3]
         state_out[4] = random_rope_configuration[4]
         state_out[5] = random_rope_configuration[5]
+        self.viz_object.states_sampled_at.append(random_rope_configuration)
 
 
 class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
 
-    def __init__(self, state_space, extent: List[float], link_length: float):
+    def __init__(self, state_space, viz_object: VizObject, extent: List[float], link_length: float):
         super(ValidRopeConfigurationCompoundSampler, self).__init__(state_space)
         self.extent = extent
         self.link_length = link_length
+        self.viz_object = viz_object
 
     def sampleUniform(self, state_out: ob.CompoundStateInternal):
         # passing 0 length will make it possible the sample things out of the bounds of the arena
@@ -40,6 +44,7 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         state_out[0][3] = random_rope_configuration[3]
         state_out[0][4] = random_rope_configuration[4]
         state_out[0][5] = random_rope_configuration[5]
+        self.viz_object.states_sampled_at.append(random_rope_configuration)
 
 
 def to_numpy(state_or_control, dim: int):

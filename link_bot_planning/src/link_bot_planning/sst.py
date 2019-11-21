@@ -7,7 +7,7 @@ from ompl import control as oc
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.ompl_viz import VizObject
+from link_bot_planning.viz_object import VizObject
 from link_bot_planning.params import EnvParams, PlannerParams
 from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env, from_numpy
 from link_bot_pycommon import link_bot_sdf_utils
@@ -63,7 +63,8 @@ class SST(MyPlanner):
         # Only sample configurations which are known to be valid, i.e. not overstretched.
         def state_sampler_allocator(state_space):
             # this length comes from the SDF file textured_link_bot.sdf
-            sampler = ValidRopeConfigurationCompoundSampler(state_space, extent=self.env_params.extent, link_length=0.24)
+            sampler = ValidRopeConfigurationCompoundSampler(state_space, self.viz_object, extent=self.env_params.extent,
+                                                            link_length=0.24)
             return sampler
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(state_sampler_allocator))
@@ -78,13 +79,16 @@ class SST(MyPlanner):
 
         self.si = self.ss.getSpaceInformation()
 
-        # SST will use this to propagate things
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
+        self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
 
         self.planner = oc.SST(self.si)
         self.ss.setPlanner(self.planner)
         self.si.setPropagationStepSize(self.fwd_model.dt)
         self.si.setMinMaxControlDuration(1, 50)
+
+    def is_valid(self, state):
+        return self.state_space.getSubspace(0).satisfiesBounds(state[0])
 
     def propagate(self, start, control, duration, state_out):
         print(duration)
@@ -111,9 +115,8 @@ class SST(MyPlanner):
         # copy the result into the ompl state data structure
         if not edge_is_valid:
             # This will ensure this edge is not added to the tree
-            print("invalid edge!")
-            for i in range(self.n_state):
-                state_out[0][i] = 1000
+            state_out[0][0] = 1000
+            self.viz_object.rejected_samples.append(np_s_next[0])
         else:
             from_numpy(np_s_next, state_out[0], self.n_state)
             next_head_point = np_s_next[0, 4:6]

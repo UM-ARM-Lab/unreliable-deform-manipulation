@@ -5,7 +5,7 @@ import ompl.base as ob
 
 from state_space_dynamics.base_forward_model import BaseForwardModel
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning.ompl_viz import VizObject
+from link_bot_planning.viz_object import VizObject
 from link_bot_planning.params import PlannerParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 
