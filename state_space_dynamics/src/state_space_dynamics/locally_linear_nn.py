@@ -17,10 +17,11 @@ class LocallyLinearNN(tf.keras.Model):
         super().__init__(*args, **kwargs)
         self.dt = dt
         self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
-        self.n_dim = self.hparams['n_points'] * 2
-        self.m_dim = self.hparams['n_control']
+        self.n_dim = self.hparams['dynamics_dataset_hparams']['n_state']
+        self.m_dim = self.hparams['dynamics_dataset_hparams']['n_action']
+        self.n_points = int(self.hparams['dynamics_dataset_hparams']['n_state'] // 2)
 
-        self.elements_in_A = self.hparams['n_points'] * (2 * 2)
+        self.elements_in_A = self.n_points * (2 * 2)
         self.elements_in_B = self.n_dim * self.m_dim
         self.num_elements_in_linear_model = self.elements_in_A + self.elements_in_B
 
@@ -52,7 +53,7 @@ class LocallyLinearNN(tf.keras.Model):
             params_t = z_t
 
             A_t_params, B_t_params = tf.split(params_t, [self.elements_in_A, self.elements_in_B], axis=1)
-            B_t_per_point = tf.split(B_t_params, self.hparams['n_points'], axis=1)
+            B_t_per_point = tf.split(B_t_params, self.n_points, axis=1)
             B_t_per_point = [tf.reshape(_b_p, [-1, 2, 2]) for _b_p in B_t_per_point]
 
             B_t = tf.concat(B_t_per_point, axis=1)

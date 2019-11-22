@@ -24,7 +24,7 @@ class LinkBotStateSpaceDataset(StateSpaceDataset):
         self.state_like_names_and_shapes['actual_local_env_s/env'] = '%d/actual_local_env/env', local_env_shape
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
-        def _convert_full_sequence_to_input_and_output_sequences(state_like_sequences, action_like_sequences):
+        def _convert_full_sequence_to_input_and_output_sequences(const_data, state_like_sequences, action_like_sequences):
             # separates into x/y, where x is all time steps except the last, and y is all the time steps (including the first)
             # the first is included in y just because it makes it easier to visualize,
             # since you don't need to do any combination with the first time step or anything
@@ -34,6 +34,7 @@ class LinkBotStateSpaceDataset(StateSpaceDataset):
                 input_dict[k] = v[:-1]
             output_dict = {'output_states': state_like_sequences['state_s']}
             input_dict.update(action_like_sequences)
+            input_dict.update(const_data)
             return input_dict, output_dict
 
         return dataset.map(_convert_full_sequence_to_input_and_output_sequences, num_parallel_calls=n_parallel_calls)
