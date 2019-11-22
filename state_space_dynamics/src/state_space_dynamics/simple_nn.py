@@ -8,10 +8,8 @@ import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
 
-from state_space_dynamics.base_forward_model import BaseForwardModel
 from link_bot_pycommon import experiments_util, link_bot_sdf_utils
-from moonshine import gif_summary
-from moonshine.draw_rope_layer import DrawRope
+from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
 class SimpleNN(tf.keras.Model):
@@ -19,24 +17,17 @@ class SimpleNN(tf.keras.Model):
     def __init__(self, hparams, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.initial_epoch = 0
-        self.hparams = tf.compat.checkpoint.NoDependency(hparams)
-        self.n_dim = self.hparams['n_points'] * 2
-        self.m_dim = self.hparams['n_control']
+        self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
 
         self.concat = layers.Concatenate()
         self.dense_layers = []
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
-        self.dense_layers.append(layers.Dense(self.n_dim, activation=None))
-
-        self.draw_layer = DrawRope(image_shape=[128, 128])
-
-        self.image_origin = tf.constant([50, 50], dtype=tf.int64)
-        self.image_resolution = tf.constant([0.05, 0.05], dtype=tf.float32)
+        self.dense_layers.append(layers.Dense(self.hparams['dynamics_dataset_hparams']['n_state'], activation=None))
 
     def call(self, input_dict, training=None, mask=None):
-        states = input_dict['states']
-        actions = input_dict['actions']
+        states = input_dict['state_s']
+        actions = input_dict['action_s']
         input_sequence_length = actions.shape[1]
         s_0 = tf.expand_dims(states[:, 0], axis=2)
 
@@ -50,7 +41,8 @@ class SimpleNN(tf.keras.Model):
             z_t = _state_action_t
             for dense_layer in self.dense_layers:
                 z_t = dense_layer(z_t)
-            s_t_plus_1_flat = tf.expand_dims(z_t, axis=2)
+            ds_t = tf.expand_dims(z_t, axis=2)
+            s_t_plus_1_flat = s_t + ds_t
 
             gen_states.append(s_t_plus_1_flat)
 
@@ -96,8 +88,10 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
     # If we're resuming a checkpoint, there is no new log path
     if args.checkpoint is not None:
         full_log_path = args.checkpoint
-    else:
+    elif args.log:
         full_log_path = pathlib.Path("log_data") / log_path
+    else:
+        full_log_path = '/tmp'
 
     ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
     manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=3)
@@ -170,17 +164,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             print("Epoch: {:5d}, Time {:4.1f}s, Training loss: {:8.5f}".format(epoch, dt_per_epoch, training_loss))
             if args.log:
                 tf.contrib.summary.scalar("training loss", training_loss)
-                # TODO: show gifs of predictions in tensorboard
-                #  this just reuses whatever the last back from training was, which I think is fine
-                summary_batch_x, summary_batch_y = train_batch_x, train_batch_y
-                summary_true_states = summary_batch_y['output_states']
-                summary_pred_states = net(summary_batch_x)
-                fps = int(1000 / hparams['dt'])
-                pred_images = net.draw_layer([summary_pred_states, net.image_resolution, net.image_origin])
-                true_images = net.draw_layer([summary_true_states, net.image_resolution, net.image_origin])
-                gif_summary.gif_summary_v2('train_predictions', pred_images, fps=fps, max_outputs=5)
-                gif_summary.gif_summary_v2('train_true', true_images, fps=fps, max_outputs=5)
-                # gifs not showing. try using contrib.Summary
 
             ################
             # validation
@@ -231,9 +214,9 @@ class SimpleNNWrapper(BaseForwardModel):
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {
             # must be batch, T, 6
-            'states': states,
+            'state_s': states,
             # must be batch, T, 2
-            'actions': actions,
+            'action_s': actions,
         }
         predictions = self.net(test_x)
         predicted_points = predictions.numpy().reshape([batch, T + 1, 3, 2])
