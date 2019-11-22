@@ -25,7 +25,7 @@ def main():
     dataset = LinkBotStateSpaceDataset(args.dataset_dir)
 
     t0 = time.time()
-    tf_dataset = dataset.get_dataset(mode='test',
+    tf_dataset = dataset.get_dataset(mode='train',
                                      shuffle=args.shuffle,
                                      seed=1,
                                      sequence_length=args.sequence_length,
