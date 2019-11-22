@@ -3,6 +3,7 @@ from __future__ import division, print_function
 
 import json
 import pathlib
+import time
 from typing import List, Optional
 
 import numpy as np
@@ -10,7 +11,7 @@ import tensorflow as tf
 from colorama import Fore
 from google.protobuf.json_format import MessageToDict
 
-from link_bot_data.link_bot_dataset_utils import balance_xy_dataset, balance_x_dataset
+from link_bot_data.link_bot_dataset_utils import balance_x_dataset
 
 
 def make_mask(T, S):
@@ -63,7 +64,7 @@ class BaseStateSpaceDataset:
                     seed: int,
                     shuffle: bool = True,
                     sequence_length: Optional[int] = None,
-                    n_parallel_calls: int = 8,
+                    n_parallel_calls: int = tf.data.experimental.AUTOTUNE,
                     balance_key: Optional[str] = None) -> tf.data.Dataset:
         records = [str(filename) for filename in (self.dataset_dir / mode).glob("*.tfrecords")]
         return self.get_dataset_from_records(records,
@@ -113,7 +114,7 @@ class BaseStateSpaceDataset:
 
         self.start_mask = make_mask(self.max_sequence_length, sequence_length)
 
-        dataset = tf.data.TFRecordDataset(records, buffer_size=8 * 1024 * 1024,
+        dataset = tf.data.TFRecordDataset(records, buffer_size=1 * 1024 * 1024,
                                           compression_type=self.hparams['compression_type'])
 
         if shuffle:
@@ -146,14 +147,10 @@ class BaseStateSpaceDataset:
         if balance_key is not None:
             dataset = balance_x_dataset(dataset, balance_key)
 
-        dataset_size = 0
-        for _ in dataset:
-            dataset_size += batch_size
-
         dataset = self.post_process(dataset, n_parallel_calls)
 
         dataset = dataset.batch(batch_size, drop_remainder=False)
-        dataset = dataset.prefetch(batch_size)
+        dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
         # sanity check that the dataset isn't empty, which can happen when debugging if batch size is bigger than dataset size
         empty = True
@@ -161,6 +158,12 @@ class BaseStateSpaceDataset:
             empty = False
             break
         if empty:
+            dataset_size = 0
+            for _ in dataset:
+                dataset_size += batch_size
+                if dataset_size >= 8*batch_size:
+                    dataset_size = "... more than 8 batches"
+                    break
             raise RuntimeError("Dataset is empty! batch size: {}, dataset size: {}".format(batch_size, dataset_size))
 
         return dataset
@@ -170,13 +173,9 @@ class BaseStateSpaceDataset:
         state_like_tensors = {}
         action_like_tensors = {}
         for example_name, seq in state_like_seqs.items():
-            seq = tf.convert_to_tensor(seq)
-            seq.set_shape([example_sequence_length] + seq.shape.as_list()[1:])
-            state_like_tensors[example_name] = seq
+            state_like_tensors[example_name] = tf.concat(seq, 0)
         for example_name, seq in action_like_seqs.items():
-            seq = tf.convert_to_tensor(seq)
-            seq.set_shape([example_sequence_length - 1] + seq.shape.as_list()[1:])
-            action_like_tensors[example_name] = seq
+            action_like_tensors[example_name] = tf.concat(seq, axis=0)
 
         return state_like_tensors, action_like_tensors
 
@@ -241,21 +240,25 @@ class StateSpaceDataset(BaseStateSpaceDataset):
         # parse all the features of all time steps together
         features = tf.io.parse_single_example(serialized_example, features=features)
 
-        state_like_seqs = dict([(example_name, []) for example_name in self.state_like_names_and_shapes])
-        action_like_seqs = dict([(example_name, []) for example_name in self.action_like_names_and_shapes])
+        state_like_seqs = {}
+        action_like_seqs = {}
         constant_data = {}
 
-        for i in range(self.max_sequence_length):
-            for example_name, (name, shape) in self.state_like_names_and_shapes.items():
-                state_like_seqs[example_name].append(features[name % i])
+        for example_name, (name, shape) in self.state_like_names_and_shapes.items():
+            state_like_seq = []
+            for i in range(self.max_sequence_length):
+                state_like_seq.append(features[name % i])
+            state_like_seqs[example_name] = tf.stack(state_like_seq, axis=0)
+            state_like_seqs[example_name].set_shape([self.max_sequence_length] + list(shape))
 
-        for i in range(self.max_sequence_length - 1):
-            for example_name, (name, shape) in self.action_like_names_and_shapes.items():
-                action_like_seqs[example_name].append(features[name % i])
+        for example_name, (name, shape) in self.action_like_names_and_shapes.items():
+            action_like_seq = []
+            for i in range(self.max_sequence_length - 1):
+                action_like_seq.append(features[name % i])
+            action_like_seqs[example_name] = tf.stack(action_like_seq, axis=0)
+            action_like_seqs[example_name].set_shape([self.max_sequence_length - 1] + list(shape))
 
         for example_name, (name, shape) in self.trajectory_constant_names_and_shapes.items():
             constant_data[example_name] = features[name]
 
-        state_like_seqs, action_like_seqs = self.convert_to_sequences(state_like_seqs, action_like_seqs,
-                                                                      self.max_sequence_length)
         return constant_data, state_like_seqs, action_like_seqs
