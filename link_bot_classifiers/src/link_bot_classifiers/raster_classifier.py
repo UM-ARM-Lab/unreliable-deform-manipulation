@@ -13,6 +13,7 @@ from colorama import Fore, Style
 from tensorflow import keras
 
 from link_bot_classifiers.base_classifier import BaseClassifier
+from link_bot_planning.params import LocalEnvParams
 from link_bot_planning.visualization import plot_classifier_data
 from link_bot_pycommon import experiments_util, link_bot_sdf_utils
 from moonshine.numpy_utils import add_batch
@@ -26,7 +27,8 @@ class RasterClassifier(tf.keras.Model):
         self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
         self.m_dim = self.hparams['n_control']
 
-        self.raster = RasterPoints(self.hparams['local_env_shape'])
+        local_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['local_env_params'])
+        self.raster = RasterPoints([local_env_params.h_row, local_env_params.w_col])
         self.conv_layers = []
         self.pool_layers = []
         for n_filters, kernel_size in self.hparams['conv_filters']:

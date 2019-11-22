@@ -268,6 +268,7 @@ def main():
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
+    # NOTE: we could make the classifier take a different sized local environment than the dynamics, just a thought.
     planner, fwd_model_info = get_planner(planner_class_str='ShootingRRT',
                                           fwd_model_dir=args.fwd_model_dir,
                                           fwd_model_type=args.fwd_model_type,
