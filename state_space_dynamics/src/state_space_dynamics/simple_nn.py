@@ -41,8 +41,12 @@ class SimpleNN(tf.keras.Model):
             z_t = _state_action_t
             for dense_layer in self.dense_layers:
                 z_t = dense_layer(z_t)
-            ds_t = tf.expand_dims(z_t, axis=2)
-            s_t_plus_1_flat = s_t + ds_t
+            
+            if self.hparams['residual']:
+                ds_t = tf.expand_dims(z_t, axis=2)
+                s_t_plus_1_flat = s_t + ds_t
+            else:
+                s_t_plus_1_flat = tf.expand_dims(z_t, axis=2)
 
             gen_states.append(s_t_plus_1_flat)
 

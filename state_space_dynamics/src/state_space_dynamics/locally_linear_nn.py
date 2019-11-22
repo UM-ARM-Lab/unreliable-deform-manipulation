@@ -72,7 +72,7 @@ class LocallyLinearNN(tf.keras.Model):
 
 
 def eval(hparams, test_tf_dataset, args):
-    net = LocallyLinearNN(hparams=hparams)
+    net = LocallyLinearNN(dt=hparams['dynamics_dataset_hparams']['dt'], hparams=hparams)
     ckpt = tf.train.Checkpoint(net=net)
     manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=1)
     ckpt.restore(manager.latest_checkpoint)

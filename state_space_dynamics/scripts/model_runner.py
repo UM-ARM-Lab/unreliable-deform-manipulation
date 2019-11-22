@@ -11,8 +11,8 @@ import state_space_dynamics
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_pycommon import experiments_util
 
-tf.enable_eager_execution()
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.enable_eager_execution()
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 def train(args):
@@ -60,6 +60,7 @@ def eval(args):
     test_tf_dataset = test_dataset.get_dataset(mode='test',
                                                shuffle=False,
                                                seed=args.seed,
+                                               sequence_length=args.sequence_length,
                                                batch_size=args.batch_size)
 
     ###############
@@ -104,6 +105,7 @@ def main():
     eval_parser = subparsers.add_parser('eval')
     eval_parser.add_argument('dataset_dir', type=pathlib.Path)
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
+    eval_parser.add_argument('--sequence-length', type=int, default=10)
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.set_defaults(func=eval)
