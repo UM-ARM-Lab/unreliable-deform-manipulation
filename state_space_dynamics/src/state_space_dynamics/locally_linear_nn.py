@@ -3,6 +3,7 @@ import pathlib
 import time
 
 import numpy as np
+import progressbar
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
@@ -140,7 +141,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         # test the loss before any training occurs
         ################
         val_losses = []
-        for val_x, val_y in val_tf_dataset:
+        for val_x, val_y in progressbar.progressbar(val_tf_dataset):
             true_val_states = val_y['output_states']
             val_gen_states = net(val_x)
             batch_val_loss = loss(y_true=true_val_states, y_pred=val_gen_states)
@@ -159,7 +160,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             train_batch_x = None
             # noinspection PyUnusedLocal
             train_batch_y = None
-            for train_batch_x, train_batch_y in train_tf_dataset:
+            for train_batch_x, train_batch_y in progressbar.progressbar(train_tf_dataset):
                 batch_t0 = time.time()
                 true_train_states = train_batch_y['output_states']
                 with tf.GradientTape() as tape:
@@ -191,7 +192,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             ################
             if epoch % args.validation_every == 0:
                 val_losses = []
-                for val_x, val_y in val_tf_dataset:
+                for val_x, val_y in progressbar.progressbar(val_tf_dataset):
                     true_val_states = val_y['output_states']
                     val_gen_states = net(val_x)
                     batch_val_loss = loss(y_true=true_val_states, y_pred=val_gen_states)
