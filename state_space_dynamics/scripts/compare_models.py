@@ -3,6 +3,7 @@ import argparse
 import json
 import pathlib
 import time
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,6 +13,8 @@ from matplotlib.animation import FuncAnimation
 
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_planning import model_utils
+from link_bot_pycommon import link_bot_sdf_utils
+from state_space_dynamics.base_forward_model import BaseForwardModel
 
 tf.enable_eager_execution()
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -22,11 +25,11 @@ def generate(args):
     # Datasets
     ###############
     dataset = LinkBotStateSpaceDataset(args.dataset_dir)
-    dataset, tf_dataset = dataset.get_dataset(mode=args.mode,
-                                              shuffle=False,
-                                              seed=0,
-                                              batch_size=1,
-                                              sequence_length=args.sequence_length)
+    tf_dataset = dataset.get_dataset(mode=args.mode,
+                                     shuffle=False,
+                                     seed=0,
+                                     batch_size=1,
+                                     sequence_length=args.sequence_length)
 
     comparison_info = json.load(args.comparison.open("r"))
     models = {}
@@ -55,23 +58,31 @@ def visualize(args):
     visualize_predictions(results, args.n_examples, results_dir)
 
 
-def generate_results(outdir, models, tf_dataset, mode):
+def generate_results(outdir: pathlib.Path,
+                     models: Dict[str, BaseForwardModel],
+                     tf_dataset,
+                     mode: str):
     results = {
         'true': []
     }
-    for x, y in tf_dataset.take(128):
+    for x, y in tf_dataset:
         true_points = y['output_states'].numpy().squeeze().reshape([-1, 3, 2])
         results['true'].append(true_points)
 
     for model_name, model in models.items():
         results[model_name] = []
         print("generating results for {}".format(model_name))
-        for x, y in tf_dataset.take(128):
-            states = x['states'].numpy()
-            actions = x['actions'].numpy()
+        for x, y in tf_dataset:
+            states = x['state_s'].numpy()
+            actions = x['action_s'].numpy()
             # this is supposed to give us a [batch, n_state] tensor
             first_states = np.expand_dims(states[0, 0], axis=0)
-            predicted_points = model.predict(first_states, actions)[0]
+            first_local_env = x['actual_local_env_s/env'][:, 0].numpy()
+            res = x['resolution_s'][:, 0].numpy()
+            res_2d = np.concatenate([res, res], axis=1)
+            origin = x['actual_local_env_s/origin'][:, 0].numpy()
+            local_env_data = link_bot_sdf_utils.batch_occupancy_data(data=first_local_env, resolution=res_2d, origin=origin)
+            predicted_points = model.predict(local_env_data, first_states, actions)[0]
             results[model_name].append(predicted_points)
 
     results_filename = outdir / 'results-{}-{}.npz'.format(mode, int(time.time()))

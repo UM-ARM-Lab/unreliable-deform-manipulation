@@ -208,7 +208,6 @@ class SimpleNNWrapper(BaseForwardModel):
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)
-        self.dt = self.hparams['dt']
 
     def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, first_states: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:

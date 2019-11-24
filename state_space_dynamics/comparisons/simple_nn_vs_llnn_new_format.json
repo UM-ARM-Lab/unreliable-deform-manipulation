@@ -1,0 +1,18 @@
+{
+  "NN, 1024": {
+    "model_dir": "log_data/new_format_nn1024/November_22_10-31-47_d7050000d2",
+    "model_type": "nn"
+  },
+  "Residual NN, 1024": {
+    "model_dir": "log_data/res_nn_1024/November_22_12-49-09_61e4cff061",
+    "model_type": "nn"
+  },
+  "LL-NN": {
+    "model_dir": "log_data/new_format_basic/November_22_10-18-55_dea66273ae",
+    "model_type": "llnn"
+  },
+  "(old) LL-NN": {
+    "model_dir": "log_data/large_dt/November_04_09-26-44_84ccbfb7fe",
+    "model_type": "llnn"
+  }
+}

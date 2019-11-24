@@ -71,6 +71,17 @@ class OccupancyData:
         self.image = np.flipud(self.data)
 
 
+def batch_occupancy_data(data: np.ndarray,
+                         resolution: np.ndarray,
+                         origin: np.ndarray) -> np.ndarray:
+    batch_size = data.shape[0]
+    datas = []
+    for i in range(batch_size):
+        datas.append(OccupancyData(data[i], resolution[i], origin[i]))
+
+    return np.array(datas)
+
+
 class SDF:
 
     def __init__(self,
