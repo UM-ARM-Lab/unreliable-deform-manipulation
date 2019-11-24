@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import pickle
 import argparse
 import json
 import pathlib
@@ -48,13 +49,13 @@ def generate(args):
 
 
 def evaluate(args):
-    results = np.load(args.results_filename)
+    results = pickle.load(args.results_filename.open("rb"))
     evaluate_metrics(results)
 
 
 def visualize(args):
     results_dir = args.results_filename.parent
-    results = np.load(args.results_filename)
+    results = pickle.load(args.results_filename.open("rb"))
     visualize_predictions(results, args.n_examples, results_dir)
 
 
@@ -63,14 +64,18 @@ def generate_results(outdir: pathlib.Path,
                      tf_dataset,
                      mode: str):
     results = {
-        'true': []
+        'true': {
+            'points': [],
+            'runtimes': [],
+        }
     }
     for x, y in tf_dataset:
         true_points = y['output_states'].numpy().squeeze().reshape([-1, 3, 2])
-        results['true'].append(true_points)
+        results['true']['points'].append(true_points)
+        results['true']['runtimes'].append(np.inf)
 
     for model_name, model in models.items():
-        results[model_name] = []
+        results[model_name] = {'points': [], 'runtimes': []}
         print("generating results for {}".format(model_name))
         for x, y in tf_dataset:
             states = x['state_s'].numpy()
@@ -82,23 +87,26 @@ def generate_results(outdir: pathlib.Path,
             res_2d = np.concatenate([res, res], axis=1)
             origin = x['actual_local_env_s/origin'][:, 0].numpy()
             local_env_data = link_bot_sdf_utils.batch_occupancy_data(data=first_local_env, resolution=res_2d, origin=origin)
+            t0 = time.time()
             predicted_points = model.predict(local_env_data, first_states, actions)[0]
-            results[model_name].append(predicted_points)
+            runtime = time.time() - t0
+            results[model_name]['points'].append(predicted_points)
+            results[model_name]['runtimes'].append(runtime)
 
-    results_filename = outdir / 'results-{}-{}.npz'.format(mode, int(time.time()))
+    results_filename = outdir / 'results-{}-{}.pkl'.format(mode, int(time.time()))
     print(Fore.CYAN + "Saving results to {}".format(results_filename) + Fore.RESET)
-    np.savez(results_filename, **results)
+    pickle.dump(results, results_filename.open("wb"))
     return results
 
 
 def visualize_predictions(results, n_examples, outdir=None):
-    n_examples = min(len(results['true']), n_examples)
-    sequence_length = results['true'][0].shape[0]
+    n_examples = min(len(results['true']['points']), n_examples)
+    sequence_length = results['true']['points'][0].shape[0]
     for example_idx in range(n_examples):
-        xmin = np.min(results['true'][example_idx][:, :, 0]) - 0.4
-        ymin = np.min(results['true'][example_idx][:, :, 1]) - 0.4
-        xmax = np.max(results['true'][example_idx][:, :, 0]) + 0.4
-        ymax = np.max(results['true'][example_idx][:, :, 1]) + 0.4
+        xmin = np.min(results['true']['points'][example_idx][:, :, 0]) - 0.4
+        ymin = np.min(results['true']['points'][example_idx][:, :, 1]) - 0.4
+        xmax = np.max(results['true']['points'][example_idx][:, :, 0]) + 0.4
+        ymax = np.max(results['true']['points'][example_idx][:, :, 1]) + 0.4
 
         fig, ax = plt.subplots()
         plt.xlabel("x (m)")
@@ -119,7 +127,7 @@ def visualize_predictions(results, n_examples, outdir=None):
 
         def update(t):
             for _model_name, points_trajectories in results.items():
-                points = points_trajectories[example_idx][t]
+                points = points_trajectories['points'][example_idx][t]
                 xs = points[:, 0]
                 ys = points[:, 1]
                 handles[_model_name]['line'].set_xdata(xs)
@@ -137,17 +145,19 @@ def visualize_predictions(results, n_examples, outdir=None):
 
 
 def evaluate_metrics(results):
-    for model_name, points_trajectories in results.items():
+    for model_name, result in results.items():
         if model_name == 'true':
             continue
+
+        runtimes = result['runtimes']
 
         # loop over trajectories
         total_errors = []
         head_errors = []
         tail_errors = []
         mid_errors = []
-        for i, predicted_points in enumerate(points_trajectories):
-            true_points = results['true'][i]
+        for i, predicted_points in enumerate(result['points']):
+            true_points = results['true']['points'][i]
             error = np.linalg.norm(predicted_points - true_points, axis=2)
             total_error = np.sum(error, axis=1)
             tail_error = error[:, 0]
@@ -167,6 +177,7 @@ def evaluate_metrics(results):
         print("mid error:   {:8.4f}m".format(np.mean(mid_errors)))
         print("tail error:  {:8.4f}m".format(np.mean(tail_errors)))
         print("total error: {:8.4f}m".format(np.mean(total_errors)))
+        print("runtime: {:8.4f}ms".format(np.mean(runtimes)*1e3))
 
 
 def main():
