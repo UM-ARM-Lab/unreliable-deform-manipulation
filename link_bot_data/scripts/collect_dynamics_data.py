@@ -12,6 +12,7 @@ import rospy
 import tensorflow
 from colorama import Fore
 
+import link_bot_gazebo.gazebo_utils
 import visual_mpc.gazebo_trajectory_execution
 from link_bot_data.link_bot_dataset_utils import bytes_feature, float_feature
 from link_bot_gazebo import gazebo_utils
@@ -140,8 +141,8 @@ def generate_trajs(args, full_output_directory, services):
 
         if not args.no_obstacles:
             objects = ['cheezits_box', 'tissue_box']
-            visual_mpc.gazebo_trajectory_execution.move_objects(services, objects, args.env_w, args.env_h, 'velocity',
-                                                                padding=0.1)
+            link_bot_gazebo.gazebo_utils.move_objects(services, objects, args.env_w, args.env_h, 'velocity',
+                                                      padding=0.1)
 
         # Generate a new trajectory
         example, percentage_violation, global_t_step, gripper1_target_x, gripper1_target_y = generate_traj(args, services, i,

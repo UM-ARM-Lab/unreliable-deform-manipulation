@@ -9,6 +9,7 @@ import std_srvs
 from colorama import Fore
 from ompl import base as ob
 
+import link_bot_gazebo.gazebo_utils
 from ignition import markers
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
@@ -50,8 +51,8 @@ class myMPC:
         while True:
             # generate a new environment by rearranging the obstacles
             objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            gazebo_trajectory_execution.move_objects(self.services, objects, self.env_params.w, self.env_params.h, 'velocity',
-                                                     padding=0.5)
+            link_bot_gazebo.gazebo_utils.move_objects(self.services, objects, self.env_params.w, self.env_params.h, 'velocity',
+                                                      padding=0.5)
 
             # nudge the rope so it is hopefully not in collision?
             self.services.nudge_rope()

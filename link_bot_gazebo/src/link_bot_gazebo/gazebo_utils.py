@@ -6,7 +6,7 @@ import rospy
 import std_msgs
 import std_srvs
 from colorama import Fore
-from std_msgs.msg import String
+from std_msgs.msg import String, Empty
 from std_srvs.srv import EmptyRequest
 from visualization_msgs.msg import MarkerArray
 
@@ -20,6 +20,7 @@ from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldCo
 from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import sensor_image_to_float_image
+from visual_mpc.gazebo_trajectory_execution import quaternion_from_euler
 from visual_mpc.numpy_point import NumpyPoint
 
 
@@ -356,3 +357,41 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result: LinkBotT
             actual_local_envs.append(actual_local_env)
     actual_path = np.array(actual_path)
     return actual_path, actual_local_envs
+
+
+def random_object_move(model_name, w, h, padding):
+    move = ObjectAction()
+    move.pose.position.x = np.random.uniform(-w / 2 + padding, w / 2 - padding)
+    move.pose.position.y = np.random.uniform(-h / 2 + padding, h / 2 - padding)
+    q = quaternion_from_euler(0, 0, np.random.uniform(-np.pi, np.pi))
+    move.pose.orientation.x = q[0]
+    move.pose.orientation.y = q[1]
+    move.pose.orientation.z = q[2]
+    move.pose.orientation.w = q[3]
+    move.model_name = model_name
+    return move
+
+
+def move_objects(services, objects, env_w, env_h, link_bot_mode, padding):
+    disable_link_bot = String()
+    disable_link_bot.data = 'disabled'
+
+    enable_link_bot = String()
+    enable_link_bot.data = link_bot_mode
+
+    # disable the rope controller, enable the objects
+    services.link_bot_mode.publish(disable_link_bot)
+    # Move the objects
+    move_action = Position2dAction()
+    for object_name in objects:
+        move = random_object_move(object_name, env_w, env_h, padding)
+        move_action.actions.append(move)
+    services.position_2d_action.publish(move_action)
+    # let the move actually occur
+    step = WorldControlRequest()
+    move_wait_duration = 5
+    step.steps = int(move_wait_duration / 0.001)  # assuming 0.001s per simulation step
+    services.world_control(step)  # this will block until stepping is complete
+    # disable the objects so they stop, enabled the rope controller
+    services.position_2d_stop.publish(Empty())
+    services.link_bot_mode.publish(enable_link_bot)
