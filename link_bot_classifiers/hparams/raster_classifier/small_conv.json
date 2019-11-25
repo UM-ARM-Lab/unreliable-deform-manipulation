@@ -1,7 +1,5 @@
 {
   "model_class": "raster",
-  "n_control": 2,
-  "local_env_shape": [100, 100],
   "fc_layer_sizes": [16],
   "conv_filters": [
     [6, [3, 3]]

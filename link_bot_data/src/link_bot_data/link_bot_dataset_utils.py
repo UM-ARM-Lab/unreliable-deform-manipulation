@@ -54,18 +54,23 @@ def flatten_concat_pairs(ex_pos, ex_neg):
     return flat_pair
 
 
-def balance_x_dataset(dataset, key, fewer_negative=True):
+def balance_dataset(dataset, key, fewer_negative=True):
     """
     :param dataset: assumes each element is of the structure (inputs_dict_of_tensors, outputs_dict_of_tensors)
     :param key: string to index into y component of dataset, used to determine labels
     :param fewer_negative: fewer negative examples than positive
     """
+    def _label_is(label_is):
+        def __filter(transition):
+            return tf.squeeze(tf.equal(transition[key], label_is))
+        return __filter
+
     if fewer_negative:
-        negative_examples = dataset.filter(lambda x: tf.squeeze(tf.equal(x[key], 0))).repeat()
-        positive_examples = dataset.filter(lambda x: tf.squeeze(tf.equal(x[key], 1)))
+        negative_examples = dataset.filter(_label_is(0)).repeat()
+        positive_examples = dataset.filter(_label_is(1))
     else:
-        positive_examples = dataset.filter(lambda x: tf.squeeze(tf.equal(x[key], 1))).repeat()
-        negative_examples = dataset.filter(lambda x: tf.squeeze(tf.equal(x[key], 0)))
+        positive_examples = dataset.filter(_label_is(1)).repeat()
+        negative_examples = dataset.filter(_label_is(0))
 
     # zipping takes the shorter of the two, hence why this makes it balanced
     balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))

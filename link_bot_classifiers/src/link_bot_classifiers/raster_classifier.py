@@ -25,10 +25,11 @@ class RasterClassifier(tf.keras.Model):
     def __init__(self, hparams, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
-        self.m_dim = self.hparams['n_control']
+        self.dynamics_dataset_hparams = self.hparams['classifier_dataset_hparams']['fwd_model_hparams']['dynamics_dataset_hparams']
+        self.m_dim = self.dynamics_dataset_hparams['n_action']
 
-        local_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['local_env_params'])
-        self.raster = RasterPoints([local_env_params.h_row, local_env_params.w_col])
+        local_env_params = LocalEnvParams.from_json(self.dynamics_dataset_hparams['local_env_params'])
+        self.raster = RasterPoints([local_env_params.h_rows, local_env_params.w_cols])
         self.conv_layers = []
         self.pool_layers = []
         for n_filters, kernel_size in self.hparams['conv_filters']:

@@ -11,7 +11,7 @@ import tensorflow as tf
 from colorama import Fore
 from google.protobuf.json_format import MessageToDict
 
-from link_bot_data.link_bot_dataset_utils import balance_x_dataset
+from link_bot_data.link_bot_dataset_utils import balance_dataset
 
 
 def make_mask(T, S):
@@ -144,10 +144,10 @@ class BaseStateSpaceDataset:
 
         dataset = dataset.map(_slice_sequences, num_parallel_calls=n_parallel_calls)
 
-        if balance_key is not None:
-            dataset = balance_x_dataset(dataset, balance_key)
-
         dataset = self.post_process(dataset, n_parallel_calls)
+
+        if balance_key is not None:
+            dataset = balance_dataset(dataset, balance_key)
 
         dataset = dataset.batch(batch_size, drop_remainder=False)
         dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)

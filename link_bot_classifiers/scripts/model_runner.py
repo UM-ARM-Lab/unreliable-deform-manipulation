@@ -45,7 +45,7 @@ def train(args):
     ###############
     # Model
     ###############
-    model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
+    model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
 
     try:
@@ -102,8 +102,7 @@ def main():
     train_parser.add_argument('--save-freq', type=int, default=1)
     train_parser.add_argument('--epochs', type=int, default=50)
     train_parser.add_argument('--log', '-l')
-    train_parser.add_argument('--verbose', n_ws/src/link_bot/link_bot_classifiers
-            '-v', action='count', default=0)
+    train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-grad-every', type=int, help='gradients hists every this many steps/batches', default=1000)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=500)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=2000)
@@ -129,6 +128,7 @@ def main():
         seed = np.random.randint(0, 10000)
     else:
         seed = args.seed
+    print("Using seed {}".format(seed))
     np.random.seed(seed)
     tf.random.set_random_seed(seed)
 
