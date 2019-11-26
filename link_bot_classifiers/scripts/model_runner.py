@@ -72,7 +72,7 @@ def eval(args):
     ###############
     # Model
     ###############
-    model_hparams = json.load(args.model_hparams.open('r'))
+    model_hparams = json.load((args.checkpoint / 'hparams.json').open('r'))
     module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
 
     try:
@@ -94,8 +94,6 @@ def main():
     train_parser = subparsers.add_parser('train')
     train_parser.add_argument('dataset_dir', type=pathlib.Path)
     train_parser.add_argument('model_hparams', type=pathlib.Path)
-    train_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
-    train_parser.add_argument('--dataset-hparams', type=str)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--summary-freq', type=int, default=1)
@@ -113,8 +111,6 @@ def main():
     eval_parser = subparsers.add_parser('eval')
     eval_parser.add_argument('dataset_dir', type=pathlib.Path)
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
-    eval_parser.add_argument('--dataset-hparams-dict', type=pathlib.Path)
-    eval_parser.add_argument('--dataset-hparams', type=str)
     eval_parser.add_argument('--mode', type=str, choices=['test', 'val', 'train'], default='test')
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)

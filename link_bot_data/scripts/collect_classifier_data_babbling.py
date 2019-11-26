@@ -165,7 +165,7 @@ def main():
     parser.add_argument("fwd_model_dir", help='', type=pathlib.Path)
     parser.add_argument("fwd_model_type", help='', type=str, choices=['nn', 'llnn', 'gp', 'rigid'])
     parser.add_argument("n_trajs", help='how many trajs to collect', type=int)
-    parser.add_argument("--n-steps-per-traj", help='how many steps per traj', type=int, default=10)
+    parser.add_argument("--n-steps-per-traj", help='how many steps per traj', type=int, default=100)
     parser.add_argument("outdir")
     parser.add_argument('--env-w', type=float, default=5.0)
     parser.add_argument('--env-h', type=float, default=5.0)
