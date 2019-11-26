@@ -82,11 +82,11 @@ def main():
                              planned_env_extent=local_env_data.extent,
                              planned_state=state[0],
                              planned_next_state=next_state[0],
-                             actual_env=None,
-                             actual_env_extent=None,
                              state=None,
                              next_state=None,
                              title=title,
+                             actual_env=None,
+                             actual_env_extent=None,
                              label=prediction)
         plt.show()
     else:

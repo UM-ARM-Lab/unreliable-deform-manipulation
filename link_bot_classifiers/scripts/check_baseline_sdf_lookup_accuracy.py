@@ -10,6 +10,7 @@ import tensorflow as tf
 from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.visualization import plot_rope_configuration
+from link_bot_planning.visualization import plot_classifier_data
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -70,13 +71,11 @@ def main():
     np.random.seed(0)
     tf.random.set_random_seed(0)
 
-    classifier_dataset = ClassifierDataset(args.input_dir, is_labeled=True)
-    dataset = classifier_dataset.cf_get_dataset(mode=args.mode,
-                                                shuffle=False,
-                                                num_epochs=1,
-                                                seed=0,
-                                                batch_size=None,  # nobatching
-                                                )
+    classifier_dataset = ClassifierDataset(args.dataset_dir)
+    dataset = classifier_dataset.get_dataset(mode=args.mode,
+                                             shuffle=False,
+                                             seed=0,
+                                             batch_size=1)
 
     collision_classifier = CollisionCheckerClassifier()
 
@@ -90,15 +89,17 @@ def main():
     pos = 0
     for example_dict in dataset:
         state = example_dict['state'].numpy().squeeze()
-        next_state = example_dict['next_state'].numpy().squeeze()
+        next_state = example_dict['state_next'].numpy().squeeze()
         planned_state = example_dict['planned_state'].numpy().squeeze()
-        planned_next_state = example_dict['planned_next_state'].numpy().squeeze()
+        planned_next_state = example_dict['planned_state_next'].numpy().squeeze()
         local_env = example_dict['planned_local_env/env'].numpy().squeeze()
         extent = example_dict['planned_local_env/extent'].numpy().squeeze()
-        res = example_dict['res'].numpy().squeeze()
-        resolution = np.array([res, res])
+        _res = example_dict['resolution'].numpy().squeeze()
+        resolution = np.array([_res, _res])
         origin = example_dict['planned_local_env/origin'].numpy().squeeze()
         action = example_dict['action'].numpy().squeeze()
+        actual_local_env = example_dict['actual_local_env/env'].numpy().squeeze()
+        actual_env_extent = example_dict['actual_local_env/extent'].numpy().squeeze()
         label = example_dict['label'].numpy().squeeze()
 
         local_env_image = np.flipud(local_env)
@@ -109,9 +110,28 @@ def main():
             neg += 1
 
         local_env_data = link_bot_sdf_utils.OccupancyData(local_env, resolution, origin)
-        prediction = collision_classifier.predict(local_env_data,
-                                                  np.expand_dims(planned_state, axis=0),
-                                                  np.expand_dims(planned_next_state, axis=0))
+        try:
+            prediction = collision_classifier.predict(local_env_data,
+                                                      np.expand_dims(planned_state, axis=0),
+                                                      np.expand_dims(planned_next_state, axis=0))
+        except IndexError:
+            title = "out-of-bounds"
+            plot_classifier_data(
+                planned_next_state=planned_next_state,
+                planned_env=local_env,
+                planned_env_extent=extent,
+                planned_state=planned_state,
+                planned_env_origin=origin,
+                res=resolution,
+                state=state,
+                next_state=next_state,
+                title=title,
+                actual_env=actual_local_env,
+                actual_env_extent=actual_env_extent,
+                label=label)
+            plt.show()
+            continue
+
         if prediction == 1:
             if label == 1:
                 correct += 1

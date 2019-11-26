@@ -11,12 +11,12 @@ def plot_classifier_data(
         planned_state,
         planned_next_state,
         planned_env_origin,
-        actual_env,
-        actual_env_extent,
         res,
         state,
         next_state,
-        title,
+        title='',
+        actual_env=None,
+        actual_env_extent=None,
         label=None):
     plt.figure()
     ax = plt.gca()
@@ -25,15 +25,15 @@ def plot_classifier_data(
     if actual_env is not None:
         plt.imshow(np.flipud(actual_env), extent=actual_env_extent, zorder=1, vmin=0, vmax=1, cmap='viridis', alpha=0.5)
     if state is not None:
-        plot_rope_configuration(ax, state, c='red', label='state', zorder=2)
+        plot_rope_configuration(ax, state, c='red', label='state', zorder=2, linewidth=3)
     if next_state is not None:
-        plot_rope_configuration(ax, next_state, c='orange', label='next state', zorder=3)
+        plot_rope_configuration(ax, next_state, c='orange', label='next state', zorder=4, linestyle='--', linewidth=3)
 
     origin_x, origin_y = link_bot_sdf_utils.idx_to_point(0, 0, res, planned_env_origin)
     plt.scatter(origin_x, origin_y, label='origin', marker='*')
 
-    plot_rope_configuration(ax, planned_state, c='blue', label='planned state', zorder=4)
-    plot_rope_configuration(ax, planned_next_state, c='cyan', label='planned next state', zorder=5)
+    plot_rope_configuration(ax, planned_state, c='blue', label='planned state', zorder=3)
+    plot_rope_configuration(ax, planned_next_state, c='cyan', label='planned next state', zorder=5, linestyle='-.')
     if state is not None:
         ax.scatter(state[4], state[5], c='k')
     ax.scatter(planned_state[4], planned_state[5], c='k')

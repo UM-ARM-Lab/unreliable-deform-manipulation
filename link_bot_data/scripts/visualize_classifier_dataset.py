@@ -66,8 +66,6 @@ def main():
         if not args.no_plot:
             title = "Example {}".format(i)
             plot_classifier_data(
-                actual_env=actual_local_env,
-                actual_env_extent=actual_local_env_extent,
                 next_state=next_state,
                 planned_next_state=planned_next_state,
                 planned_env=planned_local_env,
@@ -77,6 +75,8 @@ def main():
                 res=res,
                 state=state,
                 title=title,
+                actual_env=actual_local_env,
+                actual_env_extent=actual_local_env_extent,
                 label=label)
             plt.show()
 
