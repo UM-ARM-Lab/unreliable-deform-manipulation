@@ -17,18 +17,12 @@ def main():
 
     args = parser.parse_args()
 
-    if args.outdir and not os.path.isdir(args.outdir):
-        print(Fore.YELLOW + "{} is not a directory".format(args.outdir) + Fore.RESET)
-        return
-
     for mode in ['train', 'test', 'val']:
         files = []
         for in_dir in args.indirs:
-            mode_in_dir = in_dir / mode
-            if not os.path.isdir(mode_in_dir):
-                print(Fore.YELLOW + "{} is not a directory".format(mode_in_dir) + Fore.RESET)
-                return
-            tfrecord_files = mode_in_dir.glob("*.tfrecords")
+            mode_indir = in_dir / mode
+            print(mode_indir)
+            tfrecord_files = mode_indir.glob("*.tfrecords")
             files.extend(tfrecord_files)
 
         traj_idx = 0
@@ -40,6 +34,7 @@ def main():
             n_trajs_in_file = int(end) - int(start)
             new_filename = "traj_{}_to_{}.tfrecords".format(traj_idx, traj_idx + n_trajs_in_file)
             mode_outdir = args.outdir / mode
+            mode_outdir.mkdir(parents=True, exist_ok=True)
             new_path = pathlib.Path(mode_outdir) / new_filename
             traj_idx = traj_idx + n_trajs_in_file + 1
             print(path, '-->', new_path)

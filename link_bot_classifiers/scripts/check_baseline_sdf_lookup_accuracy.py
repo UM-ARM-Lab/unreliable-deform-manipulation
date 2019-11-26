@@ -37,8 +37,6 @@ def show_error(state,
 
     ax.imshow(local_env_image, extent=extent, zorder=0, alpha=0.5)
 
-    # plt.quiver(planned_state[4], planned_state[5], action[0], action[1], zorder=4)
-
     plot_rope_configuration(ax, state, linewidth=3, zorder=1, c='r', label='state')
     plot_rope_configuration(ax, next_state, linewidth=3, zorder=1, c='orange', label='next state')
     plot_rope_configuration(ax, planned_state, linewidth=3, zorder=1, c='b', label='planned state')
@@ -59,23 +57,27 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', help='dataset directory', type=pathlib.Path)
-    parser.add_argument('--dataset-hparams-dict', help='override dataset hyperparams')
     parser.add_argument('--balance', action='store_true', help='subsample the datasets to make sure it is balanced')
     parser.add_argument('--show-fn', action='store_true', help='visualize')
     parser.add_argument('--show-fp', action='store_true', help='visualize')
+    parser.add_argument('--threshold', type=float)
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
-    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
 
     args = parser.parse_args()
 
     np.random.seed(0)
     tf.random.set_random_seed(0)
+    balance_key = 'label' if args.balance else None
 
     classifier_dataset = ClassifierDataset(args.dataset_dir)
+    # TODO:  debug why the total number of examples seems to be changing?!?
+    if args.threshold:
+        classifier_dataset.hparams['labeling']['threshold'] = args.threshold
     dataset = classifier_dataset.get_dataset(mode=args.mode,
                                              shuffle=False,
                                              seed=0,
-                                             batch_size=1)
+                                             batch_size=1,
+                                             balance_key=balance_key)
 
     collision_classifier = CollisionCheckerClassifier()
 

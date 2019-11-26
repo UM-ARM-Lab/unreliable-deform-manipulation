@@ -1,6 +1,7 @@
 import json
 import pathlib
 import time
+from typing import List
 
 import numpy as np
 import progressbar
@@ -208,9 +209,12 @@ class SimpleNNWrapper(BaseForwardModel):
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)
+        if self.manager.latest_checkpoint:
+            print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
 
-    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, first_states: np.ndarray,
+    def predict(self, local_env_data: List, first_states: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
+        del local_env_data #unused
         batch, T, _ = actions.shape
         states = tf.convert_to_tensor(first_states, dtype=tf.float32)
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
