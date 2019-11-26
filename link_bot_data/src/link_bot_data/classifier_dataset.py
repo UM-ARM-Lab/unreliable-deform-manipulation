@@ -30,8 +30,6 @@ class ClassifierDataset(StateSpaceDataset):
         super(ClassifierDataset, self).__init__(dataset_dir)
 
         self.local_env_params = LocalEnvParams.from_json(self.hparams['local_env_params'])
-        self.env_params = EnvParams.from_json(self.hparams['env_params'])
-        self.planner_params = PlannerParams.from_json(self.hparams['planner_params'])
 
         local_env_shape = (self.local_env_params.h_rows, self.local_env_params.w_cols)
         n_state = self.hparams['fwd_model_hparams']['dynamics_dataset_hparams']['n_state']
