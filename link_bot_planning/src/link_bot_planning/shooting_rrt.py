@@ -7,10 +7,9 @@ from ompl import control as oc
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.viz_object import VizObject
 from link_bot_planning.params import EnvParams, PlannerParams
-from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env, from_numpy
+from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils
 
 
@@ -189,54 +188,3 @@ class ShootingRRT(MyPlanner):
                                         res=self.fwd_model.local_env_params.res,
                                         center_point=center_point,
                                         services=self.services)
-
-    def smooth(self, np_states, np_controls, iters=50, verbose=0):
-        new_states = list(np_states)
-        new_controls = list(np_controls)
-        shortcut_iter = 0
-        shortcut_successes = 0
-        while shortcut_iter < iters:
-            shortcut_iter += 1
-            # bias starting towards the beginning?
-            start_idx = np.random.randint(0, len(new_states) / 2)
-            # start_idx = np.random.randint(0, len(new_states) - 1)
-            d_shortcut_start = new_states[start_idx]
-            end_idx = np.random.randint(start_idx + 1, len(new_states))
-            d_shortcut_end = new_states[end_idx]
-
-            success, new_shortcut_us, new_shortcut_ss, = ShootingDirectedControlSampler.shortcut(d_shortcut_start, d_shortcut_end)
-
-            if success:
-                # popping changes the indexes of everything, so we just pop at start_idx the right number of times
-                for i in range(start_idx, end_idx):
-                    new_states.pop(start_idx)
-                    new_controls.pop(start_idx)
-                for i, (shortcut_u, shortcut_s) in enumerate(
-                        zip(new_shortcut_us, new_shortcut_ss)):
-                    new_states.insert(start_idx + i, shortcut_s)  # or maybe shortcut_end?
-                    new_controls.insert(start_idx + i, shortcut_u.reshape(1, 2))
-                shortcut_successes += 1
-
-        if verbose >= 3:
-            print("{}/{} shortcuts succeeded".format(shortcut_successes, shortcut_iter))
-
-        np_states = np.array(new_states)
-        np_controls = np.array(new_controls)
-
-        return np_states, np_controls
-
-    def verify(self, controls, ss):
-        s = ss[0]
-        for i, u in enumerate(controls):
-
-            if not np.allclose(s, ss[i]):
-                return False
-            constraint_violated = self.fwd_model.constraint_violated(s.squeeze())
-            if constraint_violated:
-                return False
-
-            s_next = self.fwd_model.simple_dual_predict(s, u.reshape(2, 1))
-
-            s = s_next
-
-        return True

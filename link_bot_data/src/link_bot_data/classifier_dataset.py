@@ -107,9 +107,9 @@ class ClassifierDataset(StateSpaceDataset):
             return transition
 
         def _filter_pre_far_transitions(transition):
-            if self.hparams['labeling']['discard_pre_far'] and transition['pre_close']:
-                return True
-            return False
+            if self.hparams['labeling']['discard_pre_far'] and not transition['pre_close']:
+                return False
+            return True
 
         dataset = dataset.flat_map(_convert_sequences_to_transitions)
         dataset = dataset.map(_label_transitions)

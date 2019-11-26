@@ -19,11 +19,11 @@ from link_bot_data.visualization import plottable_rope_configuration
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
 from link_bot_planning import my_mpc
-from link_bot_planning.mpc_planners import MyPlanner, get_planner
+from link_bot_planning.mpc_planners import get_planner
+from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
-from link_bot_planning.params import EnvParams, LocalEnvParams, PlannerParams
+from link_bot_planning.params import EnvParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
-from link_bot_planning.shooting_rrt import ShootingRRT
 from link_bot_pycommon import link_bot_sdf_utils
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)

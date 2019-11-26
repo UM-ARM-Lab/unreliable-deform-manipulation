@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import json
 import pathlib
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +26,8 @@ class RasterClassifier(tf.keras.Model):
     def __init__(self, hparams, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
-        self.dynamics_dataset_hparams = self.hparams['classifier_dataset_hparams']['fwd_model_hparams']['dynamics_dataset_hparams']
+        self.dynamics_dataset_hparams = self.hparams['classifier_dataset_hparams']['fwd_model_hparams'][
+            'dynamics_dataset_hparams']
         self.m_dim = self.dynamics_dataset_hparams['n_action']
 
         local_env_params = LocalEnvParams.from_json(self.dynamics_dataset_hparams['local_env_params'])
@@ -322,20 +324,21 @@ class RasterClassifierWrapper(BaseClassifier):
         self.n_control = 2
         self.show = show
 
-    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, s1: np.ndarray, s2: np.ndarray) -> float:
+    def predict(self, local_env_data_s: List, s1_s: np.ndarray, s2_s: np.ndarray) -> float:
         """
-        :param local_env_data:
+        :param local_env_datas:
         :param s1: [batch, 6] float64
         :param s2: [batch, 6] float64
         :return: [batch, 1] float64
         """
+        data_s, res_s, origin_s, extent_s = link_bot_sdf_utils.batch_occupancy_data(local_env_data_s)
         test_x = {
-            'planned_state': tf.convert_to_tensor(add_batch(s1, 1), dtype=tf.float32),
-            'planned_state_next': tf.convert_to_tensor(add_batch(s2, 1), dtype=tf.float32),
-            'planned_local_env/env': tf.convert_to_tensor(add_batch(local_env_data.data, 2), dtype=tf.float32),
-            'resolution': tf.convert_to_tensor(add_batch(local_env_data.resolution[0:1], 1)),
-            'planned_local_env/origin': tf.convert_to_tensor(add_batch(local_env_data.origin, 1), dtype=tf.float32),
-            'planned_local_env/extent': tf.convert_to_tensor(add_batch(local_env_data.extent, 1), dtype=tf.float32),
+            'planned_state': tf.convert_to_tensor(add_batch(s1_s, 1), dtype=tf.float32),
+            'planned_state_next': tf.convert_to_tensor(add_batch(s2_s, 1), dtype=tf.float32),
+            'planned_local_env/env': tf.convert_to_tensor(add_batch(data_s, 2), dtype=tf.float32),
+            'resolution': tf.convert_to_tensor(add_batch(res_s, 1), dtype=tf.float32),
+            'planned_local_env/origin': tf.convert_to_tensor(add_batch(origin_s, 1), dtype=tf.float32),
+            'planned_local_env/extent': tf.convert_to_tensor(add_batch(extent_s, 1), dtype=tf.float32),
         }
         accept_probabilities = self.net(test_x)[-1]
         accept_probabilities = accept_probabilities.numpy()
@@ -343,10 +346,10 @@ class RasterClassifierWrapper(BaseClassifier):
 
         if self.show:
             title = "n_parallel_calls(accept) = {:5.3f}".format(accept_probabilities)
-            plot_classifier_data(planned_env=local_env_data.data,
-                                 planned_env_extent=local_env_data.extent,
-                                 planned_state=s1[0],
-                                 planned_next_state=s2[0],
+            plot_classifier_data(planned_env=local_env_data_s[0].data,
+                                 planned_env_extent=local_env_data_s[0].extent,
+                                 planned_state=s1_s[0],
+                                 planned_next_state=s2_s[0],
                                  actual_env=None,
                                  actual_env_extent=None,
                                  state=None,

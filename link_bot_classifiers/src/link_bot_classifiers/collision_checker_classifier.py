@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 
 from link_bot_classifiers.base_classifier import BaseClassifier
@@ -10,34 +12,37 @@ class CollisionCheckerClassifier(BaseClassifier):
     def __init__(self):
         super().__init__()
 
-    def predict_state_only(self, local_env: link_bot_sdf_utils.OccupancyData, s1: np.ndarray) -> float:
-        tail_x = s1[:, 0]
-        tail_y = s1[:, 1]
-        mid_x = s1[:, 2]
-        mid_y = s1[:, 3]
-        head_x = s1[:, 4]
-        head_y = s1[:, 5]
+    def predict_state_only(self, local_envs: List, s1s: np.ndarray) -> float:
+        predictions = []
+        for local_env, s1, s2 in zip(local_envs, s1s):
+            tail_x = s1[:, 0]
+            tail_y = s1[:, 1]
+            mid_x = s1[:, 2]
+            mid_y = s1[:, 3]
+            head_x = s1[:, 4]
+            head_y = s1[:, 5]
 
-        tail_row, tail_col = point_to_idx(tail_x, tail_y, local_env.resolution, origin=local_env.origin)
-        mid_row, mid_col = point_to_idx(mid_x, mid_y, local_env.resolution, origin=local_env.origin)
-        head_row, head_col = point_to_idx(head_x, head_y, local_env.resolution, origin=local_env.origin)
+            tail_row, tail_col = point_to_idx(tail_x, tail_y, local_env.resolution, origin=local_env.origin)
+            mid_row, mid_col = point_to_idx(mid_x, mid_y, local_env.resolution, origin=local_env.origin)
+            head_row, head_col = point_to_idx(head_x, head_y, local_env.resolution, origin=local_env.origin)
 
-        try:
-            tail_d = local_env.data[tail_row, tail_col]
-        except IndexError:
-            tail_d = np.inf
-        try:
-            mid_d = local_env.data[mid_row, mid_col]
-        except IndexError:
-            mid_d = np.inf
-        head_d = local_env.data[head_row, head_col]
+            try:
+                tail_d = local_env.data[tail_row, tail_col]
+            except IndexError:
+                tail_d = np.inf
+            try:
+                mid_d = local_env.data[mid_row, mid_col]
+            except IndexError:
+                mid_d = np.inf
+            head_d = local_env.data[head_row, head_col]
 
-        # prediction == 1 means not in collision
-        prediction = not (tail_d or mid_d or head_d)
-        prediction = 1.0 if prediction else 0.0
-        return prediction
+            # prediction == 1 means not in collision
+            prediction = not (tail_d or mid_d or head_d)
+            prediction = 1.0 if prediction else 0.0
+            predictions.append(prediction)
+        return predictions
 
-    def predict(self, local_env: link_bot_sdf_utils.OccupancyData, s1: np.ndarray, s2: np.ndarray) -> float:
+    def predict(self, local_env: List, s1: np.ndarray, s2: np.ndarray) -> float:
         tail_x = s1[:, 0]
         tail_y = s1[:, 1]
         mid_x = s1[:, 2]

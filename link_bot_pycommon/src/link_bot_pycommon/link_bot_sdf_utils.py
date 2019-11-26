@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List, Tuple
 
 import numpy as np
 from colorama import Fore
@@ -71,9 +71,23 @@ class OccupancyData:
         self.image = np.flipud(self.data)
 
 
-def batch_occupancy_data(data: np.ndarray,
-                         resolution: np.ndarray,
-                         origin: np.ndarray) -> np.ndarray:
+def batch_occupancy_data(occupancy_data_s: List[OccupancyData]) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    data_s = []
+    res_s = []
+    origin_s = []
+    extent_s = []
+    for data in occupancy_data_s:
+        data_s.append(data.data)
+        res_s.append(data.resolution)
+        origin_s.append(data.origin)
+        extent_s.append(data.extent)
+
+    return np.array(data_s), np.array(res_s), np.array(origin_s), np.array(extent_s)
+
+
+def unbatch_occupancy_data(data: np.ndarray,
+                           resolution: np.ndarray,
+                           origin: np.ndarray) -> np.ndarray:
     batch_size = data.shape[0]
     datas = []
     for i in range(batch_size):

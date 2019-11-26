@@ -86,7 +86,7 @@ def generate_results(outdir: pathlib.Path,
             res = x['resolution_s'][:, 0].numpy()
             res_2d = np.concatenate([res, res], axis=1)
             origin = x['actual_local_env_s/origin'][:, 0].numpy()
-            local_env_data = link_bot_sdf_utils.batch_occupancy_data(data=first_local_env, resolution=res_2d, origin=origin)
+            local_env_data = link_bot_sdf_utils.unbatch_occupancy_data(data=first_local_env, resolution=res_2d, origin=origin)
             t0 = time.time()
             predicted_points = model.predict(local_env_data, first_states, actions)[0]
             runtime = time.time() - t0
