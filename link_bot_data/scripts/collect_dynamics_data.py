@@ -13,7 +13,6 @@ import tensorflow
 from colorama import Fore
 
 import link_bot_gazebo.gazebo_utils
-import visual_mpc.gazebo_trajectory_execution
 from link_bot_data.link_bot_dataset_utils import bytes_feature, float_feature
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_local_occupancy_data
