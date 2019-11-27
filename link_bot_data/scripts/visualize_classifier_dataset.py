@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_planning.visualization import plot_classifier_data
 
-tf.enable_eager_execution()
+tf.compat.v1.enable_eager_execution()
 
 
 def main():
@@ -27,6 +27,7 @@ def main():
     dataset = classifier_dataset.get_dataset(mode=args.mode,
                                              shuffle=args.shuffle,
                                              batch_size=1,
+                                             n_parallel_calls=1,
                                              seed=args.seed)
 
     positive_count = 0
@@ -43,19 +44,19 @@ def main():
         actual_local_env = example['actual_local_env/env'].numpy().squeeze()
         actual_local_env_extent = example['actual_local_env/extent'].numpy().squeeze()
         state = example['state'].numpy().squeeze()
+        action = example['action'].numpy().squeeze()
         next_state = example['state_next'].numpy().squeeze()
         planned_state = example['planned_state'].numpy().squeeze()
         planned_next_state = example['planned_state_next'].numpy().squeeze()
         label = example['label'].numpy().squeeze()
+        pre_transition_distance = example['pre_dist'].numpy().squeeze()
+        post_transition_distance = example['post_dist'].numpy().squeeze()
         if label:
             positive_count += 1
         else:
             negative_count += 1
 
         count += 1
-
-        pre_transition_distance = np.linalg.norm(state - planned_state)
-        post_transition_distance = np.linalg.norm(next_state - planned_next_state)
 
         regression = post_transition_distance - pre_transition_distance
         if label:
@@ -67,6 +68,7 @@ def main():
             title = "Example {}".format(i)
             plot_classifier_data(
                 next_state=next_state,
+                action=action,
                 planned_next_state=planned_next_state,
                 planned_env=planned_local_env,
                 planned_env_extent=planned_local_env_extent,

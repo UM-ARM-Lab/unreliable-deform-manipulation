@@ -5,7 +5,6 @@ import argparse
 import json
 import os
 import pathlib
-import sys
 
 import numpy as np
 import rospy
@@ -17,8 +16,8 @@ from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_local_occupancy_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_planning import model_utils
-from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon.args import my_formatter
+from state_space_dynamics.base_forward_model import BaseForwardModel
 
 opts = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tf.compat.v1.ConfigProto(gpu_options=opts)
@@ -28,7 +27,10 @@ from link_bot_data import random_environment_data_utils
 from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 
 
-def generate_trajs(args, fwd_model, full_output_directory, services):
+def generate_trajs(args,
+                   fwd_model: BaseForwardModel,
+                   full_output_directory: pathlib.Path,
+                   services: gazebo_utils.GazeboServices):
     examples = np.ndarray([args.n_trajs_per_file], dtype=object)
 
     current_features = {
@@ -40,6 +42,7 @@ def generate_trajs(args, fwd_model, full_output_directory, services):
     example_idx = 0
     current_example_idx = 0
     for traj_idx in range(args.n_trajs):
+        planned_state = None
         for time_idx in range(args.n_steps_per_traj):
             state_req = LinkBotStateRequest()
             action_msg = LinkBotVelocityAction()
@@ -53,6 +56,7 @@ def generate_trajs(args, fwd_model, full_output_directory, services):
             # publish the pull command, which will return the target velocity
             vx = np.random.uniform(-0.15, 0.15)
             vy = np.random.uniform(-0.15, 0.15)
+            action = np.array([[vx, vy]])
             action_msg.gripper1_velocity.x = vx
             action_msg.gripper1_velocity.y = vy
             services.velocity_action_pub.publish(action_msg)
@@ -69,9 +73,16 @@ def generate_trajs(args, fwd_model, full_output_directory, services):
                                                         fwd_model.local_env_params.res,
                                                         center_point=head_np,
                                                         services=services)
+            # run the prediction
+            if time_idx == 0:
+                planned_state = actual_state
+            planned_states = fwd_model.predict(local_env_data=[actual_local_env],
+                                               first_states=np.expand_dims(planned_state, axis=0),
+                                               actions=np.expand_dims(action, axis=0))
+            planned_state = planned_states[0, 1].flatten()
 
             current_features['{}/state'.format(example_step_idx)] = float_feature(actual_state)
-            current_features['{}/action'.format(example_step_idx)] = float_feature(np.array([vx, vy]))
+            current_features['{}/action'.format(example_step_idx)] = float_feature(action.squeeze())
             current_features['{}/actual_local_env/env'.format(example_step_idx)] = float_feature(actual_local_env.data.flatten())
             current_features['{}/actual_local_env/extent'.format(example_step_idx)] = float_feature(
                 np.array(actual_local_env.extent))
@@ -79,7 +90,7 @@ def generate_trajs(args, fwd_model, full_output_directory, services):
             current_features['{}/res'.format(example_step_idx)] = float_feature(np.array([fwd_model.local_env_params.res]))
             current_features['{}/traj_idx'.format(example_step_idx)] = float_feature(np.array([traj_idx]))
             current_features['{}/time_idx '.format(example_step_idx)] = float_feature(np.array([time_idx]))
-            current_features['{}/planned_state'.format(example_step_idx)] = float_feature(actual_state)
+            current_features['{}/planned_state'.format(example_step_idx)] = float_feature(planned_state)
             current_features['{}/planned_local_env/env'.format(example_step_idx)] = float_feature(
                 actual_local_env.data.flatten())
             current_features['{}/planned_local_env/extent'.format(example_step_idx)] = float_feature(
@@ -146,6 +157,8 @@ def generate(args):
             'fwd_model_type': args.fwd_model_type,
             'fwd_model_hparams': fwd_model.hparams,
             'filter_free_space_only': False,
+            'n_state': 6,
+            'n_action': 2,
             'labeling': {
                 'threshold': 0.2,
                 'discard_pre_far': True

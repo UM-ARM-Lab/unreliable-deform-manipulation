@@ -3,7 +3,7 @@ import pathlib
 import tensorflow as tf
 
 from link_bot_data.state_space_dataset import StateSpaceDataset
-from link_bot_planning.params import LocalEnvParams, EnvParams, PlannerParams
+from link_bot_planning.params import LocalEnvParams
 
 
 def make_name_singular(feature_name):
@@ -51,7 +51,7 @@ class ClassifierDataset(StateSpaceDataset):
 
     # this code is really unreadable
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
-        def _convert_sequences_to_transitions(constant_data, state_like_sequences, action_like_sequences):
+        def _convert_sequences_to_transitions(constant_data: dict, state_like_sequences: dict, action_like_sequences: dict):
             # Create a dict of lists, where keys are the features we want in each transition, and values are the data.
             # The first dimension of these values is what will be split up into different examples
             transitions = {}
@@ -88,15 +88,16 @@ class ClassifierDataset(StateSpaceDataset):
 
             return tf.data.Dataset.from_tensor_slices(transitions)
 
-        def _label_transitions(transition):
-
+        def _label_transitions(transition: dict):
             pre_transition_distance = tf.norm(transition['state'] - transition['planned_state'])
             post_transition_distance = tf.norm(transition['state_next'] - transition['planned_state_next'])
 
-            pre_close = pre_transition_distance < self.hparams['labeling']['threshold']
+            pre_close = pre_transition_distance < self.hparams['labeling']['pre_close_threshold']
+            transition['pre_dist'] = pre_transition_distance
+            transition['post_dist'] = post_transition_distance
             transition['pre_close'] = pre_close
 
-            post_close = post_transition_distance < self.hparams['labeling']['threshold']
+            post_close = post_transition_distance < self.hparams['labeling']['post_close_threshold']
             transition['label'] = None  # yes this is necessary. You can't add a key to a dict inside a py_func conditionally
             if post_close:
                 transition['label'] = tf.convert_to_tensor([1], dtype=tf.float32)

@@ -6,6 +6,7 @@ import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from colorama import Style
 
 from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
 from link_bot_data.classifier_dataset import ClassifierDataset
@@ -14,18 +15,18 @@ from link_bot_planning.visualization import plot_classifier_data
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
-tf.enable_eager_execution()
+tf.compat.v1.enable_eager_execution()
 
 
 def show_error(state,
+               action,
                next_state,
                planned_state,
                planned_next_state,
-               action,
                local_env_image,
                extent,
-               predicted_violated,
-               label_model_reliable):
+               prediction,
+               label):
     fig, ax = plt.subplots()
     arena_size = 0.5
 
@@ -39,28 +40,25 @@ def show_error(state,
 
     plot_rope_configuration(ax, state, linewidth=3, zorder=1, c='r', label='state')
     plot_rope_configuration(ax, next_state, linewidth=3, zorder=1, c='orange', label='next state')
-    plot_rope_configuration(ax, planned_state, linewidth=3, zorder=1, c='b', label='planned state')
-    plot_rope_configuration(ax, planned_next_state, linewidth=3, zorder=1, c='c', label='planned next state')
+    plot_rope_configuration(ax, planned_state, linewidth=3, zorder=2, c='b', label='planned state', linestyle='--')
+    plot_rope_configuration(ax, planned_next_state, linewidth=3, zorder=2, c='c', label='planned next state', linestyle='--')
+    ax.quiver(state[4], state[5], action[0], action[1], color='k')
 
-    plt.scatter(planned_state[4], planned_state[5], c='r' if predicted_violated else 'g', s=200, zorder=2, label='pred')
-    plt.scatter(planned_state[4], planned_state[5], c='g' if label_model_reliable else 'r', marker='*', s=150, zorder=3,
-                linewidths=0.1,
-                edgecolors='k', label='true')
-    plt.title("speed ({:.3f},{:.3f})m/s".format(action[0], action[1]))
+    plt.title("prediction: {}, label: {}".format(prediction, label))
     plt.legend()
     plt.show()
 
 
 def main():
-    np.set_printoptions(suppress=True, linewidth=250, precision=4, threshold=1000)
-    tf.logging.set_verbosity(tf.logging.FATAL)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', help='dataset directory', type=pathlib.Path)
     parser.add_argument('--balance', action='store_true', help='subsample the datasets to make sure it is balanced')
     parser.add_argument('--show-fn', action='store_true', help='visualize')
     parser.add_argument('--show-fp', action='store_true', help='visualize')
-    parser.add_argument('--threshold', type=float)
+    parser.add_argument('--pre', type=float)
+    parser.add_argument('--post', type=float)
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
 
     args = parser.parse_args()
@@ -70,9 +68,10 @@ def main():
     balance_key = 'label' if args.balance else None
 
     classifier_dataset = ClassifierDataset(args.dataset_dir)
-    # TODO:  debug why the total number of examples seems to be changing?!?
-    if args.threshold:
-        classifier_dataset.hparams['labeling']['threshold'] = args.threshold
+    if args.post:
+        classifier_dataset.hparams['labeling']['post_close_threshold'] = args.post
+    if args.pre:
+        classifier_dataset.hparams['labeling']['pre_close_threshold'] = args.pre
     dataset = classifier_dataset.get_dataset(mode=args.mode,
                                              shuffle=False,
                                              seed=0,
@@ -95,11 +94,11 @@ def main():
         planned_state = example_dict['planned_state'].numpy().squeeze()
         planned_next_state = example_dict['planned_state_next'].numpy().squeeze()
         local_env = example_dict['planned_local_env/env'].numpy().squeeze()
+        action = example_dict['action'].numpy().squeeze()
         extent = example_dict['planned_local_env/extent'].numpy().squeeze()
         _res = example_dict['resolution'].numpy().squeeze()
         resolution = np.array([_res, _res])
         origin = example_dict['planned_local_env/origin'].numpy().squeeze()
-        action = example_dict['action'].numpy().squeeze()
         actual_local_env = example_dict['actual_local_env/env'].numpy().squeeze()
         actual_env_extent = example_dict['actual_local_env/extent'].numpy().squeeze()
         label = example_dict['label'].numpy().squeeze()
@@ -142,7 +141,7 @@ def main():
                 incorrect += 1
                 fp += 1
                 if args.show_fp:
-                    show_error(state, next_state, planned_state, planned_next_state, action, local_env_image, extent, prediction,
+                    show_error(state, action, next_state, planned_state, planned_next_state, local_env_image, extent, prediction,
                                label)
         elif prediction == 0:
             if label == 0:
@@ -152,7 +151,7 @@ def main():
                 incorrect += 1
                 fn += 1
                 if args.show_fn:
-                    show_error(state, next_state, planned_state, planned_next_state, action, local_env_image, extent,
+                    show_error(state, action, next_state, planned_state, planned_next_state, local_env_image, extent,
                                prediction, label)
 
     print("Confusion Matrix:")
@@ -164,7 +163,7 @@ def main():
     print("Class balance: {:4.1f}%".format(class_balance))
 
     accuracy = correct / (correct + incorrect)
-    print("accuracy: {:5.3f}".format(accuracy))
+    print(Style.BRIGHT + "accuracy: {:5.3f}".format(accuracy) + Style.RESET_ALL)
 
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)

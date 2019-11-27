@@ -17,7 +17,6 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 def main():
-    np.set_printoptions(suppress=True, linewidth=250, precision=4, threshold=1000)
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
@@ -25,13 +24,14 @@ def main():
 
     args = parser.parse_args()
 
-    np.random.seed(0)
-    tf.random.set_random_seed(0)
+    np.random.seed(1)
+    tf.random.set_random_seed(1)
 
     dataset = LinkBotStateSpaceDataset(args.dataset_dir)
     train_dataset = dataset.get_dataset(shuffle=False,
                                         mode='train',
                                         seed=1,
+                                        n_parallel_calls=1,
                                         batch_size=1)
 
     i = 0
@@ -73,7 +73,8 @@ def main():
 
             ax.set_title("{} {}".format(i, t))
 
-        interval = 1000 * dataset.hparams['dt']
+        # interval = 1000 * dataset.hparams['dt']
+        interval = 10
         anim = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
         plt.show()
 

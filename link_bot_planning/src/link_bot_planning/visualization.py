@@ -15,6 +15,7 @@ def plot_classifier_data(
         state,
         next_state,
         title='',
+        action=None,
         actual_env=None,
         actual_env_extent=None,
         label=None):
@@ -28,6 +29,8 @@ def plot_classifier_data(
         plot_rope_configuration(ax, state, c='red', label='state', zorder=2, linewidth=3)
     if next_state is not None:
         plot_rope_configuration(ax, next_state, c='orange', label='next state', zorder=4, linestyle='--', linewidth=3)
+    if action is not None:
+        ax.quiver(state[4], state[5], action[0], action[1])
 
     origin_x, origin_y = link_bot_sdf_utils.idx_to_point(0, 0, res, planned_env_origin)
     plt.scatter(origin_x, origin_y, label='origin', marker='*')

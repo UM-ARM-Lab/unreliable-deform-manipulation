@@ -1,0 +1,6 @@
+{
+  "Residual NN, 1024": {
+    "model_dir": "log_data/res_nn_1024/November_22_12-49-09_61e4cff061",
+    "model_type": "nn"
+  }
+}
