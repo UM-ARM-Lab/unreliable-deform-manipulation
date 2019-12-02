@@ -10,6 +10,7 @@ from matplotlib.animation import FuncAnimation
 
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_data.visualization import plot_rope_configuration
+from link_bot_pycommon import link_bot_pycommon
 from link_bot_pycommon.args import my_formatter
 
 tf.enable_eager_execution()
@@ -21,6 +22,7 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
+    parser.add_argument('--no-plot', action='store_true', help='only print statistics')
 
     args = parser.parse_args()
 
@@ -35,50 +37,63 @@ def main():
                                         batch_size=1)
 
     i = 0
+    angles = []
     for input_data, output_data in train_dataset:
         rope_configurations = input_data['state_s'].numpy().squeeze()
         actions = input_data['action_s'].numpy().squeeze()
         local_envs = input_data['actual_local_env_s/env'].numpy().squeeze()
         extents = input_data['actual_local_env_s/extent'].numpy().squeeze()
 
-        fig, ax = plt.subplots()
-        arrow_width = 0.02
-        arena_size = 0.5
+        for config in rope_configurations:
+            state_angle = link_bot_pycommon.angle_from_configuration(config)
+            angles.append(state_angle)
 
-        ax.set_xlabel("x (m)")
-        ax.set_ylabel("y (m)")
-        ax.set_xlim([-arena_size, arena_size])
-        ax.set_ylim([-arena_size, arena_size])
-        ax.axis("equal")
+        if not args.no_plot:
+            fig, ax = plt.subplots()
+            arrow_width = 0.02
+            arena_size = 0.5
 
-        local_env_handle = ax.imshow(np.flipud(local_envs[0]), extent=extents[0])
+            ax.set_xlabel("x (m)")
+            ax.set_ylabel("y (m)")
+            ax.set_xlim([-arena_size, arena_size])
+            ax.set_ylim([-arena_size, arena_size])
+            ax.axis("equal")
 
-        arrow = plt.Arrow(rope_configurations[0, 4], rope_configurations[0, 5], actions[0, 0], actions[0, 1], width=arrow_width,
-                          zorder=4)
-        patch = ax.add_patch(arrow)
+            local_env_handle = ax.imshow(np.flipud(local_envs[0]), extent=extents[0])
 
-        def update(t):
-            nonlocal patch
-            config = rope_configurations[t]
-            action = actions[t]
-            local_env = local_envs[t]
-
-            local_env_handle.set_data(np.flipud(local_env))
-            local_env_handle.set_extent(extents[t])
-
-            plot_rope_configuration(ax, config, linewidth=5, zorder=3, c='r')
-            patch.remove()
-            arrow = plt.Arrow(config[4], config[5], action[0], action[1], width=arrow_width, zorder=4)
+            arrow = plt.Arrow(rope_configurations[0, 4], rope_configurations[0, 5], actions[0, 0], actions[0, 1], width=arrow_width,
+                              zorder=4)
             patch = ax.add_patch(arrow)
 
-            ax.set_title("{} {}".format(i, t))
+            def update(t):
+                nonlocal patch
+                config = rope_configurations[t]
+                action = actions[t]
+                local_env = local_envs[t]
 
-        # interval = 1000 * dataset.hparams['dt']
-        interval = 10
-        anim = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
-        plt.show()
+                local_env_handle.set_data(np.flipud(local_env))
+                local_env_handle.set_extent(extents[t])
+
+                plot_rope_configuration(ax, config, linewidth=5, zorder=3, c='r')
+                patch.remove()
+                arrow = plt.Arrow(config[4], config[5], action[0], action[1], width=arrow_width, zorder=4)
+                patch = ax.add_patch(arrow)
+
+                ax.set_title("{} {}".format(i, t))
+
+            interval = 50
+            _ = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
+            plt.show()
 
         i += 1
+
+
+    plt.figure()
+    plt.hist(angles)
+    plt.xlabel("angle (rad)")
+    plt.ylabel("count")
+    plt.title("Hist for angle on dataset: {}".format(args.dataset_dir.name))
+    plt.show()
 
 
 if __name__ == '__main__':

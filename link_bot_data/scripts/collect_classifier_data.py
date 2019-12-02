@@ -100,21 +100,12 @@ class ClassifierDataCollector(my_mpc.myMPC):
                     'post_close_threshold': 0.2,
                     'discard_pre_far': True
                 },
-                'n_state': self.planner.fwd_model.hparams['dyanmics_dataset_hparams']['n_state'],
-                'n_action': self.planner.fwd_model.hparams['dyanmics_dataset_hparams']['n_action']
+                'n_state': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_state'],
+                'n_action': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_action']
             }
             json.dump(options, of, indent=2)
 
         self.planning_times = []
-
-        # NOTE: For datasets collected by planning, the number of steps in the sequence changes, so in order to make the dataset
-        #  compatible for training a dynamics function, which assume fixed-length training sequences, we pick a length
-        #  and chunk sequence plans. This means a trajectory can contain transitions from sequential plans,
-        #  i.e not all from the same plan.
-        self.current_features = {
-            'local_env_rows': float_feature(np.array([self.local_env_params.h_rows])),
-            'local_env_cols': float_feature(np.array([self.local_env_params.w_cols]))
-        }
 
         # This is for saving data
         self.examples = np.ndarray([n_examples_per_record], dtype=object)
@@ -129,6 +120,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                          planner_data: ob.PlannerData,
                          planning_time: float):
         self.planning_times.append(planning_time)
+        print(planned_path.shape[0])
 
         if self.verbose >= 2:
             plt.figure()
@@ -149,69 +141,57 @@ class ClassifierDataCollector(my_mpc.myMPC):
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
                               tail_goal_point: np.ndarray,
-                              planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
+                              planned_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_path: np.ndarray,
                               full_sdf_data: link_bot_sdf_utils.SDF,
                               planner_data: ob.PlannerData,
                               planning_time: float):
-        states = actual_path[:-1]
-        next_states = actual_path[1:]
-        planned_states = planned_path[:-1]
-        planned_next_states = planned_path[1:]
-        for time_idx in range(self.n_steps_per_example):
-            # we may have to truncate, or pad the trajectory, depending on the length of the plan
-            state, next_state, action, planned_state, planned_next_state, actual_local_env, planned_local_env = data_t
-            self.current_features['{}/state'.format(self.example_step_idx)] = float_feature(state)
-            self.current_features['{}/action'.format(self.example_step_idx)] = float_feature(action)
-            self.current_features['{}/actual_local_env/env'.format(self.example_step_idx)] = float_feature(
-                actual_local_env.data.flatten())
-            self.current_features['{}/actual_local_env/extent'.format(self.example_step_idx)] = float_feature(
-                np.array(actual_local_env.extent))
-            self.current_features['{}/actual_local_env/origin'.format(self.example_step_idx)] = float_feature(
-                actual_local_env.origin)
-            self.current_features['{}/res'.format(self.example_step_idx)] = float_feature(np.array([self.local_env_params.res]))
-            self.current_features['{}/traj_idx'.format(self.example_step_idx)] = float_feature(np.array([self.traj_idx]))
-            self.current_features['{}/time_idx '.format(self.example_step_idx)] = float_feature(np.array([time_idx]))
-            self.current_features['{}/planned_state'.format(self.example_step_idx)] = float_feature(planned_state)
-            self.current_features['{}/planned_local_env/env'.format(self.example_step_idx)] = float_feature(
-                planned_local_env.data.flatten())
-            self.current_features['{}/planned_local_env/extent'.format(self.example_step_idx)] = float_feature(
-                np.array(planned_local_env.extent))
-            self.current_features['{}/planned_local_env/origin'.format(self.example_step_idx)] = float_feature(
-                np.array(planned_local_env.origin))
-
-            self.example_step_idx += 1
-
-            if self.verbose >= 4:
-                plot_classifier_data(
-                    state=state,
-                    next_state=next_state,
-                    action=action,
-                    planned_next_state=None,
-                    planned_env=None,
-                    planned_env_extent=None,
-                    planned_state=None,
-                    planned_env_origin=None,
-                    res=None,
-                    title='debugging',
-                    actual_env=None,
-                    actual_env_extent=None,
-                )
-                plt.show()
-
-        self.traj_idx += 1
-
-        self.example_step_idx = 0
-        example_proto = tf.train.Example(features=tf.train.Features(feature=self.current_features))
-        example = example_proto.SerializeToString()
-        self.examples[self.examples_idx] = example
-        self.examples_idx += 1
-        # reset the current features
-        self.current_features = {
+        current_features = {
             'local_env_rows': float_feature(np.array([self.local_env_params.h_rows])),
             'local_env_cols': float_feature(np.array([self.local_env_params.w_cols]))
         }
+
+        for time_idx in range(self.n_steps_per_example):
+            # we may have to truncate, or pad the trajectory, depending on the length of the plan
+            if time_idx < planned_actions.shape[0]:
+                action = planned_actions[time_idx]
+            else:
+                action = np.zeros(2)
+
+            if time_idx < planned_path.shape[0]:
+                planned_state = planned_path[time_idx]
+                planned_local_env = planned_local_envs[time_idx]
+            else:
+                planned_state = planned_path[-1]
+                planned_local_env = planned_local_envs[-1]
+
+            if time_idx < actual_path.shape[0]:
+                state = actual_path[time_idx]
+                actual_local_env = actual_local_envs[time_idx]
+            else:
+                state = actual_path[-1]
+                actual_local_env = actual_local_envs[-1]
+
+            current_features['{}/state'.format(time_idx)] = float_feature(state)
+            current_features['{}/action'.format(time_idx)] = float_feature(action)
+            current_features['{}/actual_local_env/env'.format(time_idx)] = float_feature(actual_local_env.data.flatten())
+            current_features['{}/actual_local_env/extent'.format(time_idx)] = float_feature(np.array(actual_local_env.extent))
+            current_features['{}/actual_local_env/origin'.format(time_idx)] = float_feature(actual_local_env.origin)
+            current_features['{}/res'.format(time_idx)] = float_feature(np.array([self.local_env_params.res]))
+            current_features['{}/traj_idx'.format(time_idx)] = float_feature(np.array([self.traj_idx]))
+            current_features['{}/time_idx '.format(time_idx)] = float_feature(np.array([time_idx]))
+            current_features['{}/planned_state'.format(time_idx)] = float_feature(planned_state)
+            current_features['{}/planned_local_env/env'.format(time_idx)] = float_feature(planned_local_env.data.flatten())
+            current_features['{}/planned_local_env/extent'.format(time_idx)] = float_feature(np.array(planned_local_env.extent))
+            current_features['{}/planned_local_env/origin'.format(time_idx)] = float_feature(np.array(planned_local_env.origin))
+
+        self.traj_idx += 1
+
+        example_proto = tf.train.Example(features=tf.train.Features(feature=current_features))
+        example = example_proto.SerializeToString()
+        self.examples[self.examples_idx] = example
+        self.examples_idx += 1
 
         if self.examples_idx == self.n_examples_per_record:
             # save to a tf record
@@ -239,7 +219,7 @@ def main():
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per environment')
     # if the number of steps in the plan is larger than this number, we truncate.
     # If it is smaller we pad with 0 actions/stationary states
-    parser.add_argument("--n-steps-per-example", type=int, default=100, help='time steps per example')
+    parser.add_argument("--n-steps-per-example", type=int, default=50, help='time steps per example')
     parser.add_argument("--n-examples-per-record", type=int, default=8, help='examples per tfrecord')
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")

@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_classifiers.visualization import plot_classifier_data
+from link_bot_pycommon import link_bot_pycommon
 
 tf.compat.v1.enable_eager_execution()
 
@@ -35,6 +36,8 @@ def main():
     count = 0
     regression_with_label_1 = []
     regression_with_label_0 = []
+    angles = []
+    regressions = []
     for i, example in enumerate(dataset):
         res = example['resolution'].numpy().squeeze()
         res = np.array([res, res])
@@ -59,29 +62,33 @@ def main():
         count += 1
 
         regression = post_transition_distance - pre_transition_distance
+        regressions.append(regression)
         if label:
             regression_with_label_1.append(regression)
         else:
             regression_with_label_0.append(regression)
 
+        state_angle = link_bot_pycommon.angle_from_configuration(state)
+        angles.append(state_angle)
+
         if not args.no_plot:
             title = "Example {}".format(i)
-            # if label == 0:
-            plot_classifier_data(
-                next_state=next_state,
-                action=action,
-                planned_next_state=planned_next_state,
-                planned_env=planned_local_env,
-                planned_env_extent=planned_local_env_extent,
-                planned_state=planned_state,
-                planned_env_origin=planned_local_env_origin,
-                res=res,
-                state=state,
-                title=title,
-                actual_env=actual_local_env,
-                actual_env_extent=actual_local_env_extent,
-                label=label)
-            plt.show()
+            if label == 0:
+                plot_classifier_data(
+                    next_state=next_state,
+                    action=action,
+                    planned_next_state=planned_next_state,
+                    planned_env=planned_local_env,
+                    planned_env_extent=planned_local_env_extent,
+                    planned_state=planned_state,
+                    planned_env_origin=planned_local_env_origin,
+                    res=res,
+                    state=state,
+                    title=title,
+                    actual_env=actual_local_env,
+                    actual_env_extent=actual_local_env_extent,
+                    label=label)
+                plt.show()
 
     class_balance = positive_count / count * 100
     print("Number of examples: {}".format(count))
@@ -90,6 +97,13 @@ def main():
     print("mean median min")
     print('label 1', np.mean(regression_with_label_1), np.median(regression_with_label_1), np.min(regression_with_label_1))
     print('label 0', np.mean(regression_with_label_0), np.median(regression_with_label_0), np.min(regression_with_label_0))
+
+    plt.figure()
+    plt.scatter(angles, regressions)
+    plt.plot([0, np.pi], [0, 0], c='k')
+    plt.xlabel("angle (rad)")
+    plt.ylabel("increase in prediction error in R6 (m)")
+    plt.show()
 
 
 if __name__ == '__main__':

@@ -16,6 +16,33 @@ def state_cost(s, goal):
     return np.linalg.norm(s[0, 0:2] - goal[0, 0:2])
 
 
+def wrap_angle(angles):
+    """ https://stackoverflow.com/questions/15927755/opposite-of-numpy-unwrap """
+    return (angles + np.pi) % (2 * np.pi) - np.pi
+
+
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
+
+
+def angle_from_configuration(state):
+    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+
+            >>> angle_between((1, 0, 0), (0, 1, 0))
+            1.5707963267948966
+            >>> angle_between((1, 0, 0), (1, 0, 0))
+            0.0
+            >>> angle_between((1, 0, 0), (-1, 0, 0))
+            3.141592653589793
+    """
+    v1 = np.array([state[4] - state[2], state[5] - state[3]])
+    v2 = np.array([state[0] - state[2], state[1] - state[3]])
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+
+
 def make_random_rope_configuration(extent, length=0.5):
     """
     First sample a head point, then sample angles for the other points
