@@ -11,6 +11,7 @@ class PlannerParams:
     timeout: float
     max_v: float
     goal_threshold: float
+    random_epsilon: float
 
 
 @dataclass_json

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 
+import matplotlib.pyplot as plt
 import argparse
 import json
 import os
@@ -11,6 +12,7 @@ import rospy
 import tensorflow as tf
 from colorama import Fore
 
+from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.link_bot_dataset_utils import float_feature
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_local_occupancy_data
@@ -38,80 +40,140 @@ def generate_trajs(args,
         'local_env_cols': float_feature(np.array([fwd_model.local_env_params.w_cols]))
     }
 
-    example_step_idx = 0
     example_idx = 0
     current_example_idx = 0
     for traj_idx in range(args.n_trajs):
-        planned_state = None
+        planned_next_state = None
+        # if the n_steps_per_traj is 1
+        # then we should take 1 action
+        # the final state will be saved outside the loop
+
+        vxs = np.random.uniform(-0.15, 0.15, size=[args.n_steps_per_traj, 1])
+        vys = np.random.uniform(-0.15, 0.15, size=[args.n_steps_per_traj, 1])
+        actions = np.expand_dims(np.vstack((vxs, vys)), axis=0)
+
+        state_req = LinkBotStateRequest()
+        state = services.get_state(state_req)
+        initial_state = gazebo_utils.points_to_config(state.points)
+        head_idx = state.link_names.index("head")
+        head_point = state.points[head_idx]
+
+        # get the local environment
+        head_np = np.array([head_point.x, head_point.y])
+        initial_local_env = get_local_occupancy_data(fwd_model.local_env_params.h_rows,
+                                                     fwd_model.local_env_params.w_cols,
+                                                     fwd_model.local_env_params.res,
+                                                     center_point=head_np,
+                                                     services=services)
+
+        # run the prediction
+        planned_states = fwd_model.predict(local_env_data=[initial_local_env],
+                                           first_states=np.expand_dims(initial_state, axis=0),
+                                           actions=actions)
+
         for time_idx in range(args.n_steps_per_traj):
-            state_req = LinkBotStateRequest()
             action_msg = LinkBotVelocityAction()
 
             # Query the current state
             state = services.get_state(state_req)
-            head_idx = state.link_names.index("head")
             actual_state = gazebo_utils.points_to_config(state.points)
+            head_idx = state.link_names.index("head")
             head_point = state.points[head_idx]
 
-            # publish the pull command, which will return the target velocity
-            vx = np.random.uniform(-0.15, 0.15)
-            vy = np.random.uniform(-0.15, 0.15)
-            action = np.array([[vx, vy]])
-            action_msg.gripper1_velocity.x = vx
-            action_msg.gripper1_velocity.y = vy
-            services.velocity_action_pub.publish(action_msg)
-
-            # let the simulator run
-            step = WorldControlRequest()
-            step.steps = int(fwd_model.dt / 0.001)  # assuming 0.001s per simulation step
-            services.world_control(step)  # this will block until stepping is complete
-
-            # format the tf feature
+            # get the local environment
             head_np = np.array([head_point.x, head_point.y])
             actual_local_env = get_local_occupancy_data(fwd_model.local_env_params.h_rows,
                                                         fwd_model.local_env_params.w_cols,
                                                         fwd_model.local_env_params.res,
                                                         center_point=head_np,
                                                         services=services)
-            # run the prediction
-            if time_idx == 0:
-                planned_state = actual_state
-            planned_states = fwd_model.predict(local_env_data=[actual_local_env],
-                                               first_states=np.expand_dims(planned_state, axis=0),
-                                               actions=np.expand_dims(action, axis=0))
-            planned_state = planned_states[0, 1].flatten()
 
-            current_features['{}/state'.format(example_step_idx)] = float_feature(actual_state)
-            current_features['{}/action'.format(example_step_idx)] = float_feature(action.squeeze())
-            current_features['{}/actual_local_env/env'.format(example_step_idx)] = float_feature(actual_local_env.data.flatten())
-            current_features['{}/actual_local_env/extent'.format(example_step_idx)] = float_feature(
+            # publish the action and let the simulator run
+            action = actions[0, time_idx]
+            action_msg.gripper1_velocity.x = action[0]
+            action_msg.gripper1_velocity.y = action[1]
+            services.velocity_action_pub.publish(action_msg)
+            step = WorldControlRequest()
+            step.steps = int(fwd_model.dt / 0.001)  # assuming 0.001s per simulation step
+            services.world_control(step)  # this will block until stepping is complete
+
+            # save the current features
+            current_features['{}/state'.format(time_idx)] = float_feature(actual_state)
+            current_features['{}/action'.format(time_idx)] = float_feature(action)
+            current_features['{}/actual_local_env/env'.format(time_idx)] = float_feature(actual_local_env.data.flatten())
+            current_features['{}/actual_local_env/extent'.format(time_idx)] = float_feature(
                 np.array(actual_local_env.extent))
-            current_features['{}/actual_local_env/origin'.format(example_step_idx)] = float_feature(actual_local_env.origin)
-            current_features['{}/res'.format(example_step_idx)] = float_feature(np.array([fwd_model.local_env_params.res]))
-            current_features['{}/traj_idx'.format(example_step_idx)] = float_feature(np.array([traj_idx]))
-            current_features['{}/time_idx '.format(example_step_idx)] = float_feature(np.array([time_idx]))
-            current_features['{}/planned_state'.format(example_step_idx)] = float_feature(planned_state)
-            current_features['{}/planned_local_env/env'.format(example_step_idx)] = float_feature(
+            current_features['{}/actual_local_env/origin'.format(time_idx)] = float_feature(actual_local_env.origin)
+            current_features['{}/res'.format(time_idx)] = float_feature(np.array([fwd_model.local_env_params.res]))
+            current_features['{}/traj_idx'.format(time_idx)] = float_feature(np.array([traj_idx]))
+            current_features['{}/time_idx '.format(time_idx)] = float_feature(np.array([time_idx]))
+            current_features['{}/planned_local_env/env'.format(time_idx)] = float_feature(
                 actual_local_env.data.flatten())
-            current_features['{}/planned_local_env/extent'.format(example_step_idx)] = float_feature(
+            current_features['{}/planned_local_env/extent'.format(time_idx)] = float_feature(
                 np.array(actual_local_env.extent))
-            current_features['{}/planned_local_env/origin'.format(example_step_idx)] = float_feature(
+            current_features['{}/planned_local_env/origin'.format(time_idx)] = float_feature(
                 np.array(actual_local_env.origin))
+            current_features['{}/planned_state'.format(time_idx)] = float_feature(planned_states[time_idx])
 
-            example_step_idx += 1
-            if example_step_idx == args.n_steps_per_traj:
-                # we have enough time steps for one example, so reset the time step counter and serialize that example
-                example_step_idx = 0
-                example_proto = tf.train.Example(features=tf.train.Features(feature=current_features))
-                example = example_proto.SerializeToString()
-                examples[current_example_idx] = example
-                current_example_idx += 1
-                example_idx += 1
-                # reset the current features
-                current_features = {
-                    'local_env_rows': float_feature(np.array([fwd_model.local_env_params.h_rows])),
-                    'local_env_cols': float_feature(np.array([fwd_model.local_env_params.w_cols]))
-                }
+            # DEBUGGING
+            if time_idx == 0:
+                state = services.get_state(state_req)
+                actual_next_state = gazebo_utils.points_to_config(state.points)
+                plot_classifier_data(
+                    state=actual_state,
+                    next_state=actual_next_state,
+                    action=action[0],
+                    planned_next_state=None,
+                    planned_env=None,
+                    planned_env_extent=None,
+                    planned_state=None,
+                    planned_env_origin=None,
+                    res=None,
+                    title='debugging',
+                    actual_env=None,
+                    actual_env_extent=None,
+                )
+                plt.show()
+
+            # Query the final state
+            state = services.get_state(state_req)
+            final_state = gazebo_utils.points_to_config(state.points)
+            head_idx = state.link_names.index("head")
+            head_point = state.points[head_idx]
+
+            # get the local environment
+            head_np = np.array([head_point.x, head_point.y])
+            final_local_env = get_local_occupancy_data(fwd_model.local_env_params.h_rows,
+                                                       fwd_model.local_env_params.w_cols,
+                                                       fwd_model.local_env_params.res,
+                                                       center_point=head_np,
+                                                       services=services)
+
+            # save the current features
+            time_idx += 1
+            current_features['{}/state'.format(time_idx)] = float_feature(final_state)
+            current_features['{}/actual_local_env/env'.format(time_idx)] = float_feature(final_local_env.data.flatten())
+            current_features['{}/actual_local_env/extent'.format(time_idx)] = float_feature(np.array(final_local_env.extent))
+            current_features['{}/final_local_env/origin'.format(time_idx)] = float_feature(final_local_env.origin)
+            current_features['{}/res'.format(time_idx)] = float_feature(np.array([fwd_model.local_env_params.res]))
+            current_features['{}/traj_idx'.format(time_idx)] = float_feature(np.array([traj_idx]))
+            current_features['{}/time_idx '.format(time_idx)] = float_feature(np.array([time_idx]))
+            current_features['{}/planned_local_env/env'.format(time_idx)] = float_feature(final_local_env.data.flatten())
+            current_features['{}/planned_local_env/extent'.format(time_idx)] = float_feature(np.array(final_local_env.extent))
+            current_features['{}/planned_local_env/origin'.format(time_idx)] = float_feature(np.array(final_local_env.origin))
+            current_features['{}/planned_state'.format(time_idx)] = float_feature(planned_next_state)
+
+            # we have enough time steps for one example, so reset the time step counter and serialize that example
+            example_proto = tf.train.Example(features=tf.train.Features(feature=current_features))
+            example = example_proto.SerializeToString()
+            examples[current_example_idx] = example
+            current_example_idx += 1
+            example_idx += 1
+            # reset the current features
+            current_features = {
+                'local_env_rows': float_feature(np.array([fwd_model.local_env_params.h_rows])),
+                'local_env_cols': float_feature(np.array([fwd_model.local_env_params.w_cols]))
+            }
 
             if current_example_idx == args.n_trajs_per_file:
                 # save to a tf record
@@ -160,7 +222,8 @@ def generate(args):
             'n_state': 6,
             'n_action': 2,
             'labeling': {
-                'threshold': 0.2,
+                'pre_close_threshold': 0.1,
+                'post_close_threshold': 0.1,
                 'discard_pre_far': True
             }
         }
@@ -172,13 +235,14 @@ def generate(args):
 
 
 def main():
+    np.set_printoptions(linewidth=250, precision=2, suppress=True)
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help='', type=pathlib.Path)
     parser.add_argument("fwd_model_type", help='', type=str, choices=['nn', 'llnn', 'gp', 'rigid'])
     parser.add_argument("n_trajs", help='how many trajs to collect', type=int)
-    parser.add_argument("--n-steps-per-traj", help='how many steps per traj', type=int, default=100)
+    parser.add_argument("--n-steps-per-traj", help='how many steps per traj', type=int, default=1)
     parser.add_argument("outdir")
     parser.add_argument('--env-w', type=float, default=5.0)
     parser.add_argument('--env-h', type=float, default=5.0)

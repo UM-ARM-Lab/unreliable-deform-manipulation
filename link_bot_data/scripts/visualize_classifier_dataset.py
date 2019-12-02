@@ -6,7 +6,7 @@ import pathlib
 import matplotlib.pyplot as plt
 
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_planning.visualization import plot_classifier_data
+from link_bot_classifiers.visualization import plot_classifier_data
 
 tf.compat.v1.enable_eager_execution()
 
@@ -66,6 +66,7 @@ def main():
 
         if not args.no_plot:
             title = "Example {}".format(i)
+            # if label == 0:
             plot_classifier_data(
                 next_state=next_state,
                 action=action,

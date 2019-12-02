@@ -19,7 +19,6 @@ from link_bot_planning.goals import sample_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import PlannerParams, EnvParams
 from link_bot_pycommon import link_bot_sdf_utils
-from visual_mpc import gazebo_trajectory_execution
 
 
 class myMPC:
@@ -56,6 +55,9 @@ class myMPC:
 
             # nudge the rope so it is hopefully not in collision?
             self.services.nudge_rope()
+
+            # wait for things to settle
+            # gazebo_utils.wait(duration_steps=100)
 
             # TODO: should I have this here? It's just for visualization
             full_sdf_data = get_sdf_data(env_h=10, env_w=10, res=0.03, services=self.services)

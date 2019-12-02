@@ -51,6 +51,7 @@ class ClassifierDataset(StateSpaceDataset):
 
     # this code is really unreadable
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
+        @tf.function
         def _convert_sequences_to_transitions(constant_data: dict, state_like_sequences: dict, action_like_sequences: dict):
             # Create a dict of lists, where keys are the features we want in each transition, and values are the data.
             # The first dimension of these values is what will be split up into different examples
@@ -73,8 +74,9 @@ class ClassifierDataset(StateSpaceDataset):
             for feature_name in constant_data.keys():
                 transitions[feature_name] = []
 
+            # Fill the transitions dictionary with the data from the sequences
             sequence_length = action_like_sequences['action_s'].shape[0]
-            for transition_idx in range(sequence_length - 1):
+            for transition_idx in range(sequence_length):
                 for feature_name, feature_name_plural in singular_state_like_names:
                     transitions[feature_name].append(state_like_sequences[feature_name_plural][transition_idx])
                 for next_feature_name, feature_name_plural in next_singular_state_like_names:
@@ -88,22 +90,29 @@ class ClassifierDataset(StateSpaceDataset):
 
             return tf.data.Dataset.from_tensor_slices(transitions)
 
+        @tf.function
         def _label_transitions(transition: dict):
             pre_transition_distance = tf.norm(transition['state'] - transition['planned_state'])
             post_transition_distance = tf.norm(transition['state_next'] - transition['planned_state_next'])
 
             pre_close = pre_transition_distance < self.hparams['labeling']['pre_close_threshold']
-            transition['pre_dist'] = pre_transition_distance
-            transition['post_dist'] = post_transition_distance
-            transition['pre_close'] = pre_close
 
             post_close = post_transition_distance < self.hparams['labeling']['post_close_threshold']
-            transition['label'] = None  # yes this is necessary. You can't add a key to a dict inside a py_func conditionally
+
+            # You're not allowed to modify input arguments, so we create a new dict and copy everything
+            new_transition = {}
+            for k, v in transition.items():
+                new_transition[k] = v
+            new_transition['pre_dist'] = pre_transition_distance
+            new_transition['post_dist'] = post_transition_distance
+            new_transition['pre_close'] = pre_close
+
+            new_transition['label'] = None  # yes this is necessary. You can't add a key to a dict inside a py_func conditionally
             if post_close:
-                transition['label'] = tf.convert_to_tensor([1], dtype=tf.float32)
+                new_transition['label'] = tf.convert_to_tensor([1], dtype=tf.float32)
             else:
-                transition['label'] = tf.convert_to_tensor([0], dtype=tf.float32)
-            return transition
+                new_transition['label'] = tf.convert_to_tensor([0], dtype=tf.float32)
+            return new_transition
 
         def _filter_pre_far_transitions(transition):
             if self.hparams['labeling']['discard_pre_far'] and not transition['pre_close']:
@@ -111,6 +120,8 @@ class ClassifierDataset(StateSpaceDataset):
             return True
 
         dataset = dataset.flat_map(_convert_sequences_to_transitions)
+
         dataset = dataset.map(_label_transitions)
+
         dataset = dataset.filter(_filter_pre_far_transitions)
         return dataset

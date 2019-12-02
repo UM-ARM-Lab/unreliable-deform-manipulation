@@ -112,7 +112,9 @@ class ShootingRRT(MyPlanner):
 
         # validate the edge
         accept_probability = self.classifier_model.predict(local_env_data, np_s, np_s_next)
-        edge_is_valid = np.random.uniform(0, 1) <= accept_probability
+        random_accept = np.random.uniform(0, 1) <= self.planner_params.random_epsilon
+        classifier_accept = np.random.uniform(0, 1) <= accept_probability
+        edge_is_valid = classifier_accept or random_accept
 
         # copy the result into the ompl state data structure
         if not edge_is_valid:

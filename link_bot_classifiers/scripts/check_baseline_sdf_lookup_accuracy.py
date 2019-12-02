@@ -11,7 +11,7 @@ from colorama import Style
 from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.visualization import plot_rope_configuration
-from link_bot_planning.visualization import plot_classifier_data
+from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 

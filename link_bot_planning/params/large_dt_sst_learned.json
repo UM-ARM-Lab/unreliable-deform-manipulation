@@ -6,6 +6,7 @@
   "planner": "SST",
   "max_v": 0.15,
   "goal_threshold": 0.1,
+  "random_epsilon": 0.05,
   "env_w": 5.0,
   "env_h": 5.0
 }

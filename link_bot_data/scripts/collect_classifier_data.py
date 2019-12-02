@@ -16,22 +16,22 @@ import tensorflow as tf
 from colorama import Fore
 from ompl import base as ob
 
+from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import float_feature
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import my_mpc
+from link_bot_planning import my_mpc, ompl_viz
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, EnvParams
-from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
+from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
-config = tf.ConfigProto(gpu_options=gpu_options)
-tf.enable_eager_execution(config=config)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+tf.compat.v1.enable_eager_execution(config=config)
 
 
 class ClassifierDataCollector(my_mpc.myMPC):
@@ -96,8 +96,12 @@ class ClassifierDataCollector(my_mpc.myMPC):
                 'filter_free_space_only': False,
                 'labeling': {
                     'threshold': 0.2,
+                    'pre_close_threshold': 0.2,
+                    'post_close_threshold': 0.2,
                     'discard_pre_far': True
-                }
+                },
+                'n_state': self.planner.fwd_model.hparams['dyanmics_dataset_hparams']['n_state'],
+                'n_action': self.planner.fwd_model.hparams['dyanmics_dataset_hparams']['n_action']
             }
             json.dump(options, of, indent=2)
 
@@ -114,9 +118,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
 
         # This is for saving data
         self.examples = np.ndarray([n_examples_per_record], dtype=object)
-        self.example_idx = 0
-        self.example_step_idx = 0
-        self.current_example_idx = 0
+        self.examples_idx = 0
         self.traj_idx = 0
 
     def on_plan_complete(self,
@@ -129,8 +131,16 @@ class ClassifierDataCollector(my_mpc.myMPC):
         self.planning_times.append(planning_time)
 
         if self.verbose >= 2:
-            plot(ShootingDirectedControlSampler, planner_data, full_sdf_data.sdf, tail_goal_point, planned_path, planned_actions,
-                 full_sdf_data.extent)
+            plt.figure()
+            ax = plt.gca()
+            ompl_viz.plot(ax,
+                          self.planner.viz_object,
+                          planner_data,
+                          full_sdf_data.sdf,
+                          tail_goal_point,
+                          planned_path,
+                          planned_actions,
+                          full_sdf_data.extent)
 
         if len(self.planning_times) % 16 == 0:
             print("Planning Time: {:7.3f}s ({:6.3f}s)".format(np.mean(self.planning_times), np.std(self.planning_times)))
@@ -149,8 +159,8 @@ class ClassifierDataCollector(my_mpc.myMPC):
         next_states = actual_path[1:]
         planned_states = planned_path[:-1]
         planned_next_states = planned_path[1:]
-        d = zip(states, next_states, planned_actions, planned_states, planned_next_states, actual_local_envs, planner_local_envs)
-        for time_idx, data_t in enumerate(d):
+        for time_idx in range(self.n_steps_per_example):
+            # we may have to truncate, or pad the trajectory, depending on the length of the plan
             state, next_state, action, planned_state, planned_next_state, actual_local_env, planned_local_env = data_t
             self.current_features['{}/state'.format(self.example_step_idx)] = float_feature(state)
             self.current_features['{}/action'.format(self.example_step_idx)] = float_feature(action)
@@ -174,49 +184,52 @@ class ClassifierDataCollector(my_mpc.myMPC):
             self.example_step_idx += 1
 
             if self.verbose >= 4:
-                plt.figure()
-                plt.imshow(planned_local_env.image > 0, extent=planned_local_env.extent, zorder=1, alpha=0.5)
-                plt.imshow(actual_local_env.image > 0, extent=actual_local_env.extent, zorder=1, alpha=0.5)
-                plt.axis("equal")
-                plt.xlabel("x (m)")
-                plt.ylabel("y (m)")
+                plot_classifier_data(
+                    state=state,
+                    next_state=next_state,
+                    action=action,
+                    planned_next_state=None,
+                    planned_env=None,
+                    planned_env_extent=None,
+                    planned_state=None,
+                    planned_env_origin=None,
+                    res=None,
+                    title='debugging',
+                    actual_env=None,
+                    actual_env_extent=None,
+                )
                 plt.show()
 
-            time_idx += 1
-
-            if self.example_step_idx == self.n_steps_per_example:
-                # we have enough time steps for one example, so reset the time step counter and serialize that example
-                self.example_step_idx = 0
-                example_proto = tf.train.Example(features=tf.train.Features(feature=self.current_features))
-                example = example_proto.SerializeToString()
-                self.examples[self.current_example_idx] = example
-                self.current_example_idx += 1
-                self.example_idx += 1
-                # reset the current features
-                self.current_features = {
-                    'local_env_rows': float_feature(np.array([self.local_env_params.h_rows])),
-                    'local_env_cols': float_feature(np.array([self.local_env_params.w_cols]))
-                }
-
-            if self.current_example_idx == self.n_examples_per_record:
-                # save to a tf record
-                serialized_dataset = tf.data.Dataset.from_tensor_slices((self.examples))
-
-                end_example_idx = self.example_idx
-                start_example_idx = end_example_idx - self.n_examples_per_record
-                record_filename = "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx - 1)
-                full_filename = self.full_output_directory / record_filename
-                writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=self.compression_type)
-                writer.write(serialized_dataset)
-                print("saved {}".format(full_filename))
-                self.current_example_idx = 0
-
         self.traj_idx += 1
+
+        self.example_step_idx = 0
+        example_proto = tf.train.Example(features=tf.train.Features(feature=self.current_features))
+        example = example_proto.SerializeToString()
+        self.examples[self.examples_idx] = example
+        self.examples_idx += 1
+        # reset the current features
+        self.current_features = {
+            'local_env_rows': float_feature(np.array([self.local_env_params.h_rows])),
+            'local_env_cols': float_feature(np.array([self.local_env_params.w_cols]))
+        }
+
+        if self.examples_idx == self.n_examples_per_record:
+            # save to a tf record
+            serialized_dataset = tf.data.Dataset.from_tensor_slices((self.examples))
+
+            end_example_idx = self.traj_idx
+            start_example_idx = end_example_idx - self.n_examples_per_record
+            record_filename = "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx - 1)
+            full_filename = self.full_output_directory / record_filename
+            writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=self.compression_type)
+            writer.write(serialized_dataset)
+            print("saved {}".format(full_filename))
+            self.examples_idx = 0
 
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=250)
-    tf.logging.set_verbosity(tf.logging.FATAL)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
@@ -224,6 +237,8 @@ def main():
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-total-plans", type=int, default=1024, help='number of environments')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per environment')
+    # if the number of steps in the plan is larger than this number, we truncate.
+    # If it is smaller we pad with 0 actions/stationary states
     parser.add_argument("--n-steps-per-example", type=int, default=100, help='time steps per example')
     parser.add_argument("--n-examples-per-record", type=int, default=8, help='examples per tfrecord')
     parser.add_argument("--seed", '-s', type=int)
@@ -245,7 +260,10 @@ def main():
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
 
-    planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v, goal_threshold=args.goal_threshold)
+    planner_params = PlannerParams(timeout=args.planner_timeout,
+                                   max_v=args.max_v,
+                                   goal_threshold=args.goal_threshold,
+                                   random_epsilon=0)  # the none classifier always accepts, so this can be 0
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,

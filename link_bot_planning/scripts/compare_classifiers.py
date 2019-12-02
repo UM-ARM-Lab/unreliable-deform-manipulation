@@ -172,6 +172,7 @@ def main():
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
+    parser.add_argument('--random-epsilon', type=float, default=0.05, help='probability of accepting despite classifier')
 
     args = parser.parse_args()
 
@@ -208,7 +209,10 @@ def main():
         classifier_model_dir = pathlib.Path(item_of_comparison['classifier_model_dir'])
         classifier_model_type = item_of_comparison['classifier_model_type']
 
-        planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v, goal_threshold=0.1)
+        planner_params = PlannerParams(timeout=args.planner_timeout,
+                                       max_v=args.max_v,
+                                       goal_threshold=0.1,
+                                       random_epsilon=args.random_epsilon)
         env_params = EnvParams(w=args.env_w,
                                h=args.env_h,
                                real_time_rate=args.real_time_rate,

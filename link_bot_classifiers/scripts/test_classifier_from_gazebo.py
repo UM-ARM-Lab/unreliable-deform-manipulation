@@ -11,7 +11,7 @@ from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_local_occupancy_data, GazeboServices
 from link_bot_gazebo.srv import LinkBotStateRequest
 from link_bot_planning import model_utils, classifier_utils
-from link_bot_planning.visualization import plot_classifier_data
+from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_pycommon.args import my_formatter
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)

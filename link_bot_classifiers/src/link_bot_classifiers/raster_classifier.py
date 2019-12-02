@@ -15,7 +15,7 @@ from tensorflow import keras
 
 from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_planning.params import LocalEnvParams
-from link_bot_planning.visualization import plot_classifier_data
+from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_pycommon import experiments_util, link_bot_sdf_utils
 from moonshine.numpy_utils import add_batch
 from moonshine.raster_points_layer import RasterPoints
@@ -305,8 +305,6 @@ def eval(hparams, test_tf_dataset, args):
     print("|        | label 0 | label 1 |")
     print("| pred 0 | {:6d} | {:6d} |".format(tn, fn))
     print("| pred 1 | {:6d} | {:6d} |".format(fp, tp))
-
-    np.savetxt('test_predictions.txt', test_predictions)
 
 
 class RasterClassifierWrapper(BaseClassifier):

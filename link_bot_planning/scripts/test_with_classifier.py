@@ -113,7 +113,10 @@ def main():
     params = json.load(args.params.open("r"))
 
     goal_threshold = args.goal_threshold if args.goal_threshold is not None else params['goal_threshold']
-    planner_params = PlannerParams(timeout=args.planner_timeout, max_v=params['max_v'], goal_threshold=goal_threshold)
+    planner_params = PlannerParams(timeout=args.planner_timeout,
+                                   max_v=params['max_v'],
+                                   goal_threshold=goal_threshold,
+                                   random_epsilon=params['random_epsilon'])
     env_params = EnvParams(w=params['env_w'],
                            h=params['env_h'],
                            real_time_rate=args.real_time_rate,

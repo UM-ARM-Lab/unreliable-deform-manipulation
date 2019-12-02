@@ -128,6 +128,10 @@ class GazeboServices:
 
         self.apply_body_wrench(nudge)
 
+        wait = WorldControlRequest()
+        wait.steps = int(5 / 0.001)  # assuming 0.001s per simulation step
+        self.world_control(wait)
+
 
 def rowcol_to_xy(services, row, col):
     req = InverseCameraProjectionRequest()
@@ -370,6 +374,7 @@ def random_object_move(model_name, w, h, padding):
     move.pose.orientation.w = q[3]
     move.model_name = model_name
     return move
+
 
 
 def move_objects(services, objects, env_w, env_h, link_bot_mode, padding):
