@@ -9,7 +9,7 @@ import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
 
-from link_bot_pycommon import experiments_util, link_bot_sdf_utils
+from link_bot_pycommon import experiments_util, link_bot_pycommon
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
@@ -42,7 +42,7 @@ class SimpleNN(tf.keras.Model):
             z_t = _state_action_t
             for dense_layer in self.dense_layers:
                 z_t = dense_layer(z_t)
-            
+
             if self.hparams['residual']:
                 ds_t = tf.expand_dims(z_t, axis=2)
                 s_t_plus_1_flat = s_t + ds_t
@@ -82,6 +82,30 @@ def eval(hparams, test_tf_dataset, args):
     test_position_error = np.mean(test_position_errors)
     print("Test Loss:  {:8.5f}".format(test_loss))
     print("Test Error: " + Style.BRIGHT + "{:8.4f}(m)".format(test_position_error) + Style.RESET_ALL)
+
+
+def eval_angled(net, test_tf_dataset):
+    angles = []
+    errors = []
+    for test_x, test_y in test_tf_dataset:
+        test_true_states = test_y['output_states']
+        test_gen_states = net(test_x)
+        for true_state_seq, gen_state_seq in zip(test_true_states, test_gen_states):
+            true_initial_state = true_state_seq[0]
+            true_final_state = true_state_seq[-1]
+            gen_final_state = gen_state_seq[-1]
+            angle = link_bot_pycommon.angle_from_configuration(true_initial_state)
+            error = np.linalg.norm(true_final_state - gen_final_state)
+            angles.append(angle)
+            errors.append(error)
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.scatter(angles, errors)
+    plt.plot([0, np.pi], [0, 0], c='k')
+    plt.xlabel("angle (rad)")
+    plt.ylabel("increase in prediction error in R6 (m)")
+    plt.show()
 
 
 def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
@@ -214,7 +238,7 @@ class SimpleNNWrapper(BaseForwardModel):
 
     def predict(self, local_env_data: List, first_states: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
-        del local_env_data #unused
+        del local_env_data  # unused
         batch, T, _ = actions.shape
         states = tf.convert_to_tensor(first_states, dtype=tf.float32)
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])

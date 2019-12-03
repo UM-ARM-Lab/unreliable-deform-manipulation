@@ -111,7 +111,7 @@ class ShootingRRT(MyPlanner):
         np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
         # validate the edge
-        accept_probability = self.classifier_model.predict(local_env_data, np_s, np_s_next)
+        accept_probability = self.classifier_model.predict([local_env_data], np_s, np_s_next)
         random_accept = np.random.uniform(0, 1) <= self.planner_params.random_epsilon
         classifier_accept = np.random.uniform(0, 1) <= accept_probability
         edge_is_valid = classifier_accept or random_accept

@@ -1,7 +1,7 @@
 {
-  "fwd_model_dir": "./llnn/large_dt/November_04_09-26-44_84ccbfb7fe/",
-  "fwd_model_type": "llnn",
-  "classifier_model_dir": "classifiers/v6-new/October_30_15-37-56_c0af676a6b/",
+  "fwd_model_dir": "ss_log_data/res_nn_1024/November_22_12-49-09_61e4cff061/",
+  "fwd_model_type": "nn",
+  "classifier_model_dir": "classifiers/testing_new_50/December_02_18-58-52_64de9d67e0",
   "classifier_model_type": "raster",
   "planner": "ShootingRRT",
   "max_v": 0.15,

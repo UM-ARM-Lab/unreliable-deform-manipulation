@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import pathlib
+import matplotlib.pyplot as plt
 
 import numpy as np
 from tabulate import tabulate
@@ -38,6 +39,14 @@ def main():
     aggregate_metrics = error_metrics(head_error=head_errors, mid_error=mid_errors, tail_error=tail_errors)
     table = tabulate(aggregate_metrics, headers=headers, tablefmt='github', floatfmt='6.4f')
     print(table)
+
+    mean_errors = np.mean(tail_errors + head_errors + mid_errors, axis=1)
+    plt.figure()
+    plt.scatter(data['initial_angle'], mean_errors)
+    plt.plot([0, np.pi], [0, 0], c='k')
+    plt.xlabel("angle (rad)")
+    plt.ylabel("increase in prediction error in R6 (m)")
+    plt.show()
 
 
 if __name__ == '__main__':

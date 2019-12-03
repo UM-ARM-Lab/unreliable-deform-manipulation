@@ -29,7 +29,7 @@ def plot(ax,
         plot_rope_configuration(ax, state_sampled_at, label='sampled states', linewidth=0.5, c='b', alpha=0.2, zorder=1)
 
     for rejected_state in viz_object.rejected_samples:
-        plot_rope_configuration(ax, rejected_state, label='states rejected by classifier', linewidth=0.5, c='r', alpha=0.5,
+        plot_rope_configuration(ax, rejected_state, label='states rejected by classifier', linewidth=0.8, c='r', alpha=0.5,
                                 zorder=1)
 
     start = planned_path[0]
@@ -46,10 +46,10 @@ def plot(ax,
 
         # TODO: this assumes the specific compound state space I'm testing at the moment. Get the subspace by name maybe?
         np_s = to_numpy(s[0], n_state)
-        ax.scatter(np_s[0, 0], np_s[0, 1], s=15, c='orange', zorder=2, alpha=0.5, label='tail')
+        ax.scatter(np_s[0, 0], np_s[0, 1], s=15, c='black', zorder=2, alpha=0.3, label='tail')
 
         if len(edges_map.keys()) == 0:
-            plot_rope_configuration(ax, np_s[0], linewidth=1, c='orange', alpha=0.2, zorder=2, label='full rope')
+            plot_rope_configuration(ax, np_s[0], linewidth=1, c='black', alpha=0.2, zorder=2, label='full rope')
 
         planner_data.getEdges(vertex_index, edges_map)
         for vertex_index2 in edges_map.keys():

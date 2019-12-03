@@ -14,10 +14,13 @@ from colorama import Fore
 from matplotlib import animation
 
 from link_bot_gazebo import gazebo_utils
+from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_gazebo.srv import LinkBotStateRequest
 from link_bot_planning import model_utils
+from link_bot_pycommon import link_bot_pycommon
+from state_space_dynamics.base_forward_model import BaseForwardModel
 
-tf.enable_eager_execution()
+tf.compat.v1.enable_eager_execution()
 
 
 def visualize(root, predicted_points, actual_points, traj_idx):
@@ -56,16 +59,17 @@ def visualize(root, predicted_points, actual_points, traj_idx):
 
 def main():
     np.set_printoptions(suppress=True, linewidth=250, precision=4, threshold=64 * 64 * 3)
-    tf.logging.set_verbosity(tf.logging.FATAL)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("model_dir", type=pathlib.Path, help='path to model')
-    parser.add_argument("model_type", choices=['llnn', 'gp', 'rigid'], default='llnn', help='type of model')
+    parser.add_argument("model_type", choices=['nn', 'llnn', 'gp', 'rigid'], default='llnn', help='type of model')
     parser.add_argument("outdir", type=pathlib.Path, help="output metrics (and optionally visualizations) here")
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--n-trajs', type=int, default=100)
-    parser.add_argument('--n-actions-per-traj', type=int, default=100)
-    parser.add_argument('--n_parallel_calls-kink', type=int, default=0.1)
+    parser.add_argument('--n-actions-per-traj', type=int, default=5)
+    parser.add_argument('--p-kink', type=int, default=0.1)
+    parser.add_argument('--kinked-actions', action='store_true')
     parser.add_argument('--no-plot', action='store_true')
 
     args = parser.parse_args()
@@ -100,16 +104,36 @@ def main():
         np.savez(metrics_filename, **all_metrics)
 
 
-def run_traj(args, services, fwd_model, traj_idx, root):
-    services.reset_gazebo_environment(reset_model_poses=True)
+def run_traj(args,
+             services: GazeboServices,
+             fwd_model: BaseForwardModel,
+             traj_idx: int,
+             root: pathlib.Path):
+    services.reset_gazebo_environment(reset_model_poses=False)
     services.pause(std_srvs.srv.EmptyRequest())
+
+    # TODO: reset the rope to a random angle
+    # use a simple P controller?
+
     state_req = LinkBotStateRequest()
     state = services.get_state.call(state_req)
     initial_rope_configuration = np.array([[p.x, p.y] for p in state.points]).flatten()
+    initial_head_point = np.array([state.points[2].x, state.points[2].y])
+    initial_angle = link_bot_pycommon.angle_from_configuration(initial_rope_configuration)
 
-    actions = sample_kinked_action_sequence(args.n_actions_per_traj, args.p_kink)
+    if args.kinked_actions:
+        actions = sample_kinked_action_sequence(args.n_actions_per_traj, args.p_kink)
+    else:
+        actions = sample_const_action_sequence(args.n_actions_per_traj)
 
-    predicted_points = fwd_model.predict(np.expand_dims(initial_rope_configuration, axis=0), np.expand_dims(actions, axis=0))
+    local_env_data = get_local_occupancy_data(cols=fwd_model.local_env_params.w_cols,
+                                              rows=fwd_model.local_env_params.h_rows,
+                                              res=fwd_model.local_env_params.res,
+                                              center_point=initial_head_point,
+                                              services=services)
+    predicted_points = fwd_model.predict(local_env_data=[local_env_data],
+                                         first_states=np.expand_dims(initial_rope_configuration, axis=0),
+                                         actions=np.expand_dims(actions, axis=0))
     predicted_points = predicted_points[0]
     trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(fwd_model.dt, actions)
     traj_res = services.execute_trajectory(trajectory_execution_request)
@@ -122,7 +146,7 @@ def run_traj(args, services, fwd_model, traj_idx, root):
         visualize(root, predicted_points, actual_points, traj_idx)
         print("mean error: {:5.3f}".format(np.mean(position_errors)))
 
-    return {'error': position_errors}
+    return {'error': position_errors, 'initial_angle': initial_angle, 'actions': actions}
 
 
 def sample_kinked_action_sequence(n_actions_per_traj, p_kink):
@@ -134,6 +158,16 @@ def sample_kinked_action_sequence(n_actions_per_traj, p_kink):
             a_t = np.random.uniform([-0.15, -0.15], [0.15, 0.15])
         a_t_noisy = a_t + np.random.multivariate_normal([0, 0], np.eye(2) * 1e-5)
         actions.append(a_t_noisy)
+    actions = np.array(actions)
+    return actions
+
+
+def sample_const_action_sequence(n_actions_per_traj):
+    actions = []
+    theta = np.random.uniform(-np.pi, np.pi)
+    for t in range(n_actions_per_traj):
+        a_t = np.array([np.cos(theta) * 0.15, np.sin(theta) * 0.15])
+        actions.append(a_t)
     actions = np.array(actions)
     return actions
 
