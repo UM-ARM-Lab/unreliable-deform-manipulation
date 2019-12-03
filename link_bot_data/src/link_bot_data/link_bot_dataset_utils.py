@@ -44,6 +44,7 @@ def serialize_example_pyfunction(images_traj, states_traj, actions_traj):
     return example_proto.SerializeToString()
 
 
+@tf.function
 def tf_serialize_example(images, states, actions):
     tf_string = tf.py_function(serialize_example_pyfunction, (images, states, actions), tf.string)
     return tf.reshape(tf_string, ())
@@ -75,6 +76,7 @@ def balance_dataset(dataset, key, fewer_negative=True):
     # zipping takes the shorter of the two, hence why this makes it balanced
     balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
+
     return balanced_dataset
 
 
