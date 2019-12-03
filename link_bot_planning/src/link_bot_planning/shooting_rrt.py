@@ -152,7 +152,7 @@ class ShootingRRT(MyPlanner):
         compound_start()[2][1] = start_local_occupancy_origin_double[1]
 
         start = ob.State(compound_start)
-        goal = LinkBotCompoundGoal(self.si, self.planner_params.goal_threshold, tail_goal_point)
+        goal = LinkBotCompoundGoal(self.si, self.planner_params.goal_threshold, tail_goal_point, self.viz_object)
 
         self.ss.clear()
         self.viz_object.clear()

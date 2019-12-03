@@ -1,14 +1,17 @@
 import numpy as np
 import ompl.base as ob
 
+from link_bot_planning.viz_object import VizObject
+
 
 class LinkBotGoal(ob.GoalSampleableRegion):
 
-    def __init__(self, si, threshold, numpy_goal):
+    def __init__(self, si, threshold, numpy_goal, viz: VizObject):
         super(LinkBotGoal, self).__init__(si)
         self.tail_x = numpy_goal[0]
         self.tail_y = numpy_goal[1]
         self.setThreshold(threshold)
+        self.viz = viz
 
     def distanceGoal(self, state):
         return np.linalg.norm([state[0] - self.tail_x, state[1] - self.tail_y])
@@ -29,11 +32,13 @@ class LinkBotGoal(ob.GoalSampleableRegion):
 
 class LinkBotCompoundGoal(ob.GoalSampleableRegion):
 
-    def __init__(self, si, threshold, numpy_goal):
+    def __init__(self, si, threshold, numpy_goal, viz: VizObject):
         super(LinkBotCompoundGoal, self).__init__(si)
         self.tail_x = numpy_goal[0]
         self.tail_y = numpy_goal[1]
         self.setThreshold(threshold)
+        self.viz = viz
+        # TODO: add these to the viz object
 
     def distanceGoal(self, state: ob.CompoundStateInternal):
         """
