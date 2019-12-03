@@ -10,6 +10,7 @@ from colorama import Style
 
 from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
 from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.new_classifier_dataset import NewClassifierDataset
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_pycommon import link_bot_sdf_utils
@@ -57,6 +58,7 @@ def main():
     parser.add_argument('--balance', action='store_true', help='subsample the datasets to make sure it is balanced')
     parser.add_argument('--show-fn', action='store_true', help='visualize')
     parser.add_argument('--show-fp', action='store_true', help='visualize')
+    parser.add_argument('--inflation-radius', type=float, default=0.02)
     parser.add_argument('--pre', type=float)
     parser.add_argument('--post', type=float)
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
@@ -67,7 +69,8 @@ def main():
     tf.random.set_random_seed(0)
     balance_key = 'label' if args.balance else None
 
-    classifier_dataset = ClassifierDataset(args.dataset_dir)
+    # classifier_dataset = ClassifierDataset(args.dataset_dir)
+    classifier_dataset = NewClassifierDataset(args.dataset_dir)
     if args.post:
         classifier_dataset.hparams['labeling']['post_close_threshold'] = args.post
     if args.pre:
@@ -78,7 +81,7 @@ def main():
                                              batch_size=1,
                                              balance_key=balance_key)
 
-    collision_classifier = CollisionCheckerClassifier()
+    collision_classifier = CollisionCheckerClassifier(inflation_radius=args.inflation_radius)
 
     incorrect = 0
     correct = 0
@@ -112,9 +115,10 @@ def main():
 
         local_env_data = link_bot_sdf_utils.OccupancyData(local_env, resolution, origin)
         try:
-            prediction = collision_classifier.predict(local_env_data,
+            predictions = collision_classifier.predict([local_env_data],
                                                       np.expand_dims(planned_state, axis=0),
                                                       np.expand_dims(planned_next_state, axis=0))
+            prediction = predictions[0]
         except IndexError:
             title = "out-of-bounds"
             plot_classifier_data(

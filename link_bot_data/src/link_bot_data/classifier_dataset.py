@@ -46,6 +46,7 @@ class ClassifierDataset(StateSpaceDataset):
         self.state_like_names_and_shapes['planned_local_env_s/env'] = '%d/planned_local_env/env', local_env_shape
         self.trajectory_constant_names_and_shapes['local_env_rows'] = 'local_env_rows', (1,)
         self.trajectory_constant_names_and_shapes['local_env_cols'] = 'local_env_cols', (1,)
+        # These are the actual states -- should only be used for computing labels
         self.state_like_names_and_shapes['state_s'] = '%d/state', (n_state,)
         self.state_like_names_and_shapes['planned_state_s'] = '%d/planned_state', (n_state,)
 

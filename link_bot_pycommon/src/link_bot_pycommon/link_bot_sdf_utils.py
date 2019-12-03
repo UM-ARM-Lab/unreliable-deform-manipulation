@@ -164,3 +164,23 @@ def make_rope_images(sdf_data, rope_configurations):
             row, col = point_to_idx(px, py, sdf_data.resolution, sdf_data.origin)
             rope_images[i, row, col, j] = 1
     return rope_images
+
+
+def inflate(local_env: OccupancyData, radius_m: float):
+    assert radius_m >= 0
+    if radius_m == 0:
+        return local_env
+
+    inflated = local_env
+    radius = int(radius_m / local_env.resolution[0])
+
+    for i, j in np.ndindex(local_env.data.shape):
+        try:
+            if local_env.data[i, j] == 1:
+                for di in range(-radius, radius + 1):
+                    for dj in range(-radius, radius + 1):
+                        inflated.data[i + di, j + dj] = 1
+        except IndexError:
+            pass
+
+    return inflated

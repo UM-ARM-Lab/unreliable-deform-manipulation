@@ -75,7 +75,7 @@ def main():
         state_angle = link_bot_pycommon.angle_from_configuration(state)
         angles.append(state_angle)
 
-        if not args.no_plot and i < 100:
+        if not args.no_plot and i < 20:
             title = "Example {}".format(i)
             plot_classifier_data(
                 next_state=next_state,

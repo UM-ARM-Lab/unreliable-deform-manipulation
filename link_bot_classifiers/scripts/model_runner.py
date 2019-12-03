@@ -9,6 +9,7 @@ from colorama import Fore
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.new_classifier_dataset import NewClassifierDataset
 from link_bot_pycommon import experiments_util
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.5)
@@ -29,13 +30,15 @@ def train(args):
     ###############
     # Datasets
     ###############
-    train_dataset = ClassifierDataset(args.dataset_dir)
+    # train_dataset = ClassifierDataset(args.dataset_dir)
+    train_dataset = NewClassifierDataset(args.dataset_dir)
     train_tf_dataset = train_dataset.get_dataset(mode='train',
                                                  shuffle=True,
                                                  seed=args.seed,
                                                  batch_size=args.batch_size,
                                                  balance_key=args.balance_key)
-    val_dataset = ClassifierDataset(args.dataset_dir)
+    # val_dataset = NewClassifierDataset(args.dataset_dir)
+    val_dataset = NewClassifierDataset(args.dataset_dir)
     val_tf_dataset = val_dataset.get_dataset(mode='val',
                                              shuffle=True,
                                              seed=args.seed,
@@ -62,7 +65,8 @@ def eval(args):
     ###############
     # Dataset
     ###############
-    test_dataset = ClassifierDataset(args.dataset_dir)
+    # test_dataset = ClassifierDataset(args.dataset_dir)
+    test_dataset = NewClassifierDataset(args.dataset_dir)
     test_tf_dataset = test_dataset.get_dataset(mode=args.mode,
                                                shuffle=False,
                                                seed=args.seed,
