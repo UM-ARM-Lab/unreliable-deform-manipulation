@@ -13,9 +13,9 @@ class CollisionCheckerClassifier(BaseClassifier):
         super().__init__()
         self.inflation_radius = inflation_radius
 
-    def predict_state_only(self, local_envs: List[OccupancyData], s1s: np.ndarray) -> float:
+    def predict_state_only(self, local_env_data_s: List[OccupancyData], s1_s: np.ndarray) -> float:
         predictions = []
-        for local_env, s1, s2 in zip(local_envs, s1s):
+        for local_env, s1, s2 in zip(local_env_data_s, s1_s):
             local_env = link_bot_sdf_utils.inflate(local_env, self.inflation_radius)
             tail_x = s1[:, 0]
             tail_y = s1[:, 1]
@@ -44,9 +44,9 @@ class CollisionCheckerClassifier(BaseClassifier):
             predictions.append(prediction)
         return predictions
 
-    def predict(self, local_envs: List[OccupancyData], s1_s: np.ndarray, s2_s: np.ndarray) -> float:
+    def predict(self, local_env_data_s: List[OccupancyData], s1_s: np.ndarray, s2_s: np.ndarray) -> float:
         predictions = []
-        for local_env, s1, s2 in zip(local_envs, s1_s, s2_s):
+        for local_env, s1, s2 in zip(local_env_data_s, s1_s, s2_s):
             tail_x = s1[0]
             tail_y = s1[1]
             mid_x = s1[2]

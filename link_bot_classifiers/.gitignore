@@ -2,3 +2,5 @@
 data
 *.mp4
 *.png
+results
+viz_results

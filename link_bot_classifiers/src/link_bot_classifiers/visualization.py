@@ -18,27 +18,31 @@ def plot_classifier_data(
         action=None,
         actual_env=None,
         actual_env_extent=None,
-        label=None):
-    plt.figure()
-    ax = plt.gca()
+        label=None,
+        ax=None):
+    if ax is None:
+        plt.figure()
+        ax = plt.gca()
 
     if planned_env is not None:
-        plt.imshow(np.flipud(planned_env), extent=planned_env_extent, zorder=1, vmin=0, vmax=1, cmap='viridis', alpha=0.5)
+        ax.imshow(np.flipud(planned_env), extent=planned_env_extent, zorder=1, vmin=0, vmax=1, cmap='viridis', alpha=0.5)
     if actual_env is not None:
-        plt.imshow(np.flipud(actual_env), extent=actual_env_extent, zorder=1, vmin=0, vmax=1, cmap='viridis', alpha=0.5)
+        ax.imshow(np.flipud(actual_env), extent=actual_env_extent, zorder=1, vmin=0, vmax=1, cmap='viridis', alpha=0.5)
     if state is not None:
         plot_rope_configuration(ax, state, c='red', label='state', zorder=2, linewidth=3)
     if next_state is not None:
         plot_rope_configuration(ax, next_state, c='orange', label='next state', zorder=4, linestyle='--', linewidth=3)
-    if action is not None:
+    if state is not None and action is not None:
         ax.quiver(state[4], state[5], action[0], action[1], width=0.001, scale=6)
+    if planned_state is not None and action is not None:
+        ax.quiver(planned_state[4], planned_state[5], action[0], action[1], width=0.001, scale=6)
 
     if state is not None and next_state is not None:
         ax.plot([state[4], next_state[4]], [state[5], next_state[5]], c='w', linewidth=1)
 
     if planned_env_origin is not None and res is not None:
         origin_x, origin_y = link_bot_sdf_utils.idx_to_point(0, 0, res, planned_env_origin)
-        plt.scatter(origin_x, origin_y, label='origin', marker='*')
+        ax.scatter(origin_x, origin_y, label='origin', marker='*')
 
     if planned_state is not None:
         plot_rope_configuration(ax, planned_state, c='blue', label='planned state', zorder=3)
@@ -51,11 +55,11 @@ def plot_classifier_data(
 
     if label is not None:
         label_color = 'g' if label else 'r'
-        plt.plot([-2.5, 2.5, 2.5, -2.5, -2.5], [-2.5, -2.5, 2.5, 2.5, -2.5], c=label_color, linewidth=6)
+        ax.plot([-2.5, 2.5, 2.5, -2.5, -2.5], [-2.5, -2.5, 2.5, 2.5, -2.5], c=label_color, linewidth=6)
 
-    plt.axis("equal")
-    plt.xlim(-2.5, 2.5)
-    plt.title(title)
-    plt.xlabel("x (m)")
-    plt.ylabel("y (m)")
-    plt.legend()
+    ax.axis("equal")
+    ax.set_xlim(-2.5, 2.5)
+    ax.set_title(title)
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.legend()

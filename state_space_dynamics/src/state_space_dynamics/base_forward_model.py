@@ -4,7 +4,6 @@ from typing import List
 import numpy as np
 
 from link_bot_planning.params import LocalEnvParams
-from link_bot_pycommon import link_bot_sdf_utils
 
 
 class BaseForwardModel:
@@ -18,8 +17,7 @@ class BaseForwardModel:
         self.local_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['local_env_params'])
         self.dt = self.hparams['dynamics_dataset_hparams']['dt']
 
-    def predict(self, local_env_data: List, first_states: np.ndarray,
-                actions: np.ndarray) -> np.ndarray:
+    def predict(self, local_env_data_s: List, first_states: np.ndarray, actions: np.ndarray) -> np.ndarray:
         """
         :param local_env_data: [batch] sized list of the local environment data
         :param first_states: [batch, 6]

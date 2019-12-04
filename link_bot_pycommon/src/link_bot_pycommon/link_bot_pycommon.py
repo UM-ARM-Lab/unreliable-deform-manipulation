@@ -34,7 +34,7 @@ def angle_from_configuration(state):
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 
-def make_random_rope_configuration(extent, length=0.5):
+def make_random_rope_configuration(extent, length=0.23):
     """
     First sample a head point, then sample angles for the other points
     :param extent: bounds of the environment [xmin, xmax, ymin, ymax] (meters)

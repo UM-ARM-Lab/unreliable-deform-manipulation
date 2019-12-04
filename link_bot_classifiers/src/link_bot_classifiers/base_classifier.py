@@ -10,5 +10,5 @@ class BaseClassifier:
     def __init__(self):
         self.model_hparams = {}
 
-    def predict(self, local_env_data: List, s1: np.ndarray, s2: np.ndarray) -> float:
+    def predict(self, local_env_data_s: List, s1_s: np.ndarray, s2_s: np.ndarray) -> float:
         pass

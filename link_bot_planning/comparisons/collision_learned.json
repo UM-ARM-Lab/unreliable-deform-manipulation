@@ -1,10 +1,6 @@
 [
   {
     "classifier_model_dir": "",
-    "classifier_model_type": "none"
-  },
-  {
-    "classifier_model_dir": "",
     "classifier_model_type": "collision"
   },
   {

@@ -4,6 +4,7 @@ import numpy as np
 from ompl import base as ob
 from ompl import control as oc
 
+from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
 from link_bot_planning.my_planner import MyPlanner
@@ -11,13 +12,14 @@ from link_bot_planning.viz_object import VizObject
 from link_bot_planning.params import EnvParams, PlannerParams
 from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env, from_numpy
 from link_bot_pycommon import link_bot_sdf_utils
+from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
 class SST(MyPlanner):
 
     def __init__(self,
-                 fwd_model,
-                 classifier_model,
+                 fwd_model: BaseForwardModel,
+                 classifier_model: BaseClassifier,
                  planner_params: PlannerParams,
                  env_params: EnvParams,
                  services: GazeboServices,
@@ -85,7 +87,7 @@ class SST(MyPlanner):
         self.planner = oc.SST(self.si)
         self.ss.setPlanner(self.planner)
         self.si.setPropagationStepSize(self.fwd_model.dt)
-        self.si.setMinMaxControlDuration(1, 50)
+        self.si.setMinMaxControlDuration(1, 20)
 
     def is_valid(self, state):
         return self.state_space.getSubspace(0).satisfiesBounds(state[0])
@@ -104,12 +106,15 @@ class SST(MyPlanner):
                                                   services=self.services)
 
         # use the forward model to predict the next configuration
-        points_next = self.fwd_model.predict(local_env_data=local_env_data, first_states=np_s, actions=np_u)
+        points_next = self.fwd_model.predict(local_env_data_s=[local_env_data], first_states=np_s, actions=np_u)
         np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
         # validate the edge
-        accept_probability = self.classifier_model.predict(local_env_data, np_s, np_s_next)
-        edge_is_valid = np.random.uniform(0, 1) <= accept_probability
+        accept_probabilities = self.classifier_model.predict(local_env_data_s=[local_env_data], s1_s=np_s, s2_s=np_s_next)
+        accept_probability = accept_probabilities[0]
+        random_accept = np.random.uniform(0, 1) <= self.planner_params.random_epsilon
+        classifier_accept = np.random.uniform(0, 1) <= accept_probability
+        edge_is_valid = classifier_accept or random_accept
 
         # copy the result into the ompl state data structure
         if not edge_is_valid:
@@ -157,7 +162,7 @@ class SST(MyPlanner):
 
         start = ob.State(compound_start)
         epsilon = 0.01
-        goal = LinkBotCompoundGoal(self.si, epsilon, tail_goal_point)
+        goal = LinkBotCompoundGoal(self.si, epsilon, tail_goal_point, self.viz_object)
 
         self.ss.clear()
         self.ss.setStartState(start)

@@ -15,6 +15,6 @@ def load_generic_model(model_dir: pathlib.Path, model_type: str):
     if model_type == 'raster':
         return RasterClassifierWrapper(model_dir)
     elif model_type == 'collision':
-        return CollisionCheckerClassifier()
+        return CollisionCheckerClassifier(inflation_radius=0.02)
     elif model_type == 'none':
         return NoneClassifier()

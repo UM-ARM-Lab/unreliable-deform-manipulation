@@ -160,19 +160,19 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="forward model", type=pathlib.Path)
-    parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'rigid'], default='gp')
+    parser.add_argument("fwd_model_type", choices=['nn', 'gp', 'llnn', 'rigid'], default='nn')
     parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
     parser.add_argument("outdir", type=pathlib.Path)
-    parser.add_argument("--n-total-plans", type=int, default=10, help='total number of plans')
-    parser.add_argument("--n-plans-per-env", type=int, default=5, help='number of targets/plans per env')
+    parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
+    parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
     parser.add_argument("--seed", '-s', type=int, default=3)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
-    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=15.0)
+    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=120.0)
     parser.add_argument("--real-time-rate", type=float, default=10.0, help='real time rate')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
-    parser.add_argument('--random-epsilon', type=float, default=0.05, help='probability of accepting despite classifier')
+    parser.add_argument('--random-epsilon', type=float, default=0.25, help='probability of accepting despite classifier')
 
     args = parser.parse_args()
 
@@ -181,8 +181,10 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     now = str(int(time.time()))
-    common_output_directory = random_environment_data_utils.data_directory(args.outdir, now)
+    root = args.outdir / 'compare_classifiers'
+    common_output_directory = random_environment_data_utils.data_directory(root, now)
     common_output_directory = pathlib.Path(common_output_directory)
+    print(Fore.CYAN + "common output directory: {}".format(common_output_directory) + Fore.RESET)
     if not common_output_directory.is_dir():
         print(Fore.YELLOW + "Creating output directory: {}".format(common_output_directory) + Fore.RESET)
         common_output_directory.mkdir(parents=True)

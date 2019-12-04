@@ -1,6 +1,6 @@
 [
   {
-    "classifier_model_dir": "classifiers/state-only/November_08_12-45-58_e138c7b6ae/",
+    "classifier_model_dir": "classifiers/fixed_50/December_03_16-11-44_d60a051b87",
     "classifier_model_type": "raster"
   }
 ]

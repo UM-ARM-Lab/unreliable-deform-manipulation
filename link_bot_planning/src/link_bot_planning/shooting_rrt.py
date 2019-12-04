@@ -11,13 +11,15 @@ from link_bot_planning.params import EnvParams, PlannerParams
 from link_bot_planning.state_spaces import to_numpy, ValidRopeConfigurationCompoundSampler, to_numpy_local_env, from_numpy
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils
+from state_space_dynamics.base_forward_model import BaseForwardModel
+from link_bot_classifiers.base_classifier import BaseClassifier
 
 
 class ShootingRRT(MyPlanner):
 
     def __init__(self,
-                 fwd_model,
-                 classifier_model,
+                 fwd_model: BaseForwardModel,
+                 classifier_model: BaseClassifier,
                  planner_params: PlannerParams,
                  env_params: EnvParams,
                  services: GazeboServices,
@@ -78,6 +80,8 @@ class ShootingRRT(MyPlanner):
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(state_sampler_allocator))
 
+        # TODO: implement control sampler that always uses max_v or zero
+        # TODO: merge with sst.py
         control_bounds = ob.RealVectorBounds(2)
         control_bounds.setLow(-self.planner_params.max_v)
         control_bounds.setHigh(self.planner_params.max_v)
@@ -107,11 +111,12 @@ class ShootingRRT(MyPlanner):
         local_env_data = self.get_local_env_at(np_s[0, 4], np_s[0, 5])
 
         # use the forward model to predict the next configuration
-        points_next = self.fwd_model.predict(local_env_data=[local_env_data], first_states=np_s, actions=np_u)
+        points_next = self.fwd_model.predict(local_env_data_s=[local_env_data], first_states=np_s, actions=np_u)
         np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
         # validate the edge
-        accept_probability = self.classifier_model.predict([local_env_data], np_s, np_s_next)
+        accept_probabilities = self.classifier_model.predict(local_env_data_s=[local_env_data], s1_s=np_s, s2_s=np_s_next)
+        accept_probability = accept_probabilities[0]
         random_accept = np.random.uniform(0, 1) <= self.planner_params.random_epsilon
         classifier_accept = np.random.uniform(0, 1) <= accept_probability
         edge_is_valid = classifier_accept or random_accept

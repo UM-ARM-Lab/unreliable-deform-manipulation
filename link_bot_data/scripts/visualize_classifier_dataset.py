@@ -26,6 +26,9 @@ def main():
 
     args = parser.parse_args()
 
+    np.random.seed(args.seed)
+    tf.random.set_random_seed(args.seed)
+
     # classifier_dataset = ClassifierDataset(args.dataset_dir)
     classifier_dataset = NewClassifierDataset(args.dataset_dir)
     dataset = classifier_dataset.get_dataset(mode=args.mode,

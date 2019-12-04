@@ -3,6 +3,7 @@ from typing import Tuple, List
 import numpy as np
 import ompl.base as ob
 
+from link_bot_classifiers.base_classifier import BaseClassifier
 from state_space_dynamics.base_forward_model import BaseForwardModel
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning.viz_object import VizObject
@@ -14,7 +15,7 @@ class MyPlanner:
 
     def __init__(self,
                  fwd_model: BaseForwardModel,
-                 classifier_model,
+                 classifier_model: BaseClassifier,
                  planner_params: PlannerParams,
                  env_params: EnvParams,
                  services: GazeboServices,

@@ -331,16 +331,16 @@ class RasterClassifierWrapper(BaseClassifier):
         """
         data_s, res_s, origin_s, extent_s = link_bot_sdf_utils.batch_occupancy_data(local_env_data_s)
         test_x = {
-            'planned_state': tf.convert_to_tensor(add_batch(s1_s, 1), dtype=tf.float32),
-            'planned_state_next': tf.convert_to_tensor(add_batch(s2_s, 1), dtype=tf.float32),
-            'planned_local_env/env': tf.convert_to_tensor(add_batch(data_s, 2), dtype=tf.float32),
-            'resolution': tf.convert_to_tensor(add_batch(res_s, 1), dtype=tf.float32),
-            'planned_local_env/origin': tf.convert_to_tensor(add_batch(origin_s, 1), dtype=tf.float32),
-            'planned_local_env/extent': tf.convert_to_tensor(add_batch(extent_s, 1), dtype=tf.float32),
+            'planned_state': tf.convert_to_tensor(s1_s, dtype=tf.float32),
+            'planned_state_next': tf.convert_to_tensor(s2_s, dtype=tf.float32),
+            'planned_local_env/env': tf.convert_to_tensor(data_s, dtype=tf.float32),
+            'resolution': tf.convert_to_tensor(res_s, dtype=tf.float32),
+            'planned_local_env/origin': tf.convert_to_tensor(origin_s, dtype=tf.float32),
+            'planned_local_env/extent': tf.convert_to_tensor(extent_s, dtype=tf.float32),
         }
         accept_probabilities = self.net(test_x)[-1]
         accept_probabilities = accept_probabilities.numpy()
-        accept_probabilities = accept_probabilities.astype(np.float64)[0, 0]
+        accept_probabilities = accept_probabilities.astype(np.float64)[:, 0]
 
         if self.show:
             title = "n_parallel_calls(accept) = {:5.3f}".format(accept_probabilities)
