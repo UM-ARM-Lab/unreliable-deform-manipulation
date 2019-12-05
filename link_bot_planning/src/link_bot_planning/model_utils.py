@@ -4,6 +4,7 @@ from typing import Tuple
 from state_space_dynamics.base_forward_model import BaseForwardModel
 from link_bot_gaussian_process import link_bot_gp
 from state_space_dynamics.locally_linear_nn import LocallyLinearNNWrapper
+from state_space_dynamics.obstacle_nn import ObstacleNNWrapper
 from state_space_dynamics.rigid_translation_model import RigidTranslationModel
 from state_space_dynamics.simple_nn import SimpleNNWrapper
 
@@ -27,6 +28,9 @@ def load_generic_model(model_dir: pathlib.Path, model_type: str) -> [BaseForward
     elif model_type == 'nn':
         nn = SimpleNNWrapper(model_dir)
         return nn, model_dir.parts[1:]
+    elif model_type == 'obs':
+        nn = ObstacleNNWrapper(model_dir)
+        return nn, model_dir.parts[1:]
 
 
 def get_model_info(model_dir: pathlib.Path, model_type: str) -> Tuple[str]:
@@ -44,4 +48,6 @@ def get_model_info(model_dir: pathlib.Path, model_type: str) -> Tuple[str]:
         # this dt here is sort of made up
         return model_dir.parts[1:]
     elif model_type == 'nn':
+        return model_dir.parts[1:]
+    elif model_type == 'obs':
         return model_dir.parts[1:]

@@ -7,6 +7,6 @@
     [8, [5, 5]],
     [8, [5, 5]]
   ],
-  "fc_layer_sizes": [16, 16],
+  "fc_layer_sizes": [64, 64],
   "residual": true
 }

@@ -26,6 +26,7 @@ class ObstacleNN(tf.keras.Model):
         local_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['local_env_params'])
         self.raster = RasterPoints([local_env_params.h_rows, local_env_params.w_cols])
         self.concat = layers.Concatenate()
+        self.concat2 = layers.Concatenate()
         self.action_smear = action_smear_layer(1,
                                                self.hparams['dynamics_dataset_hparams']['n_action'],
                                                local_env_params.h_rows,
@@ -52,6 +53,7 @@ class ObstacleNN(tf.keras.Model):
         gen_states = [s_0]
         for t in range(input_sequence_length):
             s_t = gen_states[-1]
+            s_t_squeeze = tf.squeeze(s_t, squeeze_dims=2)
             action_t = actions[:, t]
 
             # filters out out of bounds points internally with no warnings
@@ -60,21 +62,24 @@ class ObstacleNN(tf.keras.Model):
             action_image_s = self.action_smear(action_t)
             action_image_t = action_image_s[:, 0]
 
-            # CNN and Dense layers
+            # CNN
             z_t = self.concat([rope_image_t, local_env, action_image_t])
             for conv_layer, pool_layer in self.conv_layers:
                 z_t = conv_layer(z_t)
                 z_t = pool_layer(z_t)
-            z_t = self.flatten_conv_output(z_t)
+            conv_z_t = self.flatten_conv_output(z_t)
+            full_z_t = self.concat2([s_t_squeeze, action_t, conv_z_t])
+
+            # dense layers
             for dense_layer in self.dense_layers:
-                z_t = dense_layer(z_t)
+                full_z_t = dense_layer(full_z_t)
 
             # residual prediction, otherwise just take the final hidden representation as the next state
             if self.hparams['residual']:
-                ds_t = tf.expand_dims(z_t, axis=2)
+                ds_t = tf.expand_dims(full_z_t, axis=2)
                 s_t_plus_1_flat = s_t + ds_t
             else:
-                s_t_plus_1_flat = tf.expand_dims(z_t, axis=2)
+                s_t_plus_1_flat = tf.expand_dims(full_z_t, axis=2)
 
             gen_states.append(s_t_plus_1_flat)
 
@@ -268,8 +273,12 @@ class ObstacleNNWrapper(BaseForwardModel):
         states = tf.convert_to_tensor(first_states, dtype=tf.float32)
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
-        local_env_np_s = np.array([env.data for env in local_env_data_s])
+        local_env_np_s = np.array([env.data for env in local_env_data_s], dtype=np.float32)
+        local_env_resolution_s = np.expand_dims(np.array([env.resolution[0:1] for env in local_env_data_s], dtype=np.float32),
+                                                axis=1)
+        local_env_origin_s = np.expand_dims(np.array([env.origin for env in local_env_data_s], dtype=np.float32), axis=1)
         local_env_s = tf.convert_to_tensor(local_env_np_s, dtype=tf.float32)
+
         test_x = {
             # must be batch, T, w, h
             'actual_local_env_s/env': local_env_s,
@@ -277,6 +286,10 @@ class ObstacleNNWrapper(BaseForwardModel):
             'state_s': states,
             # must be batch, T, 2
             'action_s': actions,
+            # must be batch, T, 1
+            'resolution_s': local_env_resolution_s,
+            # must be batch, T, 2
+            'actual_local_env_s/origin': local_env_origin_s,
         }
         predictions = self.net(test_x)
         predicted_points = predictions.numpy().reshape([batch, T + 1, 3, 2])

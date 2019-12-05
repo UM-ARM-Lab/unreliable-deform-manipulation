@@ -1,0 +1,12 @@
+{
+  "fwd_model_dir": "ss_log_data/todo",
+  "fwd_model_type": "obstacle_nn",
+  "classifier_model_dir": "none",
+  "classifier_model_type": ".",
+  "planner": "ShootingRRT",
+  "max_v": 0.15,
+  "goal_threshold": 0.1,
+  "random_epsilon": 0.05,
+  "env_w": 5.0,
+  "env_h": 5.0
+}

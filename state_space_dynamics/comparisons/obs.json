@@ -1,0 +1,14 @@
+{
+  "Simple Res NN": {
+    "model_dir": "log_data/res_nn_1024/November_22_12-49-09_61e4cff061",
+    "model_type": "nn"
+  },
+  "Obs-NN, no obs": {
+    "model_dir": "log_data/obs_new_format_1/December_04_23-20-11_bc556b984e",
+    "model_type": "obs"
+  },
+  "Obs-NN": {
+    "model_dir": "log_data/obs_fixed_50/December_04_23-20-09_bc556b984e",
+    "model_type": "obs"
+  }
+}

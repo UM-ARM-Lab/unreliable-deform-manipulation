@@ -82,13 +82,15 @@ def generate_results(outdir: pathlib.Path,
             actions = x['action_s'].numpy()
             # this is supposed to give us a [batch, n_state] tensor
             first_states = np.expand_dims(states[0, 0], axis=0)
-            first_local_env = x['actual_local_env_s/env'][:, 0].numpy()
+            first_local_env = tf.expand_dims(x['actual_local_env_s/env'][:, 0], axis=1).numpy()
             res = x['resolution_s'][:, 0].numpy()
             res_2d = np.concatenate([res, res], axis=1)
             origin = x['actual_local_env_s/origin'][:, 0].numpy()
-            local_env_data = link_bot_sdf_utils.unbatch_occupancy_data(data=first_local_env, resolution=res_2d, origin=origin)
+            local_env_data_s = link_bot_sdf_utils.unbatch_occupancy_data(data=first_local_env, resolution=res_2d, origin=origin)
             t0 = time.time()
-            predicted_points = model.predict(local_env_data, first_states, actions)[0]
+            predicted_points = model.predict(local_env_data_s=local_env_data_s,
+                                             first_states=first_states,
+                                             actions=actions)[0]
             runtime = time.time() - t0
             results[model_name]['points'].append(predicted_points)
             results[model_name]['runtimes'].append(runtime)
@@ -177,7 +179,7 @@ def evaluate_metrics(results):
         print("mid error:   {:8.4f}m".format(np.mean(mid_errors)))
         print("tail error:  {:8.4f}m".format(np.mean(tail_errors)))
         print("total error: {:8.4f}m".format(np.mean(total_errors)))
-        print("runtime: {:8.4f}ms".format(np.mean(runtimes)*1e3))
+        print("runtime: {:8.4f}ms".format(np.mean(runtimes) * 1e3))
 
 
 def main():

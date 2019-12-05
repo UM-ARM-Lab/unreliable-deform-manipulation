@@ -87,13 +87,14 @@ def batch_occupancy_data(occupancy_data_s: List[OccupancyData]) -> Tuple[np.ndar
 
 def unbatch_occupancy_data(data: np.ndarray,
                            resolution: np.ndarray,
-                           origin: np.ndarray) -> np.ndarray:
+                           origin: np.ndarray) -> List[OccupancyData]:
     batch_size = data.shape[0]
     datas = []
     for i in range(batch_size):
-        datas.append(OccupancyData(data[i], resolution[i], origin[i]))
+        occupancy_data = OccupancyData(data[i], resolution[i], origin[i])
+        datas.append(occupancy_data)
 
-    return np.array(datas)
+    return datas
 
 
 class SDF:

@@ -105,7 +105,7 @@ class ShootingRRT(MyPlanner):
         return self.state_space.getSubspace(0).satisfiesBounds(state[0])
 
     def propagate(self, start, control, duration, state_out):
-        del duration  # unused, mult-step propogation is handled inside propagateWhileValid
+        del duration  # unused, multi-step propagation is handled inside propagateWhileValid
         np_s = to_numpy(start[0], self.n_state)
         np_u = np.expand_dims(to_numpy(control, self.n_control), axis=0)
         local_env_data = self.get_local_env_at(np_s[0, 4], np_s[0, 5])
