@@ -30,11 +30,11 @@ def main():
     tf.random.set_random_seed(1)
 
     dataset = LinkBotStateSpaceDataset(args.dataset_dir)
-    train_dataset = dataset.get_dataset(shuffle=False,
-                                        mode='train',
-                                        seed=1,
-                                        n_parallel_calls=1,
-                                        batch_size=1)
+    train_dataset = dataset.get_datasets(shuffle=False,
+                                         mode='train',
+                                         seed=1,
+                                         n_parallel_calls=1,
+                                         batch_size=1)
 
     i = 0
     angles = []

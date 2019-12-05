@@ -37,7 +37,7 @@ def main():
 
     classifier_dataset = ClassifierDataset(args.indir)
     # iterate of all train/test/val
-    dataset = classifier_dataset.get_dataset_all_modes(num_epochs=1, batch_size=0, shuffle=False)
+    dataset = classifier_dataset.get_datasets_all_modes(num_epochs=1, batch_size=0, shuffle=False)
 
     current_record_idx = 0
     examples = np.ndarray([args.n_examples_per_record], dtype=np.object)

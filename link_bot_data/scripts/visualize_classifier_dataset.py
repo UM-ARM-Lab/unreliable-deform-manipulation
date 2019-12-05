@@ -31,12 +31,12 @@ def main():
 
     # classifier_dataset = ClassifierDataset(args.dataset_dir)
     classifier_dataset = NewClassifierDataset(args.dataset_dir)
-    dataset = classifier_dataset.get_dataset(mode=args.mode,
-                                             shuffle=args.shuffle,
-                                             batch_size=1,
-                                             n_parallel_calls=1,
-                                             balance_key=args.balance_key,
-                                             seed=args.seed)
+    dataset = classifier_dataset.get_datasets(mode=args.mode,
+                                              shuffle=args.shuffle,
+                                              batch_size=1,
+                                              n_parallel_calls=1,
+                                              balance_key=args.balance_key,
+                                              seed=args.seed)
 
     positive_count = 0
     negative_count = 0

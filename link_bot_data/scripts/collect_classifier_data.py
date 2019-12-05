@@ -89,7 +89,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                 'planner_params': planner_params.to_json(),
                 'env_params': env_params.to_json(),
                 'local_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
-                'steps_per_example': self.n_steps_per_example,
+                'sequence_length': self.n_steps_per_example,
                 'fwd_model_dir': str(self.fwd_model_dir),
                 'fwd_model_type': self.fwd_model_type,
                 'fwd_model_hparams': self.planner.fwd_model.hparams,

@@ -75,11 +75,11 @@ def main():
         classifier_dataset.hparams['labeling']['post_close_threshold'] = args.post
     if args.pre:
         classifier_dataset.hparams['labeling']['pre_close_threshold'] = args.pre
-    dataset = classifier_dataset.get_dataset(mode=args.mode,
-                                             shuffle=False,
-                                             seed=0,
-                                             batch_size=1,
-                                             balance_key=balance_key)
+    dataset = classifier_dataset.get_datasets(mode=args.mode,
+                                              shuffle=False,
+                                              seed=0,
+                                              batch_size=1,
+                                              balance_key=balance_key)
 
     collision_classifier = CollisionCheckerClassifier(inflation_radius=args.inflation_radius)
 

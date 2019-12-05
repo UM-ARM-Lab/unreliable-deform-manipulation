@@ -25,18 +25,18 @@ def train(args):
     model_hparams = json.load(open(args.model_hparams, 'r'))
 
     # Datasets
-    train_dataset = LinkBotStateSpaceDataset(args.dataset_dir)
-    train_tf_dataset = train_dataset.get_dataset(mode='train',
-                                                 shuffle=True,
-                                                 seed=args.seed,
-                                                 sequence_length=model_hparams['sequence_length'],
-                                                 batch_size=args.batch_size)
-    val_dataset = LinkBotStateSpaceDataset(args.dataset_dir)
-    val_tf_dataset = val_dataset.get_dataset(mode='val',
-                                             shuffle=True,
-                                             seed=args.seed,
-                                             sequence_length=model_hparams['sequence_length'],
-                                             batch_size=args.batch_size)
+    train_dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
+    train_tf_dataset = train_dataset.get_datasets(mode='train',
+                                                  shuffle=True,
+                                                  seed=args.seed,
+                                                  sequence_length=model_hparams['sequence_length'],
+                                                  batch_size=args.batch_size)
+    val_dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
+    val_tf_dataset = val_dataset.get_datasets(mode='val',
+                                              shuffle=True,
+                                              seed=args.seed,
+                                              sequence_length=model_hparams['sequence_length'],
+                                              batch_size=args.batch_size)
 
     # Copy parameters of the dataset into the model
     model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
@@ -56,12 +56,12 @@ def eval(args):
     ###############
     # Dataset
     ###############
-    test_dataset = LinkBotStateSpaceDataset(args.dataset_dir)
-    test_tf_dataset = test_dataset.get_dataset(mode='test',
-                                               shuffle=False,
-                                               seed=args.seed,
-                                               sequence_length=args.sequence_length,
-                                               batch_size=args.batch_size)
+    test_dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
+    test_tf_dataset = test_dataset.get_datasets(mode='test',
+                                                shuffle=False,
+                                                seed=args.seed,
+                                                sequence_length=args.sequence_length,
+                                                batch_size=args.batch_size)
 
     ###############
     # Model
@@ -89,7 +89,7 @@ def main():
     subparsers = parser.add_subparsers()
 
     train_parser = subparsers.add_parser('train')
-    train_parser.add_argument('dataset_dir', type=pathlib.Path)
+    train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=32)
@@ -103,7 +103,7 @@ def main():
     train_parser.set_defaults(func=train)
 
     eval_parser = subparsers.add_parser('eval')
-    eval_parser.add_argument('dataset_dir', type=pathlib.Path)
+    eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--sequence-length', type=int, default=10)
     eval_parser.add_argument('--batch-size', type=int, default=32)

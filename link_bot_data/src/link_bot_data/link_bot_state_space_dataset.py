@@ -1,4 +1,5 @@
 import pathlib
+from typing import List
 
 import tensorflow as tf
 
@@ -7,8 +8,8 @@ from link_bot_planning.params import LocalEnvParams
 
 
 class LinkBotStateSpaceDataset(StateSpaceDataset):
-    def __init__(self, dataset_dir: pathlib.Path):
-        super(LinkBotStateSpaceDataset, self).__init__(dataset_dir)
+    def __init__(self, dataset_dirs: List[pathlib.Path]):
+        super(LinkBotStateSpaceDataset, self).__init__(dataset_dirs)
 
         self.state_like_names_and_shapes['state_s'] = '%d/state', (self.hparams['n_state'],)
         self.action_like_names_and_shapes['action_s'] = '%d/action', (2,)

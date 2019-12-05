@@ -34,7 +34,7 @@ def main():
     n_pre_far_post_close = 0
 
     classifier_dataset = ClassifierDataset(args.dataset_dir)
-    dataset = classifier_dataset.get_dataset(mode=args.mode, batch_size=1, shuffle=False, seed=1)
+    dataset = classifier_dataset.get_datasets(mode=args.mode, batch_size=1, shuffle=False, seed=1)
 
     for example_dict in dataset:
         state = example_dict['state'].numpy()

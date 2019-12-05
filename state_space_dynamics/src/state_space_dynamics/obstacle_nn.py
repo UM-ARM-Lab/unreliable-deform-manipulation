@@ -68,7 +68,10 @@ class ObstacleNN(tf.keras.Model):
                 z_t = conv_layer(z_t)
                 z_t = pool_layer(z_t)
             conv_z_t = self.flatten_conv_output(z_t)
-            full_z_t = self.concat2([s_t_squeeze, action_t, conv_z_t])
+            if self.hparams['mixed']:
+                full_z_t = self.concat2([s_t_squeeze, action_t, conv_z_t])
+            else:
+                full_z_t = conv_z_t
 
             # dense layers
             for dense_layer in self.dense_layers:

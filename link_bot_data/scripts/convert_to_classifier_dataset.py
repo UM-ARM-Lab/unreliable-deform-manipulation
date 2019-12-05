@@ -38,12 +38,12 @@ def main():
         full_output_directory.mkdir(exist_ok=True)
 
         classifier_dataset = ClassifierDataset(args.dataset_dir)
-        dataset = classifier_dataset.get_dataset(mode=mode,
-                                                 batch_size=None,
-                                                 balance_key='label',
-                                                 shuffle=False,
-                                                 seed=0,
-                                                 sequence_length=None)
+        dataset = classifier_dataset.get_datasets(mode=mode,
+                                                  batch_size=None,
+                                                  balance_key='label',
+                                                  shuffle=False,
+                                                  seed=0,
+                                                  sequence_length=None)
 
         current_record_idx = 0
         examples = np.ndarray([args.n_examples_per_record], dtype=np.object)

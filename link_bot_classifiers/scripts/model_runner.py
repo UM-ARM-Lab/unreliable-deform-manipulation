@@ -32,18 +32,18 @@ def train(args):
     ###############
     # train_dataset = ClassifierDataset(args.dataset_dir)
     train_dataset = NewClassifierDataset(args.dataset_dir)
-    train_tf_dataset = train_dataset.get_dataset(mode='train',
-                                                 shuffle=True,
-                                                 seed=args.seed,
-                                                 batch_size=args.batch_size,
-                                                 balance_key=args.balance_key)
+    train_tf_dataset = train_dataset.get_datasets(mode='train',
+                                                  shuffle=True,
+                                                  seed=args.seed,
+                                                  batch_size=args.batch_size,
+                                                  balance_key=args.balance_key)
     # val_dataset = NewClassifierDataset(args.dataset_dir)
     val_dataset = NewClassifierDataset(args.dataset_dir)
-    val_tf_dataset = val_dataset.get_dataset(mode='val',
-                                             shuffle=True,
-                                             seed=args.seed,
-                                             batch_size=args.batch_size,
-                                             balance_key=args.balance_key)
+    val_tf_dataset = val_dataset.get_datasets(mode='val',
+                                              shuffle=True,
+                                              seed=args.seed,
+                                              batch_size=args.batch_size,
+                                              balance_key=args.balance_key)
 
     ###############
     # Model
@@ -67,11 +67,11 @@ def eval(args):
     ###############
     # test_dataset = ClassifierDataset(args.dataset_dir)
     test_dataset = NewClassifierDataset(args.dataset_dir)
-    test_tf_dataset = test_dataset.get_dataset(mode=args.mode,
-                                               shuffle=False,
-                                               seed=args.seed,
-                                               batch_size=args.batch_size,
-                                               balance_key=args.balance_key)
+    test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
+                                                shuffle=False,
+                                                seed=args.seed,
+                                                batch_size=args.batch_size,
+                                                balance_key=args.balance_key)
 
     ###############
     # Model

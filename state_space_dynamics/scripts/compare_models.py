@@ -26,11 +26,11 @@ def generate(args):
     # Datasets
     ###############
     dataset = LinkBotStateSpaceDataset(args.dataset_dir)
-    tf_dataset = dataset.get_dataset(mode=args.mode,
-                                     shuffle=False,
-                                     seed=0,
-                                     batch_size=1,
-                                     sequence_length=args.sequence_length)
+    tf_dataset = dataset.get_datasets(mode=args.mode,
+                                      shuffle=False,
+                                      seed=0,
+                                      batch_size=1,
+                                      sequence_length=args.sequence_length)
 
     comparison_info = json.load(args.comparison.open("r"))
     models = {}

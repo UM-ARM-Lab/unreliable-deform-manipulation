@@ -9,5 +9,5 @@
   ],
   "fc_layer_sizes": [64, 64],
   "residual": true,
-  "mixed": false
+  "mixed": true
 }

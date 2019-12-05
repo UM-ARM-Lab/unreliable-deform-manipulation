@@ -28,12 +28,12 @@ def main():
     dataset = ClassifierDataset(args.dataset_dir)
 
     t0 = time.time()
-    tf_dataset = dataset.get_dataset(mode='train',
-                                     shuffle=args.shuffle,
-                                     seed=1,
-                                     sequence_length=args.sequence_length,
-                                     balance_key=args.balance_key,
-                                     batch_size=args.batch_size)
+    tf_dataset = dataset.get_datasets(mode='train',
+                                      shuffle=args.shuffle,
+                                      seed=1,
+                                      sequence_length=args.sequence_length,
+                                      balance_key=args.balance_key,
+                                      batch_size=args.batch_size)
     time_to_load = time.time() - t0
     print("Time to Load (s): {:5.3f}".format(time_to_load))
 

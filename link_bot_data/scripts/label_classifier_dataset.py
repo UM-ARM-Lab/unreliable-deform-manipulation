@@ -44,7 +44,7 @@ def main():
         full_output_directory.mkdir(exist_ok=True)
 
         classifier_dataset = ClassifierDataset(args.indir)
-        tf_dataset = classifier_dataset.get_dataset(mode=mode, batch_size=1, shuffle=False, seed=1)
+        tf_dataset = classifier_dataset.get_datasets(mode=mode, batch_size=1, shuffle=False, seed=1)
 
         current_record_idx = 0
         examples = np.ndarray([args.n_examples_per_record], dtype=np.object)
