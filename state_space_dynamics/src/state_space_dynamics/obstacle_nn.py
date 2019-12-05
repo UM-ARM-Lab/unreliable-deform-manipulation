@@ -176,7 +176,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         hparams_path = full_log_path / "hparams.json"
         with open(hparams_path, 'w') as hparams_file:
             hparams['log path'] = str(full_log_path)
-            hparams['dataset'] = str(args.dataset_dir)
+            hparams['datasets'] = str(args.dataset_dirs)
             hparams_file.write(json.dumps(hparams, indent=2))
 
         writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
