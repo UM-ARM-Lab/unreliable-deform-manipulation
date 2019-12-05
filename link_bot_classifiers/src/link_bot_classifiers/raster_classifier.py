@@ -14,10 +14,9 @@ from colorama import Fore, Style
 from tensorflow import keras
 
 from link_bot_classifiers.base_classifier import BaseClassifier
-from link_bot_planning.params import LocalEnvParams
 from link_bot_classifiers.visualization import plot_classifier_data
+from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import experiments_util, link_bot_sdf_utils
-from moonshine.numpy_utils import add_batch
 from moonshine.raster_points_layer import RasterPoints
 
 
