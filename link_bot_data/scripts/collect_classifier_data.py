@@ -120,7 +120,6 @@ class ClassifierDataCollector(my_mpc.myMPC):
                          planner_data: ob.PlannerData,
                          planning_time: float):
         self.planning_times.append(planning_time)
-        print(planned_path.shape[0])
 
         if self.verbose >= 2:
             plt.figure()

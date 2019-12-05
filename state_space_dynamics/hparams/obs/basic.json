@@ -9,5 +9,8 @@
   ],
   "fc_layer_sizes": [64, 64],
   "residual": true,
-  "mixed": false
+  "mixed": false,
+  "kernel_reg": 0.0,
+  "bias_reg": 0.0,
+  "activity_reg": 0.0
 }

@@ -57,7 +57,7 @@ def eval(args):
     # Dataset
     ###############
     test_dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
-    test_tf_dataset = test_dataset.get_datasets(mode='test',
+    test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
                                                 shuffle=False,
                                                 seed=args.seed,
                                                 sequence_length=args.sequence_length,
@@ -95,7 +95,7 @@ def main():
     train_parser.add_argument('--batch-size', type=int, default=32)
     train_parser.add_argument('--summary-freq', type=int, default=5)
     train_parser.add_argument('--save-freq', type=int, default=10)
-    train_parser.add_argument('--epochs', type=int, default=100)
+    train_parser.add_argument('--epochs', type=int, default=500)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=4)
@@ -107,6 +107,7 @@ def main():
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--sequence-length', type=int, default=10)
     eval_parser.add_argument('--batch-size', type=int, default=32)
+    eval_parser.add_argument('--mode', type=str, choices=['test', 'val', 'train'], default='test')
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.set_defaults(func=eval)
 

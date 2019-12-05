@@ -8,6 +8,7 @@ import progressbar
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
+from tensorflow import keras
 
 from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import experiments_util, link_bot_pycommon
@@ -35,10 +36,20 @@ class ObstacleNN(tf.keras.Model):
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
         self.dense_layers.append(layers.Dense(self.hparams['dynamics_dataset_hparams']['n_state'], activation=None))
+
         self.conv_layers = []
-        for n_filters, filter_size in self.hparams['conv_filters']:
-            self.conv_layers.append((layers.Conv2D(n_filters, filter_size, activation='relu', use_bias=True),
-                                     layers.MaxPool2D(2)))
+        self.pool_layers = []
+        for n_filters, kernel_size in self.hparams['conv_filters']:
+            conv = layers.Conv2D(n_filters,
+                                 kernel_size,
+                                 activation='relu',
+                                 kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
+                                 bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']),
+                                 activity_regularizer=keras.regularizers.l1(self.hparams['activity_reg']))
+            pool = layers.MaxPool2D(2)
+            self.conv_layers.append(conv)
+            self.pool_layers.append(pool)
+
         self.flatten_conv_output = layers.Flatten()
 
     def call(self, input_dict, training=None, mask=None):
@@ -64,7 +75,7 @@ class ObstacleNN(tf.keras.Model):
 
             # CNN
             z_t = self.concat([rope_image_t, local_env, action_image_t])
-            for conv_layer, pool_layer in self.conv_layers:
+            for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
                 z_t = conv_layer(z_t)
                 z_t = pool_layer(z_t)
             conv_z_t = self.flatten_conv_output(z_t)
@@ -299,3 +310,6 @@ class ObstacleNNWrapper(BaseForwardModel):
         # OMPL requires "doubles", which are float64, although our network outputs float32.
         predicted_points = predicted_points.astype(np.float64)
         return predicted_points
+
+
+model = ObstacleNN
