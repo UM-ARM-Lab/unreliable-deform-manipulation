@@ -95,9 +95,9 @@ class ClassifierDataCollector(my_mpc.myMPC):
                 'fwd_model_hparams': self.planner.fwd_model.hparams,
                 'filter_free_space_only': False,
                 'labeling': {
-                    'threshold': 0.2,
-                    'pre_close_threshold': 0.2,
-                    'post_close_threshold': 0.2,
+                    'threshold': 0.15,
+                    'pre_close_threshold': 0.15,
+                    'post_close_threshold': 0.21,
                     'discard_pre_far': True
                 },
                 'n_state': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_state'],
@@ -214,6 +214,8 @@ def main():
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'nn', 'rigid'], default='llnn')
     parser.add_argument("outdir", type=pathlib.Path)
+    parser.add_argument("--classifier-model-dir", help="load this saved forward model file", type=pathlib.Path)
+    parser.add_argument("--classifier-model-type", choices=['collision', 'none', 'raster'], default='none')
     parser.add_argument("--n-total-plans", type=int, default=1024, help='number of environments')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per environment')
     # if the number of steps in the plan is larger than this number, we truncate.
@@ -242,7 +244,7 @@ def main():
     planner_params = PlannerParams(timeout=args.planner_timeout,
                                    max_v=args.max_v,
                                    goal_threshold=args.goal_threshold,
-                                   random_epsilon=0)  # the none classifier always accepts, so this can be 0
+                                   random_epsilon=0.05)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,
@@ -269,8 +271,8 @@ def main():
     planner, fwd_model_info = get_planner(planner_class_str='ShootingRRT',
                                           fwd_model_dir=args.fwd_model_dir,
                                           fwd_model_type=args.fwd_model_type,
-                                          classifier_model_dir=pathlib.Path(),
-                                          classifier_model_type='none',
+                                          classifier_model_dir=args.classifier_model_dir,
+                                          classifier_model_type=args.classifier_model_type,
                                           planner_params=planner_params,
                                           env_params=env_params,
                                           services=services)

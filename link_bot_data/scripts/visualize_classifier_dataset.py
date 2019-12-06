@@ -16,7 +16,7 @@ tf.compat.v1.enable_eager_execution()
 def main():
     np.set_printoptions(suppress=True, linewidth=200)
     parser = argparse.ArgumentParser()
-    parser.add_argument('dataset_dir', type=pathlib.Path)
+    parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
@@ -29,8 +29,8 @@ def main():
     np.random.seed(args.seed)
     tf.random.set_random_seed(args.seed)
 
-    # classifier_dataset = ClassifierDataset(args.dataset_dir)
-    classifier_dataset = NewClassifierDataset(args.dataset_dir)
+    # classifier_dataset = ClassifierDataset(args.dataset_dirs)
+    classifier_dataset = NewClassifierDataset(args.dataset_dirs)
     dataset = classifier_dataset.get_datasets(mode=args.mode,
                                               shuffle=args.shuffle,
                                               batch_size=1,

@@ -37,7 +37,7 @@ def main():
         full_output_directory = root_output_directory / mode
         full_output_directory.mkdir(exist_ok=True)
 
-        classifier_dataset = ClassifierDataset(args.dataset_dir)
+        classifier_dataset = ClassifierDataset([args.dataset_dir])
         dataset = classifier_dataset.get_datasets(mode=mode,
                                                   batch_size=None,
                                                   balance_key='label',

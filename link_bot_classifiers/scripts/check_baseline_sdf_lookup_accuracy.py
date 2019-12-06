@@ -54,7 +54,7 @@ def main():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument('dataset_dir', help='dataset directory', type=pathlib.Path)
+    parser.add_argument('dataset_dirs', help='dataset directory', type=pathlib.Path, nargs='+')
     parser.add_argument('--balance', action='store_true', help='subsample the datasets to make sure it is balanced')
     parser.add_argument('--show-fn', action='store_true', help='visualize')
     parser.add_argument('--show-fp', action='store_true', help='visualize')
@@ -69,8 +69,8 @@ def main():
     tf.random.set_random_seed(0)
     balance_key = 'label' if args.balance else None
 
-    # classifier_dataset = ClassifierDataset(args.dataset_dir)
-    classifier_dataset = NewClassifierDataset(args.dataset_dir)
+    # classifier_dataset = ClassifierDataset(args.dataset_dirs)
+    classifier_dataset = NewClassifierDataset(args.dataset_dirs)
     if args.post:
         classifier_dataset.hparams['labeling']['post_close_threshold'] = args.post
     if args.pre:

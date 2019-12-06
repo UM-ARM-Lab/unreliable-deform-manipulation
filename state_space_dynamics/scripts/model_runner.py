@@ -11,7 +11,9 @@ import state_space_dynamics
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_pycommon import experiments_util
 
-tf.compat.v1.enable_eager_execution()
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.7)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+tf.compat.v1.enable_eager_execution(config=config)
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 

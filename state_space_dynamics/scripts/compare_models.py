@@ -17,15 +17,16 @@ from link_bot_planning import model_utils
 from link_bot_pycommon import link_bot_sdf_utils
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
-tf.enable_eager_execution()
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.ConfigProto(gpu_options=gpu_options)
+tf.enable_eager_execution(config=config)
 tf.logging.set_verbosity(tf.logging.ERROR)
-
 
 def generate(args):
     ###############
     # Datasets
     ###############
-    dataset = LinkBotStateSpaceDataset(args.dataset_dir)
+    dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
     tf_dataset = dataset.get_datasets(mode=args.mode,
                                       shuffle=False,
                                       seed=0,
@@ -92,7 +93,11 @@ def generate_results(outdir: pathlib.Path,
                                              first_states=first_states,
                                              actions=actions)[0]
             runtime = time.time() - t0
+            # TODO: save and visualize the local environment
             results[model_name]['points'].append(predicted_points)
+            results[model_name]['first_local_env/env'].append(first_local_env)
+            results[model_name]['first_local_env/origin'].append(origin)
+            results[model_name]['first_local_env/res'].append(res)
             results[model_name]['runtimes'].append(runtime)
 
     results_filename = outdir / 'results-{}-{}.pkl'.format(mode, int(time.time()))
@@ -105,10 +110,10 @@ def visualize_predictions(results, n_examples, outdir=None):
     n_examples = min(len(results['true']['points']), n_examples)
     sequence_length = results['true']['points'][0].shape[0]
     for example_idx in range(n_examples):
-        xmin = np.min(results['true']['points'][example_idx][:, :, 0]) - 0.4
-        ymin = np.min(results['true']['points'][example_idx][:, :, 1]) - 0.4
-        xmax = np.max(results['true']['points'][example_idx][:, :, 0]) + 0.4
-        ymax = np.max(results['true']['points'][example_idx][:, :, 1]) + 0.4
+        xmin = np.min(results['true']['points'][example_idx][:, :, 0]) - 1
+        ymin = np.min(results['true']['points'][example_idx][:, :, 1]) - 1
+        xmax = np.max(results['true']['points'][example_idx][:, :, 0]) + 1
+        ymax = np.max(results['true']['points'][example_idx][:, :, 1]) + 1
 
         fig, ax = plt.subplots()
         plt.xlabel("x (m)")
@@ -188,10 +193,10 @@ def main():
     subparsers = parser.add_subparsers()
 
     generate_parser = subparsers.add_parser('generate')
-    generate_parser.add_argument('dataset_dir', type=pathlib.Path)
+    generate_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     generate_parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
     generate_parser.add_argument('outdir', type=pathlib.Path)
-    generate_parser.add_argument('--sequence-length', type=int, default=10)
+    generate_parser.add_argument('--sequence-length', type=int, default=25)
     generate_parser.add_argument('--no-plot', action='store_true')
     generate_parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test')
     generate_parser.add_argument('--n-examples', type=int, default=10)

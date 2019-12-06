@@ -30,15 +30,15 @@ def train(args):
     ###############
     # Datasets
     ###############
-    # train_dataset = ClassifierDataset(args.dataset_dir)
-    train_dataset = NewClassifierDataset(args.dataset_dir)
+    # train_dataset = ClassifierDataset(args.dataset_dirs)
+    train_dataset = NewClassifierDataset(args.dataset_dirs)
     train_tf_dataset = train_dataset.get_datasets(mode='train',
                                                   shuffle=True,
                                                   seed=args.seed,
                                                   batch_size=args.batch_size,
                                                   balance_key=args.balance_key)
-    # val_dataset = NewClassifierDataset(args.dataset_dir)
-    val_dataset = NewClassifierDataset(args.dataset_dir)
+    # val_dataset = NewClassifierDataset(args.dataset_dirs)
+    val_dataset = NewClassifierDataset(args.dataset_dirs)
     val_tf_dataset = val_dataset.get_datasets(mode='val',
                                               shuffle=True,
                                               seed=args.seed,
@@ -65,8 +65,8 @@ def eval(args):
     ###############
     # Dataset
     ###############
-    # test_dataset = ClassifierDataset(args.dataset_dir)
-    test_dataset = NewClassifierDataset(args.dataset_dir)
+    # test_dataset = ClassifierDataset(args.dataset_dirs)
+    test_dataset = NewClassifierDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
                                                 shuffle=False,
                                                 seed=args.seed,
@@ -96,7 +96,7 @@ def main():
     subparsers = parser.add_subparsers()
 
     train_parser = subparsers.add_parser('train')
-    train_parser.add_argument('dataset_dir', type=pathlib.Path)
+    train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
@@ -113,7 +113,7 @@ def main():
     train_parser.add_argument('--seed', type=int, default=None)
 
     eval_parser = subparsers.add_parser('eval')
-    eval_parser.add_argument('dataset_dir', type=pathlib.Path)
+    eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--mode', type=str, choices=['test', 'val', 'train'], default='test')
     eval_parser.add_argument('--batch-size', type=int, default=32)

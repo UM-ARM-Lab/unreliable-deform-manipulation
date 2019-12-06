@@ -1,4 +1,5 @@
 import pathlib
+from typing import List
 
 from link_bot_data.state_space_dataset import StateSpaceDataset
 import tensorflow as tf
@@ -7,8 +8,8 @@ from link_bot_planning.params import LocalEnvParams
 
 class NewClassifierDataset(StateSpaceDataset):
 
-    def __init__(self, dataset_dir: pathlib.Path):
-        super(NewClassifierDataset, self).__init__(dataset_dir)
+    def __init__(self, dataset_dirs: List[pathlib.Path]):
+        super(NewClassifierDataset, self).__init__(dataset_dirs)
 
         self.local_env_params = LocalEnvParams.from_json(self.hparams['local_env_params'])
 

@@ -1,4 +1,5 @@
 import pathlib
+from typing import List
 
 import tensorflow as tf
 
@@ -26,8 +27,8 @@ def make_name_singular(feature_name):
 
 class ClassifierDataset(StateSpaceDataset):
 
-    def __init__(self, dataset_dir: pathlib.Path):
-        super(ClassifierDataset, self).__init__(dataset_dir)
+    def __init__(self, dataset_dirs: List[pathlib.Path]):
+        super(ClassifierDataset, self).__init__(dataset_dirs)
 
         self.local_env_params = LocalEnvParams.from_json(self.hparams['local_env_params'])
 
