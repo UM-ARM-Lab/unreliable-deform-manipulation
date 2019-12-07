@@ -104,7 +104,6 @@ class BaseStateSpaceDataset:
                                   balance_key: str = None,
                                   n_parallel_calls: int = None,
                                   ) -> tf.data.Dataset:
-
         self.max_sequence_length = self.hparams['sequence_length']
         if sequence_length is None:
             # set sequence_length to the longest possible if it is not specified

@@ -282,21 +282,21 @@ class ObstacleNNWrapper(BaseForwardModel):
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
 
-    def predict(self, local_env_data_s: List, first_states: np.ndarray, actions: np.ndarray) -> np.ndarray:
+    def predict(self, local_env_data: List, state: np.ndarray, actions: np.ndarray) -> np.ndarray:
         batch, T, _ = actions.shape
-        states = tf.convert_to_tensor(first_states, dtype=tf.float32)
+        states = tf.convert_to_tensor(state, dtype=tf.float32)
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
-        local_env_np_s = np.array([env.data for env in local_env_data_s], dtype=np.float32)
-        local_env_resolution_s = np.expand_dims(np.array([env.resolution[0:1] for env in local_env_data_s], dtype=np.float32),
+        local_env_np_s = np.array([env.data for env in local_env_data], dtype=np.float32)
+        local_env_resolution_s = np.expand_dims(np.array([env.resolution[0:1] for env in local_env_data], dtype=np.float32),
                                                 axis=1)
-        local_env_origin_s = np.expand_dims(np.array([env.origin for env in local_env_data_s], dtype=np.float32), axis=1)
+        local_env_origin_s = np.expand_dims(np.array([env.origin for env in local_env_data], dtype=np.float32), axis=1)
         local_env_s = tf.convert_to_tensor(local_env_np_s, dtype=tf.float32)
 
         test_x = {
-            # must be batch, T, w, h
+            # must be batch, 1, w, h
             'actual_local_env_s/env': local_env_s,
-            # must be batch, T, 6
+            # must be batch, 1, 6
             'state_s': states,
             # must be batch, T, 2
             'action_s': actions,

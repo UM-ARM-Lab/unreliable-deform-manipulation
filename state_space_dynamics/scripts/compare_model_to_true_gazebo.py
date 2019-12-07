@@ -132,7 +132,7 @@ def run_traj(args,
                                               center_point=initial_head_point,
                                               services=services)
     predicted_points = fwd_model.predict(local_env_data=[local_env_data],
-                                         first_states=np.expand_dims(initial_rope_configuration, axis=0),
+                                         state=np.expand_dims(initial_rope_configuration, axis=0),
                                          actions=np.expand_dims(actions, axis=0))
     predicted_points = predicted_points[0]
     trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(fwd_model.dt, actions)

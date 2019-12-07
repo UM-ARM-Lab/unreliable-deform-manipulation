@@ -321,14 +321,14 @@ class RasterClassifierWrapper(BaseClassifier):
         self.n_control = 2
         self.show = show
 
-    def predict(self, local_env_data_s: List, s1_s: np.ndarray, s2_s: np.ndarray) -> float:
+    def predict(self, local_env_data: List, s1_s: np.ndarray, s2_s: np.ndarray) -> float:
         """
         :param local_env_datas:
         :param s1: [batch, 6] float64
         :param s2: [batch, 6] float64
         :return: [batch, 1] float64
         """
-        data_s, res_s, origin_s, extent_s = link_bot_sdf_utils.batch_occupancy_data(local_env_data_s)
+        data_s, res_s, origin_s, extent_s = link_bot_sdf_utils.batch_occupancy_data(local_env_data)
         test_x = {
             'planned_state': tf.convert_to_tensor(s1_s, dtype=tf.float32),
             'planned_state_next': tf.convert_to_tensor(s2_s, dtype=tf.float32),
@@ -343,8 +343,8 @@ class RasterClassifierWrapper(BaseClassifier):
 
         if self.show:
             title = "n_parallel_calls(accept) = {:5.3f}".format(accept_probabilities)
-            plot_classifier_data(planned_env=local_env_data_s[0].data,
-                                 planned_env_extent=local_env_data_s[0].extent,
+            plot_classifier_data(planned_env=local_env_data[0].data,
+                                 planned_env_extent=local_env_data[0].extent,
                                  planned_state=s1_s[0],
                                  planned_next_state=s2_s[0],
                                  actual_env=None,

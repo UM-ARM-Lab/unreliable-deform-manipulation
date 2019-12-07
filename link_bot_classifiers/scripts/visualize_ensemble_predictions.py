@@ -77,14 +77,14 @@ def main():
         action = np.array([[vx, vy]])
 
         # forward simulate
-        next_state_s = fwd_model.predict(local_env_data_s=[local_env_data],
-                                         first_states=np.expand_dims(state, axis=0),
+        next_state_s = fwd_model.predict(local_env_data=[local_env_data],
+                                         state=np.expand_dims(state, axis=0),
                                          actions=np.expand_dims(action, axis=0))
         next_state = np.reshape(next_state_s, [2, 1, 6])[1, 0]
 
         predictions = []
         for classifier_model in ensemble.values():
-            accept_probabilities = classifier_model.predict(local_env_data_s=[local_env_data],
+            accept_probabilities = classifier_model.predict(local_env_data=[local_env_data],
                                                             s1_s=np.expand_dims(state, axis=0),
                                                             s2_s=np.expand_dims(next_state, axis=0))
             accept_probability = accept_probabilities[0]

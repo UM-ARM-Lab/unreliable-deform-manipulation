@@ -232,10 +232,10 @@ class ObstacleLLNNWrapper(BaseForwardModel):
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
 
-    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, first_states: np.ndarray,
+    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, state: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
         batch, T, _ = actions.shape
-        states = tf.convert_to_tensor(first_states, dtype=tf.float32)
+        states = tf.convert_to_tensor(state, dtype=tf.float32)
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {

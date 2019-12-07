@@ -68,7 +68,7 @@ def generate_trajs(args,
 
         # run the prediction
         planned_states = fwd_model.predict(local_env_data=[initial_local_env],
-                                           first_states=np.expand_dims(initial_state, axis=0),
+                                           state=np.expand_dims(initial_state, axis=0),
                                            actions=actions)
 
         for time_idx in range(args.n_steps_per_traj):

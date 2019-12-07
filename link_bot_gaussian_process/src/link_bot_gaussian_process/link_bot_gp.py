@@ -335,6 +335,6 @@ class GPWrapper(BaseForwardModel):
         self.fwd_model = LinkBotGP(ou.RNG)
         self.fwd_model.load(model_dir)
 
-    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, first_states: np.ndarray,
+    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, state: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
-        return self.fwd_model.predict(first_states, actions)
+        return self.fwd_model.predict(state, actions)

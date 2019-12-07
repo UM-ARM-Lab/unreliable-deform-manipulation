@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import argparse
+from pprint import pprint
+
 import plotly.graph_objects as go
 import json
 import pathlib
@@ -40,37 +42,34 @@ def invert_dict(data: List) -> Dict:
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument('results_dir', help='foldering containing folders containing metrics.jsons files', type=pathlib.Path)
-    parser.add_argument('--table-format', choices=['latex', 'github'], default='github', type=str, help='printing format')
+    parser.add_argument('results_dirs', help='folders containing folders containing metrics.json', type=pathlib.Path, nargs='+')
 
     args = parser.parse_args()
 
-    subfolders = args.results_dir.iterdir()
-    final_errors_comparisons = {}
+    headers = ['']
     aggregate_metrics = {
         'planning time': [['min', 'max', 'mean', 'median', 'std']],
         'final tail error': [['min', 'max', 'mean', 'median', 'std']],
     }
+    for results_dir in args.results_dirs:
+        subfolders = results_dir.iterdir()
+        final_errors_comparisons = {}
 
-    headers = ['']
-    for subfolder in subfolders:
-        if not subfolder.is_dir():
-            continue
-        metrics_filename = subfolder / 'metrics.json'
-        metrics = json.load(metrics_filename.open("r"))
-        data = metrics.pop('metrics')
+        for subfolder in subfolders:
+            if not subfolder.is_dir():
+                continue
+            metrics_filename = subfolder / 'metrics.json'
+            metrics = json.load(metrics_filename.open("r"))
+            data = metrics.pop('metrics')
 
-        data = invert_dict(data)
-        planning_times = data['planning_time']
-        final_errors = data['final_execution_error']
-        final_errors_comparisons[str(subfolder.name)] = final_errors
-        headers.append(str(subfolder.name))
+            data = invert_dict(data)
+            planning_times = data['planning_time']
+            final_errors = data['final_execution_error']
+            final_errors_comparisons[str(subfolder.name)] = final_errors
+            headers.append(str(subfolder.name))
 
-        aggregate_metrics['planning time'].append(row_stats(planning_times))
-        aggregate_metrics['final tail error'].append(row_stats(final_errors))
-
-        plt.title(subfolder.name)
-        plt.hist(final_errors)
+            aggregate_metrics['planning time'].append(row_stats(planning_times))
+            aggregate_metrics['final tail error'].append(row_stats(final_errors))
 
     for metric_name, table_data in aggregate_metrics.items():
         data = [go.Table(name=metric_name,
@@ -80,11 +79,12 @@ def main():
                                 'format': [None, '5.3f', '5.3f', '5.3f'],
                                 'font_size': 14})]
         fig = go.Figure(data)
-        outfile = args.results_dir / '{}_table.png'.format(metric_name)
+        outfile = pathlib.Path('results') / '{}_table.png'.format(metric_name)
         fig.write_image(str(outfile), scale=4)
+        fig.show()
 
     print(Style.BRIGHT + "p-value matrix" + Style.RESET_ALL)
-    print(dict_to_pvale_table(final_errors_comparisons, table_format=args.table_format))
+    print(dict_to_pvale_table(final_errors_comparisons, table_format='github'))
 
 
 if __name__ == '__main__':

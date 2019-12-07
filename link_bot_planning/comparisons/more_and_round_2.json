@@ -1,0 +1,11 @@
+[
+  {
+    "classifier_model_dir": "classifiers/more_fixed_50/December_06_11-12-38_99337fbcaa",
+    "classifier_model_type": "raster"
+  },
+  {
+    "classifier_model_dir": "classifiers/round_2/December_06_13-23-51_99337fbcaa",
+    "classifier_model_type": "raster"
+  }
+]
+

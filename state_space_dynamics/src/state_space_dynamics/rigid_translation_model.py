@@ -21,11 +21,11 @@ class RigidTranslationModel(BaseForwardModel):
         else:
             self.dt = dt
 
-    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, first_states: np.ndarray,
+    def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, state: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
         predictions = []
-        for first_state, actions in zip(first_states, actions):
-            s_0 = np.reshape(first_state, [3, 2])
+        for state, actions in zip(state, actions):
+            s_0 = np.reshape(state, [3, 2])
             prediction = [s_0]
             s_t = s_0
             for action in actions:

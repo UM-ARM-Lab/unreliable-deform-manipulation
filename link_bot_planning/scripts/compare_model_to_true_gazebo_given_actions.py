@@ -109,7 +109,7 @@ def main():
                                         center_point=np.array([0, 0]),
                                         services=services)
     predicted_points = fwd_model.predict(local_env_data=[env_data],
-                                         first_states=np.expand_dims(initial_rope_configuration, axis=0),
+                                         state=np.expand_dims(initial_rope_configuration, axis=0),
                                          actions=np.expand_dims(actions, axis=0))
     predicted_points = predicted_points[0]
 
@@ -121,7 +121,7 @@ def main():
                                                   res=fwd_model.local_env_params.res,
                                                   center_point=center_point,
                                                   services=services)
-        p_accept = classifier_model.predict(local_env_data_s=[local_env_data],
+        p_accept = classifier_model.predict(local_env_data=[local_env_data],
                                             s1_s=predicted_points[i].reshape([1, 6]),
                                             s2_s=predicted_points[i + 1].reshape([1, 6]))
         print(p_accept)

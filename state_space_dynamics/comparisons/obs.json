@@ -1,14 +1,14 @@
 {
-  "Simple Res NN": {
-    "model_dir": "log_data/res_nn_1024/November_22_12-49-09_61e4cff061",
-    "model_type": "nn"
+  "Obs-NN": {
+    "model_dir": "log_data/both_mixed/December_05_23-20-26_1b23664a5b/",
+    "model_type": "obs"
   },
   "Obs-NN, no obs": {
     "model_dir": "log_data/free_space_basic/December_05_15-10-01_1b23664a5b",
     "model_type": "obs"
   },
-  "Obs-NN": {
-    "model_dir": "log_data/both_basic/December_05_17-29-10_1b23664a5b",
-    "model_type": "obs"
+  "Simple Res NN": {
+    "model_dir": "log_data/res_nn_1024/November_22_12-49-09_61e4cff061",
+    "model_type": "nn"
   }
 }

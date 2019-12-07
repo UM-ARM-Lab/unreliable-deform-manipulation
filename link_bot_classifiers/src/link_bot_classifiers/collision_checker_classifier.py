@@ -44,9 +44,9 @@ class CollisionCheckerClassifier(BaseClassifier):
             predictions.append(prediction)
         return predictions
 
-    def predict(self, local_env_data_s: List[OccupancyData], s1_s: np.ndarray, s2_s: np.ndarray) -> float:
+    def predict(self, local_env_data: List[OccupancyData], s1_s: np.ndarray, s2_s: np.ndarray) -> float:
         predictions = []
-        for local_env, s1, s2 in zip(local_env_data_s, s1_s, s2_s):
+        for local_env, s1, s2 in zip(local_env_data, s1_s, s2_s):
             tail_x = s1[0]
             tail_y = s1[1]
             mid_x = s1[2]

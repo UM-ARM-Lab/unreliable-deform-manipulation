@@ -17,10 +17,10 @@ class BaseForwardModel:
         self.local_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['local_env_params'])
         self.dt = self.hparams['dynamics_dataset_hparams']['dt']
 
-    def predict(self, local_env_data_s: List, first_states: np.ndarray, actions: np.ndarray) -> np.ndarray:
+    def predict(self, local_env_data: List, state: np.ndarray, actions: np.ndarray) -> np.ndarray:
         """
         :param local_env_data: [batch] sized list of the local environment data
-        :param first_states: [batch, 6]
+        :param state: [batch, 6]
         :param actions: [batch, T, 2]
         :return: [batch, T+1, 3, 2] includes the initial state. It's T+1 because it includes the first state
         """

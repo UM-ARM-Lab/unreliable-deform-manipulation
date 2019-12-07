@@ -17,10 +17,11 @@ from link_bot_planning import model_utils
 from link_bot_pycommon import link_bot_sdf_utils
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
-config = tf.ConfigProto(gpu_options=gpu_options)
-tf.enable_eager_execution(config=config)
-tf.logging.set_verbosity(tf.logging.ERROR)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+tf.compat.v1.enable_eager_execution(config=config)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+
 
 def generate(args):
     ###############
@@ -68,36 +69,48 @@ def generate_results(outdir: pathlib.Path,
         'true': {
             'points': [],
             'runtimes': [],
+            'local_env/env': [],
+            'local_env/extent': [],
         }
     }
     for x, y in tf_dataset:
         true_points = y['output_states'].numpy().squeeze().reshape([-1, 3, 2])
+        extent = x['actual_local_env_s/extent'][:, 0].numpy()
+        local_env = tf.expand_dims(x['actual_local_env_s/env'][:, 0], axis=1).numpy()
+
         results['true']['points'].append(true_points)
         results['true']['runtimes'].append(np.inf)
+        results['true']['local_env/env'].append(local_env)
+        results['true']['local_env/extent'].append(extent)
 
     for model_name, model in models.items():
-        results[model_name] = {'points': [], 'runtimes': []}
+        results[model_name] = {
+            'points': [],
+            'runtimes': [],
+            'local_env/env': [],
+            'local_env/extent': [],
+        }
         print("generating results for {}".format(model_name))
         for x, y in tf_dataset:
             states = x['state_s'].numpy()
             actions = x['action_s'].numpy()
             # this is supposed to give us a [batch, n_state] tensor
-            first_states = np.expand_dims(states[0, 0], axis=0)
-            first_local_env = tf.expand_dims(x['actual_local_env_s/env'][:, 0], axis=1).numpy()
+            first_state = np.expand_dims(states[0, 0], axis=0)
+            local_env = tf.expand_dims(x['actual_local_env_s/env'][:, 0], axis=1).numpy()
             res = x['resolution_s'][:, 0].numpy()
             res_2d = np.concatenate([res, res], axis=1)
             origin = x['actual_local_env_s/origin'][:, 0].numpy()
-            local_env_data_s = link_bot_sdf_utils.unbatch_occupancy_data(data=first_local_env, resolution=res_2d, origin=origin)
+            extent = x['actual_local_env_s/extent'][:, 0].numpy()
+            local_env_data = link_bot_sdf_utils.unbatch_occupancy_data(data=local_env, resolution=res_2d, origin=origin)
             t0 = time.time()
-            predicted_points = model.predict(local_env_data_s=local_env_data_s,
-                                             first_states=first_states,
+            predicted_points = model.predict(local_env_data=local_env_data,
+                                             state=first_state,
                                              actions=actions)[0]
             runtime = time.time() - t0
             # TODO: save and visualize the local environment
             results[model_name]['points'].append(predicted_points)
-            results[model_name]['first_local_env/env'].append(first_local_env)
-            results[model_name]['first_local_env/origin'].append(origin)
-            results[model_name]['first_local_env/res'].append(res)
+            results[model_name]['local_env/env'].append(local_env)
+            results[model_name]['local_env/extent'].append(extent)
             results[model_name]['runtimes'].append(runtime)
 
     results_filename = outdir / 'results-{}-{}.pkl'.format(mode, int(time.time()))
@@ -115,7 +128,7 @@ def visualize_predictions(results, n_examples, outdir=None):
         xmax = np.max(results['true']['points'][example_idx][:, :, 0]) + 1
         ymax = np.max(results['true']['points'][example_idx][:, :, 1]) + 1
 
-        fig, ax = plt.subplots()
+        fig, _ = plt.subplots()
         plt.xlabel("x (m)")
         plt.ylabel("y (m)")
         plt.axis("equal")
@@ -124,6 +137,9 @@ def visualize_predictions(results, n_examples, outdir=None):
         plt.title(example_idx)
 
         time_text_handle = plt.text(5, 8, 't=0', fontdict={'color': 'white', 'size': 5}, bbox=dict(facecolor='black', alpha=0.5))
+        local_env = results['true']['local_env/env'][example_idx][0, 0]
+        extent = results['true']['local_env/extent'][example_idx][0]
+        plt.imshow(np.flipud(local_env), extent=extent)
 
         # create all the necessary plotting handles
         handles = {}
