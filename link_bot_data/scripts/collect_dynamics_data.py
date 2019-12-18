@@ -12,31 +12,36 @@ import rospy
 import tensorflow
 from colorama import Fore
 
-import link_bot_gazebo.gazebo_utils
+from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import bytes_feature, float_feature
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import get_local_occupancy_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
-from link_bot_planning.goals import sample_goal
-from link_bot_planning.params import LocalEnvParams
-
-opts = tensorflow.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
-conf = tensorflow.ConfigProto(gpu_options=opts)
-tensorflow.enable_eager_execution(config=conf)
-
-from link_bot_data import random_environment_data_utils
 from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
+from link_bot_planning.goals import sample_goal
+from link_bot_planning.params import LocalEnvParams, FullEnvParams
+
+opts = tensorflow.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
+conf = tensorflow.compat.v1.ConfigProto(gpu_options=opts)
+tensorflow.compat.v1.enable_eager_execution(config=conf)
 
 
 def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gripper1_target_y):
     state_req = LinkBotStateRequest()
     action_msg = LinkBotVelocityAction()
 
+    # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
+    # over the course of this function
+    full_env_data = gazebo_utils.get_occupancy_data(env_w=args.env_w, env_h=args.env_h, res=args.res, services=services)
+
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
     feature = {
         'local_env_rows': float_feature(np.array([args.local_env_rows])),
-        'local_env_cols': float_feature(np.array([args.local_env_cols]))
+        'local_env_cols': float_feature(np.array([args.local_env_cols])),
+        'full_env/env': float_feature(full_env_data.data.flatten()),
+        'full_env/extent': float_feature(np.array(full_env_data.extent)),
+        'full_env/origin': float_feature(full_env_data.origin),
     }
+
     for time_idx in range(args.steps_per_traj):
         # Query the current state
         state = services.get_state(state_req)
@@ -68,6 +73,7 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
         step.steps = int(args.dt / 0.001)  # assuming 0.001s per simulation step
         services.world_control(step)  # this will block until stepping is complete
 
+        # NOTE: at_constraint_boundary is not used at the moment
         post_action_state = services.get_state(state_req)
         stopped = 0.025  # This threshold must be tuned whenever physics or the above velocity controller parameters change
         if (abs(post_action_state.gripper1_velocity.x) < stopped < abs(gripper1_target_vx)) \
@@ -88,11 +94,11 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
 
         # format the tf feature
         head_np = np.array([head_point.x, head_point.y])
-        local_env_data = get_local_occupancy_data(args.local_env_rows,
-                                                  args.local_env_cols,
-                                                  args.res,
-                                                  center_point=head_np,
-                                                  services=services)
+        local_env_data = gazebo_utils.get_local_occupancy_data(args.local_env_rows,
+                                                               args.local_env_cols,
+                                                               args.res,
+                                                               center_point=head_np,
+                                                               services=services)
 
         # for compatibility with video prediction
         feature['{}/image_aux1/encoded'.format(time_idx)] = bytes_feature(image.tobytes())
@@ -140,8 +146,8 @@ def generate_trajs(args, full_output_directory, services):
 
         if not args.no_obstacles:
             objects = ['cheezits_box', 'tissue_box']
-            link_bot_gazebo.gazebo_utils.move_objects(services, objects, args.env_w, args.env_h, 'velocity',
-                                                      padding=0.1)
+            gazebo_utils.move_objects(services, objects, args.env_w, args.env_h, 'velocity',
+                                      padding=0.1)
 
         # Generate a new trajectory
         example, percentage_violation, global_t_step, gripper1_target_x, gripper1_target_y = generate_traj(args, services, i,
@@ -184,10 +190,14 @@ def generate(args):
         os.mkdir(full_output_directory)
 
     local_env_params = LocalEnvParams(h_rows=args.local_env_rows, w_cols=args.local_env_cols, res=args.res)
+    full_env_cols = int(args.env_w * args.res)
+    full_env_rows = int(args.env_h * args.res)
+    full_env_params = FullEnvParams(h_rows=full_env_rows, w_cols=full_env_cols, res=args.res)
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': args.dt,
             'local_env_params': local_env_params.to_json(),
+            'full_env_params': full_env_params.to_json(),
             'env_w': args.env_w,
             'env_h': args.env_h,
             'compression_type': args.compression_type,
@@ -217,7 +227,7 @@ def generate(args):
 
 def main():
     np.set_printoptions(precision=4, suppress=True, linewidth=220, threshold=5000)
-    tensorflow.logging.set_verbosity(tensorflow.logging.DEBUG)
+    tensorflow.compat.v1.logging.set_verbosity(tensorflow.compat.v1.logging.DEBUG)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)

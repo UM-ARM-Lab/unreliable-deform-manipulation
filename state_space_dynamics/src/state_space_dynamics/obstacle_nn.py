@@ -56,7 +56,7 @@ class ObstacleNN(tf.keras.Model):
         actions = input_dict['action_s']
         input_sequence_length = actions.shape[1]
         s_0 = tf.expand_dims(input_dict['state_s'][:, 0], axis=2)
-        local_env = tf.expand_dims(input_dict['actual_local_env_s/env'][:, 0], axis=3)
+        # local_env = tf.expand_dims(input_dict['actual_local_env_s/env'][:, 0], axis=3)
         resolution = input_dict['resolution_s'][:, 0]
         res_2d = tf.expand_dims(tf.tile(resolution, [1, 2]), axis=1)
         origin = tf.expand_dims(input_dict['actual_local_env_s/origin'][:, 0], axis=1)
@@ -65,6 +65,7 @@ class ObstacleNN(tf.keras.Model):
         for t in range(input_sequence_length):
             s_t = gen_states[-1]
             s_t_squeeze = tf.squeeze(s_t, squeeze_dims=2)
+
             action_t = actions[:, t]
 
             # filters out out of bounds points internally with no warnings
@@ -72,6 +73,9 @@ class ObstacleNN(tf.keras.Model):
             rope_image_t = rope_image_s[:, 0]
             action_image_s = self.action_smear(action_t)
             action_image_t = action_image_s[:, 0]
+
+            head_point_t = np.array([s_t_squeeze[4], s_t_squeeze[5]])
+            local_env = get_local_env_at_in(head_point_t, full_sdf, full_sdf_res, full_sdf_origin)
 
             # CNN
             z_t = self.concat([rope_image_t, local_env, action_image_t])

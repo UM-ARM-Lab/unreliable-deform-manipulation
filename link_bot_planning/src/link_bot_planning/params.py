@@ -36,3 +36,11 @@ class LocalEnvParams:
     h_rows: int
     w_cols: int
     res: float
+
+
+@dataclass_json
+@dataclass
+class FullEnvParams:
+    h_rows: int
+    w_cols: int
+    res: float

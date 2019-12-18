@@ -277,6 +277,31 @@ def get_sdf_data(env_h: float,
     return full_sdf_data
 
 
+def get_occupancy_data(env_h: float,
+                       env_w: float,
+                       res: float,
+                       services: GazeboServices):
+    """
+    :param env_h:  meters
+    :param env_w: meters
+    :param res: meters
+    :param services: from gazebo_utils
+    :return: SDF object for full sdf
+    """
+    env_h_rows = int(env_h / res)
+    env_w_cols = int(env_w / res)
+    grid, response = get_occupancy(services,
+                                   env_w_cols=env_w_cols,
+                                   env_h_rows=env_h_rows,
+                                   res=res,
+                                   center_x=0,
+                                   center_y=0)
+    resolution = np.array(response.res)
+    origin = np.array(response.origin)
+    full_env_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=resolution, origin=origin)
+    return full_env_data
+
+
 def get_local_sdf_data(sdf_rows: int,
                        sdf_cols: int,
                        res: float,
@@ -374,7 +399,6 @@ def random_object_move(model_name, w, h, padding):
     move.pose.orientation.w = q[3]
     move.model_name = model_name
     return move
-
 
 
 def move_objects(services, objects, env_w, env_h, link_bot_mode, padding):

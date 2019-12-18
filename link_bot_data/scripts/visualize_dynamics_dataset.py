@@ -13,15 +13,15 @@ from link_bot_data.visualization import plot_rope_configuration
 from link_bot_pycommon import link_bot_pycommon
 from link_bot_pycommon.args import my_formatter
 
-tf.enable_eager_execution()
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.enable_eager_execution()
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 def main():
-    tf.logging.set_verbosity(tf.logging.FATAL)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
+    parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
 
     args = parser.parse_args()
@@ -41,8 +41,10 @@ def main():
     for input_data, output_data in train_dataset:
         rope_configurations = input_data['state_s'].numpy().squeeze()
         actions = input_data['action_s'].numpy().squeeze()
-        local_envs = input_data['actual_local_env_s/env'].numpy().squeeze()
-        extents = input_data['actual_local_env_s/extent'].numpy().squeeze()
+        # local_envs = input_data['actual_local_env_s/env'].numpy().squeeze()
+        # local_env_extents = input_data['actual_local_env_s/extent'].numpy().squeeze()
+        full_env = input_data['full_env/env'].numpy().squeeze()
+        full_env_extents = input_data['full_env/extent'].numpy().squeeze()
 
         for config in rope_configurations:
             state_angle = link_bot_pycommon.angle_from_configuration(config)
@@ -59,20 +61,24 @@ def main():
             ax.set_ylim([-arena_size, arena_size])
             ax.axis("equal")
 
-            local_env_handle = ax.imshow(np.flipud(local_envs[0]), extent=extents[0])
+            full_env_handle = ax.imshow(np.flipud(full_env), extent=full_env_extents)
+            # local_env_handle = ax.imshow(np.flipud(local_envs[0]), extent=local_env_extents[0])
 
-            arrow = plt.Arrow(rope_configurations[0, 4], rope_configurations[0, 5], actions[0, 0], actions[0, 1], width=arrow_width,
-                              zorder=4)
+            arrow = plt.Arrow(rope_configurations[0, 4], rope_configurations[0, 5], actions[0, 0], actions[0, 1],
+                              width=arrow_width, zorder=4)
             patch = ax.add_patch(arrow)
 
             def update(t):
                 nonlocal patch
                 config = rope_configurations[t]
                 action = actions[t]
-                local_env = local_envs[t]
+                # local_env = local_envs[t]
 
-                local_env_handle.set_data(np.flipud(local_env))
-                local_env_handle.set_extent(extents[t])
+                # local_env_handle.set_data(np.flipud(local_env))
+                # local_env_handle.set_extent(local_env_extents[t])
+
+                full_env_handle.set_data(np.flipud(full_env))
+                full_env_handle.set_extent(full_env_extents)
 
                 plot_rope_configuration(ax, config, linewidth=5, zorder=3, c='r')
                 patch.remove()
@@ -87,12 +93,11 @@ def main():
 
         i += 1
 
-
     plt.figure()
     plt.hist(angles)
     plt.xlabel("angle (rad)")
     plt.ylabel("count")
-    plt.title("Hist for angle on dataset: {}".format(args.dataset_dir.name))
+    # plt.title("Hist for angle on dataset: {}".format(args.dataset_dir.name))
     plt.show()
 
 
