@@ -1,10 +1,6 @@
 {
   "Obs-NN": {
-    "model_dir": "log_data/both_mixed/December_05_23-20-26_1b23664a5b/",
-    "model_type": "obs"
-  },
-  "Obs-NN, no obs": {
-    "model_dir": "log_data/free_space_basic/December_05_15-10-01_1b23664a5b",
+    "model_dir": "log_data/new_obs/December_19_17-27-13_8d45fdb6af",
     "model_type": "obs"
   },
   "Simple Res NN": {

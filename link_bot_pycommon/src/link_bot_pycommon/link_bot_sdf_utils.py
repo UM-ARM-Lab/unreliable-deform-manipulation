@@ -16,7 +16,6 @@ def idx_to_point(row: int,
     x = (col - origin[1]) * resolution[1]
     return np.array([x, y])
 
-
 def bounds_from_env_size(w_cols, h_rows, new_origin, resolution, origin):
     xmin = -w_cols / 2 + new_origin[1]
     ymin = -h_rows / 2 + new_origin[0]

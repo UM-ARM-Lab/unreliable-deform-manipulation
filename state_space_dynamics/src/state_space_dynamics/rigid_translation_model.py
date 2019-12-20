@@ -23,6 +23,7 @@ class RigidTranslationModel(BaseForwardModel):
 
     def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, state: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
+        del local_env_data  # unused
         predictions = []
         for state, actions in zip(state, actions):
             s_0 = np.reshape(state, [3, 2])

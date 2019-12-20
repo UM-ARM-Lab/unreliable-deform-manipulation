@@ -1,24 +1,25 @@
 from time import sleep
-from typing import Optional, Dict, Iterable, List
+from typing import Optional, Dict, Iterable, List, Tuple
 
 import numpy as np
 import rospy
 import std_msgs
 import std_srvs
 from colorama import Fore
+from link_bot_gazebo.msg import Position2dAction, LinkBotVelocityAction, ObjectAction, LinkBotJointConfiguration
+from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
+    InverseCameraProjection, InverseCameraProjectionRequest, CameraProjection, CameraProjectionRequest, ComputeSDF2Request, \
+    LinkBotPositionAction, LinkBotPath, LinkBotTrajectory, ComputeOccupancy, ComputeOccupancyRequest, LinkBotTrajectoryRequest, \
+    LinkBotTrajectoryResponse
 from std_msgs.msg import String, Empty
 from std_srvs.srv import EmptyRequest
 from visualization_msgs.msg import MarkerArray
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest, \
     ApplyBodyWrench, ApplyBodyWrenchRequest
-from link_bot_gazebo.msg import Position2dAction, LinkBotVelocityAction, ObjectAction, LinkBotJointConfiguration
-from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
-    InverseCameraProjection, InverseCameraProjectionRequest, CameraProjection, CameraProjectionRequest, ComputeSDF2Request, \
-    LinkBotPositionAction, LinkBotPath, LinkBotTrajectory, ComputeOccupancy, ComputeOccupancyRequest, LinkBotTrajectoryRequest, \
-    LinkBotTrajectoryResponse
 from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon.link_bot_sdf_utils import point_to_idx
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.gazebo_trajectory_execution import quaternion_from_euler
 from visual_mpc.numpy_point import NumpyPoint
@@ -327,6 +328,7 @@ def get_local_sdf_data(sdf_rows: int,
     return local_sdf_data
 
 
+
 def get_local_occupancy_data(rows: int,
                              cols: int,
                              res: float,
@@ -338,7 +340,7 @@ def get_local_occupancy_data(rows: int,
     :param res: meters
     :param center_point: (x,y) meters
     :param services: from gazebo_utils
-    :return: OcucpancyData object for local sdf
+    :return: OccupancyData object for local sdf
     """
     grid, response = get_occupancy(services,
                                    env_h_rows=rows,

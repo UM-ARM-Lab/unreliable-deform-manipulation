@@ -231,6 +231,7 @@ class LocallyLinearNNWrapper(BaseForwardModel):
 
     def predict(self, local_env_data: link_bot_sdf_utils.OccupancyData, state: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
+        del local_env_data  # unused
         batch, T, _ = actions.shape
         states = tf.convert_to_tensor(state, dtype=tf.float32)
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])

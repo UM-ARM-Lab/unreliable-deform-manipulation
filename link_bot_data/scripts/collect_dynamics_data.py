@@ -190,8 +190,8 @@ def generate(args):
         os.mkdir(full_output_directory)
 
     local_env_params = LocalEnvParams(h_rows=args.local_env_rows, w_cols=args.local_env_cols, res=args.res)
-    full_env_cols = int(args.env_w * args.res)
-    full_env_rows = int(args.env_h * args.res)
+    full_env_cols = int(args.env_w / args.res)
+    full_env_rows = int(args.env_h / args.res)
     full_env_params = FullEnvParams(h_rows=full_env_rows, w_cols=full_env_cols, res=args.res)
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
