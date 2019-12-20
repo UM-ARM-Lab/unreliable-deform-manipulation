@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-import pickle
 import argparse
 import json
 import pathlib
+import pickle
 import time
 from typing import Dict
 
@@ -34,6 +34,9 @@ def generate(args):
                                       batch_size=1,
                                       sequence_length=args.sequence_length)
 
+    base_folder = args.outdir / 'compare_models-{}-{}'.format(args.mode, int(time.time()))
+    base_folder.mkdir()
+
     comparison_info = json.load(args.comparison.open("r"))
     models = {}
     for name, model_info in comparison_info.items():
@@ -42,12 +45,12 @@ def generate(args):
         model, _ = model_utils.load_generic_model(model_dir, model_type)
         models[name] = model
 
-    results = generate_results(args.outdir, models, tf_dataset, args.mode)
+    results = generate_results(base_folder, models, tf_dataset, args.mode)
 
     evaluate_metrics(results)
 
     if not args.no_plot:
-        visualize_predictions(results, args.n_examples, args.outdir)
+        visualize_predictions(results, args.n_examples, base_folder)
 
 
 def evaluate(args):
@@ -61,7 +64,7 @@ def visualize(args):
     visualize_predictions(results, args.n_examples, results_dir)
 
 
-def generate_results(outdir: pathlib.Path,
+def generate_results(base_folder: pathlib.Path,
                      models: Dict[str, BaseForwardModel],
                      tf_dataset,
                      mode: str):
@@ -71,17 +74,23 @@ def generate_results(outdir: pathlib.Path,
             'runtimes': [],
             'local_env/env': [],
             'local_env/extent': [],
+            'full_env/env': [],
+            'full_env/extent': [],
         }
     }
     for x, y in tf_dataset:
         true_points = y['output_states'].numpy().squeeze().reshape([-1, 3, 2])
-        extent = x['actual_local_env_s/extent'][:, 0].numpy()
+        local_env_extent = x['actual_local_env_s/extent'][:, 0].numpy()
         local_env = tf.expand_dims(x['actual_local_env_s/env'][:, 0], axis=1).numpy()
+        full_env_extent = x['full_env/extent'][:].numpy()
+        full_env = tf.expand_dims(x['full_env/env'][:], axis=1).numpy()
 
         results['true']['points'].append(true_points)
         results['true']['runtimes'].append(np.inf)
         results['true']['local_env/env'].append(local_env)
-        results['true']['local_env/extent'].append(extent)
+        results['true']['local_env/extent'].append(local_env_extent)
+        results['true']['full_env/env'].append(full_env)
+        results['true']['full_env/extent'].append(full_env_extent)
 
     for model_name, model in models.items():
         results[model_name] = {
@@ -89,6 +98,8 @@ def generate_results(outdir: pathlib.Path,
             'runtimes': [],
             'local_env/env': [],
             'local_env/extent': [],
+            'full_env/env': [],
+            'full_env/extent': [],
         }
         print("generating results for {}".format(model_name))
         for x, y in tf_dataset:
@@ -97,29 +108,33 @@ def generate_results(outdir: pathlib.Path,
             # this is supposed to give us a [batch, n_state] tensor
             first_state = np.expand_dims(states[0, 0], axis=0)
             local_env = tf.expand_dims(x['actual_local_env_s/env'][:, 0], axis=1).numpy()
+            local_env_extent = x['full_env/extent'][:, 0].numpy()
             res = x['resolution_s'][:, 0].numpy()
-            res_2d = np.concatenate([res, res], axis=1)
-            origin = x['actual_local_env_s/origin'][:, 0].numpy()
-            extent = x['actual_local_env_s/extent'][:, 0].numpy()
-            local_env_data = link_bot_sdf_utils.unbatch_occupancy_data(data=local_env, resolution=res_2d, origin=origin)
+            full_env_origin_s = x['full_env/origin'].numpy()
+            full_envs = x['full_env/env'].numpy()
+            full_env_extents = x['full_env/extent'].numpy()
             t0 = time.time()
-            predicted_points = model.predict(local_env_data=local_env_data,
+            predicted_points = model.predict(full_envs=full_envs,
+                                             full_env_origins=full_env_origin_s,
+                                             resolution_s=res,
                                              state=first_state,
                                              actions=actions)[0]
             runtime = time.time() - t0
             # TODO: save and visualize the local environment
             results[model_name]['points'].append(predicted_points)
             results[model_name]['local_env/env'].append(local_env)
-            results[model_name]['local_env/extent'].append(extent)
+            results[model_name]['local_env/extent'].append(local_env_extent)
+            results[model_name]['full_env/env'].append(full_envs)
+            results[model_name]['full_env/extent'].append(full_env_extents)
             results[model_name]['runtimes'].append(runtime)
 
-    results_filename = outdir / 'results-{}-{}.pkl'.format(mode, int(time.time()))
+    results_filename = base_folder / 'results.pkl'
     print(Fore.CYAN + "Saving results to {}".format(results_filename) + Fore.RESET)
     pickle.dump(results, results_filename.open("wb"))
     return results
 
 
-def visualize_predictions(results, n_examples, outdir=None):
+def visualize_predictions(results, n_examples, base_folder=None):
     n_examples = min(len(results['true']['points']), n_examples)
     sequence_length = results['true']['points'][0].shape[0]
     for example_idx in range(n_examples):
@@ -137,9 +152,9 @@ def visualize_predictions(results, n_examples, outdir=None):
         plt.title(example_idx)
 
         time_text_handle = plt.text(5, 8, 't=0', fontdict={'color': 'white', 'size': 5}, bbox=dict(facecolor='black', alpha=0.5))
-        local_env = results['true']['local_env/env'][example_idx][0, 0]
-        extent = results['true']['local_env/extent'][example_idx][0]
-        plt.imshow(np.flipud(local_env), extent=extent)
+        full_env = results['true']['full_env/env'][example_idx][0, 0]
+        extent = results['true']['full_env/extent'][example_idx][0]
+        plt.imshow(np.flipud(full_env), extent=extent)
 
         # create all the necessary plotting handles
         handles = {}
@@ -162,7 +177,7 @@ def visualize_predictions(results, n_examples, outdir=None):
         plt.legend()
 
         anim = FuncAnimation(fig, update, frames=sequence_length, interval=100)
-        anim_path = outdir / 'anim-{}-{}.gif'.format(int(time.time()), example_idx)
+        anim_path = base_folder / 'anim-{}.gif'.format(example_idx)
         anim.save(anim_path, writer='imagemagick', fps=4)
         plt.show()
 

@@ -111,7 +111,7 @@ class ShootingRRT(MyPlanner):
         local_env_data = self.get_local_env_at(np_s[0, 4], np_s[0, 5])
 
         # use the forward model to predict the next configuration
-        points_next = self.fwd_model.predict(local_env_data=[local_env_data], state=np_s, actions=np_u)
+        points_next = self.fwd_model.predict(full_envs=[full_env], state=np_s, actions=np_u)
         np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
         # validate the edge

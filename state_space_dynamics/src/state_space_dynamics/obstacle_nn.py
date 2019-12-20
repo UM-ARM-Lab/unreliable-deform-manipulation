@@ -11,7 +11,7 @@ from colorama import Fore, Style
 from tensorflow import keras
 
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
-from link_bot_pycommon import experiments_util, link_bot_pycommon
+from link_bot_pycommon import experiments_util, link_bot_pycommon, link_bot_sdf_utils
 from moonshine.action_smear_layer import action_smear_layer
 from moonshine.raster_points_layer import RasterPoints
 from state_space_dynamics.base_forward_model import BaseForwardModel
@@ -96,9 +96,6 @@ class ObstacleNN(tf.keras.Model):
         res_2d = tf.expand_dims(tf.tile(resolution, [1, 2]), axis=1)
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']
-
-        for k, v in input_dict.items():
-            print(k, v.shape)
 
         gen_states = [s_0]
         for t in range(input_sequence_length):
@@ -352,8 +349,9 @@ class ObstacleNNWrapper(BaseForwardModel):
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
 
     def predict(self,
-                full_envs: List[np.ndarray],
-                full_env_origins: List[np.ndarray],
+                full_envs: np.ndarray,
+                full_env_origins: np.ndarray,
+                resolution_s: np.ndarray,
                 state: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
         # TODO: consider querying gazebo for the local environment inside the prediction loop
@@ -362,14 +360,19 @@ class ObstacleNNWrapper(BaseForwardModel):
         states = tf.convert_to_tensor(state, dtype=tf.float32)
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
-        full_env =
-        full_env_origin =
+        # FIXME: In the calling code we're converting from arrays to this format
+        # full_envs = np.array([env.data for env in full_env_datas])
+        # full_env_origins = np.array([env.origin for env in full_env_datas])
+        # resolution_s = np.expand_dims(np.array([env.resolution[0:1] for env in full_env_datas], dtype=np.float32), axis=1)
+        resolution_s = np.expand_dims(resolution_s, axis=2)
 
         test_x = {
             # must be batch, 1, 6
             'state_s': states,
             # must be batch, T, 2
             'action_s': actions,
+            # must be batch, T, 1
+            'resolution_s': resolution_s,
             # must be batch, T, H, W
             'full_env/env': full_envs,
             # must be batch, T, 2
