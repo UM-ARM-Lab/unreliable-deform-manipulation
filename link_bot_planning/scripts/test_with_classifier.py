@@ -97,7 +97,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("--n-targets", type=int, default=1, help='number of targets/plans')
-    parser.add_argument("--seed", '-s', type=int, default=3)
+    parser.add_argument("--seed", '-s', type=int, default=12)
     parser.add_argument("--no-execution", action='store_true', help='do not execute, only plan')
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=30.0)

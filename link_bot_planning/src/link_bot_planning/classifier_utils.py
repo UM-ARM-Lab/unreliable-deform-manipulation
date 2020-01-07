@@ -18,3 +18,5 @@ def load_generic_model(model_dir: pathlib.Path, model_type: str):
         return CollisionCheckerClassifier(inflation_radius=0.02)
     elif model_type == 'none':
         return NoneClassifier()
+    else:
+        raise NotImplementedError("invalid model type {}".format(model_type))

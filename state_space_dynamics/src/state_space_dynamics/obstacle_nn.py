@@ -364,7 +364,7 @@ class ObstacleNNWrapper(BaseForwardModel):
         # full_envs = np.array([env.data for env in full_env_datas])
         # full_env_origins = np.array([env.origin for env in full_env_datas])
         # resolution_s = np.expand_dims(np.array([env.resolution[0:1] for env in full_env_datas], dtype=np.float32), axis=1)
-        resolution_s = np.expand_dims(resolution_s, axis=2)
+        resolution_s = tf.convert_to_tensor(np.expand_dims(resolution_s, axis=2), dtype=tf.float32)
 
         test_x = {
             # must be batch, 1, 6
@@ -374,9 +374,9 @@ class ObstacleNNWrapper(BaseForwardModel):
             # must be batch, T, 1
             'resolution_s': resolution_s,
             # must be batch, T, H, W
-            'full_env/env': full_envs,
+            'full_env/env': tf.convert_to_tensor(full_envs, dtype=tf.float32),
             # must be batch, T, 2
-            'full_env/origin': full_env_origins,
+            'full_env/origin': tf.convert_to_tensor(full_env_origins, dtype=tf.float32),
         }
         predictions = self.net(test_x)
         predicted_points = predictions.numpy().reshape([batch, T + 1, 3, 2])

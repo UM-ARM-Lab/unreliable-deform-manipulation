@@ -31,6 +31,8 @@ def load_generic_model(model_dir: pathlib.Path, model_type: str) -> [BaseForward
     elif model_type == 'obs':
         nn = ObstacleNNWrapper(model_dir)
         return nn, model_dir.parts[1:]
+    else:
+        raise NotImplementedError("invalid model type {}".format(model_type))
 
 
 def get_model_info(model_dir: pathlib.Path, model_type: str) -> Tuple[str]:
@@ -51,3 +53,5 @@ def get_model_info(model_dir: pathlib.Path, model_type: str) -> Tuple[str]:
         return model_dir.parts[1:]
     elif model_type == 'obs':
         return model_dir.parts[1:]
+    else:
+        raise NotImplementedError("invalid model type {}".format(model_type))

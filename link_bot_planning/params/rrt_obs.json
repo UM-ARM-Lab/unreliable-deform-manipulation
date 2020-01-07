@@ -1,8 +1,8 @@
 {
-  "fwd_model_dir": "ss_log_data/todo",
-  "fwd_model_type": "obstacle_nn",
-  "classifier_model_dir": "none",
-  "classifier_model_type": ".",
+  "fwd_model_dir": "ss_log_data/new_obs/December_19_17-27-13_8d45fdb6af",
+  "fwd_model_type": "obs",
+  "classifier_model_dir": ".",
+  "classifier_model_type": "none",
   "planner": "ShootingRRT",
   "max_v": 0.15,
   "goal_threshold": 0.1,

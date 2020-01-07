@@ -15,6 +15,8 @@ class BaseForwardModel:
         # TODO: de-duplicate n_action and n_control
         self.n_control = self.hparams['dynamics_dataset_hparams']['n_action']
         self.local_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['local_env_params'])
+        if 'full_env_params' in self.hparams['dynamics_dataset_hparams']:
+            self.full_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['full_env_params'])
         self.dt = self.hparams['dynamics_dataset_hparams']['dt']
 
     def predict(self, local_env_data: List, state: np.ndarray, actions: np.ndarray) -> np.ndarray:

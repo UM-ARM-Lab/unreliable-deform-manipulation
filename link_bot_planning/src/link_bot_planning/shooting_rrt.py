@@ -4,7 +4,7 @@ import numpy as np
 from ompl import base as ob
 from ompl import control as oc
 
-from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
+from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data, get_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import EnvParams, PlannerParams
@@ -101,6 +101,9 @@ class ShootingRRT(MyPlanner):
         self.si.setPropagationStepSize(self.fwd_model.dt)
         self.si.setMinMaxControlDuration(1, 50)
 
+        self.full_envs = None
+        self.full_env_orgins = None
+
     def is_valid(self, state):
         return self.state_space.getSubspace(0).satisfiesBounds(state[0])
 
@@ -111,7 +114,11 @@ class ShootingRRT(MyPlanner):
         local_env_data = self.get_local_env_at(np_s[0, 4], np_s[0, 5])
 
         # use the forward model to predict the next configuration
-        points_next = self.fwd_model.predict(full_envs=[full_env], state=np_s, actions=np_u)
+        points_next = self.fwd_model.predict(full_envs=self.full_envs,
+                                             full_env_origins=self.full_env_origins,
+                                             resolution_s=np.array([[self.fwd_model.full_env_params.res]]),
+                                             state=np_s,
+                                             actions=np_u)
         np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
         # validate the edge
@@ -143,6 +150,14 @@ class ShootingRRT(MyPlanner):
         :param tail_goal_point:  1 by n matrix
         :return: controls, states
         """
+        # get full env once
+        full_env_data = get_occupancy_data(env_w=self.env_params.w,
+                                           env_h=self.env_params.h,
+                                           res=self.fwd_model.full_env_params.res,
+                                           services=self.services)
+        self.full_envs = np.array([full_env_data.data])
+        self.full_env_origins = np.array([full_env_data.origin])
+
         # create start and goal states
         start_local_occupancy = self.get_local_env_at(np_start[0, 4], np_start[0, 5])
         compound_start = ob.CompoundState(self.state_space)

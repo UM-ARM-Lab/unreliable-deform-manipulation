@@ -160,7 +160,7 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="forward model", type=pathlib.Path)
-    parser.add_argument("fwd_model_type", choices=['nn', 'gp', 'llnn', 'rigid'], default='nn')
+    parser.add_argument("fwd_model_type", choices=['nn', 'gp', 'llnn', 'obs', 'rigid'], default='nn')
     parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
