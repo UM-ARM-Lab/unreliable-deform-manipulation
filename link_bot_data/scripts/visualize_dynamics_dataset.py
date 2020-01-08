@@ -36,15 +36,29 @@ def main():
                                          n_parallel_calls=1,
                                          batch_size=1)
 
+    half_w = dataset.hparams['env_w'] / 2
+    half_h = dataset.hparams['env_h'] / 2
+
+    def oob(point):
+        if point[0] <= -half_w or point[0] >= half_w:
+            return True
+        if point[1] <= -half_h or point[1] >= half_h:
+            return True
+        return False
+
     i = 0
     angles = []
     for input_data, output_data in train_dataset:
+
+        out_of_bounds = False
+
         rope_configurations = input_data['state_s'].numpy().squeeze()
         actions = input_data['action_s'].numpy().squeeze()
         # local_envs = input_data['actual_local_env_s/env'].numpy().squeeze()
         # local_env_extents = input_data['actual_local_env_s/extent'].numpy().squeeze()
         full_env = input_data['full_env/env'].numpy().squeeze()
         full_env_extents = input_data['full_env/extent'].numpy().squeeze()
+
 
         for config in rope_configurations:
             state_angle = link_bot_pycommon.angle_from_configuration(config)
@@ -69,7 +83,7 @@ def main():
             patch = ax.add_patch(arrow)
 
             def update(t):
-                nonlocal patch
+                nonlocal patch, out_of_bounds
                 config = rope_configurations[t]
                 action = actions[t]
                 # local_env = local_envs[t]
@@ -87,9 +101,19 @@ def main():
 
                 ax.set_title("{} {}".format(i, t))
 
+                p1 = config[0:2]
+                p2 = config[2:4]
+                p3 = config[4:6]
+                out_of_bounds = out_of_bounds or oob(p1)
+                out_of_bounds = out_of_bounds or oob(p2)
+                out_of_bounds = out_of_bounds or oob(p3)
+
             interval = 50
             _ = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
             plt.show()
+
+        if out_of_bounds:
+            print("Example {} is goes of bounds!".format(i))
 
         i += 1
 

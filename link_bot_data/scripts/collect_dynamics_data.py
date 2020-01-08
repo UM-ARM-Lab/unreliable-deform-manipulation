@@ -19,6 +19,7 @@ from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 from link_bot_planning.goals import sample_goal
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
+from link_bot_pycommon.args import my_formatter
 
 opts = tensorflow.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.compat.v1.ConfigProto(gpu_options=opts)
@@ -229,24 +230,24 @@ def main():
     np.set_printoptions(precision=4, suppress=True, linewidth=220, threshold=5000)
     tensorflow.compat.v1.logging.set_verbosity(tensorflow.compat.v1.logging.DEBUG)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("n_trajs", help='how many trajectories to collect', type=int)
+    parser = argparse.ArgumentParser(formatter_class=my_formatter)
+    parser.add_argument("n_trajs", type=int, help='how many trajectories to collect')
     parser.add_argument("outdir")
-    parser.add_argument('--dt', type=float, default=1.00)
+    parser.add_argument('--dt', type=float, default=1.00, help='dt')
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
-    parser.add_argument('--env-w', type=float, default=6.0)
-    parser.add_argument('--env-h', type=float, default=6.0)
-    parser.add_argument('--local_env-cols', type=int, default=50)
-    parser.add_argument('--local_env-rows', type=int, default=50)
-    parser.add_argument("--steps-per-traj", type=int, default=100)
-    parser.add_argument("--steps-per-target", type=int, default=25)
-    parser.add_argument("--start-idx-offset", type=int, default=0)
-    parser.add_argument("--no-obstacles", action='store_true')
-    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
-    parser.add_argument("--n-trajs-per-file", type=int, default=256)
-    parser.add_argument("--seed", '-s', help='seed', type=int, default=0)
-    parser.add_argument("--real-time-rate", help='number of times real time', type=float, default=10)
-    parser.add_argument("--verbose", '-v', action="store_true")
+    parser.add_argument('--env-w', type=float, default=6.0, help='full env w')
+    parser.add_argument('--env-h', type=float, default=6.0, help='full env h')
+    parser.add_argument('--local_env-cols', type=int, default=50, help='local env')
+    parser.add_argument('--local_env-rows', type=int, default=50, help='local env')
+    parser.add_argument("--steps-per-traj", type=int, default=100, help='steps per traj')
+    parser.add_argument("--steps-per-target", type=int, default=25, help='steps before changing target')
+    parser.add_argument("--start-idx-offset", type=int, default=0, help='offset TFRecord file names')
+    parser.add_argument("--no-obstacles", action='store_true', help='do not move obstacles')
+    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB', help='compression type')
+    parser.add_argument("--n-trajs-per-file", type=int, default=256, help='trajs per file')
+    parser.add_argument("--seed", '-s', type=int, default=0, help='seed')
+    parser.add_argument("--real-time-rate", type=float, default=10, help='number of times real time')
+    parser.add_argument("--verbose", '-v', action="store_true", help='verbose')
 
     args = parser.parse_args()
 
