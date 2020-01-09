@@ -1,0 +1,181 @@
+<%
+n_links = ENV['n_links'].to_i
+mass = 2.0
+length = 0.5
+radius = 0.02
+link_length = length/n_links
+collision_link_length = link_length * 0.75
+link_mass = 0.5/n_links
+colors = ["Red", "Orange", "Yellow", "Green", "Blue", "Purple", "White", "Black"]
+n_colors = colors.length
+%>
+<sdf version="1.6">
+    <model name="link_bot">
+        <pose frame="">0 0 0.01 0 0 0</pose>
+        <% for i in 1..n_links %>
+        <link name="link_<%=i%>">
+            <pose frame=""><%=i*link_length%> 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0.025 0 0 0 0 0</pose>
+                <mass><%=link_mass%></mass>
+                <inertia>
+                    <ixx><%=1.0/12.0*link_mass*(3*radius*radius + link_length*link_length)%></ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy><%=1.0/12.0*link_mass*(3*radius*radius + link_length*link_length)%></iyy>
+                    <iyz>0</iyz>
+                    <izz><%=0.5*link_mass*radius*radius%></izz>
+                </inertia>
+            </inertial>
+            <collision name="link_<%=i%>_collision">
+                <pose frame="">0 0 <%=link_length / 2.0 - radius / 2.0%> 0 0 0</pose>
+                <geometry>
+                    <box>
+                        <size><%=2*radius%> <%=2*radius%> <%=collision_link_length%></size>
+                    </box>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.10</mu>
+                            <mu2>0.10</mu2>
+                        </ode>
+                    </friction>
+                </surface>
+                <max_contacts>5</max_contacts>
+            </collision>
+            <visual name="link_<%=i%>_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 <%=link_length / 2.0 - radius / 2.0%> 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length><%=link_length%></length>
+                        <radius><%=radius%></radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/<%=colors[i%n_colors]%></name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+        </link>
+        <%end%>
+        <% for i in 1..n_links-1 %>
+        <joint name="joint_<%=i%>" type="revolute">
+            <child>link_<%=i+1%></child>
+            <parent>link_<%=i%></parent>
+            <pose>0 0 <%=link_length - radius/2.0%> 0 0 0</pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-3</lower>
+                    <upper>3</upper>
+                    <effort>10</effort>
+                    <velocity>5</velocity>
+                </limit>
+                <dynamics>
+                    <damping>0</damping>
+                    <friction>0</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis>
+        </joint>
+        <% end %>
+        <link name='head'>
+            <pose frame=''><%=n_links*link_length + radius/2%> 0 0 0 0 0</pose>
+            <inertial>
+                <pose frame=''>0 0 0 0 0 0</pose>
+                <mass>0.1</mass>
+                <inertia>
+                    <ixx>0.0001</ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>0.0001</iyy>
+                    <iyz>0</iyz>
+                    <izz>0.001</izz>
+                </inertia>
+            </inertial>
+            <collision name='head_collision'>
+                <pose frame=''>0 0 0 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.02</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.10</mu>
+                            <mu2>0.10</mu2>
+                        </ode>
+                    </friction>
+                </surface>
+                <max_contacts>20</max_contacts>
+            </collision>
+            <visual name='head_visual'>
+                <cast_shadows>0</cast_shadows>
+                <pose frame=''>0 0 0 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.02</radius>
+                    </sphere>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Red</name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+            <sensor name='head_contact' type='contact'>
+                <contact>
+                    <collision>head_collision</collision>
+                    <topic>__default_topic__</topic>
+                </contact>
+            </sensor>
+        </link>
+        <joint name="head_joint" type="revolute">
+            <child>head</child>
+            <parent>link_<%=n_links%></parent>
+            <pose>0 0 0 0 0 0</pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-3</lower>
+                    <upper>3</upper>
+                    <effort>10</effort>
+                    <velocity>5</velocity>
+                </limit>
+                <dynamics>
+                    <damping>0</damping>
+                    <friction>0</friction>
+                </dynamics>
+            </axis>
+            <physics>
+                <ode>
+                    <limit>
+                        <cfm>0</cfm>
+                        <erp>0.2</erp>
+                    </limit>
+                </ode>
+            </physics>
+        </joint>
+        <plugin name='multi_link_bot_model_plugin' filename='libmulti_link_bot_model_plugin.so'>
+            <kP_pos>50</kP_pos>
+            <kI_pos>0.001</kI_pos>
+            <kD_pos>0.0</kD_pos>
+            <kP_vel>20.0</kP_vel>
+            <kI_vel>0.0</kI_vel>
+            <kD_vel>0.0</kD_vel>
+            <max_force>1.0</max_force>
+            <max_vel>0.15</max_vel>
+            <max_vel_acc>0.01</max_vel_acc>
+            <gripper1_link>head</gripper1_link>
+            <num_links><%=n_links%></num_links>
+        </plugin>
+    </model>
+</sdf>

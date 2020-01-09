@@ -1,6 +1,7 @@
 #include "multi_link_bot_model_plugin.h"
 
 #include <memory>
+#include <sstream>
 
 #include <geometry_msgs/Point.h>
 #include <gazebo/common/Time.hh>
@@ -61,6 +62,13 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   model_ = parent;
 
   {
+    if (!sdf->HasElement("num_links")) {
+      printf("using default num_links=%u\n", num_links_);
+    }
+    else {
+      num_links_ = sdf->GetElement("num_links")->Get<unsigned int>();
+    }
+
     if (!sdf->HasElement("kP_pos")) {
       printf("using default kP_pos=%f\n", kP_pos_);
     }
@@ -207,28 +215,17 @@ double update_target(double const current_target, double const target, double co
 link_bot_gazebo::LinkBotConfiguration MultiLinkBotModelPlugin::GetConfiguration()
 {
   link_bot_gazebo::LinkBotConfiguration configuration;
+  for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx)
   {
-    auto const tail = model_->GetLink("tail");
+    std::stringstream ss;
+    ss << "link_" << link_idx;
+    auto link_name = ss.str();
+    auto const tail = model_->GetLink(link_name);
     geometry_msgs::Point point;
     point.x = tail->WorldPose().Pos().X();
     point.y = tail->WorldPose().Pos().Y();
     configuration.points.emplace_back(point);
   }
-  {
-    auto const mid = model_->GetLink("mid");
-    geometry_msgs::Point point;
-    point.x = mid->WorldPose().Pos().X();
-    point.y = mid->WorldPose().Pos().Y();
-    configuration.points.emplace_back(point);
-  }
-  {
-    auto const head = model_->GetLink("head");
-    geometry_msgs::Point point;
-    point.x = head->WorldPose().Pos().X();
-    point.y = head->WorldPose().Pos().Y();
-    configuration.points.emplace_back(point);
-  }
-
   return configuration;
 }
 
