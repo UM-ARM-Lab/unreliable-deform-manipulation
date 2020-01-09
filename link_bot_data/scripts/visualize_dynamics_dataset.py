@@ -23,6 +23,8 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
+    parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train', help='train test or val')
+    parser.add_argument('--shuffle', action='store_true', help='shuffle')
 
     args = parser.parse_args()
 
@@ -30,14 +32,14 @@ def main():
     tf.random.set_random_seed(1)
 
     dataset = LinkBotStateSpaceDataset(args.dataset_dir)
-    train_dataset = dataset.get_datasets(shuffle=False,
-                                         mode='train',
+    train_dataset = dataset.get_datasets(shuffle=args.shuffle,
+                                         mode=args.mode,
                                          seed=1,
                                          n_parallel_calls=1,
                                          batch_size=1)
 
-    half_w = dataset.hparams['env_w'] / 2
-    half_h = dataset.hparams['env_h'] / 2
+    half_w = dataset.hparams['env_w'] / 2 - 0.01
+    half_h = dataset.hparams['env_h'] / 2 - 0.01
 
     def oob(point):
         if point[0] <= -half_w or point[0] >= half_w:
@@ -58,7 +60,6 @@ def main():
         # local_env_extents = input_data['actual_local_env_s/extent'].numpy().squeeze()
         full_env = input_data['full_env/env'].numpy().squeeze()
         full_env_extents = input_data['full_env/extent'].numpy().squeeze()
-
 
         for config in rope_configurations:
             state_angle = link_bot_pycommon.angle_from_configuration(config)
@@ -101,19 +102,20 @@ def main():
 
                 ax.set_title("{} {}".format(i, t))
 
-                p1 = config[0:2]
-                p2 = config[2:4]
-                p3 = config[4:6]
-                out_of_bounds = out_of_bounds or oob(p1)
-                out_of_bounds = out_of_bounds or oob(p2)
-                out_of_bounds = out_of_bounds or oob(p3)
-
             interval = 50
             _ = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
             plt.show()
 
-        if out_of_bounds:
-            print("Example {} is goes of bounds!".format(i))
+        for config in rope_configurations:
+            p1 = config[0:2]
+            p2 = config[2:4]
+            p3 = config[4:6]
+            out_of_bounds = out_of_bounds or oob(p1)
+            out_of_bounds = out_of_bounds or oob(p2)
+            out_of_bounds = out_of_bounds or oob(p3)
+            if out_of_bounds:
+                print("Example {} is goes of bounds!".format(i))
+                break
 
         i += 1
 

@@ -59,9 +59,6 @@ class myMPC:
             # wait for things to settle
             # gazebo_utils.wait(duration_steps=100)
 
-            # TODO: should I have this here? It's just for visualization
-            full_sdf_data = get_sdf_data(env_h=10, env_w=10, res=0.03, services=self.services)
-
             # generate a bunch of plans to random goals
             state_req = LinkBotStateRequest()
 
@@ -90,11 +87,12 @@ class myMPC:
 
                 t0 = time.time()
                 try:
-                    planned_actions, planned_path, planner_local_envs = self.planner.plan(start, tail_goal_point)
+                    planner_results = self.planner.plan(start, tail_goal_point)
+                    planned_actions, planned_path, planner_local_envs, full_env_data, planner_status = planner_results
                 except RuntimeError:
                     # this means the start was considered invalid, so we just skip this and move to a new environment
                     print(Fore.RED + "Start was classified to be invalid. Skipping this environment." + Fore.RESET)
-                    self.on_planner_failure(start, tail_goal_point, full_sdf_data)
+                    self.on_planner_failure(start, tail_goal_point, full_env_data)
                     initial_poses_in_collision += 1
                     break
                 planning_time = time.time() - t0
@@ -103,7 +101,8 @@ class myMPC:
 
                 planner_data = ob.PlannerData(self.planner.si)
                 self.planner.planner.getPlannerData(planner_data)
-                self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_sdf_data, planner_data, planning_time)
+                self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_env_data, planner_data, planning_time,
+                                      planner_status)
 
                 if self.verbose >= 4:
                     print("Planned actions: {}".format(planned_actions))
@@ -131,9 +130,10 @@ class myMPC:
                                                planner_local_envs,
                                                actual_local_envs,
                                                actual_path,
-                                               full_sdf_data,
+                                               full_env_data,
                                                planner_data,
-                                               planning_time)
+                                               planning_time,
+                                               planner_status)
 
                 plan_idx += 1
                 total_plan_idx += 1
@@ -154,7 +154,8 @@ class myMPC:
                          planned_actions: np.ndarray,
                          full_sdf_data: link_bot_sdf_utils.SDF,
                          planner_data: ob.PlannerData,
-                         planning_time: float):
+                         planning_time: float,
+                         planner_status: ob.PlannerStatus):
         pass
 
     def on_execution_complete(self,
@@ -166,7 +167,8 @@ class myMPC:
                               actual_path: np.ndarray,
                               full_sdf_data: link_bot_sdf_utils.SDF,
                               planner_data: ob.PlannerData,
-                              planning_time: float):
+                              planning_time: float,
+                              planner_status: ob.PlannerStatus):
         pass
 
     def on_complete(self, initial_poses_in_collision):

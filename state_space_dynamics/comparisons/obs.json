@@ -1,6 +1,6 @@
 {
   "Obs-NN": {
-    "model_dir": "log_data/new_obs/December_19_17-27-13_8d45fdb6af",
+    "model_dir": "log_data/new_obs_both_mixed/January_08_11-42-38_7b51515a97",
     "model_type": "obs"
   },
   "Simple Res NN": {

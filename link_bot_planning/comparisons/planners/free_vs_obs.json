@@ -1,0 +1,15 @@
+[
+  {
+    "fwd_model_dir": "ss_log_data/new_obs_both_mixed/January_08_11-42-38_7b51515a97",
+    "fwd_model_type": "obs",
+    "classifier_model_dir": "",
+    "classifier_model_type": "none"
+  },
+  {
+    "fwd_model_dir": "ss_log_data/res_nn_1024/November_22_12-49-09_61e4cff061",
+    "fwd_model_type": "nn",
+    "classifier_model_dir": "",
+    "classifier_model_type": "none"
+  }
+]
+

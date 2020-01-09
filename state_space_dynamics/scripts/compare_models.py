@@ -14,7 +14,7 @@ from matplotlib.animation import FuncAnimation
 
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_planning import model_utils
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon.args import my_formatter
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
@@ -29,7 +29,7 @@ def generate(args):
     ###############
     dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
     tf_dataset = dataset.get_datasets(mode=args.mode,
-                                      shuffle=False,
+                                      shuffle=args.shuffle,
                                       seed=0,
                                       batch_size=1,
                                       sequence_length=args.sequence_length)
@@ -114,6 +114,7 @@ def generate_results(base_folder: pathlib.Path,
             full_envs = x['full_env/env'].numpy()
             full_env_extents = x['full_env/extent'].numpy()
             t0 = time.time()
+            # Is this only one step prediction? why?
             predicted_points = model.predict(full_envs=full_envs,
                                              full_env_origins=full_env_origin_s,
                                              resolution_s=res,
@@ -211,15 +212,15 @@ def evaluate_metrics(results):
 
         print()
         print("Model: {}".format(model_name))
-        print("head error:  {:8.4f}m".format(np.mean(head_errors)))
-        print("mid error:   {:8.4f}m".format(np.mean(mid_errors)))
-        print("tail error:  {:8.4f}m".format(np.mean(tail_errors)))
-        print("total error: {:8.4f}m".format(np.mean(total_errors)))
+        print("head error:  {:8.4f}m {:6.4f}".format(np.mean(head_errors), np.std(head_errors)))
+        print("mid error:   {:8.4f}m {:6.4f}".format(np.mean(mid_errors), np.std(mid_errors)))
+        print("tail error:  {:8.4f}m {:6.4f}".format(np.mean(tail_errors), np.std(tail_errors)))
+        print("total error: {:8.4f}m {:6.4f}".format(np.mean(total_errors), np.std(total_errors)))
         print("runtime: {:8.4f}ms".format(np.mean(runtimes) * 1e3))
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=my_formatter)
 
     subparsers = parser.add_subparsers()
 
@@ -229,6 +230,7 @@ def main():
     generate_parser.add_argument('outdir', type=pathlib.Path)
     generate_parser.add_argument('--sequence-length', type=int, default=25)
     generate_parser.add_argument('--no-plot', action='store_true')
+    generate_parser.add_argument('--shuffle', action='store_true')
     generate_parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test')
     generate_parser.add_argument('--n-examples', type=int, default=10)
     generate_parser.set_defaults(func=generate)

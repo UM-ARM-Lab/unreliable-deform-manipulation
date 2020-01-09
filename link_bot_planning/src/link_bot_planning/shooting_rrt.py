@@ -144,7 +144,7 @@ class ShootingRRT(MyPlanner):
             from_numpy(origin, state_out[2], 2)
 
     def plan(self, np_start: np.ndarray,
-             tail_goal_point: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[link_bot_sdf_utils.OccupancyData]]:
+             tail_goal_point: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[link_bot_sdf_utils.OccupancyData], link_bot_sdf_utils.OccupancyData]:
         """
         :param np_start: 1 by n matrix
         :param tail_goal_point:  1 by n matrix
@@ -199,7 +199,7 @@ class ShootingRRT(MyPlanner):
                 # duration is always be 1 for control::RRT, not so for control::SST
                 np_controls[i] = to_numpy(control, self.n_control)
 
-            return np_controls, np_states, planner_local_envs
+            return np_controls, np_states, planner_local_envs, full_env_data, solved
 
         raise RuntimeError("No Solution found from {} to {}".format(start, goal))
 

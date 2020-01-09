@@ -33,8 +33,8 @@ def plot(ax,
                                 zorder=1)
 
     start = planned_path[0]
-    ax.scatter(start[0], start[1], label='start', s=100, c='r', zorder=1)
-    ax.scatter(goal[0], goal[1], label='goal', s=100, c='g', zorder=1)
+    ax.scatter(start[0], start[1], label='start', s=100, c='r', zorder=5)
+    ax.scatter(goal[0], goal[1], label='goal', s=100, c='g', zorder=5)
     for rope_configuration in planned_path:
         plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=2, c='cyan', alpha=0.75, zorder=4)
 

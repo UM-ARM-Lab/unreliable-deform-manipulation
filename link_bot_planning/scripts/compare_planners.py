@@ -76,7 +76,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             "seed": self.seed,
             "metrics": [],
         }
-        subfolder = "{}_{}".format(self.classifier_model_type, comparison_item_idx)
+        subfolder = "{}_{}_{}".format(fwd_model_type, self.classifier_model_type, comparison_item_idx)
         self.root = self.outdir / subfolder
         self.root.mkdir(parents=True)
         print(Fore.CYAN + str(self.root) + Fore.RESET)
@@ -92,32 +92,38 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
                               planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_path: np.ndarray,
-                              full_sdf_data: link_bot_sdf_utils.SDF,
+                              full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
-                              planning_time: float):
+                              planning_time: float,
+                              planner_status: ob.PlannerStatus):
         final_execution_error = np.linalg.norm(actual_path[-1, 0:2] - tail_goal_point)
         final_planning_error = np.linalg.norm(planned_path[-1, 0:2] - tail_goal_point)
         lengths = [np.linalg.norm(planned_path[i] - planned_path[i - 1]) for i in range(1, len(planned_path))]
         path_length = np.sum(lengths)
+        num_nodes = planner_data.numVertices()
 
         print("{}: {}".format(self.classifier_model_type, self.successfully_completed_plan_idx))
 
         metrics_for_plan = {
+            'planner_status': planner_status.asString(),
+            'full_env': full_env_data.data.tolist(),
+            'planned_path': planned_path.tolist(),
+            'actual_path': actual_path.tolist(),
             'planning_time': planning_time,
             'final_planning_error': final_planning_error,
             'final_execution_error': final_execution_error,
             'path_length': path_length,
+            'num_nodes': num_nodes,
         }
         self.metrics['metrics'].append(metrics_for_plan)
         metrics_file = self.metrics_filename.open('w')
         json.dump(self.metrics, metrics_file, indent=1)
 
-        full_binary = full_sdf_data.sdf > 0
         plt.figure()
         ax = plt.gca()
-        plot(ax, self.planner.viz_object, planner_data, full_binary, tail_goal_point, planned_path, planned_actions,
-             full_sdf_data.extent)
-        ax.scatter(actual_path[-1, 0], actual_path[-1, 1], label='final actual tail position')
+        plot(ax, self.planner.viz_object, planner_data, full_env_data.image, tail_goal_point, planned_path, planned_actions,
+             full_env_data.extent)
+        ax.scatter(actual_path[-1, 0], actual_path[-1, 1], label='final actual tail position', zorder=5)
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
         plt.savefig(plan_viz_path, dpi=600)
 
@@ -159,19 +165,19 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("fwd_model_dir", help="forward model", type=pathlib.Path)
-    parser.add_argument("fwd_model_type", choices=['nn', 'gp', 'llnn', 'obs', 'rigid'], default='nn')
     parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
-    parser.add_argument("outdir", type=pathlib.Path)
+    parser.add_argument("nickname", type=str, help='output will be in results/$nickname-compare_classifiers-$time')
     parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
     parser.add_argument("--seed", '-s', type=int, default=3)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=120.0)
     parser.add_argument("--real-time-rate", type=float, default=10.0, help='real time rate')
+    parser.add_argument("--goal-threshold", type=float, default=0.1, help='goal radius in meters')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
+    # TODO: sweep over this to see how it effects things
     parser.add_argument('--random-epsilon', type=float, default=0.25, help='probability of accepting despite classifier')
 
     args = parser.parse_args()
@@ -181,7 +187,7 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     now = str(int(time.time()))
-    root = args.outdir / 'compare_classifiers'
+    root = pathlib.Path('results') / "{}-compare_classifiers".format(args.nickname)
     common_output_directory = random_environment_data_utils.data_directory(root, now)
     common_output_directory = pathlib.Path(common_output_directory)
     print(Fore.CYAN + "common output directory: {}".format(common_output_directory) + Fore.RESET)
@@ -208,12 +214,14 @@ def main():
 
     comparisons = json.load(args.comparison.open("r"))
     for comparison_idx, item_of_comparison in enumerate(comparisons):
+        fwd_model_dir = pathlib.Path(item_of_comparison['fwd_model_dir'])
+        fwd_model_type = item_of_comparison['fwd_model_type']
         classifier_model_dir = pathlib.Path(item_of_comparison['classifier_model_dir'])
         classifier_model_type = item_of_comparison['classifier_model_type']
 
         planner_params = PlannerParams(timeout=args.planner_timeout,
                                        max_v=args.max_v,
-                                       goal_threshold=0.1,
+                                       goal_threshold=args.goal_threshold,
                                        random_epsilon=args.random_epsilon)
         env_params = EnvParams(w=args.env_w,
                                h=args.env_h,
@@ -221,8 +229,8 @@ def main():
                                goal_padding=0.0)
 
         planner, _ = get_planner(planner_class_str='ShootingRRT',
-                                 fwd_model_dir=args.fwd_model_dir,
-                                 fwd_model_type=args.fwd_model_type,
+                                 fwd_model_dir=fwd_model_dir,
+                                 fwd_model_type=fwd_model_type,
                                  classifier_model_dir=classifier_model_dir,
                                  classifier_model_type=classifier_model_type,
                                  planner_params=planner_params,
@@ -231,8 +239,8 @@ def main():
 
         runner = ComputeClassifierMetrics(
             planner=planner,
-            fwd_model_dir=args.fwd_model_dir,
-            fwd_model_type=args.fwd_model_type,
+            fwd_model_dir=fwd_model_dir,
+            fwd_model_type=fwd_model_type,
             classifier_model_dir=classifier_model_dir,
             classifier_model_type=classifier_model_type,
             n_plans_per_env=args.n_plans_per_env,
