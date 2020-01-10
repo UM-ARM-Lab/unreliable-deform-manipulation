@@ -58,7 +58,7 @@ def main():
     vy = np.sin(theta_rad) * args.v
     action = np.array([[[vx, vy]]])
     next_state = fwd_model.predict(state, action)
-    next_state = np.reshape(next_state, [2, 1, 6])[1]
+    next_state = np.reshape(next_state, [2, 1, -1])[1]
 
     accept_probability = classifier_model.predict(local_env_data, state, next_state)
     prediction = 1 if accept_probability > 0.5 else 0

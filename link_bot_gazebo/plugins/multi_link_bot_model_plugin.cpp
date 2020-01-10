@@ -62,6 +62,13 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   model_ = parent;
 
   {
+    if (!sdf->HasElement("length")) {
+      printf("using default length=%f\n", length_);
+    }
+    else {
+      length_ = sdf->GetElement("length")->Get<double>();
+    }
+
     if (!sdf->HasElement("num_links")) {
       printf("using default num_links=%u\n", num_links_);
     }
@@ -136,6 +143,10 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
       max_vel_acc_ = sdf->GetElement("max_vel_acc")->Get<double>();
     }
   }
+
+  // plus 1 because we want both end points inclusive
+  ros_node_->setParam("/link_bot/n_state", static_cast<int>((num_links_ + 1) * 2));
+  ros_node_->setParam("/link_bot/rope_length", length_);
 
   auto const &gripper1_link_name = sdf->GetElement("gripper1_link")->Get<std::string>();
   gripper1_link_ = model_->GetLink(gripper1_link_name);

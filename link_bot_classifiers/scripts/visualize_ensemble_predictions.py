@@ -60,7 +60,7 @@ def main():
     # TODO: batch predictions
     for i in range(args.n_configs):
         # pick random configuration
-        state = link_bot_pycommon.make_random_rope_configuration(full_sdf_data.extent)
+        state = link_bot_pycommon.make_random_rope_configuration(full_sdf_data.extent, fwd_model.n_state, )
 
         # get local environment
         head_point = np.array([state[4], state[5]])
@@ -80,7 +80,7 @@ def main():
         next_state_s = fwd_model.predict(local_env_data=[local_env_data],
                                          state=np.expand_dims(state, axis=0),
                                          actions=np.expand_dims(action, axis=0))
-        next_state = np.reshape(next_state_s, [2, 1, 6])[1, 0]
+        next_state = np.reshape(next_state_s, [2, 1, -1])[1, 0]
 
         predictions = []
         for classifier_model in ensemble.values():

@@ -17,7 +17,7 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
 
     def sampleUniform(self, state_out: ob.AbstractState):
         # passing 0 length will make it possible the sample things out of the bounds of the arena
-        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent, length=self.link_length)
+        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent, total_length=self.link_length)
         state_out[0] = random_rope_configuration[0]
         state_out[1] = random_rope_configuration[1]
         state_out[2] = random_rope_configuration[2]
@@ -37,7 +37,7 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
 
     def sampleUniform(self, state_out: ob.CompoundStateInternal):
         # passing 0 length will make it possible the sample things out of the bounds of the arena
-        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent, length=self.link_length)
+        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent, total_length=self.link_length)
         state_out[0][0] = random_rope_configuration[0]
         state_out[0][1] = random_rope_configuration[1]
         state_out[0][2] = random_rope_configuration[2]

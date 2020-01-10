@@ -33,12 +33,12 @@ def plot_classifier_data(
     if next_state is not None:
         plot_rope_configuration(ax, next_state, c='orange', label='next state', zorder=4, linestyle='--', linewidth=3)
     if state is not None and action is not None:
-        ax.quiver(state[4], state[5], action[0], action[1], width=0.001, scale=6)
+        ax.quiver(state[-2], state[-1], action[0], action[1], width=0.001, scale=6)
     if planned_state is not None and action is not None:
-        ax.quiver(planned_state[4], planned_state[5], action[0], action[1], width=0.001, scale=6)
+        ax.quiver(planned_state[-2], planned_state[-1], action[0], action[1], width=0.001, scale=6)
 
     if state is not None and next_state is not None:
-        ax.plot([state[4], next_state[4]], [state[5], next_state[5]], c='w', linewidth=1)
+        ax.plot([state[-2], next_state[-2]], [state[-1], next_state[-1]], c='w', linewidth=1)
 
     if planned_env_origin is not None and res is not None:
         origin_x, origin_y = link_bot_sdf_utils.idx_to_point(0, 0, res, planned_env_origin)
@@ -49,9 +49,9 @@ def plot_classifier_data(
     if planned_next_state is not None:
         plot_rope_configuration(ax, planned_next_state, c='cyan', label='planned next state', zorder=5, linestyle='-.')
     if state is not None:
-        ax.scatter(state[4], state[5], c='k')
+        ax.scatter(state[-2], state[-1], c='k')
     if planned_state is not None:
-        ax.scatter(planned_state[4], planned_state[5], c='k')
+        ax.scatter(planned_state[-2], planned_state[-1], c='k')
 
     if label is not None:
         label_color = 'g' if label else 'r'

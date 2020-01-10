@@ -1,6 +1,7 @@
 def plottable_rope_configuration(rope_configuration):
-    xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
-    ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
+    config_2d = rope_configuration.reshape(-1, 2)
+    xs = config_2d[:, 0]
+    ys = config_2d[:, 1]
     return xs, ys
 
 

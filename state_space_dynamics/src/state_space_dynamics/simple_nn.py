@@ -104,7 +104,7 @@ def eval_angled(net, test_tf_dataset):
     plt.scatter(angles, errors)
     plt.plot([0, np.pi], [0, 0], c='k')
     plt.xlabel("angle (rad)")
-    plt.ylabel("increase in prediction error in R6 (m)")
+    plt.ylabel("increase in prediction error in R^{n_state} (m)")
     plt.show()
 
 
@@ -250,13 +250,13 @@ class SimpleNNWrapper(BaseForwardModel):
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {
-            # must be batch, T, 6
+            # must be batch, T, n_state
             'state_s': states,
             # must be batch, T, 2
             'action_s': actions,
         }
         predictions = self.net(test_x)
-        predicted_points = predictions.numpy().reshape([batch, T + 1, 3, 2])
+        predicted_points = predictions.numpy().reshape([batch, T + 1, -1, 2])
         # OMPL requires "doubles", which are float64, although our network outputs float32.
         predicted_points = predicted_points.astype(np.float64)
         return predicted_points

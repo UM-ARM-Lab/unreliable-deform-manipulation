@@ -49,7 +49,6 @@ def main():
         return False
 
     i = 0
-    angles = []
     for input_data, output_data in train_dataset:
 
         out_of_bounds = False
@@ -61,9 +60,10 @@ def main():
         full_env = input_data['full_env/env'].numpy().squeeze()
         full_env_extents = input_data['full_env/extent'].numpy().squeeze()
 
-        for config in rope_configurations:
-            state_angle = link_bot_pycommon.angle_from_configuration(config)
-            angles.append(state_angle)
+        # this is ill-defined for more than 2 links
+        # for config in rope_configurations:
+        #     state_angle = link_bot_pycommon.angle_from_configuration(config)
+        #     angles.append(state_angle)
 
         if not args.no_plot:
             fig, ax = plt.subplots()
@@ -77,27 +77,22 @@ def main():
             ax.axis("equal")
 
             full_env_handle = ax.imshow(np.flipud(full_env), extent=full_env_extents)
-            # local_env_handle = ax.imshow(np.flipud(local_envs[0]), extent=local_env_extents[0])
-
-            arrow = plt.Arrow(rope_configurations[0, 4], rope_configurations[0, 5], actions[0, 0], actions[0, 1],
-                              width=arrow_width, zorder=4)
+            head_point = rope_configurations[0].reshape(-1, 2)[-1]
+            arrow = plt.Arrow(head_point[0], head_point[1], actions[0, 0], actions[0, 1], width=arrow_width, zorder=4)
             patch = ax.add_patch(arrow)
 
             def update(t):
                 nonlocal patch, out_of_bounds
                 config = rope_configurations[t]
+                head_point = config.reshape(-1, 2)[-1]
                 action = actions[t]
-                # local_env = local_envs[t]
-
-                # local_env_handle.set_data(np.flipud(local_env))
-                # local_env_handle.set_extent(local_env_extents[t])
 
                 full_env_handle.set_data(np.flipud(full_env))
                 full_env_handle.set_extent(full_env_extents)
 
                 plot_rope_configuration(ax, config, linewidth=5, zorder=3, c='r')
                 patch.remove()
-                arrow = plt.Arrow(config[4], config[5], action[0], action[1], width=arrow_width, zorder=4)
+                arrow = plt.Arrow(head_point[0], head_point[1], action[0], action[1], width=arrow_width, zorder=4)
                 patch = ax.add_patch(arrow)
 
                 ax.set_title("{} {}".format(i, t))
@@ -107,24 +102,13 @@ def main():
             plt.show()
 
         for config in rope_configurations:
-            p1 = config[0:2]
-            p2 = config[2:4]
-            p3 = config[4:6]
-            out_of_bounds = out_of_bounds or oob(p1)
-            out_of_bounds = out_of_bounds or oob(p2)
-            out_of_bounds = out_of_bounds or oob(p3)
+            for p in config.reshape([-1, 2]):
+                out_of_bounds = out_of_bounds or oob(p)
             if out_of_bounds:
                 print("Example {} is goes of bounds!".format(i))
                 break
 
         i += 1
-
-    plt.figure()
-    plt.hist(angles)
-    plt.xlabel("angle (rad)")
-    plt.ylabel("count")
-    # plt.title("Hist for angle on dataset: {}".format(args.dataset_dir.name))
-    plt.show()
 
 
 if __name__ == '__main__':

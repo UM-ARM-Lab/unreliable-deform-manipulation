@@ -239,13 +239,13 @@ class ObstacleLLNNWrapper(BaseForwardModel):
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {
-            # must be batch, T, 6
+            # must be batch, T, n_state
             'states': states,
             # must be batch, T, 2
             'actions': actions,
         }
         predictions = self.net(test_x)
-        predicted_points = predictions.numpy().reshape([batch, T + 1, 3, 2])
+        predicted_points = predictions.numpy().reshape([batch, T + 1, -1, 2])
         # OMPL requires "doubles", which are float64, although our network outputs float32.
         predicted_points = predicted_points.astype(np.float64)
         return predicted_points

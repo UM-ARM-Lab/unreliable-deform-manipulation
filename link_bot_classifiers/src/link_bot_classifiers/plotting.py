@@ -8,6 +8,7 @@ from matplotlib.lines import Line2D
 
 import link_bot_pycommon.args
 from link_bot_classifiers import sdf_function_model
+from link_bot_data.visualization import plottable_rope_configuration
 from link_bot_pycommon import args
 from link_bot_pycommon import link_bot_pycommon
 
@@ -126,11 +127,10 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
     small_arr = np.array([25])
     big_arr = np.array([100])
     color_0 = green_arr if result_0.true_violated == result_0.predicted_violated else red_arr
-    head_scatter = plt.scatter(result_0.rope_configuration[4], result_0.rope_configuration[5], s=50, c=color_0, zorder=2)
+    head_scatter = plt.scatter(result_0.rope_configuration[-2], result_0.rope_configuration[-1], s=50, c=color_0, zorder=2)
     prediction_scatter = plt.scatter(result_0.predicted_point[0], result_0.predicted_point[1], s=50, c=color_0, zorder=2)
 
-    xs_0 = [rope_configuration_0[0], rope_configuration_0[2], rope_configuration_0[4]]
-    ys_0 = [rope_configuration_0[1], rope_configuration_0[3], rope_configuration_0[5]]
+    xs_0, ys_0 = plottable_rope_configuration(rope_configuration)
     line = plt.plot(xs_0, ys_0, color='black', linewidth=2, zorder=1)[0]
 
     plt.xlabel("x (m)")
@@ -148,7 +148,7 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
         color = green_arr if result.true_violated == result.predicted_violated else red_arr
         sizes = small_arr if result.true_violated == result.predicted_violated else big_arr
 
-        head_scatter.set_offsets(rope_configuration[4:6])
+        head_scatter.set_offsets(rope_configuration[-2:])
         head_scatter.set_color(color)
         head_scatter.set_sizes(sizes)
 
@@ -156,8 +156,7 @@ def plot_interpolate(sdf_data, sdf_image, model, threshold, title=''):
         prediction_scatter.set_color(color)
         prediction_scatter.set_sizes(sizes)
 
-        xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
-        ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
+        xs, ys = plottable_rope_configuration(rope_configuration)
         line.set_xdata(xs)
         line.set_ydata(ys)
 
@@ -272,10 +271,12 @@ def plot_examples_on_fig(fig, x, constraint_labels, threshold, model, draw_corre
     violated, predicted_points = model.violated(rope_configurations, sdf_data)
     for rope_configuration, predicted_point, constraint_label in zip(rope_configurations, predicted_points, constraint_labels):
         color = 'r' if constraint_label else 'g'
-        ax.scatter(rope_configuration[4], rope_configuration[5], c=color, s=10, zorder=3)
-        ax.plot(rope_configuration[[0, 2, 4]], rope_configuration[[1, 3, 5]], zorder=2)
+        ax.scatter(rope_configuration[-2], rope_configuration[-1], c=color, s=10, zorder=3)
+        xs, ys = plottable_rope_configuration(rope_configuration)
+        ax.plot(xs, ys, zorder=2)
         if draw_correspondences:
-            ax.plot([rope_configuration[4], predicted_point[0]], [rope_configuration[5], predicted_point[1]], zorder=1, c='k')
+            xs, ys = plottable_rope_configuration(rope_configuration)
+            ax.plot(xs, ys, zorder=1, c='k')
 
     pred_color = ['r' if v else 'g' for v in violated]
     ax.scatter(predicted_points[:, 0], predicted_points[:, 1], c=pred_color, s=10, zorder=4, marker='x')

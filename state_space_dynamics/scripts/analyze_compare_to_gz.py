@@ -45,7 +45,7 @@ def main():
     plt.scatter(data['initial_angle'], mean_errors)
     plt.plot([0, np.pi], [0, 0], c='k')
     plt.xlabel("angle (rad)")
-    plt.ylabel("increase in prediction error in R6 (m)")
+    plt.ylabel("increase in prediction error in R^{n_state} (m)")
     plt.show()
 
 

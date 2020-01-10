@@ -22,7 +22,7 @@ class BaseForwardModel:
     def predict(self, local_env_data: List, state: np.ndarray, actions: np.ndarray) -> np.ndarray:
         """
         :param local_env_data: [batch] sized list of the local environment data
-        :param state: [batch, 6]
+        :param state: [batch, n_state]
         :param actions: [batch, T, 2]
         :return: [batch, T+1, 3, 2] includes the initial state. It's T+1 because it includes the first state
         """

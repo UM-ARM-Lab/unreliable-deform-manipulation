@@ -53,9 +53,10 @@ class TestWithClassifier(my_mpc.myMPC):
                          planned_path: np.ndarray,
                          tail_goal_point: np.ndarray,
                          planned_actions: np.ndarray,
-                         full_sdf_data: link_bot_sdf_utils.SDF,
+                         full_env_data: link_bot_sdf_utils.OccupancyData,
                          planner_data: ob.PlannerData,
-                         planning_time: float):
+                         planning_time: float,
+                         planner_status: ob.PlannerStatus):
         final_error = np.linalg.norm(planned_path[-1, 0:2] - tail_goal_point)
         lengths = [np.linalg.norm(planned_path[i] - planned_path[i - 1]) for i in range(1, len(planned_path))]
         path_length = np.sum(lengths)
@@ -72,8 +73,8 @@ class TestWithClassifier(my_mpc.myMPC):
 
         plt.figure()
         ax = plt.gca()
-        plot(ax, self.planner.viz_object, planner_data, full_sdf_data.sdf > 0, tail_goal_point, planned_path, planned_actions,
-             full_sdf_data.extent)
+        plot(ax, self.planner.viz_object, planner_data, full_env_data.data, tail_goal_point, planned_path, planned_actions,
+             full_env_data.extent)
         plt.show()
 
     def on_execution_complete(self,
@@ -83,9 +84,10 @@ class TestWithClassifier(my_mpc.myMPC):
                               planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_path: np.ndarray,
-                              full_sdf_data: link_bot_sdf_utils.SDF,
+                              full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
-                              planning_time: float):
+                              planning_time: float,
+                              planner_status: ob.PlannerStatus):
         final_execution_error = np.linalg.norm(actual_path[-1, 0:2] - tail_goal_point)
         print('final execution error {:0.3f}'.format(final_execution_error))
 
@@ -101,7 +103,7 @@ def main():
     parser.add_argument("--no-execution", action='store_true', help='do not execute, only plan')
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=30.0)
-    parser.add_argument("--goal-threshold", help="distance for tail in meters", type=float)
+    parser.add_argument("--goal-threshold", type=float, default=0.25, help="distance for tail in meters")
     parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
 
     args = parser.parse_args()

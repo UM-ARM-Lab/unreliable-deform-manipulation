@@ -27,6 +27,8 @@ tensorflow.compat.v1.enable_eager_execution(config=conf)
 
 
 def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gripper1_target_y):
+    # FIXME: don't use separate XY
+    gripper1_target = np.array([gripper1_target_x, gripper1_target_y])
     state_req = LinkBotStateRequest()
     action_msg = LinkBotVelocityAction()
 
@@ -52,7 +54,8 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
 
         # Pick a new target if necessary
         if global_t_step % args.steps_per_target == 0:
-            gripper1_target_x, gripper1_target_y = sample_goal(args.env_w, args.env_h, head_point, env_padding=0.25)
+            gripper1_target = sample_goal(args.env_w, args.env_h, head_point, env_padding=0.5)
+            gripper1_target_x, gripper1_target_y = gripper1_target
             if args.verbose:
                 print('gripper target:', gripper1_target_x, gripper1_target_y)
                 random_environment_data_utils.publish_marker(gripper1_target_x, gripper1_target_y, marker_size=0.05)
@@ -61,8 +64,13 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
 
         # compute the velocity to move in that direction
         velocity = np.minimum(np.maximum(np.random.randn() * 0.07 + 0.10, 0), 0.15)
-        gripper1_target_vx = velocity if gripper1_target_x > head_point.x else -velocity
-        gripper1_target_vy = velocity if gripper1_target_y > head_point.y else -velocity
+        dpos = gripper1_target - np.array([head_point.x, head_point.y])
+        dpos_unit = dpos / np.linalg.norm(dpos)
+        gripper1_target_v = velocity * dpos
+        gripper1_target_vx = gripper1_target_v[0]
+        gripper1_target_vy = gripper1_target_v[1]
+        # gripper1_target_vx = velocity if gripper1_target_x > head_point.x else -velocity
+        # gripper1_target_vy = velocity if gripper1_target_y > head_point.y else -velocity
 
         # publish the pull command, which will return the target velocity
         action_msg.gripper1_velocity.x = gripper1_target_vx
@@ -183,6 +191,9 @@ def generate_trajs(args, full_output_directory, services):
 def generate(args):
     rospy.init_node('collect_dynamics_data')
 
+    n_state = gazebo_utils.get_n_state()
+    rope_length = gazebo_utils.get_rope_length()
+
     assert args.n_trajs % args.n_trajs_per_file == 0, "num trajs must be multiple of {}".format(args.n_trajs_per_file)
 
     full_output_directory = random_environment_data_utils.data_directory(args.outdir, args.n_trajs)
@@ -197,13 +208,14 @@ def generate(args):
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': args.dt,
+            'rope_length': rope_length
             'local_env_params': local_env_params.to_json(),
             'full_env_params': full_env_params.to_json(),
             'env_w': args.env_w,
             'env_h': args.env_h,
             'compression_type': args.compression_type,
             'sequence_length': args.steps_per_traj,
-            'n_state': 6,
+            'n_state': n_state,
             'n_action': 2,
             'filter_free_space_only': False,
         }

@@ -78,6 +78,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   uint32_t image_sequence_number{0u};
   sensor_msgs::Image latest_image_;
   bool ready_{false};
+  double length_{0u};
   unsigned int num_links_{0u};
   double kP_pos_{0.0};
   double kI_pos_{0.0};

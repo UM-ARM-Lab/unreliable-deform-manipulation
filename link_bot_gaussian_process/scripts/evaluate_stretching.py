@@ -72,7 +72,7 @@ def main():
 
     final_deltas = []
     for i in range(args.n_examples):
-        config = make_random_rope_configuration([-5, 5, -5, 5], length=0.23)
+        config = make_random_rope_configuration([-5, 5, -5, 5], total_length=0.23)
         action = np.random.uniform(-.15, .15, size=[2])
         actions = np.tile(action, [10, 1])
         s = np.expand_dims(config, axis=0)

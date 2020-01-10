@@ -1,16 +1,13 @@
 from time import sleep
-from typing import Optional, Dict, Iterable, List, Tuple
+from typing import Optional, Dict, Iterable, List
 
 import numpy as np
 import rospy
 import std_msgs
 import std_srvs
 from colorama import Fore
-from link_bot_gazebo.msg import Position2dAction, LinkBotVelocityAction, ObjectAction, LinkBotJointConfiguration
-from link_bot_gazebo.srv import WorldControl, LinkBotState, ComputeSDF2, WorldControlRequest, LinkBotStateRequest, \
-    InverseCameraProjection, InverseCameraProjectionRequest, CameraProjection, CameraProjectionRequest, ComputeSDF2Request, \
-    LinkBotPositionAction, LinkBotPath, LinkBotTrajectory, ComputeOccupancy, ComputeOccupancyRequest, LinkBotTrajectoryRequest, \
-    LinkBotTrajectoryResponse
+from link_bot_gazebo.msg import *
+from link_bot_gazebo.srv import *
 from std_msgs.msg import String, Empty
 from std_srvs.srv import EmptyRequest
 from visualization_msgs.msg import MarkerArray
@@ -19,7 +16,6 @@ from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysi
     ApplyBodyWrench, ApplyBodyWrenchRequest
 from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
-from link_bot_pycommon.link_bot_sdf_utils import point_to_idx
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.gazebo_trajectory_execution import quaternion_from_euler
 from visual_mpc.numpy_point import NumpyPoint
@@ -103,6 +99,7 @@ class GazeboServices:
         initial_context_states = np.ndarray((context_length, state_dim))
         for t in range(context_length):
             state = self.get_state.call(state_req)
+            # FIXME: wtf is this shit
             if state_dim == 6:
                 rope_config = points_to_config(state.points)
             else:
@@ -328,7 +325,6 @@ def get_local_sdf_data(sdf_rows: int,
     return local_sdf_data
 
 
-
 def get_local_occupancy_data(rows: int,
                              cols: int,
                              res: float,
@@ -378,7 +374,7 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result: LinkBotT
             np_config.append(point.y)
         actual_path.append(np_config)
 
-        actual_head_point = np.array([np_config[4], np_config[5]])
+        actual_head_point = np.array([np_config[-2], np_config[-1]])
         if local_env_params is not None:
             actual_local_env = get_local_occupancy_data(rows=local_env_params.h_rows,
                                                         cols=local_env_params.w_cols,
@@ -426,3 +422,11 @@ def move_objects(services, objects, env_w, env_h, link_bot_mode, padding):
     # disable the objects so they stop, enabled the rope controller
     services.position_2d_stop.publish(Empty())
     services.link_bot_mode.publish(enable_link_bot)
+
+
+def get_n_state():
+    return rospy.get_param("/link_bot/n_state")
+
+
+def get_rope_length():
+    return rospy.get_param("/link_bot/rope_length")
