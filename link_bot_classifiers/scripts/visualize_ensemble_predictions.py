@@ -55,12 +55,13 @@ def main():
         classifier_model = classifier_utils.load_generic_model(classifier_dir, args.classifier_model_type)
         ensemble[classifier_dir] = classifier_model
 
+    rope_length = fwd_model.hparams['dynamics_dataset_hparams']['rope_length']
     full_sdf_data = get_sdf_data(env_h=5, env_w=5, res=fwd_model.local_env_params.res, services=services)
 
     # TODO: batch predictions
     for i in range(args.n_configs):
         # pick random configuration
-        state = link_bot_pycommon.make_random_rope_configuration(full_sdf_data.extent, fwd_model.n_state, )
+        state = link_bot_pycommon.make_random_rope_configuration(full_sdf_data.extent, fwd_model.n_state, rope_length)
 
         # get local environment
         head_point = np.array([state[4], state[5]])

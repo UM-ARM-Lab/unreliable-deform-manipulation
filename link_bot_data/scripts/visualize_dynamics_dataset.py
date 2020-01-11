@@ -9,7 +9,7 @@ import tensorflow as tf
 from matplotlib.animation import FuncAnimation
 
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
-from link_bot_data.visualization import plot_rope_configuration
+from link_bot_data.visualization import plot_rope_configuration, plottable_rope_configuration
 from link_bot_pycommon import link_bot_pycommon
 from link_bot_pycommon.args import my_formatter
 
@@ -25,6 +25,7 @@ def main():
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train', help='train test or val')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
+    parser.add_argument('--redraw', action='store_true', help='redraw')
 
     args = parser.parse_args()
 
@@ -80,6 +81,7 @@ def main():
             head_point = rope_configurations[0].reshape(-1, 2)[-1]
             arrow = plt.Arrow(head_point[0], head_point[1], actions[0, 0], actions[0, 1], width=arrow_width, zorder=4)
             patch = ax.add_patch(arrow)
+            line = plot_rope_configuration(ax, rope_configurations[0], linewidth=5, zorder=3, c='r')[0]
 
             def update(t):
                 nonlocal patch, out_of_bounds
@@ -90,7 +92,12 @@ def main():
                 full_env_handle.set_data(np.flipud(full_env))
                 full_env_handle.set_extent(full_env_extents)
 
-                plot_rope_configuration(ax, config, linewidth=5, zorder=3, c='r')
+                if args.redraw:
+                    xs, ys = plottable_rope_configuration(config)
+                    line.set_xdata(xs)
+                    line.set_ydata(ys)
+                else:
+                    plot_rope_configuration(ax, config, linewidth=5, zorder=3, c='r')
                 patch.remove()
                 arrow = plt.Arrow(head_point[0], head_point[1], action[0], action[1], width=arrow_width, zorder=4)
                 patch = ax.add_patch(arrow)

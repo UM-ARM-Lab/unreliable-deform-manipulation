@@ -38,6 +38,7 @@ class ShootingRRT(MyPlanner):
         self.planner_params = planner_params
         self.services = services
         self.viz_object = viz_object
+        self.rope_length = fwd_model.hparams['dynamics_dataset_hparams']['rope_length']
 
         self.state_space = ob.CompoundStateSpace()
         self.n_local_env = self.fwd_model.local_env_params.w_cols * self.fwd_model.local_env_params.h_rows
@@ -50,18 +51,13 @@ class ShootingRRT(MyPlanner):
 
         self.config_space = ob.RealVectorStateSpace(self.n_state)
         self.config_space_bounds = ob.RealVectorBounds(self.n_state)
-        self.config_space_bounds.setLow(0, -self.env_params.w / 2)
-        self.config_space_bounds.setLow(1, -self.env_params.h / 2)
-        self.config_space_bounds.setLow(2, -self.env_params.w / 2)
-        self.config_space_bounds.setLow(3, -self.env_params.h / 2)
-        self.config_space_bounds.setLow(4, -self.env_params.w / 2)
-        self.config_space_bounds.setLow(5, -self.env_params.h / 2)
-        self.config_space_bounds.setHigh(0, self.env_params.w / 2)
-        self.config_space_bounds.setHigh(1, self.env_params.h / 2)
-        self.config_space_bounds.setHigh(2, self.env_params.w / 2)
-        self.config_space_bounds.setHigh(3, self.env_params.h / 2)
-        self.config_space_bounds.setHigh(4, self.env_params.w / 2)
-        self.config_space_bounds.setHigh(5, self.env_params.h / 2)
+        for i in range(self.n_state):
+            if i % 2 == 0:
+                self.config_space_bounds.setLow(i, -self.env_params.w / 2)
+                self.config_space_bounds.setHigh(i, self.env_params.w / 2)
+            else:
+                self.config_space_bounds.setLow(i, -self.env_params.h / 2)
+                self.config_space_bounds.setHigh(i, self.env_params.h / 2)
         self.config_space.setBounds(self.config_space_bounds)
 
         # the rope is just 6 real numbers with no bounds
@@ -74,8 +70,11 @@ class ShootingRRT(MyPlanner):
         # Only sample configurations which are known to be valid, i.e. not overstretched.
         def state_sampler_allocator(state_space):
             # this length comes from the SDF file textured_link_bot.sdf
-            sampler = ValidRopeConfigurationCompoundSampler(state_space, self.viz_object, extent=self.env_params.extent,
-                                                            link_length=0.24)
+            sampler = ValidRopeConfigurationCompoundSampler(state_space,
+                                                            self.viz_object,
+                                                            extent=self.env_params.extent,
+                                                            n_state=self.n_state,
+                                                            total_length=self.rope_length)
             return sampler
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(state_sampler_allocator))
@@ -111,7 +110,7 @@ class ShootingRRT(MyPlanner):
         del duration  # unused, multi-step propagation is handled inside propagateWhileValid
         np_s = to_numpy(start[0], self.n_state)
         np_u = np.expand_dims(to_numpy(control, self.n_control), axis=0)
-        local_env_data = self.get_local_env_at(np_s[0, 4], np_s[0, 5])
+        local_env_data = self.get_local_env_at(np_s[0, -2], np_s[0, -1])
 
         # use the forward model to predict the next configuration
         points_next = self.fwd_model.predict(full_envs=self.full_envs,
@@ -135,7 +134,7 @@ class ShootingRRT(MyPlanner):
             state_out[0][0] = 1000
         else:
             from_numpy(np_s_next, state_out[0], self.n_state)
-            local_env_data = self.get_local_env_at(np_s_next[0, 4], np_s_next[0, 5])
+            local_env_data = self.get_local_env_at(np_s_next[0, -2], np_s_next[0, -1])
             local_env = local_env_data.data.flatten().astype(np.float64)
             for idx in range(self.n_local_env):
                 occupancy_value = local_env[idx]
@@ -144,7 +143,8 @@ class ShootingRRT(MyPlanner):
             from_numpy(origin, state_out[2], 2)
 
     def plan(self, np_start: np.ndarray,
-             tail_goal_point: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[link_bot_sdf_utils.OccupancyData], link_bot_sdf_utils.OccupancyData]:
+             tail_goal_point: np.ndarray) -> Tuple[
+        np.ndarray, np.ndarray, List[link_bot_sdf_utils.OccupancyData], link_bot_sdf_utils.OccupancyData]:
         """
         :param np_start: 1 by n matrix
         :param tail_goal_point:  1 by n matrix
@@ -159,7 +159,7 @@ class ShootingRRT(MyPlanner):
         self.full_env_origins = np.array([full_env_data.origin])
 
         # create start and goal states
-        start_local_occupancy = self.get_local_env_at(np_start[0, 4], np_start[0, 5])
+        start_local_occupancy = self.get_local_env_at(np_start[0, -2], np_start[0, -1])
         compound_start = ob.CompoundState(self.state_space)
         for i in range(self.n_state):
             compound_start()[0][i] = np_start[0, i]

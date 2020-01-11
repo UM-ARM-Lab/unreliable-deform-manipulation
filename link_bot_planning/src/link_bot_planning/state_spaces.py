@@ -9,41 +9,39 @@ from link_bot_pycommon import link_bot_pycommon
 
 class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
 
-    def __init__(self, state_space, viz_object: VizObject, extent: List[float], link_length: float):
+    def __init__(self, state_space, viz_object: VizObject, extent: List[float], n_state: int, rope_length: float):
         super(ValidRopeConfigurationSampler, self).__init__(state_space)
         self.extent = extent
-        self.link_length = link_length
+        self.rope_length = rope_length
+        self.n_links = n_state / 2
+        self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
 
     def sampleUniform(self, state_out: ob.AbstractState):
-        # passing 0 length will make it possible the sample things out of the bounds of the arena
-        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent, total_length=self.link_length)
-        state_out[0] = random_rope_configuration[0]
-        state_out[1] = random_rope_configuration[1]
-        state_out[2] = random_rope_configuration[2]
-        state_out[3] = random_rope_configuration[3]
-        state_out[4] = random_rope_configuration[4]
-        state_out[5] = random_rope_configuration[5]
+        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent,
+                                                                                     n_state=self.n_state,
+                                                                                     total_length=self.link_length)
+        for i in range(random_rope_configuration.shape[0]):
+            state_out[i] = random_rope_configuration[i]
         self.viz_object.states_sampled_at.append(random_rope_configuration)
 
 
 class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
 
-    def __init__(self, state_space, viz_object: VizObject, extent: List[float], link_length: float):
+    def __init__(self, state_space, viz_object: VizObject, extent: List[float], n_state: int, rope_length: float):
         super(ValidRopeConfigurationCompoundSampler, self).__init__(state_space)
         self.extent = extent
-        self.link_length = link_length
+        self.rope_length = rope_length
+        self.n_links = n_state / 2
+        self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
 
     def sampleUniform(self, state_out: ob.CompoundStateInternal):
-        # passing 0 length will make it possible the sample things out of the bounds of the arena
-        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent, total_length=self.link_length)
-        state_out[0][0] = random_rope_configuration[0]
-        state_out[0][1] = random_rope_configuration[1]
-        state_out[0][2] = random_rope_configuration[2]
-        state_out[0][3] = random_rope_configuration[3]
-        state_out[0][4] = random_rope_configuration[4]
-        state_out[0][5] = random_rope_configuration[5]
+        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent,
+                                                                                     n_state=self.n_state,
+                                                                                     total_length=self.link_length)
+        for i in range(random_rope_configuration.shape[0]):
+            state_out[0][i] = random_rope_configuration[i]
         self.viz_object.states_sampled_at.append(random_rope_configuration)
 
 

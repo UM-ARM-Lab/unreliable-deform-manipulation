@@ -42,29 +42,32 @@ def make_random_rope_configuration(extent, n_state, total_length):
     :param total_length: length of each segment of the rope (meters)
     :return:
     """
+
+    def oob(x, y):
+        return extent[0] < x < extent[1] and extent[2] < y < extent[3]
+
     n_links = n_state // 2
     link_length = total_length / n_links
-    while True:
-        theta_1 = np.random.uniform(-np.pi, np.pi)
-        theta_2 = np.random.uniform(-np.pi, np.pi)
+    valid = False
+    while not valid:
         head_x = np.random.uniform(extent[0], extent[1])
         head_y = np.random.uniform(extent[2], extent[3])
 
         rope_configuration = np.zeros(n_state)
-        rope_configuration[4] = head_x
-        rope_configuration[5] = head_y
-        rope_configuration[2] = rope_configuration[4] + np.cos(theta_1) * link_length
-        rope_configuration[3] = rope_configuration[5] + np.sin(theta_1) * link_length
-        rope_configuration[0] = rope_configuration[2] + np.cos(theta_2) * link_length
-        rope_configuration[1] = rope_configuration[3] + np.sin(theta_2) * link_length
+        rope_configuration[-2] = head_x
+        rope_configuration[-1] = head_y
 
-        if extent[0] < rope_configuration[0] < extent[1] and \
-                extent[0] < rope_configuration[2] < extent[1] and \
-                extent[0] < rope_configuration[4] < extent[1] and \
-                extent[2] < rope_configuration[1] < extent[3] and \
-                extent[2] < rope_configuration[3] < extent[3] and \
-                extent[2] < rope_configuration[5] < extent[3]:
-            break
+        j = (n_links + 1) * 2 - 1
+        valid = True
+        for i in range(n_links - 1):
+            theta = np.random.uniform(-np.pi, np.pi)
+            rope_configuration[j - 2] = rope_configuration[j - 1] + np.cos(theta) * link_length
+            rope_configuration[j - 3] = rope_configuration[j] + np.sin(theta) * link_length
+            j = j - 2
+
+            if oob(rope_configuration[j], rope_configuration[j-1]):
+                valid = False
+                break
 
     return rope_configuration
 

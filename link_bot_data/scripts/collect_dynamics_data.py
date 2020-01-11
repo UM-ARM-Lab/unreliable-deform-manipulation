@@ -208,7 +208,7 @@ def generate(args):
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': args.dt,
-            'rope_length': rope_length
+            'rope_length': rope_length,
             'local_env_params': local_env_params.to_json(),
             'full_env_params': full_env_params.to_json(),
             'env_w': args.env_w,

@@ -37,6 +37,7 @@ def main():
 
     # NOTE: these params don't matter at the moment, but they may soon
     local_env_params = LocalEnvParams(h_rows=100, w_cols=100, res=0.03)
+    rope_length = fwd_model.hparams['dynamics_dataset_hparams']['rope_length']
 
     control_sampler = ShootingDirectedControlSamplerInternal(fwd_model=fwd_model,
                                                              classifier_model=classifier_model,
@@ -49,10 +50,15 @@ def main():
 
     n_no_progress = 0
     for i in range(args.n_examples):
-        initial_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5])
-        target_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5])
+        initial_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5],
+                                                       n_state=fwd_model.n_state,
+                                                       total_length=rope_length)
+        target_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5],
+                                                      n_state=fwd_model.n_state,
+                                                      total_length=rope_length)
 
-        reached_state, u, local_env, no_progress = control_sampler.sampleTo(np.expand_dims(initial_state, 0), np.expand_dims(target_state, 0))
+        reached_state, u, local_env, no_progress = control_sampler.sampleTo(np.expand_dims(initial_state, 0),
+                                                                            np.expand_dims(target_state, 0))
         reached_state = np.squeeze(reached_state)
         u = np.squeeze(u)
 

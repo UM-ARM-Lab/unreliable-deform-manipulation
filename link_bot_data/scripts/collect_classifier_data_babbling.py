@@ -192,6 +192,8 @@ def generate_trajs(args,
 def generate(args):
     rospy.init_node('collect_classifier_data_babbling')
 
+    n_state = gazebo_utils.get_n_state()
+
     if args.seed is None:
         args.seed = np.random.randint(0, 10000)
         print("Using seed: ", args.seed)
@@ -219,7 +221,7 @@ def generate(args):
             'fwd_model_type': args.fwd_model_type,
             'fwd_model_hparams': fwd_model.hparams,
             'filter_free_space_only': False,
-            'n_state': 6,
+            'n_state': n_state,
             'n_action': 2,
             'labeling': {
                 'pre_close_threshold': 0.1,

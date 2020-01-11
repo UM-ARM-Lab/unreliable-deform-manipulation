@@ -10,6 +10,7 @@ import numpy as np
 from colorama import Fore
 
 from ignition import markers
+from link_bot_data.visualization import plottable_rope_configuration
 
 
 def publish_marker(target_x, target_y, marker_size=0.01):
@@ -92,8 +93,7 @@ def plot_sdf_and_ovs(args, sdf_data, threshold, rope_configuration, sdf_constrai
     binary = sdf_data.sdf < threshold
     plt.imshow(np.flipud(binary), extent=sdf_data.extent)
 
-    xs = [rope_configuration[0], rope_configuration[2], rope_configuration[4]]
-    ys = [rope_configuration[1], rope_configuration[3], rope_configuration[5]]
+    xs, ys = plottable_rope_configuration(rope_configuration)
     if sdf_constraint_labels is not None:
         sdf_constraint_color = 'r' if sdf_constraint_labels else 'g'
     else:
@@ -109,7 +109,7 @@ def plot_sdf_and_ovs(args, sdf_data, threshold, rope_configuration, sdf_constrai
         sdf_constraint_color = 'r' if combined_labels else 'g'
 
     plt.plot(xs, ys, linewidth=0.5, zorder=1, c=overstretched_constraint_color)
-    plt.scatter(rope_configuration[4], rope_configuration[5], s=16, c=sdf_constraint_color, zorder=2)
+    plt.scatter(rope_configuration[-2], rope_configuration[-1], s=16, c=sdf_constraint_color, zorder=2)
 
     if args.show_sdf_data:
         plt.figure()
