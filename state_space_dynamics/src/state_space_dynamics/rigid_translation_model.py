@@ -26,13 +26,13 @@ class RigidTranslationModel(BaseForwardModel):
         del local_env_data  # unused
         predictions = []
         for state, actions in zip(state, actions):
-            s_0 = np.reshape(state, [3, 2])
+            s_0 = np.reshape(state, [-1, 2])
             prediction = [s_0]
             s_t = s_0
             for action in actions:
                 # I've tuned beta on the no_obj_new training set based on the total error
                 B = np.tile(np.eye(2), [3, 1])
-                s_t = s_t + np.reshape(B @ action, [3, 2]) * self.dt * self.beta
+                s_t = s_t + np.reshape(B @ action, [-1, 2]) * self.dt * self.beta
                 prediction.append(s_t)
             prediction = np.array(prediction)
             predictions.append(prediction)

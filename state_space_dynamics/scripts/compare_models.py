@@ -79,7 +79,9 @@ def generate_results(base_folder: pathlib.Path,
         }
     }
     for x, y in tf_dataset:
-        true_points = y['output_states'].numpy().squeeze().reshape([-1, 3, 2])
+        output_states = y['output_states'].numpy().squeeze()
+        n_examples = output_states.shape[0]
+        true_points = output_states.reshape([n_examples, -1, 2])
         local_env_extent = x['actual_local_env_s/extent'][:, 0].numpy()
         local_env = tf.expand_dims(x['actual_local_env_s/env'][:, 0], axis=1).numpy()
         full_env_extent = x['full_env/extent'][:].numpy()

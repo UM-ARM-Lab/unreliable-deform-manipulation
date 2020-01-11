@@ -1,7 +1,6 @@
 import json
 import pathlib
 import time
-from typing import List
 
 import numpy as np
 import progressbar
@@ -69,19 +68,24 @@ def eval(hparams, test_tf_dataset, args):
 
     test_losses = []
     test_position_errors = []
+    final_tail_position_errors = []
     for test_x, test_y in test_tf_dataset:
         test_true_states = test_y['output_states']
         test_gen_states = net(test_x)
         batch_test_loss = loss(y_true=test_true_states, y_pred=test_gen_states)
-        test_gen_points = tf.reshape(test_gen_states, [test_gen_states.shape[0], test_gen_states.shape[1], 3, 2])
-        test_true_points = tf.reshape(test_true_states, [test_true_states.shape[0], test_true_states.shape[1], 3, 2])
+        test_gen_points = tf.reshape(test_gen_states, [test_gen_states.shape[0], test_gen_states.shape[1], -1, 2])
+        test_true_points = tf.reshape(test_true_states, [test_true_states.shape[0], test_true_states.shape[1], -1, 2])
         batch_test_position_error = tf.reduce_mean(tf.linalg.norm(test_gen_points - test_true_points, axis=3), axis=0)
+        final_tail_position_error = tf.reduce_mean(tf.linalg.norm(test_gen_points[:, -1, -1] - test_true_points[:, -1, -1], axis=1), axis=0)
         test_losses.append(batch_test_loss)
         test_position_errors.append(batch_test_position_error)
+        final_tail_position_errors.append(final_tail_position_error)
     test_loss = np.mean(test_losses)
     test_position_error = np.mean(test_position_errors)
     print("Test Loss:  {:8.5f}".format(test_loss))
-    print("Test Error: " + Style.BRIGHT + "{:8.4f}(m)".format(test_position_error) + Style.RESET_ALL)
+    mean_final_tail_position_error = np.mean(final_tail_position_errors)
+    print("Mean over Examples of Mean Position Error between points along trajectory: " + Style.BRIGHT + "{:8.4f}(m)".format(test_position_error) + Style.RESET_ALL)
+    print("Mean over Examples of Final Position Error: " + Style.BRIGHT + "{:8.4f}(m)".format(mean_final_tail_position_error) + Style.RESET_ALL)
 
 
 def eval_angled(net, test_tf_dataset):

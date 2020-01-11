@@ -82,7 +82,8 @@ def main():
             predicted_traj.append(s_next)
             s = s_next
 
-        points = np.array(predicted_traj).reshape([-1, 3, 2])
+        n_examples = predicted_traj.shape[0]
+        points = np.array(predicted_traj).reshape([n_examples, -1, 2])
         head_to_mid_lengths = np.linalg.norm(points[:, 2] - points[:, 1], axis=1)
         mid_to_tail_lengths = np.linalg.norm(points[:, 1] - points[:, 0], axis=1)
 

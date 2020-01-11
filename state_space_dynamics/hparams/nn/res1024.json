@@ -2,7 +2,6 @@
   "model_class": "SimpleNN",
   "n_control": 2,
   "sequence_length": 10,
-  "n_points": 3,
   "fc_layer_sizes": [1024, 1024],
   "residual": true
 }

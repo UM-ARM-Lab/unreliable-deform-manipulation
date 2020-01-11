@@ -133,7 +133,7 @@ def main():
     actual_points, _ = gazebo_utils.trajectory_execution_response_to_numpy(traj_res,
                                                                            None,
                                                                            services)
-    actual_points = actual_points.reshape([actual_points.shape[0], 3, 2])
+    actual_points = actual_points.reshape([actual_points.shape[0], -1, 2])
 
     position_errors = np.linalg.norm(predicted_points - actual_points, axis=2)
     print("mean error: {:5.3f}".format(np.mean(position_errors)))

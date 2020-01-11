@@ -86,8 +86,8 @@ def eval(hparams, test_tf_dataset, args):
         test_true_states = test_y['output_states']
         test_gen_states = net(test_x)
         batch_test_loss = loss(y_true=test_true_states, y_pred=test_gen_states)
-        test_gen_points = tf.reshape(test_gen_states, [test_gen_states.shape[0], test_gen_states.shape[1], 3, 2])
-        test_true_points = tf.reshape(test_true_states, [test_true_states.shape[0], test_true_states.shape[1], 3, 2])
+        test_gen_points = tf.reshape(test_gen_states, [test_gen_states.shape[0], test_gen_states.shape[1], -1, 2])
+        test_true_points = tf.reshape(test_true_states, [test_true_states.shape[0], test_true_states.shape[1], -1, 2])
         position_errors = tf.linalg.norm(test_gen_points - test_true_points, axis=3)
         batch_test_position_error = tf.reduce_mean(position_errors, axis=0)
         test_losses.append(batch_test_loss)
@@ -243,7 +243,7 @@ class LocallyLinearNNWrapper(BaseForwardModel):
             'action_s': actions,
         }
         predictions = self.net(test_x)
-        predicted_points = predictions.numpy().reshape([batch, T + 1, 3, 2])
+        predicted_points = predictions.numpy().reshape([batch, T + 1, -1, 2])
         # OMPL requires "doubles", which are float64, although our network outputs float32.
         predicted_points = predicted_points.astype(np.float64)
         return predicted_points
