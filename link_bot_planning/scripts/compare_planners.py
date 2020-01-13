@@ -177,6 +177,7 @@ def main():
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
+    parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
     # TODO: sweep over this to see how it effects things
     parser.add_argument('--random-epsilon', type=float, default=0.25, help='probability of accepting despite classifier')
 
@@ -226,7 +227,8 @@ def main():
         env_params = EnvParams(w=args.env_w,
                                h=args.env_h,
                                real_time_rate=args.real_time_rate,
-                               goal_padding=0.0)
+                               goal_padding=0.0,
+                               move_obstacles=(not args.no_move_obstacles))
 
         planner, _ = get_planner(planner_class_str='ShootingRRT',
                                  fwd_model_dir=fwd_model_dir,

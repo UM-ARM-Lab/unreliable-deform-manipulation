@@ -48,9 +48,10 @@ class myMPC:
         total_plan_idx = 0
         initial_poses_in_collision = 0
         while True:
-            # generate a new environment by rearranging the obstacles
-            objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            gazebo_utils.move_objects(self.services, objects, self.env_params.w, self.env_params.h, 'velocity', padding=0.5)
+            if self.env_params.move_obstacles:
+                # generate a new environment by rearranging the obstacles
+                objects = ['moving_box{}'.format(i) for i in range(1, 7)]
+                gazebo_utils.move_objects(self.services, objects, self.env_params.w, self.env_params.h, 'velocity', padding=0.5)
 
             # nudge the rope so it is hopefully not in collision?
             self.services.nudge_rope()
@@ -61,7 +62,6 @@ class myMPC:
             # generate a bunch of plans to random goals
             state_req = LinkBotStateRequest()
 
-            # for plan_idx in range(self.n_targets_per_env):
             plan_idx = 0
             while True:
                 # generate a random target

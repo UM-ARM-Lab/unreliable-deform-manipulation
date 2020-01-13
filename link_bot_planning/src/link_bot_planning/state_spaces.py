@@ -13,7 +13,8 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
         super(ValidRopeConfigurationSampler, self).__init__(state_space)
         self.extent = extent
         self.rope_length = rope_length
-        self.n_links = n_state / 2
+        self.n_links = int(n_state // 2 - 1)
+        self.n_state = n_state
         self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
 
@@ -32,7 +33,8 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         super(ValidRopeConfigurationCompoundSampler, self).__init__(state_space)
         self.extent = extent
         self.rope_length = rope_length
-        self.n_links = n_state / 2
+        self.n_links = int(n_state // 2 - 1)
+        self.n_state = n_state
         self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
 

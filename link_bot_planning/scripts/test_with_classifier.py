@@ -101,6 +101,7 @@ def main():
     parser.add_argument("--n-targets", type=int, default=1, help='number of targets/plans')
     parser.add_argument("--seed", '-s', type=int, default=12)
     parser.add_argument("--no-execution", action='store_true', help='do not execute, only plan')
+    parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=30.0)
     parser.add_argument("--goal-threshold", type=float, default=0.25, help="distance for tail in meters")
@@ -122,7 +123,8 @@ def main():
     env_params = EnvParams(w=params['env_w'],
                            h=params['env_h'],
                            real_time_rate=args.real_time_rate,
-                           goal_padding=0.0)
+                           goal_padding=0.0,
+                           move_obstacles=(not args.no_move_obstacles))
 
     rospy.init_node('test_planner_with_classifier')
 

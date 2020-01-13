@@ -22,6 +22,7 @@ class EnvParams:
     real_time_rate: float
     goal_padding: float
     extent: List[float] = field(init=False)
+    move_obstacles: bool
 
     def __post_init__(self):
         """

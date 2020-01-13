@@ -138,7 +138,8 @@ def main():
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,
-                           goal_padding=0.0)
+                           goal_padding=0.0,
+                           move_obstacles=False)
 
     initial_object_dict = {
         'moving_box1': [2.0, 0],

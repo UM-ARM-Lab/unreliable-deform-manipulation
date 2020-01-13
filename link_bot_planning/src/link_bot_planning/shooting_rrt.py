@@ -74,7 +74,7 @@ class ShootingRRT(MyPlanner):
                                                             self.viz_object,
                                                             extent=self.env_params.extent,
                                                             n_state=self.n_state,
-                                                            total_length=self.rope_length)
+                                                            rope_length=self.rope_length)
             return sampler
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(state_sampler_allocator))

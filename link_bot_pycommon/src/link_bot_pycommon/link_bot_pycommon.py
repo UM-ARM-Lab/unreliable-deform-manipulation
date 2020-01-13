@@ -57,10 +57,11 @@ def make_random_rope_configuration(extent, n_state, total_length):
         rope_configuration[-2] = head_x
         rope_configuration[-1] = head_y
 
-        j = (n_links + 1) * 2 - 1
+        j = n_state - 1
         valid = True
         for i in range(n_links - 1):
             theta = np.random.uniform(-np.pi, np.pi)
+            print(j, n_links)
             rope_configuration[j - 2] = rope_configuration[j - 1] + np.cos(theta) * link_length
             rope_configuration[j - 3] = rope_configuration[j] + np.sin(theta) * link_length
             j = j - 2

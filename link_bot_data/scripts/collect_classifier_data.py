@@ -16,7 +16,6 @@ import tensorflow as tf
 from colorama import Fore
 from ompl import base as ob
 
-from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import float_feature
 from link_bot_gazebo import gazebo_utils
@@ -25,7 +24,6 @@ from link_bot_planning import my_mpc, ompl_viz
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import PlannerParams, EnvParams
-from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -231,6 +229,7 @@ def main():
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
     parser.add_argument('--goal-threshold', type=float, default=0.10, help='goal threshold')
+    parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
 
     args = parser.parse_args()
 
@@ -248,6 +247,7 @@ def main():
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,
+                           move_obstacles=(not args.no_move_obstacles),
                            goal_padding=0.0)
 
     rospy.init_node('collect_classifier_data')
