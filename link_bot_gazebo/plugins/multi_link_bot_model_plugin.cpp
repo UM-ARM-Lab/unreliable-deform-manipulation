@@ -62,11 +62,11 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   model_ = parent;
 
   {
-    if (!sdf->HasElement("length")) {
-      printf("using default length=%f\n", length_);
+    if (!sdf->HasElement("rope_length")) {
+      printf("using default rope length=%f\n", length_);
     }
     else {
-      length_ = sdf->GetElement("length")->Get<double>();
+      length_ = sdf->GetElement("rope_length")->Get<double>();
     }
 
     if (!sdf->HasElement("num_links")) {

@@ -10,7 +10,6 @@ from matplotlib.animation import FuncAnimation
 
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_data.visualization import plot_rope_configuration, plottable_rope_configuration
-from link_bot_pycommon import link_bot_pycommon
 from link_bot_pycommon.args import my_formatter
 
 tf.compat.v1.enable_eager_execution()

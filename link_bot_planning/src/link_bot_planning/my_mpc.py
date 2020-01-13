@@ -50,8 +50,7 @@ class myMPC:
         while True:
             # generate a new environment by rearranging the obstacles
             objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            link_bot_gazebo.gazebo_utils.move_objects(self.services, objects, self.env_params.w, self.env_params.h, 'velocity',
-                                                      padding=0.5)
+            gazebo_utils.move_objects(self.services, objects, self.env_params.w, self.env_params.h, 'velocity', padding=0.5)
 
             # nudge the rope so it is hopefully not in collision?
             self.services.nudge_rope()

@@ -21,7 +21,6 @@ def main():
         files = []
         for in_dir in args.indirs:
             mode_indir = in_dir / mode
-            print(mode_indir)
             tfrecord_files = mode_indir.glob("*.tfrecords")
             files.extend(tfrecord_files)
 

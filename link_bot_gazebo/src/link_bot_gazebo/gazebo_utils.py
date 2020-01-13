@@ -12,8 +12,8 @@ from std_msgs.msg import String, Empty
 from std_srvs.srv import EmptyRequest
 from visualization_msgs.msg import MarkerArray
 
-from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, GetPhysicsPropertiesRequest, SetPhysicsPropertiesRequest, \
-    ApplyBodyWrench, ApplyBodyWrenchRequest
+from gazebo_msgs.srv import *
+from link_bot_gazebo.msg import *
 from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import sensor_image_to_float_image

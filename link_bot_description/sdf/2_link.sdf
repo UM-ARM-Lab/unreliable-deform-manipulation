@@ -216,6 +216,7 @@
             <max_vel_acc>0.01</max_vel_acc>
             <gripper1_link>head</gripper1_link>
             <num_links>2</num_links>
+            <rope_length>0.5</rope_length>
         </plugin>
     </model>
 </sdf>

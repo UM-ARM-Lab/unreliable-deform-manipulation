@@ -145,18 +145,17 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
 
 
 def generate_trajs(args, full_output_directory, services):
-    examples = np.ndarray([args.n_trajs_per_file], dtype=object)
+    examples = np.ndarray([args.trajs_per_file], dtype=object)
     percentages_positive = []
     global_t_step = 0
     gripper1_target_x = None
     gripper1_target_y = None
-    for i in range(args.n_trajs):
-        current_record_traj_idx = i % args.n_trajs_per_file
+    for i in range(args.trajs):
+        current_record_traj_idx = i % args.trajs_per_file
 
-        if not args.no_obstacles:
-            objects = ['cheezits_box', 'tissue_box']
-            gazebo_utils.move_objects(services, objects, args.env_w, args.env_h, 'velocity',
-                                      padding=0.1)
+        if not args.no_obstacles and i % args.move_objects_every_n == 0:
+            objects = ['moving_box{}'.format(i) for i in range(1, 7)]
+            gazebo_utils.move_objects(services, objects, args.env_w, args.env_h, 'velocity', padding=0.5)
 
         # Generate a new trajectory
         example, percentage_violation, global_t_step, gripper1_target_x, gripper1_target_y = generate_traj(args, services, i,
@@ -167,13 +166,13 @@ def generate_trajs(args, full_output_directory, services):
         percentages_positive.append(percentage_violation)
 
         # Save the data
-        if current_record_traj_idx == args.n_trajs_per_file - 1:
+        if current_record_traj_idx == args.trajs_per_file - 1:
             # Construct the dataset where each trajectory has been serialized into one big string
             # since tfrecords don't really support hierarchical data structures
             serialized_dataset = tensorflow.data.Dataset.from_tensor_slices((examples))
 
             end_traj_idx = i + args.start_idx_offset
-            start_traj_idx = end_traj_idx - args.n_trajs_per_file + 1
+            start_traj_idx = end_traj_idx - args.trajs_per_file + 1
             full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type=args.compression_type)
             writer.write(serialized_dataset)
@@ -194,9 +193,9 @@ def generate(args):
     n_state = gazebo_utils.get_n_state()
     rope_length = gazebo_utils.get_rope_length()
 
-    assert args.n_trajs % args.n_trajs_per_file == 0, "num trajs must be multiple of {}".format(args.n_trajs_per_file)
+    assert args.trajs % args.trajs_per_file == 0, "num trajs must be multiple of {}".format(args.trajs_per_file)
 
-    full_output_directory = random_environment_data_utils.data_directory(args.outdir, args.n_trajs)
+    full_output_directory = random_environment_data_utils.data_directory(args.outdir, args.trajs)
     if not os.path.isdir(full_output_directory) and args.verbose:
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)
@@ -226,14 +225,7 @@ def generate(args):
         print("Using seed: ", args.seed)
     np.random.seed(args.seed)
 
-    if not args.no_obstacles:
-        inital_object_dict = {
-            'cheezits_box': [0.24, -0.24],
-            'tissue_box': [0.24, 0.24],
-        }
-        services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, True, inital_object_dict)
-    else:
-        services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, True, None)
+    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, True, None)
 
     generate_trajs(args, full_output_directory, services)
 
@@ -243,7 +235,7 @@ def main():
     tensorflow.compat.v1.logging.set_verbosity(tensorflow.compat.v1.logging.DEBUG)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("n_trajs", type=int, help='how many trajectories to collect')
+    parser.add_argument("trajs", type=int, help='how many trajectories to collect')
     parser.add_argument("outdir")
     parser.add_argument('--dt', type=float, default=1.00, help='dt')
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
@@ -254,9 +246,10 @@ def main():
     parser.add_argument("--steps-per-traj", type=int, default=100, help='steps per traj')
     parser.add_argument("--steps-per-target", type=int, default=25, help='steps before changing target')
     parser.add_argument("--start-idx-offset", type=int, default=0, help='offset TFRecord file names')
+    parser.add_argument("--move-objects-every-n", type=int, default=16, help='rearrange objects every n trajectories')
     parser.add_argument("--no-obstacles", action='store_true', help='do not move obstacles')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB', help='compression type')
-    parser.add_argument("--n-trajs-per-file", type=int, default=256, help='trajs per file')
+    parser.add_argument("--trajs-per-file", type=int, default=256, help='trajs per file')
     parser.add_argument("--seed", '-s', type=int, default=0, help='seed')
     parser.add_argument("--real-time-rate", type=float, default=10, help='number of times real time')
     parser.add_argument("--verbose", '-v', action="store_true", help='verbose')
