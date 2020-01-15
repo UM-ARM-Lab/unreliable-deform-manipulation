@@ -46,7 +46,7 @@ def make_random_rope_configuration(extent, n_state, total_length):
     def oob(x, y):
         return extent[0] < x < extent[1] and extent[2] < y < extent[3]
 
-    n_links = n_state // 2
+    n_links = int(n_state // 2 - 1)
     link_length = total_length / n_links
     valid = False
     while not valid:
@@ -61,7 +61,6 @@ def make_random_rope_configuration(extent, n_state, total_length):
         valid = True
         for i in range(n_links - 1):
             theta = np.random.uniform(-np.pi, np.pi)
-            print(j, n_links)
             rope_configuration[j - 2] = rope_configuration[j - 1] + np.cos(theta) * link_length
             rope_configuration[j - 3] = rope_configuration[j] + np.sin(theta) * link_length
             j = j - 2
