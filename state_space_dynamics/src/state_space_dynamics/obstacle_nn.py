@@ -293,9 +293,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
 
                 global_step.assign_add(1)
 
-                if args.log:
-                    for grad, var in zip(gradients, variables):
-                        tf.contrib.summary.histogram(var.name + '_grad', grad)
                 dt_per_step = time.time() - batch_t0
                 if args.verbose >= 3:
                     print("{:4.1f}ms/step".format(dt_per_step * 1000.0))
