@@ -60,8 +60,6 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
                 print('gripper target:', gripper1_target_x, gripper1_target_y)
                 random_environment_data_utils.publish_marker(gripper1_target_x, gripper1_target_y, marker_size=0.05)
 
-        image = np.copy(np.frombuffer(state.camera_image.data, dtype=np.uint8)).reshape([64, 64, 3])
-
         # compute the velocity to move in that direction
         velocity = np.minimum(np.maximum(np.random.randn() * 0.07 + 0.10, 0), 0.15)
         dpos = gripper1_target - np.array([head_point.x, head_point.y])
@@ -110,7 +108,6 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
                                                                services=services)
 
         # for compatibility with video prediction
-        feature['{}/image_aux1/encoded'.format(time_idx)] = bytes_feature(image.tobytes())
         feature['{}/endeffector_pos'.format(time_idx)] = float_feature(head_np)
         # for debugging/visualizing the constraint label
         feature['{}/1/velocity'.format(time_idx)] = float_feature(

@@ -157,14 +157,14 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   }
 
   // TODO: make this a sdformat tag
-  auto constexpr camera_name{"default::my_camera::link::my_camera"};
-  auto const &sensor = sensors::get_sensor(camera_name);
-  camera_sensor = std::dynamic_pointer_cast<sensors::CameraSensor>(sensor);
-  if (!camera_sensor) {
-    gzerr << "Failed to load camera: " << camera_name << '\n';
-  }
+//  auto constexpr camera_name{"default::my_camera::link::my_camera"};
+//  auto const &sensor = sensors::get_sensor(camera_name);
+//  camera_sensor = std::dynamic_pointer_cast<sensors::CameraSensor>(sensor);
+//  if (!camera_sensor) {
+//    gzerr << "Failed to load camera: " << camera_name << '\n';
+//  }
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(std::bind(&MultiLinkBotModelPlugin::OnUpdate, this));
-  postRenderConnection_ = event::Events::ConnectPostRender(std::bind(&MultiLinkBotModelPlugin::OnPostRender, this));
+//  postRenderConnection_ = event::Events::ConnectPostRender(std::bind(&MultiLinkBotModelPlugin::OnPostRender, this));
   constexpr auto max_integral{0};
   gripper1_x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel_, -max_vel_);
   gripper1_y_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel_, -max_vel_);
@@ -440,12 +440,12 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
   while (!ready_) {
   }
 
-  // one byte per channel
-  auto constexpr byte_depth = 1;
-  auto constexpr num_channels = 3;
-  auto const w = camera_sensor->ImageWidth();
-  auto const h = camera_sensor->ImageHeight();
-  res.camera_image = latest_image_;
+//  // one byte per channel
+//  auto constexpr byte_depth = 1;
+//  auto constexpr num_channels = 3;
+//  auto const w = camera_sensor->ImageWidth();
+//  auto const h = camera_sensor->ImageHeight();
+//  res.camera_image = latest_image_;
   res.header.stamp = ros::Time::now();
   image_sequence_number += 1;
 
