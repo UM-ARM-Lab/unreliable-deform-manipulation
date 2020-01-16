@@ -114,7 +114,7 @@ class GazeboServices:
         context_actions = np.zeros([context_length - 1, action_dim])
         return context_images, context_states, context_actions
 
-    def nudge_rope(self):
+    def nudge_rope(self, max_step_size: float):
         nudge = ApplyBodyWrenchRequest()
         nudge.duration.secs = 0
         nudge.duration.nsecs = 50000000
@@ -127,7 +127,7 @@ class GazeboServices:
         self.apply_body_wrench(nudge)
 
         wait = WorldControlRequest()
-        wait.steps = int(5 / 0.001)  # assuming 0.001s per simulation step
+        wait.steps = int(5 / max_step_size)  # assuming 0.001s per simulation step
         self.world_control(wait)
 
 
@@ -141,6 +141,7 @@ def rowcol_to_xy(services, row, col):
 
 def setup_gazebo_env(verbose: int,
                      real_time_rate: float,
+                     max_step_size: float,
                      reset_world: Optional[bool] = True,
                      initial_object_dict: Optional[Dict] = None):
     # fire up services
@@ -156,9 +157,9 @@ def setup_gazebo_env(verbose: int,
     current_physics = services.get_physics.call(get)
     set = SetPhysicsPropertiesRequest()
     set.gravity = current_physics.gravity
-    set.time_step = current_physics.time_step
     set.ode_config = current_physics.ode_config
     set.max_update_rate = real_time_rate * 1000.0
+    set.time_step = max_step_size
     set.enabled = True
     services.set_physics.call(set)
 
@@ -399,7 +400,7 @@ def random_object_move(model_name, w, h, padding):
     return move
 
 
-def move_objects(services, objects, env_w, env_h, link_bot_mode, padding):
+def move_objects(services, max_step_size, objects, env_w, env_h, link_bot_mode, padding):
     disable_link_bot = String()
     disable_link_bot.data = 'disabled'
 
@@ -416,8 +417,8 @@ def move_objects(services, objects, env_w, env_h, link_bot_mode, padding):
     services.position_2d_action.publish(move_action)
     # let the move actually occur
     step = WorldControlRequest()
-    move_wait_duration = 5
-    step.steps = int(move_wait_duration / 0.001)  # assuming 0.001s per simulation step
+    move_wait_duration = 1
+    step.steps = int(move_wait_duration / max_step_size)
     services.world_control(step)  # this will block until stepping is complete
     # disable the objects so they stop, enabled the rope controller
     services.position_2d_stop.publish(Empty())

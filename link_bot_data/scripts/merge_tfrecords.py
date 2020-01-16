@@ -17,6 +17,12 @@ def main():
 
     args = parser.parse_args()
 
+    if not args.dry_run:
+        path = args.indirs[0] / 'hparams.json'
+        new_path = args.outdir / 'hparams.json'
+        print(path, '-->', new_path)
+        shutil.copyfile(path, new_path)
+
     for mode in ['train', 'test', 'val']:
         files = []
         for in_dir in args.indirs:

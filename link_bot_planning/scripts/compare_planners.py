@@ -227,6 +227,7 @@ def main():
         env_params = EnvParams(w=args.env_w,
                                h=args.env_h,
                                real_time_rate=args.real_time_rate,
+                               max_step_size=env_params.max_step_size,
                                goal_padding=0.0,
                                move_obstacles=(not args.no_move_obstacles))
 

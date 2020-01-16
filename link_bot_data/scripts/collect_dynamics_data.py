@@ -11,14 +11,14 @@ import numpy as np
 import rospy
 import tensorflow
 from colorama import Fore
+from link_bot_gazebo.msg import LinkBotVelocityAction
+from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 
 from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import bytes_feature, float_feature
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.msg import LinkBotVelocityAction
-from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 from link_bot_planning.goals import sample_goal
-from link_bot_planning.params import LocalEnvParams, FullEnvParams
+from link_bot_planning.params import LocalEnvParams, FullEnvParams, EnvParams
 from link_bot_pycommon.args import my_formatter
 
 opts = tensorflow.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
@@ -79,7 +79,7 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
 
         # let the simulator run
         step = WorldControlRequest()
-        step.steps = int(args.dt / 0.001)  # assuming 0.001s per simulation step
+        step.steps = int(args.dt / args.max_step_size)  # assuming 0.001s per simulation step
         services.world_control(step)  # this will block until stepping is complete
 
         # NOTE: at_constraint_boundary is not used at the moment
@@ -155,7 +155,7 @@ def generate_trajs(args, full_output_directory, services):
 
         if not args.no_obstacles and i % args.move_objects_every_n == 0:
             objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            gazebo_utils.move_objects(services, objects, args.env_w, args.env_h, 'velocity', padding=0.5)
+            gazebo_utils.move_objects(services, args.max_step_size, objects, args.env_w, args.env_h, 'velocity', padding=0.5)
 
         # Generate a new trajectory
         example, percentage_violation, global_t_step, gripper1_target_x, gripper1_target_y = generate_traj(args, services, i,
@@ -204,12 +204,19 @@ def generate(args):
     full_env_cols = int(args.env_w / args.res)
     full_env_rows = int(args.env_h / args.res)
     full_env_params = FullEnvParams(h_rows=full_env_rows, w_cols=full_env_cols, res=args.res)
+    env_params = EnvParams(w=args.env_w,
+                           h=args.env_h,
+                           real_time_rate=args.real_time_rate,
+                           max_step_size=args.max_step_size,
+                           goal_padding=0.5,
+                           move_obstacles=(not args.no_obstacles))
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': args.dt,
             'rope_length': rope_length,
             'local_env_params': local_env_params.to_json(),
             'full_env_params': full_env_params.to_json(),
+            'env_params': env_params.to_json(),
             'env_w': args.env_w,
             'env_h': args.env_h,
             'compression_type': args.compression_type,
@@ -222,10 +229,10 @@ def generate(args):
 
     if args.seed is None:
         args.seed = np.random.randint(0, 10000)
-        print("Using seed: ", args.seed)
+    print(Fore.CYAN + "Using seed: {}".format(args.seed) + Fore.RESET)
     np.random.seed(args.seed)
 
-    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, True, None)
+    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, args.max_step_size, True, None)
 
     generate_trajs(args, full_output_directory, services)
 
@@ -250,8 +257,9 @@ def main():
     parser.add_argument("--no-obstacles", action='store_true', help='do not move obstacles')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB', help='compression type')
     parser.add_argument("--trajs-per-file", type=int, default=256, help='trajs per file')
-    parser.add_argument("--seed", '-s', type=int, default=0, help='seed')
+    parser.add_argument("--seed", '-s', type=int, help='seed')
     parser.add_argument("--real-time-rate", type=float, default=10, help='number of times real time')
+    parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
     parser.add_argument("--verbose", '-v', action="store_true", help='verbose')
 
     args = parser.parse_args()

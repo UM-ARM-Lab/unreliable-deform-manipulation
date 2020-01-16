@@ -224,6 +224,7 @@ def main():
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=10.0)
     parser.add_argument("--real-time-rate", type=float, default=10.0, help='real time rate')
+    parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
@@ -247,6 +248,7 @@ def main():
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,
+                           max_step_size=args.max_step_size,
                            move_obstacles=(not args.no_move_obstacles),
                            goal_padding=0.0)
 

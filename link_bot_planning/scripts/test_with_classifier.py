@@ -106,6 +106,7 @@ def main():
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=30.0)
     parser.add_argument("--goal-threshold", type=float, default=0.25, help="distance for tail in meters")
     parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
+    parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
 
     args = parser.parse_args()
 
@@ -123,6 +124,7 @@ def main():
     env_params = EnvParams(w=params['env_w'],
                            h=params['env_h'],
                            real_time_rate=args.real_time_rate,
+                           max_step_size=args.max_step_size,
                            goal_padding=0.0,
                            move_obstacles=(not args.no_move_obstacles))
 

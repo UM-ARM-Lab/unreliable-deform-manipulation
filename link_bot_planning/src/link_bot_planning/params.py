@@ -20,6 +20,7 @@ class EnvParams:
     w: float
     h: float
     real_time_rate: float
+    max_step_size: float
     goal_padding: float
     extent: List[float] = field(init=False)
     move_obstacles: bool
