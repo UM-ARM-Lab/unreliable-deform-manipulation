@@ -1,7 +1,7 @@
 import json
 import pathlib
 import time
-from typing import List, Tuple
+from typing import Tuple
 
 import numpy as np
 import progressbar
@@ -11,7 +11,7 @@ from colorama import Fore, Style
 from tensorflow import keras
 
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
-from link_bot_pycommon import experiments_util, link_bot_pycommon, link_bot_sdf_utils
+from link_bot_pycommon import experiments_util, link_bot_pycommon
 from moonshine.action_smear_layer import action_smear_layer
 from moonshine.raster_points_layer import RasterPoints
 from state_space_dynamics.base_forward_model import BaseForwardModel
@@ -20,16 +20,17 @@ from state_space_dynamics.base_forward_model import BaseForwardModel
 def get_local_env_at_in(rows: int,
                         cols: int,
                         res: float,
-                        center_points: np.ndarray,
-                        full_envs: np.ndarray,
-                        full_env_origins: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+                        center_points,
+                        padded_full_envs: np.ndarray,
+                        padding: int,
+                        full_env_origins) -> Tuple[np.ndarray, np.ndarray]:
     """
     NOTE: Assumes both local and full env have the same resolution
     :param rows: indices
     :param cols: indices
     :param res: meters
     :param center_points: (x,y) meters
-    :param full_envs: the full environment data
+    :param padded_full_envs: the full environment data
     :return: local env array
     """
     batch_size = int(center_points.shape[0])
@@ -43,11 +44,7 @@ def get_local_env_at_in(rows: int,
     row_indeces = np.tile(center_rows, [cols, rows, 1]).T + delta_rows
     col_indeces = np.tile(center_cols, [cols, rows, 1]).T + delta_cols
     batch_indeces = np.tile(np.arange(0, batch_size), [cols, rows, 1]).transpose()
-    padding = 100
-    paddings = [[0, 0], [padding, padding], [padding, padding]]
-    padded_full_envs_np = tf.pad(full_envs, paddings=paddings).numpy()
-    # TODO: converting to numpy might be slow?
-    local_env = padded_full_envs_np[batch_indeces, row_indeces + padding, col_indeces + padding]
+    local_env = padded_full_envs[batch_indeces, row_indeces + padding, col_indeces + padding]
     local_env = tf.convert_to_tensor(local_env, dtype=tf.float32)
     return local_env, tf.cast(local_env_origins, dtype=tf.float32)
 
@@ -97,6 +94,10 @@ class ObstacleNN(tf.keras.Model):
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']
 
+        padding = 100
+        paddings = [[0, 0], [padding, padding], [padding, padding]]
+        padded_full_envs_np = tf.pad(full_env, paddings=paddings).numpy()
+
         gen_states = [s_0]
         for t in range(input_sequence_length):
             s_t = gen_states[-1]
@@ -106,11 +107,13 @@ class ObstacleNN(tf.keras.Model):
 
             # the local environment used at each time step is take as a rectangle centered on the predicted point of the head
             head_point_t = s_t_squeeze[:, 4:6]
+            # FIXME: shouldn't this use resolution_s?
             local_env, local_env_origin = get_local_env_at_in(rows=self.local_env_params.h_rows,
                                                               cols=self.local_env_params.w_cols,
                                                               res=self.local_env_params.res,
                                                               center_points=head_point_t,  # has batch dimension
-                                                              full_envs=full_env,  # has batch dimension
+                                                              padded_full_envs=padded_full_envs_np,  # has batch dimension
+                                                              padding=padding,
                                                               full_env_origins=full_env_origin,  # has batch dimension
                                                               )
 
