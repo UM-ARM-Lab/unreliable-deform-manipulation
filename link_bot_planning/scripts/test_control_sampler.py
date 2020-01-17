@@ -52,10 +52,12 @@ def main():
     for i in range(args.n_examples):
         initial_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5],
                                                        n_state=fwd_model.n_state,
-                                                       total_length=rope_length)
+                                                       total_length=rope_length,
+                                                       max_angle_rad=1)
         target_state = make_random_rope_configuration(extent=[-2.5, 2.5, -2.5, 2.5],
                                                       n_state=fwd_model.n_state,
-                                                      total_length=rope_length)
+                                                      total_length=rope_length,
+                                                      max_angle_rad=1)
 
         reached_state, u, local_env, no_progress = control_sampler.sampleTo(np.expand_dims(initial_state, 0),
                                                                             np.expand_dims(target_state, 0))

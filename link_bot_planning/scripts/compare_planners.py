@@ -177,6 +177,7 @@ def main():
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
+    parser.add_argument('--max-angle-rad', type=float, default=1, help='maximum deviation from straight rope when sampling')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
     # TODO: sweep over this to see how it effects things
     parser.add_argument('--random-epsilon', type=float, default=0.25, help='probability of accepting despite classifier')
@@ -223,7 +224,8 @@ def main():
         planner_params = PlannerParams(timeout=args.planner_timeout,
                                        max_v=args.max_v,
                                        goal_threshold=args.goal_threshold,
-                                       random_epsilon=args.random_epsilon)
+                                       random_epsilon=args.random_epsilon,
+                                       max_angle_rad=args.max_angle_rad)
         env_params = EnvParams(w=args.env_w,
                                h=args.env_h,
                                real_time_rate=args.real_time_rate,

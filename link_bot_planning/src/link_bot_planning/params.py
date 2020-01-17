@@ -12,6 +12,7 @@ class PlannerParams:
     max_v: float
     goal_threshold: float
     random_epsilon: float
+    max_angle_rad: float  # this is the maximum angular deviation from straight links that we sample in the planner
 
 
 @dataclass_json

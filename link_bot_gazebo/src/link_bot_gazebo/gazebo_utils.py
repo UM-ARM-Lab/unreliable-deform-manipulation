@@ -165,6 +165,7 @@ def setup_gazebo_env(verbose: int,
 
     # Set initial object positions
     if initial_object_dict is not None:
+        raise NotImplementedError()
         move_action = Position2dAction()
         for object_name, (x, y) in initial_object_dict.items():
             move = ObjectAction()
@@ -359,6 +360,12 @@ def make_trajectory_execution_request(dt: float, actions: Iterable) -> LinkBotTr
         action_msg.gripper1_velocity.x = action[0]
         action_msg.gripper1_velocity.y = action[1]
         trajectory_execution_request.gripper1_traj.append(action_msg)
+
+    # NOTE: force stop at the end. Is this bad?
+    stop_msg = LinkBotVelocityAction()
+    stop_msg.gripper1_velocity.x = 0
+    stop_msg.gripper1_velocity.y = 0
+    trajectory_execution_request.gripper1_traj.append(stop_msg)
 
     return trajectory_execution_request
 

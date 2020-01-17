@@ -9,7 +9,13 @@ from link_bot_pycommon import link_bot_pycommon
 
 class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
 
-    def __init__(self, state_space, viz_object: VizObject, extent: List[float], n_state: int, rope_length: float):
+    def __init__(self,
+                 state_space,
+                 viz_object: VizObject,
+                 extent: List[float],
+                 n_state: int,
+                 rope_length: float,
+                 max_angle_rad: float):
         super(ValidRopeConfigurationSampler, self).__init__(state_space)
         self.extent = extent
         self.rope_length = rope_length
@@ -17,11 +23,13 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
         self.n_state = n_state
         self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
+        self.max_angle_rad = max_angle_rad
 
     def sampleUniform(self, state_out: ob.AbstractState):
         random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent,
                                                                                      n_state=self.n_state,
-                                                                                     total_length=self.link_length)
+                                                                                     total_length=self.link_length,
+                                                                                     max_angle_rad=self.max_angle_rad)
         for i in range(random_rope_configuration.shape[0]):
             state_out[i] = random_rope_configuration[i]
         self.viz_object.states_sampled_at.append(random_rope_configuration)
@@ -29,7 +37,13 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
 
 class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
 
-    def __init__(self, state_space, viz_object: VizObject, extent: List[float], n_state: int, rope_length: float):
+    def __init__(self,
+                 state_space,
+                 viz_object: VizObject,
+                 extent: List[float],
+                 n_state: int,
+                 rope_length: float,
+                 max_angle_rad: float):
         super(ValidRopeConfigurationCompoundSampler, self).__init__(state_space)
         self.extent = extent
         self.rope_length = rope_length
@@ -37,11 +51,13 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         self.n_state = n_state
         self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
+        self.max_angle_rad = max_angle_rad
 
     def sampleUniform(self, state_out: ob.CompoundStateInternal):
         random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent,
                                                                                      n_state=self.n_state,
-                                                                                     total_length=self.link_length)
+                                                                                     total_length=self.link_length,
+                                                                                     max_angle_rad=self.max_angle_rad)
         for i in range(random_rope_configuration.shape[0]):
             state_out[0][i] = random_rope_configuration[i]
         self.viz_object.states_sampled_at.append(random_rope_configuration)

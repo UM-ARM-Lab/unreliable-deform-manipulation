@@ -87,6 +87,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                 'planner_params': planner_params.to_json(),
                 'env_params': env_params.to_json(),
                 'local_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
+                'full_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['full_env_params'],
                 'sequence_length': self.n_steps_per_example,
                 'fwd_model_dir': str(self.fwd_model_dir),
                 'fwd_model_type': self.fwd_model_type,
@@ -235,6 +236,7 @@ def main():
     parser.add_argument('--goal-threshold', type=float, default=0.10, help='goal threshold')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
     parser.add_argument('--random-epsilon', type=float, default=0.25, help='probability of accepting despite classifier')
+    parser.add_argument('--max-angle-rad', type=float, default=1, help='maximum deviation from straight rope when sampling')
 
     args = parser.parse_args()
 
@@ -248,7 +250,8 @@ def main():
     planner_params = PlannerParams(timeout=args.planner_timeout,
                                    max_v=args.max_v,
                                    goal_threshold=args.goal_threshold,
-                                   random_epsilon=args.random_epsilon)
+                                   random_epsilon=args.random_epsilon,
+                                   max_angle_rad=args.max_angle_rad)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,

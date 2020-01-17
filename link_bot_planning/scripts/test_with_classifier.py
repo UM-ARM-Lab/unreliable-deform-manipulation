@@ -120,7 +120,8 @@ def main():
     planner_params = PlannerParams(timeout=args.planner_timeout,
                                    max_v=params['max_v'],
                                    goal_threshold=goal_threshold,
-                                   random_epsilon=params['random_epsilon'])
+                                   random_epsilon=params['random_epsilon'],
+                                   max_angle_rad=params['max_angle_rad'])
     env_params = EnvParams(w=params['env_w'],
                            h=params['env_h'],
                            real_time_rate=args.real_time_rate,
@@ -130,19 +131,11 @@ def main():
 
     rospy.init_node('test_planner_with_classifier')
 
-    initial_object_dict = {
-        'moving_box1': [2.0, 0],
-        'moving_box2': [-1.5, 0],
-        'moving_box3': [-0.5, 1],
-        'moving_box4': [1.5, - 2],
-        'moving_box5': [-1.5, - 2.0],
-        'moving_box6': [-0.5, 2.0],
-    }
-
     services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
                                              real_time_rate=env_params.real_time_rate,
+                                             max_step_size=env_params.max_step_size,
                                              reset_world=True,
-                                             initial_object_dict=initial_object_dict)
+                                             initial_object_dict=None)
     services.pause(std_srvs.srv.EmptyRequest())
 
     planner, _ = get_planner(planner_class_str=params['planner'],
@@ -153,6 +146,8 @@ def main():
                              planner_params=planner_params,
                              env_params=env_params,
                              services=services)
+
+    planner.planner
 
     tester = TestWithClassifier(
         planner=planner,

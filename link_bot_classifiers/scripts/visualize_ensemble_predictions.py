@@ -61,7 +61,8 @@ def main():
     # TODO: batch predictions
     for i in range(args.n_configs):
         # pick random configuration
-        state = link_bot_pycommon.make_random_rope_configuration(full_sdf_data.extent, fwd_model.n_state, rope_length)
+        state = link_bot_pycommon.make_random_rope_configuration(full_sdf_data.extent, fwd_model.n_state, rope_length,
+                                                                 max_angle_rad=1)
 
         # get local environment
         head_point = np.array([state[4], state[5]])
