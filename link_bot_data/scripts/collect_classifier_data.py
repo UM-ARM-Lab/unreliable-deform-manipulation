@@ -116,7 +116,8 @@ class ClassifierDataCollector(my_mpc.myMPC):
                          planned_actions: np.ndarray,
                          full_sdf_data: link_bot_sdf_utils.SDF,
                          planner_data: ob.PlannerData,
-                         planning_time: float):
+                         planning_time: float,
+                         planner_status: ob.PlannerStatus):
         self.planning_times.append(planning_time)
 
         if self.verbose >= 2:
@@ -138,12 +139,13 @@ class ClassifierDataCollector(my_mpc.myMPC):
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
                               tail_goal_point: np.ndarray,
-                              planned_local_envs: List[link_bot_sdf_utils.OccupancyData],
+                              planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_path: np.ndarray,
                               full_sdf_data: link_bot_sdf_utils.SDF,
                               planner_data: ob.PlannerData,
-                              planning_time: float):
+                              planning_time: float,
+                              planner_status: ob.PlannerStatus):
         current_features = {
             'local_env_rows': float_feature(np.array([self.local_env_params.h_rows])),
             'local_env_cols': float_feature(np.array([self.local_env_params.w_cols]))
@@ -158,10 +160,10 @@ class ClassifierDataCollector(my_mpc.myMPC):
 
             if time_idx < planned_path.shape[0]:
                 planned_state = planned_path[time_idx]
-                planned_local_env = planned_local_envs[time_idx]
+                planned_local_env = planner_local_envs[time_idx]
             else:
                 planned_state = planned_path[-1]
-                planned_local_env = planned_local_envs[-1]
+                planned_local_env = planner_local_envs[-1]
 
             if time_idx < actual_path.shape[0]:
                 state = actual_path[time_idx]
@@ -219,18 +221,20 @@ def main():
     # if the number of steps in the plan is larger than this number, we truncate.
     # If it is smaller we pad with 0 actions/stationary states
     parser.add_argument("--n-steps-per-example", type=int, default=50, help='time steps per example')
-    parser.add_argument("--n-examples-per-record", type=int, default=8, help='examples per tfrecord')
+    parser.add_argument("--n-examples-per-record", type=int, default=128, help='examples per tfrecord')
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=10.0)
     parser.add_argument("--real-time-rate", type=float, default=10.0, help='real time rate')
     parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
+    # these define the bounds of the C-space in the planner
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
     parser.add_argument('--goal-threshold', type=float, default=0.10, help='goal threshold')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
+    parser.add_argument('--random-epsilon', type=float, default=0.25, help='probability of accepting despite classifier')
 
     args = parser.parse_args()
 
@@ -244,7 +248,7 @@ def main():
     planner_params = PlannerParams(timeout=args.planner_timeout,
                                    max_v=args.max_v,
                                    goal_threshold=args.goal_threshold,
-                                   random_epsilon=0.05)
+                                   random_epsilon=args.random_epsilon)
     env_params = EnvParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,
@@ -265,6 +269,7 @@ def main():
 
     services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
                                              real_time_rate=env_params.real_time_rate,
+                                             max_step_size=env_params.max_step_size,
                                              reset_world=True,
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())

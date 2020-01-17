@@ -51,7 +51,8 @@ class myMPC:
             if self.env_params.move_obstacles:
                 # generate a new environment by rearranging the obstacles
                 objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-                gazebo_utils.move_objects(self.services, self.max_step_size, objects, self.env_params.w, self.env_params.h, 'velocity', padding=0.5)
+                gazebo_utils.move_objects(self.services, self.env_params.max_step_size, objects, self.env_params.w,
+                                          self.env_params.h, 'velocity', padding=0.5)
 
             # nudge the rope so it is hopefully not in collision?
             self.services.nudge_rope(self.env_params.max_step_size)

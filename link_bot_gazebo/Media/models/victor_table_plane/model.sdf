@@ -31,7 +31,7 @@
                 <material>
                     <script>
                         <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>LinkBotGazebo/VictorTable</name>
+                        <name>Gazebo/Gray</name>
                     </script>
                 </material>
             </visual>
