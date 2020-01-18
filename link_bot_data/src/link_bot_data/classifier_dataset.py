@@ -4,7 +4,7 @@ from typing import List
 import tensorflow as tf
 
 from link_bot_data.state_space_dataset import StateSpaceDataset
-from link_bot_planning.params import LocalEnvParams
+from link_bot_planning.params import LocalEnvParams, FullEnvParams
 
 
 def make_name_singular(feature_name):
@@ -31,8 +31,10 @@ class ClassifierDataset(StateSpaceDataset):
         super(ClassifierDataset, self).__init__(dataset_dirs)
 
         self.local_env_params = LocalEnvParams.from_json(self.hparams['local_env_params'])
+        self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
 
         local_env_shape = (self.local_env_params.h_rows, self.local_env_params.w_cols)
+        full_env_shape = (self.full_env_params.h_rows, self.full_env_params.w_cols)
         n_state = self.hparams['fwd_model_hparams']['dynamics_dataset_hparams']['n_state']
         n_action = self.hparams['fwd_model_hparams']['dynamics_dataset_hparams']['n_action']
 
@@ -47,12 +49,14 @@ class ClassifierDataset(StateSpaceDataset):
         self.state_like_names_and_shapes['planned_local_env_s/env'] = '%d/planned_local_env/env', local_env_shape
         self.trajectory_constant_names_and_shapes['local_env_rows'] = 'local_env_rows', (1,)
         self.trajectory_constant_names_and_shapes['local_env_cols'] = 'local_env_cols', (1,)
+        self.trajectory_constant_names_and_shapes['full_env/env'] = 'full_env/env', full_env_shape
         # These are the actual states -- should only be used for computing labels
         self.state_like_names_and_shapes['state_s'] = '%d/state', (n_state,)
         self.state_like_names_and_shapes['planned_state_s'] = '%d/planned_state', (n_state,)
 
     # this code is really unreadable
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
+
         @tf.function
         def _convert_sequences_to_transitions(constant_data: dict, state_like_sequences: dict, action_like_sequences: dict):
             # Create a dict of lists, where keys are the features we want in each transition, and values are the data.

@@ -21,7 +21,7 @@ from link_bot_planning import my_mpc
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
-from link_bot_planning.params import PlannerParams, EnvParams
+from link_bot_planning.params import PlannerParams, SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -37,7 +37,7 @@ class TestWithClassifier(my_mpc.myMPC):
                  n_targets: int,
                  verbose: int,
                  planner_params: PlannerParams,
-                 env_params: EnvParams,
+                 sim_params: SimParams,
                  services: GazeboServices,
                  no_execution: bool):
         super().__init__(planner=planner,
@@ -45,7 +45,7 @@ class TestWithClassifier(my_mpc.myMPC):
                          n_plans_per_env=n_targets,
                          verbose=verbose,
                          planner_params=planner_params,
-                         env_params=env_params,
+                         sim_params=sim_params,
                          services=services,
                          no_execution=no_execution)
 
@@ -118,13 +118,13 @@ def main():
 
     goal_threshold = args.goal_threshold if args.goal_threshold is not None else params['goal_threshold']
     planner_params = PlannerParams(timeout=args.planner_timeout,
+                                   w=params['env_w'],
+                                   h=params['env_h'],
                                    max_v=params['max_v'],
                                    goal_threshold=goal_threshold,
                                    random_epsilon=params['random_epsilon'],
                                    max_angle_rad=params['max_angle_rad'])
-    env_params = EnvParams(w=params['env_w'],
-                           h=params['env_h'],
-                           real_time_rate=args.real_time_rate,
+    sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
                            goal_padding=0.0,
                            move_obstacles=(not args.no_move_obstacles))
@@ -132,8 +132,8 @@ def main():
     rospy.init_node('test_planner_with_classifier')
 
     services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
-                                             real_time_rate=env_params.real_time_rate,
-                                             max_step_size=env_params.max_step_size,
+                                             real_time_rate=sim_params.real_time_rate,
+                                             max_step_size=sim_params.max_step_size,
                                              reset_world=True,
                                              initial_object_dict=None)
     services.pause(std_srvs.srv.EmptyRequest())
@@ -144,7 +144,7 @@ def main():
                              classifier_model_dir=pathlib.Path(params['classifier_model_dir']),
                              classifier_model_type=params['classifier_model_type'],
                              planner_params=planner_params,
-                             env_params=env_params,
+                             sim_params=sim_params,
                              services=services)
 
     planner.planner
@@ -154,7 +154,7 @@ def main():
         n_targets=args.n_targets,
         verbose=args.verbose,
         planner_params=planner_params,
-        env_params=env_params,
+        sim_params=sim_params,
         services=services,
         no_execution=args.no_execution
     )

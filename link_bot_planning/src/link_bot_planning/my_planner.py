@@ -7,7 +7,7 @@ import ompl.control as oc
 from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data, get_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
-from link_bot_planning.params import PlannerParams, EnvParams
+from link_bot_planning.params import PlannerParams, SimParams, FullEnvParams
 from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_local_env, ValidRopeConfigurationCompoundSampler
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils
@@ -20,14 +20,13 @@ class MyPlanner:
                  fwd_model: BaseForwardModel,
                  classifier_model: BaseClassifier,
                  planner_params: PlannerParams,
-                 env_params: EnvParams,
                  services: GazeboServices,
                  viz_object: VizObject):
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.n_state = self.fwd_model.n_state
         self.n_control = self.fwd_model.n_control
-        self.env_params = env_params
+        self.full_env_params = self.fwd_model.full_env_params
         self.planner_params = planner_params
         self.services = services
         self.viz_object = viz_object
@@ -47,11 +46,11 @@ class MyPlanner:
         self.config_space_bounds = ob.RealVectorBounds(self.n_state)
         for i in range(self.n_state):
             if i % 2 == 0:
-                self.config_space_bounds.setLow(i, -self.env_params.w / 2)
-                self.config_space_bounds.setHigh(i, self.env_params.w / 2)
+                self.config_space_bounds.setLow(i, -self.planner_params.w / 2)
+                self.config_space_bounds.setHigh(i, self.planner_params.w / 2)
             else:
-                self.config_space_bounds.setLow(i, -self.env_params.h / 2)
-                self.config_space_bounds.setHigh(i, self.env_params.h / 2)
+                self.config_space_bounds.setLow(i, -self.planner_params.h / 2)
+                self.config_space_bounds.setHigh(i, self.planner_params.h / 2)
         self.config_space.setBounds(self.config_space_bounds)
 
         # the rope is just 6 real numbers with no bounds
@@ -66,7 +65,7 @@ class MyPlanner:
             # this length comes from the SDF file textured_link_bot.sdf
             sampler = ValidRopeConfigurationCompoundSampler(state_space,
                                                             self.viz_object,
-                                                            extent=self.env_params.extent,
+                                                            extent=self.planner_params.extent,
                                                             n_state=self.n_state,
                                                             rope_length=self.rope_length,
                                                             max_angle_rad=self.planner_params.max_angle_rad)
@@ -152,8 +151,8 @@ class MyPlanner:
         :return: controls, states
         """
         # get full env once
-        full_env_data = get_occupancy_data(env_w=self.env_params.w,
-                                           env_h=self.env_params.h,
+        full_env_data = get_occupancy_data(env_w=self.full_env_params.w,
+                                           env_h=self.full_env_params.h,
                                            res=self.fwd_model.full_env_params.res,
                                            services=self.services)
         self.full_envs = np.array([full_env_data.data])

@@ -165,7 +165,6 @@ def setup_gazebo_env(verbose: int,
 
     # Set initial object positions
     if initial_object_dict is not None:
-        raise NotImplementedError()
         move_action = Position2dAction()
         for object_name, (x, y) in initial_object_dict.items():
             move = ObjectAction()

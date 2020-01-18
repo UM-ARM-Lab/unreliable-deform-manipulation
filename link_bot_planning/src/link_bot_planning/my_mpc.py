@@ -7,17 +7,16 @@ from typing import List
 import numpy as np
 import std_srvs
 from colorama import Fore
+from link_bot_gazebo.srv import LinkBotStateRequest
 from ompl import base as ob
 
-import link_bot_gazebo.gazebo_utils
 from ignition import markers
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
-from link_bot_gazebo.srv import LinkBotStateRequest
+from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning.goals import sample_goal
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.params import PlannerParams, EnvParams
+from link_bot_planning.params import PlannerParams, SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 
 
@@ -29,13 +28,13 @@ class myMPC:
                  n_plans_per_env: int,
                  verbose: int,
                  planner_params: PlannerParams,
-                 env_params: EnvParams,
+                 sim_params: SimParams,
                  services: GazeboServices,
                  no_execution: bool):
         self.planner = planner
         self.n_total_plans = n_total_plans
         self.n_plans_per_env = n_plans_per_env
-        self.env_params = env_params
+        self.sim_params = sim_params
         self.planner_params = planner_params
         self.verbose = verbose
         self.services = services
@@ -48,14 +47,14 @@ class myMPC:
         total_plan_idx = 0
         initial_poses_in_collision = 0
         while True:
-            if self.env_params.move_obstacles:
+            if self.sim_params.move_obstacles:
                 # generate a new environment by rearranging the obstacles
                 objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-                gazebo_utils.move_objects(self.services, self.env_params.max_step_size, objects, self.env_params.w,
-                                          self.env_params.h, 'velocity', padding=0.5)
+                gazebo_utils.move_objects(self.services, self.sim_params.max_step_size, objects, self.planner.full_env_params.w,
+                                          self.planner.full_env_params.h, 'velocity', padding=0.5)
 
             # nudge the rope so it is hopefully not in collision?
-            self.services.nudge_rope(self.env_params.max_step_size)
+            self.services.nudge_rope(self.sim_params.max_step_size)
 
             # wait for things to settle
             # gazebo_utils.wait(duration_steps=100)
@@ -70,8 +69,8 @@ class myMPC:
                 head_idx = state.link_names.index("head")
                 initial_rope_configuration = gazebo_utils.points_to_config(state.points)
                 head_point = state.points[head_idx]
-                tail_goal = self.get_goal(self.env_params.w, self.env_params.h, head_point,
-                                          env_padding=self.env_params.goal_padding)
+                tail_goal = self.get_goal(self.planner_params.w, self.planner_params.h, head_point,
+                                          env_padding=self.sim_params.goal_padding)
 
                 start = np.expand_dims(np.array(initial_rope_configuration), axis=0)
                 tail_goal_point = np.array(tail_goal)
@@ -152,7 +151,7 @@ class myMPC:
                          planned_path: np.ndarray,
                          tail_goal_point: np.ndarray,
                          planned_actions: np.ndarray,
-                         full_sdf_data: link_bot_sdf_utils.SDF,
+                         full_env_data: link_bot_sdf_utils.OccupancyData,
                          planner_data: ob.PlannerData,
                          planning_time: float,
                          planner_status: ob.PlannerStatus):
@@ -165,7 +164,7 @@ class myMPC:
                               planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_path: np.ndarray,
-                              full_sdf_data: link_bot_sdf_utils.SDF,
+                              full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
@@ -177,5 +176,5 @@ class myMPC:
     def on_planner_failure(self,
                            start: np.ndarray,
                            tail_goal_point: np.ndarray,
-                           full_sdf_data: link_bot_sdf_utils.OccupancyData):
+                           full_env_data: link_bot_sdf_utils.OccupancyData):
         pass

@@ -18,7 +18,7 @@ from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import bytes_feature, float_feature
 from link_bot_gazebo import gazebo_utils
 from link_bot_planning.goals import sample_goal
-from link_bot_planning.params import LocalEnvParams, FullEnvParams, EnvParams
+from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
 from link_bot_pycommon.args import my_formatter
 
 opts = tensorflow.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
@@ -201,7 +201,7 @@ def generate(args):
     full_env_cols = int(args.env_w / args.res)
     full_env_rows = int(args.env_h / args.res)
     full_env_params = FullEnvParams(h_rows=full_env_rows, w_cols=full_env_cols, res=args.res)
-    env_params = EnvParams(w=args.env_w,
+    sim_params = SimParams(w=args.env_w,
                            h=args.env_h,
                            real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
@@ -213,9 +213,7 @@ def generate(args):
             'rope_length': rope_length,
             'local_env_params': local_env_params.to_json(),
             'full_env_params': full_env_params.to_json(),
-            'env_params': env_params.to_json(),
-            'env_w': args.env_w,
-            'env_h': args.env_h,
+            'sim_params': sim_params.to_json(),
             'compression_type': args.compression_type,
             'sequence_length': args.steps_per_traj,
             'n_state': n_state,

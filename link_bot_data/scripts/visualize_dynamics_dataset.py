@@ -10,6 +10,7 @@ from matplotlib.animation import FuncAnimation
 
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_data.visualization import plot_rope_configuration, plottable_rope_configuration
+from link_bot_planning.params import FullEnvParams
 from link_bot_pycommon.args import my_formatter
 
 tf.compat.v1.enable_eager_execution()
@@ -38,8 +39,10 @@ def main():
                                          n_parallel_calls=1,
                                          batch_size=1)
 
-    half_w = dataset.hparams['env_w'] / 2 - 0.01
-    half_h = dataset.hparams['env_h'] / 2 - 0.01
+    full_env_params = FullEnvParams.from_json(dataset.hparams['full_env_params'])
+
+    half_w = full_env_params.w / 2 - 0.01
+    half_h = full_env_params.h / 2 - 0.01
 
     def oob(point):
         if point[0] <= -half_w or point[0] >= half_w:

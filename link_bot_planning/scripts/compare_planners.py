@@ -23,7 +23,7 @@ from link_bot_planning import my_mpc
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
-from link_bot_planning.params import PlannerParams, EnvParams
+from link_bot_planning.params import PlannerParams, SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -44,7 +44,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
                  n_total_plans: int,
                  verbose: int,
                  planner_params: PlannerParams,
-                 env_params: EnvParams,
+                 sim_params: SimParams,
                  services: GazeboServices,
                  comparison_item_idx: int,
                  seed: int,
@@ -56,7 +56,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             n_plans_per_env=n_plans_per_env,
             verbose=verbose,
             planner_params=planner_params,
-            env_params=env_params,
+            sim_params=sim_params,
             services=services,
             no_execution=False)
         self.classifier_model_type = classifier_model_type
@@ -72,7 +72,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             "n_targets": n_plans_per_env,
             "planner_params": planner_params.to_json(),
             "local_env_params": self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
-            "env_params": env_params.to_json(),
+            "env_params": sim_params.to_json(),
             "seed": self.seed,
             "metrics": [],
         }
@@ -140,24 +140,24 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
         metrics_file = self.metrics_filename.open('w')
         json.dump(self.metrics, metrics_file, indent=1)
 
-    def on_planner_failure(self, start, tail_goal_point, full_sdf_data):
+    def on_planner_failure(self, start, tail_goal_point, full_env_data: link_bot_sdf_utils.OccupancyData):
         self.n_failures += 1
         folder = self.failures_root / str(self.n_failures)
         folder.mkdir(parents=True)
-        image_file = (folder / 'full_sdf.png')
+        image_file = (folder / 'full_env.png')
         info_file = (folder / 'info.json').open('w')
         info = {
             'start': start.tolist(),
             'tail_goal_point': tail_goal_point.tolist(),
             'sdf': {
-                'res': full_sdf_data.resolution.tolist(),
-                'origin': full_sdf_data.origin.tolist(),
-                'extent': full_sdf_data.extent,
-                'data': full_sdf_data.data.tolist(),
+                'res': full_env_data.resolution.tolist(),
+                'origin': full_env_data.origin.tolist(),
+                'extent': full_env_data.extent,
+                'data': full_env_data.data.tolist(),
             },
         }
         json.dump(info, info_file, indent=1)
-        plt.imsave(image_file, full_sdf_data.image > 0)
+        plt.imsave(image_file, full_env_data.image > 0)
 
 
 def main():
@@ -221,15 +221,15 @@ def main():
         classifier_model_dir = pathlib.Path(item_of_comparison['classifier_model_dir'])
         classifier_model_type = item_of_comparison['classifier_model_type']
 
-        planner_params = PlannerParams(timeout=args.planner_timeout,
+        planner_params = PlannerParams(w=args.env_w,
+                                       h=args.env_h,
+                                       timeout=args.planner_timeout,
                                        max_v=args.max_v,
                                        goal_threshold=args.goal_threshold,
                                        random_epsilon=args.random_epsilon,
                                        max_angle_rad=args.max_angle_rad)
-        env_params = EnvParams(w=args.env_w,
-                               h=args.env_h,
-                               real_time_rate=args.real_time_rate,
-                               max_step_size=env_params.max_step_size,
+        sim_params = SimParams(real_time_rate=args.real_time_rate,
+                               max_step_size=sim_params.max_step_size,
                                goal_padding=0.0,
                                move_obstacles=(not args.no_move_obstacles))
 
@@ -239,7 +239,7 @@ def main():
                                  classifier_model_dir=classifier_model_dir,
                                  classifier_model_type=classifier_model_type,
                                  planner_params=planner_params,
-                                 env_params=env_params,
+                                 sim_params=sim_params,
                                  services=services)
 
         runner = ComputeClassifierMetrics(
@@ -252,7 +252,7 @@ def main():
             n_total_plans=args.n_total_plans,
             verbose=args.verbose,
             planner_params=planner_params,
-            env_params=env_params,
+            sim_params=sim_params,
             services=services,
             seed=args.seed,
             outdir=common_output_directory,

@@ -22,7 +22,7 @@ from link_bot_planning import my_mpc
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
-from link_bot_planning.params import EnvParams, PlannerParams
+from link_bot_planning.params import SimParams, PlannerParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_pycommon import link_bot_sdf_utils
 
@@ -67,7 +67,7 @@ class Executor(my_mpc.myMPC):
                  planner: MyPlanner,
                  verbose: int,
                  planner_params: PlannerParams,
-                 env_params: EnvParams,
+                 sim_params: SimParams,
                  services: GazeboServices,
                  outdir: pathlib.Path):
         super().__init__(
@@ -76,7 +76,7 @@ class Executor(my_mpc.myMPC):
             n_plans_per_env=1,
             verbose=verbose,
             planner_params=planner_params,
-            env_params=env_params,
+            sim_params=sim_params,
             services=services,
             no_execution=False)
         self.outdir = outdir
@@ -124,8 +124,8 @@ def main():
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=30.0)
     parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
-    parser.add_argument('--env-w', type=float, default=5, help='environment width')
-    parser.add_argument('--env-h', type=float, default=5, help='environment height')
+    parser.add_argument('--planner-env-w', type=float, default=5, help='planner environment width')
+    parser.add_argument('--planner-env-h', type=float, default=5, help='planner environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
     parser.add_argument('--max-angle-rad', type=float, default=1, help='maximum deviation from straight rope when sampling')
 
@@ -135,10 +135,13 @@ def main():
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
 
-    planner_params = PlannerParams(timeout=args.planner_timeout, max_v=args.max_v, goal_threshold=0.1, max_angle_rad=args.max_angle_rad)
-    env_params = EnvParams(w=args.env_w,
-                           h=args.env_h,
-                           real_time_rate=args.real_time_rate,
+    planner_params = PlannerParams(w=args.planner_env_w,
+                                   h=args.planner_env_h,
+                                   timeout=args.planner_timeout,
+                                   max_v=args.max_v,
+                                   goal_threshold=0.1,
+                                   max_angle_rad=args.max_angle_rad)
+    sim_params = SimParams(real_time_rate=args.real_time_rate,
                            goal_padding=0.0,
                            move_obstacles=False)
 
@@ -154,8 +157,8 @@ def main():
     rospy.init_node('planner_with_classifier')
 
     services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
-                                             real_time_rate=env_params.real_time_rate,
-                                             max_step_size=env_params.max_step_size,
+                                             real_time_rate=sim_params.real_time_rate,
+                                             max_step_size=sim_params.max_step_size,
                                              reset_world=True,
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
@@ -166,14 +169,14 @@ def main():
                              classifier_model_dir=args.classifier_model_dir,
                              classifier_model_type=args.classifier_model_type,
                              planner_params=planner_params,
-                             env_params=env_params,
+                             sim_params=sim_params,
                              services=services)
 
     executer = Executor(
         planner=planner,
         verbose=args.verbose,
         planner_params=planner_params,
-        env_params=env_params,
+        sim_params=sim_params,
         outdir=args.outdir,
         services=services,
     )

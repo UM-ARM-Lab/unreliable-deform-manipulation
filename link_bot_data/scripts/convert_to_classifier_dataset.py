@@ -18,6 +18,10 @@ def main():
     """
     Loads an imbalanced dataset as a classifier dataset, balances it, then saves those to a new format of dataset
     specifically for the classifier
+    NOTE:
+    A link_bot_state_space_dataset is compatible with a classifier_dataset. However, those datasets are imbalanced and inefficient
+    for training the classifier. That's what the new_classifier_dataset is for, and this script converts a classifier_datset
+    to a new_classifier_dataset
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dir', type=pathlib.Path)

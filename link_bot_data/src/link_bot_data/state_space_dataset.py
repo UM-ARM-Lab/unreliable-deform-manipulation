@@ -151,17 +151,6 @@ class BaseStateSpaceDataset:
 
         return dataset
 
-    def convert_to_sequences(self, state_like_seqs, action_like_seqs):
-        # Convert anything which is a list of tensors along time dimension to one tensor where the first dimension is time
-        state_like_tensors = {}
-        action_like_tensors = {}
-        for example_name, seq in state_like_seqs.items():
-            state_like_tensors[example_name] = tf.concat(seq, 0)
-        for example_name, seq in action_like_seqs.items():
-            action_like_tensors[example_name] = tf.concat(seq, axis=0)
-
-        return state_like_tensors, action_like_tensors
-
     @staticmethod
     def slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length: int):
         t_start = 0

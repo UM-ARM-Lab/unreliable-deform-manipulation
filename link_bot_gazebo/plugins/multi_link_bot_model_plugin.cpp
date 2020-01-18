@@ -1,12 +1,12 @@
 #include "multi_link_bot_model_plugin.h"
 
-#include <memory>
-#include <sstream>
-
 #include <geometry_msgs/Point.h>
+
 #include <gazebo/common/Time.hh>
 #include <gazebo/common/Timer.hh>
 #include <ignition/math/Vector3.hh>
+#include <memory>
+#include <sstream>
 
 namespace gazebo {
 
@@ -156,15 +156,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
     gripper2_link_ = model_->GetLink(gripper2_link_name);
   }
 
-  // TODO: make this a sdformat tag
-//  auto constexpr camera_name{"default::my_camera::link::my_camera"};
-//  auto const &sensor = sensors::get_sensor(camera_name);
-//  camera_sensor = std::dynamic_pointer_cast<sensors::CameraSensor>(sensor);
-//  if (!camera_sensor) {
-//    gzerr << "Failed to load camera: " << camera_name << '\n';
-//  }
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(std::bind(&MultiLinkBotModelPlugin::OnUpdate, this));
-//  postRenderConnection_ = event::Events::ConnectPostRender(std::bind(&MultiLinkBotModelPlugin::OnPostRender, this));
   constexpr auto max_integral{0};
   gripper1_x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel_, -max_vel_);
   gripper1_y_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel_, -max_vel_);
@@ -188,33 +180,6 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
 }
 #pragma clang diagnostic pop
 
-void MultiLinkBotModelPlugin::OnPostRender()
-{
-  if (camera_sensor and camera_sensor->LastUpdateTime() > common::Time::Zero) {
-    // one byte per channel
-    auto constexpr byte_depth = 1;
-    auto constexpr num_channels = 3;
-    auto const w = camera_sensor->ImageWidth();
-    auto const h = camera_sensor->ImageHeight();
-    auto const total_size_bytes = w * h * byte_depth * num_channels;
-    auto const &sensor_image = camera_sensor->ImageData();
-    latest_image_.width = w;
-    latest_image_.height = h;
-    latest_image_.step = w * byte_depth * num_channels;
-    latest_image_.header.seq = image_sequence_number;
-    auto const stamp = camera_sensor->LastUpdateTime();
-    latest_image_.header.stamp.sec = stamp.sec;
-    latest_image_.header.stamp.nsec = stamp.nsec;
-    latest_image_.data.assign(
-        sensor_image, sensor_image + total_size_bytes);  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    image_sequence_number += 1;
-    ready_ = true;
-  }
-  else {
-    //    gzwarn << "no camera image available" << std::endl;
-  }
-}
-
 double update_target(double const current_target, double const target, double const max_acc)
 {
   auto const delta = target - current_target;
@@ -226,17 +191,23 @@ double update_target(double const current_target, double const target, double co
 link_bot_gazebo::LinkBotConfiguration MultiLinkBotModelPlugin::GetConfiguration()
 {
   link_bot_gazebo::LinkBotConfiguration configuration;
-  for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx)
-  {
+  for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx) {
     std::stringstream ss;
     ss << "link_" << link_idx;
     auto link_name = ss.str();
-    auto const tail = model_->GetLink(link_name);
+    auto const link = model_->GetLink(link_name);
     geometry_msgs::Point point;
-    point.x = tail->WorldPose().Pos().X();
-    point.y = tail->WorldPose().Pos().Y();
+    point.x = link->WorldPose().Pos().X();
+    point.y = link->WorldPose().Pos().Y();
     configuration.points.emplace_back(point);
   }
+
+  auto const head = model_->GetLink("head");
+  geometry_msgs::Point point;
+  point.x = head->WorldPose().Pos().X();
+  point.y = head->WorldPose().Pos().Y();
+  configuration.points.emplace_back(point);
+
   return configuration;
 }
 
@@ -437,15 +408,6 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
     res.gripper2_force.z = 0;
   }
 
-  while (!ready_) {
-  }
-
-//  // one byte per channel
-//  auto constexpr byte_depth = 1;
-//  auto constexpr num_channels = 3;
-//  auto const w = camera_sensor->ImageWidth();
-//  auto const h = camera_sensor->ImageHeight();
-//  res.camera_image = latest_image_;
   res.header.stamp = ros::Time::now();
   image_sequence_number += 1;
 

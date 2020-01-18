@@ -23,7 +23,7 @@ from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import my_mpc, ompl_viz
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.params import PlannerParams, EnvParams
+from link_bot_planning.params import PlannerParams, SimParams, FullEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -44,7 +44,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                  verbose: int,
                  seed: int,
                  planner_params: PlannerParams,
-                 env_params: EnvParams,
+                 sim_params: SimParams,
                  n_steps_per_example: int,
                  n_examples_per_record: int,
                  compression_type: str,
@@ -55,7 +55,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                          n_plans_per_env,
                          verbose,
                          planner_params,
-                         env_params,
+                         sim_params,
                          services=services,
                          no_execution=False)
         self.fwd_model_dir = fwd_model_dir
@@ -85,7 +85,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                 'n_plans_per_env': n_plans_per_env,
                 'verbose': verbose,
                 'planner_params': planner_params.to_json(),
-                'env_params': env_params.to_json(),
+                'sim_params': sim_params.to_json(),
                 'local_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
                 'full_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['full_env_params'],
                 'sequence_length': self.n_steps_per_example,
@@ -115,7 +115,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                          planned_path: np.ndarray,
                          tail_goal_point: np.ndarray,
                          planned_actions: np.ndarray,
-                         full_sdf_data: link_bot_sdf_utils.SDF,
+                         full_env_data: link_bot_sdf_utils.OccupancyData,
                          planner_data: ob.PlannerData,
                          planning_time: float,
                          planner_status: ob.PlannerStatus):
@@ -127,11 +127,11 @@ class ClassifierDataCollector(my_mpc.myMPC):
             ompl_viz.plot(ax,
                           self.planner.viz_object,
                           planner_data,
-                          full_sdf_data.sdf,
+                          full_env_data.data,
                           tail_goal_point,
                           planned_path,
                           planned_actions,
-                          full_sdf_data.extent)
+                          full_env_data.extent)
 
         if len(self.planning_times) % 16 == 0:
             print("Planning Time: {:7.3f}s ({:6.3f}s)".format(np.mean(self.planning_times), np.std(self.planning_times)))
@@ -143,13 +143,16 @@ class ClassifierDataCollector(my_mpc.myMPC):
                               planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
                               actual_path: np.ndarray,
-                              full_sdf_data: link_bot_sdf_utils.SDF,
+                              full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
         current_features = {
             'local_env_rows': float_feature(np.array([self.local_env_params.h_rows])),
-            'local_env_cols': float_feature(np.array([self.local_env_params.w_cols]))
+            'local_env_cols': float_feature(np.array([self.local_env_params.w_cols])),
+            'full_env/env': float_feature(full_env_data.data.flatten()),
+            'full_env/extent': float_feature(np.array(full_env_data.extent)),
+            'full_env/origin': float_feature(full_env_data.origin),
         }
 
         for time_idx in range(self.n_steps_per_example):
@@ -230,12 +233,14 @@ def main():
     parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     # these define the bounds of the C-space in the planner
-    parser.add_argument('--env-w', type=float, default=5, help='environment width')
-    parser.add_argument('--env-h', type=float, default=5, help='environment height')
+    parser.add_argument('--planner-env-w', type=float, default=5.0, help='planner env w')
+    parser.add_argument('--planner-env-h', type=float, default=5.0, help='planner env h')
+    parser.add_argument('--full-env-w', type=float, default=6.0, help='full env w')
+    parser.add_argument('--full-env-h', type=float, default=6.0, help='full env h')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
     parser.add_argument('--goal-threshold', type=float, default=0.10, help='goal threshold')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
-    parser.add_argument('--random-epsilon', type=float, default=0.25, help='probability of accepting despite classifier')
+    parser.add_argument('--random-epsilon', type=float, default=0.05, help='probability of accepting despite classifier')
     parser.add_argument('--max-angle-rad', type=float, default=1, help='maximum deviation from straight rope when sampling')
 
     args = parser.parse_args()
@@ -251,10 +256,10 @@ def main():
                                    max_v=args.max_v,
                                    goal_threshold=args.goal_threshold,
                                    random_epsilon=args.random_epsilon,
+                                   w=args.planner_env_w,
+                                   h=args.planner_env_h,
                                    max_angle_rad=args.max_angle_rad)
-    env_params = EnvParams(w=args.env_w,
-                           h=args.env_h,
-                           real_time_rate=args.real_time_rate,
+    sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
                            move_obstacles=(not args.no_move_obstacles),
                            goal_padding=0.0)
@@ -271,8 +276,8 @@ def main():
     }
 
     services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
-                                             real_time_rate=env_params.real_time_rate,
-                                             max_step_size=env_params.max_step_size,
+                                             real_time_rate=sim_params.real_time_rate,
+                                             max_step_size=sim_params.max_step_size,
                                              reset_world=True,
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
@@ -284,7 +289,6 @@ def main():
                                           classifier_model_dir=args.classifier_model_dir,
                                           classifier_model_type=args.classifier_model_type,
                                           planner_params=planner_params,
-                                          env_params=env_params,
                                           services=services)
 
     data_collector = ClassifierDataCollector(
@@ -297,7 +301,7 @@ def main():
         verbose=args.verbose,
         seed=args.seed,
         planner_params=planner_params,
-        env_params=env_params,
+        sim_params=sim_params,
         n_steps_per_example=args.n_steps_per_example,
         n_examples_per_record=args.n_examples_per_record,
         compression_type=args.compression_type,
