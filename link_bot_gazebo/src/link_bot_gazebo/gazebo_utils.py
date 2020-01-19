@@ -180,10 +180,7 @@ def setup_gazebo_env(verbose: int,
             move_action.actions.append(move)
         services.position_2d_action.publish(move_action)
 
-    # let the simulator run to get the first image
-    step = WorldControlRequest()
-    step.steps = 1000
-    services.world_control(step)  # this will block until stepping is complete
+    services.position_2d_stop.publish(Empty())
     return services
 
 

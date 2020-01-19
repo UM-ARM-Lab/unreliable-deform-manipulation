@@ -185,6 +185,7 @@ def main():
 
     args = parser.parse_args()
 
+    print(Fore.CYAN + "Using Seed {}".format(args.seed) + Fore.RESET)
 
     now = str(int(time.time()))
     root = pathlib.Path('results') / "{}-compare_classifiers".format(args.nickname)
