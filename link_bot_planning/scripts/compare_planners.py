@@ -19,8 +19,8 @@ from ompl import base as ob
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import my_mpc
-from link_bot_planning.mpc_planners import get_planner
+from link_bot_planning import my_mpc, model_utils
+from link_bot_planning.mpc_planners import get_planner, get_planner_with_model
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, SimParams
@@ -121,7 +121,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
 
         plt.figure()
         ax = plt.gca()
-        plot(ax, self.planner.viz_object, planner_data, full_env_data.image, tail_goal_point, planned_path, planned_actions,
+        plot(ax, self.planner.viz_object, planner_data, full_env_data.data, tail_goal_point, planned_path, planned_actions,
              full_env_data.extent)
         ax.scatter(actual_path[-1, 0], actual_path[-1, 1], label='final actual tail position', zorder=5)
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
@@ -163,6 +163,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=250)
     tf.logging.set_verbosity(tf.logging.FATAL)
+    ou.setLogLevel(ou.LOG_ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
@@ -184,9 +185,6 @@ def main():
 
     args = parser.parse_args()
 
-    np.random.seed(args.seed)
-    ou.RNG.setSeed(args.seed)
-    ou.setLogLevel(ou.LOG_ERROR)
 
     now = str(int(time.time()))
     root = pathlib.Path('results') / "{}-compare_classifiers".format(args.nickname)
@@ -208,14 +206,13 @@ def main():
         'moving_box6': [-0.5, 2.0],
     }
 
-    services, sim_params = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
-                                             real_time_rate=args.real_time_rate,
-                                             reset_world=True,
-                                             initial_object_dict=initial_object_dict)
-    services.pause(std_srvs.srv.EmptyRequest())
-
     comparisons = json.load(args.comparison.open("r"))
     for comparison_idx, item_of_comparison in enumerate(comparisons):
+        # start at the same seed every time to make the planning environments & plans the same (hopefully?)
+        # setting OMPL random seed should have no effect, because I use numpy's random in my sampler?
+        np.random.seed(args.seed)
+        tf.random.set_random_seed(args.seed)  # not sure if this has any effect
+
         fwd_model_dir = pathlib.Path(item_of_comparison['fwd_model_dir'])
         fwd_model_type = item_of_comparison['fwd_model_type']
         classifier_model_dir = pathlib.Path(item_of_comparison['classifier_model_dir'])
@@ -228,19 +225,28 @@ def main():
                                        goal_threshold=args.goal_threshold,
                                        random_epsilon=args.random_epsilon,
                                        max_angle_rad=args.max_angle_rad)
+
+        fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, fwd_model_type)
+
+        services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
+                                                 real_time_rate=args.real_time_rate,
+                                                 max_step_size=fwd_model.max_step_size,
+                                                 reset_world=True,
+                                                 initial_object_dict=initial_object_dict)
+
+        services.pause(std_srvs.srv.EmptyRequest())
+
+        planner = get_planner_with_model(planner_class_str='ShootingRRT',
+                                         fwd_model=fwd_model,
+                                         classifier_model_dir=classifier_model_dir,
+                                         classifier_model_type=classifier_model_type,
+                                         planner_params=planner_params,
+                                         services=services)
+
         sim_params = SimParams(real_time_rate=args.real_time_rate,
-                               max_step_size=sim_params.max_step_size,
+                               max_step_size=planner.fwd_model.max_step_size,
                                goal_padding=0.0,
                                move_obstacles=(not args.no_move_obstacles))
-
-        planner, _ = get_planner(planner_class_str='ShootingRRT',
-                                 fwd_model_dir=fwd_model_dir,
-                                 fwd_model_type=fwd_model_type,
-                                 classifier_model_dir=classifier_model_dir,
-                                 classifier_model_type=classifier_model_type,
-                                 planner_params=planner_params,
-                                 sim_params=sim_params,
-                                 services=services)
 
         runner = ComputeClassifierMetrics(
             planner=planner,

@@ -18,6 +18,7 @@ class BaseForwardModel:
         if 'full_env_params' in self.hparams['dynamics_dataset_hparams']:
             self.full_env_params = FullEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['full_env_params'])
         self.dt = self.hparams['dynamics_dataset_hparams']['dt']
+        self.max_step_size = self.hparams['dynamics_dataset_hparams']['max_step_size']
 
     def predict(self,
                 full_envs: np.ndarray,

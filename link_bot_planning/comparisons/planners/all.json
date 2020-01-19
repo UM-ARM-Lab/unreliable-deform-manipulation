@@ -1,24 +1,24 @@
 [
   {
-    "fwd_model_dir": "ss_log_data/res_1024_10/January_11_09-41-50_2697d2038f/",
+    "fwd_model_dir": "ss_log_data/bigstep_10_free_space/January_19_11-52-41_91981ec697/",
     "fwd_model_type": "nn",
-    "classifier_model_dir": "",
+    "classifier_model_dir": "classifiers/linear/January_19_16-09-41_91981ec697",
     "classifier_model_type": "raster"
   },
   {
-    "fwd_model_dir": "ss_log_data/res_1024_10/January_11_09-41-50_2697d2038f/",
+    "fwd_model_dir": "ss_log_data/bigstep_10_free_space/January_19_11-52-41_91981ec697/",
     "fwd_model_type": "nn",
     "classifier_model_dir": "",
     "classifier_model_type": "collision"
   },
   {
-    "fwd_model_dir": "ss_log_data/bigstep_both_datasets/January_17_11-42-27_ce0ff6294c",
+    "fwd_model_dir": "ss_log_data/bigstep_both_datasets/January_17_11-42-27_ce0ff6294c/",
     "fwd_model_type": "obs",
     "classifier_model_dir": "",
     "classifier_model_type": "none"
   },
   {
-    "fwd_model_dir": "ss_log_data/res_1024_10/January_11_09-41-50_2697d2038f/",
+    "fwd_model_dir": "ss_log_data/bigstep_10_free_space/January_19_11-52-41_91981ec697/",
     "fwd_model_type": "nn",
     "classifier_model_dir": "",
     "classifier_model_type": "none"

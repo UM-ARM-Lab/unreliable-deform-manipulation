@@ -14,13 +14,11 @@ class SST(MyPlanner):
                  fwd_model: BaseForwardModel,
                  classifier_model: BaseClassifier,
                  planner_params: PlannerParams,
-                 env_params: SimParams,
                  services: GazeboServices,
                  viz_object: VizObject):
         super().__init__(fwd_model,
                          classifier_model,
                          planner_params,
-                         env_params,
                          services,
                          viz_object)
 
