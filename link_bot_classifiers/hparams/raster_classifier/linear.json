@@ -2,7 +2,6 @@
   "model_class": "raster",
   "fc_layer_sizes": [],
   "conv_filters": [
-    [1, [3, 3]]
   ],
   "kernel_reg": 0.05,
   "bias_reg": 0.05,

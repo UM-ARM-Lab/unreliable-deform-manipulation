@@ -19,7 +19,10 @@ class RasterPoints(tf.keras.layers.Layer):
 
     def call(self, inputs, **kwargs):
         """
-        :param x: [batch_size, sequence_length, n_points * 2], [batch_size, sequence_length, 2], [batch_size, sequence_length, 2]
+        :param inputs:
+            x: [batch_size, sequence_length, n_points * 2], float
+            resolution: [batch_size, sequence_length, 2], float
+            origin: [batch_size, sequence_length, 2], float
         :return: local_env_shape
         """
         x, resolution, origin = inputs

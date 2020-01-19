@@ -61,9 +61,15 @@ class RasterClassifier(tf.keras.Model):
 
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
-    def call(self, input_dict: dict, training=None, mask=None):
+    def _image(self, input_dict: dict):
         """
-        we expect res to be [batch_size, 1]
+        Expected sizes:
+            'planned_state': n_batch, n_state
+            'planned_state_next': n_batch, n_state
+            'planned_local_env/env': n_batch, h, w
+            'planned_local_env/origin': n_batch, 2
+            'planned_local_env/extent': n_batch, 4
+            'resolution': n_batch, 1
         """
         planned_state = input_dict['planned_state']
         planned_next_state = input_dict['planned_state_next']
@@ -78,7 +84,6 @@ class RasterClassifier(tf.keras.Model):
         planned_state = tf.expand_dims(planned_state, axis=1)
         planned_next_state = tf.expand_dims(planned_next_state, axis=1)
         planned_local_env_origin = tf.expand_dims(planned_local_env_origin, axis=1)
-        # convert from (batch, 1, 1) -> (batch, 1, 2)
         planned_local_env_resolution = tf.tile(tf.expand_dims(planned_local_env_resolution, axis=1), [1, 1, 2])
 
         # raster each state into an image
@@ -95,7 +100,9 @@ class RasterClassifier(tf.keras.Model):
 
         # batch, h, w, channel
         concat_image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env), axis=3)
+        return planned_rope_image, planned_next_rope_image, planned_local_env, concat_image
 
+    def _conv(self, concat_image):
         # feed into a CNN
         conv_z = concat_image
         for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
@@ -103,6 +110,21 @@ class RasterClassifier(tf.keras.Model):
             conv_z = pool_layer(conv_h)
         out_conv_z = conv_z
 
+        return out_conv_z
+
+    def call(self, input_dict: dict, training=None, mask=None):
+        """
+        Expected sizes:
+            'planned_state': n_batch, n_state
+            'planned_state_next': n_batch, n_state
+            'planned_local_env/env': n_batch, h, w
+            'planned_local_env/origin': n_batch, 2
+            'planned_local_env/extent': n_batch, 4
+            'resolution': n_batch, 1
+        """
+        planned_rope_image, planned_next_rope_image, planned_local_env, concat_image = self._image(input_dict)
+
+        out_conv_z = self._conv(concat_image)
         conv_output = self.conv_flatten(out_conv_z)
 
         if self.hparams['batch_norm']:
@@ -326,16 +348,16 @@ class RasterClassifierWrapper(BaseClassifier):
         :param local_env_datas:
         :param s1: [batch, 6] float64
         :param s2: [batch, 6] float64
-        :return: [batch, 1] float64
+        :return: [batch, 1] float6n
         """
         data_s, res_s, origin_s, extent_s = link_bot_sdf_utils.batch_occupancy_data(local_env_data)
         test_x = {
             'planned_state': tf.convert_to_tensor(s1_s, dtype=tf.float32),
             'planned_state_next': tf.convert_to_tensor(s2_s, dtype=tf.float32),
             'planned_local_env/env': tf.convert_to_tensor(data_s, dtype=tf.float32),
-            'resolution': tf.convert_to_tensor(res_s, dtype=tf.float32),
             'planned_local_env/origin': tf.convert_to_tensor(origin_s, dtype=tf.float32),
             'planned_local_env/extent': tf.convert_to_tensor(extent_s, dtype=tf.float32),
+            'resolution': tf.convert_to_tensor(res_s, dtype=tf.float32),
         }
         accept_probabilities = self.net(test_x)[-1]
         accept_probabilities = accept_probabilities.numpy()
@@ -356,3 +378,6 @@ class RasterClassifierWrapper(BaseClassifier):
             plt.show()
 
         return accept_probabilities
+
+
+model = RasterClassifier
