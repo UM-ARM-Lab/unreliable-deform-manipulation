@@ -184,7 +184,7 @@ def setup_gazebo_env(verbose: int,
     step = WorldControlRequest()
     step.steps = 1000
     services.world_control(step)  # this will block until stepping is complete
-    return services, max_step_size
+    return services
 
 
 def get_rope_head_pixel_coordinates(services):

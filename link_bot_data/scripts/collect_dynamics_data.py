@@ -201,15 +201,14 @@ def generate(args):
     full_env_cols = int(args.env_w / args.res)
     full_env_rows = int(args.env_h / args.res)
     full_env_params = FullEnvParams(h_rows=full_env_rows, w_cols=full_env_cols, res=args.res)
-    sim_params = SimParams(w=args.env_w,
-                           h=args.env_h,
-                           real_time_rate=args.real_time_rate,
+    sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
                            goal_padding=0.5,
                            move_obstacles=(not args.no_obstacles))
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': args.dt,
+            'max_step_size': args.max_step_size,
             'rope_length': rope_length,
             'local_env_params': local_env_params.to_json(),
             'full_env_params': full_env_params.to_json(),
@@ -227,7 +226,7 @@ def generate(args):
     print(Fore.CYAN + "Using seed: {}".format(args.seed) + Fore.RESET)
     np.random.seed(args.seed)
 
-    services, _ = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, args.max_step_size, True, None)
+    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, args.max_step_size, True, None)
 
     generate_trajs(args, full_output_directory, services)
 
