@@ -1,0 +1,10 @@
+{
+  "Obs-NN": {
+    "model_dir": "log_data/bigstep_both_datasets/January_17_11-42-27_ce0ff6294c",
+    "model_type": "obs"
+  },
+  "Simple Res NN": {
+    "model_dir": "log_data/res_1024_10/January_11_09-41-50_2697d2038f/",
+    "model_type": "nn"
+  }
+}

@@ -231,7 +231,7 @@ def generate(args):
         }
         json.dump(options, of, indent=1)
 
-    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, True, None)
+    services, _ = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, True, None)
 
     generate_trajs(args, fwd_model, full_output_directory, services)
 

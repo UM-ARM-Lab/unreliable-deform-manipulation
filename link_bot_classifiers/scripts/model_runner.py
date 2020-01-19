@@ -107,7 +107,7 @@ def main():
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-grad-every', type=int, help='gradients hists every this many steps/batches', default=1000)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=500)
-    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=2000)
+    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=500)
     train_parser.add_argument('--balance-key', help='use this key in the y of dataset to balance classes')
     train_parser.set_defaults(func=train)
     train_parser.add_argument('--seed', type=int, default=None)

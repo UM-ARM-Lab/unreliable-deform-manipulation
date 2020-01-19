@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Optional, Dict, Iterable, List
+from typing import Optional, Dict, Iterable, List, Tuple
 
 import numpy as np
 import rospy
@@ -14,7 +14,7 @@ from visualization_msgs.msg import MarkerArray
 
 from gazebo_msgs.srv import *
 from link_bot_gazebo.msg import *
-from link_bot_planning.params import LocalEnvParams
+from link_bot_planning.params import LocalEnvParams, SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.gazebo_trajectory_execution import quaternion_from_euler
@@ -141,9 +141,9 @@ def rowcol_to_xy(services, row, col):
 
 def setup_gazebo_env(verbose: int,
                      real_time_rate: float,
-                     max_step_size: float,
+                     max_step_size: Optional[float] = None,
                      reset_world: Optional[bool] = True,
-                     initial_object_dict: Optional[Dict] = None):
+                     initial_object_dict: Optional[Dict] = None) -> GazeboServices:
     # fire up services
     services = GazeboServices()
     services.wait(verbose)
@@ -159,6 +159,8 @@ def setup_gazebo_env(verbose: int,
     set.gravity = current_physics.gravity
     set.ode_config = current_physics.ode_config
     set.max_update_rate = real_time_rate * 1000.0
+    if max_step_size is None:
+        max_step_size = current_physics.time_step
     set.time_step = max_step_size
     set.enabled = True
     services.set_physics.call(set)
@@ -182,7 +184,7 @@ def setup_gazebo_env(verbose: int,
     step = WorldControlRequest()
     step.steps = 1000
     services.world_control(step)  # this will block until stepping is complete
-    return services
+    return services, max_step_size
 
 
 def get_rope_head_pixel_coordinates(services):

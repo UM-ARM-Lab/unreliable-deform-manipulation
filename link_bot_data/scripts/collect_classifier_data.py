@@ -275,7 +275,7 @@ def main():
         'moving_box6': [-0.5, 2.0],
     }
 
-    services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
+    services, _ = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
                                              real_time_rate=sim_params.real_time_rate,
                                              max_step_size=sim_params.max_step_size,
                                              reset_world=True,

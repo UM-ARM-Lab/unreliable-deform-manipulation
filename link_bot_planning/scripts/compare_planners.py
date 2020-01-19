@@ -208,7 +208,7 @@ def main():
         'moving_box6': [-0.5, 2.0],
     }
 
-    services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
+    services, sim_params = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
                                              real_time_rate=args.real_time_rate,
                                              reset_world=True,
                                              initial_object_dict=initial_object_dict)
