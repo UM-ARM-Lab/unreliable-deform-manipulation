@@ -20,7 +20,7 @@ from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import my_mpc, model_utils
-from link_bot_planning.mpc_planners import get_planner, get_planner_with_model
+from link_bot_planning.mpc_planners import get_planner_with_model
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import PlannerParams, SimParams

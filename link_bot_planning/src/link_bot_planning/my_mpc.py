@@ -49,13 +49,9 @@ class myMPC:
         while True:
             if self.sim_params.move_obstacles:
                 # generate a new environment by rearranging the obstacles
-                print("moving")
-                time.sleep(5)
                 objects = ['moving_box{}'.format(i) for i in range(1, 7)]
                 gazebo_utils.move_objects(self.services, self.sim_params.max_step_size, objects, self.planner.full_env_params.w,
                                           self.planner.full_env_params.h, 'velocity', padding=0.5)
-                print("done moving")
-                time.sleep(5)
 
             # nudge the rope so it is hopefully not in collision?
             self.services.nudge_rope(self.sim_params.max_step_size)
