@@ -133,8 +133,9 @@ class ClassifierDataCollector(my_mpc.myMPC):
                           planned_actions,
                           full_env_data.extent)
 
-        if len(self.planning_times) % 16 == 0:
-            print("Planning Time: {:7.3f}s ({:6.3f}s)".format(np.mean(self.planning_times), np.std(self.planning_times)))
+        if self.verbose >= 1:
+            if len(self.planning_times) % 16 == 0:
+                print("Planning Time: {:7.3f}s ({:6.3f}s)".format(np.mean(self.planning_times), np.std(self.planning_times)))
 
     def on_execution_complete(self,
                               planned_path: np.ndarray,
