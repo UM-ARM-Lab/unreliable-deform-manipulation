@@ -44,6 +44,7 @@ def get_local_env_at_in(rows: int,
     row_indeces = np.tile(center_rows, [cols, rows, 1]).T + delta_rows
     col_indeces = np.tile(center_cols, [cols, rows, 1]).T + delta_cols
     batch_indeces = np.tile(np.arange(0, batch_size), [cols, rows, 1]).transpose()
+    # print(center_points)
     local_env = padded_full_envs[batch_indeces, row_indeces + padding, col_indeces + padding]
     local_env = tf.convert_to_tensor(local_env, dtype=tf.float32)
     return local_env, tf.cast(local_env_origins, dtype=tf.float32)

@@ -97,7 +97,7 @@ def main():
     train_parser.add_argument('--batch-size', type=int, default=32)
     train_parser.add_argument('--summary-freq', type=int, default=5)
     train_parser.add_argument('--save-freq', type=int, default=10)
-    train_parser.add_argument('--epochs', type=int, default=500)
+    train_parser.add_argument('--epochs', type=int, default=300)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=4)
