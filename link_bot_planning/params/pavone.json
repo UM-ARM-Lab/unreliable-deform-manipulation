@@ -1,0 +1,14 @@
+{
+  "fwd_model_dir": "ss_log_data/bigstep_10_free_space/January_19_11-52-41_91981ec697",
+  "fwd_model_type": "nn",
+  "classifier_model_dir": "",
+  "classifier_model_type": "none",
+  "planner": "BestFirstRRT",
+  "neighborhood_radius": 1.0,
+  "max_angle_rad": -999,
+  "max_v": 0.15,
+  "goal_threshold": 0.15,
+  "random_epsilon": 0.05,
+  "env_w": 5.0,
+  "env_h": 5.0
+}

@@ -35,12 +35,12 @@ def angle_from_configuration(state):
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 
-def make_random_rope_configuration(extent, n_state, total_length, max_angle_rad):
+def make_random_rope_configuration(extent, n_state, link_length, max_angle_rad):
     """
     First sample a head point, then sample angles for the other points
     :param max_angle_rad: NOTE, by sampling uniformly here we make certain assumptions about the planning task
     :param extent: bounds of the environment [xmin, xmax, ymin, ymax] (meters)
-    :param total_length: length of each segment of the rope (meters)
+    :param link_length: length of each segment of the rope (meters)
     :return:
     """
 
@@ -48,7 +48,6 @@ def make_random_rope_configuration(extent, n_state, total_length, max_angle_rad)
         return not (extent[0] < x < extent[1] and extent[2] < y < extent[3])
 
     n_links = int(n_state // 2 - 1)
-    link_length = total_length / n_links
     theta = np.random.uniform(-np.pi, np.pi)
     valid = False
     while not valid:

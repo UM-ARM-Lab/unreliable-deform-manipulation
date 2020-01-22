@@ -121,11 +121,17 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
 
         plt.figure()
         ax = plt.gca()
-        plot(ax, self.planner.viz_object, planner_data, full_env_data.data, tail_goal_point, planned_path, planned_actions,
-             full_env_data.extent)
+        legend = plot(ax,
+                      self.planner.viz_object,
+                      planner_data,
+                      full_env_data.data,
+                      tail_goal_point,
+                      planned_path,
+                      planned_actions,
+                      full_env_data.extent)
         ax.scatter(actual_path[-1, 0], actual_path[-1, 1], label='final actual tail position', zorder=5)
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
-        plt.savefig(plan_viz_path, dpi=600)
+        plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
 
         if self.verbose >= 1:
             print("Final Execution Error: {:0.4f}".format(final_execution_error))
@@ -179,6 +185,7 @@ def main():
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
     parser.add_argument('--max-angle-rad', type=float, default=1, help='maximum deviation from straight rope when sampling')
+    parser.add_argument('--neighborhood-radius', type=float, default=1, help='radius used for BestFirstRRT')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
     # TODO: sweep over this to see how it effects things
     parser.add_argument('--random-epsilon', type=float, default=0.25, help='probability of accepting despite classifier')
@@ -218,6 +225,7 @@ def main():
         fwd_model_type = item_of_comparison['fwd_model_type']
         classifier_model_dir = pathlib.Path(item_of_comparison['classifier_model_dir'])
         classifier_model_type = item_of_comparison['classifier_model_type']
+        planner_type = item_of_comparison['planner_type']
 
         planner_params = PlannerParams(w=args.env_w,
                                        h=args.env_h,
@@ -225,6 +233,7 @@ def main():
                                        max_v=args.max_v,
                                        goal_threshold=args.goal_threshold,
                                        random_epsilon=args.random_epsilon,
+                                       neighborhood_radius=args.neighborhood_radius,
                                        max_angle_rad=args.max_angle_rad)
 
         fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, fwd_model_type)
@@ -237,7 +246,7 @@ def main():
 
         services.pause(std_srvs.srv.EmptyRequest())
 
-        planner = get_planner_with_model(planner_class_str='ShootingRRT',
+        planner = get_planner_with_model(planner_class_str=planner_type,
                                          fwd_model=fwd_model,
                                          classifier_model_dir=classifier_model_dir,
                                          classifier_model_type=classifier_model_type,

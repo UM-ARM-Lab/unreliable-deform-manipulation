@@ -216,7 +216,7 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
-    parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'nn', 'rigid'], default='llnn')
+    parser.add_argument("fwd_model_type", choices=['obs', 'gp', 'llnn', 'nn', 'rigid'])
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--classifier-model-dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("--classifier-model-type", choices=['collision', 'none', 'raster'], default='none')
@@ -241,6 +241,7 @@ def main():
     parser.add_argument('--goal-threshold', type=float, default=0.10, help='goal threshold')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
     parser.add_argument('--random-epsilon', type=float, default=0.05, help='probability of accepting despite classifier')
+    parser.add_argument('--neighborhood-radius', type=float, default=1.0, help='radius for best first planner')
     parser.add_argument('--max-angle-rad', type=float, default=1, help='maximum deviation from straight rope when sampling')
 
     args = parser.parse_args()
@@ -255,6 +256,7 @@ def main():
     planner_params = PlannerParams(timeout=args.planner_timeout,
                                    max_v=args.max_v,
                                    goal_threshold=args.goal_threshold,
+                                   neighborhood_radius=args.neighborhood_radius,
                                    random_epsilon=args.random_epsilon,
                                    w=args.planner_env_w,
                                    h=args.planner_env_h,

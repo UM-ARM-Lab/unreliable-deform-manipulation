@@ -3,25 +3,29 @@
     "fwd_model_dir": "ss_log_data/bigstep_10_free_space/January_19_11-52-41_91981ec697/",
     "fwd_model_type": "nn",
     "classifier_model_dir": "classifiers/linear/January_19_16-09-41_91981ec697",
-    "classifier_model_type": "raster"
+    "classifier_model_type": "raster",
+    "planner_type": "ShootingRRT"
   },
   {
     "fwd_model_dir": "ss_log_data/bigstep_10_free_space/January_19_11-52-41_91981ec697/",
     "fwd_model_type": "nn",
     "classifier_model_dir": "",
-    "classifier_model_type": "collision"
+    "classifier_model_type": "collision",
+    "planner_type": "ShootingRRT"
   },
   {
     "fwd_model_dir": "ss_log_data/bigstep_both_datasets/January_17_11-42-27_ce0ff6294c/",
     "fwd_model_type": "obs",
     "classifier_model_dir": "",
-    "classifier_model_type": "none"
+    "classifier_model_type": "none",
+    "planner_type": "ShootingRRT"
   },
   {
     "fwd_model_dir": "ss_log_data/bigstep_10_free_space/January_19_11-52-41_91981ec697/",
     "fwd_model_type": "nn",
     "classifier_model_dir": "",
-    "classifier_model_type": "none"
+    "classifier_model_type": "none",
+    "planner_type": "ShootingRRT"
   }
 ]
 

@@ -12,7 +12,9 @@ class PlannerParams:
     max_v: float
     goal_threshold: float
     random_epsilon: float
-    max_angle_rad: float  # this is the maximum angular deviation from straight links that we sample in the planner
+    # this is the maximum angular deviation from straight links that we sample in the planner, if using such a sampler
+    max_angle_rad: float
+    neighborhood_radius: float
     w: float  # for setting up the C space bounds
     h: float
     extent: List[float] = field(init=False)

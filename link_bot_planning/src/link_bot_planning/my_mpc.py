@@ -13,7 +13,8 @@ from ompl import base as ob
 from ignition import markers
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_gazebo.gazebo_utils import GazeboServices, get_occupancy_data
+from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import PlannerParams, SimParams
@@ -85,15 +86,19 @@ class myMPC:
                     print(Fore.CYAN + "Planning from {} to {}".format(start, tail_goal_point) + Fore.RESET)
 
                 t0 = time.time()
-                try:
-                    planner_results = self.planner.plan(start, tail_goal_point)
-                    planned_actions, planned_path, planner_local_envs, full_env_data, planner_status = planner_results
-                except RuntimeError:
-                    # this means the start was considered invalid, so we just skip this and move to a new environment
-                    print(Fore.RED + "Start was classified to be invalid. Skipping this environment." + Fore.RESET)
+
+                planner_results = self.planner.plan(start, tail_goal_point)
+                planned_actions, planned_path, planner_local_envs, full_env_data, planner_status = planner_results
+                my_planner.interpret_planner_status(planner_status, self.verbose)
+
+                if self.verbose >= 1:
+                    print(planner_status.asString())
+
+                if not planner_status:
+                    print("failure!")
                     self.on_planner_failure(start, tail_goal_point, full_env_data)
-                    initial_poses_in_collision += 1
                     break
+
                 planning_time = time.time() - t0
                 if self.verbose >= 1:
                     print("Planning time: {:5.3f}s".format(planning_time))

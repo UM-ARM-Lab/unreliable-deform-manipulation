@@ -1,8 +1,10 @@
+import pathlib
 from typing import List
 
 import numpy as np
 from ompl import base as ob
 
+from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_pycommon
 
@@ -28,7 +30,7 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
     def sampleUniform(self, state_out: ob.AbstractState):
         random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent,
                                                                                      n_state=self.n_state,
-                                                                                     total_length=self.link_length,
+                                                                                     link_length=self.link_length,
                                                                                      max_angle_rad=self.max_angle_rad)
         for i in range(random_rope_configuration.shape[0]):
             state_out[i] = random_rope_configuration[i]
@@ -56,10 +58,38 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
     def sampleUniform(self, state_out: ob.CompoundStateInternal):
         random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent,
                                                                                      n_state=self.n_state,
-                                                                                     total_length=self.link_length,
+                                                                                     link_length=self.link_length,
                                                                                      max_angle_rad=self.max_angle_rad)
         for i in range(random_rope_configuration.shape[0]):
             state_out[0][i] = random_rope_configuration[i]
+        self.viz_object.states_sampled_at.append(random_rope_configuration)
+
+
+class TrainingSetCompoundSampler(ob.RealVectorStateSampler):
+
+    def __init__(self,
+                 state_space,
+                 viz_object: VizObject,
+                 n_state: int,
+                 rope_configurations : np.ndarray
+                 ):
+        super(TrainingSetCompoundSampler, self).__init__(state_space)
+        self.n_links = int(n_state // 2 - 1)
+        self.n_state = n_state
+        self.viz_object = viz_object
+        self.rope_configurations = rope_configurations
+        self.n_rope_configurations = rope_configurations.shape[0]
+
+    def sampleUniform(self, state_out: ob.CompoundStateInternal):
+        """
+        :param state_out: only the rope config subspace [0] matters, the others are overwritten in the propagate function
+         and in the case of where we are using the free-space model, the local env gets ignored anyways
+        :return:
+        """
+        i = np.random.randint(0, self.n_rope_configurations)
+        random_rope_configuration = self.rope_configurations[i]
+        for i in range(random_rope_configuration.shape[0]):
+            state_out[0][i] = random_rope_configuration[i].astype(np.float64)
         self.viz_object.states_sampled_at.append(random_rope_configuration)
 
 

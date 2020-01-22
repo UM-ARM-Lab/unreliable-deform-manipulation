@@ -3,13 +3,15 @@
     "fwd_model_dir": "ss_log_data/new_obs_both_mixed/January_08_11-42-38_7b51515a97",
     "fwd_model_type": "obs",
     "classifier_model_dir": "",
-    "classifier_model_type": "none"
+    "classifier_model_type": "none",
+    "planner_type": "ShootingRRT"
   },
   {
     "fwd_model_dir": "ss_log_data/new_no_obs_res_nn_1024/January_09_09-44-43_7b51515a97/",
     "fwd_model_type": "nn",
     "classifier_model_dir": "",
-    "classifier_model_type": "none"
+    "classifier_model_type": "none",
+    "planner_type": "ShootingRRT"
   }
 ]
 

@@ -1,13 +1,14 @@
-from typing import Tuple, List
+from typing import Tuple, List, Optional, Union
 
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
+from colorama import Fore
 
 from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data, get_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
-from link_bot_planning.params import PlannerParams, SimParams, FullEnvParams
+from link_bot_planning.params import PlannerParams
 from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_local_env, ValidRopeConfigurationCompoundSampler
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils
@@ -21,7 +22,8 @@ class MyPlanner:
                  classifier_model: BaseClassifier,
                  planner_params: PlannerParams,
                  services: GazeboServices,
-                 viz_object: VizObject):
+                 viz_object: VizObject,
+                 subspace_weights: Optional[List[float]] = [1.0, 0.0, 0.0]):
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.n_state = self.fwd_model.n_state
@@ -33,6 +35,8 @@ class MyPlanner:
         self.si = ob.SpaceInformation(ob.StateSpace())
         self.planner = ob.Planner(self.si, 'PlaceholderPlanner')
         self.rope_length = fwd_model.hparams['dynamics_dataset_hparams']['rope_length']
+        self.subspace_weights = subspace_weights
+
         self.state_space = ob.CompoundStateSpace()
         self.n_local_env = self.fwd_model.local_env_params.w_cols * self.fwd_model.local_env_params.h_rows
         self.local_env_space = ob.RealVectorStateSpace(self.n_local_env)
@@ -54,27 +58,17 @@ class MyPlanner:
         self.config_space.setBounds(self.config_space_bounds)
 
         # the rope is just 6 real numbers with no bounds
-        self.state_space.addSubspace(self.config_space, weight=1.0)
+        # by setting the weight to 1, it means that distances are based only on the rope config not the local environment
+        # so when we sample a state, we get a random local environment, but the nearest neighbor is based only on the rope config
+        # this is sort of a specialization, but I think it's justified. Otherwise nothing would work I suspect (but I didn't test)
+        self.state_space.addSubspace(self.config_space, weight=self.subspace_weights[0])
         # the local environment is a rows*cols flat vector of numbers from 0 to 1
-        self.state_space.addSubspace(self.local_env_space, weight=0.0)
+        self.state_space.addSubspace(self.local_env_space, weight=self.subspace_weights[1])
         # origin
-        self.state_space.addSubspace(self.local_env_origin_space, weight=0.0)
+        self.state_space.addSubspace(self.local_env_origin_space, weight=self.subspace_weights[2])
 
-        # Only sample configurations which are known to be valid, i.e. not overstretched.
-        def state_sampler_allocator(state_space):
-            # this length comes from the SDF file textured_link_bot.sdf
-            sampler = ValidRopeConfigurationCompoundSampler(state_space,
-                                                            self.viz_object,
-                                                            extent=self.planner_params.extent,
-                                                            n_state=self.n_state,
-                                                            rope_length=self.rope_length,
-                                                            max_angle_rad=self.planner_params.max_angle_rad)
-            return sampler
+        self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
 
-        self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(state_sampler_allocator))
-
-        # TODO: implement control sampler that always uses max_v or zero
-        # TODO: merge with sst.py
         control_bounds = ob.RealVectorBounds(2)
         control_bounds.setLow(-self.planner_params.max_v)
         control_bounds.setHigh(self.planner_params.max_v)
@@ -90,10 +84,6 @@ class MyPlanner:
 
         self.full_envs = None
         self.full_env_orgins = None
-
-    def plan(self, np_start: np.ndarray,
-             tail_goal_point: np.ndarray) -> Tuple[np.ndarray, np.ndarray, List[link_bot_sdf_utils.OccupancyData]]:
-        pass
 
     def get_local_env_at(self, x: float, y: float):
         center_point = np.array([x, y])
@@ -142,9 +132,12 @@ class MyPlanner:
             origin = local_env_data.origin.astype(np.float64)
             from_numpy(origin, state_out[2], 2)
 
-    def plan(self, np_start: np.ndarray,
-             tail_goal_point: np.ndarray) -> Tuple[
-        np.ndarray, np.ndarray, List[link_bot_sdf_utils.OccupancyData], link_bot_sdf_utils.OccupancyData]:
+    # TODO: make this return a data structure. something with a name
+    def plan(self, np_start: np.ndarray, tail_goal_point: np.ndarray) -> Tuple[Optional[np.ndarray],
+                                                                               Optional[np.ndarray],
+                                                                               Optional[List[link_bot_sdf_utils.OccupancyData]],
+                                                                               Optional[link_bot_sdf_utils.OccupancyData],
+                                                                               ob.PlannerStatus]:
         """
         :param np_start: 1 by n matrix
         :param tail_goal_point:  1 by n matrix
@@ -200,5 +193,21 @@ class MyPlanner:
                 np_controls[i] = to_numpy(control, self.n_control)
 
             return np_controls, np_states, planner_local_envs, full_env_data, solved
+        return None, None, [], full_env_data, solved
 
-        raise RuntimeError("No Solution found from {} to {}".format(start, goal))
+    def state_sampler_allocator(self, state_space):
+        # this length comes from the SDF file textured_link_bot.sdf
+        sampler = ValidRopeConfigurationCompoundSampler(state_space,
+                                                        self.viz_object,
+                                                        extent=self.planner_params.extent,
+                                                        n_state=self.n_state,
+                                                        rope_length=self.rope_length,
+                                                        max_angle_rad=self.planner_params.max_angle_rad)
+        return sampler
+
+
+def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0):
+    if verbose >= 1:
+        # If the planner failed, print the error
+        if not planner_status:
+            print(Fore.RED + planner_status.asString() + Fore.RESET)

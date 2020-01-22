@@ -47,7 +47,6 @@ def get_model_info(model_dir: pathlib.Path, model_type: str) -> Tuple[str]:
     elif model_type == 'llnn':
         return model_dir.parts[1:]
     elif model_type == 'rigid':
-        # this dt here is sort of made up
         return model_dir.parts[1:]
     elif model_type == 'nn':
         return model_dir.parts[1:]

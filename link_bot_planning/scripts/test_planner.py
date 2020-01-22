@@ -121,6 +121,7 @@ def main():
                                    w=params['env_w'],
                                    h=params['env_h'],
                                    max_v=params['max_v'],
+                                   neighborhood_radius=params['neighborhood_radius'],
                                    goal_threshold=goal_threshold,
                                    random_epsilon=params['random_epsilon'],
                                    max_angle_rad=params['max_angle_rad'])
@@ -144,10 +145,7 @@ def main():
                              classifier_model_dir=pathlib.Path(params['classifier_model_dir']),
                              classifier_model_type=params['classifier_model_type'],
                              planner_params=planner_params,
-                             sim_params=sim_params,
                              services=services)
-
-    planner.planner
 
     tester = TestWithClassifier(
         planner=planner,

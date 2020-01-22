@@ -2,8 +2,9 @@ import pathlib
 
 import link_bot_planning.viz_object
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import model_utils, classifier_utils, ompl_viz
-from link_bot_planning.params import SimParams, PlannerParams, FullEnvParams
+from link_bot_planning import model_utils, classifier_utils
+from link_bot_planning.best_first_rrt import BestFirstRRT
+from link_bot_planning.params import PlannerParams
 from link_bot_planning.shooting_rrt import ShootingRRT
 from link_bot_planning.sst import SST
 from state_space_dynamics.base_forward_model import BaseForwardModel
@@ -22,6 +23,8 @@ def get_planner(planner_class_str: str,
 
     if planner_class_str == 'ShootingRRT':
         planner_class = ShootingRRT
+    elif planner_class_str == 'BestFirstRRT':
+        planner_class = BestFirstRRT
     elif planner_class_str == 'SST':
         planner_class = SST
     else:
