@@ -224,7 +224,7 @@ def eval_angled(net, test_tf_dataset):
     plt.show()
 
 
-def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
+def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed: int):
     optimizer = tf.train.AdamOptimizer()
     loss = tf.keras.losses.MeanSquaredError()
     net = ObstacleNN(hparams=hparams)

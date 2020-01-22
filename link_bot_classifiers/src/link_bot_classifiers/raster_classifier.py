@@ -154,7 +154,7 @@ def check_validation(val_tf_dataset, loss, net):
     return val_losses, val_accuracy
 
 
-def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
+def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed: int):
     optimizer = tf.train.AdamOptimizer(learning_rate=0.0001)
     loss = tf.keras.losses.BinaryCrossentropy()
     train_epoch_accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')

@@ -76,7 +76,8 @@ def eval(hparams, test_tf_dataset, args):
         test_gen_points = tf.reshape(test_gen_states, [test_gen_states.shape[0], test_gen_states.shape[1], -1, 2])
         test_true_points = tf.reshape(test_true_states, [test_true_states.shape[0], test_true_states.shape[1], -1, 2])
         batch_test_position_error = tf.reduce_mean(tf.linalg.norm(test_gen_points - test_true_points, axis=3), axis=0)
-        final_tail_position_error = tf.reduce_mean(tf.linalg.norm(test_gen_points[:, -1, -1] - test_true_points[:, -1, -1], axis=1), axis=0)
+        final_tail_position_error = tf.reduce_mean(
+            tf.linalg.norm(test_gen_points[:, -1, -1] - test_true_points[:, -1, -1], axis=1), axis=0)
         test_losses.append(batch_test_loss)
         test_position_errors.append(batch_test_position_error)
         final_tail_position_errors.append(final_tail_position_error)
@@ -84,8 +85,10 @@ def eval(hparams, test_tf_dataset, args):
     test_position_error = np.mean(test_position_errors)
     print("Test Loss:  {:8.5f}".format(test_loss))
     mean_final_tail_position_error = np.mean(final_tail_position_errors)
-    print("Mean over Examples of Mean Position Error between points along trajectory: " + Style.BRIGHT + "{:8.4f}(m)".format(test_position_error) + Style.RESET_ALL)
-    print("Mean over Examples of Final Position Error: " + Style.BRIGHT + "{:8.4f}(m)".format(mean_final_tail_position_error) + Style.RESET_ALL)
+    print("Mean over Examples of Mean Position Error between points along trajectory: " + Style.BRIGHT + "{:8.4f}(m)".format(
+        test_position_error) + Style.RESET_ALL)
+    print("Mean over Examples of Final Position Error: " + Style.BRIGHT + "{:8.4f}(m)".format(
+        mean_final_tail_position_error) + Style.RESET_ALL)
 
 
 def eval_angled(net, test_tf_dataset):
@@ -112,7 +115,7 @@ def eval_angled(net, test_tf_dataset):
     plt.show()
 
 
-def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
+def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed: int):
     optimizer = tf.train.AdamOptimizer()
     loss = tf.keras.losses.MeanSquaredError()
     net = SimpleNN(hparams=hparams)
@@ -145,6 +148,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
         hparams_path = full_log_path / "hparams.json"
         with open(hparams_path, 'w') as hparams_file:
             hparams['log path'] = str(full_log_path)
+            hparams['seed'] = seed
             hparams['datasets'] = json.dumps(args.dataset_dirs)
             hparams_file.write(json.dumps(hparams, indent=2))
 

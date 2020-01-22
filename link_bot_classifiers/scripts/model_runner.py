@@ -19,7 +19,7 @@ tf.compat.v1.enable_eager_execution(config=config)
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
-def train(args):
+def train(args, seed: int):
     if args.log:
         log_path = experiments_util.experiment_name(args.log)
     else:
@@ -55,13 +55,13 @@ def train(args):
         ###############
         # Train
         ###############
-        module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args)
+        module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
 
 
-def eval(args):
+def eval(args, seed: int):
     ###############
     # Dataset
     ###############
@@ -135,7 +135,7 @@ def main():
     if args == argparse.Namespace():
         parser.print_usage()
     else:
-        args.func(args)
+        args.func(args, seed)
 
 
 if __name__ == '__main__':
