@@ -1,3 +1,4 @@
+import pathlib
 from typing import Tuple, List, Optional, Union
 
 import numpy as np
@@ -6,10 +7,12 @@ import ompl.control as oc
 from colorama import Fore
 
 from link_bot_classifiers.base_classifier import BaseClassifier
+from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data, get_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
 from link_bot_planning.params import PlannerParams
-from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_local_env, ValidRopeConfigurationCompoundSampler
+from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_local_env, ValidRopeConfigurationCompoundSampler, \
+    TrainingSetCompoundSampler
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils
 from state_space_dynamics.base_forward_model import BaseForwardModel
@@ -84,6 +87,20 @@ class MyPlanner:
 
         self.full_envs = None
         self.full_env_orgins = None
+
+        if planner_params.sampler_type == 'training_data':
+            self.dataset_dirs = [pathlib.Path(p) for p in self.fwd_model.hparams['datasets']]
+            dataset = LinkBotStateSpaceDataset(self.dataset_dirs)
+            tf_dataset = dataset.get_datasets(mode='train',
+                                              shuffle=False,
+                                              seed=0,  # doesn't matter, we're not shuffling
+                                              sequence_length=None,  # default to max
+                                              batch_size=None)  # no batching
+            self.training_rope_configurations = []
+            for input_data, _ in tf_dataset:
+                rope_configurations = input_data['state_s'].numpy().squeeze()
+                self.training_rope_configurations.extend(rope_configurations)
+            self.training_rope_configurations = np.array(self.training_rope_configurations)
 
     def get_local_env_at(self, x: float, y: float):
         center_point = np.array([x, y])
@@ -196,13 +213,21 @@ class MyPlanner:
         return None, None, [], full_env_data, solved
 
     def state_sampler_allocator(self, state_space):
-        # this length comes from the SDF file textured_link_bot.sdf
-        sampler = ValidRopeConfigurationCompoundSampler(state_space,
-                                                        self.viz_object,
-                                                        extent=self.planner_params.extent,
-                                                        n_state=self.n_state,
-                                                        rope_length=self.rope_length,
-                                                        max_angle_rad=self.planner_params.max_angle_rad)
+        if self.planner_params.sampler_type == 'random':
+            sampler = ValidRopeConfigurationCompoundSampler(state_space,
+                                                            self.viz_object,
+                                                            extent=self.planner_params.extent,
+                                                            n_state=self.n_state,
+                                                            rope_length=self.rope_length,
+                                                            max_angle_rad=self.planner_params.max_angle_rad)
+        elif self.planner_params.sampler_type == 'training_data':
+            sampler = TrainingSetCompoundSampler(state_space,
+                                                 self.viz_object,
+                                                 n_state=self.n_state,
+                                                 rope_configurations=self.training_rope_configurations)
+        else:
+            raise ValueError("Invalid sampler type {}".format(self.planner_params.sampler_type))
+
         return sampler
 
 

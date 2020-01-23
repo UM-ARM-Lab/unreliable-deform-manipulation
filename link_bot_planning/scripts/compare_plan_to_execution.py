@@ -163,7 +163,7 @@ def main():
                                              initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
-    planner, _ = get_planner(planner_class_str='ShootingRRT',
+    planner, _ = get_planner(planner_class_str='NearestRRT',
                              fwd_model_dir=args.fwd_model_dir,
                              fwd_model_type=args.fwd_model_type,
                              classifier_model_dir=args.classifier_model_dir,

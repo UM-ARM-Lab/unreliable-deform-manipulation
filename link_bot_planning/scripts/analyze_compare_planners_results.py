@@ -65,14 +65,14 @@ def main():
                 continue
             metrics_filename = subfolder / 'metrics.json'
             metrics = json.load(metrics_filename.open("r"))
-            planner_params = PlannerParams.from_json(metrics['planner_params'])
+            timeout = json.loads(metrics['planner_params'])['timeout']
             data = metrics.pop('metrics')
 
             data = invert_dict(data)
             planning_times = np.array(data['planning_time'])
             final_errors = data['final_execution_error']
             num_nodes = data['num_nodes']
-            timeouts = (planning_times > planner_params.timeout).astype(np.int)
+            timeouts = (planning_times > timeout).astype(np.int)
             name = subfolder.name
             n, x, _ = plt.hist(final_errors, bins=np.linspace(0, 3, 15), alpha=0)
             bin_centers = 0.5 * (x[1:] + x[:-1])

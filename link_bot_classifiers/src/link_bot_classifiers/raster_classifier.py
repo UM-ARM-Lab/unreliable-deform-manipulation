@@ -17,6 +17,7 @@ from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import experiments_util, link_bot_sdf_utils
+from moonshine.action_smear_layer import action_smear_layer
 from moonshine.raster_points_layer import RasterPoints
 
 
@@ -27,10 +28,12 @@ class RasterClassifier(tf.keras.Model):
         self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
         self.dynamics_dataset_hparams = self.hparams['classifier_dataset_hparams']['fwd_model_hparams'][
             'dynamics_dataset_hparams']
-        self.m_dim = self.dynamics_dataset_hparams['n_action']
+        self.n_action = self.dynamics_dataset_hparams['n_action']
 
         local_env_params = LocalEnvParams.from_json(self.dynamics_dataset_hparams['local_env_params'])
         self.raster = RasterPoints([local_env_params.h_rows, local_env_params.w_cols])
+        self.smear = action_smear_layer(1, self.n_action, local_env_params.h_rows, local_env_params.w_cols)
+
         self.conv_layers = []
         self.pool_layers = []
         for n_filters, kernel_size in self.hparams['conv_filters']:
@@ -45,7 +48,8 @@ class RasterClassifier(tf.keras.Model):
             self.pool_layers.append(pool)
 
         self.conv_flatten = layers.Flatten()
-        self.batch_norm = layers.BatchNormalization()
+        if self.hparams['batch_norm']:
+            self.batch_norm = layers.BatchNormalization()
 
         self.dense_layers = []
         self.dropout_layers = []
@@ -64,6 +68,7 @@ class RasterClassifier(tf.keras.Model):
     def _image(self, input_dict: dict):
         """
         Expected sizes:
+            'action': n_batch, n_action
             'planned_state': n_batch, n_state
             'planned_state_next': n_batch, n_state
             'planned_local_env/env': n_batch, h, w
@@ -72,6 +77,7 @@ class RasterClassifier(tf.keras.Model):
             'resolution': n_batch, 1
         """
         planned_state = input_dict['planned_state']
+        action = input_dict['action']
         planned_next_state = input_dict['planned_state_next']
         planned_local_env = input_dict['planned_local_env/env']
         planned_local_env_resolution = input_dict['resolution']
@@ -82,6 +88,7 @@ class RasterClassifier(tf.keras.Model):
 
         # add time index into everything
         planned_state = tf.expand_dims(planned_state, axis=1)
+        action = tf.expand_dims(action, axis=1)
         planned_next_state = tf.expand_dims(planned_next_state, axis=1)
         planned_local_env_origin = tf.expand_dims(planned_local_env_origin, axis=1)
         planned_local_env_resolution = tf.tile(tf.expand_dims(planned_local_env_resolution, axis=1), [1, 1, 2])
@@ -89,6 +96,9 @@ class RasterClassifier(tf.keras.Model):
         # raster each state into an image
         planned_rope_image = self.raster([planned_state, planned_local_env_resolution, planned_local_env_origin])
         planned_next_rope_image = self.raster([planned_next_state, planned_local_env_resolution, planned_local_env_origin])
+
+        # action
+        action_image = self.smear(action)
 
         # remove time index
         image_shape = [planned_rope_image.shape[0],
@@ -99,7 +109,7 @@ class RasterClassifier(tf.keras.Model):
         planned_next_rope_image = tf.reshape(planned_next_rope_image, image_shape)
 
         # batch, h, w, channel
-        concat_image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env), axis=3)
+        concat_image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env, action_image), axis=3)
         return planned_rope_image, planned_next_rope_image, planned_local_env, concat_image
 
     def _conv(self, concat_image):
@@ -202,6 +212,8 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed: int):
             # metrics are averaged across batches in the epoch
             batch_losses = []
             train_epoch_accuracy.reset_states()
+            if epoch == 1:
+                print(net.summary())
             for train_example_dict_batch in progressbar.progressbar(train_tf_dataset):
                 step = int(global_step.numpy())
                 train_true_labels_batch = train_example_dict_batch['label']

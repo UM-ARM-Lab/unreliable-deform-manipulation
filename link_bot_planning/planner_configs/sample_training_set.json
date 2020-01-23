@@ -3,9 +3,13 @@
   "fwd_model_type": "nn",
   "classifier_model_dir": "",
   "classifier_model_type": "none",
-  "planner": "BestFirstRRT",
-  "neighborhood_radius": 1.0,
-  "max_angle_rad": -999,
+  "planner_params":
+  {
+  }
+  "planner": "ShootingRRT",
+  "misc": {
+    "neighborhood_radius": 1.0
+  },
   "max_v": 0.15,
   "goal_threshold": 0.15,
   "random_epsilon": 0.05,

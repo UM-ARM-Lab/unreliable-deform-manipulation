@@ -9,15 +9,16 @@ from dataclasses_json import dataclass_json
 @dataclass
 class PlannerParams:
     timeout: float
+    # should come from dynamics dataset, since we need this to match?
+    # OR ACTUALLY, this could be a thing the classifier could use...
     max_v: float
     goal_threshold: float
     random_epsilon: float
-    # this is the maximum angular deviation from straight links that we sample in the planner, if using such a sampler
-    max_angle_rad: float
-    neighborhood_radius: float
+    sampler_type: str
     w: float  # for setting up the C space bounds
     h: float
     extent: List[float] = field(init=False)
+    misc: dict = field(default_factory={})
 
     def __post_init__(self):
         """

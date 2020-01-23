@@ -218,6 +218,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("fwd_model_type", choices=['obs', 'gp', 'llnn', 'nn', 'rigid'])
+    parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--classifier-model-dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("--classifier-model-type", choices=['collision', 'none', 'raster'], default='none')
@@ -239,11 +240,7 @@ def main():
     parser.add_argument('--full-env-w', type=float, default=6.0, help='full env w')
     parser.add_argument('--full-env-h', type=float, default=6.0, help='full env h')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
-    parser.add_argument('--goal-threshold', type=float, default=0.10, help='goal threshold')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
-    parser.add_argument('--random-epsilon', type=float, default=0.05, help='probability of accepting despite classifier')
-    parser.add_argument('--neighborhood-radius', type=float, default=1.0, help='radius for best first planner')
-    parser.add_argument('--max-angle-rad', type=float, default=1, help='maximum deviation from straight rope when sampling')
 
     args = parser.parse_args()
 
@@ -254,11 +251,15 @@ def main():
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
 
+    params = json.load(args.params.open("r"))
+    extra_params = planner_params
     planner_params = PlannerParams(timeout=args.planner_timeout,
-                                   max_v=args.max_v,
-                                   goal_threshold=args.goal_threshold,
-                                   neighborhood_radius=args.neighborhood_radius,
-                                   random_epsilon=args.random_epsilon,
+                                   w=params['env_w'],
+                                   h=params['env_h'],
+                                   max_v=params['max_v'],
+                                   neighborhood_radius=params['neighborhood_radius'],
+                                   goal_threshold=params['goal_threshold'],
+                                   random_epsilon=params['random_epsilon'],
                                    w=args.planner_env_w,
                                    h=args.planner_env_h,
                                    max_angle_rad=args.max_angle_rad)
@@ -286,7 +287,7 @@ def main():
     services.pause(std_srvs.srv.EmptyRequest())
 
     # NOTE: we could make the classifier take a different sized local environment than the dynamics, just a thought.
-    planner, fwd_model_info = get_planner(planner_class_str='ShootingRRT',
+    planner, fwd_model_info = get_planner(planner_class_str='NearestRRT',
                                           fwd_model_dir=args.fwd_model_dir,
                                           fwd_model_type=args.fwd_model_type,
                                           classifier_model_dir=args.classifier_model_dir,

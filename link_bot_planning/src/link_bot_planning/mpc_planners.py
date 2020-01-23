@@ -5,7 +5,7 @@ from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import model_utils, classifier_utils
 from link_bot_planning.best_first_rrt import BestFirstRRT
 from link_bot_planning.params import PlannerParams
-from link_bot_planning.shooting_rrt import ShootingRRT
+from link_bot_planning.nearest_rrt import NearestRRT
 from link_bot_planning.sst import SST
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
@@ -21,8 +21,8 @@ def get_planner(planner_class_str: str,
     classifier_model = classifier_utils.load_generic_model(classifier_model_dir, classifier_model_type)
     viz_object = link_bot_planning.viz_object.VizObject()
 
-    if planner_class_str == 'ShootingRRT':
-        planner_class = ShootingRRT
+    if planner_class_str == 'NearestRRT':
+        planner_class = NearestRRT
     elif planner_class_str == 'BestFirstRRT':
         planner_class = BestFirstRRT
     elif planner_class_str == 'SST':
@@ -48,8 +48,8 @@ def get_planner_with_model(planner_class_str: str,
     classifier_model = classifier_utils.load_generic_model(classifier_model_dir, classifier_model_type)
     viz_object = link_bot_planning.viz_object.VizObject()
 
-    if planner_class_str == 'ShootingRRT':
-        planner_class = ShootingRRT
+    if planner_class_str == 'NearestRRT':
+        planner_class = NearestRRT
     elif planner_class_str == 'SST':
         planner_class = SST
     else:

@@ -8,7 +8,7 @@ from link_bot_planning.viz_object import VizObject
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
-class ShootingRRT(MyPlanner):
+class NearestRRT(MyPlanner):
 
     def __init__(self,
                  fwd_model: BaseForwardModel,

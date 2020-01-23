@@ -1,0 +1,13 @@
+{
+  "fwd_model_dir": "ss_log_data/REPLACE_WITH_NEW_MODEL/",
+  "fwd_model_type": "obs",
+  "classifier_model_dir": "",
+  "classifier_model_type": "none",
+  "planner_type": "NeaarestRRT",
+  "sampler_type": "random",
+  "max_v": 0.15,
+  "goal_threshold": 0.15,
+  "random_epsilon": 0.05,
+  "w": 5.0,
+  "h": 5.0
+}
