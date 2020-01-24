@@ -1,3 +1,5 @@
+from typing import Dict
+
 import ompl.control as oc
 
 from link_bot_classifiers.base_classifier import BaseClassifier
@@ -13,7 +15,7 @@ class NearestRRT(MyPlanner):
     def __init__(self,
                  fwd_model: BaseForwardModel,
                  classifier_model: BaseClassifier,
-                 planner_params: PlannerParams,
+                 planner_params: Dict,
                  services: GazeboServices,
                  viz_object: VizObject):
         super().__init__(fwd_model,

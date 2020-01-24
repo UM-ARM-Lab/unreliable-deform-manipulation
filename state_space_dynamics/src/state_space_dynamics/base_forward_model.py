@@ -1,5 +1,5 @@
 import json
-from typing import List
+import pathlib
 
 import numpy as np
 
@@ -8,7 +8,7 @@ from link_bot_planning.params import LocalEnvParams, FullEnvParams
 
 class BaseForwardModel:
 
-    def __init__(self, model_dir):
+    def __init__(self, model_dir: pathlib.Path):
         model_hparams_file = model_dir / 'hparams.json'
         self.hparams = json.load(model_hparams_file.open('r'))
         self.n_state = self.hparams['dynamics_dataset_hparams']['n_state']

@@ -1,5 +1,5 @@
 import pathlib
-from typing import Tuple, List, Optional, Union
+from typing import Tuple, List, Optional, Dict
 
 import numpy as np
 import ompl.base as ob
@@ -8,9 +8,8 @@ from colorama import Fore
 
 from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
-from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data, get_occupancy_data
+from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
-from link_bot_planning.params import PlannerParams
 from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_local_env, ValidRopeConfigurationCompoundSampler, \
     TrainingSetCompoundSampler
 from link_bot_planning.viz_object import VizObject
@@ -23,7 +22,7 @@ class MyPlanner:
     def __init__(self,
                  fwd_model: BaseForwardModel,
                  classifier_model: BaseClassifier,
-                 planner_params: PlannerParams,
+                 planner_params: Dict,
                  services: GazeboServices,
                  viz_object: VizObject,
                  subspace_weights: Optional[List[float]] = [1.0, 0.0, 0.0]):
@@ -53,11 +52,11 @@ class MyPlanner:
         self.config_space_bounds = ob.RealVectorBounds(self.n_state)
         for i in range(self.n_state):
             if i % 2 == 0:
-                self.config_space_bounds.setLow(i, -self.planner_params.w / 2)
-                self.config_space_bounds.setHigh(i, self.planner_params.w / 2)
+                self.config_space_bounds.setLow(i, -self.planner_params['w'] / 2)
+                self.config_space_bounds.setHigh(i, self.planner_params['w'] / 2)
             else:
-                self.config_space_bounds.setLow(i, -self.planner_params.h / 2)
-                self.config_space_bounds.setHigh(i, self.planner_params.h / 2)
+                self.config_space_bounds.setLow(i, -self.planner_params['h'] / 2)
+                self.config_space_bounds.setHigh(i, self.planner_params['h'] / 2)
         self.config_space.setBounds(self.config_space_bounds)
 
         # the rope is just 6 real numbers with no bounds
@@ -73,8 +72,8 @@ class MyPlanner:
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
 
         control_bounds = ob.RealVectorBounds(2)
-        control_bounds.setLow(-self.planner_params.max_v)
-        control_bounds.setHigh(self.planner_params.max_v)
+        control_bounds.setLow(-self.planner_params['max_v'])
+        control_bounds.setHigh(self.planner_params['max_v'])
         self.control_space = oc.RealVectorControlSpace(self.state_space, self.n_control)
         self.control_space.setBounds(control_bounds)
 
@@ -88,7 +87,7 @@ class MyPlanner:
         self.full_envs = None
         self.full_env_orgins = None
 
-        if planner_params.sampler_type == 'training_data':
+        if planner_params['sampler_type'] == 'training_data':
             self.dataset_dirs = [pathlib.Path(p) for p in self.fwd_model.hparams['datasets']]
             dataset = LinkBotStateSpaceDataset(self.dataset_dirs)
             tf_dataset = dataset.get_datasets(mode='train',
@@ -130,7 +129,7 @@ class MyPlanner:
         # validate the edge
         accept_probabilities = self.classifier_model.predict(local_env_data=[local_env_data], s1_s=np_s, s2_s=np_s_next)
         accept_probability = accept_probabilities[0]
-        random_accept = np.random.uniform(0, 1) <= self.planner_params.random_epsilon
+        random_accept = np.random.uniform(0, 1) <= self.planner_params['random_epsilon']
         classifier_accept = np.random.uniform(0, 1) <= accept_probability
         edge_is_valid = classifier_accept or random_accept
 
@@ -150,21 +149,18 @@ class MyPlanner:
             from_numpy(origin, state_out[2], 2)
 
     # TODO: make this return a data structure. something with a name
-    def plan(self, np_start: np.ndarray, tail_goal_point: np.ndarray) -> Tuple[Optional[np.ndarray],
-                                                                               Optional[np.ndarray],
-                                                                               Optional[List[link_bot_sdf_utils.OccupancyData]],
-                                                                               Optional[link_bot_sdf_utils.OccupancyData],
-                                                                               ob.PlannerStatus]:
+    def plan(self, np_start: np.ndarray, tail_goal_point: np.ndarray, full_env_data: link_bot_sdf_utils.OccupancyData) -> Tuple[
+        Optional[np.ndarray],
+        Optional[np.ndarray],
+        Optional[List[link_bot_sdf_utils.OccupancyData]],
+        Optional[link_bot_sdf_utils.OccupancyData],
+        ob.PlannerStatus]:
         """
+        :param full_env_data:
         :param np_start: 1 by n matrix
         :param tail_goal_point:  1 by n matrix
         :return: controls, states
         """
-        # get full env once
-        full_env_data = get_occupancy_data(env_w=self.full_env_params.w,
-                                           env_h=self.full_env_params.h,
-                                           res=self.fwd_model.full_env_params.res,
-                                           services=self.services)
         self.full_envs = np.array([full_env_data.data])
         self.full_env_origins = np.array([full_env_data.origin])
 
@@ -182,13 +178,13 @@ class MyPlanner:
         compound_start()[2][1] = start_local_occupancy_origin_double[1]
 
         start = ob.State(compound_start)
-        goal = LinkBotCompoundGoal(self.si, self.planner_params.goal_threshold, tail_goal_point, self.viz_object)
+        goal = LinkBotCompoundGoal(self.si, self.planner_params['goal_threshold'], tail_goal_point, self.viz_object)
 
         self.ss.clear()
         self.viz_object.clear()
         self.ss.setStartState(start)
         self.ss.setGoal(goal)
-        solved = self.ss.solve(self.planner_params.timeout)
+        solved = self.ss.solve(self.planner_params['timeout'])
 
         if solved:
             ompl_path = self.ss.getSolutionPath()
@@ -213,20 +209,24 @@ class MyPlanner:
         return None, None, [], full_env_data, solved
 
     def state_sampler_allocator(self, state_space):
-        if self.planner_params.sampler_type == 'random':
+        if self.planner_params['sampler_type'] == 'random':
+            extent = [-self.planner_params['w'] / 2,
+                      self.planner_params['w'] / 2,
+                      -self.planner_params['h'] / 2,
+                      self.planner_params['h'] / 2]
             sampler = ValidRopeConfigurationCompoundSampler(state_space,
                                                             self.viz_object,
-                                                            extent=self.planner_params.extent,
+                                                            extent=extent,
                                                             n_state=self.n_state,
                                                             rope_length=self.rope_length,
-                                                            max_angle_rad=self.planner_params.max_angle_rad)
-        elif self.planner_params.sampler_type == 'training_data':
+                                                            max_angle_rad=self.planner_params['max_angle_rad'])
+        elif self.planner_params['sampler_type'] == 'training_data':
             sampler = TrainingSetCompoundSampler(state_space,
                                                  self.viz_object,
                                                  n_state=self.n_state,
                                                  rope_configurations=self.training_rope_configurations)
         else:
-            raise ValueError("Invalid sampler type {}".format(self.planner_params.sampler_type))
+            raise ValueError("Invalid sampler type {}".format(self.planner_params['sampler_type']))
 
         return sampler
 

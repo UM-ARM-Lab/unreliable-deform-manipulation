@@ -41,7 +41,7 @@ class TestWithClassifier(my_mpc.myMPC):
                  services: GazeboServices,
                  no_execution: bool):
         super().__init__(planner=planner,
-                         n_total_plans=1,
+                         n_total_plans=n_targets,
                          n_plans_per_env=n_targets,
                          verbose=verbose,
                          planner_params=planner_params,
@@ -104,7 +104,6 @@ def main():
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=30.0)
-    parser.add_argument("--goal-threshold", type=float, default=0.25, help="distance for tail in meters")
     parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
     parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
 
@@ -114,17 +113,10 @@ def main():
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
 
-    params = json.load(args.params.open("r"))
+    planner_params = json.load(args.params.open("r"))
+    if args.planner_timeout:
+        planner_params['timeout'] = args.planner_timeout
 
-    goal_threshold = args.goal_threshold if args.goal_threshold is not None else params['goal_threshold']
-    planner_params = PlannerParams(timeout=args.planner_timeout,
-                                   w=params['env_w'],
-                                   h=params['env_h'],
-                                   max_v=params['max_v'],
-                                   neighborhood_radius=params['neighborhood_radius'],
-                                   goal_threshold=goal_threshold,
-                                   random_epsilon=params['random_epsilon'],
-                                   max_angle_rad=params['max_angle_rad'])
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
                            goal_padding=0.0,
@@ -139,13 +131,7 @@ def main():
                                              initial_object_dict=None)
     services.pause(std_srvs.srv.EmptyRequest())
 
-    planner, _ = get_planner(planner_class_str=params['planner'],
-                             fwd_model_dir=pathlib.Path(params['fwd_model_dir']),
-                             fwd_model_type=params['fwd_model_type'],
-                             classifier_model_dir=pathlib.Path(params['classifier_model_dir']),
-                             classifier_model_type=params['classifier_model_type'],
-                             planner_params=planner_params,
-                             services=services)
+    planner, _ = get_planner(planner_params=planner_params, services=services)
 
     tester = TestWithClassifier(
         planner=planner,
