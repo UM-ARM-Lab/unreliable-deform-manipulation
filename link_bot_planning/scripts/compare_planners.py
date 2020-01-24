@@ -172,8 +172,8 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
     parser.add_argument("nickname", type=str, help='output will be in results/$nickname-compare_classifiers-$time')
+    parser.add_argument('planners_params', type=pathlib.Path, nargs='+', help='json file(s) describing what should be compared')
     parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
     parser.add_argument("--seed", '-s', type=int, default=3)
@@ -184,11 +184,8 @@ def main():
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
-    parser.add_argument('--max-angle-rad', type=float, default=1, help='maximum deviation from straight rope when sampling')
-    parser.add_argument('--neighborhood-radius', type=float, default=1, help='radius used for BestFirstRRT')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
-    # TODO: sweep over this to see how it effects things
-    parser.add_argument('--random-epsilon', type=float, default=0.25, help='probability of accepting despite classifier')
+    # TODO: sweep over random epsilon to see how it effects things
 
     args = parser.parse_args()
 
@@ -214,27 +211,18 @@ def main():
         'moving_box6': [-0.5, 2.0],
     }
 
-    comparisons = json.load(args.comparison.open("r"))
-    for comparison_idx, item_of_comparison in enumerate(comparisons):
+    planners_params = [json.load(planner_params.open("r")) for planner_params in args.planners_params]
+    for comparison_idx, planner_params in enumerate(planners_params):
         # start at the same seed every time to make the planning environments & plans the same (hopefully?)
         # setting OMPL random seed should have no effect, because I use numpy's random in my sampler?
         np.random.seed(args.seed)
         tf.random.set_random_seed(args.seed)  # not sure if this has any effect
 
-        fwd_model_dir = pathlib.Path(item_of_comparison['fwd_model_dir'])
-        fwd_model_type = item_of_comparison['fwd_model_type']
-        classifier_model_dir = pathlib.Path(item_of_comparison['classifier_model_dir'])
-        classifier_model_type = item_of_comparison['classifier_model_type']
-        planner_type = item_of_comparison['planner_type']
-
-        planner_params = PlannerParams(w=args.env_w,
-                                       h=args.env_h,
-                                       timeout=args.planner_timeout,
-                                       max_v=args.max_v,
-                                       goal_threshold=args.goal_threshold,
-                                       random_epsilon=args.random_epsilon,
-                                       neighborhood_radius=args.neighborhood_radius,
-                                       max_angle_rad=args.max_angle_rad)
+        fwd_model_dir = pathlib.Path(planner_params['fwd_model_dir'])
+        fwd_model_type = planner_params['fwd_model_type']
+        classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])
+        classifier_model_type = planner_params['classifier_model_type']
+        planner_type = planner_params['planner_type']
 
         fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, fwd_model_type)
 
@@ -246,6 +234,9 @@ def main():
 
         services.pause(std_srvs.srv.EmptyRequest())
 
+        # look up the planner params
+        planner_params_path = pathlib.Path('planner_configs') / (planner_params['planner_params'] + ".json")
+        planner_params = json.load(planner_params_path.open("r"))
         planner = get_planner_with_model(planner_class_str=planner_type,
                                          fwd_model=fwd_model,
                                          classifier_model_dir=classifier_model_dir,

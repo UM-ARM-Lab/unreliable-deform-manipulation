@@ -3,11 +3,13 @@
   "fwd_model_type": "nn",
   "classifier_model_dir": "",
   "classifier_model_type": "none",
-  "planner_type": "NeaarestRRT",
-  "sampler_type": "train_data",
+  "planner_type": "NearestRRT",
+  "sampler_type": "random",
   "max_v": 0.15,
   "goal_threshold": 0.15,
   "random_epsilon": 0.05,
+  "max_angle_rad": 1.0,
   "w": 5.0,
-  "h": 5.0
+  "h": 5.0,
+  "timeout": 10
 }

@@ -1,0 +1,15 @@
+{
+  "fwd_model_dir": "ss_log_data/obs-cnn1/January_22_15-46-11_62fc87de66/",
+  "fwd_model_type": "obs",
+  "classifier_model_dir": "classifiers/obs-raster/?",
+  "classifier_model_type": "raster",
+  "planner_type": "NearestRRT",
+  "sampler_type": "random",
+  "max_v": 0.15,
+  "goal_threshold": 0.15,
+  "random_epsilon": 0.05,
+  "max_angle_rad": 1.0,
+  "w": 5.0,
+  "h": 5.0,
+  "timeout": 120
+}
