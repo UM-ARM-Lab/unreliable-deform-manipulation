@@ -1,8 +1,8 @@
 {
-  "fwd_model_dir": "ss_log_data/bigstep_10_free_space/January_19_11-52-41_91981ec697/",
+  "fwd_model_dir": "ss_log_data/fs-nn",
   "fwd_model_type": "nn",
-  "classifier_model_dir": "",
-  "classifier_model_type": "collision",
+  "classifier_model_dir": "classifiers/fs-raster",
+  "classifier_model_type": "raster",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "max_v": 0.15,

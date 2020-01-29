@@ -55,11 +55,13 @@ def plot_classifier_data(
 
     if label is not None:
         label_color = 'g' if label else 'r'
-        ax.plot([-2.5, 2.5, 2.5, -2.5, -2.5], [-2.5, -2.5, 2.5, 2.5, -2.5], c=label_color, linewidth=6)
+        ax.plot(
+            [planned_env_extent[0], planned_env_extent[0], planned_env_extent[1], planned_env_extent[1], planned_env_extent[0]],
+            [planned_env_extent[2], planned_env_extent[3], planned_env_extent[3], planned_env_extent[2], planned_env_extent[2]],
+            c=label_color, linewidth=4)
 
     ax.axis("equal")
-    ax.set_xlim(-2.5, 2.5)
     ax.set_title(title)
     ax.set_xlabel("x (m)")
     ax.set_ylabel("y (m)")
-    ax.legend()
+    # ax.legend()

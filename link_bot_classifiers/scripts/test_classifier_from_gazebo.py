@@ -59,51 +59,75 @@ def main():
                                        services=services)
 
     state = np.expand_dims(gazebo_utils.points_to_config(link_bot_state.points), axis=0)
-    theta_rad = np.deg2rad(args.theta)
-    vx = np.cos(theta_rad) * args.v
-    vy = np.sin(theta_rad) * args.v
-    action = np.array([[[vx, vy]]])
 
-    next_state = fwd_model.predict(full_envs=[full_env_data.data],
-                                   full_env_origins=[full_env_data.origin],
-                                   resolution_s=[full_env_data.resolution],
-                                   state=state,
-                                   actions=action)
-    next_state = np.reshape(next_state, [2, 1, -1])[1]
+    test_inputs = [
+        # (.25, 0),
+        # (.25, 45),
+        # (.25, 90),
+        # (.25, 135),
+        # (.25, 180),
+        # (.25, 225),
+        # (.25, 270),
+        # (.25, 325),
+        (.12, 135),
+        (.12, 90),
+        (.12, 45),
+        (.12, 180),
+        (0, 0),
+        (.12, 0),
+        (.12, 225),
+        (.12, 270),
+        (.12, 315),
+        # (.05, 0),
+        # (.05, 45),
+        # (.05, 90),
+        # (.05, 135),
+        # (.05, 180),
+        # (.05, 225),
+        # (.05, 270),
+        # (.05, 315),
+    ]
 
-    accept_probability = classifier_model.predict([local_env_data], state, next_state, action)[0]
-    prediction = 1 if accept_probability > 0.5 else 0
-    title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)
+    fig, axes = plt.subplots(3, 3)
+    for k, (v, theta_deg) in enumerate(test_inputs):
+        theta_rad = np.deg2rad(theta_deg)
+        vx = np.cos(theta_rad) * v
+        vy = np.sin(theta_rad) * v
+        action = np.array([[[vx, vy]]])
+
+        next_state = fwd_model.predict(full_envs=[full_env_data.data],
+                                       full_env_origins=[full_env_data.origin],
+                                       resolution_s=[full_env_data.resolution],
+                                       state=state,
+                                       actions=action)
+        next_state = np.reshape(next_state, [2, 1, -1])[1]
+
+        accept_probability = classifier_model.predict([local_env_data], state, next_state, action)[0]
+        prediction = 1 if accept_probability > 0.5 else 0
+        title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)
+
+        print("v={:04.3f}m/s theta={:04.3f}deg    p(accept)={:04.3f}".format(v, theta_deg, accept_probability))
+        if not args.no_plot:
+            i, j = np.unravel_index(k, [3, 3])
+            plot_classifier_data(ax=axes[i, j],
+                                 planned_env=local_env_data.data,
+                                 planned_env_extent=local_env_data.extent,
+                                 planned_state=state[0],
+                                 planned_next_state=next_state[0],
+                                 planned_env_origin=local_env_data.origin,
+                                 res=local_env_data.resolution,
+                                 state=None,
+                                 next_state=None,
+                                 title=title,
+                                 actual_env=None,
+                                 actual_env_extent=None,
+                                 label=prediction)
 
     if not args.no_plot:
-        # conv_filters = classifier_model.net.conv_layers[0].get_weights()[0]
-        # fig, axes = plt.subplots(5, 9)
-        # for ax in axes.flatten():
-        #     ax.set_xticks([])
-        #     ax.set_yticks([])
-        #     ax.axis("off")
-        # for channel_idx, filter_idx in np.ndindex(7, 6):
-        #     n = channel_idx * 6 + filter_idx
-        #     r, c = np.unravel_index(n, [5, 9])
-        #     ax = axes[r, c]
-        #     filter = conv_filters[channel_idx, filter_idx]
-        #     ax.imshow(np.flipud(filter), vmin=-1, vmax=1)
-
-        plot_classifier_data(planned_env=local_env_data.data,
-                             planned_env_extent=local_env_data.extent,
-                             planned_state=state[0],
-                             planned_next_state=next_state[0],
-                             planned_env_origin=local_env_data.origin,
-                             res=local_env_data.resolution,
-                             state=None,
-                             next_state=None,
-                             title=title,
-                             actual_env=None,
-                             actual_env_extent=None,
-                             label=prediction)
+        handles, labels = axes[0, 0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper center')
+        plt.tight_layout()
         plt.show()
-    else:
-        print(title)
 
 
 if __name__ == '__main__':

@@ -55,7 +55,8 @@ class myMPC:
                                           self.planner.full_env_params.h, 'velocity', padding=0.1)
 
             # nudge the rope so it is hopefully not in collision?
-            self.services.nudge_rope(self.sim_params.max_step_size)
+            if self.sim_params.nudge:
+                self.services.nudge_rope(self.sim_params.max_step_size)
 
             # generate a bunch of plans to random goals
             state_req = LinkBotStateRequest()

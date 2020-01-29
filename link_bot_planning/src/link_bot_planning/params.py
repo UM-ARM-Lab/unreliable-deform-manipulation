@@ -34,6 +34,7 @@ class SimParams:
     max_step_size: float
     goal_padding: float
     move_obstacles: bool
+    nudge: bool
 
 
 @dataclass_json

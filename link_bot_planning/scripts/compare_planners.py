@@ -5,7 +5,7 @@ import argparse
 import json
 import pathlib
 import time
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -43,7 +43,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
                  n_plans_per_env: int,
                  n_total_plans: int,
                  verbose: int,
-                 planner_params: PlannerParams,
+                 planner_params: Dict,
                  sim_params: SimParams,
                  services: GazeboServices,
                  comparison_item_idx: int,
@@ -70,7 +70,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             "classifier_model_type": classifier_model_type,
             "n_total_plans": n_total_plans,
             "n_targets": n_plans_per_env,
-            "planner_params": planner_params.to_json(),
+            "planner_params": planner_params,
             "local_env_params": self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
             "env_params": sim_params.to_json(),
             "seed": self.seed,
@@ -172,8 +172,9 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("nickname", type=str, help='output will be in results/$nickname-compare_classifiers-$time')
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+', help='json file(s) describing what should be compared')
+    parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare_classifiers-$time',
+                        required=True)
     parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
     parser.add_argument("--seed", '-s', type=int, default=3)
@@ -185,6 +186,7 @@ def main():
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
+    parser.add_argument('--no-nudge', action='store_true', help="don't nudge")
     # TODO: sweep over random epsilon to see how it effects things
 
     args = parser.parse_args()
@@ -235,8 +237,6 @@ def main():
         services.pause(std_srvs.srv.EmptyRequest())
 
         # look up the planner params
-        planner_params_path = pathlib.Path('planner_configs') / (planner_params['planner_params'] + ".json")
-        planner_params = json.load(planner_params_path.open("r"))
         planner = get_planner_with_model(planner_class_str=planner_type,
                                          fwd_model=fwd_model,
                                          classifier_model_dir=classifier_model_dir,
@@ -247,7 +247,8 @@ def main():
         sim_params = SimParams(real_time_rate=args.real_time_rate,
                                max_step_size=planner.fwd_model.max_step_size,
                                goal_padding=0.0,
-                               move_obstacles=(not args.no_move_obstacles))
+                               move_obstacles=(not args.no_move_obstacles),
+                               nudge=(not args.no_nudge))
 
         runner = ComputeClassifierMetrics(
             planner=planner,

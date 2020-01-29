@@ -31,6 +31,7 @@ class BestFirstRRT(MyPlanner):
         self.planner = oc.BestFirstRRT(self.si)
         self.planner.setNeighborhoodRadius(planner_params.neighborhood_radius)
         self.planner.setIntermediateStates(True)  # this is necessary!
+        self.planner.setGoalBias(0.2)
         self.ss.setPlanner(self.planner)
         self.si.setPropagationStepSize(self.fwd_model.dt)
         self.si.setMinMaxControlDuration(1, 50)

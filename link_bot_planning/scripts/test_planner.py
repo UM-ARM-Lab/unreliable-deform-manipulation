@@ -102,6 +102,8 @@ def main():
     parser.add_argument("--seed", '-s', type=int, default=12)
     parser.add_argument("--no-execution", action='store_true', help='do not execute, only plan')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
+    parser.add_argument('--no-nudge', action='store_true', help="don't nudge")
+    parser.add_argument('--reset-world', action='store_true', help="don't nudge")
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=30.0)
     parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
@@ -120,14 +122,15 @@ def main():
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
                            goal_padding=0.0,
-                           move_obstacles=(not args.no_move_obstacles))
+                           move_obstacles=(not args.no_move_obstacles),
+                           nudge=(not args.no_nudge))
 
     rospy.init_node('test_planner_with_classifier')
 
     services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
                                              real_time_rate=sim_params.real_time_rate,
                                              max_step_size=sim_params.max_step_size,
-                                             reset_world=True,
+                                             reset_world=args.reset_world,
                                              initial_object_dict=None)
     services.pause(std_srvs.srv.EmptyRequest())
 

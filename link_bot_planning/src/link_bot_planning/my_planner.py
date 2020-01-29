@@ -127,7 +127,7 @@ class MyPlanner:
         np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
         # validate the edge
-        accept_probabilities = self.classifier_model.predict(local_env_data=[local_env_data], s1_s=np_s, s2_s=np_s_next)
+        accept_probabilities = self.classifier_model.predict(local_env_data=[local_env_data], s1=np_s, s2=np_s_next, action=np_u)
         accept_probability = accept_probabilities[0]
         random_accept = np.random.uniform(0, 1) <= self.planner_params['random_epsilon']
         classifier_accept = np.random.uniform(0, 1) <= accept_probability
