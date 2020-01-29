@@ -29,8 +29,6 @@ def main():
     parser.add_argument("fwd_model_type", choices=['nn', 'gp', 'llnn', 'rigid', 'obs'], default='nn')
     parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
     parser.add_argument("classifier_model_type", choices=['collision', 'none', 'raster'], default='raster')
-    parser.add_argument('v', type=float, help='speed in m/s')
-    parser.add_argument('theta', type=float, help='direction of velocity in DEGREES relative to +x axis (right, east)')
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--no-plot', action='store_true', help="don't show plots, useful for debugging")
 
