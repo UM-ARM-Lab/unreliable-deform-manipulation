@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_data.link_bot_dataset_utils import balance_dataset
+from link_bot_data.link_bot_dataset_utils import balance_dataset, balance_by_augmentation
 
 
 def make_mask(T, S):

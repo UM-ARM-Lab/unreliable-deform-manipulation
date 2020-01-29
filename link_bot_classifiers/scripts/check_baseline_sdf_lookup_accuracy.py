@@ -43,7 +43,7 @@ def show_error(state,
     plot_rope_configuration(ax, next_state, linewidth=3, zorder=1, c='orange', label='next state')
     plot_rope_configuration(ax, planned_state, linewidth=3, zorder=2, c='b', label='planned state', linestyle='--')
     plot_rope_configuration(ax, planned_next_state, linewidth=3, zorder=2, c='c', label='planned next state', linestyle='--')
-    ax.quiver(state[4], state[5], action[0], action[1], color='k')
+    ax.quiver(state[-2], state[-1], action[0], action[1], color='k')
 
     plt.title("prediction: {}, label: {}".format(prediction, label))
     plt.legend()
@@ -64,6 +64,8 @@ def main():
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
 
     args = parser.parse_args()
+
+    print("using mode {}".format(args.mode))
 
     np.random.seed(0)
     tf.random.set_random_seed(0)

@@ -361,10 +361,6 @@ class ObstacleNNWrapper(BaseForwardModel):
         states = tf.convert_to_tensor(state, dtype=tf.float32)
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
-        # FIXME: In the calling code we're converting from arrays to this format
-        # full_envs = np.array([env.data for env in full_env_datas])
-        # full_env_origins = np.array([env.origin for env in full_env_datas])
-        # resolution_s = np.expand_dims(np.array([env.resolution[0:1] for env in full_env_datas], dtype=np.float32), axis=1)
         resolution_s = tf.convert_to_tensor(np.expand_dims(resolution_s, axis=2), dtype=tf.float32)
 
         test_x = {

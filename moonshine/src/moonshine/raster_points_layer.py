@@ -4,12 +4,13 @@ import tensorflow as tf
 
 class RasterPoints(tf.keras.layers.Layer):
 
-    def __init__(self, local_env_shape, **kwargs):
+    def __init__(self, local_env_shape, batch_size, **kwargs):
         super(RasterPoints, self).__init__(**kwargs)
         self.local_env_shape = local_env_shape
         self.n = None
         self.n_points = None
         self.sequence_length = None
+        self.batch_size = np.int64(batch_size)
 
     def build(self, input_shapes):
         super(RasterPoints, self).build(input_shapes)
@@ -26,23 +27,21 @@ class RasterPoints(tf.keras.layers.Layer):
         :return: local_env_shape
         """
         x, resolution, origin = inputs
-        batch_size = tf.cast(tf.shape(x)[0], tf.int64)
-        points = tf.reshape(x, [batch_size, self.sequence_length, self.n_points, 2], name='points_reshape')
+        points = tf.reshape(x, [self.batch_size, self.sequence_length, self.n_points, 2], name='points_reshape')
 
-        np_rope_images = np.zeros(
-            [batch_size, self.sequence_length, self.local_env_shape[0], self.local_env_shape[1], self.n_points])
 
         # resolution is assumed to be x,y, origin is row,col (which is y,x)
         row_y_indices = tf.reshape(tf.cast(points[:, :, :, 1] / resolution[:, :, 1:2] + origin[:, :, 0:1], tf.int64), [-1])
         col_x_indices = tf.reshape(tf.cast(points[:, :, :, 0] / resolution[:, :, 0:1] + origin[:, :, 1:2], tf.int64), [-1])
-        batch_indices = tf.reshape(tf.tile(tf.reshape(tf.range(batch_size), [-1, 1]), [1, self.n_points * self.sequence_length]),
-                                   [-1])
+        batch_indices = tf.reshape(
+            tf.tile(tf.reshape(tf.range(self.batch_size), [-1, 1]), [1, self.n_points * self.sequence_length]),
+            [-1])
         time_indices = tf.tile(
             tf.reshape(tf.tile(tf.reshape(tf.range(self.sequence_length, dtype=tf.int64), [-1, 1]), [1, self.n_points]), [-1]),
-            [batch_size])
+            [self.batch_size])
         row_indices = tf.squeeze(row_y_indices)
         col_indices = tf.squeeze(col_x_indices)
-        point_channel_indices = tf.tile(tf.range(self.n_points, dtype=tf.int64), [batch_size * self.sequence_length])
+        point_channel_indices = tf.tile(tf.range(self.n_points, dtype=tf.int64), [self.batch_size * self.sequence_length])
         indices = tf.stack((batch_indices,
                             time_indices,
                             row_indices,
@@ -56,9 +55,15 @@ class RasterPoints(tf.keras.layers.Layer):
         valid_indices = tf.boolean_mask(indices, in_bounds)
         valid_indices = tf.unstack(valid_indices, axis=1)
 
-        indices_tuple = tuple([i.numpy() for i in valid_indices])
-        np_rope_images[indices_tuple] = 1
-        rope_images = tf.convert_to_tensor(np_rope_images, dtype=tf.float32)
+        output_shape = [self.batch_size, self.sequence_length, self.local_env_shape[0], self.local_env_shape[1], self.n_points]
+
+        def _index(*valid_indices):
+            np_rope_images = np.zeros(output_shape, dtype=np.float32)
+            np_rope_images[tuple(valid_indices)] = 1
+            return np_rope_images
+
+        rope_images = tf.numpy_function(_index, inp=valid_indices, Tout=tf.float32)
+        rope_images.set_shape(output_shape)
 
         return rope_images
 

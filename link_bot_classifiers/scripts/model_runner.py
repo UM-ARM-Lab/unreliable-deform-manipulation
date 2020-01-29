@@ -8,8 +8,8 @@ import tensorflow as tf
 from colorama import Fore
 
 import link_bot_classifiers
-from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.new_classifier_dataset import NewClassifierDataset
+from link_bot_data.image_classifier_dataset import ImageClassifierDataset
 from link_bot_pycommon import experiments_util
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.5)
@@ -31,17 +31,23 @@ def train(args, seed: int):
     # Datasets
     ###############
     # train_dataset = ClassifierDataset(args.dataset_dirs)
-    train_dataset = NewClassifierDataset(args.dataset_dirs)
+    if args.image_dataset:
+        train_dataset = ImageClassifierDataset(args.dataset_dirs)
+    else:
+        train_dataset = NewClassifierDataset(args.dataset_dirs)
     train_tf_dataset = train_dataset.get_datasets(mode='train',
                                                   shuffle=True,
-                                                  seed=args.seed,
+                                                  seed=seed,
                                                   batch_size=args.batch_size,
                                                   balance_key=args.balance_key)
-    # val_dataset = NewClassifierDataset(args.dataset_dirs)
-    val_dataset = NewClassifierDataset(args.dataset_dirs)
+    # val_dataset = ClassifierDataset(args.dataset_dirs)
+    if args.image_dataset:
+        val_dataset = ImageClassifierDataset(args.dataset_dirs)
+    else:
+        val_dataset = NewClassifierDataset(args.dataset_dirs)
     val_tf_dataset = val_dataset.get_datasets(mode='val',
                                               shuffle=True,
-                                              seed=args.seed,
+                                              seed=seed,
                                               batch_size=args.batch_size,
                                               balance_key=args.balance_key)
 
@@ -55,7 +61,7 @@ def train(args, seed: int):
         ###############
         # Train
         ###############
-        module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed)
+        module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args, from_image=args.image_dataset)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
@@ -69,7 +75,7 @@ def eval(args, seed: int):
     test_dataset = NewClassifierDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
                                                 shuffle=False,
-                                                seed=args.seed,
+                                                seed=seed,
                                                 batch_size=args.batch_size,
                                                 balance_key=args.balance_key)
 
@@ -111,6 +117,7 @@ def main():
     train_parser.add_argument('--balance-key', help='use this key in the y of dataset to balance classes')
     train_parser.set_defaults(func=train)
     train_parser.add_argument('--seed', type=int, default=None)
+    train_parser.add_argument('--image-dataset', action='store_true')
 
     eval_parser = subparsers.add_parser('eval')
     eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')

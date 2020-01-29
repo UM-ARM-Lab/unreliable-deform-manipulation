@@ -23,7 +23,7 @@ from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import my_mpc, ompl_viz
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.params import PlannerParams, SimParams, FullEnvParams
+from link_bot_planning.params import PlannerParams, SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -84,7 +84,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                 'n_total_plans': n_total_plans,
                 'n_plans_per_env': n_plans_per_env,
                 'verbose': verbose,
-                'planner_params': planner_params.to_json(),
+                'planner_params': planner_params,
                 'sim_params': sim_params.to_json(),
                 'local_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
                 'full_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['full_env_params'],
@@ -216,14 +216,12 @@ def main():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
-    parser.add_argument("fwd_model_type", choices=['obs', 'gp', 'llnn', 'nn', 'rigid'])
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--classifier-model-dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("--classifier-model-type", choices=['collision', 'none', 'raster'], default='none')
-    parser.add_argument("--n-total-plans", type=int, default=1024, help='number of environments')
-    parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per environment')
+    parser.add_argument("--n-total-plans", type=int, default=2048, help='number of environments')
+    parser.add_argument("--n-plans-per-env", type=int, default=8, help='number of targets/plans per environment')
     # if the number of steps in the plan is larger than this number, we truncate.
     # If it is smaller we pad with 0 actions/stationary states
     parser.add_argument("--n-steps-per-example", type=int, default=50, help='time steps per example')
@@ -251,18 +249,7 @@ def main():
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
 
-    params = json.load(args.params.open("r"))
-    extra_params = planner_params
-    planner_params = PlannerParams(timeout=args.planner_timeout,
-                                   w=params['env_w'],
-                                   h=params['env_h'],
-                                   max_v=params['max_v'],
-                                   neighborhood_radius=params['neighborhood_radius'],
-                                   goal_threshold=params['goal_threshold'],
-                                   random_epsilon=params['random_epsilon'],
-                                   w=args.planner_env_w,
-                                   h=args.planner_env_h,
-                                   max_angle_rad=args.max_angle_rad)
+    planner_params = json.load(args.params.open("r"))
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
                            move_obstacles=(not args.no_move_obstacles),
@@ -287,18 +274,12 @@ def main():
     services.pause(std_srvs.srv.EmptyRequest())
 
     # NOTE: we could make the classifier take a different sized local environment than the dynamics, just a thought.
-    planner, fwd_model_info = get_planner(planner_class_str='NearestRRT',
-                                          fwd_model_dir=args.fwd_model_dir,
-                                          fwd_model_type=args.fwd_model_type,
-                                          classifier_model_dir=args.classifier_model_dir,
-                                          classifier_model_type=args.classifier_model_type,
-                                          planner_params=planner_params,
-                                          services=services)
+    planner, fwd_model_info = get_planner(planner_params=planner_params, services=services)
 
     data_collector = ClassifierDataCollector(
         planner=planner,
-        fwd_model_dir=args.fwd_model_dir,
-        fwd_model_type=args.fwd_model_type,
+        fwd_model_dir=planner_params['fwd_model_dir'],
+        fwd_model_type=planner_params['fwd_model_type'],
         fwd_model_info=fwd_model_info,
         n_total_plans=args.n_total_plans,
         n_plans_per_env=args.n_plans_per_env,

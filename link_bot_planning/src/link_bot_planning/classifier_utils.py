@@ -14,7 +14,7 @@ def load_generic_model(model_dir: pathlib.Path, model_type: str):
     :return:
     """
     if model_type == 'raster':
-        return RasterClassifierWrapper(model_dir)
+        return RasterClassifierWrapper(model_dir, batch_size=1)
     elif model_type == 'collision':
         return CollisionCheckerClassifier(inflation_radius=0.02)
     elif model_type == 'none':

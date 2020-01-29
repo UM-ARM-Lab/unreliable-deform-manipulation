@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import json
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -8,7 +9,7 @@ import rospy
 import tensorflow as tf
 
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import get_local_occupancy_data, GazeboServices
+from link_bot_gazebo.gazebo_utils import get_local_occupancy_data, GazeboServices, get_occupancy_data
 from link_bot_gazebo.srv import LinkBotStateRequest
 from link_bot_planning import model_utils, classifier_utils
 from link_bot_classifiers.visualization import plot_classifier_data
@@ -25,17 +26,23 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
-    parser.add_argument("fwd_model_type", choices=['gp', 'llnn', 'rigid'], default='llnn')
+    parser.add_argument("fwd_model_type", choices=['nn', 'gp', 'llnn', 'rigid', 'obs'], default='nn')
     parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
-    parser.add_argument("classifier_model_type", choices=['none', 'raster'], default='raster')
+    parser.add_argument("classifier_model_type", choices=['collision', 'none', 'raster'], default='raster')
     parser.add_argument('v', type=float, help='speed in m/s')
     parser.add_argument('theta', type=float, help='direction of velocity in DEGREES relative to +x axis (right, east)')
-    parser.add_argument('--rows', type=int, help='number of rows in local environment', default=100)
-    parser.add_argument('--cols', type=int, help='number of cols in local environment', default=100)
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--no-plot', action='store_true', help="don't show plots, useful for debugging")
 
     args = parser.parse_args()
+
+    # use forward model to predict given the input action
+    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir, args.fwd_model_type)
+    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, args.classifier_model_type)
+    local_env_params = fwd_model.local_env_params
+    full_env_params = fwd_model.full_env_params
+    cols = local_env_params.w_cols
+    rows = local_env_params.h_rows
 
     rospy.init_node('test_classifier_from_gazebo')
 
@@ -46,21 +53,27 @@ def main():
     head_idx = link_bot_state.link_names.index("head")
     head_point = link_bot_state.points[head_idx]
     head_point = np.array([head_point.x, head_point.y])
-    local_env_data = get_local_occupancy_data(args.rows, args.cols, args.res, center_point=head_point, services=services)
+    local_env_data = get_local_occupancy_data(rows, cols, args.res, center_point=head_point, services=services)
 
-    # use forward model to predict given the input action
-    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir, args.fwd_model_type)
-    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, args.classifier_model_type)
+    full_env_data = get_occupancy_data(env_w=full_env_params.w,
+                                       env_h=full_env_params.h,
+                                       res=full_env_params.res,
+                                       services=services)
 
     state = np.expand_dims(gazebo_utils.points_to_config(link_bot_state.points), axis=0)
     theta_rad = np.deg2rad(args.theta)
     vx = np.cos(theta_rad) * args.v
     vy = np.sin(theta_rad) * args.v
     action = np.array([[[vx, vy]]])
-    next_state = fwd_model.predict(state, action)
+
+    next_state = fwd_model.predict(full_envs=[full_env_data.data],
+                                   full_env_origins=[full_env_data.origin],
+                                   resolution_s=[full_env_data.resolution],
+                                   state=state,
+                                   actions=action)
     next_state = np.reshape(next_state, [2, 1, -1])[1]
 
-    accept_probability = classifier_model.predict(local_env_data, state, next_state)
+    accept_probability = classifier_model.predict([local_env_data], state, next_state, action)[0]
     prediction = 1 if accept_probability > 0.5 else 0
     title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)
 
@@ -82,6 +95,8 @@ def main():
                              planned_env_extent=local_env_data.extent,
                              planned_state=state[0],
                              planned_next_state=next_state[0],
+                             planned_env_origin=local_env_data.origin,
+                             res=local_env_data.resolution,
                              state=None,
                              next_state=None,
                              title=title,

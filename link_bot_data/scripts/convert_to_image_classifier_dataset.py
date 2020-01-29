@@ -1,13 +1,18 @@
 #!/usr/bin/env python
 import argparse
+import matplotlib.pyplot as plt
+import json
+from time import time
 import pathlib
 import shutil
 
 import numpy as np
 import tensorflow as tf
+from colorama import Fore
 
+from link_bot_classifiers.raster_classifier import RasterClassifier
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import float_feature
+from link_bot_data.link_bot_dataset_utils import float_feature, balance_by_augmentation
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -20,7 +25,7 @@ def main():
     specifically for the classifier
     NOTE:
     A link_bot_state_space_dataset is compatible with a classifier_dataset. However, those datasets are imbalanced and inefficient
-    for training the classifier. That's what the new_classifier_dataset is for, and this script converts a classifier_datset
+    for training the classifier. That's what the new_classifier_dataset is for, and this script converts a classifier_dataset
     to a new_classifier_dataset
     """
     parser = argparse.ArgumentParser()
@@ -35,25 +40,59 @@ def main():
 
     # copy the hparams file
     hparams_path = args.dataset_dir / 'hparams.json'
+    dataset_hparams = json.load(hparams_path.open('r'))
     shutil.copy2(hparams_path, root_output_directory)
+
+    model_hparams = {
+        'classifier_dataset_hparams': {
+            'fwd_model_hparams': {
+                'dynamics_dataset_hparams': dataset_hparams
+            }
+        },
+        'conv_filters': [],
+        'batch_norm': False,
+        'fc_layer_sizes': [],
+        'dropout_rate': 0,
+        'kernel_reg': 0,
+        'bias_reg': 0
+    }
+    batch_size = 1
+    net = RasterClassifier(model_hparams, batch_size=batch_size)
 
     for mode in ['train', 'test', 'val']:
         full_output_directory = root_output_directory / mode
         full_output_directory.mkdir(exist_ok=True)
 
+        # this class maps the sequences down to transitions
         classifier_dataset = ClassifierDataset([args.dataset_dir])
         dataset = classifier_dataset.get_datasets(mode=mode,
-                                                  batch_size=None,
-                                                  balance_key='label',
+                                                  batch_size=batch_size,
+                                                  balance_key=None,
                                                   shuffle=False,
                                                   seed=0,
                                                   sequence_length=None)
 
+        def make_image(old_example_dict):
+            _, _, _, image = net.make_image(old_example_dict)
+            return {
+                'image': image,
+                'label': old_example_dict['label']
+            }
+
+        # convert to images
+        image_dataset = dataset.map(make_image)
+
+        balanced_image_dataset = balance_by_augmentation(image_dataset, 'label')
+
         current_record_idx = 0
         examples = np.ndarray([args.n_examples_per_record], dtype=np.object)
-        for example_idx, example_dict in enumerate(dataset):
-
-            features = dict([(k, float_feature(example_dict[k].numpy().flatten())) for k in example_dict.keys()])
+        for example_idx, new_example_dict in enumerate(balanced_image_dataset):
+            image = new_example_dict['image']
+            numpy_image = image.numpy().flatten()
+            features = {
+                'label': float_feature(new_example_dict['label'].numpy().flatten()),
+                'image': float_feature(numpy_image),
+            }
 
             example_proto = tf.train.Example(features=tf.train.Features(feature=features))
             example = example_proto.SerializeToString()

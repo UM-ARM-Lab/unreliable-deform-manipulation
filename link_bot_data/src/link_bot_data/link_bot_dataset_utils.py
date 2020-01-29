@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
 
 
@@ -57,13 +60,16 @@ def flatten_concat_pairs(ex_pos, ex_neg):
 
 def balance_dataset(dataset, key, fewer_negative=True):
     """
+    Throw out examples of whichever dataset has more.
     :param dataset: assumes each element is of the structure (inputs_dict_of_tensors, outputs_dict_of_tensors)
     :param key: string to index into y component of dataset, used to determine labels
     :param fewer_negative: fewer negative examples than positive
     """
+
     def _label_is(label_is):
         def __filter(transition):
             return tf.squeeze(tf.equal(transition[key], label_is))
+
         return __filter
 
     if fewer_negative:
@@ -89,9 +95,74 @@ def balance_xy_dataset(dataset, key):
     negative_examples = dataset.filter(lambda x, y: tf.squeeze(tf.equal(y[key], 0)))
     positive_examples = dataset.filter(lambda x, y: tf.squeeze(tf.equal(y[key], 1)))
 
-    print(len(positive_examples), len(negative_examples))
-
     # zipping takes the shorter of the two, hence why this makes it balanced
     balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
+    return balanced_dataset
+
+
+def balance_by_augmentation(dataset, key, fewer_negative=True):
+    """
+    generate more examples by random 90 rotations or horizontal/vertical flipping
+    :param dataset:
+    :param key:
+    :return:
+    """
+
+    def _label_is(label_is):
+        def __filter(transition):
+            return tf.squeeze(tf.equal(transition[key], label_is))
+
+        return __filter
+
+    def _debug(image, augmented_image):
+        fig, axes = plt.subplots(2)
+        axes[0].imshow(np.sum(image, axis=3).squeeze())
+        axes[1].imshow(np.sum(augmented_image, axis=3).squeeze())
+        i = np.random.randint(0, 1000)
+        plt.savefig('/tmp/{}.png'.format(i))
+
+    def _augment(r, image):
+        if r == 1:
+            augmented_image = tf.image.rot90(tf.image.rot90(tf.image.rot90(image)))
+        elif r == 2:
+            augmented_image = tf.image.rot90(tf.image.rot90(image))
+        elif r == 3:
+            augmented_image = tf.image.rot90(image)
+        elif r == 4:
+            augmented_image = tf.image.flip_up_down(image)
+        else:
+            augmented_image = tf.image.flip_left_right(image)
+        return augmented_image
+
+    def augment(input_dict):
+        image = input_dict['image']
+        r = tf.random.uniform([], 0, 6, dtype=tf.int64)
+        augmented_image = tf.numpy_function(_augment, inp=[r, image], Tout=tf.float32)
+
+        return {
+            'image': augmented_image,
+            'label': input_dict['label']
+        }
+
+    if fewer_negative:
+        positive_examples = dataset.filter(_label_is(1))
+
+        n_positive_examples = 0
+        for _ in positive_examples:
+            n_positive_examples += 1
+
+        negative_examples = dataset.filter(_label_is(0)).repeat().take(n_positive_examples)
+
+        augmented_negative_examples = negative_examples.map(augment)
+
+        # zipping takes the shorter of the two, hence why this makes it balanced
+        balanced_dataset = tf.data.Dataset.zip((positive_examples, augmented_negative_examples))
+    else:
+        raise NotImplementedError()  # TODO: copy the above branch but for positive examples
+        positive_examples = dataset.filter(_label_is(1)).repeat()
+        negative_examples = dataset.filter(_label_is(0))
+
+    balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
+
     return balanced_dataset
