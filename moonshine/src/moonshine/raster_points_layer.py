@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
+from link_bot_pycommon import link_bot_pycommon
+
 
 class RasterPoints(tf.keras.layers.Layer):
 
@@ -16,7 +18,7 @@ class RasterPoints(tf.keras.layers.Layer):
         super(RasterPoints, self).build(input_shapes)
         self.sequence_length = int(input_shapes[0][1])
         self.n = int(input_shapes[0][2])
-        self.n_points = int(self.n // 2)
+        self.n_points = link_bot_pycommon.n_state_to_n_points(self.n)
 
     def call(self, inputs, **kwargs):
         """

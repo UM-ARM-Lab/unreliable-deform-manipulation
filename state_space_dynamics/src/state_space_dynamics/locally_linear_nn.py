@@ -8,7 +8,7 @@ import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
 
-from link_bot_pycommon import experiments_util, link_bot_sdf_utils
+from link_bot_pycommon import experiments_util, link_bot_sdf_utils, link_bot_pycommon
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
@@ -20,7 +20,7 @@ class LocallyLinearNN(tf.keras.Model):
         self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
         self.n_dim = self.hparams['dynamics_dataset_hparams']['n_state']
         self.m_dim = self.hparams['dynamics_dataset_hparams']['n_action']
-        self.n_points = int(self.hparams['dynamics_dataset_hparams']['n_state'] // 2)
+        self.n_points = link_bot_pycommon.n_state_to_n_points(self.dynamics_dataset_hparams['n_state'])
 
         self.elements_in_A = self.n_points * (2 * 2)
         self.elements_in_B = self.n_dim * self.m_dim

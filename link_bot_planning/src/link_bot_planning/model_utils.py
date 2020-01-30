@@ -29,7 +29,7 @@ def load_generic_model(model_dir: pathlib.Path, model_type: str) -> [BaseForward
         nn = SimpleNNWrapper(model_dir)
         return nn, model_dir.parts[1:]
     elif model_type == 'obs':
-        nn = ObstacleNNWrapper(model_dir)
+        nn = ObstacleNNWrapper(model_dir, batch_size=1)
         return nn, model_dir.parts[1:]
     else:
         raise NotImplementedError("invalid model type {}".format(model_type))

@@ -72,7 +72,10 @@ def eval(args, seed: int):
     # Dataset
     ###############
     # test_dataset = ClassifierDataset(args.dataset_dirs)
-    test_dataset = NewClassifierDataset(args.dataset_dirs)
+    if args.image_dataset:
+        test_dataset = ImageClassifierDataset(args.dataset_dirs)
+    else:
+        test_dataset = NewClassifierDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
                                                 shuffle=False,
                                                 seed=seed,
@@ -89,7 +92,7 @@ def eval(args, seed: int):
         ###############
         # Evaluate
         ###############
-        module.eval(model_hparams, test_tf_dataset, args)
+        module.eval(model_hparams, test_tf_dataset, args, from_image=args.image_dataset)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
@@ -128,6 +131,7 @@ def main():
     eval_parser.add_argument('--balance-key', help='use this key in the y of dataset to balance classes')
     eval_parser.set_defaults(func=eval)
     eval_parser.add_argument('--seed', type=int, default=None)
+    eval_parser.add_argument('--image-dataset', action='store_true')
 
     args = parser.parse_args()
 

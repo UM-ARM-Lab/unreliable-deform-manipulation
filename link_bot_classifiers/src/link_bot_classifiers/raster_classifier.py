@@ -16,7 +16,7 @@ from tensorflow import keras
 from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_planning.params import LocalEnvParams
-from link_bot_pycommon import experiments_util, link_bot_sdf_utils
+from link_bot_pycommon import experiments_util, link_bot_sdf_utils, link_bot_pycommon
 from moonshine.action_smear_layer import action_smear_layer
 from moonshine.raster_points_layer import RasterPoints
 
@@ -29,7 +29,7 @@ class RasterClassifier(tf.keras.Model):
         self.dynamics_dataset_hparams = self.hparams['classifier_dataset_hparams']['fwd_model_hparams'][
             'dynamics_dataset_hparams']
         self.n_action = self.dynamics_dataset_hparams['n_action']
-        self.n_points = int(self.dynamics_dataset_hparams['n_state'] // 2)
+        self.n_points = link_bot_pycommon.n_state_to_n_points(self.dynamics_dataset_hparams['n_state'])
         self.batch_size = batch_size
 
         self.local_env_params = LocalEnvParams.from_json(self.dynamics_dataset_hparams['local_env_params'])
@@ -311,7 +311,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, from_image=
         train_loop()
 
 
-def eval(hparams, test_tf_dataset, args):
+def eval(hparams, test_tf_dataset, args, from_image):
     net = RasterClassifier(hparams=hparams, batch_size=args.batch_size)
     accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
     ckpt = tf.train.Checkpoint(net=net)
@@ -330,7 +330,10 @@ def eval(hparams, test_tf_dataset, args):
     tp = 0
     for test_example_dict in test_tf_dataset:
         test_batch_labels = test_example_dict['label']
-        test_batch_predictions = net(test_example_dict)[-1]
+        if from_image:
+            test_batch_predictions = net.from_image(test_example_dict['image'])
+        else:
+            test_batch_predictions = net(test_example_dict)[-1]
         test_predictions.append(test_batch_predictions.numpy().flatten())
         batch_test_loss = loss(y_true=test_batch_labels, y_pred=test_batch_predictions)
         accuracy.update_state(y_true=test_batch_labels, y_pred=test_batch_predictions)

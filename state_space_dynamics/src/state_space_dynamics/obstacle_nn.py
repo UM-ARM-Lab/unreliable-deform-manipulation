@@ -1,7 +1,7 @@
 import json
 import pathlib
 import time
-from typing import Tuple
+from typing import Tuple, Dict
 
 import numpy as np
 import progressbar
@@ -52,14 +52,15 @@ def get_local_env_at_in(rows: int,
 
 class ObstacleNN(tf.keras.Model):
 
-    def __init__(self, hparams, *args, **kwargs):
+    def __init__(self, hparams: Dict, batch_size: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.initial_epoch = 0
         self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
 
         self.local_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['local_env_params'])
         self.full_env_params = FullEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['full_env_params'])
-        self.raster = RasterPoints([self.local_env_params.h_rows, self.local_env_params.w_cols])
+        self.batch_size = batch_size
+        self.raster = RasterPoints([self.local_env_params.h_rows, self.local_env_params.w_cols], batch_size=batch_size)
         self.concat = layers.Concatenate()
         self.concat2 = layers.Concatenate()
         self.action_smear = action_smear_layer(1,
@@ -175,7 +176,7 @@ class ObstacleNN(tf.keras.Model):
 
 
 def eval(hparams, test_tf_dataset, args):
-    net = ObstacleNN(hparams=hparams)
+    net = ObstacleNN(hparams=hparams, batch_size=args.batch_size)
     ckpt = tf.train.Checkpoint(net=net)
     manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=1)
     ckpt.restore(manager.latest_checkpoint)
@@ -227,7 +228,7 @@ def eval_angled(net, test_tf_dataset):
 def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed: int):
     optimizer = tf.train.AdamOptimizer()
     loss = tf.keras.losses.MeanSquaredError()
-    net = ObstacleNN(hparams=hparams)
+    net = ObstacleNN(hparams=hparams, batch_size=args.batch_size)
     global_step = tf.train.get_or_create_global_step()
 
     # If we're resuming a checkpoint, there is no new log path
@@ -340,9 +341,9 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed: int):
 
 class ObstacleNNWrapper(BaseForwardModel):
 
-    def __init__(self, model_dir: pathlib.Path):
+    def __init__(self, model_dir: pathlib.Path, batch_size: int):
         super().__init__(model_dir)
-        self.net = ObstacleNN(hparams=self.hparams)
+        self.net = ObstacleNN(hparams=self.hparams, batch_size=batch_size)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)

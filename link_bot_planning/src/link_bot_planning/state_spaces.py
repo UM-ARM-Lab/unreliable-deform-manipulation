@@ -1,10 +1,8 @@
-import pathlib
 from typing import List
 
 import numpy as np
 from ompl import base as ob
 
-from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_pycommon
 
@@ -21,7 +19,7 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
         super(ValidRopeConfigurationSampler, self).__init__(state_space)
         self.extent = extent
         self.rope_length = rope_length
-        self.n_links = int(n_state // 2 - 1)
+        self.n_links = link_bot_pycommon.n_state_to_n_links(n_state)
         self.n_state = n_state
         self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
@@ -49,7 +47,7 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         super(ValidRopeConfigurationCompoundSampler, self).__init__(state_space)
         self.extent = extent
         self.rope_length = rope_length
-        self.n_links = int(n_state // 2 - 1)
+        self.n_links = link_bot_pycommon.n_state_to_n_links(n_state)
         self.n_state = n_state
         self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
@@ -71,10 +69,10 @@ class TrainingSetCompoundSampler(ob.RealVectorStateSampler):
                  state_space,
                  viz_object: VizObject,
                  n_state: int,
-                 rope_configurations : np.ndarray
+                 rope_configurations: np.ndarray
                  ):
         super(TrainingSetCompoundSampler, self).__init__(state_space)
-        self.n_links = int(n_state // 2 - 1)
+        self.n_links = link_bot_pycommon.n_state_to_n_links(n_state)
         self.n_state = n_state
         self.viz_object = viz_object
         self.rope_configurations = rope_configurations

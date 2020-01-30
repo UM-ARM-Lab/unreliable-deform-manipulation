@@ -3,7 +3,7 @@
   "fwd_model_type": "nn",
   "classifier_model_dir": "",
   "classifier_model_type": "collision",
-  "planner_type": "ShootingRRT",
+  "planner_type": "NearestRRT",
   "sampler_type": "random",
   "timeout": 120,
   "max_v": 0.15,

@@ -13,7 +13,7 @@ from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
 from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_local_env, ValidRopeConfigurationCompoundSampler, \
     TrainingSetCompoundSampler
 from link_bot_planning.viz_object import VizObject
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
@@ -29,6 +29,7 @@ class MyPlanner:
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.n_state = self.fwd_model.n_state
+        self.n_links = link_bot_pycommon.n_state_to_n_links(self.n_state)
         self.n_control = self.fwd_model.n_control
         self.full_env_params = self.fwd_model.full_env_params
         self.planner_params = planner_params
@@ -178,7 +179,7 @@ class MyPlanner:
         compound_start()[2][1] = start_local_occupancy_origin_double[1]
 
         start = ob.State(compound_start)
-        goal = LinkBotCompoundGoal(self.si, self.planner_params['goal_threshold'], tail_goal_point, self.viz_object)
+        goal = LinkBotCompoundGoal(self.si, self.planner_params['goal_threshold'], tail_goal_point, self.viz_object, self.n_links)
 
         self.ss.clear()
         self.viz_object.clear()

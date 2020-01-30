@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 from bresenham import bresenham
 
+from link_bot_pycommon import link_bot_pycommon
 from link_bot_pycommon.link_bot_sdf_utils import point_to_idx
 
 
@@ -18,7 +19,7 @@ class DrawRope(tf.keras.layers.Layer):
         super(DrawRope, self).build(input_shapes)
         self.sequence_length = int(input_shapes[0][1])
         self.n = int(input_shapes[0][2])
-        self.n_points = int(self.n // 2)
+        self.n_points = link_bot_pycommon.n_state_to_n_points(self.n)
 
     def call(self, inputs, **kwargs):
         """

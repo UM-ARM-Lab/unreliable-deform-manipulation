@@ -35,6 +35,14 @@ def angle_from_configuration(state):
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 
+def n_state_to_n_links(n_state: int):
+    return int(n_state // 2 - 1)
+
+
+def n_state_to_n_points(n_state: int):
+    return int(n_state // 2)
+
+
 def make_random_rope_configuration(extent, n_state, link_length, max_angle_rad):
     """
     First sample a head point, then sample angles for the other points
@@ -47,7 +55,7 @@ def make_random_rope_configuration(extent, n_state, link_length, max_angle_rad):
     def oob(x, y):
         return not (extent[0] < x < extent[1] and extent[2] < y < extent[3])
 
-    n_links = int(n_state // 2 - 1)
+    n_links = n_state_to_n_links(n_state)
     theta = np.random.uniform(-np.pi, np.pi)
     valid = False
     while not valid:
@@ -65,7 +73,7 @@ def make_random_rope_configuration(extent, n_state, link_length, max_angle_rad):
             rope_configuration[j - 2] = rope_configuration[j] + np.cos(theta) * link_length
             rope_configuration[j - 3] = rope_configuration[j - 1] + np.sin(theta) * link_length
 
-            if oob(rope_configuration[j-2], rope_configuration[j-3]):
+            if oob(rope_configuration[j - 2], rope_configuration[j - 3]):
                 valid = False
                 break
 
