@@ -239,6 +239,7 @@ def main():
     parser.add_argument('--full-env-h', type=float, default=6.0, help='full env h')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
+    parser.add_argument('--no-nudge', action='store_true', help="don't nudge")
 
     args = parser.parse_args()
 
@@ -253,6 +254,7 @@ def main():
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
                            move_obstacles=(not args.no_move_obstacles),
+                           nudge=(not args.no_nudge),
                            goal_padding=0.0)
 
     rospy.init_node('collect_classifier_data')

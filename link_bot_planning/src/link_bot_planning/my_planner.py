@@ -25,7 +25,9 @@ class MyPlanner:
                  planner_params: Dict,
                  services: GazeboServices,
                  viz_object: VizObject,
-                 subspace_weights: Optional[List[float]] = [1.0, 0.0, 0.0]):
+                 subspace_weights=None):
+        if subspace_weights is None:  # protect against mutable default augments
+            subspace_weights = [1.0, 0.0, 0.0]
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.n_state = self.fwd_model.n_state
@@ -179,7 +181,7 @@ class MyPlanner:
         compound_start()[2][1] = start_local_occupancy_origin_double[1]
 
         start = ob.State(compound_start)
-        goal = LinkBotCompoundGoal(self.si, self.planner_params['goal_threshold'], tail_goal_point, self.viz_object, self.n_links)
+        goal = LinkBotCompoundGoal(self.si, self.planner_params['goal_threshold'], tail_goal_point, self.viz_object, self.n_state)
 
         self.ss.clear()
         self.viz_object.clear()

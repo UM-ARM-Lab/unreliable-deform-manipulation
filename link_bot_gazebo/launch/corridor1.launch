@@ -1,10 +1,10 @@
 <launch>
     <arg name="world_name" default="corridor1"/>
     <arg name="verbose" default="false"/>
-    <arg name="gui" default="false"/>
+    <arg name="gui" default="true"/>
     <arg name="n_links" default="10"/>
     <arg name="spawn_x" default="-1.5"/>
-    <arg name="spawn_y" default="0.0"/>
+    <arg name="spawn_y" default="1.5"/>
 
     <arg name="spawn_yaw" default="0"/>
 

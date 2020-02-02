@@ -105,3 +105,18 @@ def make_rope_configurations(head_xs, head_ys, theta_1s, theta_2s, l=0.5):
     rope_configurations[:, 0] = rope_configurations[:, 2] + np.cos(theta_2s) * l
     rope_configurations[:, 1] = rope_configurations[:, 3] + np.sin(theta_2s) * l
     return rope_configurations
+
+
+def transpose_2d_lists(l):
+    # https://stackoverflow.com/questions/6473679/transpose-list-of-lists
+    return list(map(list, zip(*l)))
+
+
+def point_arg(i):
+    try:
+        x, y = [d.strip(" ") for d in i.split(",")]
+        x = float(x)
+        y = float(y)
+        return x, y
+    except Exception:
+        raise ValueError("Failed to parse {} into two floats. Must be comma seperated".format(i))

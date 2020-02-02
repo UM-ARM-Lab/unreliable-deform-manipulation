@@ -1,21 +1,19 @@
 #!/usr/bin/env python
 
 import argparse
-
-import plotly
-import plotly.graph_objects as go
 import json
 import pathlib
 from typing import List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
 from colorama import Style
 from scipy import stats
 from tabulate import tabulate
 
-from link_bot_planning.params import PlannerParams
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.link_bot_pycommon import transpose_2d_lists
 from link_bot_pycommon.metric_utils import row_stats
 
 
@@ -53,10 +51,16 @@ def main():
         'planning_time': [['min', 'max', 'mean', 'median', 'std']],
         'final_tail_error': [['min', 'max', 'mean', 'median', 'std']],
         'num_nodes': [['min', 'max', 'mean', 'median', 'std']],
-        'timeouts': [['min', 'max', 'mean', 'median', 'std']],
     }
-    plt.figure()
+
     final_errors_comparisons = {}
+    final_errors_thresholds = np.linspace(0.1, 1.0, 10)
+    print('-' * 90)
+    if not args.no_plot:
+        plt.figure()
+        plt.xlabel("Success Threshold, Final Tail Error")
+        plt.ylabel("Success Rate")
+        plt.ylim([0, 100])
     for results_dir in args.results_dirs:
         subfolders = results_dir.iterdir()
 
@@ -65,40 +69,53 @@ def main():
                 continue
             metrics_filename = subfolder / 'metrics.json'
             metrics = json.load(metrics_filename.open("r"))
-            timeout = json.loads(metrics['planner_params'])['timeout']
+            timeout = metrics['planner_params']['timeout']
             data = metrics.pop('metrics')
 
             data = invert_dict(data)
             planning_times = np.array(data['planning_time'])
             final_errors = data['final_execution_error']
             num_nodes = data['num_nodes']
-            timeouts = (planning_times > timeout).astype(np.int)
+            timeouts = np.sum((planning_times > timeout).astype(np.int))
+            timeout_percentage = timeouts / planning_times.shape[0] * 100
             name = subfolder.name
-            n, x, _ = plt.hist(final_errors, bins=np.linspace(0, 3, 15), alpha=0)
-            bin_centers = 0.5 * (x[1:] + x[:-1])
-            plt.plot(bin_centers, n, label=name)
+            if not args.no_plot:
+                successes = []
+                for threshold in final_errors_thresholds:
+                    successes.append(np.count_nonzero(final_errors < threshold))
+                plt.plot(final_errors_thresholds, successes, label=name)
             final_errors_comparisons[str(subfolder.name)] = final_errors
             headers.append(str(subfolder.name))
 
             aggregate_metrics['planning_time'].append(row_stats(planning_times))
             aggregate_metrics['final_tail_error'].append(row_stats(final_errors))
             aggregate_metrics['num_nodes'].append(row_stats(num_nodes))
-            aggregate_metrics['timeouts'].append(row_stats(timeouts))
+
+            print("{:50s}: {:3.2f}% timeout ".format(str(subfolder), timeout_percentage))
 
     plt.legend()
 
+    print('-' * 90)
+
     for metric_name, table_data in aggregate_metrics.items():
-        data = [go.Table(name=metric_name,
-                         header={'values': headers,
-                                 'font_size': 18},
-                         cells={'values': table_data,
-                                'format': [None, '5.3f', '5.3f', '5.3f'],
-                                'font_size': 14})]
-        layout = go.Layout(title=metric_name)
-        fig = go.Figure(data, layout)
-        outfile = pathlib.Path('results') / '{}_table.png'.format(metric_name)
-        fig.write_image(str(outfile), scale=4)
+
+        print(Style.BRIGHT + metric_name + Style.RESET_ALL)
+        table_data_flipped = transpose_2d_lists(table_data)
+        table = tabulate(table_data_flipped, headers=headers, tablefmt='github', floatfmt='6.4f')
+        print(table)
+        print()
+
         if not args.no_plot:
+            data = [go.Table(name=metric_name,
+                             header={'values': headers,
+                                     'font_size': 18},
+                             cells={'values': table_data,
+                                    'format': [None, '5.3f', '5.3f', '5.3f'],
+                                    'font_size': 14})]
+            layout = go.Layout(title=metric_name)
+            fig = go.Figure(data, layout)
+            outfile = pathlib.Path('results') / '{}_table.png'.format(metric_name)
+            fig.write_image(str(outfile), scale=4)
             fig.show()
 
     print(Style.BRIGHT + "p-value matrix" + Style.RESET_ALL)

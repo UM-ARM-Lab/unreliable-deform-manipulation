@@ -4,7 +4,7 @@ from __future__ import division, print_function
 import argparse
 import json
 import pathlib
-from typing import List
+from typing import List, Tuple, Optional, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,9 +21,10 @@ from link_bot_planning import my_mpc
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
-from link_bot_planning.params import PlannerParams, SimParams
+from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.link_bot_pycommon import point_arg
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.ConfigProto(gpu_options=gpu_options)
@@ -36,10 +37,11 @@ class TestWithClassifier(my_mpc.myMPC):
                  planner: MyPlanner,
                  n_targets: int,
                  verbose: int,
-                 planner_params: PlannerParams,
+                 planner_params: Dict,
                  sim_params: SimParams,
                  services: GazeboServices,
-                 no_execution: bool):
+                 no_execution: bool,
+                 goal: Optional[Tuple[float, float]]):
         super().__init__(planner=planner,
                          n_total_plans=n_targets,
                          n_plans_per_env=n_targets,
@@ -48,6 +50,14 @@ class TestWithClassifier(my_mpc.myMPC):
                          sim_params=sim_params,
                          services=services,
                          no_execution=no_execution)
+        self.goal = goal
+
+    def get_goal(self, w, h, head_point, env_padding, full_env_data):
+        if self.goal is not None:
+            print("Using Goal {}".format(self.goal))
+            return np.array(self.goal)
+        else:
+            return super().get_goal(w, h, head_point, env_padding, full_env_data)
 
     def on_plan_complete(self,
                          planned_path: np.ndarray,
@@ -108,6 +118,7 @@ def main():
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=30.0)
     parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
     parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
+    parser.add_argument("--goal", type=point_arg, help='x,y in meters')
 
     args = parser.parse_args()
 
@@ -143,7 +154,8 @@ def main():
         planner_params=planner_params,
         sim_params=sim_params,
         services=services,
-        no_execution=args.no_execution
+        no_execution=args.no_execution,
+        goal=args.goal,
     )
     tester.run()
 

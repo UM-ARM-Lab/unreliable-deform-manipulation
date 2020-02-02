@@ -70,12 +70,12 @@
         </include>
         <include>
             <uri>model://moving_box</uri>
-            <pose>0.76 0.58 0 0 0 0</pose>
+            <pose>0.75 0.58 0 0 0 0</pose>
             <name>moving_box7</name>
         </include>
         <include>
             <uri>model://moving_box</uri>
-            <pose>0.76 -0.58 0 0 0 0</pose>
+            <pose>0.75 -0.58 0 0 0 0</pose>
             <name>moving_box8</name>
         </include>
     </world>

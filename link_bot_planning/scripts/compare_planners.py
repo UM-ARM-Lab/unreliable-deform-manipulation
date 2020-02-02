@@ -76,8 +76,8 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             "seed": self.seed,
             "metrics": [],
         }
-        subfolder = "{}_{}_{}".format(fwd_model_type, self.classifier_model_type, comparison_item_idx)
-        self.root = self.outdir / subfolder
+        self.subfolder = "{}_{}_{}".format(fwd_model_type, self.classifier_model_type, comparison_item_idx)
+        self.root = self.outdir / self.subfolder
         self.root.mkdir(parents=True)
         print(Fore.CYAN + str(self.root) + Fore.RESET)
         self.metrics_filename = self.root / 'metrics.json'
@@ -102,7 +102,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
         path_length = np.sum(lengths)
         num_nodes = planner_data.numVertices()
 
-        print("{}: {}".format(self.classifier_model_type, self.successfully_completed_plan_idx))
+        print("{}: {}".format(self.subfolder, self.successfully_completed_plan_idx))
 
         metrics_for_plan = {
             'planner_status': planner_status.asString(),
@@ -175,11 +175,10 @@ def main():
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+', help='json file(s) describing what should be compared')
     parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare_classifiers-$time',
                         required=True)
-    parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
+    parser.add_argument("--n-total-plans", type=int, default=40, help='total number of plans')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
     parser.add_argument("--seed", '-s', type=int, default=3)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
-    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=120.0)
     parser.add_argument("--real-time-rate", type=float, default=10.0, help='real time rate')
     parser.add_argument("--goal-threshold", type=float, default=0.1, help='goal radius in meters')
     parser.add_argument('--env-w', type=float, default=5, help='environment width')

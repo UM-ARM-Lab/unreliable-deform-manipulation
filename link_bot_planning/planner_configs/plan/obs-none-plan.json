@@ -1,5 +1,5 @@
 {
-  "fwd_model_dir": "...",
+  "fwd_model_dir": "./ss_log_data/obs-cnn1",
   "fwd_model_type": "obs",
   "classifier_model_dir": "",
   "classifier_model_type": "none",

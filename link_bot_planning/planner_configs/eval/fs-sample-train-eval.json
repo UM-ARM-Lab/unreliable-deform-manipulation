@@ -1,10 +1,10 @@
 {
-  "fwd_model_dir": "ss_log_data/obs-cnn1",
-  "fwd_model_type": "obs",
+  "fwd_model_dir": "ss_log_data/fs-nn/",
+  "fwd_model_type": "nn",
   "classifier_model_dir": "",
   "classifier_model_type": "none",
   "planner_type": "NearestRRT",
-  "sampler_type": "random",
+  "sampler_type": "training_data",
   "max_v": 0.15,
   "goal_threshold": 0.15,
   "random_epsilon": 0.05,
