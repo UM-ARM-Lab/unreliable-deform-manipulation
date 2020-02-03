@@ -23,19 +23,20 @@ from link_bot_planning import my_mpc, model_utils
 from link_bot_planning.mpc_planners import get_planner_with_model
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
-from link_bot_planning.params import PlannerParams, SimParams
+from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
-config = tf.ConfigProto(gpu_options=gpu_options)
-tf.enable_eager_execution(config=config)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+tf.compat.v1.enable_eager_execution(config=config)
 
 
 class ComputeClassifierMetrics(my_mpc.myMPC):
 
     def __init__(self,
                  planner: MyPlanner,
+                 planner_config_name: str,
                  fwd_model_dir: pathlib.Path,
                  fwd_model_type: str,
                  classifier_model_dir: pathlib.Path,
@@ -60,6 +61,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             services=services,
             no_execution=False)
         self.classifier_model_type = classifier_model_type
+        self.planner_config_name = planner_config_name
         self.outdir = outdir
         self.seed = seed
 
@@ -76,7 +78,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             "seed": self.seed,
             "metrics": [],
         }
-        self.subfolder = "{}_{}_{}".format(fwd_model_type, self.classifier_model_type, comparison_item_idx)
+        self.subfolder = "{}_{}".format(self.planner_config_name, comparison_item_idx)
         self.root = self.outdir / self.subfolder
         self.root.mkdir(parents=True)
         print(Fore.CYAN + str(self.root) + Fore.RESET)
@@ -173,7 +175,7 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+', help='json file(s) describing what should be compared')
-    parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare_classifiers-$time',
+    parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time',
                         required=True)
     parser.add_argument("--n-total-plans", type=int, default=40, help='total number of plans')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
@@ -193,7 +195,7 @@ def main():
     print(Fore.CYAN + "Using Seed {}".format(args.seed) + Fore.RESET)
 
     now = str(int(time.time()))
-    root = pathlib.Path('results') / "{}-compare_classifiers".format(args.nickname)
+    root = pathlib.Path('results') / "{}-compare".format(args.nickname)
     common_output_directory = random_environment_data_utils.data_directory(root, now)
     common_output_directory = pathlib.Path(common_output_directory)
     print(Fore.CYAN + "common output directory: {}".format(common_output_directory) + Fore.RESET)
@@ -212,13 +214,14 @@ def main():
         'moving_box6': [-0.5, 2.0],
     }
 
-    planners_params = [json.load(planner_params.open("r")) for planner_params in args.planners_params]
-    for comparison_idx, planner_params in enumerate(planners_params):
+    planners_params = [(json.load(p_params_name.open("r")), p_params_name) for p_params_name in args.planners_params]
+    for comparison_idx, (planner_params, p_params_name) in enumerate(planners_params):
         # start at the same seed every time to make the planning environments & plans the same (hopefully?)
         # setting OMPL random seed should have no effect, because I use numpy's random in my sampler?
         np.random.seed(args.seed)
         tf.random.set_random_seed(args.seed)  # not sure if this has any effect
 
+        planner_config_name = p_params_name.stem
         fwd_model_dir = pathlib.Path(planner_params['fwd_model_dir'])
         fwd_model_type = planner_params['fwd_model_type']
         classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])
@@ -252,6 +255,7 @@ def main():
 
         runner = ComputeClassifierMetrics(
             planner=planner,
+            planner_config_name=planner_config_name,
             fwd_model_dir=fwd_model_dir,
             fwd_model_type=fwd_model_type,
             classifier_model_dir=classifier_model_dir,

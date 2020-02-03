@@ -85,7 +85,7 @@ class TestWithClassifier(my_mpc.myMPC):
         ax = plt.gca()
         plot(ax, self.planner.viz_object, planner_data, full_env_data.data, tail_goal_point, planned_path, planned_actions,
              full_env_data.extent)
-        plt.show()
+        plt.show(block=True)
 
     def on_execution_complete(self,
                               planned_path: np.ndarray,

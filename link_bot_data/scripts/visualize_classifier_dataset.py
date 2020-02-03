@@ -39,7 +39,7 @@ def main():
                                                   n_parallel_calls=1,
                                                   balance_key=None,
                                                   seed=args.seed)
-    elif args.dataste_type == 'new':
+    elif args.dataset_type == 'new':
         # classifier_dataset = ClassifierDataset(args.dataset_dirs)
         classifier_dataset = NewClassifierDataset(args.dataset_dirs)
         dataset = classifier_dataset.get_datasets(mode=args.mode,
@@ -89,7 +89,7 @@ def main():
                 plt.pause(2)
                 plt.cla()
 
-        elif args.dataste_type == 'new':
+        elif args.dataset_type == 'new':
             res = example['resolution'].numpy().squeeze()
             res = np.array([res, res])
             planned_local_env = example['planned_local_env/env'].numpy().squeeze()
@@ -134,7 +134,7 @@ def main():
                     actual_env_extent=actual_local_env_extent,
                     label=label)
                 plt.draw()
-                plt.pause(0.5)
+                plt.pause(3)
                 plt.cla()
             # if label == 1:
             #     plt.draw()

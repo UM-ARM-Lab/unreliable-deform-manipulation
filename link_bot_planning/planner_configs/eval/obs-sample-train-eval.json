@@ -5,6 +5,7 @@
   "classifier_model_type": "none",
   "planner_type": "NearestRRT",
   "sampler_type": "sample_train",
+  "directed_control_sampler": "simple",
   "max_v": 0.15,
   "goal_threshold": 0.15,
   "random_epsilon": 0.05,

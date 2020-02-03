@@ -101,9 +101,11 @@ class ClassifierDataset(StateSpaceDataset):
             pre_transition_distance = tf.norm(transition['state'] - transition['planned_state'])
             post_transition_distance = tf.norm(transition['state_next'] - transition['planned_state_next'])
 
-            pre_close = pre_transition_distance < self.hparams['labeling']['pre_close_threshold']
+            pre_threshold = self.hparams['labeling']['pre_close_threshold']
+            post_threshold = self.hparams['labeling']['post_close_threshold']
 
-            post_close = post_transition_distance < self.hparams['labeling']['post_close_threshold']
+            pre_close = pre_transition_distance < pre_threshold
+            post_close = post_transition_distance < post_threshold
 
             # You're not allowed to modify input arguments, so we create a new dict and copy everything
             new_transition = {}

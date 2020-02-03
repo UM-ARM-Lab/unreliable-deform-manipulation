@@ -5,6 +5,7 @@
   "classifier_model_type": "collision",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
+  "directed_control_sampler": "simple",
   "timeout": 180,
   "max_v": 0.15,
   "max_angle_rad": 1.0,

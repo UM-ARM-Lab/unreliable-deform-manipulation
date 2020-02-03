@@ -1,9 +1,7 @@
 import pathlib
 from typing import Tuple, List, Optional, Dict
 
-import matplotlib.pyplot as plt
 import numpy as np
-import ipdb
 import ompl.base as ob
 import ompl.control as oc
 from colorama import Fore
@@ -12,6 +10,7 @@ from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
+from link_bot_planning.random_directed_control_sampler import RandomDirectedControlSampler
 from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_local_env, ValidRopeConfigurationCompoundSampler, \
     TrainingSetCompoundSampler
 from link_bot_planning.viz_object import VizObject
@@ -87,6 +86,11 @@ class MyPlanner:
 
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
+
+        if planner_params['directed_control_sampler'] == 'simple':
+            pass  # the default
+        elif planner_params['directed_control_sampler'] == 'random':
+            self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator())
 
         self.full_envs = None
         self.full_env_orgins = None

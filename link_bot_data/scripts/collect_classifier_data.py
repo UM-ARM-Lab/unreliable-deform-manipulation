@@ -94,7 +94,6 @@ class ClassifierDataCollector(my_mpc.myMPC):
                 'fwd_model_hparams': self.planner.fwd_model.hparams,
                 'filter_free_space_only': False,
                 'labeling': {
-                    'threshold': 0.15,
                     'pre_close_threshold': 0.15,
                     'post_close_threshold': 0.21,
                     'discard_pre_far': True

@@ -100,8 +100,10 @@ class TrainingSetCompoundSampler(ob.RealVectorStateSampler):
 
         state_out[2][0] = np.float64(local_env_origin[0])
         state_out[2][1] = np.float64(local_env_origin[1])
+        # NOTE: it doesn't really make sense to visualize the rope configurations when sampling in this way,
+        # because the rope configurations cannot be viewed in isolation, you'd need to also see the local env
+        #self.viz_object.states_sampled_at.append(state)
         # self.viz_object.debugging1 = local_env
-        # self.viz_object.states_sampled_at.append(state)
         # self.viz_object.new_sample = True
 
 

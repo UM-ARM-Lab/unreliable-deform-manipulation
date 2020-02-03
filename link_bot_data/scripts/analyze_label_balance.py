@@ -14,10 +14,12 @@ tf.compat.v1.enable_eager_execution(config=config)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('dataset_dir', type=pathlib.Path)
+    parser.add_argument('dataset_dir', type=pathlib.Path, nargs='+')
     parser.add_argument('--n-examples-per-record', type=int, default=1024)
     parser.add_argument('--no-plot', action='store_true')
-    parser.add_argument('--threshold', type=float, default=0.2)
+    parser.add_argument('--pre', type=float, default=0.15)
+    parser.add_argument('--post', type=float, default=0.21)
+    parser.add_argument('--discard-pre-far', action='store_true')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
 
@@ -50,25 +52,25 @@ def main():
         pre_dists.append(pre_transition_distance)
         post_dists.append(post_transition_distance)
 
-        pre_close = pre_transition_distance < args.threshold
-        post_close = post_transition_distance < args.threshold
+        pre_close = pre_transition_distance < args.pre
+        post_close = post_transition_distance < args.post
 
         if pre_close and post_close:
+            n_both_close += 1
+        elif pre_close and not post_close:
+            n_pre_close_post_far += 1
+        elif not pre_close and post_close:
+            n_pre_far_post_close += 1
+        else:
+            n_both_far += 1
+
+        if args.discard_pre_far and not pre_close:
+            continue
+
+        if post_close:
             positive_labels += 1
         else:
             negative_labels += 1
-
-        if pre_close:
-            if post_close:
-                n_both_close += 1
-            elif not post_close:
-                n_pre_close_post_far += 1
-
-        elif not pre_close:
-            if post_close:
-                n_pre_far_post_close += 1
-            elif not post_close:
-                n_both_far += 1
 
     print("Confusion Matrix:")
     print("|            | pre close | pre_far   |")

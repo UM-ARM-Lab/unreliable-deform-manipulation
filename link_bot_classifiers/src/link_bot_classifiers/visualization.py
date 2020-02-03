@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -6,20 +8,20 @@ from link_bot_pycommon import link_bot_sdf_utils
 
 
 def plot_classifier_data(
-        planned_env,
-        planned_env_extent,
-        planned_state,
-        planned_next_state,
-        planned_env_origin,
-        res,
-        state,
-        next_state,
+        planned_env: Optional = None,
+        planned_env_extent: Optional = None,
+        planned_state: Optional = None,
+        planned_next_state: Optional = None,
+        planned_env_origin: Optional = None,
+        res: Optional = None,
+        state: Optional = None,
+        next_state: Optional = None,
         title='',
-        action=None,
-        actual_env=None,
-        actual_env_extent=None,
-        label=None,
-        ax=None):
+        action: Optional = None,
+        actual_env: Optional = None,
+        actual_env_extent: Optional = None,
+        label: Optional = None,
+        ax: Optional = None):
     if ax is None:
         plt.figure()
         ax = plt.gca()
@@ -38,7 +40,7 @@ def plot_classifier_data(
         ax.quiver(planned_state[-2], planned_state[-1], action[0], action[1], width=0.001, scale=6)
 
     if state is not None and next_state is not None:
-        ax.plot([state[-2], next_state[-2]], [state[-1], next_state[-1]], c='w', linewidth=1)
+        ax.plot([state[-2], next_state[-2]], [state[-1], next_state[-1]], c='pink', linewidth=1)
 
     if planned_env_origin is not None and res is not None:
         origin_x, origin_y = link_bot_sdf_utils.idx_to_point(0, 0, res, planned_env_origin)
