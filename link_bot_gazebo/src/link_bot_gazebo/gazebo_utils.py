@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Optional, Dict, Iterable, List, Tuple
+from typing import Optional, Dict, Iterable, List
 
 import numpy as np
 import rospy
@@ -7,14 +7,13 @@ import std_msgs
 import std_srvs
 from colorama import Fore
 from link_bot_gazebo.msg import *
+from link_bot_gazebo.msg import *
 from link_bot_gazebo.srv import *
 from std_msgs.msg import String, Empty
 from std_srvs.srv import EmptyRequest
-from visualization_msgs.msg import MarkerArray
 
 from gazebo_msgs.srv import *
-from link_bot_gazebo.msg import *
-from link_bot_planning.params import LocalEnvParams, SimParams
+from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.gazebo_trajectory_execution import quaternion_from_euler
@@ -28,8 +27,6 @@ def points_to_config(points):
 class GazeboServices:
 
     def __init__(self):
-        self.rviz_sampled_configurations = rospy.Publisher("/ompl_viz/sampled_configurations", MarkerArray, queue_size=10)
-        self.rviz_sdfs = rospy.Publisher("/ompl_viz/sdfs", MarkerArray, queue_size=10)
         self.velocity_action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
         self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotJointConfiguration, queue_size=10)
         self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
@@ -38,19 +35,21 @@ class GazeboServices:
         self.world_control = rospy.ServiceProxy('/world_control', WorldControl)
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', std_srvs.srv.Empty)
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', std_srvs.srv.Empty)
-        self.xy_to_rowcol = rospy.ServiceProxy('/my_camera/xy_to_rowcol', CameraProjection)
-        self.rowcol_to_xy = rospy.ServiceProxy('/my_camera/rowcol_to_xy', InverseCameraProjection)
         self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
-        self.compute_sdf = None
-        self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
         self.compute_occupancy = rospy.ServiceProxy('/occupancy', ComputeOccupancy)
         self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
         self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", std_srvs.srv.Empty)
-        self.position_action = rospy.ServiceProxy("/link_bot_position_action", LinkBotPositionAction)
-        self.execute_path = rospy.ServiceProxy("/link_bot_execute_path", LinkBotPath)
         self.execute_trajectory = rospy.ServiceProxy("/link_bot_execute_trajectory", LinkBotTrajectory)
         self.apply_body_wrench = rospy.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
+
+        # currently unused
+        self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
+        self.position_action = rospy.ServiceProxy("/link_bot_position_action", LinkBotPositionAction)
+        self.execute_path = rospy.ServiceProxy("/link_bot_execute_path", LinkBotPath)
+        self.xy_to_rowcol = rospy.ServiceProxy('/my_camera/xy_to_rowcol', CameraProjection)
+        self.rowcol_to_xy = rospy.ServiceProxy('/my_camera/rowcol_to_xy', InverseCameraProjection)
+
         self.services_to_wait_for = [
             '/world_control',
             '/link_bot_state',

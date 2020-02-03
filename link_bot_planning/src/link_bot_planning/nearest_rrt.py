@@ -29,7 +29,7 @@ class NearestRRT(MyPlanner):
         self.planner.setIntermediateStates(True)  # this is necessary, because we use this to generate datasets
         self.ss.setPlanner(self.planner)
         self.si.setPropagationStepSize(self.fwd_model.dt)
-        self.si.setMinMaxControlDuration(1, 50)
+        self.si.setMinMaxControlDuration(1, 5)
 
         # TODO: make a parameter for k
         # dcs_allocator = oc.DirectedControlSamplerAllocator(lambda si: oc.SimpleDirectedControlSampler(si, k=10))

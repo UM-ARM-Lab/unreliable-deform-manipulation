@@ -15,7 +15,7 @@ from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 
 from link_bot_data import random_environment_data_utils
-from link_bot_data.link_bot_dataset_utils import bytes_feature, float_feature
+from link_bot_data.link_bot_dataset_utils import float_feature
 from link_bot_gazebo import gazebo_utils
 from link_bot_planning.goals import sample_goal
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams

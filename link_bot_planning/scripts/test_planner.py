@@ -81,6 +81,9 @@ class TestWithClassifier(my_mpc.myMPC):
         msg = "Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s"
         print(msg.format(final_error, path_length, len(planned_path), duration))
 
+        num_nodes = planner_data.numVertices()
+        print("num nodes {}".format(num_nodes))
+
         plt.figure()
         ax = plt.gca()
         plot(ax, self.planner.viz_object, planner_data, full_env_data.data, tail_goal_point, planned_path, planned_actions,
@@ -103,7 +106,7 @@ class TestWithClassifier(my_mpc.myMPC):
 
 
 def main():
-    np.set_printoptions(precision=6, suppress=True, linewidth=250)
+    np.set_printoptions(precision=6, suppress=True, linewidth=150)
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)

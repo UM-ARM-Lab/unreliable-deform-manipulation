@@ -120,6 +120,7 @@ class MyPlanner:
         del duration  # unused, multi-step propagation is handled inside propagateWhileValid
         np_s = to_numpy(start[0], self.n_state)
         np_u = np.expand_dims(to_numpy(control, self.n_control), axis=0)
+        print(np_s, np_u)
         local_env_data = self.get_local_env_at(np_s[0, -2], np_s[0, -1])
 
         # if self.viz_object.new_sample:

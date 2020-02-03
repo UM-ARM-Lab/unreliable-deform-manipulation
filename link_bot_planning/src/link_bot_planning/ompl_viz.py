@@ -117,5 +117,4 @@ def add_sampled_configuration(services: GazeboServices,
 
     markers.markers.append(pre_marker)
     markers.markers.append(post_marker)
-    services.rviz_sampled_configurations.publish(markers)
     return None

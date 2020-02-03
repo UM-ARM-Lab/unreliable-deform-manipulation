@@ -6,7 +6,9 @@ class RandomDirectedControlSampler(oc.DirectedControlSampler):
 
     def __init__(self, si):
         super().__init__(si)
+        self.si = si
         self.control_space = self.si.getControlSpace()
+        self.control_sampler = self.control_space.allocControlSampler()
 
     @classmethod
     def alloc(cls, si):
@@ -17,12 +19,8 @@ class RandomDirectedControlSampler(oc.DirectedControlSampler):
         return oc.DirectedControlSamplerAllocator(cls.alloc)
 
     def sampleTo(self, control_out, previous_control, state, target_out):
-        # unused
-        del state
-        del target_out
-        del previous_control
+        # how do we do this?
         min_step_count = self.si.getMinControlDuration()
         max_step_count = self.si.getMaxControlDuration()
-        random_control = self.control_space.sample()
-        print(random_control, min_step_count, max_step_count)
-        self.control_space.from_numpy(random_control, control_out)
+        self.control_sampler.sample(control_out)
+        return np.uint32(np.random.random_integers(min_step_count, max_step_count))
