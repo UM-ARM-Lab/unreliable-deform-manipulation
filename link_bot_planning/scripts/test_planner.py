@@ -83,6 +83,7 @@ class TestWithClassifier(my_mpc.myMPC):
 
         num_nodes = planner_data.numVertices()
         print("num nodes {}".format(num_nodes))
+        print("planning time {:0.4f}".format(planning_time))
 
         plt.figure()
         ax = plt.gca()
