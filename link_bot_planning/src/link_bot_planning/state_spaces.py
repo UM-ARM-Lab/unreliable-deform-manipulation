@@ -1,6 +1,7 @@
 from typing import List
 
 import numpy as np
+import tensorflow as tf
 from ompl import base as ob
 
 from link_bot_planning.viz_object import VizObject
@@ -68,15 +69,14 @@ class TrainingSetCompoundSampler(ob.RealVectorStateSampler):
     def __init__(self,
                  state_space,
                  viz_object: VizObject,
-                 n_state: int,
-                 rope_configurations: np.ndarray
+                 train_dataset: tf.data.Dataset,
+                 sequence_length: int,
                  ):
         super(TrainingSetCompoundSampler, self).__init__(state_space)
-        self.n_links = link_bot_pycommon.n_state_to_n_links(n_state)
-        self.n_state = n_state
         self.viz_object = viz_object
-        self.rope_configurations = rope_configurations
-        self.n_rope_configurations = rope_configurations.shape[0]
+        self.infinite_dataset = train_dataset.repeat()  # infinite!
+        self.iter = iter(self.infinite_dataset)
+        self.sequence_length = sequence_length
 
     def sampleUniform(self, state_out: ob.CompoundStateInternal):
         """
@@ -84,11 +84,25 @@ class TrainingSetCompoundSampler(ob.RealVectorStateSampler):
          and in the case of where we are using the free-space model, the local env gets ignored anyways
         :return:
         """
-        i = np.random.randint(0, self.n_rope_configurations)
-        random_rope_configuration = self.rope_configurations[i]
-        for i in range(random_rope_configuration.shape[0]):
-            state_out[0][i] = random_rope_configuration[i].astype(np.float64)
-        self.viz_object.states_sampled_at.append(random_rope_configuration)
+        example, _ = next(self.iter)
+
+        # since the training data stores sequences, we have to randomly sample a specific time step
+        t = np.random.randint(0, self.sequence_length - 1) # -1 because the last time step is in the output, not the input
+        state = example['state_s'][t].numpy()
+        local_env = example['actual_local_env_s/env'][t].numpy()
+        local_env_origin = example['actual_local_env_s/origin'][t].numpy()
+
+        for i, s_i in enumerate(state):
+            state_out[0][i] = np.float64(s_i)
+
+        for i, env_i in enumerate(local_env.flatten()):
+            state_out[1][i] = np.float64(env_i)
+
+        state_out[2][0] = np.float64(local_env_origin[0])
+        state_out[2][1] = np.float64(local_env_origin[1])
+        # self.viz_object.debugging1 = local_env
+        # self.viz_object.states_sampled_at.append(state)
+        # self.viz_object.new_sample = True
 
 
 def to_numpy(state_or_control, dim: int):

@@ -1,10 +1,10 @@
 {
-  "fwd_model_dir": "ss_log_data/fs-nn/",
-  "fwd_model_type": "nn",
+  "fwd_model_dir": "ss_log_data/obs-cnn2",
+  "fwd_model_type": "obs",
   "classifier_model_dir": "",
   "classifier_model_type": "none",
   "planner_type": "NearestRRT",
-  "sampler_type": "training_data",
+  "sampler_type": "sample_train",
   "max_v": 0.15,
   "goal_threshold": 0.15,
   "random_epsilon": 0.05,
@@ -12,5 +12,5 @@
   "w": 5.0,
   "h": 5.0,
   "timeout": 180,
-  "subspace_weights": [1, 0, 0]
+  "subspace_weights": [1, 10, 0]
 }

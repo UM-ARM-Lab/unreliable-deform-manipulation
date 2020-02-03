@@ -241,7 +241,8 @@ def main():
                                          classifier_model_dir=classifier_model_dir,
                                          classifier_model_type=classifier_model_type,
                                          planner_params=planner_params,
-                                         services=services)
+                                         services=services,
+                                         seed=args.seed)
 
         sim_params = SimParams(real_time_rate=args.real_time_rate,
                                max_step_size=planner.fwd_model.max_step_size,

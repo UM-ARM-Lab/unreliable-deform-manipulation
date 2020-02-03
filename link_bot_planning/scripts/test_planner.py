@@ -113,7 +113,7 @@ def main():
     parser.add_argument("--no-execution", action='store_true', help='do not execute, only plan')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
     parser.add_argument('--no-nudge', action='store_true', help="don't nudge")
-    parser.add_argument('--reset-world', action='store_true', help="don't nudge")
+    parser.add_argument('--reset-world', action='store_true', help="reset world")
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=30.0)
     parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
@@ -145,7 +145,7 @@ def main():
                                              initial_object_dict=None)
     services.pause(std_srvs.srv.EmptyRequest())
 
-    planner, _ = get_planner(planner_params=planner_params, services=services)
+    planner, _ = get_planner(planner_params=planner_params, services=services, seed=args.seed)
 
     tester = TestWithClassifier(
         planner=planner,

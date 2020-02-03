@@ -11,7 +11,7 @@ from link_bot_planning.sst import SST
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
-def get_planner(planner_params: Dict, services: GazeboServices):
+def get_planner(planner_params: Dict, services: GazeboServices, seed: int):
     fwd_model_dir = pathlib.Path(planner_params['fwd_model_dir'])
     classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])
     fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, planner_params['fwd_model_type'])
@@ -33,6 +33,7 @@ def get_planner(planner_params: Dict, services: GazeboServices):
                             planner_params=planner_params,
                             viz_object=viz_object,
                             services=services,
+                            seed=seed,
                             )
     return planner, model_path_info
 
@@ -42,7 +43,8 @@ def get_planner_with_model(planner_class_str: str,
                            classifier_model_dir: pathlib.Path,
                            classifier_model_type: str,
                            planner_params: PlannerParams,
-                           services: GazeboServices):
+                           services: GazeboServices,
+                           seed: int):
     classifier_model = classifier_utils.load_generic_model(classifier_model_dir, classifier_model_type)
     viz_object = link_bot_planning.viz_object.VizObject()
 
@@ -58,5 +60,6 @@ def get_planner_with_model(planner_class_str: str,
                             planner_params=planner_params,
                             viz_object=viz_object,
                             services=services,
+                            seed=seed,
                             )
     return planner

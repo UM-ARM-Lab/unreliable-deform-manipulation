@@ -11,5 +11,6 @@
   "goal_threshold": 0.15,
   "random_epsilon": 0.05,
   "w": 5.0,
-  "h": 5.0
+  "h": 5.0,
+  "subspace_weights": [1, 0, 0]
 }

@@ -1,7 +1,9 @@
 import pathlib
 from typing import Tuple, List, Optional, Dict
 
+import matplotlib.pyplot as plt
 import numpy as np
+import ipdb
 import ompl.base as ob
 import ompl.control as oc
 from colorama import Fore
@@ -25,9 +27,8 @@ class MyPlanner:
                  planner_params: Dict,
                  services: GazeboServices,
                  viz_object: VizObject,
-                 subspace_weights=None):
-        if subspace_weights is None:  # protect against mutable default augments
-            subspace_weights = [1.0, 0.0, 0.0]
+                 seed: int,
+                 ):
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.n_state = self.fwd_model.n_state
@@ -40,7 +41,7 @@ class MyPlanner:
         self.si = ob.SpaceInformation(ob.StateSpace())
         self.planner = ob.Planner(self.si, 'PlaceholderPlanner')
         self.rope_length = fwd_model.hparams['dynamics_dataset_hparams']['rope_length']
-        self.subspace_weights = subspace_weights
+        self.seed = seed
 
         self.state_space = ob.CompoundStateSpace()
         self.n_local_env = self.fwd_model.local_env_params.w_cols * self.fwd_model.local_env_params.h_rows
@@ -66,11 +67,11 @@ class MyPlanner:
         # by setting the weight to 1, it means that distances are based only on the rope config not the local environment
         # so when we sample a state, we get a random local environment, but the nearest neighbor is based only on the rope config
         # this is sort of a specialization, but I think it's justified. Otherwise nothing would work I suspect (but I didn't test)
-        self.state_space.addSubspace(self.config_space, weight=self.subspace_weights[0])
+        self.state_space.addSubspace(self.config_space, weight=self.planner_params['subspace_weights'][0])
         # the local environment is a rows*cols flat vector of numbers from 0 to 1
-        self.state_space.addSubspace(self.local_env_space, weight=self.subspace_weights[1])
+        self.state_space.addSubspace(self.local_env_space, weight=self.planner_params['subspace_weights'][1])
         # origin
-        self.state_space.addSubspace(self.local_env_origin_space, weight=self.subspace_weights[2])
+        self.state_space.addSubspace(self.local_env_origin_space, weight=self.planner_params['subspace_weights'][2])
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
 
@@ -90,19 +91,15 @@ class MyPlanner:
         self.full_envs = None
         self.full_env_orgins = None
 
-        if planner_params['sampler_type'] == 'training_data':
+        if planner_params['sampler_type'] == 'sample_train':
             self.dataset_dirs = [pathlib.Path(p) for p in self.fwd_model.hparams['datasets']]
             dataset = LinkBotStateSpaceDataset(self.dataset_dirs)
-            tf_dataset = dataset.get_datasets(mode='train',
-                                              shuffle=False,
-                                              seed=0,  # doesn't matter, we're not shuffling
-                                              sequence_length=None,  # default to max
-                                              batch_size=None)  # no batching
-            self.training_rope_configurations = []
-            for input_data, _ in tf_dataset:
-                rope_configurations = input_data['state_s'].numpy().squeeze()
-                self.training_rope_configurations.extend(rope_configurations)
-            self.training_rope_configurations = np.array(self.training_rope_configurations)
+            self.training_dataset = dataset.get_datasets(mode='train',
+                                                         shuffle=True,
+                                                         seed=self.seed,
+                                                         sequence_length=None,
+                                                         batch_size=None)  # no batching
+            self.train_dataset_max_sequence_length = dataset.max_sequence_length
 
     def get_local_env_at(self, x: float, y: float):
         center_point = np.array([x, y])
@@ -120,6 +117,20 @@ class MyPlanner:
         np_s = to_numpy(start[0], self.n_state)
         np_u = np.expand_dims(to_numpy(control, self.n_control), axis=0)
         local_env_data = self.get_local_env_at(np_s[0, -2], np_s[0, -1])
+
+        # if self.viz_object.new_sample:
+        #     print(np_s[0, 0], np_s[0, 1])  # this should be the nearest neighbor
+        #     self.viz_object.new_sample = False
+        #
+        #     plt.figure()
+        #     plt.title("sampled local env")
+        #     plt.imshow(np.flipud(self.viz_object.debugging1))
+        #     plt.figure()
+        #     plt.title("nearest neighbor in search tree")
+        #     plt.imshow(local_env_data.image)
+        #     plt.show()
+        #     input()
+        #     # ipdb.set_trace()
 
         # use the forward model to predict the next configuration
         points_next = self.fwd_model.predict(full_envs=self.full_envs,
@@ -223,11 +234,11 @@ class MyPlanner:
                                                             n_state=self.n_state,
                                                             rope_length=self.rope_length,
                                                             max_angle_rad=self.planner_params['max_angle_rad'])
-        elif self.planner_params['sampler_type'] == 'training_data':
+        elif self.planner_params['sampler_type'] == 'sample_train':
             sampler = TrainingSetCompoundSampler(state_space,
                                                  self.viz_object,
-                                                 n_state=self.n_state,
-                                                 rope_configurations=self.training_rope_configurations)
+                                                 train_dataset=self.training_dataset,
+                                                 sequence_length=self.train_dataset_max_sequence_length)
         else:
             raise ValueError("Invalid sampler type {}".format(self.planner_params['sampler_type']))
 

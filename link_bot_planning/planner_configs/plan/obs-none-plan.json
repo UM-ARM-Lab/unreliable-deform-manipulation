@@ -11,5 +11,6 @@
   "max_angle_rad": 1.0,
   "w": 5.0,
   "h": 5.0,
-  "timeout": 10
+  "timeout": 10,
+  "subspace_weights": [1, 0, 0]
 }

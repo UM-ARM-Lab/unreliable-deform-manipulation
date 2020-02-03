@@ -15,12 +15,14 @@ class SST(MyPlanner):
                  classifier_model: BaseClassifier,
                  planner_params: PlannerParams,
                  services: GazeboServices,
-                 viz_object: VizObject):
+                 viz_object: VizObject,
+                 seed: int):
         super().__init__(fwd_model,
                          classifier_model,
                          planner_params,
                          services,
-                         viz_object)
+                         viz_object,
+                         seed)
 
         self.planner = oc.SST(self.si)
         self.ss.setPlanner(self.planner)

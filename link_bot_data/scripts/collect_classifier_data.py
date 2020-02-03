@@ -276,7 +276,7 @@ def main():
     services.pause(std_srvs.srv.EmptyRequest())
 
     # NOTE: we could make the classifier take a different sized local environment than the dynamics, just a thought.
-    planner, fwd_model_info = get_planner(planner_params=planner_params, services=services)
+    planner, fwd_model_info = get_planner(planner_params=planner_params, services=services, seed=args.seed)
 
     data_collector = ClassifierDataCollector(
         planner=planner,
