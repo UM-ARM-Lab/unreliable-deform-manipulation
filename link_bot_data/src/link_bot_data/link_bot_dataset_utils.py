@@ -160,8 +160,6 @@ def balance_by_augmentation(dataset, key, fewer_negative=True):
         balanced_dataset = tf.data.Dataset.zip((positive_examples, augmented_negative_examples))
     else:
         raise NotImplementedError()  # TODO: copy the above branch but for positive examples
-        positive_examples = dataset.filter(_label_is(1)).repeat()
-        negative_examples = dataset.filter(_label_is(0))
 
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
 

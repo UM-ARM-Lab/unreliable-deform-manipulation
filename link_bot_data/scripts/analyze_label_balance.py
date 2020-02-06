@@ -13,9 +13,9 @@ tf.compat.v1.enable_eager_execution(config=config)
 
 
 def main():
+    # THIS SHOULD BE RUN ON A DYNAMICS DATASET, not the classifier dataset
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dir', type=pathlib.Path, nargs='+')
-    parser.add_argument('--n-examples-per-record', type=int, default=1024)
     parser.add_argument('--no-plot', action='store_true')
     parser.add_argument('--pre', type=float, default=0.15)
     parser.add_argument('--post', type=float, default=0.21)
@@ -36,6 +36,9 @@ def main():
     n_pre_far_post_close = 0
 
     classifier_dataset = ClassifierDataset(args.dataset_dir)
+    classifier_dataset.hparams['labeling']['discard_pre_far'] = args.discard_pre_far
+    classifier_dataset.hparams['labeling']['pre_close_threshold'] = args.pre
+    classifier_dataset.hparams['labeling']['post_close_threshold'] = args.post
     dataset = classifier_dataset.get_datasets(mode=args.mode, batch_size=1, shuffle=False, seed=1)
 
     for example_dict in dataset:

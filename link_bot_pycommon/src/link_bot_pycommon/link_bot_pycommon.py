@@ -1,7 +1,10 @@
 from __future__ import division
 
+import argparse
+
 import numpy as np
 from colorama import Fore
+import tensorflow as tf
 
 
 def yaw_diff(a, b):
@@ -30,9 +33,24 @@ def unit_vector(vector):
 def angle_from_configuration(state):
     v1 = np.array([state[4] - state[2], state[5] - state[3]])
     v2 = np.array([state[0] - state[2], state[1] - state[3]])
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+    return angle_2d(v1, v2)
+
+
+def angle_2d(v1, v2):
+    return np.math.atan2(np.linalg.det([v1, v2]), np.dot(v1, v2))
+
+
+def batch_dot_tf(v1, v2):
+    return tf.einsum('ij,ij->i', v1, v2)
+
+
+def angle_2d_batch_tf(v1, v2):
+    """
+    :param v1: [batch, n]
+    :param v2:  [batch, n]
+    :return: [batch]
+    """
+    return tf.math.atan2(tf.linalg.det(tf.stack((v1, v2), axis=1)), batch_dot_tf(v1, v2))
 
 
 def n_state_to_n_links(n_state: int):
@@ -120,3 +138,20 @@ def point_arg(i):
         return x, y
     except Exception:
         raise ValueError("Failed to parse {} into two floats. Must be comma seperated".format(i))
+
+
+def bool_arg(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
+def add_bool_arg(parser: argparse.ArgumentParser, flag: str, required: bool = True, help: str = ""):
+    group = parser.add_mutually_exclusive_group(required=required)
+    group.add_argument('--' + flag, action='store_true', help=help)
+    group.add_argument('--no-' + flag, action='store_true', help="NOT " + help)

@@ -57,18 +57,12 @@ def main():
         out_of_bounds = False
 
         rope_configurations = input_data['state_s'].numpy().squeeze()
-        actions = input_data['action_s'].numpy().squeeze()
-        # local_envs = input_data['actual_local_env_s/env'].numpy().squeeze()
-        # local_env_extents = input_data['actual_local_env_s/extent'].numpy().squeeze()
-        full_env = input_data['full_env/env'].numpy().squeeze()
-        full_env_extents = input_data['full_env/extent'].numpy().squeeze()
-
-        # this is ill-defined for more than 2 links
-        # for config in rope_configurations:
-        #     state_angle = link_bot_pycommon.angle_from_configuration(config)
-        #     angles.append(state_angle)
 
         if not args.no_plot:
+            actions = input_data['action_s'].numpy().squeeze()
+            full_env = input_data['full_env/env'].numpy().squeeze()
+            full_env_extents = input_data['full_env/extent'].numpy().squeeze()
+
             fig, ax = plt.subplots()
             arrow_width = 0.02
             arena_size = 0.5
@@ -118,6 +112,7 @@ def main():
                 break
 
         i += 1
+    print("dataset mode={}, size={}".format(args.mode, i))
 
 
 if __name__ == '__main__':

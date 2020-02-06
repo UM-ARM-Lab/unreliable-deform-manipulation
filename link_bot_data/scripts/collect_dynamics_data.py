@@ -204,7 +204,8 @@ def generate(args):
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
                            goal_padding=0.5,
-                           move_obstacles=(not args.no_obstacles))
+                           move_obstacles=(not args.no_obstacles),
+                           nudge=False)
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': args.dt,

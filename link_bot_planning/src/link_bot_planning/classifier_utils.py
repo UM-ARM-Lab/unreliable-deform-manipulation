@@ -1,9 +1,10 @@
 import pathlib
 
 from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
+from link_bot_classifiers.feature_classifier import FeatureClassifierWrapper
+from link_bot_classifiers.nearest_neighbor_classifier import NearestNeighborClassifier
 from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_classifiers.raster_classifier import RasterClassifierWrapper
-from link_bot_classifiers.ensemble_classifier import EnsembleClassifier
 
 
 def load_generic_model(model_dir: pathlib.Path, model_type: str):
@@ -19,7 +20,9 @@ def load_generic_model(model_dir: pathlib.Path, model_type: str):
         return CollisionCheckerClassifier(inflation_radius=0.02)
     elif model_type == 'none':
         return NoneClassifier()
-    elif model_type == 'ensemble':
-        return EnsembleClassifier()
+    elif model_type == 'nn':
+        return NearestNeighborClassifier(model_dir)
+    elif model_type == 'feature':
+        return FeatureClassifierWrapper(model_dir, batch_size=1)
     else:
         raise NotImplementedError("invalid model type {}".format(model_type))

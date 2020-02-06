@@ -53,18 +53,12 @@ class GazeboServices:
         self.services_to_wait_for = [
             '/world_control',
             '/link_bot_state',
-            '/link_bot_position_action',
-            '/link_bot_execute_path',
             '/link_bot_execute_trajectory',
-            '/sdf',
-            '/sdf2',
             '/gazebo/get_physics_properties',
             '/gazebo/set_physics_properties',
             '/gazebo/reset_simulation',
             '/gazebo/pause_physics',
             '/gazebo/unpause_physics',
-            '/my_camera/xy_to_rowcol',
-            '/my_camera/rowcol_to_xy',
         ]
 
     def wait(self, verbose: int = 0):
@@ -217,7 +211,7 @@ def get_occupancy(services: GazeboServices,
     request.w_cols = env_w_cols
     request.center.x = center_x
     request.center.y = center_y
-    request.min_z = 0.01
+    request.min_z = 0.1 # FIXME: maybe lower this again?
     request.max_z = 2.00
     request.robot_name = 'link_bot'
     request.request_new = True

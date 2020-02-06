@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import json
 import argparse
 import pathlib
 
@@ -23,7 +24,6 @@ def main():
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
-    parser.add_argument("--dataset-type", choices=['image', 'new'], default='new')
     parser.add_argument('--balance-key', type=str)
 
     args = parser.parse_args()
@@ -31,7 +31,12 @@ def main():
     np.random.seed(args.seed)
     tf.random.set_random_seed(args.seed)
 
-    if args.dataset_type == 'image':
+    # FIXME: use the same code that checks all and warns if they differ
+    hparams_path = args.dataset_dirs[0] / 'hparams.json'
+    dataset_hparams = json.load(hparams_path.open("r"))
+    dataset_type = dataset_hparams['type']
+
+    if dataset_type == 'image':
         classifier_dataset = ImageClassifierDataset(args.dataset_dirs)
         dataset = classifier_dataset.get_datasets(mode=args.mode,
                                                   shuffle=args.shuffle,
@@ -39,7 +44,7 @@ def main():
                                                   n_parallel_calls=1,
                                                   balance_key=None,
                                                   seed=args.seed)
-    elif args.dataset_type == 'new':
+    elif dataset_type == 'new':
         # classifier_dataset = ClassifierDataset(args.dataset_dirs)
         classifier_dataset = NewClassifierDataset(args.dataset_dirs)
         dataset = classifier_dataset.get_datasets(mode=args.mode,
@@ -55,10 +60,7 @@ def main():
         if event.key == 'x':
             done = True
 
-    fig = plt.figure()
-    ax = plt.gca()
-    plt.show(block=False)
-    fig.canvas.mpl_connect('key_press_event', press)
+    # fig = plt.figure()
 
     positive_count = 0
     negative_count = 0
@@ -80,16 +82,14 @@ def main():
 
         count += 1
 
-        if args.dataset_type == 'image':
-            if not args.no_plot:
-                i = np.sum(example['image'].numpy(), axis=3).squeeze()
-                ax.imshow(i)
-                plt.draw()
-                plt.title(label)
-                plt.pause(2)
-                plt.cla()
+        if args.no_plot:
+            continue
 
-        elif args.dataset_type == 'new':
+        if dataset_type == 'image':
+            i = np.sum(example['image'].numpy(), axis=3).squeeze()
+            plt.imshow(i)
+            plt.show(block=True)
+        elif dataset_type == 'new':
             res = example['resolution'].numpy().squeeze()
             res = np.array([res, res])
             planned_local_env = example['planned_local_env/env'].numpy().squeeze()
@@ -105,57 +105,30 @@ def main():
             pre_transition_distance = example['pre_dist'].numpy().squeeze()
             post_transition_distance = example['post_dist'].numpy().squeeze()
 
-            regression = post_transition_distance - pre_transition_distance
-            regressions.append(regression)
-            if label:
-                regression_with_label_1.append(regression)
-            else:
-                regression_with_label_0.append(regression)
-
-            state_angle = link_bot_pycommon.angle_from_configuration(state)
-            angles.append(state_angle)
-
-            if not args.no_plot:
-                # if label == 0:
-                title = "Example {}".format(i)
-                plot_classifier_data(
-                    ax=ax,
-                    next_state=next_state,
-                    action=action,
-                    planned_next_state=planned_next_state,
-                    planned_env=planned_local_env,
-                    planned_env_extent=planned_local_env_extent,
-                    planned_state=planned_state,
-                    planned_env_origin=planned_local_env_origin,
-                    res=res,
-                    state=state,
-                    title=title,
-                    actual_env=actual_local_env,
-                    actual_env_extent=actual_local_env_extent,
-                    label=label)
-                plt.draw()
-                plt.pause(3)
-                plt.cla()
-            # if label == 1:
-            #     plt.draw()
-            #     plt.pause(0.01)
-            #     plt.cla()
+            if post_transition_distance > 0.25:
+                title = "BAD Example {}, {:0.3f}".format(i, post_transition_distance)
+            if post_transition_distance < 0.05:
+                title = "GOOD Example {}, {:0.3f}".format(i, post_transition_distance)
+            plot_classifier_data(
+                next_state=next_state,
+                action=action,
+                planned_next_state=planned_next_state,
+                planned_env=planned_local_env,
+                planned_env_extent=planned_local_env_extent,
+                planned_state=planned_state,
+                planned_env_origin=planned_local_env_origin,
+                res=res,
+                state=state,
+                title=title,
+                actual_env=actual_local_env,
+                actual_env_extent=actual_local_env_extent,
+                label=label)
+            plt.legend()
+            plt.show(block=True)
 
     class_balance = positive_count / count * 100
     print("Number of examples: {}".format(count))
     print("Class balance: {:4.1f}% positive".format(class_balance))
-
-    print("mean median min")
-    print('label 1', np.mean(regression_with_label_1), np.median(regression_with_label_1), np.min(regression_with_label_1))
-    print('label 0', np.mean(regression_with_label_0), np.median(regression_with_label_0), np.min(regression_with_label_0))
-
-    if not args.no_plot:
-        plt.figure()
-        plt.scatter(angles, regressions)
-        plt.plot([0, np.pi], [0, 0], c='k')
-        plt.xlabel("angle (rad)")
-        plt.ylabel("increase in prediction error in R^{n_state} (m)")
-        plt.show()
 
 
 if __name__ == '__main__':

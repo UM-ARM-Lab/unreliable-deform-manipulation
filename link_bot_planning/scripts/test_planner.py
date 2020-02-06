@@ -87,8 +87,9 @@ class TestWithClassifier(my_mpc.myMPC):
 
         plt.figure()
         ax = plt.gca()
-        plot(ax, self.planner.viz_object, planner_data, full_env_data.data, tail_goal_point, planned_path, planned_actions,
-             full_env_data.extent)
+        legend = plot(ax, self.planner.viz_object, planner_data, full_env_data.data, tail_goal_point, planned_path,
+                      planned_actions, full_env_data.extent)
+        plt.savefig("/tmp/.latest-plan.png", dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
         plt.show(block=True)
 
     def on_execution_complete(self,

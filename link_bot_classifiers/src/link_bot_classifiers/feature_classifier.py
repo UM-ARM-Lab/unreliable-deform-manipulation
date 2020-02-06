@@ -11,63 +11,23 @@ import progressbar
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
-from tensorflow import keras
 
 from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_classifiers.visualization import plot_classifier_data
-from link_bot_planning.params import LocalEnvParams
-from link_bot_pycommon import experiments_util, link_bot_sdf_utils, link_bot_pycommon
-from moonshine.action_smear_layer import action_smear_layer
-from moonshine.raster_points_layer import RasterPoints
+from link_bot_pycommon import experiments_util, link_bot_sdf_utils
+from link_bot_pycommon.link_bot_pycommon import angle_2d_batch_tf
 
 
-class RasterClassifier(tf.keras.Model):
+class FeatureClassifier(tf.keras.Model):
 
     def __init__(self, hparams, batch_size, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
-        self.dynamics_dataset_hparams = self.hparams['classifier_dataset_hparams']['fwd_model_hparams'][
-            'dynamics_dataset_hparams']
-        self.n_action = self.dynamics_dataset_hparams['n_action']
-        self.n_points = link_bot_pycommon.n_state_to_n_points(self.dynamics_dataset_hparams['n_state'])
         self.batch_size = batch_size
-
-        self.local_env_params = LocalEnvParams.from_json(self.dynamics_dataset_hparams['local_env_params'])
-        self.raster = RasterPoints([self.local_env_params.h_rows, self.local_env_params.w_cols], batch_size=batch_size)
-        self.smear = action_smear_layer(1, self.n_action, self.local_env_params.h_rows, self.local_env_params.w_cols)
-
-        self.conv_layers = []
-        self.pool_layers = []
-        for n_filters, kernel_size in self.hparams['conv_filters']:
-            conv = layers.Conv2D(n_filters,
-                                 kernel_size,
-                                 activation='relu',
-                                 kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
-                                 bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']),
-                                 activity_regularizer=keras.regularizers.l1(self.hparams['activity_reg']))
-            pool = layers.MaxPool2D(2)
-            self.conv_layers.append(conv)
-            self.pool_layers.append(pool)
-
-        self.conv_flatten = layers.Flatten()
-        if self.hparams['batch_norm']:
-            self.batch_norm = layers.BatchNormalization()
-
-        self.dense_layers = []
-        self.dropout_layers = []
-        for hidden_size in self.hparams['fc_layer_sizes']:
-            dropout = layers.Dropout(rate=self.hparams['dropout_rate'])
-            dense = layers.Dense(hidden_size,
-                                 activation='relu',
-                                 kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
-                                 bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']),
-                                 activity_regularizer=keras.regularizers.l1(self.hparams['activity_reg']))
-            self.dropout_layers.append(dropout)
-            self.dense_layers.append(dense)
 
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
-    def make_image(self, input_dict: dict):
+    def call(self, input_dict: dict, training=None, mask=None):
         """
         Expected sizes:
             'action': n_batch, n_action
@@ -82,91 +42,41 @@ class RasterClassifier(tf.keras.Model):
         action = input_dict['action']
         planned_next_state = input_dict['planned_state_next']
         planned_local_env = input_dict['planned_local_env/env']
-        planned_local_env_resolution = input_dict['resolution']
-        planned_local_env_origin = input_dict['planned_local_env/origin']
 
-        # add channel index
-        planned_local_env = tf.expand_dims(planned_local_env, axis=3)
+        points = tf.reshape(planned_state, [self.batch_size, -1, 2])
+        deltas = points[:, 1:] - points[:, :-1]
+        distances = tf.norm(deltas, axis=2)
+        rope_lengths = tf.reduce_sum(distances, axis=1)
 
-        # add time index into everything
-        planned_state = tf.expand_dims(planned_state, axis=1)
-        action = tf.expand_dims(action, axis=1)
-        planned_next_state = tf.expand_dims(planned_next_state, axis=1)
-        planned_local_env_origin = tf.expand_dims(planned_local_env_origin, axis=1)
-        planned_local_env_resolution = tf.tile(tf.expand_dims(planned_local_env_resolution, axis=1), [1, 1, 2])
+        v1 = tf.reshape(deltas[:, :-1], [-1, 2])
+        v2 = tf.reshape(deltas[:, 1:], [-1, 2])
+        angles = tf.reshape(angle_2d_batch_tf(v1, v2), [self.batch_size, -1])
+        wiggle = tf.reduce_mean(tf.abs(angles), axis=1)
 
-        # raster each state into an image
-        planned_rope_image = self.raster([planned_state, planned_local_env_resolution, planned_local_env_origin])
-        planned_next_rope_image = self.raster([planned_next_state, planned_local_env_resolution, planned_local_env_origin])
+        next_points = tf.reshape(planned_next_state, [self.batch_size, -1, 2])
+        next_distances = tf.norm(next_points[:, 1:] - next_points[:, -1:], axis=2)
+        next_rope_lengths = tf.reduce_sum(next_distances, axis=1)
 
-        # action
-        action_image = tf.squeeze(self.smear(action), axis=1)
+        occ = tf.reduce_sum(tf.reshape(planned_local_env, [self.batch_size, -1]), axis=1)
 
-        # remove time index
-        image_shape = [planned_rope_image.shape[0],
-                       planned_rope_image.shape[2],
-                       planned_rope_image.shape[3],
-                       planned_rope_image.shape[4]]
-        planned_rope_image = tf.reshape(planned_rope_image, image_shape)
-        planned_next_rope_image = tf.reshape(planned_next_rope_image, image_shape)
+        speed = np.linalg.norm(action, axis=1)
 
-        # batch, h, w, channel
-        concat_image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env, action_image), axis=3)
-        return planned_rope_image, planned_next_rope_image, planned_local_env, concat_image
+        features = tf.stack((wiggle, rope_lengths, next_rope_lengths, occ, speed), axis=1)
 
-    def _conv(self, concat_image):
-        # feed into a CNN
-        conv_z = concat_image
-        for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
-            conv_h = conv_layer(conv_z)
-            conv_z = pool_layer(conv_h)
-        out_conv_z = conv_z
-
-        return out_conv_z
-
-    def call(self, input_dict: dict, training=None, mask=None):
-        """
-        Expected sizes:
-            'planned_state': n_batch, n_state
-            'planned_state_next': n_batch, n_state
-            'planned_local_env/env': n_batch, h, w
-            'planned_local_env/origin': n_batch, 2
-            'planned_local_env/extent': n_batch, 4
-            'resolution': n_batch, 1
-        """
-        planned_rope_image, planned_next_rope_image, planned_local_env, concat_image = self.make_image(input_dict)
-
-        accept_probability = self.from_image(concat_image)
-        return planned_rope_image, planned_next_rope_image, planned_local_env, accept_probability
-
-    def from_image(self, image):
-        """ image: n_batch, h, w, c """
-        out_conv_z = self._conv(image)
-        conv_output = self.conv_flatten(out_conv_z)
-
-        if self.hparams['batch_norm']:
-            conv_output = self.batch_norm(conv_output)
-
-        z = conv_output
-        for dropout_layer, dense_layer in zip(self.dropout_layers, self.dense_layers):
-            h = dropout_layer(z)
-            z = dense_layer(h)
-        out_h = z
-
-        accept_probability = self.output_layer(out_h)
+        accept_probability = self.output_layer(features)
         return accept_probability
 
 
-def check_validation(val_tf_dataset, loss, net, dataset_type: str):
+def check_validation(val_tf_dataset, loss, net, from_image=False):
     val_losses = []
     val_accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
     val_accuracy.reset_states()
     for val_example_dict_batch in val_tf_dataset:
         val_true_labels_batch = val_example_dict_batch['label']
-        if dataset_type == 'image':
+        if from_image:
             val_predictions_batch = net.from_image(val_example_dict_batch['image'])
         else:
-            val_predictions_batch = net(val_example_dict_batch)[-1]
+            val_predictions_batch = net(val_example_dict_batch)
         val_loss_batch = loss(y_true=val_true_labels_batch, y_pred=val_predictions_batch)
         val_accuracy.update_state(y_true=val_true_labels_batch, y_pred=val_predictions_batch)
         val_losses.append(val_loss_batch)
@@ -174,12 +84,15 @@ def check_validation(val_tf_dataset, loss, net, dataset_type: str):
     return val_losses, val_accuracy
 
 
-def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, dataset_type: str):
+def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, from_image: bool = False):
+    if from_image:
+        raise ValueError("feature classifier only works on new type datasets")
+
     optimizer = tf.train.AdamOptimizer(learning_rate=0.0001)
     loss = tf.keras.losses.BinaryCrossentropy()
     train_epoch_accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
     batch_accuracy = tf.keras.metrics.BinaryAccuracy(name='batch_accuracy')
-    net = RasterClassifier(hparams=hparams, batch_size=args.batch_size)
+    net = FeatureClassifier(hparams=hparams, batch_size=args.batch_size)
     global_step = tf.train.get_or_create_global_step()
 
     # If we're resuming a checkpoint, there is no new log path
@@ -214,26 +127,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, dataset_typ
 
         writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
 
-    if dataset_type == 'image':
-        # Fuck tensorflow
-        pl_s1 = np.zeros([args.batch_size, 22])
-        pl_s2 = np.zeros([args.batch_size, 22])
-        pl_action = np.zeros([args.batch_size, 2])
-        pl_data_s = np.zeros([args.batch_size, 50, 50])
-        pl_origin_s = np.zeros([args.batch_size, 2])
-        pl_extent_s = np.zeros([args.batch_size, 4])
-        pl_res_s = np.zeros([args.batch_size, 2])
-        test_x = {
-            'planned_state': tf.convert_to_tensor(pl_s1, dtype=tf.float32),
-            'planned_state_next': tf.convert_to_tensor(pl_s2, dtype=tf.float32),
-            'action': tf.convert_to_tensor(pl_action, dtype=tf.float32),
-            'planned_local_env/env': tf.convert_to_tensor(pl_data_s, dtype=tf.float32),
-            'planned_local_env/origin': tf.convert_to_tensor(pl_origin_s, dtype=tf.float32),
-            'planned_local_env/extent': tf.convert_to_tensor(pl_extent_s, dtype=tf.float32),
-            'resolution': tf.convert_to_tensor(pl_res_s, dtype=tf.float32),
-        }
-        net(test_x)
-
     def train_loop():
         for epoch in range(args.epochs):
             ################
@@ -248,10 +141,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, dataset_typ
                 train_true_labels_batch = train_example_dict_batch['label']
 
                 with tf.GradientTape() as tape:
-                    if dataset_type == 'image':
-                        train_predictions_batch = net.from_image(train_example_dict_batch['image'])
-                    else:
-                        train_predictions_batch = net(train_example_dict_batch)[-1]
+                    train_predictions_batch = net(train_example_dict_batch)
                     training_batch_loss = loss(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
                 variables = net.trainable_variables
                 gradients = tape.gradient(training_batch_loss, variables)
@@ -273,7 +163,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, dataset_typ
                     # validation
                     ################
                     if step % args.validation_every == 0:
-                        val_losses, val_accuracy = check_validation(val_tf_dataset, loss, net, dataset_type)
+                        val_losses, val_accuracy = check_validation(val_tf_dataset, loss, net)
                         mean_val_loss = np.mean(val_losses)
                         val_accuracy = val_accuracy.result().numpy() * 100
                         tf.contrib.summary.scalar('validation loss', mean_val_loss, step=step)
@@ -310,8 +200,10 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, dataset_typ
         train_loop()
 
 
-def eval(hparams, test_tf_dataset, args, dataset_type):
-    net = RasterClassifier(hparams=hparams, batch_size=args.batch_size)
+def eval(hparams, test_tf_dataset, args, from_image: bool = False):
+    if from_image:
+        raise ValueError("feature classifier only works on new type datasets")
+    net = FeatureClassifier(hparams=hparams, batch_size=args.batch_size)
     accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
     ckpt = tf.train.Checkpoint(net=net)
     manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=1)
@@ -329,10 +221,7 @@ def eval(hparams, test_tf_dataset, args, dataset_type):
     tp = 0
     for test_example_dict in test_tf_dataset:
         test_batch_labels = test_example_dict['label']
-        if dataset_type == 'image':
-            test_batch_predictions = net.from_image(test_example_dict['image'])
-        else:
-            test_batch_predictions = net(test_example_dict)[-1]
+        test_batch_predictions = net(test_example_dict)
         test_predictions.extend(test_batch_predictions.numpy().flatten().tolist())
         batch_test_loss = loss(y_true=test_batch_labels, y_pred=test_batch_predictions)
         accuracy.update_state(y_true=test_batch_labels, y_pred=test_batch_predictions)
@@ -365,13 +254,14 @@ def eval(hparams, test_tf_dataset, args, dataset_type):
     print("| pred 1 | {:6d} | {:6d} |".format(fp, tp))
 
 
-class RasterClassifierWrapper(BaseClassifier):
+class FeatureClassifierWrapper(BaseClassifier):
 
     def __init__(self, path: pathlib.Path, batch_size: int, show: bool = False):
         super().__init__()
         model_hparams_file = path / 'hparams.json'
         self.model_hparams = json.load(model_hparams_file.open('r'))
-        self.net = RasterClassifier(hparams=self.model_hparams, batch_size=batch_size)
+        self.net = FeatureClassifier(hparams=self.model_hparams, batch_size=batch_size)
+        self.batch_size = batch_size
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
         if self.manager.latest_checkpoint:
@@ -391,14 +281,26 @@ class RasterClassifierWrapper(BaseClassifier):
         test_x = {
             'planned_state': tf.convert_to_tensor(s1, dtype=tf.float32),
             'planned_state_next': tf.convert_to_tensor(s2, dtype=tf.float32),
-            'action': tf.convert_to_tensor(action, dtype=tf.float32),
+            'action': tf.reshape(tf.convert_to_tensor(action, dtype=tf.float32), [self.batch_size, -1]),
             'planned_local_env/env': tf.convert_to_tensor(data_s, dtype=tf.float32),
             'planned_local_env/origin': tf.convert_to_tensor(origin_s, dtype=tf.float32),
             'planned_local_env/extent': tf.convert_to_tensor(extent_s, dtype=tf.float32),
             'resolution': tf.convert_to_tensor(res_s, dtype=tf.float32),
         }
-        accept_probabilities = self.net(test_x)[-1]
-        accept_probabilities = accept_probabilities.numpy()
+        # accept_probabilities = self.net(test_x)
+        # accept_probabilities = accept_probabilities.numpy()
+
+        # FIXME: debugging
+        points = np.reshape(s2, [-1, 2])
+        deltas = points[1:] - points[:-1]
+        distances = np.linalg.norm(deltas)
+        rope_length = np.sum(distances)
+        if rope_length > 0.55:
+            accept_probabilities = np.array([[0]])
+        else:
+            accept_probabilities = np.array([[1]])
+        #################
+
         accept_probabilities = accept_probabilities.astype(np.float64)[:, 0]
 
         if self.show:
@@ -419,4 +321,4 @@ class RasterClassifierWrapper(BaseClassifier):
         return accept_probabilities
 
 
-model = RasterClassifier
+model = FeatureClassifier

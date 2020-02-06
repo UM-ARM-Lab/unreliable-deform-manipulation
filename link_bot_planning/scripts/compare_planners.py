@@ -98,8 +98,9 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
-        final_execution_error = np.linalg.norm(actual_path[-1, 0:2] - tail_goal_point)
-        final_planning_error = np.linalg.norm(planned_path[-1, 0:2] - tail_goal_point)
+        execution_to_goal_error = np.linalg.norm(actual_path[-1, 0:2] - tail_goal_point)
+        plan_to_goal_error = np.linalg.norm(planned_path[-1, 0:2] - tail_goal_point)
+        plan_to_execution_error = np.linalg.norm(actual_path[-1, 0:2] - planned_path[-1, 0:2])
         lengths = [np.linalg.norm(planned_path[i] - planned_path[i - 1]) for i in range(1, len(planned_path))]
         path_length = np.sum(lengths)
         num_nodes = planner_data.numVertices()
@@ -112,8 +113,9 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             'planned_path': planned_path.tolist(),
             'actual_path': actual_path.tolist(),
             'planning_time': planning_time,
-            'final_planning_error': final_planning_error,
-            'final_execution_error': final_execution_error,
+            'final_planning_error': plan_to_goal_error,
+            'final_execution_error': execution_to_goal_error,
+            'plan_to_execution_error': plan_to_execution_error,
             'path_length': path_length,
             'num_nodes': num_nodes,
         }
@@ -136,7 +138,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
         plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
 
         if self.verbose >= 1:
-            print("Final Execution Error: {:0.4f}".format(final_execution_error))
+            print("Final Execution Error: {:0.4f}".format(execution_to_goal_error))
             plt.show()
         else:
             plt.close()
@@ -177,7 +179,7 @@ def main():
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+', help='json file(s) describing what should be compared')
     parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time',
                         required=True)
-    parser.add_argument("--n-total-plans", type=int, default=40, help='total number of plans')
+    parser.add_argument("--n-total-plans", type=int, default=30, help='total number of plans')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
     parser.add_argument("--seed", '-s', type=int, default=3)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")

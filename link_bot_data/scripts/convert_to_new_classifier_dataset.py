@@ -1,18 +1,15 @@
 #!/usr/bin/env python
 import argparse
-import matplotlib.pyplot as plt
 import json
-from time import time
 import pathlib
-import shutil
+from time import time
 
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
 
-from link_bot_classifiers.raster_classifier import RasterClassifier
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import float_feature, balance_by_augmentation
+from link_bot_data.link_bot_dataset_utils import float_feature
+from link_bot_pycommon.link_bot_pycommon import add_bool_arg
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -30,17 +27,25 @@ def main():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dir', type=pathlib.Path)
+    add_bool_arg(parser, 'balance', required=True, help="upsample negative examples to balance the dataset")
     parser.add_argument('--n-examples-per-record', type=int, default=128)
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
 
     args = parser.parse_args()
 
-    root_output_directory = args.dataset_dir.parent / (args.dataset_dir.name + "-classifier")
-    root_output_directory.mkdir(exist_ok=True)
+    balance_key = 'label' if args.balance else None
+
+    now = int(time())
+    root_output_directory = args.dataset_dir.parent / (args.dataset_dir.name + "-new-classifier-{}".format(now))
+    root_output_directory.mkdir(exist_ok=False)
 
     # copy the hparams file
     hparams_path = args.dataset_dir / 'hparams.json'
-    shutil.copy2(hparams_path, root_output_directory)
+    dataset_hparams = json.load(hparams_path.open('r'))
+    dataset_hparams['balanced'] = args.balance
+    dataset_hparams['type'] = 'image'
+    out_hparams_path = root_output_directory / 'hparams.json'
+    json.dump(out_hparams_path.open('w'), dataset_hparams, indent=1)
 
     for mode in ['train', 'test', 'val']:
         full_output_directory = root_output_directory / mode
@@ -50,7 +55,7 @@ def main():
         classifier_dataset = ClassifierDataset([args.dataset_dir])
         dataset = classifier_dataset.get_datasets(mode=mode,
                                                   batch_size=1,
-                                                  balance_key='label',
+                                                  balance_key=balance_key,
                                                   shuffle=False,
                                                   seed=0,
                                                   sequence_length=None)

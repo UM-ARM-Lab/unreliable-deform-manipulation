@@ -1,40 +1,29 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-import json
 import pathlib
 from typing import List
 
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
 
 from link_bot_classifiers.base_classifier import BaseClassifier
-from link_bot_planning import model_utils
+from link_bot_data.image_classifier_dataset import ImageClassifierDataset
+from link_bot_data.new_classifier_dataset import NewClassifierDataset
 from link_bot_pycommon import link_bot_sdf_utils
 
 
-class EnsembleClassifier(BaseClassifier):
+class NearestNeighborClassifier(BaseClassifier):
 
-    def __init__(self, ensembles_path: pathlib.Path, show: bool = False):
+    def __init__(self, classifier_dataset_dirs: List[pathlib.Path], dataset_type: str):
         super().__init__()
+        if dataset_type == 'image':
+            classifier_dataset = ImageClassifierDataset(classifier_dataset_dirs)
+            self.dataset = classifier_dataset.get_datasets(mode='train', shuffle=False, batch_size=None, balance_key=None)
+        elif dataset_type == 'new':
+            classifier_dataset = NewClassifierDataset(classifier_dataset_dirs)
+            self.dataset = classifier_dataset.get_datasets(mode='train', shuffle=False, batch_size=None, balance_key=None)
 
-        # load all the models in the ensemble
-        self.models = []
-        for model_dir in ensembles_path.iterdir():
-            # TODO: look up the model_type from the hparams in model_dir
-            model_type = 'nn'
-            model, _ = model_utils.load_generic_model(model_dir, model_type)
-
-            model_hparams_file = model_dir / 'hparams.json'
-            model_hparams = json.load(model_hparams_file.open('r'))
-            net = model(hparams=model_hparams)
-            ckpt = tf.train.Checkpoint(net=net)
-            manager = tf.train.CheckpointManager(ckpt, model_dir)
-            if manager.latest_checkpoint:
-                print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
-            ckpt.restore(manager.latest_checkpoint)
-            self.models.append(net)
 
     def predict(self, local_env_data: List, s1_s: np.ndarray, s2_s: np.ndarray) -> float:
         """
@@ -43,6 +32,7 @@ class EnsembleClassifier(BaseClassifier):
         :param s2: [batch, 6] float64
         :return: [batch, 1] float6n
         """
+        # lookup nearest neighbor in dataset
 
         # How to do the ensemble here without training the free-space model to actually take into account the local env?
 
@@ -63,4 +53,4 @@ class EnsembleClassifier(BaseClassifier):
 
 
 # TODO: put this in for all classifier and dynamics models
-model = EnsembleClassifier
+model = NearestNeighborClassifier

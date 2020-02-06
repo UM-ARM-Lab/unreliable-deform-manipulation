@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 import argparse
-import matplotlib.pyplot as plt
 import json
-from time import time
 import pathlib
 import shutil
+import time
 
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
 
 from link_bot_classifiers.raster_classifier import RasterClassifier
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import float_feature, balance_by_augmentation
+from link_bot_pycommon.link_bot_pycommon import add_bool_arg
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -30,18 +29,23 @@ def main():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dir', type=pathlib.Path)
+    add_bool_arg(parser, 'balance', required=True, help="upsample negative examples to balance the dataset")
     parser.add_argument('--n-examples-per-record', type=int, default=128)
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
 
     args = parser.parse_args()
 
-    root_output_directory = args.dataset_dir.parent / (args.dataset_dir.name + "-classifier")
-    root_output_directory.mkdir(exist_ok=True)
+    now = int(time.time())
+    root_output_directory = args.dataset_dir.parent / (args.dataset_dir.name + "-image-classifier-{}".format(now))
+    root_output_directory.mkdir(exist_ok=False)
 
     # copy the hparams file
     hparams_path = args.dataset_dir / 'hparams.json'
     dataset_hparams = json.load(hparams_path.open('r'))
-    shutil.copy2(hparams_path, root_output_directory)
+    dataset_hparams['balanced'] = args.balance
+    dataset_hparams['type'] = 'image'
+    out_hparams_path = root_output_directory / 'hparams.json'
+    json.dump(dataset_hparams, out_hparams_path.open('w'), indent=1)
 
     model_hparams = {
         'classifier_dataset_hparams': {
@@ -82,11 +86,12 @@ def main():
         # convert to images
         image_dataset = dataset.map(make_image)
 
-        balanced_image_dataset = balance_by_augmentation(image_dataset, 'label')
+        if args.balance:
+            image_dataset = balance_by_augmentation(image_dataset, 'label')
 
         current_record_idx = 0
         examples = np.ndarray([args.n_examples_per_record], dtype=np.object)
-        for example_idx, new_example_dict in enumerate(balanced_image_dataset):
+        for example_idx, new_example_dict in enumerate(image_dataset):
             image = new_example_dict['image']
             numpy_image = image.numpy().flatten()
             features = {

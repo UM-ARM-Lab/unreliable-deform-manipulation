@@ -69,15 +69,15 @@ def main():
         # (.25, 225),
         # (.25, 270),
         # (.25, 325),
-        (.12, 135),
-        (.12, 90),
-        (.12, 45),
-        (.12, 180),
+        (.15, 135),
+        (.15, 90),
+        (.15, 45),
+        (.15, 180),
         (0, 0),
-        (.12, 0),
-        (.12, 225),
-        (.12, 270),
-        (.12, 315),
+        (.15, 0),
+        (.15, 225),
+        (.15, 270),
+        (.15, 315),
         # (.05, 0),
         # (.05, 45),
         # (.05, 90),
@@ -102,6 +102,7 @@ def main():
                                        actions=action)
         next_state = np.reshape(next_state, [2, 1, -1])[1]
 
+        # classifier_model.show = True
         accept_probability = classifier_model.predict([local_env_data], state, next_state, action)[0]
         prediction = 1 if accept_probability > 0.5 else 0
         title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)

@@ -13,7 +13,9 @@ class ImageClassifierDataset(StateSpaceDataset):
 
         self.local_env_params = LocalEnvParams.from_json(self.hparams['local_env_params'])
 
-        self.n_channels = 23
+        self.n_state = self.hparams['n_state']
+        self.n_action = self.hparams['n_action']
+        self.n_channels = self.n_state + self.n_action + 1
         local_env_shape = (self.local_env_params.h_rows, self.local_env_params.w_cols, self.n_channels)
         self.trajectory_constant_names_and_shapes['image'] = 'image', local_env_shape
 

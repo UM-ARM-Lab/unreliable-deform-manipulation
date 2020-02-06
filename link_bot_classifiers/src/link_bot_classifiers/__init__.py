@@ -1,4 +1,4 @@
-from link_bot_classifiers import raster_classifier, none_classifier
+from link_bot_classifiers import raster_classifier, none_classifier, feature_classifier
 
 
 def get_model_module(model_class_name):
@@ -6,3 +6,5 @@ def get_model_module(model_class_name):
         return raster_classifier
     elif model_class_name == "none":
         return none_classifier
+    elif model_class_name == "feature":
+        return feature_classifier

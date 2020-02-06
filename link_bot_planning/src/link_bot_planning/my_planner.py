@@ -1,12 +1,14 @@
 import pathlib
 from typing import Tuple, List, Optional, Dict
 
+import matplotlib.pyplot as plt
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
 from colorama import Fore
 
 from link_bot_classifiers.base_classifier import BaseClassifier
+from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
@@ -147,15 +149,35 @@ class MyPlanner:
         # validate the edge
         accept_probabilities = self.classifier_model.predict(local_env_data=[local_env_data], s1=np_s, s2=np_s_next, action=np_u)
         accept_probability = accept_probabilities[0]
+        p = np.random.uniform(0, 1)
+        # classifier_accept = p <= accept_probability
+        classifier_accept = accept_probability > self.planner_params['accept_threshold']  # FIXME: use the probability
+        # FIXME: put random epsilon back in
+        # FIXME: compute random_epsilon as e^(-k*validation_accuracy_of_classifier)
+        # for example, my validation accuracy is ~0.85, so if k=3.4 I get 0.05
         random_accept = np.random.uniform(0, 1) <= self.planner_params['random_epsilon']
-        classifier_accept = np.random.uniform(0, 1) <= accept_probability
-        edge_is_valid = classifier_accept or random_accept
+        # edge_is_valid = classifier_accept or random_accept
+        edge_is_valid = classifier_accept #or random_accept
+
+        # DEBUGGING
+        # visualize
+        # print(accept_probability)
+        # plot_classifier_data(planned_env=local_env_data.data,
+        #                      planned_env_origin=local_env_data.origin,
+        #                      planned_env_extent=local_env_data.extent,
+        #                      res=local_env_data.resolution,
+        #                      planned_state=np_s.squeeze(),
+        #                      planned_next_state=np_s_next.squeeze(),
+        #                      action=np_u.squeeze(),
+        #                      title="p={:.4f}, accept prob={:.4f}%".format(p, accept_probability))
+        # plt.show()
+        # input()
 
         # copy the result into the ompl state data structure
         if not edge_is_valid:
             # This will ensure this edge is not added to the tree
-            self.viz_object.rejected_samples.append(np_s_next[0])
             state_out[0][0] = 1000
+            self.viz_object.rejected_samples.append(np_s_next[0])
         else:
             from_numpy(np_s_next, state_out[0], self.n_state)
             local_env_data = self.get_local_env_at(np_s_next[0, -2], np_s_next[0, -1])

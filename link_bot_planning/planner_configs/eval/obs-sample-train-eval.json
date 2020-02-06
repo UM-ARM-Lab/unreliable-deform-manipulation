@@ -8,10 +8,11 @@
   "directed_control_sampler": "random",
   "max_v": 0.15,
   "goal_threshold": 0.15,
+  "accept_threshold": 0.5,
   "random_epsilon": 0.05,
   "max_angle_rad": 1.0,
   "w": 5.0,
   "h": 5.0,
-  "timeout": 100,
+  "timeout": 180,
   "subspace_weights": [1, 1, 0]
 }
