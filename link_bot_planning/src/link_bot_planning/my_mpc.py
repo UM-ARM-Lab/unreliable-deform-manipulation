@@ -7,7 +7,7 @@ from typing import List, Dict
 import numpy as np
 import std_srvs
 from colorama import Fore
-from link_bot_gazebo.srv import LinkBotStateRequest
+from link_bot_gazebo.srv import LinkBotStateRequest, WorldControlRequest
 from ompl import base as ob
 
 from ignition import markers
@@ -31,7 +31,8 @@ class myMPC:
                  planner_params: Dict,
                  sim_params: SimParams,
                  services: GazeboServices,
-                 no_execution: bool):
+                 no_execution: bool,
+                 seed: int):
         self.planner = planner
         self.n_total_plans = n_total_plans
         self.n_plans_per_env = n_plans_per_env
@@ -40,6 +41,8 @@ class myMPC:
         self.verbose = verbose
         self.services = services
         self.no_execution = no_execution
+        self.gazebo_rng = np.random.RandomState(seed)
+        self.goal_rng = np.random.RandomState(seed)
 
         # remove all markers
         markers.remove_all()
@@ -51,12 +54,18 @@ class myMPC:
             if self.sim_params.move_obstacles:
                 # generate a new environment by rearranging the obstacles
                 objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-                gazebo_utils.move_objects(self.services, self.sim_params.max_step_size, objects, self.planner.full_env_params.w,
-                                          self.planner.full_env_params.h, 'velocity', padding=0.1)
+                gazebo_utils.move_objects(self.services,
+                                          self.sim_params.max_step_size,
+                                          objects,
+                                          self.planner.full_env_params.w,
+                                          self.planner.full_env_params.h,
+                                          'velocity',
+                                          padding=0.1,
+                                          rng=self.gazebo_rng)
 
             # nudge the rope so it is hopefully not in collision?
             if self.sim_params.nudge:
-                self.services.nudge_rope(self.sim_params.max_step_size)
+                self.services.nudge_rope(self.sim_params.max_step_size, self.gazebo_rng)
 
             # generate a bunch of plans to random goals
             state_req = LinkBotStateRequest()
@@ -157,7 +166,7 @@ class myMPC:
         self.on_complete(initial_poses_in_collision)
 
     def get_goal(self, w, h, head_point, env_padding, full_env_data):
-        return sample_collision_free_goal(w, h, head_point, env_padding, full_env_data)
+        return sample_collision_free_goal(w, h, head_point, env_padding, full_env_data, self.goal_rng)
 
     def on_plan_complete(self,
                          planned_path: np.ndarray,

@@ -107,12 +107,12 @@ class GazeboServices:
         context_actions = np.zeros([context_length - 1, action_dim])
         return context_images, context_states, context_actions
 
-    def nudge_rope(self, max_step_size: float):
+    def nudge_rope(self, max_step_size: float, rng: np.random.RandomState):
         nudge = ApplyBodyWrenchRequest()
         nudge.duration.secs = 0
         nudge.duration.nsecs = 50000000
         nudge.body_name = 'link_bot::head'
-        angle = np.random.uniform(-np.pi, np.pi)
+        angle = rng.uniform(-np.pi, np.pi)
         magnitude = 10  # newtons
         nudge.wrench.force.x = np.cos(angle) * magnitude
         nudge.wrench.force.y = np.sin(angle) * magnitude
@@ -211,7 +211,7 @@ def get_occupancy(services: GazeboServices,
     request.w_cols = env_w_cols
     request.center.x = center_x
     request.center.y = center_y
-    request.min_z = 0.1 # FIXME: maybe lower this again?
+    request.min_z = 0.1  # FIXME: maybe lower this again?
     request.max_z = 2.00
     request.robot_name = 'link_bot'
     request.request_new = True
@@ -385,11 +385,11 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result: LinkBotT
     return actual_path, actual_local_envs
 
 
-def random_object_move(model_name, w, h, padding):
+def random_object_move(model_name: str, w: float, h: float, padding: float, rng: np.random.RandomState):
     move = ObjectAction()
-    move.pose.position.x = np.random.uniform(-w / 2 + padding, w / 2 - padding)
-    move.pose.position.y = np.random.uniform(-h / 2 + padding, h / 2 - padding)
-    q = quaternion_from_euler(0, 0, np.random.uniform(-np.pi, np.pi))
+    move.pose.position.x = rng.uniform(-w / 2 + padding, w / 2 - padding)
+    move.pose.position.y = rng.uniform(-h / 2 + padding, h / 2 - padding)
+    q = quaternion_from_euler(0, 0, rng.uniform(-np.pi, np.pi))
     move.pose.orientation.x = q[0]
     move.pose.orientation.y = q[1]
     move.pose.orientation.z = q[2]
@@ -398,7 +398,14 @@ def random_object_move(model_name, w, h, padding):
     return move
 
 
-def move_objects(services, max_step_size, objects, env_w, env_h, link_bot_mode, padding):
+def move_objects(services,
+                 max_step_size: float,
+                 objects,
+                 env_w: float,
+                 env_h: float,
+                 link_bot_mode,
+                 padding: float,
+                 rng: np.random.RandomState):
     disable_link_bot = String()
     disable_link_bot.data = 'disabled'
 
@@ -410,7 +417,7 @@ def move_objects(services, max_step_size, objects, env_w, env_h, link_bot_mode, 
     # Move the objects
     move_action = Position2dAction()
     for object_name in objects:
-        move = random_object_move(object_name, env_w, env_h, padding)
+        move = random_object_move(object_name, env_w, env_h, padding, rng)
         move_action.actions.append(move)
     services.position_2d_action.publish(move_action)
     # let the move actually occur

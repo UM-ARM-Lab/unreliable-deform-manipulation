@@ -61,7 +61,7 @@ def n_state_to_n_points(n_state: int):
     return int(n_state // 2)
 
 
-def make_random_rope_configuration(extent, n_state, link_length, max_angle_rad):
+def make_random_rope_configuration(extent, n_state, link_length, max_angle_rad, rng: np.random.RandomState):
     """
     First sample a head point, then sample angles for the other points
     :param max_angle_rad: NOTE, by sampling uniformly here we make certain assumptions about the planning task
@@ -74,11 +74,11 @@ def make_random_rope_configuration(extent, n_state, link_length, max_angle_rad):
         return not (extent[0] < x < extent[1] and extent[2] < y < extent[3])
 
     n_links = n_state_to_n_links(n_state)
-    theta = np.random.uniform(-np.pi, np.pi)
+    theta = rng.uniform(-np.pi, np.pi)
     valid = False
     while not valid:
-        head_x = np.random.uniform(extent[0], extent[1])
-        head_y = np.random.uniform(extent[2], extent[3])
+        head_x = rng.uniform(extent[0], extent[1])
+        head_y = rng.uniform(extent[2], extent[3])
 
         rope_configuration = np.zeros(n_state)
         rope_configuration[-2] = head_x
@@ -87,7 +87,7 @@ def make_random_rope_configuration(extent, n_state, link_length, max_angle_rad):
         j = n_state - 1
         valid = True
         for i in range(n_links):
-            theta = theta + np.random.uniform(-max_angle_rad, max_angle_rad)
+            theta = theta + rng.uniform(-max_angle_rad, max_angle_rad)
             rope_configuration[j - 2] = rope_configuration[j] + np.cos(theta) * link_length
             rope_configuration[j - 3] = rope_configuration[j - 1] + np.sin(theta) * link_length
 

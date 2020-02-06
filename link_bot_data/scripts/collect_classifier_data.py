@@ -5,7 +5,7 @@ import argparse
 import json
 import os
 import pathlib
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -43,7 +43,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                  n_plans_per_env: int,
                  verbose: int,
                  seed: int,
-                 planner_params: PlannerParams,
+                 planner_params: Dict,
                  sim_params: SimParams,
                  n_steps_per_example: int,
                  n_examples_per_record: int,
@@ -57,7 +57,8 @@ class ClassifierDataCollector(my_mpc.myMPC):
                          planner_params,
                          sim_params,
                          services=services,
-                         no_execution=False)
+                         no_execution=False,
+                         seed=seed)
         self.fwd_model_dir = fwd_model_dir
         self.fwd_model_type = fwd_model_type
         self.fwd_model_info = fwd_model_info
@@ -245,7 +246,6 @@ def main():
     if args.seed is None:
         args.seed = np.random.randint(0, 100000)
     print("random seed:", args.seed)
-    np.random.seed(args.seed)
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
 

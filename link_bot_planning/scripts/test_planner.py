@@ -41,7 +41,8 @@ class TestWithClassifier(my_mpc.myMPC):
                  sim_params: SimParams,
                  services: GazeboServices,
                  no_execution: bool,
-                 goal: Optional[Tuple[float, float]]):
+                 goal: Optional[Tuple[float, float]],
+                 seed: int):
         super().__init__(planner=planner,
                          n_total_plans=n_targets,
                          n_plans_per_env=n_targets,
@@ -49,7 +50,8 @@ class TestWithClassifier(my_mpc.myMPC):
                          planner_params=planner_params,
                          sim_params=sim_params,
                          services=services,
-                         no_execution=no_execution)
+                         no_execution=no_execution,
+                         seed=seed)
         self.goal = goal
 
     def get_goal(self, w, h, head_point, env_padding, full_env_data):
@@ -103,8 +105,10 @@ class TestWithClassifier(my_mpc.myMPC):
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
-        final_execution_error = np.linalg.norm(actual_path[-1, 0:2] - tail_goal_point)
-        print('final execution error {:0.3f}'.format(final_execution_error))
+        execution_to_goal_error = np.linalg.norm(actual_path[-1, 0:2] - tail_goal_point)
+        print('execution to goal error {:0.3f}'.format(execution_to_goal_error))
+        execution_to_plan_error = np.linalg.norm(actual_path[-1, 0:2] - planned_path[-1, 0:2])
+        print('execution to plan error {:0.3f}'.format(execution_to_plan_error))
 
 
 def main():
@@ -128,6 +132,7 @@ def main():
     args = parser.parse_args()
 
     np.random.seed(args.seed)
+    tf.random.set_random_seed(args.seed)
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
 
@@ -161,6 +166,7 @@ def main():
         services=services,
         no_execution=args.no_execution,
         goal=args.goal,
+        seed=args.seed,
     )
     tester.run()
 

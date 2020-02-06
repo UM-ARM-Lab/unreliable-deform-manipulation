@@ -43,6 +43,8 @@ class MyPlanner:
         self.planner = ob.Planner(self.si, 'PlaceholderPlanner')
         self.rope_length = fwd_model.hparams['dynamics_dataset_hparams']['rope_length']
         self.seed = seed
+        self.classifier_rng = np.random.RandomState(seed)
+        self.state_sampler_rng = np.random.RandomState(seed)
 
         self.state_space = ob.CompoundStateSpace()
         self.n_local_env = self.fwd_model.local_env_params.w_cols * self.fwd_model.local_env_params.h_rows
@@ -92,7 +94,7 @@ class MyPlanner:
         if planner_params['directed_control_sampler'] == 'simple':
             pass  # the default
         elif planner_params['directed_control_sampler'] == 'random':
-            self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator())
+            self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator(self.seed))
 
         self.full_envs = None
         self.full_env_orgins = None
@@ -149,15 +151,15 @@ class MyPlanner:
         # validate the edge
         accept_probabilities = self.classifier_model.predict(local_env_data=[local_env_data], s1=np_s, s2=np_s_next, action=np_u)
         accept_probability = accept_probabilities[0]
-        p = np.random.uniform(0, 1)
+        p = self.classifier_rng.uniform(0, 1)
         # classifier_accept = p <= accept_probability
         classifier_accept = accept_probability > self.planner_params['accept_threshold']  # FIXME: use the probability
         # FIXME: put random epsilon back in
         # FIXME: compute random_epsilon as e^(-k*validation_accuracy_of_classifier)
         # for example, my validation accuracy is ~0.85, so if k=3.4 I get 0.05
-        random_accept = np.random.uniform(0, 1) <= self.planner_params['random_epsilon']
+        random_accept = self.classifier_rng.uniform(0, 1) <= self.planner_params['random_epsilon']
         # edge_is_valid = classifier_accept or random_accept
-        edge_is_valid = classifier_accept #or random_accept
+        edge_is_valid = classifier_accept  # or random_accept
 
         # DEBUGGING
         # visualize
@@ -259,7 +261,8 @@ class MyPlanner:
                                                             extent=extent,
                                                             n_state=self.n_state,
                                                             rope_length=self.rope_length,
-                                                            max_angle_rad=self.planner_params['max_angle_rad'])
+                                                            max_angle_rad=self.planner_params['max_angle_rad'],
+                                                            rng=self.state_sampler_rng)
         elif self.planner_params['sampler_type'] == 'sample_train':
             sampler = TrainingSetCompoundSampler(state_space,
                                                  self.viz_object,

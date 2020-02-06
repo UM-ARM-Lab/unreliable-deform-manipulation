@@ -16,7 +16,8 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
                  extent: List[float],
                  n_state: int,
                  rope_length: float,
-                 max_angle_rad: float):
+                 max_angle_rad: float,
+                 rng: np.random.RandomState):
         super(ValidRopeConfigurationSampler, self).__init__(state_space)
         self.extent = extent
         self.rope_length = rope_length
@@ -25,12 +26,14 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
         self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
         self.max_angle_rad = max_angle_rad
+        self.rng = rng
 
     def sampleUniform(self, state_out: ob.AbstractState):
         random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent,
                                                                                      n_state=self.n_state,
                                                                                      link_length=self.link_length,
-                                                                                     max_angle_rad=self.max_angle_rad)
+                                                                                     max_angle_rad=self.max_angle_rad,
+                                                                                     rng=self.rng)
         for i in range(random_rope_configuration.shape[0]):
             state_out[i] = random_rope_configuration[i]
         self.viz_object.states_sampled_at.append(random_rope_configuration)
@@ -44,7 +47,8 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
                  extent: List[float],
                  n_state: int,
                  rope_length: float,
-                 max_angle_rad: float):
+                 max_angle_rad: float,
+                 rng: np.random.RandomState):
         super(ValidRopeConfigurationCompoundSampler, self).__init__(state_space)
         self.extent = extent
         self.rope_length = rope_length
@@ -53,12 +57,14 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
         self.max_angle_rad = max_angle_rad
+        self.rng = rng
 
     def sampleUniform(self, state_out: ob.CompoundStateInternal):
         random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent,
                                                                                      n_state=self.n_state,
                                                                                      link_length=self.link_length,
-                                                                                     max_angle_rad=self.max_angle_rad)
+                                                                                     max_angle_rad=self.max_angle_rad,
+                                                                                     rng=self.rng)
         for i in range(random_rope_configuration.shape[0]):
             state_out[0][i] = random_rope_configuration[i]
         self.viz_object.states_sampled_at.append(random_rope_configuration)
@@ -87,7 +93,7 @@ class TrainingSetCompoundSampler(ob.RealVectorStateSampler):
         example, _ = next(self.iter)
 
         # since the training data stores sequences, we have to randomly sample a specific time step
-        t = np.random.randint(0, self.sequence_length - 1) # -1 because the last time step is in the output, not the input
+        t = self.rng.randint(0, self.sequence_length - 1)  # -1 because the last time step is in the output, not the input
         state = example['state_s'][t].numpy()
         local_env = example['actual_local_env_s/env'][t].numpy()
         local_env_origin = example['actual_local_env_s/origin'][t].numpy()
@@ -102,7 +108,7 @@ class TrainingSetCompoundSampler(ob.RealVectorStateSampler):
         state_out[2][1] = np.float64(local_env_origin[1])
         # NOTE: it doesn't really make sense to visualize the rope configurations when sampling in this way,
         # because the rope configurations cannot be viewed in isolation, you'd need to also see the local env
-        #self.viz_object.states_sampled_at.append(state)
+        # self.viz_object.states_sampled_at.append(state)
         # self.viz_object.debugging1 = local_env
         # self.viz_object.new_sample = True
 

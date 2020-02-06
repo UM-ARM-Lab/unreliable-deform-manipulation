@@ -26,7 +26,7 @@ conf = tensorflow.compat.v1.ConfigProto(gpu_options=opts)
 tensorflow.compat.v1.enable_eager_execution(config=conf)
 
 
-def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gripper1_target_y):
+def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gripper1_target_y, goal_rng: np.random.RandomState):
     # FIXME: don't use separate XY
     gripper1_target = np.array([gripper1_target_x, gripper1_target_y])
     state_req = LinkBotStateRequest()
@@ -54,7 +54,7 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
 
         # Pick a new target if necessary
         if global_t_step % args.steps_per_target == 0:
-            gripper1_target = sample_goal(args.env_w, args.env_h, head_point, env_padding=0.5)
+            gripper1_target = sample_goal(args.env_w, args.env_h, head_point, env_padding=0.5, rng=goal_rng)
             gripper1_target_x, gripper1_target_y = gripper1_target
             if args.verbose:
                 print('gripper target:', gripper1_target_x, gripper1_target_y)
@@ -141,7 +141,7 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
     return example, percentage_positive, global_t_step, gripper1_target_x, gripper1_target_y
 
 
-def generate_trajs(args, full_output_directory, services):
+def generate_trajs(args, full_output_directory, services, gazebo_rng: np.random.RandomState, goal_rng: np.random.RandomState):
     examples = np.ndarray([args.trajs_per_file], dtype=object)
     percentages_positive = []
     global_t_step = 0
@@ -152,13 +152,21 @@ def generate_trajs(args, full_output_directory, services):
 
         if not args.no_obstacles and i % args.move_objects_every_n == 0:
             objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            gazebo_utils.move_objects(services, args.max_step_size, objects, args.env_w, args.env_h, 'velocity', padding=0.5)
+            gazebo_utils.move_objects(services,
+                                      args.max_step_size,
+                                      objects,
+                                      args.env_w,
+                                      args.env_h,
+                                      'velocity',
+                                      padding=0.5,
+                                      rng=gazebo_rng)
 
         # Generate a new trajectory
         example, percentage_violation, global_t_step, gripper1_target_x, gripper1_target_y = generate_traj(args, services, i,
                                                                                                            global_t_step,
                                                                                                            gripper1_target_x,
-                                                                                                           gripper1_target_y)
+                                                                                                           gripper1_target_y,
+                                                                                                           goal_rng)
         examples[current_record_traj_idx] = example
         percentages_positive.append(percentage_violation)
 
@@ -226,10 +234,12 @@ def generate(args):
         args.seed = np.random.randint(0, 10000)
     print(Fore.CYAN + "Using seed: {}".format(args.seed) + Fore.RESET)
     np.random.seed(args.seed)
+    gazebo_rng = np.random.RandomState(args.seed)
+    goal_rng = np.random.RandomState(args.seed)
 
     services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, args.max_step_size, True, None)
 
-    generate_trajs(args, full_output_directory, services)
+    generate_trajs(args, full_output_directory, services, gazebo_rng, goal_rng)
 
 
 def main():

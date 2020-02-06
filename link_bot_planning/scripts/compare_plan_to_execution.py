@@ -4,7 +4,7 @@ from __future__ import division, print_function
 import argparse
 import pathlib
 import time
-from typing import List
+from typing import List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,6 +13,7 @@ import ompl.util as ou
 import rospy
 import std_srvs
 import tensorflow as tf
+from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from matplotlib.animation import FuncAnimation
 
 from link_bot_data.visualization import plottable_rope_configuration
@@ -23,7 +24,6 @@ from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import SimParams, PlannerParams
-from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from link_bot_pycommon import link_bot_sdf_utils
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
@@ -66,7 +66,7 @@ class Executor(my_mpc.myMPC):
     def __init__(self,
                  planner: MyPlanner,
                  verbose: int,
-                 planner_params: PlannerParams,
+                 planner_params: Dict,
                  sim_params: SimParams,
                  services: GazeboServices,
                  outdir: pathlib.Path):
@@ -78,7 +78,8 @@ class Executor(my_mpc.myMPC):
             planner_params=planner_params,
             sim_params=sim_params,
             services=services,
-            no_execution=False)
+            no_execution=False,
+            seed=seed)
         self.outdir = outdir
 
     def on_plan_complete(self,

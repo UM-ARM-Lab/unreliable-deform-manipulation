@@ -59,7 +59,8 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             planner_params=planner_params,
             sim_params=sim_params,
             services=services,
-            no_execution=False)
+            no_execution=False,
+            seed=seed)
         self.classifier_model_type = classifier_model_type
         self.planner_config_name = planner_config_name
         self.outdir = outdir

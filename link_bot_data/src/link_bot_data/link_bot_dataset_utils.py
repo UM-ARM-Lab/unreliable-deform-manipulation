@@ -115,13 +115,6 @@ def balance_by_augmentation(dataset, key, fewer_negative=True):
 
         return __filter
 
-    def _debug(image, augmented_image):
-        fig, axes = plt.subplots(2)
-        axes[0].imshow(np.sum(image, axis=3).squeeze())
-        axes[1].imshow(np.sum(augmented_image, axis=3).squeeze())
-        i = np.random.randint(0, 1000)
-        plt.savefig('/tmp/{}.png'.format(i))
-
     def _augment(r, image):
         if r == 1:
             augmented_image = tf.image.rot90(tf.image.rot90(tf.image.rot90(image)))
