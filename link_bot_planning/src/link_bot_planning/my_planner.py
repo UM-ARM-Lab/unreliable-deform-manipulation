@@ -92,6 +92,7 @@ class MyPlanner:
         if planner_params['directed_control_sampler'] == 'simple':
             pass  # the default
         elif planner_params['directed_control_sampler'] == 'random':
+            raise ValueError("This DCS breaks NN somehow")
             self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator(self.seed, self))
 
         self.full_envs = None
@@ -271,33 +272,6 @@ class MyPlanner:
             raise ValueError("Invalid sampler type {}".format(self.planner_params['sampler_type']))
 
         return sampler
-
-    def nearest_neighbor(self, random_rope_configuration):
-        min_d = 100
-        min_s = None
-        planner_data = ob.PlannerData(self.si)
-        self.planner.getPlannerData(planner_data)
-        # planner_data_to_msg(planner_data)
-        for vertex_index in range(planner_data.numVertices()):
-            v = planner_data.getVertex(vertex_index)
-            s = v.getState()
-            np_s = to_numpy(s[0], self.n_state).squeeze()
-            d = np.linalg.norm(np_s - random_rope_configuration)
-            if d < min_d:
-                min_d = d
-                min_s = np_s
-
-        print("my nn", min_s[0], min_s[1])
-
-    def debug_nearest_neighbor(self):
-        planner_data = ob.PlannerData(self.si)
-        self.planner.getPlannerData(planner_data)
-        for sample in planner_data.getSamples():
-            s = sample.getSampledState()
-            neighbor_s = sample.getNeighbor()
-            s_np = to_numpy(s[0], self.n_state)
-            neighbor_s_np = to_numpy(neighbor_s[0], self.n_state)
-            print(s_np[0, 0], s_np[0, 1], "->", neighbor_s_np[0, 0], neighbor_s_np[0, 1])
 
 
 def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0):

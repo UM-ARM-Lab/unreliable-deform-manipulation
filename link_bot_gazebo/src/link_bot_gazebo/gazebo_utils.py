@@ -1,26 +1,26 @@
 from time import sleep
-from typing import Optional, Dict, Iterable, List
+from typing import Optional, Dict
 
 import numpy as np
 import rospy
 import std_msgs
 import std_srvs
-from colorama import Fore
-from link_bot_gazebo.msg import *
-from link_bot_gazebo.msg import *
-from link_bot_gazebo.srv import *
 from std_msgs.msg import String, Empty
 from std_srvs.srv import EmptyRequest
 
-from gazebo_msgs.srv import *
-from link_bot_planning.params import LocalEnvParams
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_gazebo.msg import LinkBotVelocityAction, LinkBotJointConfiguration, Position2dAction, ObjectAction
+
+from link_bot_gazebo.srv import WorldControl, LinkBotState, LinkBotTrajectory, LinkBotPositionAction, LinkBotPath, \
+    CameraProjection, InverseCameraProjection, LinkBotStateRequest, WorldControlRequest, InverseCameraProjectionRequest, \
+    CameraProjectionRequest
+
+from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, ApplyBodyWrench, ApplyBodyWrenchRequest, \
+    SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
 from link_bot_pycommon.link_bot_pycommon import points_to_config
 from link_bot_pycommon.ros_pycommon import Services
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.gazebo_trajectory_execution import quaternion_from_euler
 from visual_mpc.numpy_point import NumpyPoint
-
 
 
 class GazeboServices(Services):
@@ -226,9 +226,14 @@ def move_objects(services,
     services.position_2d_action.publish(move_action)
     # let the move actually occur
     step = WorldControlRequest()
-    move_wait_duration = 1
+    move_wait_duration = 0.75
     step.steps = int(move_wait_duration / max_step_size)
     services.world_control(step)  # this will block until stepping is complete
     # disable the objects so they stop, enabled the rope controller
     services.position_2d_stop.publish(Empty())
     services.link_bot_mode.publish(enable_link_bot)
+
+    # wait a few steps to ensure the stop message is received
+    wait = WorldControlRequest()
+    wait.steps = int(2 / max_step_size)
+    services.world_control(wait)  # this will block until stepping is complete

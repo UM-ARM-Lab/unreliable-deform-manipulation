@@ -35,7 +35,8 @@ def plot(ax,
     ax.scatter(goal[0], goal[1], label='goal', s=50, c='g', zorder=5)
     subsample_path_ = 2
     for rope_configuration in planned_path[::subsample_path_]:
-        plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=1, c='cyan', zorder=4)
+        ax.scatter(rope_configuration[0], rope_configuration[1], label='final_path', s=15, c='cyan', zorder=4)
+        # plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=1, c='cyan', zorder=4)
 
     # for sample in planner_data.getSamples():
     #     s = sample.getSampledState()
