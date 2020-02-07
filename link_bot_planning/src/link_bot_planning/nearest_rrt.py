@@ -30,7 +30,3 @@ class NearestRRT(MyPlanner):
         self.ss.setPlanner(self.planner)
         self.si.setPropagationStepSize(self.fwd_model.dt)
         self.si.setMinMaxControlDuration(1, 50)
-
-        # TODO: make a parameter for k
-        # dcs_allocator = oc.DirectedControlSamplerAllocator(lambda si: oc.SimpleDirectedControlSampler(si, k=10))
-        # self.si.setDirectedControlSamplerAllocator(dcs_allocator)

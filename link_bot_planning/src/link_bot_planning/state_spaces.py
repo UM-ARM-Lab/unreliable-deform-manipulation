@@ -43,13 +43,15 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
 
     def __init__(self,
                  state_space,
+                 my_planner,
                  viz_object: VizObject,
                  extent: List[float],
                  n_state: int,
                  rope_length: float,
                  max_angle_rad: float,
-                 rng: np.random.RandomState):
+                 rng: np.random.RandomState, ):
         super(ValidRopeConfigurationCompoundSampler, self).__init__(state_space)
+        self.my_planner = my_planner
         self.extent = extent
         self.rope_length = rope_length
         self.n_links = link_bot_pycommon.n_state_to_n_links(n_state)
@@ -65,8 +67,9 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
                                                                                      link_length=self.link_length,
                                                                                      max_angle_rad=self.max_angle_rad,
                                                                                      rng=self.rng)
-        for i in range(random_rope_configuration.shape[0]):
-            state_out[0][i] = random_rope_configuration[i]
+
+        from_numpy(random_rope_configuration, state_out[0], random_rope_configuration.shape[0])
+
         self.viz_object.states_sampled_at.append(random_rope_configuration)
 
 
@@ -128,7 +131,9 @@ def to_numpy_local_env(local_env_state: ob.AbstractState, h_rows: int, w_cols: i
     return np_local_env
 
 
-def from_numpy(np_state_or_control: np.ndarray, out, dim: int):
+def from_numpy(np_state_or_control: np.ndarray,
+               out,
+               dim: int):
     if np_state_or_control.ndim == 2:
         for i in range(dim):
             out[i] = np_state_or_control[0, i]

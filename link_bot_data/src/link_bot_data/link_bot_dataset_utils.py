@@ -101,7 +101,7 @@ def balance_xy_dataset(dataset, key):
     return balanced_dataset
 
 
-def balance_by_augmentation(dataset, key, fewer_negative=True):
+def balance_by_augmentation(dataset, key, fewer_negative):
     """
     generate more examples by random 90 rotations or horizontal/vertical flipping
     :param dataset:
@@ -152,7 +152,18 @@ def balance_by_augmentation(dataset, key, fewer_negative=True):
         # zipping takes the shorter of the two, hence why this makes it balanced
         balanced_dataset = tf.data.Dataset.zip((positive_examples, augmented_negative_examples))
     else:
-        raise NotImplementedError()  # TODO: copy the above branch but for positive examples
+        negative_examples = dataset.filter(_label_is(0))
+
+        n_negative_examples = 0
+        for _ in negative_examples:
+            n_negative_examples += 1
+
+        positive_examples = dataset.filter(_label_is(1)).repeat().take(n_negative_examples)
+
+        augmented_positive_examples = positive_examples.map(augment)
+
+        # zipping takes the shorter of the two, hence why this makes it balanced
+        balanced_dataset = tf.data.Dataset.zip((negative_examples, augmented_positive_examples))
 
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
 

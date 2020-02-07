@@ -2,7 +2,6 @@
 import argparse
 import json
 import pathlib
-import shutil
 import time
 
 import numpy as np
@@ -30,8 +29,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dir', type=pathlib.Path)
     add_bool_arg(parser, 'balance', required=True, help="upsample negative examples to balance the dataset")
+    add_bool_arg(parser, 'discard-pre-far', required=True, help="discard examples which have already diverged")
     parser.add_argument('--n-examples-per-record', type=int, default=128)
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--fewer-negative', action='store_true')
+    group.add_argument('--fewer-positive', action='store_true')
 
     args = parser.parse_args()
 
@@ -69,6 +72,8 @@ def main():
 
         # this class maps the sequences down to transitions
         classifier_dataset = ClassifierDataset([args.dataset_dir])
+        # we can now hack into the hparams if we want
+        classifier_dataset.hparams['labeling']['discard_pre_far'] = args.discard_pre_far
         dataset = classifier_dataset.get_datasets(mode=mode,
                                                   batch_size=batch_size,
                                                   balance_key=None,
@@ -87,7 +92,7 @@ def main():
         image_dataset = dataset.map(make_image)
 
         if args.balance:
-            image_dataset = balance_by_augmentation(image_dataset, 'label')
+            image_dataset = balance_by_augmentation(image_dataset, 'label', fewer_negative=args.fewer_negative)
 
         current_record_idx = 0
         examples = np.ndarray([args.n_examples_per_record], dtype=np.object)

@@ -18,6 +18,7 @@ from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_local_occupancy_data
 from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_planning import model_utils
+from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.args import my_formatter
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
@@ -192,7 +193,7 @@ def generate_trajs(args,
 def generate(args):
     rospy.init_node('collect_classifier_data_babbling')
 
-    n_state = gazebo_utils.get_n_state()
+    n_state = ros_pycommon.get_n_state()
 
     if args.seed is None:
         args.seed = np.random.randint(0, 10000)

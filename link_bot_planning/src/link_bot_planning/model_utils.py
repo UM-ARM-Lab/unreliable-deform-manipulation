@@ -2,7 +2,7 @@ import pathlib
 from typing import Tuple
 
 from state_space_dynamics.base_forward_model import BaseForwardModel
-from link_bot_gaussian_process import link_bot_gp
+# from link_bot_gaussian_process import link_bot_gp
 from state_space_dynamics.locally_linear_nn import LocallyLinearNNWrapper
 from state_space_dynamics.obstacle_nn import ObstacleNNWrapper
 from state_space_dynamics.rigid_translation_model import RigidTranslationModel
@@ -16,10 +16,10 @@ def load_generic_model(model_dir: pathlib.Path, model_type: str) -> [BaseForward
     :param model_type: string indicating what type of model to load
     :return: the model class, and a list of strings describing the model
     """
-    if model_type == 'gp':
-        fwd_gp_model = link_bot_gp.GPWrapper(model_dir)
-        return fwd_gp_model, model_dir.parts[1:]
-    elif model_type == 'llnn':
+    # if model_type == 'gp':
+    #     fwd_gp_model = link_bot_gp.GPWrapper(model_dir)
+    #     return fwd_gp_model, model_dir.parts[1:]
+    if model_type == 'llnn':
         llnn = LocallyLinearNNWrapper(model_dir)
         return llnn, model_dir.parts[1:]
     elif model_type == 'rigid':
@@ -42,9 +42,9 @@ def get_model_info(model_dir: pathlib.Path, model_type: str) -> Tuple[str]:
     :param model_type: string indicating what type of model to load
     :return: the model class, and a list of strings describing the model
     """
-    if model_type == 'gp':
-        return model_dir.parts[1:]
-    elif model_type == 'llnn':
+    # if model_type == 'gp':
+    #     return model_dir.parts[1:]
+    if model_type == 'llnn':
         return model_dir.parts[1:]
     elif model_type == 'rigid':
         return model_dir.parts[1:]

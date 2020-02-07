@@ -1,22 +1,21 @@
 import pathlib
 from typing import Tuple, List, Optional, Dict
 
-import matplotlib.pyplot as plt
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
 from colorama import Fore
 
 from link_bot_classifiers.base_classifier import BaseClassifier
-from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
-from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
+from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
 from link_bot_planning.random_directed_control_sampler import RandomDirectedControlSampler
 from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_local_env, ValidRopeConfigurationCompoundSampler, \
     TrainingSetCompoundSampler
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon
+from link_bot_pycommon.ros_pycommon import get_local_occupancy_data
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
@@ -40,7 +39,6 @@ class MyPlanner:
         self.services = services
         self.viz_object = viz_object
         self.si = ob.SpaceInformation(ob.StateSpace())
-        self.planner = ob.Planner(self.si, 'PlaceholderPlanner')
         self.rope_length = fwd_model.hparams['dynamics_dataset_hparams']['rope_length']
         self.seed = seed
         self.classifier_rng = np.random.RandomState(seed)
@@ -94,7 +92,7 @@ class MyPlanner:
         if planner_params['directed_control_sampler'] == 'simple':
             pass  # the default
         elif planner_params['directed_control_sampler'] == 'random':
-            self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator(self.seed))
+            self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator(self.seed, self))
 
         self.full_envs = None
         self.full_env_orgins = None
@@ -257,7 +255,8 @@ class MyPlanner:
                       -self.planner_params['h'] / 2,
                       self.planner_params['h'] / 2]
             sampler = ValidRopeConfigurationCompoundSampler(state_space,
-                                                            self.viz_object,
+                                                            my_planner=self,
+                                                            viz_object=self.viz_object,
                                                             extent=extent,
                                                             n_state=self.n_state,
                                                             rope_length=self.rope_length,
@@ -272,6 +271,33 @@ class MyPlanner:
             raise ValueError("Invalid sampler type {}".format(self.planner_params['sampler_type']))
 
         return sampler
+
+    def nearest_neighbor(self, random_rope_configuration):
+        min_d = 100
+        min_s = None
+        planner_data = ob.PlannerData(self.si)
+        self.planner.getPlannerData(planner_data)
+        # planner_data_to_msg(planner_data)
+        for vertex_index in range(planner_data.numVertices()):
+            v = planner_data.getVertex(vertex_index)
+            s = v.getState()
+            np_s = to_numpy(s[0], self.n_state).squeeze()
+            d = np.linalg.norm(np_s - random_rope_configuration)
+            if d < min_d:
+                min_d = d
+                min_s = np_s
+
+        print("my nn", min_s[0], min_s[1])
+
+    def debug_nearest_neighbor(self):
+        planner_data = ob.PlannerData(self.si)
+        self.planner.getPlannerData(planner_data)
+        for sample in planner_data.getSamples():
+            s = sample.getSampledState()
+            neighbor_s = sample.getNeighbor()
+            s_np = to_numpy(s[0], self.n_state)
+            neighbor_s_np = to_numpy(neighbor_s[0], self.n_state)
+            print(s_np[0, 0], s_np[0, 1], "->", neighbor_s_np[0, 0], neighbor_s_np[0, 1])
 
 
 def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0):

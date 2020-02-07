@@ -125,6 +125,10 @@ def make_rope_configurations(head_xs, head_ys, theta_1s, theta_2s, l=0.5):
     return rope_configurations
 
 
+def points_to_config(points):
+    return np.array([[p.x, p.y] for p in points]).flatten()
+
+
 def transpose_2d_lists(l):
     # https://stackoverflow.com/questions/6473679/transpose-list-of-lists
     return list(map(list, zip(*l)))

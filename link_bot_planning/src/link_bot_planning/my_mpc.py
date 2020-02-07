@@ -13,12 +13,13 @@ from ompl import base as ob
 from ignition import markers
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices, get_occupancy_data
+from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
+from link_bot_pycommon.ros_pycommon import get_occupancy_data
 
 
 class myMPC:
@@ -128,7 +129,7 @@ class myMPC:
                     print("Planned actions: {}".format(planned_actions))
                     print("Planned path: {}".format(planned_path))
 
-                trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(self.planner.fwd_model.dt,
+                trajectory_execution_request = ros_pycommon.make_trajectory_execution_request(self.planner.fwd_model.dt,
                                                                                               planned_actions)
 
                 # execute the plan, collecting the states that actually occurred
@@ -141,7 +142,7 @@ class myMPC:
                     self.services.pause(std_srvs.srv.EmptyRequest())
 
                     local_env_params = self.planner.fwd_model.local_env_params
-                    actual_path, actual_local_envs = gazebo_utils.trajectory_execution_response_to_numpy(traj_exec_response,
+                    actual_path, actual_local_envs = ros_pycommon.trajectory_execution_response_to_numpy(traj_exec_response,
                                                                                                          local_env_params,
                                                                                                          self.services)
                     self.on_execution_complete(planned_path,

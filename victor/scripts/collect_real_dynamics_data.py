@@ -16,11 +16,13 @@ from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
 
 from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import float_feature
-from link_bot_gazebo import gazebo_utils
+from link_bot_pycommon import ros_pycommon
+from link_bot_pycommon.link_bot_pycommon import points_to_config
+from victor import victor_utils
 from link_bot_planning.goals import sample_goal
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
-from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.args import my_formatter
+from victor.victor_utils import VictorServices
 
 opts = tensorflow.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.compat.v1.ConfigProto(gpu_options=opts)
@@ -35,7 +37,7 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
 
     # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
     # over the course of this function
-    full_env_data = gazebo_utils.get_occupancy_data(env_w=args.env_w, env_h=args.env_h, res=args.res, services=services)
+    full_env_data = victor_utils.get_occupancy_data(env_w=args.env_w, env_h=args.env_h, res=args.res, services=services)
 
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
     feature = {
@@ -50,7 +52,7 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
         # Query the current state
         state = services.get_state(state_req)
         head_idx = state.link_names.index("head")
-        rope_configuration = gazebo_utils.points_to_config(state.points)
+        rope_configuration = points_to_config(state.points)
         head_point = state.points[head_idx]
 
         # Pick a new target if necessary
@@ -64,12 +66,9 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
         # compute the velocity to move in that direction
         velocity = np.minimum(np.maximum(np.random.randn() * 0.07 + 0.10, 0), 0.15)
         dpos = gripper1_target - np.array([head_point.x, head_point.y])
-        dpos_unit = dpos / np.linalg.norm(dpos)
         gripper1_target_v = velocity * dpos
         gripper1_target_vx = gripper1_target_v[0]
         gripper1_target_vy = gripper1_target_v[1]
-        # gripper1_target_vx = velocity if gripper1_target_x > head_point.x else -velocity
-        # gripper1_target_vy = velocity if gripper1_target_y > head_point.y else -velocity
 
         # publish the pull command, which will return the target velocity
         action_msg.gripper1_velocity.x = gripper1_target_vx
@@ -102,7 +101,7 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
 
         # format the tf feature
         head_np = np.array([head_point.x, head_point.y])
-        local_env_data = gazebo_utils.get_local_occupancy_data(args.local_env_rows,
+        local_env_data = victor_utils.get_local_occupancy_data(args.local_env_rows,
                                                                args.local_env_cols,
                                                                args.res,
                                                                center_point=head_np,
@@ -150,17 +149,6 @@ def generate_trajs(args, full_output_directory, services, gazebo_rng: np.random.
     gripper1_target_y = None
     for i in range(args.trajs):
         current_record_traj_idx = i % args.trajs_per_file
-
-        if not args.no_obstacles and i % args.move_objects_every_n == 0:
-            objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            gazebo_utils.move_objects(services,
-                                      args.max_step_size,
-                                      objects,
-                                      args.env_w,
-                                      args.env_h,
-                                      'velocity',
-                                      padding=0.5,
-                                      rng=gazebo_rng)
 
         # Generate a new trajectory
         example, percentage_violation, global_t_step, gripper1_target_x, gripper1_target_y = generate_traj(args, services, i,
@@ -213,7 +201,7 @@ def generate(args):
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
                            goal_padding=0.5,
-                           move_obstacles=(not args.no_obstacles),
+                           move_obstacles=False,
                            nudge=False)
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
@@ -238,7 +226,7 @@ def generate(args):
     gazebo_rng = np.random.RandomState(args.seed)
     goal_rng = np.random.RandomState(args.seed)
 
-    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, args.max_step_size, True, None)
+    services = VictorServices()
 
     generate_trajs(args, full_output_directory, services, gazebo_rng, goal_rng)
 
@@ -259,8 +247,6 @@ def main():
     parser.add_argument("--steps-per-traj", type=int, default=100, help='steps per traj')
     parser.add_argument("--steps-per-target", type=int, default=25, help='steps before changing target')
     parser.add_argument("--start-idx-offset", type=int, default=0, help='offset TFRecord file names')
-    parser.add_argument("--move-objects-every-n", type=int, default=16, help='rearrange objects every n trajectories')
-    parser.add_argument("--no-obstacles", action='store_true', help='do not move obstacles')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB', help='compression type')
     parser.add_argument("--trajs-per-file", type=int, default=256, help='trajs per file')
     parser.add_argument("--seed", '-s', type=int, help='seed')

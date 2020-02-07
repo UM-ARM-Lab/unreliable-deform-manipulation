@@ -59,8 +59,8 @@ def plot(ax,
         ax.scatter(np_s[0, 0], np_s[0, 1], s=5, c='black', zorder=2, label='tail')
 
         # full rope is too noisy
-        if len(edges_map.keys()) == 0:
-            plot_rope_configuration(ax, np_s[0], linewidth=1, c='black', zorder=3, label='full rope')
+        # if len(edges_map.keys()) == 0:
+        #     plot_rope_configuration(ax, np_s[0], linewidth=1, c='black', zorder=3, label='full rope')
 
         planner_data.getEdges(vertex_index, edges_map)
         for vertex_index2 in edges_map.keys():

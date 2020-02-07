@@ -26,9 +26,9 @@ from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_pycommon import point_arg
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
-config = tf.ConfigProto(gpu_options=gpu_options)
-tf.enable_eager_execution(config=config)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+tf.compat.v1.enable_eager_execution(config=config)
 
 
 class TestWithClassifier(my_mpc.myMPC):
@@ -113,7 +113,7 @@ class TestWithClassifier(my_mpc.myMPC):
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=150)
-    tf.logging.set_verbosity(tf.logging.FATAL)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("params", type=pathlib.Path, help='params json file')
