@@ -156,7 +156,7 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   y_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
 
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&Position2dPlugin::OnUpdate, this));
- 
+
   target_pose_ = link_->WorldPose();
 }
 
@@ -196,7 +196,11 @@ void Position2dPlugin::OnUpdate()
   }
 }
 
-void Position2dPlugin::OnStop(std_msgs::EmptyConstPtr const msg) { target_pose_ = link_->WorldPose(); }
+void Position2dPlugin::OnStop(std_msgs::EmptyConstPtr const msg)
+{
+  target_pose_ = link_->WorldPose();
+  std::cout << "stopping!\n";
+}
 
 void Position2dPlugin::OnEnable(link_bot_gazebo::Position2dEnableConstPtr const msg)
 {

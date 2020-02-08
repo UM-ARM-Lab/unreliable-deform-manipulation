@@ -7,6 +7,7 @@ import pathlib
 from typing import List, Tuple, Optional, Dict
 
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import numpy as np
 import ompl.util as ou
 import rospy
@@ -20,7 +21,7 @@ from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import my_mpc
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.ompl_viz import plot
+from link_bot_planning import ompl_viz
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
@@ -89,8 +90,8 @@ class TestWithClassifier(my_mpc.myMPC):
 
         plt.figure()
         ax = plt.gca()
-        legend = plot(ax, self.planner.viz_object, planner_data, full_env_data.data, tail_goal_point, planned_path,
-                      planned_actions, full_env_data.extent)
+        legend = ompl_viz.plot(ax, self.planner.viz_object, planner_data, full_env_data.data, tail_goal_point, planned_path,
+                               planned_actions, full_env_data.extent)
         plt.savefig("/tmp/.latest-plan.png", dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
         plt.show(block=True)
 
@@ -106,19 +107,29 @@ class TestWithClassifier(my_mpc.myMPC):
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
         execution_to_goal_error = np.linalg.norm(actual_path[-1, 0:2] - tail_goal_point)
-        print('execution to goal error {:0.3f}'.format(execution_to_goal_error))
-        execution_to_plan_error = np.linalg.norm(actual_path[-1, 0:2] - planned_path[-1, 0:2])
-        print('execution to plan error {:0.3f}'.format(execution_to_plan_error))
+        print('Execution to Goal Error: {:0.3f}'.format(execution_to_goal_error))
+
+        print("Execution to Plan Error:")
+        for t in range(planned_path.shape[0] - 1):
+            planned_s = planned_path[t]
+            actual_s = actual_path[t]
+            distance = np.linalg.norm(planned_s - actual_s)
+            speed = np.linalg.norm(planned_actions[t])
+            print("t={:3d}, error={:6.3f}m, speed={:6.3}m/s".format(t, distance, speed))
+
+        anim = ompl_viz.plan_vs_execution(full_env_data.data, tail_goal_point, planned_path, actual_path, full_env_data.extent)
+        anim.save("/tmp/.latest-plan-vs-execution.gif", dpi=300, writer='imagemagick')
+        plt.show(block=True)
 
 
 def main():
-    np.set_printoptions(precision=6, suppress=True, linewidth=150)
+    np.set_printoptions(precision=6, suppress=True, linewidth=250)
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("--n-targets", type=int, default=1, help='number of targets/plans')
-    parser.add_argument("--seed", '-s', type=int, default=12)
+    parser.add_argument("--seed", '-s', type=int, default=5)
     parser.add_argument("--no-execution", action='store_true', help='do not execute, only plan')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
     parser.add_argument('--no-nudge', action='store_true', help="don't nudge")

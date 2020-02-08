@@ -291,11 +291,8 @@ class FeatureClassifierWrapper(BaseClassifier):
         # accept_probabilities = accept_probabilities.numpy()
 
         # FIXME: debugging
-        points = np.reshape(s2, [-1, 2])
-        deltas = points[1:] - points[:-1]
-        distances = np.linalg.norm(deltas)
-        rope_length = np.sum(distances)
-        if rope_length > 0.55:
+        speed = np.linalg.norm(action)
+        if speed > 0.20:
             accept_probabilities = np.array([[0]])
         else:
             accept_probabilities = np.array([[1]])

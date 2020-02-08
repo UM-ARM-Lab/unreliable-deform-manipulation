@@ -65,6 +65,7 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
         velocity = np.minimum(np.maximum(np.random.randn() * 0.07 + 0.10, 0), 0.15)
         dpos = gripper1_target - np.array([head_point.x, head_point.y])
         dpos_unit = dpos / np.linalg.norm(dpos)
+        # FIXME: I meant for this to multiply by dpos, but now that would required recollecting and retraining all my models
         gripper1_target_v = velocity * dpos
         gripper1_target_vx = gripper1_target_v[0]
         gripper1_target_vy = gripper1_target_v[1]

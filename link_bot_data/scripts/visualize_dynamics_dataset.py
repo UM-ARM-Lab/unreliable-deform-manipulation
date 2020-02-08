@@ -18,6 +18,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 def main():
+    np.set_printoptions(suppress=True, linewidth=250, precision=3)
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
@@ -52,14 +53,21 @@ def main():
         return False
 
     i = 0
+    overall_max_v = 0
+    all_vs = []
     for input_data, output_data in train_dataset:
 
         out_of_bounds = False
 
         rope_configurations = input_data['state_s'].numpy().squeeze()
+        actions = input_data['action_s'].numpy().squeeze()
+        max_v = np.max(np.abs(actions.flatten()))
+        all_vs.extend(actions.flatten().tolist())
+        if max_v > overall_max_v:
+            overall_max_v = max_v
+            print(overall_max_v)
 
         if not args.no_plot:
-            actions = input_data['action_s'].numpy().squeeze()
             full_env = input_data['full_env/env'].numpy().squeeze()
             full_env_extents = input_data['full_env/extent'].numpy().squeeze()
 
@@ -80,7 +88,7 @@ def main():
             line = plot_rope_configuration(ax, rope_configurations[0], linewidth=5, zorder=3, c='r')[0]
 
             def update(t):
-                nonlocal patch, out_of_bounds
+                nonlocal patch
                 config = rope_configurations[t]
                 head_point = config.reshape(-1, 2)[-1]
                 action = actions[t]
@@ -113,6 +121,10 @@ def main():
 
         i += 1
     print("dataset mode={}, size={}".format(args.mode, i))
+
+    if not args.no_pot:
+        plt.hist(all_vs)
+        plt.show()
 
 
 if __name__ == '__main__':

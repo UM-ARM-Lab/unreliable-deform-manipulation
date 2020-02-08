@@ -78,6 +78,15 @@ def generate_results(base_folder: pathlib.Path,
             'full_env/extent': [],
         }
     }
+
+    metadata = []
+    for model_name, model in models.items():
+        model_info = {
+            'name': model_name,
+            'hparams': model.hparams,
+        }
+        metadata.append(model_info)
+
     for x, y in tf_dataset:
         output_states = y['output_states'].numpy().squeeze()
         n_examples = output_states.shape[0]
@@ -131,6 +140,8 @@ def generate_results(base_folder: pathlib.Path,
             results[model_name]['full_env/extent'].append(full_env_extents)
             results[model_name]['runtimes'].append(runtime)
 
+    metadata_filename = base_folder / 'metadata.json'
+    json.dump(metadata, metadata_filename.open('w'), indent=2)
     results_filename = base_folder / 'results.pkl'
     print(Fore.CYAN + "Saving results to {}".format(results_filename) + Fore.RESET)
     pickle.dump(results, results_filename.open("wb"))
@@ -208,6 +219,7 @@ def evaluate_metrics(results):
             head_errors.append(head_error)
             mid_errors.append(mid_error)
             tail_errors.append(tail_error)
+
 
             # The first time step is copied from ground truth, so it should always have zero error
             assert np.all(error[0] == 0)

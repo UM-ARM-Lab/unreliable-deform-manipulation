@@ -44,7 +44,6 @@ def get_local_env_at_in(rows: int,
     row_indeces = np.tile(center_rows, [cols, rows, 1]).T + delta_rows
     col_indeces = np.tile(center_cols, [cols, rows, 1]).T + delta_cols
     batch_indeces = np.tile(np.arange(0, batch_size), [cols, rows, 1]).transpose()
-    # print(center_points)
     local_env = padded_full_envs[batch_indeces, row_indeces + padding, col_indeces + padding]
     local_env = tf.convert_to_tensor(local_env, dtype=tf.float32)
     return local_env, tf.cast(local_env_origins, dtype=tf.float32)
@@ -96,7 +95,9 @@ class ObstacleNN(tf.keras.Model):
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']
 
-        padding = 100
+        # NOTE: there are some really high velocities in my dataset, sort of accidentally, and the model likes to predict crazy
+        #  things in this case. Since this will go out of bounds of our environment, we want to assume 0 (free space), so we pad.
+        padding = 200
         paddings = [[0, 0], [padding, padding], [padding, padding]]
         padded_full_envs_np = tf.pad(full_env, paddings=paddings).numpy()
 

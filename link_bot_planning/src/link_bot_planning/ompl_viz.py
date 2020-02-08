@@ -1,11 +1,13 @@
 from typing import Iterable
 
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import numpy as np
 from geometry_msgs.msg import Point
 from ompl import base as ob
 from visualization_msgs.msg import MarkerArray, Marker
 
-from link_bot_data.visualization import plot_rope_configuration
+from link_bot_data.visualization import plot_rope_configuration, plottable_rope_configuration
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning.state_spaces import to_numpy
 from link_bot_planning.viz_object import VizObject
@@ -119,3 +121,39 @@ def add_sampled_configuration(services: GazeboServices,
     markers.markers.append(pre_marker)
     markers.markers.append(post_marker)
     return None
+
+
+def plan_vs_execution(environment: np.ndarray,
+                      goal: np.ndarray,
+                      planned_path: np.ndarray,
+                      actual_path: np.ndarray,
+                      extent: Iterable):
+    fig = plt.figure()
+    ax = plt.gca()
+    ax.imshow(np.flipud(environment), extent=extent)
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.axis("equal")
+    ax.set_xlim([-2.5, 2.5])
+    ax.set_ylim([-2.5, 2.5])
+
+    start = planned_path[0]
+    ax.scatter(start[0], start[1], label='start', s=50, c='r', zorder=5)
+    ax.scatter(goal[0], goal[1], label='goal', s=50, c='g', zorder=5)
+    plt.legend()
+
+    planned_xs, planned_ys = plottable_rope_configuration(planned_path[0])
+    actual_xs, actual_ys = plottable_rope_configuration(actual_path[0])
+    actual_line = plt.plot(actual_xs, actual_ys, linewidth=1, c='c', zorder=3, label='actual')[0]
+    planned_line = plt.plot(planned_xs, planned_ys, linewidth=1, c='m', zorder=4, label='planned')[0]
+
+    def update(t):
+        planned_xs, planned_ys = plottable_rope_configuration(planned_path[t])
+        actual_xs, actual_ys = plottable_rope_configuration(actual_path[t])
+
+        planned_line.set_data(planned_xs, planned_ys)
+        actual_line.set_data(actual_xs, actual_ys)
+
+    anim = FuncAnimation(fig, update, frames=planned_path.shape[0], interval=200)
+    return anim
