@@ -2,6 +2,7 @@
 import argparse
 import pathlib
 
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
@@ -41,12 +42,27 @@ def main():
     classifier_dataset.hparams['labeling']['post_close_threshold'] = args.post
     dataset = classifier_dataset.get_datasets(mode=args.mode, batch_size=1, shuffle=False, seed=1)
 
+    speeds = []
+    errors = []
+    lengths = []
     for example_dict in dataset:
         state = example_dict['state'].numpy()
         next_state = example_dict['state_next'].numpy()
+        action = example_dict['action'].numpy()
         planned_state = example_dict['planned_state'].numpy()
         planned_next_state = example_dict['planned_state_next'].numpy()
         label = example_dict['label'].numpy()
+
+        speed = np.linalg.norm(action)
+        error = np.linalg.norm(state - planned_state)
+        points = planned_state.reshape(-1, 2)
+        deltas = points[1:] - points[:-1]
+        distances = np.linalg.norm(deltas, axis=1)
+        rope_length = np.sum(distances)
+        if speed > 0 and error > 0:
+            lengths.append(rope_length)
+            speeds.append(speed)
+            errors.append(error)
 
         # Compute the label for whether our model should be trusted
         pre_transition_distance = np.linalg.norm(state - planned_state)
@@ -74,6 +90,19 @@ def main():
             positive_labels += 1
         else:
             negative_labels += 1
+
+    plt.figure()
+    plt.title("accuracy vs speed")
+    plt.scatter(speeds, errors)
+    plt.xlabel("speed m/s")
+    plt.ylabel("error")
+
+    plt.figure()
+    plt.title("accuracy vs length")
+    plt.scatter(lengths, errors)
+    plt.xlabel("length m")
+    plt.ylabel("error")
+    plt.show(block=True)
 
     print("Confusion Matrix:")
     print("|            | pre close | pre_far   |")

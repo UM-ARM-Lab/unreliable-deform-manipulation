@@ -51,12 +51,12 @@ def main():
         'planning_time': [['min', 'max', 'mean', 'median', 'std']],
         'execution_to_goal_errors': [['min', 'max', 'mean', 'median', 'std']],
         'plan_to_goal_errors': [['min', 'max', 'mean', 'median', 'std']],
-        'execution_to_plan_errors': [['min', 'max', 'mean', 'median', 'std']],
+        'final_plan_to_execution_errors': [['min', 'max', 'mean', 'median', 'std']],
         'num_nodes': [['min', 'max', 'mean', 'median', 'std']],
     }
 
     execution_to_goal_errors_comparisons = {}
-    execution_to_plan_errors_comparisons = {}
+    plan_to_execution_errors_comparisons = {}
     errors_thresholds = np.linspace(0.1, 1.0, 10)
     print('-' * 90)
     if not args.no_plot:
@@ -87,12 +87,15 @@ def main():
 
             data = invert_dict(data)
             planning_times = np.array(data['planning_time'])
+            planned_path = np.array(data['planned_path'])
+            actual_path = np.array(data['actual_path'])
+            all_plan_to_execution_errors = np.linalg.norm(planned_path[:, 0:2] - actual_path[:, 0:2], axis=1)
             # TODO: rename these keys
             execution_to_goal_errors = data['final_execution_error']
             plan_to_goal_errors = data['final_planning_error']
-            has_execution_to_plan_error = ('execution_to_plan_error' in data)
-            if has_execution_to_plan_error:
-                execution_to_plan_errors = data['execution_to_plan_error']
+            has_plan_to_execution_error = ('plan_to_execution_error' in data)
+            if has_plan_to_execution_error:
+                final_plan_to_execution_errors = data['plan_to_execution_error']
             num_nodes = data['num_nodes']
             timeouts = np.sum((planning_times > timeout).astype(np.int))
             timeout_percentage = timeouts / planning_times.shape[0] * 100
@@ -103,20 +106,21 @@ def main():
                     execution_successes.append(np.count_nonzero(execution_to_goal_errors < threshold))
                 execution_ax.plot(errors_thresholds, execution_successes, label=name)
 
-                if has_execution_to_plan_error:
+                if has_plan_to_execution_error:
                     planning_successes = []
                     for threshold in errors_thresholds:
-                        planning_successes.append(np.count_nonzero(execution_to_plan_errors < threshold))
+                        planning_successes.append(np.count_nonzero(final_plan_to_execution_errors < threshold))
                     planning_ax.plot(errors_thresholds, planning_successes, label=name)
 
             execution_to_goal_errors_comparisons[str(subfolder.name)] = execution_to_goal_errors
-            execution_to_plan_errors_comparisons[str(subfolder.name)] = plan_to_goal_errors
+            plan_to_execution_errors_comparisons[str(subfolder.name)] = plan_to_goal_errors
             headers.append(str(subfolder.name))
 
             aggregate_metrics['planning_time'].append(row_stats(planning_times))
+            aggregate_metrics['mean_plan_to_execution_errors'].append(row_stats(all_plan_to_execution_errors))
             aggregate_metrics['execution_to_goal_errors'].append(row_stats(execution_to_goal_errors))
-            if has_execution_to_plan_error:
-                aggregate_metrics['execution_to_plan_errors'].append(row_stats(execution_to_plan_errors))
+            if has_plan_to_execution_error:
+                aggregate_metrics['final_plan_to_execution_errors'].append(row_stats(final_plan_to_execution_errors))
             aggregate_metrics['plan_to_goal_errors'].append(row_stats(plan_to_goal_errors))
             aggregate_metrics['num_nodes'].append(row_stats(num_nodes))
 
@@ -150,7 +154,7 @@ def main():
     print(Style.BRIGHT + "p-value matrix (vs execution)" + Style.RESET_ALL)
     print(dict_to_pvale_table(execution_to_goal_errors_comparisons, table_format='github'))
     print(Style.BRIGHT + "p-value matrix (vs plan)" + Style.RESET_ALL)
-    print(dict_to_pvale_table(execution_to_plan_errors_comparisons, table_format='github'))
+    print(dict_to_pvale_table(plan_to_execution_errors_comparisons, table_format='github'))
 
     plt.savefig('results/final_tail_error_hist.png')
     if not args.no_plot:

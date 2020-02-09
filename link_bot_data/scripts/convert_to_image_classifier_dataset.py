@@ -46,6 +46,8 @@ def main():
     hparams_path = args.dataset_dir / 'hparams.json'
     dataset_hparams = json.load(hparams_path.open('r'))
     dataset_hparams['balanced'] = args.balance
+    dataset_hparams['fewer-negative'] = args.fewer_negative
+    dataset_hparams['fewer-positive'] = args.fewer_positive
     dataset_hparams['type'] = 'image'
     out_hparams_path = root_output_directory / 'hparams.json'
     json.dump(dataset_hparams, out_hparams_path.open('w'), indent=1)

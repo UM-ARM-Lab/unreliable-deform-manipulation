@@ -216,11 +216,9 @@ def main():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
+    parser.add_argument("n_total_plans", type=int, help='number of plans')
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("outdir", type=pathlib.Path)
-    parser.add_argument("--classifier-model-dir", help="load this saved forward model file", type=pathlib.Path)
-    parser.add_argument("--classifier-model-type", choices=['collision', 'none', 'raster'], default='none')
-    parser.add_argument("--n-total-plans", type=int, default=2048, help='number of environments')
     parser.add_argument("--n-plans-per-env", type=int, default=8, help='number of targets/plans per environment')
     # if the number of steps in the plan is larger than this number, we truncate.
     # If it is smaller we pad with 0 actions/stationary states

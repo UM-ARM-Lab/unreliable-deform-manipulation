@@ -45,7 +45,7 @@ def main():
     dataset_hparams['balanced'] = args.balance
     dataset_hparams['type'] = 'image'
     out_hparams_path = root_output_directory / 'hparams.json'
-    json.dump(out_hparams_path.open('w'), dataset_hparams, indent=1)
+    json.dump(dataset_hparams, out_hparams_path.open('w'), indent=1)
 
     for mode in ['train', 'test', 'val']:
         full_output_directory = root_output_directory / mode
@@ -59,6 +59,7 @@ def main():
                                                   shuffle=False,
                                                   seed=0,
                                                   sequence_length=None)
+
 
         current_record_idx = 0
         examples = np.ndarray([args.n_examples_per_record], dtype=np.object)

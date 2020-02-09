@@ -53,7 +53,6 @@ def main():
         return False
 
     i = 0
-    overall_max_v = 0
     all_vs = []
     for input_data, output_data in train_dataset:
 
@@ -61,11 +60,7 @@ def main():
 
         rope_configurations = input_data['state_s'].numpy().squeeze()
         actions = input_data['action_s'].numpy().squeeze()
-        max_v = np.max(np.abs(actions.flatten()))
         all_vs.extend(actions.flatten().tolist())
-        if max_v > overall_max_v:
-            overall_max_v = max_v
-            print(overall_max_v)
 
         if not args.no_plot:
             full_env = input_data['full_env/env'].numpy().squeeze()
@@ -122,7 +117,7 @@ def main():
         i += 1
     print("dataset mode={}, size={}".format(args.mode, i))
 
-    if not args.no_pot:
+    if not args.no_plot:
         plt.hist(all_vs)
         plt.show()
 

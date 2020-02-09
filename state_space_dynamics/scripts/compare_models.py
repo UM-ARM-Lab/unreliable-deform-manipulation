@@ -220,7 +220,6 @@ def evaluate_metrics(results):
             mid_errors.append(mid_error)
             tail_errors.append(tail_error)
 
-
             # The first time step is copied from ground truth, so it should always have zero error
             assert np.all(error[0] == 0)
 
