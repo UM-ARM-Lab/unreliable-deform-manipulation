@@ -133,7 +133,7 @@ class BaseStateSpaceDataset:
         if batch_size is not None:
             dataset = dataset.batch(batch_size, drop_remainder=False)
 
-        dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+        dataset = dataset.cache()
 
         # sanity check that the dataset isn't empty, which can happen when debugging if batch size is bigger than dataset size
         empty = True

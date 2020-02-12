@@ -127,7 +127,8 @@ def main():
                     planning_ax.plot(errors_thresholds, planning_successes, label=name)
 
             execution_to_goal_errors_comparisons[str(subfolder.name)] = execution_to_goal_errors
-            plan_to_execution_errors_comparisons[str(subfolder.name)] = plan_to_goal_errors
+            if has_plan_to_execution_error:
+                plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
             headers.append(str(subfolder.name))
 
             aggregate_metrics['planning_time'].append(row_stats(planning_times))
