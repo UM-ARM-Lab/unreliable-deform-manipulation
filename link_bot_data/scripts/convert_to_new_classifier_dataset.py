@@ -11,7 +11,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import float_feature
 from link_bot_pycommon.link_bot_pycommon import add_bool_arg
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.05)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
@@ -43,7 +43,7 @@ def main():
     hparams_path = args.dataset_dir / 'hparams.json'
     dataset_hparams = json.load(hparams_path.open('r'))
     dataset_hparams['balanced'] = args.balance
-    dataset_hparams['type'] = 'image'
+    dataset_hparams['type'] = 'new'
     out_hparams_path = root_output_directory / 'hparams.json'
     json.dump(dataset_hparams, out_hparams_path.open('w'), indent=1)
 

@@ -180,7 +180,7 @@ def main():
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+', help='json file(s) describing what should be compared')
     parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time',
                         required=True)
-    parser.add_argument("--n-total-plans", type=int, default=30, help='total number of plans')
+    parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
     parser.add_argument("--seed", '-s', type=int, default=3)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
@@ -255,6 +255,7 @@ def main():
                                goal_padding=0.0,
                                move_obstacles=(not args.no_move_obstacles),
                                nudge=(not args.no_nudge))
+        print(Fore.GREEN + "Running {} Trials".format(args.n_total_plans) + Fore.RESET)
 
         runner = ComputeClassifierMetrics(
             planner=planner,

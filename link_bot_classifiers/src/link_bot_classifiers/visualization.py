@@ -67,3 +67,12 @@ def plot_classifier_data(
     ax.set_xlabel("x (m)")
     ax.set_ylabel("y (m)")
     # ax.legend()
+
+
+def make_interpretable_image(image: np.ndarray, n_points: int):
+    image_25d = image.squeeze()
+    pre_rope = np.sum(image_25d[:, :, 0:n_points], axis=2)
+    post_rope = np.sum(image_25d[:, :, n_points:2 * n_points], axis=2)
+    local_env = image_25d[:, :, 2 * n_points]
+    interpretable_image = np.stack([pre_rope, post_rope, local_env], axis=2)
+    return interpretable_image

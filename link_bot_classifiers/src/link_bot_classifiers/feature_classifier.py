@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import json
 import pathlib
-from typing import List
+from typing import List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,17 +27,7 @@ class FeatureClassifier(tf.keras.Model):
 
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
-    def call(self, input_dict: dict, training=None, mask=None):
-        """
-        Expected sizes:
-            'action': n_batch, n_action
-            'planned_state': n_batch, n_state
-            'planned_state_next': n_batch, n_state
-            'planned_local_env/env': n_batch, h, w
-            'planned_local_env/origin': n_batch, 2
-            'planned_local_env/extent': n_batch, 4
-            'resolution': n_batch, 1
-        """
+    def compute_features(self, input_dict: Dict):
         planned_state = input_dict['planned_state']
         action = input_dict['action']
         planned_next_state = input_dict['planned_state_next']
@@ -60,20 +50,34 @@ class FeatureClassifier(tf.keras.Model):
         occ = tf.reduce_sum(tf.reshape(planned_local_env, [self.batch_size, -1]), axis=1)
 
         speed = np.linalg.norm(action, axis=1)
+        return rope_lengths, next_rope_lengths, wiggle, occ, speed
 
-        features = tf.stack((wiggle, rope_lengths, next_rope_lengths, occ, speed), axis=1)
+    def call(self, input_dict: dict, training=None, mask=None):
+        """
+        Expected sizes:
+            'action': n_batch, n_action
+            'planned_state': n_batch, n_state
+            'planned_state_next': n_batch, n_state
+            'planned_local_env/env': n_batch, h, w
+            'planned_local_env/origin': n_batch, 2
+            'planned_local_env/extent': n_batch, 4
+            'resolution': n_batch, 1
+        """
+        features = self.compute_features(input_dict)
+
+        features = tf.stack(features, axis=1)
 
         accept_probability = self.output_layer(features)
         return accept_probability
 
 
-def check_validation(val_tf_dataset, loss, net, from_image=False):
+def check_validation(val_tf_dataset, loss, net, dataset_type: str):
     val_losses = []
     val_accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
     val_accuracy.reset_states()
     for val_example_dict_batch in val_tf_dataset:
         val_true_labels_batch = val_example_dict_batch['label']
-        if from_image:
+        if dataset_type == 'image':
             val_predictions_batch = net.from_image(val_example_dict_batch['image'])
         else:
             val_predictions_batch = net(val_example_dict_batch)
@@ -84,11 +88,11 @@ def check_validation(val_tf_dataset, loss, net, from_image=False):
     return val_losses, val_accuracy
 
 
-def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, from_image: bool = False):
-    if from_image:
+def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, dataset_type: str):
+    if dataset_type == 'image':
         raise ValueError("feature classifier only works on new type datasets")
 
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.0001)
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.01)
     loss = tf.keras.losses.BinaryCrossentropy()
     train_epoch_accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
     batch_accuracy = tf.keras.metrics.BinaryAccuracy(name='batch_accuracy')
@@ -163,7 +167,7 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, from_image:
                     # validation
                     ################
                     if step % args.validation_every == 0:
-                        val_losses, val_accuracy = check_validation(val_tf_dataset, loss, net)
+                        val_losses, val_accuracy = check_validation(val_tf_dataset, loss, net, dataset_type)
                         mean_val_loss = np.mean(val_losses)
                         val_accuracy = val_accuracy.result().numpy() * 100
                         tf.contrib.summary.scalar('validation loss', mean_val_loss, step=step)
@@ -200,8 +204,8 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, from_image:
         train_loop()
 
 
-def eval(hparams, test_tf_dataset, args, from_image: bool = False):
-    if from_image:
+def eval(hparams, test_tf_dataset, args, dataset_type: str):
+    if dataset_type == 'image':
         raise ValueError("feature classifier only works on new type datasets")
     net = FeatureClassifier(hparams=hparams, batch_size=args.batch_size)
     accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
@@ -221,6 +225,7 @@ def eval(hparams, test_tf_dataset, args, from_image: bool = False):
     tp = 0
     for test_example_dict in test_tf_dataset:
         test_batch_labels = test_example_dict['label']
+        features = net.compute_features(test_example_dict)
         test_batch_predictions = net(test_example_dict)
         test_predictions.extend(test_batch_predictions.numpy().flatten().tolist())
         batch_test_loss = loss(y_true=test_batch_labels, y_pred=test_batch_predictions)
@@ -238,6 +243,10 @@ def eval(hparams, test_tf_dataset, args, from_image: bool = False):
                 fp += 1
             elif pred_bin == 0 and label == 0:
                 tn += 1
+
+    print(net.summary())
+    print('w', net.get_weights()[0].T)
+    print('b', net.get_weights()[1])
 
     plt.hist(test_predictions, bins=10)
     plt.xlabel("accept probability")

@@ -9,13 +9,14 @@ import tensorflow as tf
 from colorama import Fore
 
 import link_bot_classifiers
+from link_bot_classifiers import visualization
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.image_classifier_dataset import ImageClassifierDataset
 from link_bot_data.new_classifier_dataset import NewClassifierDataset
 from link_bot_planning import classifier_utils
 from link_bot_pycommon import experiments_util, link_bot_sdf_utils
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.5)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
@@ -113,55 +114,83 @@ def eval_wrapper(args, seed: int):
     ###############
     # Dataset
     ###############
-    test_dataset = NewClassifierDataset(args.dataset_dirs)
+
+    hparams_path = args.dataset_dirs[0] / 'hparams.json'
+    dataset_hparams = json.load(hparams_path.open("r"))
+    dataset_type = dataset_hparams['type']
+
+    ###############
+    # Datasets
+    ###############
+    if dataset_type == 'image':
+        test_dataset = ImageClassifierDataset(args.dataset_dirs)
+    elif dataset_type == 'new':
+        test_dataset = NewClassifierDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
                                                 shuffle=False,
                                                 seed=seed,
                                                 batch_size=1)
 
     for example in test_tf_dataset:
-        # for k, v in example.items():
-        #     print(k, v.shape)
-        local_env = example['planned_local_env/env'].numpy().squeeze()
-        origin = example['planned_local_env/origin'].numpy().squeeze()
-        res = example['resolution'].numpy().squeeze()
-        res_2d = np.array([res, res])
-        local_env_data = link_bot_sdf_utils.OccupancyData(data=local_env,
-                                                          resolution=res_2d,
-                                                          origin=origin)
-        planned_state = example['planned_state'].numpy()
-        planned_next_state = example['planned_state_next'].numpy()
-        state = example['state'].numpy()
-        next_state = example['state_next'].numpy()
-        action = example['action'].numpy()
-        label = example['label'].numpy().squeeze()
+        if dataset_type == 'image':
+            image = example['image']
 
-        accept_probability = classifier_model.predict([local_env_data], planned_state, planned_next_state, action)[0]
+            accept_probability = classifier_model.predict_from_image(image).squeeze()
 
-        prediction = 1 if accept_probability > 0.5 else 0
-        if prediction == label:
-            title = 'P(accept) = {:04.3f}%, Label={}'.format(100 * accept_probability, label)
-        else:
-            title = 'WRONG!!! P(accept) = {:04.3f}%, Label={}'.format(100 * accept_probability, label)
+            label = example['label'].numpy().squeeze()
 
-        plot_classifier_data(planned_env=local_env_data.data,
-                             planned_env_extent=local_env_data.extent,
-                             planned_state=planned_state[0],
-                             planned_next_state=planned_next_state[0],
-                             planned_env_origin=local_env_data.origin,
-                             res=local_env_data.resolution,
-                             state=state[0],
-                             next_state=next_state[0],
-                             title=title,
-                             actual_env=None,
-                             actual_env_extent=None,
-                             label=prediction)
-        plt.legend()
-        plt.show()
+            prediction = 1 if accept_probability > 0.5 else 0
+            if prediction == label:
+                title = 'P(accept) = {:04.3f}%, Label={}'.format(100 * accept_probability, label)
+            else:
+                title = 'WRONG!!! P(accept) = {:04.3f}%, Label={}'.format(100 * accept_probability, label)
+
+            plt.figure()
+            interpretable_image = visualization.make_interpretable_image(image.numpy(), classifier_model.net.n_points)
+            plt.imshow(interpretable_image)
+            plt.title(title)
+            plt.show(block=True)
+        elif dataset_type == 'new':
+            local_env = example['planned_local_env/env'].numpy().squeeze()
+            origin = example['planned_local_env/origin'].numpy().squeeze()
+            res = example['resolution'].numpy().squeeze()
+            res_2d = np.array([res, res])
+            local_env_data = link_bot_sdf_utils.OccupancyData(data=local_env,
+                                                              resolution=res_2d,
+                                                              origin=origin)
+            planned_state = example['planned_state'].numpy()
+            planned_next_state = example['planned_state_next'].numpy()
+            state = example['state'].numpy()
+            next_state = example['state_next'].numpy()
+            action = example['action'].numpy()
+            label = example['label'].numpy().squeeze()
+
+            accept_probability = classifier_model.predict([local_env_data], planned_state, planned_next_state, action)[0]
+
+            prediction = 1 if accept_probability > 0.5 else 0
+            if prediction == label:
+                title = 'P(accept) = {:04.3f}%, Label={}'.format(100 * accept_probability, label)
+            else:
+                title = 'WRONG!!! P(accept) = {:04.3f}%, Label={}'.format(100 * accept_probability, label)
+
+            plot_classifier_data(planned_env=local_env_data.data,
+                                 planned_env_extent=local_env_data.extent,
+                                 planned_state=planned_state[0],
+                                 planned_next_state=planned_next_state[0],
+                                 planned_env_origin=local_env_data.origin,
+                                 res=local_env_data.resolution,
+                                 state=state[0],
+                                 next_state=next_state[0],
+                                 title=title,
+                                 actual_env=None,
+                                 actual_env_extent=None,
+                                 label=prediction)
+            plt.legend()
+            plt.show()
 
 
 def main():
-    np.set_printoptions(linewidth=250)
+    np.set_printoptions(linewidth=250, precision=4, suppress=True)
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers()
@@ -191,7 +220,7 @@ def main():
     eval_parser.set_defaults(func=eval)
     eval_parser.add_argument('--seed', type=int, default=None)
 
-    eval_wrapper_parser = subparsers.add_parser('eval_wrapper')
+    eval_wrapper_parser = subparsers.add_parser('evalw')
     eval_wrapper_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     eval_wrapper_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_wrapper_parser.add_argument('--mode', type=str, choices=['test', 'val', 'train'], default='test')

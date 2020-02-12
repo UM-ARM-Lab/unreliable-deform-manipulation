@@ -80,12 +80,13 @@ class TrainingSetCompoundSampler(ob.RealVectorStateSampler):
                  viz_object: VizObject,
                  train_dataset: tf.data.Dataset,
                  sequence_length: int,
-                 ):
+                 rng: np.random.RandomState):
         super(TrainingSetCompoundSampler, self).__init__(state_space)
         self.viz_object = viz_object
         self.infinite_dataset = train_dataset.repeat()  # infinite!
         self.iter = iter(self.infinite_dataset)
         self.sequence_length = sequence_length
+        self.rng = rng
 
     def sampleUniform(self, state_out: ob.CompoundStateInternal):
         """

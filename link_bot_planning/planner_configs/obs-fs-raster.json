@@ -1,17 +1,18 @@
 {
-  "fwd_model_dir": "ss_log_data/fs-nn",
-  "fwd_model_type": "nn",
+  "fwd_model_dir": "ss_log_data/obs-cnn1",
+  "fwd_model_type": "obs",
   "classifier_model_dir": "classifiers/fs-raster",
   "classifier_model_type": "raster",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
-  "max_v": 0.15,
-  "timeout": 180,
-  "max_angle_rad": 1.0,
+  "max_v": 0.5,
+  "accept_threshold": 0.5,
   "goal_threshold": 0.15,
   "random_epsilon": 0.05,
+  "max_angle_rad": 1.0,
   "w": 5.0,
   "h": 5.0,
-  "subspace_weights": [1, 0, 0]
+  "timeout": 180,
+  "subspace_weights": [1.0, 0, 0]
 }

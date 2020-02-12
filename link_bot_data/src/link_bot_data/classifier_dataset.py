@@ -47,6 +47,7 @@ class ClassifierDataset(StateSpaceDataset):
         self.state_like_names_and_shapes['planned_local_env_s/extent'] = '%d/planned_local_env/extent', (4,)
         self.state_like_names_and_shapes['planned_local_env_s/origin'] = '%d/planned_local_env/origin', (2,)
         self.state_like_names_and_shapes['planned_local_env_s/env'] = '%d/planned_local_env/env', local_env_shape
+        self.state_like_names_and_shapes['time_idx_s'] = '%d/time_idx ', (1,)
         self.trajectory_constant_names_and_shapes['local_env_rows'] = 'local_env_rows', (1,)
         self.trajectory_constant_names_and_shapes['local_env_cols'] = 'local_env_cols', (1,)
         self.trajectory_constant_names_and_shapes['full_env/env'] = 'full_env/env', full_env_shape

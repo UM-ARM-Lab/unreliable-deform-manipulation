@@ -267,7 +267,8 @@ class MyPlanner:
             sampler = TrainingSetCompoundSampler(state_space,
                                                  self.viz_object,
                                                  train_dataset=self.training_dataset,
-                                                 sequence_length=self.train_dataset_max_sequence_length)
+                                                 sequence_length=self.train_dataset_max_sequence_length,
+                                                 rng=self.state_sampler_rng)
         else:
             raise ValueError("Invalid sampler type {}".format(self.planner_params['sampler_type']))
 

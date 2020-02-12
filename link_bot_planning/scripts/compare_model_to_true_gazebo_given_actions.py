@@ -10,12 +10,14 @@ import numpy as np
 import rospy
 import std_srvs
 import tensorflow as tf
+from link_bot_gazebo.srv import LinkBotStateRequest, WorldControlRequest
 from matplotlib import animation
 
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import get_local_occupancy_data
-from link_bot_gazebo.srv import LinkBotStateRequest, WorldControlRequest
 from link_bot_planning import model_utils, classifier_utils
+from link_bot_pycommon.ros_pycommon import make_trajectory_execution_request, trajectory_execution_response_to_numpy
+from victor import victor_utils
 
 tf.enable_eager_execution()
 
@@ -54,7 +56,7 @@ def visualize(args, env_data, predicted_points, actual_points, p_accept_s):
     plt.tight_layout()
 
     if args.outdir is not None:
-        outname = "llnn_vs_true_{}.gif".format(int(time.time()))
+        outname = "model_vs_true_{}.gif".format(int(time.time()))
         outname = args.outdir / outname
         anim.save(str(outname), writer='imagemagick', fps=4)
 
@@ -66,8 +68,9 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument("model_dir", type=pathlib.Path, help='path to model')
-    parser.add_argument("model_type", choices=['llnn', 'gp', 'rigid', 'nn'], default='llnn', help='type of model')
+    parser.add_argument("model_type", choices=['nn', 'obs'], default='nn', help='type of model')
     parser.add_argument("classifier_dir", type=pathlib.Path, help='path to model')
     parser.add_argument("classifier_type", choices=['raster', 'collision', 'none'], default='raster', help='type of classifier')
     parser.add_argument("actions", type=pathlib.Path, help='csv file of actions')
@@ -81,19 +84,22 @@ def main():
     np.random.seed(args.seed)
     random.seed(args.seed)
 
-    rospy.init_node('compare_to_true_gazebo_given_actions')
+    rospy.init_node('compare_to_true_given_actions')
 
     # Start Services
-    services = gazebo_utils.GazeboServices()
-    services.reset_gazebo_environment(reset_model_poses=True)
-    services.pause(std_srvs.srv.EmptyRequest())
+    if args.env_type == 'victor':
+        services = victor_utils.VictorServices()
+    else:
+        services = gazebo_utils.GazeboServices()
+        services.reset_gazebo_environment(reset_model_poses=True)
+        services.pause(std_srvs.srv.EmptyRequest())
 
     step = WorldControlRequest()
     step.steps = 5000
     services.world_control(step)  # this will block until stepping is complete
 
     state_req = LinkBotStateRequest()
-    state = services.get_state.call(state_req)
+    state = services.get_state(state_req)
     initial_rope_configuration = np.array([[p.x, p.y] for p in state.points]).flatten()
 
     actions = np.genfromtxt(args.actions, delimiter=',')
@@ -127,12 +133,10 @@ def main():
         print(p_accept)
         p_accept_s.append(p_accept)
 
-    trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(dt, actions)
+    trajectory_execution_request = make_trajectory_execution_request(dt, actions)
     traj_res = services.execute_trajectory(trajectory_execution_request)
 
-    actual_points, _ = gazebo_utils.trajectory_execution_response_to_numpy(traj_res,
-                                                                           None,
-                                                                           services)
+    actual_points, _ = trajectory_execution_response_to_numpy(traj_res, None, services)
     actual_points = actual_points.reshape([actual_points.shape[0], -1, 2])
 
     position_errors = np.linalg.norm(predicted_points - actual_points, axis=2)

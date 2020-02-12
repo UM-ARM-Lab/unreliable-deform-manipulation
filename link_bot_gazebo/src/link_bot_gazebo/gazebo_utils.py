@@ -5,16 +5,14 @@ import numpy as np
 import rospy
 import std_msgs
 import std_srvs
+from link_bot_gazebo.msg import LinkBotVelocityAction, LinkBotJointConfiguration, Position2dAction, ObjectAction
+from link_bot_gazebo.srv import LinkBotPositionAction, LinkBotPath, \
+    CameraProjection, InverseCameraProjection, LinkBotStateRequest, WorldControlRequest, InverseCameraProjectionRequest, \
+    CameraProjectionRequest
 from std_msgs.msg import String, Empty
 from std_srvs.srv import EmptyRequest
 
-from link_bot_gazebo.msg import LinkBotVelocityAction, LinkBotJointConfiguration, Position2dAction, ObjectAction
-
-from link_bot_gazebo.srv import WorldControl, LinkBotState, LinkBotTrajectory, LinkBotPositionAction, LinkBotPath, \
-    CameraProjection, InverseCameraProjection, LinkBotStateRequest, WorldControlRequest, InverseCameraProjectionRequest, \
-    CameraProjectionRequest
-
-from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties, ApplyBodyWrench, ApplyBodyWrenchRequest, \
+from gazebo_msgs.srv import ApplyBodyWrench, ApplyBodyWrenchRequest, \
     SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
 from link_bot_pycommon.link_bot_pycommon import points_to_config
 from link_bot_pycommon.ros_pycommon import Services
@@ -27,36 +25,25 @@ class GazeboServices(Services):
 
     def __init__(self):
         super().__init__()
-        self.velocity_action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
-        self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotJointConfiguration, queue_size=10)
+        self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", std_srvs.srv.Empty)
+
+        # we can't mock these
+        self.apply_body_wrench = rospy.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
+
+        # FIXME: wrap up all this "automatically rearrange the environment" business
         self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
         self.position_2d_stop = rospy.Publisher('/position_2d_stop', std_msgs.msg.Empty, queue_size=10)
         self.position_2d_action = rospy.Publisher('/position_2d_action', Position2dAction, queue_size=10)
-        self.world_control = rospy.ServiceProxy('/world_control', WorldControl)
-        self.pause = rospy.ServiceProxy('/gazebo/pause_physics', std_srvs.srv.Empty)
-        self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', std_srvs.srv.Empty)
-        self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
-        self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
-        self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
-        self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", std_srvs.srv.Empty)
-        self.execute_trajectory = rospy.ServiceProxy("/link_bot_execute_trajectory", LinkBotTrajectory)
-        self.apply_body_wrench = rospy.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
 
         # currently unused
         self.position_action = rospy.ServiceProxy("/link_bot_position_action", LinkBotPositionAction)
         self.execute_path = rospy.ServiceProxy("/link_bot_execute_path", LinkBotPath)
         self.xy_to_rowcol = rospy.ServiceProxy('/my_camera/xy_to_rowcol', CameraProjection)
         self.rowcol_to_xy = rospy.ServiceProxy('/my_camera/rowcol_to_xy', InverseCameraProjection)
+        self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotJointConfiguration, queue_size=10)
 
         self.services_to_wait_for.extend([
-            '/world_control',
-            '/link_bot_state',
-            '/link_bot_execute_trajectory',
-            '/gazebo/get_physics_properties',
-            '/gazebo/set_physics_properties',
             '/gazebo/reset_simulation',
-            '/gazebo/pause_physics',
-            '/gazebo/unpause_physics',
         ])
 
     def reset_gazebo_environment(self, reset_model_poses=True):

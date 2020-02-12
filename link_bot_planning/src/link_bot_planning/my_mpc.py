@@ -13,12 +13,12 @@ from ompl import base as ob
 from ignition import markers
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_pycommon.ros_pycommon import Services
 from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
-from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
+from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon, link_bot_pycommon
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 
 
@@ -31,7 +31,7 @@ class myMPC:
                  verbose: int,
                  planner_params: Dict,
                  sim_params: SimParams,
-                 services: GazeboServices,
+                 services: Services,
                  no_execution: bool,
                  seed: int):
         self.planner = planner
@@ -82,7 +82,7 @@ class myMPC:
                 # generate a random target
                 state = self.services.get_state(state_req)
                 head_idx = state.link_names.index("head")
-                initial_rope_configuration = gazebo_utils.points_to_config(state.points)
+                initial_rope_configuration = link_bot_pycommon.points_to_config(state.points)
                 head_point = state.points[head_idx]
                 tail_goal = self.get_goal(self.planner_params['w'],
                                           self.planner_params['h'],

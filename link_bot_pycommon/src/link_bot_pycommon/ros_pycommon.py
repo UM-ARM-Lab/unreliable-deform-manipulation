@@ -1,11 +1,12 @@
 import numpy as np
 import rospy
+import std_srvs
 from colorama import Fore
-
-from link_bot_gazebo.srv import ComputeSDF2Request, ComputeOccupancyRequest, ComputeSDF2, ComputeOccupancy, \
-    LinkBotTrajectoryRequest
-
 from link_bot_gazebo.msg import LinkBotVelocityAction
+from link_bot_gazebo.srv import ComputeSDF2Request, ComputeOccupancyRequest, ComputeSDF2, ComputeOccupancy, \
+    LinkBotTrajectoryRequest, LinkBotState, WorldControl, LinkBotTrajectory
+
+from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from link_bot_pycommon import link_bot_sdf_utils
 
 
@@ -21,12 +22,27 @@ class Services:
 
     def __init__(self):
         self.compute_occupancy = rospy.ServiceProxy('/occupancy', ComputeOccupancy)
+        self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
+        self.velocity_action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
+        self.world_control = rospy.ServiceProxy('/world_control', WorldControl)
+        self.pause = rospy.ServiceProxy('/gazebo/pause_physics', std_srvs.srv.Empty)
+        self.execute_trajectory = rospy.ServiceProxy("/link_bot_execute_trajectory", LinkBotTrajectory)
+        self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', std_srvs.srv.Empty)
+        self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
+        self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
 
         # currently unused
         self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
 
         self.services_to_wait_for = [
+            '/world_control',
+            '/link_bot_state',
+            '/link_bot_execute_trajectory',
             '/occupancy',
+            '/gazebo/pause_physics',
+            '/gazebo/unpause_physics',
+            '/gazebo/get_physics_properties',
+            '/gazebo/set_physics_properties',
         ]
 
     def wait(self, verbose):
@@ -205,6 +221,7 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result,
                                            services):
     actual_path = []
     actual_local_envs = []
+    # TODO: figure out why executed has one more step then planned
     for configuration in trajectory_execution_result.actual_path:
         np_config = []
         for point in configuration.points:
@@ -222,4 +239,3 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result,
             actual_local_envs.append(actual_local_env)
     actual_path = np.array(actual_path)
     return actual_path, actual_local_envs
-

@@ -12,7 +12,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import float_feature, balance_by_augmentation
 from link_bot_pycommon.link_bot_pycommon import add_bool_arg
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.05)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
@@ -35,6 +35,8 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--fewer-negative', action='store_true')
     group.add_argument('--fewer-positive', action='store_true')
+    parser.add_argument('--pre-close', type=float, required=True)
+    parser.add_argument('--post-close', type=float, required=True)
 
     args = parser.parse_args()
 
@@ -76,6 +78,8 @@ def main():
         classifier_dataset = ClassifierDataset([args.dataset_dir])
         # we can now hack into the hparams if we want
         classifier_dataset.hparams['labeling']['discard_pre_far'] = args.discard_pre_far
+        classifier_dataset.hparams['labeling']['pre_close_threshold'] = args.pre_close
+        classifier_dataset.hparams['labeling']['post_close_threshold'] = args.post_close
         dataset = classifier_dataset.get_datasets(mode=mode,
                                                   batch_size=batch_size,
                                                   balance_key=None,

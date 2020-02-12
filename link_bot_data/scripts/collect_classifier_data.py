@@ -94,11 +94,6 @@ class ClassifierDataCollector(my_mpc.myMPC):
                 'fwd_model_type': self.fwd_model_type,
                 'fwd_model_hparams': self.planner.fwd_model.hparams,
                 'filter_free_space_only': False,
-                'labeling': {
-                    'pre_close_threshold': 0.15,
-                    'post_close_threshold': 0.21,
-                    'discard_pre_far': True
-                },
                 'n_state': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_state'],
                 'n_action': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_action']
             }
@@ -184,7 +179,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
             current_features['{}/actual_local_env/origin'.format(time_idx)] = float_feature(actual_local_env.origin)
             current_features['{}/res'.format(time_idx)] = float_feature(np.array([self.local_env_params.res]))
             current_features['{}/traj_idx'.format(time_idx)] = float_feature(np.array([self.traj_idx]))
-            current_features['{}/time_idx '.format(time_idx)] = float_feature(np.array([time_idx]))
+            current_features['{}/time_idx'.format(time_idx)] = float_feature(np.array([time_idx]))
             current_features['{}/planned_state'.format(time_idx)] = float_feature(planned_state)
             current_features['{}/planned_local_env/env'.format(time_idx)] = float_feature(planned_local_env.data.flatten())
             current_features['{}/planned_local_env/extent'.format(time_idx)] = float_feature(np.array(planned_local_env.extent))

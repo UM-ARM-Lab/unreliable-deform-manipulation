@@ -9,11 +9,12 @@ import rospy
 import tensorflow as tf
 
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import get_local_occupancy_data, GazeboServices, get_occupancy_data
+from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_gazebo.srv import LinkBotStateRequest
 from link_bot_planning import model_utils, classifier_utils
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.ros_pycommon import get_local_occupancy_data, get_occupancy_data
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.ConfigProto(gpu_options=gpu_options)
@@ -31,6 +32,7 @@ def main():
     parser.add_argument("classifier_model_type", choices=['collision', 'none', 'raster'], default='raster')
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--no-plot', action='store_true', help="don't show plots, useful for debugging")
+    parser.add_argument('-v', type=float, default=0.15, help='speed of test actions')
 
     args = parser.parse_args()
 
@@ -60,32 +62,17 @@ def main():
 
     state = np.expand_dims(gazebo_utils.points_to_config(link_bot_state.points), axis=0)
 
+    v = args.v
     test_inputs = [
-        # (.25, 0),
-        # (.25, 45),
-        # (.25, 90),
-        # (.25, 135),
-        # (.25, 180),
-        # (.25, 225),
-        # (.25, 270),
-        # (.25, 325),
-        (.15, 135),
-        (.15, 90),
-        (.15, 45),
-        (.15, 180),
+        (v, 135),
+        (v, 90),
+        (v, 45),
+        (v, 180),
         (0, 0),
-        (.15, 0),
-        (.15, 225),
-        (.15, 270),
-        (.15, 315),
-        # (.05, 0),
-        # (.05, 45),
-        # (.05, 90),
-        # (.05, 135),
-        # (.05, 180),
-        # (.05, 225),
-        # (.05, 270),
-        # (.05, 315),
+        (v, 0),
+        (v, 225),
+        (v, 270),
+        (v, 315),
     ]
 
     fig, axes = plt.subplots(3, 3)

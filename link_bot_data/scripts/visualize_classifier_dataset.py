@@ -7,10 +7,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
+from link_bot_classifiers import visualization
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.image_classifier_dataset import ImageClassifierDataset
 from link_bot_data.new_classifier_dataset import NewClassifierDataset
 from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
 
 tf.compat.v1.enable_eager_execution()
 
@@ -86,8 +88,17 @@ def main():
             continue
 
         if dataset_type == 'image':
-            i = np.sum(example['image'].numpy(), axis=3).squeeze()
-            plt.imshow(i)
+            image = example['image'].numpy()
+            n_points = n_state_to_n_points(dataset_hparams['n_state'])
+            interpretable_image = visualization.make_interpretable_image(image, n_points)
+            plt.imshow(interpretable_image)
+            planned_env_extent = [1, 49, 1, 49]
+            label_color = 'g' if label else 'r'
+            plt.plot([planned_env_extent[0], planned_env_extent[0], planned_env_extent[1], planned_env_extent[1],
+                      planned_env_extent[0]],
+                     [planned_env_extent[2], planned_env_extent[3], planned_env_extent[3], planned_env_extent[2],
+                      planned_env_extent[2]],
+                     c=label_color, linewidth=4)
             plt.show(block=True)
         elif dataset_type == 'new':
             res = example['resolution'].numpy().squeeze()

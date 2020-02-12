@@ -418,5 +418,11 @@ class RasterClassifierWrapper(BaseClassifier):
 
         return accept_probabilities
 
+    def predict_from_image(self, image: np.ndarray) -> float:
+        accept_probabilities = self.net.from_image(image)
+        accept_probabilities = accept_probabilities.numpy()
+        accept_probabilities = accept_probabilities.astype(np.float64)[:, 0]
+        return accept_probabilities
+
 
 model = RasterClassifier
