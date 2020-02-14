@@ -1,7 +1,5 @@
 from __future__ import division
 
-import argparse
-
 import numpy as np
 from colorama import Fore
 import tensorflow as tf
@@ -134,28 +132,3 @@ def transpose_2d_lists(l):
     return list(map(list, zip(*l)))
 
 
-def point_arg(i):
-    try:
-        x, y = [d.strip(" ") for d in i.split(",")]
-        x = float(x)
-        y = float(y)
-        return x, y
-    except Exception:
-        raise ValueError("Failed to parse {} into two floats. Must be comma seperated".format(i))
-
-
-def bool_arg(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-
-
-def add_bool_arg(parser: argparse.ArgumentParser, flag: str, required: bool = True, help: str = ""):
-    group = parser.add_mutually_exclusive_group(required=required)
-    group.add_argument('--' + flag, action='store_true', help=help)
-    group.add_argument('--no-' + flag, action='store_true', help="NOT " + help)

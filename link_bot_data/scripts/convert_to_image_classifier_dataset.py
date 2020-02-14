@@ -10,7 +10,7 @@ import tensorflow as tf
 from link_bot_classifiers.raster_classifier import RasterClassifier
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import float_feature, balance_by_augmentation
-from link_bot_pycommon.link_bot_pycommon import add_bool_arg
+from link_bot_pycommon.args import add_bool_arg
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.05)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)

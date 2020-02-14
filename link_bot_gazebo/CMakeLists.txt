@@ -15,9 +15,9 @@ add_message_files(
         LinkBotVelocityAction.msg
         LinkBotForceAction.msg
         WriteSDF.msg
-        Position2dEnable.msg
-        Position2dAction.msg
-        ObjectAction.msg
+        ModelPose.msg
+        ModelsEnable.msg
+        ModelsPoses.msg
         IntPoint2D.msg
 )
 
@@ -75,3 +75,7 @@ target_link_libraries(my_camera_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} C
 add_library(test_ray_plugin SHARED plugins/test_ray_plugin.cpp)
 target_include_directories(test_ray_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(test_ray_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+
+add_library(tether_plugin SHARED plugins/tether_plugin.cpp)
+target_include_directories(tether_plugin PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(tether_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})

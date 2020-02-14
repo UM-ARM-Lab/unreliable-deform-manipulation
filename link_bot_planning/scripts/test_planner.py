@@ -24,8 +24,7 @@ from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning import ompl_viz
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
-from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.link_bot_pycommon import point_arg
+from link_bot_pycommon.args import my_formatter, point_arg
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)

@@ -16,9 +16,9 @@
 
 namespace gazebo {
 
-class Position2dPlugin : public ModelPlugin {
+class TetherPlugin : public ModelPlugin {
  public:
-  ~Position2dPlugin() override;
+  ~TetherPlugin() override;
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
 
@@ -48,19 +48,12 @@ class Position2dPlugin : public ModelPlugin {
   double kI_pos_{0.0};
   double kD_pos_{0.0};
   double max_vel_{0.0};
-  double kP_rot_{0.0};
-  double kI_rot_{0.0};
-  double kD_rot_{0.0};
-  double max_torque_{0.0};
   double kP_vel_{0.0};
   double kI_vel_{0.0};
   double kD_vel_{0.0};
   double max_force_{0.0};
-  common::PID x_pos_pid_;
-  common::PID y_pos_pid_;
-  common::PID z_rot_pid_;
-  common::PID x_vel_pid_;
-  common::PID y_vel_pid_;
+  common::PID pos_pid_;
+  common::PID vel_pid_;
   ignition::math::Pose3d target_pose_{0, 0, 0, 0, 0, 0};
   ignition::math::Vector3d target_velocity_{0, 0, 0};
 };
