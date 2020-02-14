@@ -257,6 +257,7 @@ ControlResult MultiLinkBotModelPlugin::UpdateControl()
       control_result.gripper1_vel = gripper1_current_target_velocity_;
 
       auto const gripper1_vel_error = gripper1_vel - gripper1_current_target_velocity_;
+      printf("%f\n", gripper1_vel_error.Length());
       control_result.gripper1_force.X(gripper1_x_vel_pid_.Update(gripper1_vel_error.X(), dt));
       control_result.gripper1_force.Y(gripper1_y_vel_pid_.Update(gripper1_vel_error.Y(), dt));
     }

@@ -44,11 +44,11 @@
             <kP_pos>50</kP_pos>
             <kI_pos>0.0</kI_pos>
             <kD_pos>0.0</kD_pos>
-            <max_vel>1.0</max_vel>
-            <kP_rot>20</kP_rot>
+            <max_vel>0.5</max_vel>
+            <kP_rot>40</kP_rot>
             <kI_rot>0.0</kI_rot>
             <kD_rot>0.0</kD_rot>
-            <max_torque>1.5</max_torque>
+            <max_torque>3.0</max_torque>
             <kP_vel>100.0</kP_vel>
             <kI_vel>0.0</kI_vel>
             <kD_vel>0.0</kD_vel>

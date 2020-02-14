@@ -8,7 +8,7 @@
             </camera>
         </gui>
         <include>
-            <uri>model://victor_table_plane</uri>
+            <uri>model://my_plane</uri>
         </include>
         <include>
             <uri>model://sun</uri>

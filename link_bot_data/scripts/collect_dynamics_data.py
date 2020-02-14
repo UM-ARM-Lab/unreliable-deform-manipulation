@@ -19,7 +19,7 @@ from link_bot_data.link_bot_dataset_utils import float_feature
 from link_bot_gazebo import gazebo_utils
 from link_bot_planning.goals import sample_goal
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
-from link_bot_pycommon import ros_pycommon
+from link_bot_pycommon import ros_pycommon, link_bot_pycommon
 from link_bot_pycommon.args import my_formatter
 
 opts = tensorflow.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
@@ -35,7 +35,7 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
 
     # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
     # over the course of this function
-    full_env_data = gazebo_utils.get_occupancy_data(env_w=args.env_w, env_h=args.env_h, res=args.res, services=services)
+    full_env_data = ros_pycommon.get_occupancy_data(env_w=args.env_w, env_h=args.env_h, res=args.res, services=services)
 
     combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
     feature = {
@@ -50,7 +50,7 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
         # Query the current state
         state = services.get_state(state_req)
         head_idx = state.link_names.index("head")
-        rope_configuration = gazebo_utils.points_to_config(state.points)
+        rope_configuration = link_bot_pycommon.points_to_config(state.points)
         head_point = state.points[head_idx]
 
         # Pick a new target if necessary
@@ -103,7 +103,7 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
 
         # format the tf feature
         head_np = np.array([head_point.x, head_point.y])
-        local_env_data = gazebo_utils.get_local_occupancy_data(args.local_env_rows,
+        local_env_data = ros_pycommon.get_local_occupancy_data(args.local_env_rows,
                                                                args.local_env_cols,
                                                                args.res,
                                                                center_point=head_np,
@@ -265,7 +265,7 @@ def main():
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB', help='compression type')
     parser.add_argument("--trajs-per-file", type=int, default=256, help='trajs per file')
     parser.add_argument("--seed", '-s', type=int, help='seed')
-    parser.add_argument("--real-time-rate", type=float, default=10, help='number of times real time')
+    parser.add_argument("--real-time-rate", type=float, default=0, help='number of times real time')
     parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
     parser.add_argument("--verbose", '-v', action="store_true", help='verbose')
 
