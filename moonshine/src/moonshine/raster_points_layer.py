@@ -31,7 +31,6 @@ class RasterPoints(tf.keras.layers.Layer):
         x, resolution, origin = inputs
         points = tf.reshape(x, [self.batch_size, self.sequence_length, self.n_points, 2], name='points_reshape')
 
-
         # resolution is assumed to be x,y, origin is row,col (which is y,x)
         row_y_indices = tf.reshape(tf.cast(points[:, :, :, 1] / resolution[:, :, 1:2] + origin[:, :, 0:1], tf.int64), [-1])
         col_x_indices = tf.reshape(tf.cast(points[:, :, :, 0] / resolution[:, :, 0:1] + origin[:, :, 1:2], tf.int64), [-1])
@@ -41,8 +40,8 @@ class RasterPoints(tf.keras.layers.Layer):
         time_indices = tf.tile(
             tf.reshape(tf.tile(tf.reshape(tf.range(self.sequence_length, dtype=tf.int64), [-1, 1]), [1, self.n_points]), [-1]),
             [self.batch_size])
-        row_indices = tf.squeeze(row_y_indices)
-        col_indices = tf.squeeze(col_x_indices)
+        row_indices = tf.reshape(row_y_indices, [-1])
+        col_indices = tf.reshape(col_x_indices, [-1])
         point_channel_indices = tf.tile(tf.range(self.n_points, dtype=tf.int64), [self.batch_size * self.sequence_length])
         indices = tf.stack((batch_indices,
                             time_indices,

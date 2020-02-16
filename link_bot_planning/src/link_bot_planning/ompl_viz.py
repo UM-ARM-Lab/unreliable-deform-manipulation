@@ -145,8 +145,10 @@ def plan_vs_execution(environment: np.ndarray,
 
     planned_xs, planned_ys = plottable_rope_configuration(planned_path[0])
     actual_xs, actual_ys = plottable_rope_configuration(actual_path[0])
-    actual_line = plt.plot(actual_xs, actual_ys, linewidth=1, c='c', zorder=3, label='actual')[0]
-    planned_line = plt.plot(planned_xs, planned_ys, linewidth=1, c='m', zorder=4, label='planned')[0]
+    actual_line = plt.plot(actual_xs, actual_ys, linewidth=1, c='c', zorder=3)[0]
+    planned_line = plt.plot(planned_xs, planned_ys, linewidth=1, c='m', zorder=4)[0]
+    actual_scat = plt.scatter(actual_xs, actual_ys, s=10, c='c', zorder=3, label='actual')
+    planned_scat = plt.scatter(planned_xs, planned_ys, s=10, c='m', zorder=4, label='planned')
 
     def update(t):
         planned_xs, planned_ys = plottable_rope_configuration(planned_path[t])
@@ -154,6 +156,8 @@ def plan_vs_execution(environment: np.ndarray,
 
         planned_line.set_data(planned_xs, planned_ys)
         actual_line.set_data(actual_xs, actual_ys)
+        actual_scat.set_offsets(np.hstack((actual_xs, actual_ys)).T)
+        planned_scat.set_offsets(np.hstack((planned_xs, planned_ys)).T)
 
     anim = FuncAnimation(fig, update, frames=planned_path.shape[0], interval=200)
     return anim

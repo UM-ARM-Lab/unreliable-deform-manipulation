@@ -22,6 +22,12 @@ void TetherPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
   // Get sdf parameters
   {
+    if (!sdf->HasElement("num_links")) {
+      printf("using default num_links=%u\n", num_links_);
+    }
+    else {
+      num_links_ = sdf->GetElement("num_links")->Get<unsigned int>();
+    }
     if (!sdf->HasElement("kP_pos")) {
       printf("using default kP_pos=%f\n", kP_pos_);
     }
@@ -100,14 +106,16 @@ void TetherPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   }
 
   auto stop_bind = boost::bind(&TetherPlugin::OnStop, this, _1);
-  auto stop_so =
-      ros::SubscribeOptions::create<std_msgs::Empty>("/tether_stop", 1, stop_bind, ros::VoidPtr(), &queue_);
+  auto stop_so = ros::SubscribeOptions::create<std_msgs::Empty>("/tether_stop", 1, stop_bind, ros::VoidPtr(), &queue_);
   auto enable_bind = boost::bind(&TetherPlugin::OnEnable, this, _1);
-  auto enable_so = ros::SubscribeOptions::create<link_bot_gazebo::ModelsEnable>(
-      "/tether_enable", 1, enable_bind, ros::VoidPtr(), &queue_);
+  auto enable_so = ros::SubscribeOptions::create<link_bot_gazebo::ModelsEnable>("/tether_enable", 1, enable_bind,
+                                                                                ros::VoidPtr(), &queue_);
   auto pos_action_bind = boost::bind(&TetherPlugin::OnAction, this, _1);
-  auto pos_action_so = ros::SubscribeOptions::create<link_bot_gazebo::ModelsPoses>(
-      "/tether_action", 1, pos_action_bind, ros::VoidPtr(), &queue_);
+  auto pos_action_so = ros::SubscribeOptions::create<link_bot_gazebo::ModelsPoses>("/tether_action", 1, pos_action_bind,
+                                                                                   ros::VoidPtr(), &queue_);
+  auto state_bind = boost::bind(&TetherPlugin::StateServiceCallback, this, _1, _2);
+  auto service_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::TetherState>("/tether_state", state_bind,
+                                                                                       ros::VoidPtr(), &queue_);
 
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   enable_sub_ = ros_node_->subscribe(enable_so);
@@ -131,7 +139,7 @@ void TetherPlugin::OnUpdate()
   constexpr auto dt{0.001};
 
   auto const pos = link_->WorldPose().Pos();
-  auto const pose_error =  target_pose_.Pos() - pos;
+  auto const pose_error = target_pose_.Pos() - pos;
 
   auto const target_vel = pos_pid_.Update(-pose_error.Length(), dt);
   target_velocity_ = pose_error.Normalized() * target_vel;
@@ -177,6 +185,22 @@ void TetherPlugin::OnAction(link_bot_gazebo::ModelsPosesConstPtr const msg)
       target_pose_.Rot().W(action.pose.orientation.w);
     }
   }
+}
+
+bool TetherPlugin::StateServiceCallback(link_bot_gazebo::TetherStateRequest &req,
+                                        link_bot_gazebo::TetherStateResponse &res)
+{
+  for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx) {
+    std::stringstream ss;
+    ss << "link_" << link_idx;
+    auto link_name = ss.str();
+    auto const link = model_->GetLink(link_name);
+    geometry_msgs::Point point;
+    point.x = link->WorldPose().Pos().X();
+    point.y = link->WorldPose().Pos().Y();
+    res.points.emplace_back(point);
+  }
+  return true;
 }
 
 void TetherPlugin::QueueThread()

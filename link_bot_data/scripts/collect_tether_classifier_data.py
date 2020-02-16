@@ -149,41 +149,44 @@ class ClassifierDataCollector(my_mpc.myMPC):
             'full_env/env': float_feature(full_env_data.data.flatten()),
             'full_env/extent': float_feature(np.array(full_env_data.extent)),
             'full_env/origin': float_feature(full_env_data.origin),
+            'full_env/res': float_feature(full_env_data.resolution),
         }
 
+        actual_point_path = actual_path[:, 0:2]
+        actual_tether_path = actual_path[:, 2:]
         for time_idx in range(self.n_steps_per_example):
             # we may have to truncate, or pad the trajectory, depending on the length of the plan
+            # TODO: Implement this to get both the full path in the tree, the 'current' planned configuration, and the predicted
+            #  configuration
             if time_idx < planned_actions.shape[0]:
                 action = planned_actions[time_idx]
             else:
                 action = np.zeros(2)
 
             if time_idx < planned_path.shape[0]:
-                planned_state = planned_path[time_idx]
-                planned_local_env = planner_local_envs[time_idx]
+                planned_states = planned_path[:time_idx]
+                tether_state = planned_path[time_idx]
             else:
-                planned_state = planned_path[-1]
-                planned_local_env = planner_local_envs[-1]
+                point_state = actual_point_path[time_idx]
+                planned_states = planned_path[:-1]
+                tether_state = planned_path[-1]
 
             if time_idx < actual_path.shape[0]:
-                state = actual_path[time_idx]
-                actual_local_env = actual_local_envs[time_idx]
+                point_state = actual_point_path[time_idx]
+                planned_states = planned_path[:-1]
+                tether_state = actual_tether_path[time_idx]
             else:
-                state = actual_path[-1]
-                actual_local_env = actual_local_envs[-1]
+                point_state = actual_point_path[-1]
+                tether_state = actual_tether_path[-1]
 
-            current_features['{}/state'.format(time_idx)] = float_feature(state)
+            # for the no-tether model, this would only need to be the head position,
+            # but in order to train a dynamics model that includes the state of the tether here, we also need the tether state
+            current_features['{}/point_state'.format(time_idx)] = float_feature(point_state)
+            current_features['{}/tether_state'.format(time_idx)] = float_feature(tether_state)
             current_features['{}/action'.format(time_idx)] = float_feature(action)
-            current_features['{}/actual_local_env/env'.format(time_idx)] = float_feature(actual_local_env.data.flatten())
-            current_features['{}/actual_local_env/extent'.format(time_idx)] = float_feature(np.array(actual_local_env.extent))
-            current_features['{}/actual_local_env/origin'.format(time_idx)] = float_feature(actual_local_env.origin)
-            current_features['{}/res'.format(time_idx)] = float_feature(np.array([self.local_env_params.res]))
+            current_features['{}/planned_states'.format(time_idx)] = float_feature(planned_states.flatten())
             current_features['{}/traj_idx'.format(time_idx)] = float_feature(np.array([self.traj_idx]))
             current_features['{}/time_idx'.format(time_idx)] = float_feature(np.array([time_idx]))
-            current_features['{}/planned_state'.format(time_idx)] = float_feature(planned_state)
-            current_features['{}/planned_local_env/env'.format(time_idx)] = float_feature(planned_local_env.data.flatten())
-            current_features['{}/planned_local_env/extent'.format(time_idx)] = float_feature(np.array(planned_local_env.extent))
-            current_features['{}/planned_local_env/origin'.format(time_idx)] = float_feature(np.array(planned_local_env.origin))
 
         self.traj_idx += 1
 

@@ -109,7 +109,7 @@ class ObstacleNN(tf.keras.Model):
             action_t = actions[:, t]
 
             # the local environment used at each time step is take as a rectangle centered on the predicted point of the head
-            head_point_t = s_t_squeeze[:, 4:6]
+            head_point_t = s_t_squeeze[:, -2:]
             # FIXME: shouldn't this use resolution_s?
             local_env, local_env_origin = get_local_env_at_in(rows=self.local_env_params.h_rows,
                                                               cols=self.local_env_params.w_cols,

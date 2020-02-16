@@ -274,6 +274,13 @@ class MyPlanner:
 
         return sampler
 
+    def to_planning_space(self, actual_path):
+        if 'include_tether' in self.planner_params:
+            if not self.planner_params['include_tether']:
+                # discard link state
+                return actual_path[:, -2:]
+        return actual_path
+
 
 def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0):
     if verbose >= 1:

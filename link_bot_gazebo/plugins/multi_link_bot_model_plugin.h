@@ -107,9 +107,9 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   std::unique_ptr<ros::NodeHandle> ros_node_;
   ros::Subscriber joy_sub_;
   ros::ServiceServer pos_action_service_;
-  ros::Subscriber velocity_action_sub_;
   ros::Subscriber action_mode_sub_;
   ros::Subscriber config_sub_;
+  ros::Subscriber velocity_action_sub_;
   ros::ServiceServer state_service_;
   ros::ServiceServer execute_path_service_;
   ros::ServiceServer execute_traj_service_;

@@ -33,6 +33,7 @@ add_service_files(
         LinkBotPath.srv
         LinkBotTrajectory.srv
         ComputeOccupancy.srv
+        TetherState.srv
 )
 
 generate_messages(

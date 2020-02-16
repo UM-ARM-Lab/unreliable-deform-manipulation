@@ -263,7 +263,7 @@ def main():
     parser.add_argument("--move-objects-every-n", type=int, default=16, help='rearrange objects every n trajectories')
     parser.add_argument("--no-obstacles", action='store_true', help='do not move obstacles')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB', help='compression type')
-    parser.add_argument("--trajs-per-file", type=int, default=256, help='trajs per file')
+    parser.add_argument("--trajs-per-file", type=int, default=128, help='trajs per file')
     parser.add_argument("--seed", '-s', type=int, help='seed')
     parser.add_argument("--real-time-rate", type=float, default=0, help='number of times real time')
     parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')

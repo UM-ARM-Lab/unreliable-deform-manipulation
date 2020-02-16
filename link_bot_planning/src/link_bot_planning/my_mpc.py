@@ -82,6 +82,8 @@ class myMPC:
                 # generate a random target
                 state = self.services.get_state(state_req)
                 head_idx = state.link_names.index("head")
+                # TODO: rope and tether should probably be treated differently, because current this things the
+                #  start of the tether is the stat of the rope, but we want to plan based on the head
                 initial_rope_configuration = link_bot_pycommon.points_to_config(state.points)
                 head_point = state.points[head_idx]
                 tail_goal = self.get_goal(self.planner_params['w'],

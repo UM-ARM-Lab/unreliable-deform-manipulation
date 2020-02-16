@@ -1,7 +1,14 @@
 #pragma once
 
-#include <ros/ros.h>
+#include <geometry_msgs/Pose.h>
+#include <link_bot_gazebo/LinkBotState.h>
+#include <link_bot_gazebo/TetherState.h>
+#include <link_bot_gazebo/LinkBotTrajectory.h>
+#include <link_bot_gazebo/ModelsEnable.h>
+#include <link_bot_gazebo/ModelsPoses.h>
 #include <ros/callback_queue.h>
+#include <ros/ros.h>
+#include <std_msgs/Empty.h>
 
 #include <gazebo/common/Events.hh>
 #include <gazebo/common/Plugin.hh>
@@ -9,13 +16,9 @@
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/TransportTypes.hh>
 
-#include <geometry_msgs/Pose.h>
-#include <link_bot_gazebo/ModelsPoses.h>
-#include <link_bot_gazebo/ModelsEnable.h>
-#include <std_msgs/Empty.h>
-
 namespace gazebo {
 
+// FIXME: implement copy/assign/move
 class TetherPlugin : public ModelPlugin {
  public:
   ~TetherPlugin() override;
@@ -30,6 +33,8 @@ class TetherPlugin : public ModelPlugin {
 
   void OnAction(link_bot_gazebo::ModelsPosesConstPtr msg);
 
+  bool StateServiceCallback(link_bot_gazebo::TetherStateRequest &req, link_bot_gazebo::TetherStateResponse &res);
+
  private:
   void QueueThread();
 
@@ -41,9 +46,11 @@ class TetherPlugin : public ModelPlugin {
   std::unique_ptr<ros::NodeHandle> ros_node_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
+  ros::ServiceServer state_service_;
   ros::Subscriber enable_sub_;
   ros::Subscriber action_sub_;
   ros::Subscriber stop_sub_;
+  unsigned int num_links_{0u};
   double kP_pos_{0.0};
   double kI_pos_{0.0};
   double kD_pos_{0.0};

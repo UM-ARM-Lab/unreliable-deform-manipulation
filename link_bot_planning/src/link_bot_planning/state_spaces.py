@@ -23,7 +23,10 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
         self.rope_length = rope_length
         self.n_links = link_bot_pycommon.n_state_to_n_links(n_state)
         self.n_state = n_state
-        self.link_length = rope_length / self.n_links
+        if self.n_links == 0:
+            self.link_length = 0
+        else:
+            self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
         self.max_angle_rad = max_angle_rad
         self.rng = rng
@@ -56,7 +59,10 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         self.rope_length = rope_length
         self.n_links = link_bot_pycommon.n_state_to_n_links(n_state)
         self.n_state = n_state
-        self.link_length = rope_length / self.n_links
+        if self.n_links == 0:
+            self.link_length = 0
+        else:
+            self.link_length = rope_length / self.n_links
         self.viz_object = viz_object
         self.max_angle_rad = max_angle_rad
         self.rng = rng

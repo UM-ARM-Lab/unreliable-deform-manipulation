@@ -108,15 +108,12 @@ class TestWithClassifier(my_mpc.myMPC):
         execution_to_goal_error = np.linalg.norm(actual_path[-1, 0:2] - tail_goal_point)
         print('Execution to Goal Error: {:0.3f}'.format(execution_to_goal_error))
 
-        print("Execution to Plan Error:")
-        for t in range(planned_path.shape[0] - 1):
-            planned_s = planned_path[t]
-            actual_s = actual_path[t]
-            distance = np.linalg.norm(planned_s - actual_s)
-            speed = np.linalg.norm(planned_actions[t])
-            print("t={:3d}, error={:6.3f}m, speed={:6.3}m/s".format(t, distance, speed))
+        # Convert from the actual space to the planning space, which may be identity, or may be some reduction
+        actual_path_in_planner_space = self.planner.to_planning_space(actual_path)
+        print("Execution to Plan Error: {:.4f}".format(np.linalg.norm(planned_path[-1] - actual_path_in_planner_space[-1])))
 
-        anim = ompl_viz.plan_vs_execution(full_env_data.data, tail_goal_point, planned_path, actual_path, full_env_data.extent)
+        anim = ompl_viz.plan_vs_execution(full_env_data.data, tail_goal_point, planned_path, actual_path_in_planner_space,
+                                          full_env_data.extent)
         anim.save("/tmp/.latest-plan-vs-execution.gif", dpi=300, writer='imagemagick')
         plt.show(block=True)
 
