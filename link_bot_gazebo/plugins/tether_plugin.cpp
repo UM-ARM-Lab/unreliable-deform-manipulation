@@ -114,13 +114,14 @@ void TetherPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   auto pos_action_so = ros::SubscribeOptions::create<link_bot_gazebo::ModelsPoses>("/tether_action", 1, pos_action_bind,
                                                                                    ros::VoidPtr(), &queue_);
   auto state_bind = boost::bind(&TetherPlugin::StateServiceCallback, this, _1, _2);
-  auto service_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::TetherState>("/tether_state", state_bind,
+  auto state_service_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::GetObject>("/tether", state_bind,
                                                                                        ros::VoidPtr(), &queue_);
-
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   enable_sub_ = ros_node_->subscribe(enable_so);
   action_sub_ = ros_node_->subscribe(pos_action_so);
   stop_sub_ = ros_node_->subscribe(stop_so);
+  state_service_ = ros_node_->advertiseService(state_service_so);
+  register_tether_pub_ = ros_node_->advertise<std_msgs::String>("/register_object", 10, true);
 
   ros_queue_thread_ = std::thread(std::bind(&TetherPlugin::QueueThread, this));
 
@@ -132,11 +133,18 @@ void TetherPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&TetherPlugin::OnUpdate, this));
 
   target_pose_ = link_->WorldPose();
+
+  std_msgs::String register_object;
+  register_object.data = "tether";
+  register_tether_pub_.publish(register_object);
+
+  // plus 1 because we want both end points inclusive
+  ros_node_->setParam("/tether/n_state", static_cast<int>((num_links_ + 1) * 2));
 }
 
 void TetherPlugin::OnUpdate()
 {
-  constexpr auto dt{0.001};
+  auto const dt = model_->GetWorld()->Physics()->GetMaxStepSize();
 
   auto const pos = link_->WorldPose().Pos();
   auto const pose_error = target_pose_.Pos() - pos;
@@ -147,8 +155,7 @@ void TetherPlugin::OnUpdate()
   auto const vel = link_->WorldLinearVel();
   auto const vel_error = target_velocity_ - vel;
   auto const force_mag = vel_pid_.Update(-vel_error.Length(), dt);
-  ignition::math::Vector3d force;
-  force = vel_error.Normalized() * force_mag;
+  auto const force = vel_error.Normalized() * force_mag;
 
   // FIXME: this assumes the collision goemetry is a box
   auto const i{0u};
@@ -187,18 +194,20 @@ void TetherPlugin::OnAction(link_bot_gazebo::ModelsPosesConstPtr const msg)
   }
 }
 
-bool TetherPlugin::StateServiceCallback(link_bot_gazebo::TetherStateRequest &req,
-                                        link_bot_gazebo::TetherStateResponse &res)
+bool TetherPlugin::StateServiceCallback(link_bot_gazebo::GetObjectRequest &req,
+                                        link_bot_gazebo::GetObjectResponse &res)
 {
+  res.object.name = "tether";
   for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx) {
     std::stringstream ss;
     ss << "link_" << link_idx;
     auto link_name = ss.str();
     auto const link = model_->GetLink(link_name);
-    geometry_msgs::Point point;
-    point.x = link->WorldPose().Pos().X();
-    point.y = link->WorldPose().Pos().Y();
-    res.points.emplace_back(point);
+    link_bot_gazebo::NamedPoint named_point;
+    named_point.point.x = link->WorldPose().Pos().X();
+    named_point.point.y = link->WorldPose().Pos().Y();
+    named_point.name = link_name;
+    res.object.points.emplace_back(named_point);
   }
   return true;
 }

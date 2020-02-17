@@ -1,5 +1,5 @@
 import pathlib
-from typing import Tuple, List, Optional, Dict
+from typing import Dict
 
 import numpy as np
 import ompl.base as ob
@@ -14,7 +14,7 @@ from link_bot_planning.random_directed_control_sampler import RandomDirectedCont
 from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_local_env, ValidRopeConfigurationCompoundSampler, \
     TrainingSetCompoundSampler
 from link_bot_planning.viz_object import VizObject
-from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon
+from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon, ros_pycommon
 from link_bot_pycommon.ros_pycommon import get_local_occupancy_data
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
@@ -34,6 +34,7 @@ class MyPlanner:
         self.n_state = self.fwd_model.n_state
         self.n_links = link_bot_pycommon.n_state_to_n_links(self.n_state)
         self.n_control = self.fwd_model.n_control
+        self.n_tether_state = ros_pycommon.get_n_tether_state()
         self.full_env_params = self.fwd_model.full_env_params
         self.planner_params = planner_params
         self.services = services
@@ -45,34 +46,45 @@ class MyPlanner:
         self.state_sampler_rng = np.random.RandomState(seed)
 
         self.state_space = ob.CompoundStateSpace()
-        self.n_local_env = self.fwd_model.local_env_params.w_cols * self.fwd_model.local_env_params.h_rows
-        self.local_env_space = ob.RealVectorStateSpace(self.n_local_env)
-        epsilon = 1e-3
-        self.local_env_space.setBounds(-epsilon, 1 + epsilon)
+        self.state_space_description = self.planner_params['state_space']
 
-        self.local_env_origin_space = ob.RealVectorStateSpace(2)
-        self.local_env_origin_space.setBounds(-10000, 10000)
-
-        self.config_space = ob.RealVectorStateSpace(self.n_state)
-        self.config_space_bounds = ob.RealVectorBounds(self.n_state)
-        for i in range(self.n_state):
-            if i % 2 == 0:
-                self.config_space_bounds.setLow(i, -self.planner_params['w'] / 2)
-                self.config_space_bounds.setHigh(i, self.planner_params['w'] / 2)
-            else:
-                self.config_space_bounds.setLow(i, -self.planner_params['h'] / 2)
-                self.config_space_bounds.setHigh(i, self.planner_params['h'] / 2)
-        self.config_space.setBounds(self.config_space_bounds)
-
-        # the rope is just 6 real numbers with no bounds
-        # by setting the weight to 1, it means that distances are based only on the rope config not the local environment
-        # so when we sample a state, we get a random local environment, but the nearest neighbor is based only on the rope config
-        # this is sort of a specialization, but I think it's justified. Otherwise nothing would work I suspect (but I didn't test)
-        self.state_space.addSubspace(self.config_space, weight=self.planner_params['subspace_weights'][0])
-        # the local environment is a rows*cols flat vector of numbers from 0 to 1
-        self.state_space.addSubspace(self.local_env_space, weight=self.planner_params['subspace_weights'][1])
-        # origin
-        self.state_space.addSubspace(self.local_env_origin_space, weight=self.planner_params['subspace_weights'][2])
+        self.subspace_name_to_index = {}
+        for subspace_idx, (name, component_description) in enumerate(self.state_space_description.items()):
+            self.subspace_name_to_index[name] = subspace_idx
+            if name == 'local_env':
+                self.n_local_env = self.fwd_model.local_env_params.w_cols * self.fwd_model.local_env_params.h_rows
+                self.local_env_space = ob.RealVectorStateSpace(self.n_local_env)
+                epsilon = 1e-3
+                self.local_env_space.setBounds(-epsilon, 1 + epsilon)
+                self.state_space.addSubspace(self.local_env_space, weight=component_description['weight'])
+            elif name == 'local_env_origin':
+                self.local_env_origin_space = ob.RealVectorStateSpace(2)
+                self.local_env_origin_space.setBounds(-10000, 10000)
+                self.state_space.addSubspace(self.local_env_origin_space, weight=component_description['weight'])
+            elif name == 'link_bot':
+                self.link_bot_space = ob.RealVectorStateSpace(self.n_state)
+                self.link_bot_space_bounds = ob.RealVectorBounds(self.n_state)
+                for i in range(self.n_state):
+                    if i % 2 == 0:
+                        self.link_bot_space_bounds.setLow(i, -self.planner_params['w'] / 2)
+                        self.link_bot_space_bounds.setHigh(i, self.planner_params['w'] / 2)
+                    else:
+                        self.link_bot_space_bounds.setLow(i, -self.planner_params['h'] / 2)
+                        self.link_bot_space_bounds.setHigh(i, self.planner_params['h'] / 2)
+                self.link_bot_space.setBounds(self.link_bot_space_bounds)
+                self.state_space.addSubspace(self.link_bot_space, weight=component_description['weight'])
+            elif name == 'tether':
+                self.tether_space = ob.RealVectorStateSpace(self.n_tether_state)
+                self.tether_space_bounds = ob.RealVectorBounds(self.n_tether_state)
+                for i in range(self.n_tether_state):
+                    if i % 2 == 0:
+                        self.tether_space_bounds.setLow(i, -self.planner_params['w'] / 2)
+                        self.tether_space_bounds.setHigh(i, self.planner_params['w'] / 2)
+                    else:
+                        self.tether_space_bounds.setLow(i, -self.planner_params['h'] / 2)
+                        self.tether_space_bounds.setHigh(i, self.planner_params['h'] / 2)
+                self.tether_space.setBounds(self.tether_space_bounds)
+                self.state_space.addSubspace(self.tether_space, weight=component_description['weight'])
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
 
@@ -96,7 +108,7 @@ class MyPlanner:
             self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator(self.seed, self))
 
         self.full_envs = None
-        self.full_env_orgins = None
+        self.full_env_origins = None
 
         if planner_params['sampler_type'] == 'sample_train':
             self.dataset_dirs = [pathlib.Path(p) for p in self.fwd_model.hparams['datasets']]
@@ -190,12 +202,7 @@ class MyPlanner:
             from_numpy(origin, state_out[2], 2)
 
     # TODO: make this return a data structure. something with a name
-    def plan(self, np_start: np.ndarray, tail_goal_point: np.ndarray, full_env_data: link_bot_sdf_utils.OccupancyData) -> Tuple[
-        Optional[np.ndarray],
-        Optional[np.ndarray],
-        Optional[List[link_bot_sdf_utils.OccupancyData]],
-        Optional[link_bot_sdf_utils.OccupancyData],
-        ob.PlannerStatus]:
+    def plan(self, np_start: np.ndarray, tail_goal_point: np.ndarray, full_env_data: link_bot_sdf_utils.OccupancyData):
         """
         :param full_env_data:
         :param np_start: 1 by n matrix
@@ -229,24 +236,7 @@ class MyPlanner:
 
         if solved:
             ompl_path = self.ss.getSolutionPath()
-
-            np_states = np.ndarray((ompl_path.getStateCount(), self.n_state))
-            np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
-            planner_local_envs = []
-            for i, state in enumerate(ompl_path.getStates()):
-                np_s = to_numpy(state[0], self.n_state)
-                np_states[i] = np_s
-                grid = to_numpy_local_env(state[1], self.fwd_model.local_env_params.h_rows,
-                                          self.fwd_model.local_env_params.w_cols)
-                res_2d = np.array([self.fwd_model.local_env_params.res, self.fwd_model.local_env_params.res])
-                origin = to_numpy(state[2], 2)[0]
-                planner_local_env = link_bot_sdf_utils.OccupancyData(grid, res_2d, origin)
-                planner_local_envs.append(planner_local_env)
-            for i, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
-                # duration is always be 1 for control::RRT, not so for control::SST
-                np_controls[i] = to_numpy(control, self.n_control)
-
-            return np_controls, np_states, planner_local_envs, full_env_data, solved
+            return self.convert_path(ompl_path, full_env_data, solved)
         return None, None, [], full_env_data, solved
 
     def state_sampler_allocator(self, state_space):
@@ -274,12 +264,33 @@ class MyPlanner:
 
         return sampler
 
-    def to_planning_space(self, actual_path):
-        if 'include_tether' in self.planner_params:
-            if not self.planner_params['include_tether']:
-                # discard link state
-                return actual_path[:, -2:]
-        return actual_path
+    def convert_path(self, ompl_path: ob.Path, full_env_data: link_bot_sdf_utils.OccupancyData, solved: bool):
+        planned_path_tuples = []
+        for subspace_idx, name in enumerate(self.state_space_description.keys()):
+            subspace = self.state_space.getSubspace(subspace_idx)
+            dimension = subspace.getDimension()
+            subspace_path = np.zeros([ompl_path.getStateCount(), dimension])
+            planned_path_tuples.append((name, subspace_path))
+        planned_path = dict(planned_path_tuples)
+
+        for time_idx, compound_state in enumerate(ompl_path.getStates()):
+            for subspace_idx, name in enumerate(self.state_space_description):
+                subspace_state = compound_state[subspace_idx]
+                if name == 'local_env':
+                    planned_path[name][time_idx] = to_numpy(subspace_state, self.n_local_env)
+                elif name == 'local_env_origin':
+                    planned_path[name][time_idx] = to_numpy(subspace_state, 2)
+                elif name == 'link_bot':
+                    planned_path[name][time_idx] = to_numpy(subspace_state, self.n_state)
+                elif name == 'tether':
+                    planned_path[name][time_idx] = to_numpy(subspace_state, self.n_tether_state)
+
+        np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
+        for time_idx, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
+            # duration is always be 1 for control::RRT, not so for control::SST
+            np_controls[time_idx] = to_numpy(control, self.n_control)
+
+        return np_controls, planned_path, full_env_data, solved
 
 
 def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0):

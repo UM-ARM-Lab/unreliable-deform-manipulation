@@ -12,13 +12,15 @@ add_message_files(
         FILES
         LinkBotConfiguration.msg
         LinkBotJointConfiguration.msg
-        LinkBotVelocityAction.msg
-        LinkBotForceAction.msg
         WriteSDF.msg
         ModelPose.msg
         ModelsEnable.msg
         ModelsPoses.msg
         IntPoint2D.msg
+        NamedPoint.msg
+        NamedPoints.msg
+        Objects.msg
+        LinkBotAction.msg
 )
 
 add_service_files(
@@ -33,7 +35,9 @@ add_service_files(
         LinkBotPath.srv
         LinkBotTrajectory.srv
         ComputeOccupancy.srv
-        TetherState.srv
+        GetObjects.srv
+        GetObject.srv
+        ExecuteAction.srv
 )
 
 generate_messages(

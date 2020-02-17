@@ -1,12 +1,12 @@
 import pathlib
 from typing import List
 
-from link_bot_data.state_space_dataset import StateSpaceDataset
+from link_bot_data.base_dataset import BaseDataset
 import tensorflow as tf
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
 
 
-class TetherClassifierDataset(StateSpaceDataset):
+class TetherClassifierDataset(BaseDataset):
 
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         super(TetherClassifierDataset, self).__init__(dataset_dirs)

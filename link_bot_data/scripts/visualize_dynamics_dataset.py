@@ -58,8 +58,8 @@ def main():
 
         out_of_bounds = False
 
-        rope_configurations = input_data['state_s'].numpy().squeeze()
-        actions = input_data['action_s'].numpy().squeeze()
+        rope_configurations = input_data['state'].numpy().squeeze()
+        actions = input_data['action'].numpy().squeeze()
         all_vs.extend(actions.flatten().tolist())
 
         if not args.no_plot:
@@ -67,7 +67,7 @@ def main():
             full_env_extents = input_data['full_env/extent'].numpy().squeeze()
 
             fig, ax = plt.subplots()
-            arrow_width = 0.02
+            arrow_width = 0.1
             arena_size = 0.5
 
             ax.set_xlabel("x (m)")

@@ -1,14 +1,15 @@
 #pragma once
 
 #include <geometry_msgs/Pose.h>
+#include <link_bot_gazebo/GetObject.h>
 #include <link_bot_gazebo/LinkBotState.h>
-#include <link_bot_gazebo/TetherState.h>
 #include <link_bot_gazebo/LinkBotTrajectory.h>
 #include <link_bot_gazebo/ModelsEnable.h>
 #include <link_bot_gazebo/ModelsPoses.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
+#include <std_msgs/String.h>
 
 #include <gazebo/common/Events.hh>
 #include <gazebo/common/Plugin.hh>
@@ -33,7 +34,7 @@ class TetherPlugin : public ModelPlugin {
 
   void OnAction(link_bot_gazebo::ModelsPosesConstPtr msg);
 
-  bool StateServiceCallback(link_bot_gazebo::TetherStateRequest &req, link_bot_gazebo::TetherStateResponse &res);
+  bool StateServiceCallback(link_bot_gazebo::GetObjectRequest &req, link_bot_gazebo::GetObjectResponse &res);
 
  private:
   void QueueThread();
@@ -47,6 +48,7 @@ class TetherPlugin : public ModelPlugin {
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
   ros::ServiceServer state_service_;
+  ros::Publisher register_tether_pub_;
   ros::Subscriber enable_sub_;
   ros::Subscriber action_sub_;
   ros::Subscriber stop_sub_;

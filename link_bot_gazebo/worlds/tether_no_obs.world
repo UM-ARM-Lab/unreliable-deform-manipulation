@@ -8,30 +8,10 @@
             </camera>
         </gui>
         <include>
-            <uri>model://victor_table_plane</uri>
-        </include>
-        <include>
-            <uri>model://my_camera</uri>
-            <pose frame=''>0 0 1.0 0 1.5707 1.5707</pose>
-            <name>my_camera</name>
+            <uri>model://my_plane</uri>
         </include>
         <include>
             <uri>model://sun</uri>
-        </include>
-        <include>
-            <uri>model://cheezits_textured</uri>
-            <pose>0.24 -0.24 0 0 0 0</pose>
-            <name>cheezits_box</name>
-        </include>
-        <include>
-            <uri>model://tissue_box_textured</uri>
-            <pose>0.25 0.25 0 0 0 0</pose>
-            <name>tissue_box</name>
-        </include>
-        <include>
-            <uri>model://arena_1</uri>
-            <pose>0 0 0 0 0 0</pose>
-            <name>arena</name>
         </include>
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
         <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
@@ -47,5 +27,10 @@
                 </constraints>
             </ode>
         </physics>
+        <include>
+            <uri>model://arena_5</uri>
+            <pose>0 0 0 0 0 0</pose>
+            <name>arena</name>
+        </include>
     </world>
 </sdf>

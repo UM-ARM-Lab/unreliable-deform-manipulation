@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 
-from link_bot_data.link_bot_dataset_utils import bytes_feature
+from link_bot_data.link_bot_dataset_utils import bytes_feature, parse_and_deserialize
 
 tf.compat.v1.enable_eager_execution()
 
@@ -17,19 +17,17 @@ def read(args):
         'data': tf.io.FixedLenFeature([], tf.string)
     }
 
-    def _parse(example_proto):
-        deserialized_dict = tf.io.parse_single_example(example_proto, feature_description)
-        return tf.io.parse_tensor(deserialized_dict['data'], tf.float32)
+    deserialized_dataset = parse_and_deserialize(dataset, feature_description)
 
-    parsed_dataset = dataset.map(_parse)
-    print(next(iter(parsed_dataset)))
+    print("deserialized example:")
+    print(next(iter(deserialized_dataset)))
 
 
 def write(args):
-    data = np.random.rand(10, 2)
-    data_tensor = tf.convert_to_tensor(data, dtype=tf.float32)
+    data = np.random.rand(10, 2).astype(np.float32)
+    print(data)
     features = {
-        'data': bytes_feature(tf.io.serialize_tensor(data_tensor).numpy()),
+        'data': bytes_feature(tf.io.serialize_tensor(data).numpy()),
     }
     example_proto = tf.train.Example(features=tf.train.Features(feature=features))
     example = example_proto.SerializeToString()
@@ -45,6 +43,8 @@ write_parser = subparsers.add_parser('write')
 write_parser.set_defaults(func=write)
 
 filename = '.tmp.tfrecords'
+
+np.random.seed(1)
 
 args = parser.parse_args()
 args.func(args)

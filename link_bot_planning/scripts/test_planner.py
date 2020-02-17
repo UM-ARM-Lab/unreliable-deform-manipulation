@@ -18,7 +18,7 @@ from ompl import base as ob
 from ignition import markers
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import my_mpc
+from link_bot_planning import plan_and_execute
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning import ompl_viz
@@ -31,7 +31,7 @@ config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
 
-class TestWithClassifier(my_mpc.myMPC):
+class TestWithClassifier(plan_and_execute.PlanAndExecute):
 
     def __init__(self,
                  planner: MyPlanner,
@@ -69,19 +69,21 @@ class TestWithClassifier(my_mpc.myMPC):
                          planner_data: ob.PlannerData,
                          planning_time: float,
                          planner_status: ob.PlannerStatus):
-        final_error = np.linalg.norm(planned_path[-1, 0:2] - tail_goal_point)
-        lengths = [np.linalg.norm(planned_path[i] - planned_path[i - 1]) for i in range(1, len(planned_path))]
+        link_bot_planned_path = planned_path['link_bot']
+        final_error = np.linalg.norm(link_bot_planned_path[-1, 0:2] - tail_goal_point)
+        lengths = [np.linalg.norm(link_bot_planned_path[i] - link_bot_planned_path[i - 1]) for i in
+                   range(1, len(link_bot_planned_path))]
         path_length = np.sum(lengths)
-        duration = self.planner.fwd_model.dt * len(planned_path)
+        duration = self.planner.fwd_model.dt * len(link_bot_planned_path)
 
         if self.verbose >= 2:
             planned_final_tail_point_msg = markers.make_marker(id=3, rgb=[0, 0, 1], scale=0.05)
-            planned_final_tail_point_msg.pose.position.x = planned_path[-1][0]
-            planned_final_tail_point_msg.pose.position.y = planned_path[-1][1]
+            planned_final_tail_point_msg.pose.position.x = link_bot_planned_path[-1][0]
+            planned_final_tail_point_msg.pose.position.y = link_bot_planned_path[-1][1]
             markers.publish(planned_final_tail_point_msg)
 
         msg = "Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s"
-        print(msg.format(final_error, path_length, len(planned_path), duration))
+        print(msg.format(final_error, path_length, len(link_bot_planned_path), duration))
 
         num_nodes = planner_data.numVertices()
         print("num nodes {}".format(num_nodes))
@@ -89,8 +91,14 @@ class TestWithClassifier(my_mpc.myMPC):
 
         plt.figure()
         ax = plt.gca()
-        legend = ompl_viz.plot(ax, self.planner.viz_object, planner_data, full_env_data.data, tail_goal_point, planned_path,
-                               planned_actions, full_env_data.extent)
+        legend = ompl_viz.plot(ax,
+                               self.planner.viz_object,
+                               planner_data,
+                               full_env_data.data,
+                               tail_goal_point,
+                               link_bot_planned_path,
+                               planned_actions,
+                               full_env_data.extent)
         plt.savefig("/tmp/.latest-plan.png", dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
         plt.show(block=True)
 
@@ -98,21 +106,23 @@ class TestWithClassifier(my_mpc.myMPC):
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
                               tail_goal_point: np.ndarray,
-                              planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_path: np.ndarray,
+                              actual_path: Dict[str, np.ndarray],
                               full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
-        execution_to_goal_error = np.linalg.norm(actual_path[-1, 0:2] - tail_goal_point)
+        execution_to_goal_error = np.linalg.norm(actual_path['link_bot'][-1, 0:2] - tail_goal_point)
         print('Execution to Goal Error: {:0.3f}'.format(execution_to_goal_error))
 
         # Convert from the actual space to the planning space, which may be identity, or may be some reduction
-        actual_path_in_planner_space = self.planner.to_planning_space(actual_path)
-        print("Execution to Plan Error: {:.4f}".format(np.linalg.norm(planned_path[-1] - actual_path_in_planner_space[-1])))
+        link_bot_actual_path = actual_path['link_bot']
+        link_bot_planned_path = planned_path['link_bot']
+        print("Execution to Plan Error: {:.4f}".format(np.linalg.norm(link_bot_planned_path[-1] - link_bot_actual_path[-1])))
 
-        anim = ompl_viz.plan_vs_execution(full_env_data.data, tail_goal_point, planned_path, actual_path_in_planner_space,
+        anim = ompl_viz.plan_vs_execution(full_env_data.data,
+                                          tail_goal_point,
+                                          link_bot_planned_path,
+                                          link_bot_actual_path,
                                           full_env_data.extent)
         anim.save("/tmp/.latest-plan-vs-execution.gif", dpi=300, writer='imagemagick')
         plt.show(block=True)

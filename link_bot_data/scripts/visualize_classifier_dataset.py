@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import json
 import argparse
+import json
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -11,7 +11,6 @@ from link_bot_classifiers import visualization
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.image_classifier_dataset import ImageClassifierDataset
 from link_bot_data.new_classifier_dataset import NewClassifierDataset
-from link_bot_pycommon import link_bot_pycommon
 from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
 
 tf.compat.v1.enable_eager_execution()

@@ -5,22 +5,14 @@ import json
 import pathlib
 from typing import List, Optional
 
-import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_data.link_bot_dataset_utils import balance_dataset, balance_by_augmentation
+from link_bot_data.link_bot_dataset_utils import balance_dataset, parse_and_deserialize
 
 
-def make_mask(T, S):
-    P = T - S + 1
-    mask = np.zeros((T, T))
-    for i in range(S):
-        mask += np.diag(np.ones(T - i), -i)
-    return mask[:, :P]
+class BaseDataset:
 
-
-class BaseStateSpaceDataset:
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         self.dataset_dirs = dataset_dirs
         self.hparams = {}
@@ -45,13 +37,6 @@ class BaseStateSpaceDataset:
         self.state_like_names_and_shapes = {}
         self.action_like_names_and_shapes = {}
         self.trajectory_constant_names_and_shapes = {}
-
-    def parser(self, serialized_example):
-        """
-        Parses a single tf.train.Example or tf.train.SequenceExample into
-        configurations, actions, etc tensors.
-        """
-        raise NotImplementedError
 
     def get_datasets(self,
                      mode: str,
@@ -118,10 +103,16 @@ class BaseStateSpaceDataset:
             # TODO: tune buffer size for performance
             dataset = dataset.shuffle(buffer_size=1024, seed=seed)
 
+        features_description = self.make_features_description()
+
+        dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
+        dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)
+        for example in next(iter(dataset)):
+            for k, v in example.items():
+                print(k, v.shape)
+
         def _slice_sequences(constant_data, state_like_seqs, action_like_seqs):
             return self.slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length=sequence_length)
-
-        dataset = dataset.map(self.parser, num_parallel_calls=n_parallel_calls)
 
         dataset = dataset.map(_slice_sequences, num_parallel_calls=n_parallel_calls)
 
@@ -170,55 +161,65 @@ class BaseStateSpaceDataset:
 
         return constant_data, state_like_seqs_sliced, action_like_seqs_sliced
 
+    def make_features_description(self):
+        features_description = {}
+        for feature_name in self.trajectory_constant_names_and_shapes:
+            features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
+
+        for i in range(self.max_sequence_length):
+            for feature_name in self.state_like_names_and_shapes:
+                features_description[feature_name % i] = tf.io.FixedLenFeature([], tf.string)
+        for i in range(self.max_sequence_length - 1):
+            for feature_name in self.action_like_names_and_shapes:
+                features_description[feature_name % i] = tf.io.FixedLenFeature([], tf.string)
+
+        return features_description
+
+    def split_into_sequences(self, example_dict):
+        state_like_seqs = {}
+        action_like_seqs = {}
+        constant_data = {}
+
+        for feature_name in self.state_like_names_and_shapes:
+            state_like_seq = []
+            for i in range(self.max_sequence_length):
+                state_like_seq.append(example_dict[feature_name % i])
+            state_like_seqs[strip_time_format(feature_name)] = tf.stack(state_like_seq, axis=0)
+
+        for example_name in self.action_like_names_and_shapes:
+            action_like_seq = []
+            for i in range(self.max_sequence_length - 1):
+                action_like_seq.append(example_dict[example_name % i])
+            action_like_seqs[strip_time_format(example_name)] = tf.stack(action_like_seq, axis=0)
+
+        for example_name in self.trajectory_constant_names_and_shapes:
+            constant_data[example_name] = example_dict[example_name]
+
+        return constant_data, state_like_seqs, action_like_seqs
+
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
         # No-Op
         return dataset
 
 
-class StateSpaceDataset(BaseStateSpaceDataset):
+def strip_time_format(feature_name):
+    if feature_name.startswith('%d/'):
+        return feature_name[3:]
 
-    def __init__(self,
-                 dataset_dirs: List[pathlib.Path]):
-        super(StateSpaceDataset, self).__init__(dataset_dirs)
 
-    def parser(self, serialized_example):
-        """
-        Parses a single tf.train.Example into configurations, actions, etc tensors.
-        """
-        features = dict()
-        for example_name, (name, shape) in self.trajectory_constant_names_and_shapes.items():
-            features[name] = tf.io.FixedLenFeature(shape, tf.float32)
-
-        for i in range(self.max_sequence_length):
-            for example_name, (name, shape) in self.state_like_names_and_shapes.items():
-                # FIXME: support loading of int64 features
-                features[name % i] = tf.io.FixedLenFeature(shape, tf.float32)
-        for i in range(self.max_sequence_length - 1):
-            for example_name, (name, shape) in self.action_like_names_and_shapes.items():
-                features[name % i] = tf.io.FixedLenFeature(shape, tf.float32)
-
-        # parse all the features of all time steps together
-        features = tf.io.parse_single_example(serialized_example, features=features)
-
-        state_like_seqs = {}
-        action_like_seqs = {}
-        constant_data = {}
-
-        for example_name, (name, shape) in self.state_like_names_and_shapes.items():
-            state_like_seq = []
-            for i in range(self.max_sequence_length):
-                state_like_seq.append(features[name % i])
-            state_like_seqs[example_name] = tf.stack(state_like_seq, axis=0)
-            state_like_seqs[example_name].set_shape([self.max_sequence_length] + list(shape))
-
-        for example_name, (name, shape) in self.action_like_names_and_shapes.items():
-            action_like_seq = []
-            for i in range(self.max_sequence_length - 1):
-                action_like_seq.append(features[name % i])
-            action_like_seqs[example_name] = tf.stack(action_like_seq, axis=0)
-            action_like_seqs[example_name].set_shape([self.max_sequence_length - 1] + list(shape))
-
-        for example_name, (name, shape) in self.trajectory_constant_names_and_shapes.items():
-            constant_data[example_name] = features[name]
-
-        return constant_data, state_like_seqs, action_like_seqs
+def make_name_singular(feature_name):
+    if "/" in feature_name:
+        base_feature_name, postfix = feature_name.split("/")
+        if not base_feature_name.endswith("_s"):
+            raise ValueError("time-indexed feature name {} doesn't end with _s ".format(base_feature_name))
+        base_feature_name_singular = base_feature_name[:-2]
+        feature_name_singular = "{}/{}".format(base_feature_name_singular, postfix)
+        next_feature_name_singular = "{}_next/{}".format(base_feature_name_singular, postfix)
+    else:
+        base_feature_name = feature_name
+        if not base_feature_name.endswith("_s"):
+            raise ValueError("time-indexed feature name {} doesn't end with _s ".format(base_feature_name))
+        base_feature_name_singular = base_feature_name[:-2]
+        feature_name_singular = base_feature_name_singular
+        next_feature_name_singular = "{}_next".format(base_feature_name_singular)
+    return feature_name_singular, next_feature_name_singular

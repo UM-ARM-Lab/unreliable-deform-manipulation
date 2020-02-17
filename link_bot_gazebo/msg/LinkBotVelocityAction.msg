@@ -1,3 +1,0 @@
-geometry_msgs/Point gripper1_velocity
-geometry_msgs/Point gripper2_velocity
-

@@ -35,9 +35,9 @@ def plot(ax,
     start = planned_path[0]
     ax.scatter(start[0], start[1], label='start', s=50, c='r', zorder=5)
     ax.scatter(goal[0], goal[1], label='goal', s=50, c='g', zorder=5)
-    subsample_path_ = 2
+    subsample_path_ = 1
     for rope_configuration in planned_path[::subsample_path_]:
-        ax.scatter(rope_configuration[0], rope_configuration[1], label='final_path', s=15, c='cyan', zorder=4)
+        ax.scatter(rope_configuration[0], rope_configuration[1], label='final_path', s=10, c='cyan', zorder=4)
         # plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=1, c='cyan', zorder=4)
 
     # for sample in planner_data.getSamples():
@@ -141,7 +141,6 @@ def plan_vs_execution(environment: np.ndarray,
     start = planned_path[0]
     ax.scatter(start[0], start[1], label='start', s=50, c='r', zorder=5)
     ax.scatter(goal[0], goal[1], label='goal', s=50, c='g', zorder=5)
-    plt.legend()
 
     planned_xs, planned_ys = plottable_rope_configuration(planned_path[0])
     actual_xs, actual_ys = plottable_rope_configuration(actual_path[0])
@@ -149,6 +148,7 @@ def plan_vs_execution(environment: np.ndarray,
     planned_line = plt.plot(planned_xs, planned_ys, linewidth=1, c='m', zorder=4)[0]
     actual_scat = plt.scatter(actual_xs, actual_ys, s=10, c='c', zorder=3, label='actual')
     planned_scat = plt.scatter(planned_xs, planned_ys, s=10, c='m', zorder=4, label='planned')
+    plt.legend()
 
     def update(t):
         planned_xs, planned_ys = plottable_rope_configuration(planned_path[t])

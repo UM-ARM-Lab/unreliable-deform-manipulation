@@ -35,7 +35,10 @@ def main():
             feature_value = feature_value[type_name]
             if 'value' in feature_value.keys():
                 feature_value = feature_value['value']
-                to_print.append([feature_name, len(feature_value)])
+                if type_name == 'bytesList':
+                    to_print.append([feature_name])
+                elif type_name == 'floatList':
+                    to_print.append([feature_name, len(feature_value)])
             else:
                 print(Fore.RED + "Empty feature: {}, {}".format(feature_name, feature_value) + Fore.RESET)
 

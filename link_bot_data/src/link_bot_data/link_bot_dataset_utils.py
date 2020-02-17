@@ -7,6 +7,38 @@ import numpy as np
 import tensorflow as tf
 
 
+def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
+    # NOTE: assumes all features are floats
+    def _parse(example_proto):
+        deserialized_dict = tf.io.parse_single_example(example_proto, feature_description)
+        return deserialized_dict
+
+    # the elements of parsed dataset are dictionaries with the serialized tensors as strings
+    parsed_dataset = dataset.map(_parse, num_parallel_calls=n_parallel_calls)
+
+    # get shapes of everything
+    element = next(iter(parsed_dataset))
+    inferred_shapes = {}
+    for key, serialized_tensor in element.items():
+        deserialized_tensor = tf.io.parse_tensor(serialized_tensor, tf.float32)
+        inferred_shapes[key] = deserialized_tensor.shape
+
+    def _deserialize(serialized_dict):
+        deserialized_dict = {}
+        for key, serialized_tensor in serialized_dict.items():
+            deserialized_tensor = tf.io.parse_tensor(serialized_tensor, tf.float32)
+            deserialized_tensor = tf.ensure_shape(deserialized_tensor, inferred_shapes[key])
+            deserialized_dict[key] = deserialized_tensor
+        return deserialized_dict
+
+    deserialized_dataset = parsed_dataset.map(_deserialize, num_parallel_calls=n_parallel_calls)
+    return deserialized_dataset
+
+
+def float_tensor_to_bytes_feature(value):
+    return bytes_feature(tf.io.serialize_tensor(tf.convert_to_tensor(value, dtype=tf.float32)).numpy()),
+
+
 def bytes_feature(value):
     """Returns a bytes_list from a string / byte."""
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))

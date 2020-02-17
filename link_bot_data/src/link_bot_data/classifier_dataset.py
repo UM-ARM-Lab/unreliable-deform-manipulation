@@ -3,29 +3,11 @@ from typing import List
 
 import tensorflow as tf
 
-from link_bot_data.state_space_dataset import StateSpaceDataset
+from link_bot_data.base_dataset import BaseDataset, make_name_singular
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
 
 
-def make_name_singular(feature_name):
-    if "/" in feature_name:
-        base_feature_name, postfix = feature_name.split("/")
-        if not base_feature_name.endswith("_s"):
-            raise ValueError("time-indexed feature name {} doesn't end with _s ".format(base_feature_name))
-        base_feature_name_singular = base_feature_name[:-2]
-        feature_name_singular = "{}/{}".format(base_feature_name_singular, postfix)
-        next_feature_name_singular = "{}_next/{}".format(base_feature_name_singular, postfix)
-    else:
-        base_feature_name = feature_name
-        if not base_feature_name.endswith("_s"):
-            raise ValueError("time-indexed feature name {} doesn't end with _s ".format(base_feature_name))
-        base_feature_name_singular = base_feature_name[:-2]
-        feature_name_singular = base_feature_name_singular
-        next_feature_name_singular = "{}_next".format(base_feature_name_singular)
-    return feature_name_singular, next_feature_name_singular
-
-
-class ClassifierDataset(StateSpaceDataset):
+class ClassifierDataset(BaseDataset):
 
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         super(ClassifierDataset, self).__init__(dataset_dirs)

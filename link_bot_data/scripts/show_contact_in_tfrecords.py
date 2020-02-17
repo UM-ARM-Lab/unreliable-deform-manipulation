@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from link_bot_pycommon.link_bot_sdf_utils import bounds
+from link_bot_pycommon.link_bot_sdf_utils import compute_extent
 from video_prediction.datasets import LinkBotDataset
 
 
@@ -55,7 +55,7 @@ def main():
         action = input_results['actions'].squeeze()
         vx, vy = action
         constraint = bool(input_results['constraints'].squeeze())
-        extent = bounds(sdf, res, origin)
+        extent = compute_extent(sdf, res, origin)
         occupancy_image = np.flipud(input_results['sdf'].squeeze().T) > 0
 
         color = 'r' if constraint else 'g'

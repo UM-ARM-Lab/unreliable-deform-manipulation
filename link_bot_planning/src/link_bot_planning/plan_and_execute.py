@@ -22,7 +22,7 @@ from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon, link_bot_pycommo
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 
 
-class myMPC:
+class PlanAndExecute:
 
     def __init__(self,
                  planner: MyPlanner,
@@ -82,8 +82,6 @@ class myMPC:
                 # generate a random target
                 state = self.services.get_state(state_req)
                 head_idx = state.link_names.index("head")
-                # TODO: rope and tether should probably be treated differently, because current this things the
-                #  start of the tether is the stat of the rope, but we want to plan based on the head
                 initial_rope_configuration = link_bot_pycommon.points_to_config(state.points)
                 head_point = state.points[head_idx]
                 tail_goal = self.get_goal(self.planner_params['w'],
@@ -107,7 +105,7 @@ class myMPC:
                 t0 = time.time()
 
                 planner_results = self.planner.plan(start, tail_goal_point, full_env_data)
-                planned_actions, planned_path, planner_local_envs, full_env_data, planner_status = planner_results
+                planned_actions, planned_path, full_env_data, planner_status = planner_results
                 my_planner.interpret_planner_status(planner_status, self.verbose)
 
                 if self.verbose >= 1:
@@ -127,10 +125,6 @@ class myMPC:
                 self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_env_data, planner_data, planning_time,
                                       planner_status)
 
-                if self.verbose >= 4:
-                    print("Planned actions: {}".format(planned_actions))
-                    print("Planned path: {}".format(planned_path))
-
                 trajectory_execution_request = ros_pycommon.make_trajectory_execution_request(self.planner.fwd_model.dt,
                                                                                               planned_actions)
 
@@ -144,14 +138,12 @@ class myMPC:
                     self.services.pause(std_srvs.srv.EmptyRequest())
 
                     local_env_params = self.planner.fwd_model.local_env_params
-                    actual_path, actual_local_envs = ros_pycommon.trajectory_execution_response_to_numpy(traj_exec_response,
-                                                                                                         local_env_params,
-                                                                                                         self.services)
+                    actual_path = ros_pycommon.trajectory_execution_response_to_numpy(traj_exec_response,
+                                                                                      local_env_params,
+                                                                                      self.services)
                     self.on_execution_complete(planned_path,
                                                planned_actions,
                                                tail_goal_point,
-                                               planner_local_envs,
-                                               actual_local_envs,
                                                actual_path,
                                                full_env_data,
                                                planner_data,
@@ -172,7 +164,7 @@ class myMPC:
         return sample_collision_free_goal(w, h, head_point, env_padding, full_env_data, self.goal_rng)
 
     def on_plan_complete(self,
-                         planned_path: np.ndarray,
+                         planned_path: Dict[str, np.ndarray],
                          tail_goal_point: np.ndarray,
                          planned_actions: np.ndarray,
                          full_env_data: link_bot_sdf_utils.OccupancyData,
@@ -182,12 +174,10 @@ class myMPC:
         pass
 
     def on_execution_complete(self,
-                              planned_path: np.ndarray,
+                              planned_path: Dict[str, np.ndarray],
                               planned_actions: np.ndarray,
                               tail_goal_point: np.ndarray,
-                              planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_path: np.ndarray,
+                              actual_path: Dict[str, np.ndarray],
                               full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,

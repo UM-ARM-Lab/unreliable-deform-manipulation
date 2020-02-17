@@ -19,7 +19,7 @@ from ompl import base as ob
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import my_mpc, model_utils
+from link_bot_planning import plan_and_execute, model_utils
 from link_bot_planning.mpc_planners import get_planner_with_model
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
@@ -32,7 +32,7 @@ config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
 
-class ComputeClassifierMetrics(my_mpc.myMPC):
+class ComputeClassifierMetrics(plan_and_execute.PlanAndExecute):
 
     def __init__(self,
                  planner: MyPlanner,
@@ -92,16 +92,14 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
                               tail_goal_point: np.ndarray,
-                              planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_path: np.ndarray,
+                              actual_path: Dict[str, np.ndarray],
                               full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
-        execution_to_goal_error = np.linalg.norm(actual_path[-1, 0:2] - tail_goal_point)
+        execution_to_goal_error = np.linalg.norm(actual_path['link_bot'][-1, 0:2] - tail_goal_point)
         plan_to_goal_error = np.linalg.norm(planned_path[-1, 0:2] - tail_goal_point)
-        plan_to_execution_error = np.linalg.norm(actual_path[-1, 0:2] - planned_path[-1, 0:2])
+        plan_to_execution_error = np.linalg.norm(actual_path['link_bot'][-1, 0:2] - planned_path[-1, 0:2])
         lengths = [np.linalg.norm(planned_path[i] - planned_path[i - 1]) for i in range(1, len(planned_path))]
         path_length = np.sum(lengths)
         num_nodes = planner_data.numVertices()
@@ -112,7 +110,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
             'planner_status': planner_status.asString(),
             'full_env': full_env_data.data.tolist(),
             'planned_path': planned_path.tolist(),
-            'actual_path': actual_path.tolist(),
+            'actual_path': dict([(k, v.tolist()) for k, v in actual_path.items()]),
             'planning_time': planning_time,
             'final_planning_error': plan_to_goal_error,
             'final_execution_error': execution_to_goal_error,
@@ -134,7 +132,7 @@ class ComputeClassifierMetrics(my_mpc.myMPC):
                       planned_path,
                       planned_actions,
                       full_env_data.extent)
-        ax.scatter(actual_path[-1, 0], actual_path[-1, 1], label='final actual tail position', zorder=5)
+        ax.scatter(actual_path['link_bot'][-1, 0], actual_path['link_bot'][-1, 1], label='final actual tail position', zorder=5)
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
         plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
 

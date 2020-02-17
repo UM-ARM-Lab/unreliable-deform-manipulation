@@ -4,12 +4,13 @@
   "sequence_length": 10,
   "conv_filters": [
     [8, [5, 5]],
-    [8, [5, 5]]
+    [8, [3, 3]],
+    [8, [3, 3]]
   ],
   "fc_layer_sizes": [256, 256],
   "residual": true,
   "mixed": true,
-  "kernel_reg": 0.0,
-  "bias_reg": 0.0,
-  "activity_reg": 0.0
+  "kernel_reg": 0.05,
+  "bias_reg": 0.05,
+  "activity_reg": 0.05
 }

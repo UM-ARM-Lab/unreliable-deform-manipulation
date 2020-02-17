@@ -129,7 +129,7 @@ def main():
                                  all_inputs['sdf'],
                                  predictions)
     for rope_configuration, true_violated, image, res, origin, sdf, prediction in inputs_and_predictions:
-        extent = link_bot_sdf_utils.bounds(sdf, resolution=res, origin=origin)
+        extent = link_bot_sdf_utils.compute_extent(sdf, resolution=res, origin=origin)
         result = EvaluateResult(rope_configuration=rope_configuration,
                                 predicted_violated=prediction,
                                 true_violated=true_violated,

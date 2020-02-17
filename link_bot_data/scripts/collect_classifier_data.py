@@ -17,10 +17,10 @@ from colorama import Fore
 from ompl import base as ob
 
 from link_bot_data import random_environment_data_utils
-from link_bot_data.link_bot_dataset_utils import float_feature
+from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import my_mpc, ompl_viz
+from link_bot_planning import plan_and_execute, ompl_viz
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
@@ -32,7 +32,7 @@ config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
 
-class ClassifierDataCollector(my_mpc.myMPC):
+class ClassifierDataCollector(plan_and_execute.PlanAndExecute):
 
     def __init__(self,
                  planner: MyPlanner,
@@ -59,6 +59,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                          services=services,
                          no_execution=False,
                          seed=seed)
+        self.hparams_written = False
         self.fwd_model_dir = fwd_model_dir
         self.fwd_model_type = fwd_model_type
         self.fwd_model_info = fwd_model_info
@@ -77,27 +78,25 @@ class ClassifierDataCollector(my_mpc.myMPC):
         else:
             self.full_output_directory = None
 
-        with (self.full_output_directory / 'hparams.json').open('w') as of:
-            options = {
-                'dt': self.planner.fwd_model.dt,
-                'seed': seed,
-                'compression_type': compression_type,
-                'n_total_plans': n_total_plans,
-                'n_plans_per_env': n_plans_per_env,
-                'verbose': verbose,
-                'planner_params': planner_params,
-                'sim_params': sim_params.to_json(),
-                'local_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
-                'full_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['full_env_params'],
-                'sequence_length': self.n_steps_per_example,
-                'fwd_model_dir': str(self.fwd_model_dir),
-                'fwd_model_type': self.fwd_model_type,
-                'fwd_model_hparams': self.planner.fwd_model.hparams,
-                'filter_free_space_only': False,
-                'n_state': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_state'],
-                'n_action': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_action']
-            }
-            json.dump(options, of, indent=2)
+        self.dataset_hparams = {
+            'dt': self.planner.fwd_model.dt,
+            'seed': seed,
+            'compression_type': compression_type,
+            'n_total_plans': n_total_plans,
+            'n_plans_per_env': n_plans_per_env,
+            'verbose': verbose,
+            'planner_params': planner_params,
+            'sim_params': sim_params.to_json(),
+            'local_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
+            'full_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['full_env_params'],
+            'sequence_length': self.n_steps_per_example,
+            'fwd_model_dir': str(self.fwd_model_dir),
+            'fwd_model_type': self.fwd_model_type,
+            'fwd_model_hparams': self.planner.fwd_model.hparams,
+            'filter_free_space_only': False,
+            'n_state': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_state'],
+            'n_action': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_action']
+        }
 
         self.planning_times = []
 
@@ -107,7 +106,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
         self.traj_idx = 0
 
     def on_plan_complete(self,
-                         planned_path: np.ndarray,
+                         planned_path: Dict[str, np.ndarray],
                          tail_goal_point: np.ndarray,
                          planned_actions: np.ndarray,
                          full_env_data: link_bot_sdf_utils.OccupancyData,
@@ -124,7 +123,7 @@ class ClassifierDataCollector(my_mpc.myMPC):
                           planner_data,
                           full_env_data.data,
                           tail_goal_point,
-                          planned_path,
+                          planned_path['link_bot'],
                           planned_actions,
                           full_env_data.extent)
 
@@ -133,22 +132,29 @@ class ClassifierDataCollector(my_mpc.myMPC):
                 print("Planning Time: {:7.3f}s ({:6.3f}s)".format(np.mean(self.planning_times), np.std(self.planning_times)))
 
     def on_execution_complete(self,
-                              planned_path: np.ndarray,
+                              planned_path: Dict[str, np.ndarray],
                               planned_actions: np.ndarray,
                               tail_goal_point: np.ndarray,
-                              planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_path: np.ndarray,
+                              actual_path: Dict[str, np.ndarray],
                               full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
+
+        # write the hparams once we've figured out what objects we're going to have
+        if not self.hparams_written:
+            self.hparams_written = True
+            self.dataset_hparams['actual_state_keys'] = list(actual_path.keys())
+            self.dataset_hparams['planned_state_keys'] = list(planned_path.keys())
+            with (self.full_output_directory / 'hparams.json').open('w') as of:
+                json.dump(self.dataset_hparams, of, indent=2)
+
         current_features = {
-            'local_env_rows': float_feature(np.array([self.local_env_params.h_rows])),
-            'local_env_cols': float_feature(np.array([self.local_env_params.w_cols])),
-            'full_env/env': float_feature(full_env_data.data.flatten()),
-            'full_env/extent': float_feature(np.array(full_env_data.extent)),
-            'full_env/origin': float_feature(full_env_data.origin),
+            'local_env_rows': float_tensor_to_bytes_feature([self.local_env_params.h_rows]),
+            'local_env_cols': float_tensor_to_bytes_feature([self.local_env_params.w_cols]),
+            'full_env/env': float_tensor_to_bytes_feature(full_env_data.data.flatten()),
+            'full_env/extent': float_tensor_to_bytes_feature(full_env_data.extent),
+            'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),
         }
 
         for time_idx in range(self.n_steps_per_example):
@@ -158,32 +164,25 @@ class ClassifierDataCollector(my_mpc.myMPC):
             else:
                 action = np.zeros(2)
 
-            if time_idx < planned_path.shape[0]:
-                planned_state = planned_path[time_idx]
-                planned_local_env = planner_local_envs[time_idx]
-            else:
-                planned_state = planned_path[-1]
-                planned_local_env = planner_local_envs[-1]
+            n_steps = len(next(iter(actual_path.values())))
+            for name, object_path in actual_path.items():
+                if time_idx < n_steps:
+                    state = object_path[time_idx]
+                else:
+                    state = object_path[-1]
+                current_features['{}/state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state.flatten())
 
-            if time_idx < actual_path.shape[0]:
-                state = actual_path[time_idx]
-                actual_local_env = actual_local_envs[time_idx]
-            else:
-                state = actual_path[-1]
-                actual_local_env = actual_local_envs[-1]
+            for name, object_path in planned_path.items():
+                if time_idx < n_steps:
+                    state = object_path[time_idx]
+                else:
+                    state = object_path[-1]
+                current_features['{}/planned_state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state.flatten())
 
-            current_features['{}/state'.format(time_idx)] = float_feature(state)
-            current_features['{}/action'.format(time_idx)] = float_feature(action)
-            current_features['{}/actual_local_env/env'.format(time_idx)] = float_feature(actual_local_env.data.flatten())
-            current_features['{}/actual_local_env/extent'.format(time_idx)] = float_feature(np.array(actual_local_env.extent))
-            current_features['{}/actual_local_env/origin'.format(time_idx)] = float_feature(actual_local_env.origin)
-            current_features['{}/res'.format(time_idx)] = float_feature(np.array([self.local_env_params.res]))
-            current_features['{}/traj_idx'.format(time_idx)] = float_feature(np.array([self.traj_idx]))
-            current_features['{}/time_idx'.format(time_idx)] = float_feature(np.array([time_idx]))
-            current_features['{}/planned_state'.format(time_idx)] = float_feature(planned_state)
-            current_features['{}/planned_local_env/env'.format(time_idx)] = float_feature(planned_local_env.data.flatten())
-            current_features['{}/planned_local_env/extent'.format(time_idx)] = float_feature(np.array(planned_local_env.extent))
-            current_features['{}/planned_local_env/origin'.format(time_idx)] = float_feature(np.array(planned_local_env.origin))
+            current_features['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature(action)
+            current_features['{}/res'.format(time_idx)] = float_tensor_to_bytes_feature([self.local_env_params.res])
+            current_features['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature([self.traj_idx])
+            current_features['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature([time_idx])
 
         self.traj_idx += 1
 

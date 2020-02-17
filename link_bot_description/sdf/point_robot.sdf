@@ -60,16 +60,14 @@
             <kD_vel>0.0</kD_vel>
             <max_force>1.0</max_force>
 
-            <kP_pos>100</kP_pos>
-            <kI_pos>0.001</kI_pos>
+            <kP_pos>35.0</kP_pos>
+            <kI_pos>0.0</kI_pos>
             <kD_pos>0.0</kD_pos>
 
-            <!-- max vel is only relevant for position mode, which we don't used at the moment -->
-            <max_vel>0.15</max_vel>
-            <max_vel_acc>0.01</max_vel_acc>
+            <max_vel>0.35</max_vel>
             <gripper1_link>head</gripper1_link>
             <num_links>0</num_links>
-            <rope_length>6.5</rope_length>
+            <rope_length>0</rope_length>
         </plugin>
     </model>
 </sdf>

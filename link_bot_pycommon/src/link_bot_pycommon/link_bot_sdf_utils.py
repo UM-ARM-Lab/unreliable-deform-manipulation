@@ -36,7 +36,7 @@ def center_point_to_origin_indices(h_rows: int,
     return np.array([int(-env_00_x / res), int(-env_00_y / res)])
 
 
-def bounds(rows, cols, resolution, origin):
+def compute_extent(rows, cols, resolution, origin):
     xmin, ymin = idx_to_point(0, 0, resolution, origin)
     xmax, ymax = idx_to_point(rows, cols, resolution, origin)
     return [xmin, xmax, ymin, ymax]
@@ -64,7 +64,7 @@ class OccupancyData:
         self.resolution = resolution.astype(np.float32)
         # Origin means the indeces (row/col) of the world point (0, 0)
         self.origin = origin.astype(np.float32)
-        self.extent = bounds(self.data.shape[0], self.data.shape[1], resolution, origin)
+        self.extent = compute_extent(self.data.shape[0], self.data.shape[1], resolution, origin)
         # NOTE: when displaying an SDF as an image, matplotlib assumes rows increase going down,
         #  but rows correspond to y which increases going up
         self.image = np.flipud(self.data)
@@ -109,7 +109,7 @@ class SDF:
         self.resolution = resolution.astype(np.float32)
         # Origin means the indeces (row/col) of the world point (0, 0)
         self.origin = origin.astype(np.float32)
-        self.extent = bounds(sdf.shape[0], sdf.shape[1], resolution, origin)
+        self.extent = compute_extent(sdf.shape[0], sdf.shape[1], resolution, origin)
         # NOTE: when displaying an SDF as an image, matplotlib assumes rows increase going down,
         #  but rows correspond to y which increases going up
         self.image = np.flipud(sdf)

@@ -11,13 +11,11 @@ import numpy as np
 import rospy
 import tensorflow
 from colorama import Fore
-from link_bot_gazebo.msg import LinkBotVelocityAction
-from link_bot_gazebo.srv import WorldControlRequest, LinkBotStateRequest
+from link_bot_gazebo.srv import LinkBotStateRequest, ExecuteActionRequest
 
 from link_bot_data import random_environment_data_utils
-from link_bot_data.link_bot_dataset_utils import float_feature
+from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_gazebo import gazebo_utils
-from link_bot_planning.goals import sample_goal
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
 from link_bot_pycommon import ros_pycommon, link_bot_pycommon
 from link_bot_pycommon.args import my_formatter
@@ -27,23 +25,34 @@ conf = tensorflow.compat.v1.ConfigProto(gpu_options=opts)
 tensorflow.compat.v1.enable_eager_execution(config=conf)
 
 
-def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gripper1_target_y, goal_rng: np.random.RandomState):
-    # FIXME: don't use separate XY
-    gripper1_target = np.array([gripper1_target_x, gripper1_target_y])
+def sample_delta_pos(action_rng, max_delta_pos, head_point, goal_env_w, goal_env_h):
+    while True:
+        delta_pos = action_rng.uniform(0, max_delta_pos)
+        direction = action_rng.uniform(-np.pi, np.pi)
+        gripper1_dx = np.cos(direction) * delta_pos
+        gripper1_dy = np.sin(direction) * delta_pos
+
+        if -goal_env_w <= head_point.x + gripper1_dx <= goal_env_w and -goal_env_h <= head_point.y + gripper1_dy <= goal_env_h:
+            break
+
+    return gripper1_dx, gripper1_dy
+
+def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random.RandomState):
     state_req = LinkBotStateRequest()
-    action_msg = LinkBotVelocityAction()
+    action_msg = ExecuteActionRequest()
+
+    max_delta_pos = ros_pycommon.get_max_speed() * args.dt
 
     # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
     # over the course of this function
     full_env_data = ros_pycommon.get_occupancy_data(env_w=args.env_w, env_h=args.env_h, res=args.res, services=services)
 
-    combined_constraint_labels = np.ndarray((args.steps_per_traj, 1))
     feature = {
-        'local_env_rows': float_feature(np.array([args.local_env_rows])),
-        'local_env_cols': float_feature(np.array([args.local_env_cols])),
-        'full_env/env': float_feature(full_env_data.data.flatten()),
-        'full_env/extent': float_feature(np.array(full_env_data.extent)),
-        'full_env/origin': float_feature(full_env_data.origin),
+        'local_env_rows': float_tensor_to_bytes_feature(np.array([args.local_env_rows])),
+        'local_env_cols': float_tensor_to_bytes_feature(np.array([args.local_env_cols])),
+        'full_env/env': float_tensor_to_bytes_feature(full_env_data.data),
+        'full_env/extent': float_tensor_to_bytes_feature(full_env_data.extent),
+        'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),
     }
 
     for time_idx in range(args.steps_per_traj):
@@ -53,53 +62,15 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
         rope_configuration = link_bot_pycommon.points_to_config(state.points)
         head_point = state.points[head_idx]
 
-        # Pick a new target if necessary
-        if global_t_step % args.steps_per_target == 0:
-            gripper1_target = sample_goal(args.env_w, args.env_h, head_point, env_padding=0.5, rng=goal_rng)
-            gripper1_target_x, gripper1_target_y = gripper1_target
-            if args.verbose:
-                print('gripper target:', gripper1_target_x, gripper1_target_y)
-                random_environment_data_utils.publish_marker(gripper1_target_x, gripper1_target_y, marker_size=0.05)
-
-        # compute the velocity to move in that direction
-        velocity = np.minimum(np.maximum(np.random.randn() * 0.07 + 0.10, 0), 0.15)
-        dpos = gripper1_target - np.array([head_point.x, head_point.y])
-        dpos_unit = dpos / np.linalg.norm(dpos)
-        # FIXME: I meant for this to multiply by dpos, but now that would required recollecting and retraining all my models
-        gripper1_target_v = velocity * dpos
-        gripper1_target_vx = gripper1_target_v[0]
-        gripper1_target_vy = gripper1_target_v[1]
-        # gripper1_target_vx = velocity if gripper1_target_x > head_point.x else -velocity
-        # gripper1_target_vy = velocity if gripper1_target_y > head_point.y else -velocity
-
-        # publish the pull command, which will return the target velocity
-        action_msg.gripper1_velocity.x = gripper1_target_vx
-        action_msg.gripper1_velocity.y = gripper1_target_vy
-        services.velocity_action_pub.publish(action_msg)
-
-        # let the simulator run
-        step = WorldControlRequest()
-        step.steps = int(args.dt / args.max_step_size)  # assuming 0.001s per simulation step
-        services.world_control(step)  # this will block until stepping is complete
-
-        # NOTE: at_constraint_boundary is not used at the moment
-        post_action_state = services.get_state(state_req)
-        stopped = 0.025  # This threshold must be tuned whenever physics or the above velocity controller parameters change
-        if (abs(post_action_state.gripper1_velocity.x) < stopped < abs(gripper1_target_vx)) \
-                or (abs(post_action_state.gripper1_velocity.y) < stopped < abs(gripper1_target_vy)):
-            at_constraint_boundary = True
-        else:
-            at_constraint_boundary = False
-
+        gripper1_dx, gripper1_dy = sample_delta_pos(action_rng, max_delta_pos, head_point, args.goal_env_w, args.goal_env_h)
         if args.verbose:
-            print("{} {:0.4f} {:0.4f} {:0.4f} {:0.4f} {}".format(time_idx,
-                                                                 gripper1_target_vx,
-                                                                 gripper1_target_vy,
-                                                                 post_action_state.gripper1_velocity.x,
-                                                                 post_action_state.gripper1_velocity.y,
-                                                                 at_constraint_boundary))
+            print('gripper delta:', gripper1_dx, gripper1_dy)
+            random_environment_data_utils.publish_marker(head_point.x + gripper1_dx, head_point.y + gripper1_dy, marker_size=0.05)
 
-        combined_constraint_labels[time_idx, 0] = at_constraint_boundary
+        action_msg.action.gripper1_delta_pos.x = gripper1_dx
+        action_msg.action.gripper1_delta_pos.y = gripper1_dy
+        action_msg.action.max_time_per_step = args.dt
+        services.execute_action(action_msg)
 
         # format the tf feature
         head_np = np.array([head_point.x, head_point.y])
@@ -110,45 +81,29 @@ def generate_traj(args, services, traj_idx, global_t_step, gripper1_target_x, gr
                                                                services=services)
 
         # for compatibility with video prediction
-        feature['{}/endeffector_pos'.format(time_idx)] = float_feature(head_np)
-        # for debugging/visualizing the constraint label
-        feature['{}/1/velocity'.format(time_idx)] = float_feature(
-            np.array([state.gripper1_velocity.x, state.gripper1_velocity.y]))
-        feature['{}/1/post_action_velocity'.format(time_idx)] = float_feature(
-            np.array([post_action_state.gripper1_velocity.x, post_action_state.gripper1_velocity.y]))
-        feature['{}/1/force'.format(time_idx)] = float_feature(np.array([state.gripper1_force.x, state.gripper1_force.y]))
-        # for learning dynamics in rope configuration space
-        feature['{}/rope_configuration'.format(time_idx)] = float_feature(rope_configuration.flatten())
-        feature['{}/state'.format(time_idx)] = float_feature(rope_configuration.flatten())
-        feature['{}/action'.format(time_idx)] = float_feature(np.array([gripper1_target_vx, gripper1_target_vy]))
-        feature['{}/constraint'.format(time_idx)] = float_feature(np.array([float(at_constraint_boundary)]))
-        feature['{}/actual_local_env/env'.format(time_idx)] = float_feature(local_env_data.data.flatten())
-        feature['{}/actual_local_env/extent'.format(time_idx)] = float_feature(np.array(local_env_data.extent))
-        feature['{}/actual_local_env/origin'.format(time_idx)] = float_feature(local_env_data.origin)
-        feature['{}/res'.format(time_idx)] = float_feature(np.array([local_env_data.resolution[0]]))
-        feature['{}/traj_idx'.format(time_idx)] = float_feature(np.array([traj_idx]))
-        feature['{}/time_idx'.format(time_idx)] = float_feature(np.array([time_idx]))
+        feature['{}/endeffector_pos'.format(time_idx)] = float_tensor_to_bytes_feature(head_np)
+        feature['{}/state'.format(time_idx)] = float_tensor_to_bytes_feature(rope_configuration)
+        feature['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature([gripper1_dx, gripper1_dy])
+        feature['{}/actual_local_env/env'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.data)
+        feature['{}/actual_local_env/extent'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.extent)
+        feature['{}/actual_local_env/origin'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.origin)
+        feature['{}/res'.format(time_idx)] = float_tensor_to_bytes_feature([local_env_data.resolution[0]])
+        feature['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature([traj_idx])
+        feature['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature([time_idx])
 
         global_t_step += 1
-
-    n_positive = np.count_nonzero(np.any(combined_constraint_labels, axis=1))
-    percentage_positive = n_positive * 100.0 / combined_constraint_labels.shape[0]
 
     if args.verbose:
         print(Fore.GREEN + "Trajectory {} Complete".format(traj_idx) + Fore.RESET)
 
     example_proto = tensorflow.train.Example(features=tensorflow.train.Features(feature=feature))
-    # TODO: include documentation *inside* the tfrecords file describing what each feature is
     example = example_proto.SerializeToString()
-    return example, percentage_positive, global_t_step, gripper1_target_x, gripper1_target_y
+    return example, global_t_step
 
 
-def generate_trajs(args, full_output_directory, services, gazebo_rng: np.random.RandomState, goal_rng: np.random.RandomState):
+def generate_trajs(args, full_output_directory, services, gazebo_rng: np.random.RandomState, action_rng: np.random.RandomState):
     examples = np.ndarray([args.trajs_per_file], dtype=object)
-    percentages_positive = []
     global_t_step = 0
-    gripper1_target_x = None
-    gripper1_target_y = None
     for i in range(args.trajs):
         current_record_traj_idx = i % args.trajs_per_file
 
@@ -164,13 +119,8 @@ def generate_trajs(args, full_output_directory, services, gazebo_rng: np.random.
                                       rng=gazebo_rng)
 
         # Generate a new trajectory
-        example, percentage_violation, global_t_step, gripper1_target_x, gripper1_target_y = generate_traj(args, services, i,
-                                                                                                           global_t_step,
-                                                                                                           gripper1_target_x,
-                                                                                                           gripper1_target_y,
-                                                                                                           goal_rng)
+        example, global_t_step = generate_traj(args, services, i, global_t_step, action_rng)
         examples[current_record_traj_idx] = example
-        percentages_positive.append(percentage_violation)
 
         # Save the data
         if current_record_traj_idx == args.trajs_per_file - 1:
@@ -184,10 +134,6 @@ def generate_trajs(args, full_output_directory, services, gazebo_rng: np.random.
             writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type=args.compression_type)
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))
-
-            if args.verbose:
-                mean_percentage_positive = np.mean(percentages_positive)
-                print("Class balance: mean % positive: {}".format(mean_percentage_positive))
 
         if not args.verbose:
             print(".", end='')
@@ -228,7 +174,6 @@ def generate(args):
             'sequence_length': args.steps_per_traj,
             'n_state': n_state,
             'n_action': 2,
-            'filter_free_space_only': False,
         }
         json.dump(options, of, indent=1)
 
@@ -251,14 +196,15 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("trajs", type=int, help='how many trajectories to collect')
     parser.add_argument("outdir")
-    parser.add_argument('--dt', type=float, default=1.00, help='dt')
+    parser.add_argument('--dt', type=float, default=1.00, help='seconds to execute each delta position action')
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--env-w', type=float, default=6.0, help='full env w')
     parser.add_argument('--env-h', type=float, default=6.0, help='full env h')
+    parser.add_argument('--goal-env-w', type=float, default=2.2, help='goal env w')
+    parser.add_argument('--goal-env-h', type=float, default=2.2, help='goal env h')
     parser.add_argument('--local_env-cols', type=int, default=50, help='local env')
     parser.add_argument('--local_env-rows', type=int, default=50, help='local env')
     parser.add_argument("--steps-per-traj", type=int, default=100, help='steps per traj')
-    parser.add_argument("--steps-per-target", type=int, default=25, help='steps before changing target')
     parser.add_argument("--start-idx-offset", type=int, default=0, help='offset TFRecord file names')
     parser.add_argument("--move-objects-every-n", type=int, default=16, help='rearrange objects every n trajectories')
     parser.add_argument("--no-obstacles", action='store_true', help='do not move obstacles')

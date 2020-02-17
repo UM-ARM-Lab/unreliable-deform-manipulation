@@ -197,6 +197,7 @@ def visualize_predictions(results, n_examples, base_folder=None):
 
 
 def evaluate_metrics(results):
+    sequence_length, n_points, _ = results['true']['points'][0].shape
     for model_name, result in results.items():
         if model_name == 'true':
             continue
@@ -205,29 +206,23 @@ def evaluate_metrics(results):
 
         # loop over trajectories
         total_errors = []
-        head_errors = []
-        tail_errors = []
-        mid_errors = []
+        errors_by_point = [[] for _ in range(n_points)]
         for i, predicted_points in enumerate(result['points']):
             true_points = results['true']['points'][i]
             error = np.linalg.norm(predicted_points - true_points, axis=2)
             total_error = np.sum(error, axis=1)
-            tail_error = error[:, 0]
-            mid_error = error[:, 1]
-            head_error = error[:, 2]
             total_errors.append(total_error)
-            head_errors.append(head_error)
-            mid_errors.append(mid_error)
-            tail_errors.append(tail_error)
+            for j in range(n_points):
+                error_j = error[:, j]
+                errors_by_point[j].extend(error_j)
 
             # The first time step is copied from ground truth, so it should always have zero error
             assert np.all(error[0] == 0)
 
         print()
         print("Model: {}".format(model_name))
-        print("head error:  {:8.4f}m {:6.4f}".format(np.mean(head_errors), np.std(head_errors)))
-        print("mid error:   {:8.4f}m {:6.4f}".format(np.mean(mid_errors), np.std(mid_errors)))
-        print("tail error:  {:8.4f}m {:6.4f}".format(np.mean(tail_errors), np.std(tail_errors)))
+        for i in range(n_points):
+            print("point {} error:  {:8.4f}m {:6.4f}".format(i, np.mean(errors_by_point[i]), np.std(errors_by_point[i])))
         print("total error: {:8.4f}m {:6.4f}".format(np.mean(total_errors), np.std(total_errors)))
         print("runtime: {:8.4f}ms".format(np.mean(runtimes) * 1e3))
 

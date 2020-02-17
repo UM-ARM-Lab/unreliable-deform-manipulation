@@ -19,7 +19,7 @@ from matplotlib.animation import FuncAnimation
 from link_bot_data.visualization import plottable_rope_configuration
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
-from link_bot_planning import my_mpc
+from link_bot_planning import plan_and_execute
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
@@ -61,7 +61,7 @@ def plot_comparison(outdir, planned_path, actual_rope_configurations, full_sdf_d
     plt.show()
 
 
-class Executor(my_mpc.myMPC):
+class Executor(plan_and_execute.PlanAndExecute):
 
     def __init__(self,
                  planner: MyPlanner,
@@ -104,14 +104,13 @@ class Executor(my_mpc.myMPC):
                               planned_path: np.ndarray,
                               planned_actions: np.ndarray,
                               tail_goal_point: np.ndarray,
-                              planner_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_local_envs: List[link_bot_sdf_utils.OccupancyData],
-                              actual_path: np.ndarray,
-                              full_sdf_data: link_bot_sdf_utils.SDF,
+                              actual_path: Dict[str, np.ndarray],
+                              full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
-                              planning_time: float):
+                              planning_time: float,
+                              planner_status: ob.PlannerStatus):
         full_sdf_data = get_sdf_data(env_h=10, env_w=10, res=0.03, services=self.services)
-        plot_comparison(self.outdir, planned_path, actual_path, full_sdf_data)
+        plot_comparison(self.outdir, planned_path, actual_path['link_bot'], full_sdf_data)
 
 
 def main():

@@ -2,9 +2,8 @@ import numpy as np
 import rospy
 import std_srvs
 from colorama import Fore
-from link_bot_gazebo.msg import LinkBotVelocityAction
 from link_bot_gazebo.srv import ComputeSDF2Request, ComputeOccupancyRequest, ComputeSDF2, ComputeOccupancy, \
-    LinkBotTrajectoryRequest, LinkBotState, WorldControl, LinkBotTrajectory
+    LinkBotTrajectoryRequest, LinkBotState, WorldControl, LinkBotTrajectory, ExecuteAction
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from link_bot_pycommon import link_bot_sdf_utils
@@ -14,8 +13,16 @@ def get_n_state():
     return rospy.get_param("/link_bot/n_state")
 
 
+def get_n_tether_state():
+    return rospy.get_param("/tether/n_state", default=0)
+
+
 def get_rope_length():
     return rospy.get_param("/link_bot/rope_length")
+
+
+def get_max_speed():
+    return rospy.get_param("/link_bot/max_speed")
 
 
 class Services:
@@ -23,7 +30,7 @@ class Services:
     def __init__(self):
         self.compute_occupancy = rospy.ServiceProxy('/occupancy', ComputeOccupancy)
         self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
-        self.velocity_action_pub = rospy.Publisher("/link_bot_velocity_action", LinkBotVelocityAction, queue_size=10)
+        self.execute_action = rospy.ServiceProxy("/execute_action", ExecuteAction)
         self.world_control = rospy.ServiceProxy('/world_control', WorldControl)
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', std_srvs.srv.Empty)
         self.execute_trajectory = rospy.ServiceProxy("/link_bot_execute_trajectory", LinkBotTrajectory)
@@ -219,23 +226,35 @@ def make_trajectory_execution_request(dt, actions):
 def trajectory_execution_response_to_numpy(trajectory_execution_result,
                                            local_env_params,
                                            services):
-    actual_path = []
-    actual_local_envs = []
-    # TODO: figure out why executed has one more step then planned
-    for configuration in trajectory_execution_result.actual_path:
-        np_config = []
-        for point in configuration.points:
-            np_config.append(point.x)
-            np_config.append(point.y)
-        actual_path.append(np_config)
+    actual_path = {
+        'local_env': [],
+        'local_env_origin': [],
+    }
+    # throw out the last state because that one is due the adding the stop command, we don't care about it
+    # since we assume stop actually stops
+    for objects in trajectory_execution_result.actual_path[:-1]:
+        for object in objects.objects:
+            if object.name not in actual_path:
+                actual_path[object.name] = []
 
-        actual_head_point = np.array([np_config[-2], np_config[-1]])
-        if local_env_params is not None:
-            actual_local_env = get_local_occupancy_data(rows=local_env_params.h_rows,
-                                                        cols=local_env_params.w_cols,
-                                                        res=local_env_params.res,
-                                                        center_point=actual_head_point,
-                                                        services=services)
-            actual_local_envs.append(actual_local_env)
-    actual_path = np.array(actual_path)
-    return actual_path, actual_local_envs
+            np_config = []
+            for named_point in object.points:
+                np_config.append(named_point.point.x)
+                np_config.append(named_point.point.y)
+
+            actual_path[object.name].append(np_config)
+
+            if object.name == 'link_bot' and local_env_params is not None:
+                actual_head_point = np.array([np_config[-2], np_config[-1]])
+                actual_local_env = get_local_occupancy_data(rows=local_env_params.h_rows,
+                                                            cols=local_env_params.w_cols,
+                                                            res=local_env_params.res,
+                                                            center_point=actual_head_point,
+                                                            services=services)
+                actual_path['local_env'].append(actual_local_env.data)
+                actual_path['local_env_origin'].append(actual_local_env.origin)
+
+    for k, v in actual_path.items():
+        actual_path[k] = np.array(v)
+
+    return actual_path

@@ -1,12 +1,12 @@
 import pathlib
 from typing import List
 
-from link_bot_data.state_space_dataset import StateSpaceDataset
+from link_bot_data.base_dataset import BaseDataset
 import tensorflow as tf
 from link_bot_planning.params import LocalEnvParams
 
 
-class ImageClassifierDataset(StateSpaceDataset):
+class ImageClassifierDataset(BaseDataset):
 
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         super(ImageClassifierDataset, self).__init__(dataset_dirs)

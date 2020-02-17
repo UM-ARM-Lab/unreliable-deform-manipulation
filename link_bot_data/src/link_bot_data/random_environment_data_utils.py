@@ -13,8 +13,10 @@ from ignition import markers
 from link_bot_data.visualization import plottable_rope_configuration
 
 
-def publish_marker(target_x, target_y, marker_size=0.01):
-    target_marker = markers.make_marker(rgb=[1, 0, 0], id=1, scale=marker_size)
+def publish_marker(target_x, target_y, marker_size=0.01, rgb=None):
+    if rgb is None:
+        rgb = [1, 0, 0]
+    target_marker = markers.make_marker(rgb=rgb, id=1, scale=marker_size)
     target_marker.pose.position.x = target_x
     target_marker.pose.position.y = target_y
     markers.publish(target_marker)

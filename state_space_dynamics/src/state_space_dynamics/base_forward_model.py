@@ -4,6 +4,7 @@ import pathlib
 import numpy as np
 
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
+from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
 
 
 class BaseForwardModel:
@@ -20,6 +21,7 @@ class BaseForwardModel:
             self.full_env_params = FullEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['full_env_params'])
         self.dt = self.hparams['dynamics_dataset_hparams']['dt']
         self.max_step_size = self.sim_params.max_step_size
+        self.n_points = n_state_to_n_points(self.n_state)
 
     def predict(self,
                 full_envs: np.ndarray,

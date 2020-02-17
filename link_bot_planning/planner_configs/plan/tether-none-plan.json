@@ -15,5 +15,15 @@
   "w": 5.0,
   "h": 5.0,
   "timeout": 10,
-  "subspace_weights": [1, 0, 0]
+  "state_space": {
+    "link_bot": {
+      "weight": 1.0
+    },
+    "local_env": {
+      "weight": 0.0
+    },
+    "local_env_origin": {
+      "weight": 0.0
+    }
+  }
 }

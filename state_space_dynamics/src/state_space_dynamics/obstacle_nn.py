@@ -123,28 +123,13 @@ class ObstacleNN(tf.keras.Model):
             local_env = tf.expand_dims(local_env, axis=3)
             local_env_origin = tf.expand_dims(local_env_origin, axis=1)
 
+            # TODO: perform all this pre-processing in the dataset loading, then call cache to make this faster
+            #  this will also require converting to an image first, in the Wrapper
             # filters out out of bounds points internally with no warnings
             rope_image_s = self.raster([tf.expand_dims(s_t, axis=1), res_2d, local_env_origin])
             rope_image_t = rope_image_s[:, 0]
             action_image_s = self.action_smear(action_t)
             action_image_t = action_image_s[:, 0]
-
-            # DEBUGGING
-            # import matplotlib.pyplot as plt
-            # from link_bot_data.visualization import plot_rope_configuration
-            # from link_bot_pycommon import link_bot_sdf_utils
-            # fig1 = plt.figure()
-            # ax1 = plt.gca()
-            # im1 = ax1.imshow(np.flipud(full_env[0]), extent=[-3, 3, -3, 3])
-            # l1 = plot_rope_configuration(ax1, s_t_squeeze[0])
-            #
-            # fig2 = plt.figure()
-            # ax2 = plt.gca()
-            # local_env_extent = link_bot_sdf_utils.bounds(50, 50, [0.03, 0.03], local_env_origin[0, 0])
-            # im2 = ax2.imshow(np.flipud(local_env[0, :, :, 0]), extent=local_env_extent)
-            # l2 = plot_rope_configuration(ax2, s_t_squeeze[0])
-            #
-            # plt.show()
 
             # CNN
             z_t = self.concat([rope_image_t, local_env, action_image_t])
