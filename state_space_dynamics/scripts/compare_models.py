@@ -91,8 +91,8 @@ def generate_results(base_folder: pathlib.Path,
         output_states = y['output_states'].numpy().squeeze()
         n_examples = output_states.shape[0]
         true_points = output_states.reshape([n_examples, -1, 2])
-        local_env_extent = x['actual_local_env_s/extent'][:, 0].numpy()
-        local_env = tf.expand_dims(x['actual_local_env_s/env'][:, 0], axis=1).numpy()
+        local_env_extent = x['actual_local_env/extent'][:, 0].numpy()
+        local_env = tf.expand_dims(x['actual_local_env/env'][:, 0], axis=1).numpy()
         full_env_extent = x['full_env/extent'][:].numpy()
         full_env = tf.expand_dims(x['full_env/env'][:], axis=1).numpy()
 
@@ -114,13 +114,13 @@ def generate_results(base_folder: pathlib.Path,
         }
         print("generating results for {}".format(model_name))
         for x, y in tf_dataset:
-            states = x['state_s'].numpy()
-            actions = x['action_s'].numpy()
+            states = x['state'].numpy()
+            actions = x['action'].numpy()
             # this is supposed to give us a [batch, n_state] tensor
             first_state = np.expand_dims(states[0, 0], axis=0)
-            local_env = tf.expand_dims(x['actual_local_env_s/env'][:, 0], axis=1).numpy()
+            local_env = tf.expand_dims(x['actual_local_env/env'][:, 0], axis=1).numpy()
             local_env_extent = x['full_env/extent'][:, 0].numpy()
-            res = x['resolution_s'][:, 0].numpy()
+            res = x['res'][:, 0].numpy()
             full_env_origin_s = x['full_env/origin'].numpy()
             full_envs = x['full_env/env'].numpy()
             full_env_extents = x['full_env/extent'].numpy()

@@ -107,9 +107,6 @@ class BaseDataset:
 
         dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
         dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)
-        for example in next(iter(dataset)):
-            for k, v in example.items():
-                print(k, v.shape)
 
         def _slice_sequences(constant_data, state_like_seqs, action_like_seqs):
             return self.slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length=sequence_length)
