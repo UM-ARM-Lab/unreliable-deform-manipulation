@@ -26,7 +26,7 @@ class SimpleNN(tf.keras.Model):
         self.dense_layers.append(layers.Dense(self.hparams['dynamics_dataset_hparams']['n_state'], activation=None))
 
     def call(self, input_dict, training=None, mask=None):
-        states = input_dict['state']
+        states = input_dict['state/link_bot']
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
         s_0 = tf.expand_dims(states[:, 0], axis=2)
@@ -259,9 +259,9 @@ class SimpleNNWrapper(BaseForwardModel):
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {
             # must be batch, T, n_state
-            'state_s': states,
+            'state/link_bot': states,
             # must be batch, T, 2
-            'action_s': actions,
+            'action': actions,
         }
         predictions = self.net(test_x)
         predicted_points = predictions.numpy().reshape([batch, T + 1, -1, 2])

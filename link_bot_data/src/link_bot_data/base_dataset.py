@@ -45,7 +45,9 @@ class BaseDataset:
                      shuffle: bool = True,
                      sequence_length: Optional[int] = None,
                      n_parallel_calls: int = tf.data.experimental.AUTOTUNE,
-                     balance_key: Optional[str] = None) -> tf.data.Dataset:
+                     balance_key: Optional[str] = None,
+                     do_not_process: bool = False,
+                     ) -> tf.data.Dataset:
         records = []
         for dataset_dir in self.dataset_dirs:
             records.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
@@ -55,13 +57,16 @@ class BaseDataset:
                                               shuffle=shuffle,
                                               sequence_length=sequence_length,
                                               balance_key=balance_key,
-                                              n_parallel_calls=n_parallel_calls)
+                                              n_parallel_calls=n_parallel_calls,
+                                              do_not_process=do_not_process)
 
     def get_datasets_all_modes(self,
                                batch_size: Optional[int],
                                shuffle: bool = True,
                                seed: int = 0,
-                               balance_key: Optional[str] = None):
+                               balance_key: Optional[str] = None,
+                               do_not_process: bool = False,
+                               ):
         train_filenames = []
         test_filenames = []
         val_filenames = []
@@ -78,7 +83,8 @@ class BaseDataset:
                                               batch_size=batch_size,
                                               shuffle=shuffle,
                                               seed=seed,
-                                              balance_key=balance_key)
+                                              balance_key=balance_key,
+                                              do_not_process=do_not_process)
 
     def get_datasets_from_records(self,
                                   records: List[str],
@@ -88,6 +94,7 @@ class BaseDataset:
                                   sequence_length: Optional[int] = None,
                                   balance_key: str = None,
                                   n_parallel_calls: int = None,
+                                  do_not_process: bool = False,
                                   ) -> tf.data.Dataset:
         self.max_sequence_length = self.hparams['sequence_length']
         if sequence_length is None:
@@ -106,17 +113,19 @@ class BaseDataset:
         features_description = self.make_features_description()
 
         dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
-        dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)
 
-        def _slice_sequences(constant_data, state_like_seqs, action_like_seqs):
-            return self.slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length=sequence_length)
+        if not do_not_process:
+            dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)
 
-        dataset = dataset.map(_slice_sequences, num_parallel_calls=n_parallel_calls)
+            def _slice_sequences(constant_data, state_like_seqs, action_like_seqs):
+                return self.slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length=sequence_length)
 
-        dataset = self.post_process(dataset, n_parallel_calls)
+            dataset = dataset.map(_slice_sequences, num_parallel_calls=n_parallel_calls)
 
-        if balance_key is not None:
-            dataset = balance_dataset(dataset, balance_key)
+            dataset = self.post_process(dataset, n_parallel_calls)
+
+            if balance_key is not None:
+                dataset = balance_dataset(dataset, balance_key)
 
         dataset = dataset.cache()
 

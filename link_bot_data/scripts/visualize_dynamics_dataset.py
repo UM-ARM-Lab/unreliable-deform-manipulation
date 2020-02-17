@@ -52,13 +52,22 @@ def main():
             return True
         return False
 
+    # print info about shapes
+    input_data, output_data = next(iter(train_dataset))
+    print('inputs')
+    for k, v in input_data.items():
+        print(k, v.shape)
+    print('outputs')
+    for k, v in output_data.items():
+        print(k, v.shape)
+
     i = 0
     all_vs = []
     for input_data, output_data in train_dataset:
 
         out_of_bounds = False
 
-        rope_configurations = input_data['state'].numpy().squeeze()
+        rope_configurations = input_data['state/link_bot'].numpy().squeeze()
         actions = input_data['action'].numpy().squeeze()
         all_vs.extend(actions.flatten().tolist())
 

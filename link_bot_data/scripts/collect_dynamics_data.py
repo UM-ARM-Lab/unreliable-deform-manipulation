@@ -84,9 +84,9 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
         feature['{}/state/link_bot'.format(time_idx)] = float_tensor_to_bytes_feature(points_flat)
         feature['{}/state/local_env'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.data)
         feature['{}/state/local_env_origin'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.origin)
-        feature['{}/res'.format(time_idx)] = float_tensor_to_bytes_feature([local_env_data.resolution[0]])
-        feature['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature([traj_idx])
-        feature['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature([time_idx])
+        feature['{}/res'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.resolution[0])
+        feature['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature(traj_idx)
+        feature['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature(time_idx)
 
         global_t_step += 1
 

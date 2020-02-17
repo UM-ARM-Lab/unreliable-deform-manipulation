@@ -89,7 +89,7 @@ class ObstacleNN(tf.keras.Model):
     def call(self, input_dict, training=None, mask=None):
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
-        s_0 = tf.expand_dims(input_dict['state'][:, 0], axis=2)
+        s_0 = tf.expand_dims(input_dict['state/link_bot'][:, 0], axis=2)
         resolution = input_dict['res'][:, 0]
         res_2d = tf.expand_dims(tf.tile(resolution, [1, 2]), axis=1)
         full_env = input_dict['full_env/env']
@@ -353,7 +353,7 @@ class ObstacleNNWrapper(BaseForwardModel):
 
         test_x = {
             # must be batch, 1, n_state
-            'state': states,
+            'state/link_bot': states,
             # must be batch, T, 2
             'action': actions,
             # must be batch, T, 1
