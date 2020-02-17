@@ -12,7 +12,7 @@ from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
 
 from gazebo_msgs.srv import ApplyBodyWrench, SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
-from link_bot_pycommon.link_bot_pycommon import points_to_config
+from link_bot_pycommon.link_bot_pycommon import flatten_points
 from link_bot_pycommon.ros_pycommon import Services
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.gazebo_trajectory_execution import quaternion_from_euler
@@ -50,7 +50,7 @@ class GazeboServices(Services):
             state = self.get_state.call(state_req)
             # FIXME: wtf is this shit
             if state_dim == 6:
-                rope_config = points_to_config(state.points)
+                rope_config = flatten_points(state.points)
             else:
                 rope_config = np.array([state.points[-1].x, state.points[-1].y])
             # Convert to float image

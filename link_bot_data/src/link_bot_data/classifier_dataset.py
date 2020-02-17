@@ -15,29 +15,32 @@ class ClassifierDataset(BaseDataset):
         self.local_env_params = LocalEnvParams.from_json(self.hparams['local_env_params'])
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
 
-        local_env_shape = (self.local_env_params.h_rows, self.local_env_params.w_cols)
-        full_env_shape = (self.full_env_params.h_rows, self.full_env_params.w_cols)
-        n_state = self.hparams['fwd_model_hparams']['dynamics_dataset_hparams']['n_state']
-        n_action = self.hparams['fwd_model_hparams']['dynamics_dataset_hparams']['n_action']
+        actual_state_keys = self.hparams['actual_state_keys']
+        planned_state_keys = self.hparams['planned_state_keys']
 
-        self.action_like_names_and_shapes['action_s'] = '%d/action', (n_action,)
+        self.action_like_names_and_shapes = ['%d/action']
 
-        self.state_like_names_and_shapes['resolution_s'] = '%d/res', (1,)
-        self.state_like_names_and_shapes['actual_local_env_s/origin'] = '%d/actual_local_env/origin', (2,)
-        self.state_like_names_and_shapes['actual_local_env_s/extent'] = '%d/actual_local_env/extent', (4,)
-        self.state_like_names_and_shapes['actual_local_env_s/env'] = '%d/actual_local_env/env', local_env_shape
-        self.state_like_names_and_shapes['planned_local_env_s/extent'] = '%d/planned_local_env/extent', (4,)
-        self.state_like_names_and_shapes['planned_local_env_s/origin'] = '%d/planned_local_env/origin', (2,)
-        self.state_like_names_and_shapes['planned_local_env_s/env'] = '%d/planned_local_env/env', local_env_shape
-        self.state_like_names_and_shapes['time_idx_s'] = '%d/time_idx ', (1,)
-        self.trajectory_constant_names_and_shapes['local_env_rows'] = 'local_env_rows', (1,)
-        self.trajectory_constant_names_and_shapes['local_env_cols'] = 'local_env_cols', (1,)
-        self.trajectory_constant_names_and_shapes['full_env/env'] = 'full_env/env', full_env_shape
-        # These are the actual states -- should only be used for computing labels
-        self.state_like_names_and_shapes['state_s'] = '%d/state', (n_state,)
-        self.state_like_names_and_shapes['planned_state_s'] = '%d/planned_state', (n_state,)
+        self.state_like_names_and_shapes = [
+            '%d/res',
+            '%d/time_idx',
+            '%d/traj_idx',
+        ]
 
-    # this code is really unreadable
+        for k in actual_state_keys:
+            self.state_like_names_and_shapes.append('%d/state/{}'.format(k))
+
+        for k in planned_state_keys:
+            self.state_like_names_and_shapes.append('%d/state/{}'.format(k))
+
+        self.trajectory_constant_names_and_shapes = [
+            'full_env/origin',
+            'full_env/extent',
+            'full_env/env',
+        ]
+
+        # FIXME: test that this is working and correctly parsing
+        print(self.state_like_names_and_shapes)
+
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
 
         @tf.function

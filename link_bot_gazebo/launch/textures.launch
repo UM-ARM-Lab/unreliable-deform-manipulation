@@ -7,7 +7,7 @@
 
     <arg name="spawn_yaw" default="0"/>
 
-    <remap from="/reset" to="/gazebo/reset_simulation"/>
+    <remap from="/gazebo/reset_simulation" to="/reset"/>
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name" value="$(find link_bot_gazebo)/worlds/$(arg world_name).world"/>

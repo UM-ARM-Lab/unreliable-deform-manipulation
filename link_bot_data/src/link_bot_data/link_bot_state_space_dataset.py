@@ -18,11 +18,12 @@ class LinkBotStateSpaceDataset(BaseDataset):
         self.action_like_names_and_shapes = ['%d/action']
 
         self.state_like_names_and_shapes = [
-            '%d/state',
+            '%d/state/link_bot',
+            '%d/state/local_env',
+            '%d/state/local_env_origin',
             '%d/res',
-            '%d/actual_local_env/origin',
-            '%d/actual_local_env/extent',
-            '%d/actual_local_env/env',
+            '%d/time_idx',
+            '%d/traj_idx',
         ]
         self.trajectory_constant_names_and_shapes = [
             'full_env/origin',
@@ -39,7 +40,7 @@ class LinkBotStateSpaceDataset(BaseDataset):
             for k, v in state_like_sequences.items():
                 # chop off the last time step since that's not part of the input
                 input_dict[k] = v[:-1]
-            output_dict = {'output_states': state_like_sequences['state']}
+            output_dict = {'output_states': state_like_sequences['state/link_bot']}
             input_dict.update(action_like_sequences)
             input_dict.update(const_data)
             return input_dict, output_dict

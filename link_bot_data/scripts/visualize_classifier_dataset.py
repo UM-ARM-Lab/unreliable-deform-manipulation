@@ -37,6 +37,7 @@ def main():
     dataset_hparams = json.load(hparams_path.open("r"))
     dataset_type = dataset_hparams['type']
 
+    # FIXME: should only be one dataset class
     if dataset_type == 'image':
         classifier_dataset = ImageClassifierDataset(args.dataset_dirs)
         dataset = classifier_dataset.get_datasets(mode=args.mode,
@@ -56,20 +57,9 @@ def main():
                                                   seed=args.seed)
     done = False
 
-    def press(event):
-        nonlocal done
-        if event.key == 'x':
-            done = True
-
-    # fig = plt.figure()
-
     positive_count = 0
     negative_count = 0
     count = 0
-    regression_with_label_1 = []
-    regression_with_label_0 = []
-    angles = []
-    regressions = []
     for i, example in enumerate(dataset):
 
         if done:

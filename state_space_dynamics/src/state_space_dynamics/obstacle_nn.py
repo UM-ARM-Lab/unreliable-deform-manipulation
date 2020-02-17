@@ -353,11 +353,11 @@ class ObstacleNNWrapper(BaseForwardModel):
 
         test_x = {
             # must be batch, 1, n_state
-            'state_s': states,
+            'state': states,
             # must be batch, T, 2
-            'action_s': actions,
+            'action': actions,
             # must be batch, T, 1
-            'resolution_s': resolution_s,
+            'res': resolution_s,
             # must be batch, T, H, W
             'full_env/env': tf.convert_to_tensor(full_envs, dtype=tf.float32),
             # must be batch, T, 2

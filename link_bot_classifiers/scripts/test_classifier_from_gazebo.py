@@ -60,7 +60,7 @@ def main():
                                        res=full_env_params.res,
                                        services=services)
 
-    state = np.expand_dims(gazebo_utils.points_to_config(link_bot_state.points), axis=0)
+    state = np.expand_dims(gazebo_utils.flatten_points(link_bot_state.points), axis=0)
 
     v = args.v
     test_inputs = [

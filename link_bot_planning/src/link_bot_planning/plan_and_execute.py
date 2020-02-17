@@ -79,7 +79,7 @@ class PlanAndExecute:
                 # generate a random target
                 state = self.services.get_state(state_req)
                 head_idx = state.link_names.index("head")
-                initial_rope_configuration = link_bot_pycommon.points_to_config(state.points)
+                initial_rope_configuration = link_bot_pycommon.flatten_points(state.points)
                 head_point = state.points[head_idx]
                 tail_goal = self.get_goal(self.planner_params['w'],
                                           self.planner_params['h'],

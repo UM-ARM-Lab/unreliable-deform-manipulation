@@ -123,7 +123,7 @@ def make_rope_configurations(head_xs, head_ys, theta_1s, theta_2s, l=0.5):
     return rope_configurations
 
 
-def points_to_config(points):
+def flatten_points(points):
     return np.array([[p.x, p.y] for p in points]).flatten()
 
 

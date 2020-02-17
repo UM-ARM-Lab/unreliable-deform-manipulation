@@ -55,7 +55,7 @@ def generate_trajs(args,
 
         state_req = LinkBotStateRequest()
         state = services.get_state(state_req)
-        initial_state = gazebo_utils.points_to_config(state.points)
+        initial_state = gazebo_utils.flatten_points(state.points)
         head_idx = state.link_names.index("head")
         head_point = state.points[head_idx]
 
@@ -77,7 +77,7 @@ def generate_trajs(args,
 
             # Query the current state
             state = services.get_state(state_req)
-            actual_state = gazebo_utils.points_to_config(state.points)
+            actual_state = gazebo_utils.flatten_points(state.points)
             head_idx = state.link_names.index("head")
             head_point = state.points[head_idx]
 
@@ -119,7 +119,7 @@ def generate_trajs(args,
             # DEBUGGING
             if time_idx == 0:
                 state = services.get_state(state_req)
-                actual_next_state = gazebo_utils.points_to_config(state.points)
+                actual_next_state = gazebo_utils.flatten_points(state.points)
                 plot_classifier_data(
                     state=actual_state,
                     next_state=actual_next_state,
@@ -138,7 +138,7 @@ def generate_trajs(args,
 
             # Query the final state
             state = services.get_state(state_req)
-            final_state = gazebo_utils.points_to_config(state.points)
+            final_state = gazebo_utils.flatten_points(state.points)
             head_idx = state.link_names.index("head")
             head_point = state.points[head_idx]
 

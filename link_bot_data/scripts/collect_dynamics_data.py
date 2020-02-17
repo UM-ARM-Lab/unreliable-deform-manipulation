@@ -59,7 +59,7 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
         # Query the current state
         state = services.get_state(state_req)
         head_idx = state.link_names.index("head")
-        rope_configuration = link_bot_pycommon.points_to_config(state.points)
+        points_flat = link_bot_pycommon.flatten_points(state.points)
         head_point = state.points[head_idx]
 
         gripper1_dx, gripper1_dy = sample_delta_pos(action_rng, max_delta_pos, head_point, args.goal_env_w, args.goal_env_h)
@@ -80,13 +80,10 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
                                                                center_point=head_np,
                                                                services=services)
 
-        # for compatibility with video prediction
-        feature['{}/endeffector_pos'.format(time_idx)] = float_tensor_to_bytes_feature(head_np)
-        feature['{}/state'.format(time_idx)] = float_tensor_to_bytes_feature(rope_configuration)
         feature['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature([gripper1_dx, gripper1_dy])
-        feature['{}/actual_local_env/env'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.data)
-        feature['{}/actual_local_env/extent'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.extent)
-        feature['{}/actual_local_env/origin'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.origin)
+        feature['{}/state/link_bot'.format(time_idx)] = float_tensor_to_bytes_feature(points_flat)
+        feature['{}/state/local_env'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.data)
+        feature['{}/state/local_env_origin'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.origin)
         feature['{}/res'.format(time_idx)] = float_tensor_to_bytes_feature([local_env_data.resolution[0]])
         feature['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature([traj_idx])
         feature['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature([time_idx])

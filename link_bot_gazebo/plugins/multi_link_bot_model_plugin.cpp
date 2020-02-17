@@ -382,7 +382,19 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBot
 
 bool MultiLinkBotModelPlugin::LinkBotReset(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
 {
+  constexpr auto close_enough{0.001};
   gripper1_target_position_ = ignition::math::Vector3d::Zero;
+
+  while (true) {
+    auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
+    auto const steps = static_cast<unsigned int>(1.0 / seconds_per_step);
+    // Wait until the setpoint is reached
+    model_->GetWorld()->Step(steps);
+    if (gripper1_pos_error_.Length() < close_enough) {
+      break;
+    }
+  }
+
   return true;
 }
 

@@ -150,8 +150,6 @@ class ClassifierDataCollector(plan_and_execute.PlanAndExecute):
                 json.dump(self.dataset_hparams, of, indent=2)
 
         current_features = {
-            'local_env_rows': float_tensor_to_bytes_feature(self.local_env_params.h_rows),
-            'local_env_cols': float_tensor_to_bytes_feature(self.local_env_params.w_cols),
             'full_env/env': float_tensor_to_bytes_feature(full_env_data.data),
             'full_env/extent': float_tensor_to_bytes_feature(full_env_data.extent),
             'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),
