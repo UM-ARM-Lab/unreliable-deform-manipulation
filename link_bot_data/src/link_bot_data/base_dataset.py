@@ -118,10 +118,10 @@ class BaseDataset:
         if balance_key is not None:
             dataset = balance_dataset(dataset, balance_key)
 
+        dataset = dataset.cache()
+
         if batch_size is not None:
             dataset = dataset.batch(batch_size, drop_remainder=False)
-
-        dataset = dataset.cache()
 
         # sanity check that the dataset isn't empty, which can happen when debugging if batch size is bigger than dataset size
         empty = True

@@ -6,6 +6,7 @@ from link_bot_gazebo.srv import ComputeSDF2Request, ComputeOccupancyRequest, Com
     LinkBotTrajectoryRequest, LinkBotState, WorldControl, LinkBotTrajectory, ExecuteAction
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
+from link_bot_gazebo.msg import LinkBotAction
 from link_bot_pycommon import link_bot_sdf_utils
 
 
@@ -25,6 +26,10 @@ def get_max_speed():
     return rospy.get_param("/link_bot/max_speed")
 
 
+class EmptyRequest(object):
+    pass
+
+
 class Services:
 
     def __init__(self):
@@ -37,11 +42,13 @@ class Services:
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', std_srvs.srv.Empty)
         self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
+        self.reset = rospy.ServiceProxy("/reset", std_srvs.srv.Empty)
 
         # currently unused
         self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
 
         self.services_to_wait_for = [
+            '/reset',
             '/world_control',
             '/link_bot_state',
             '/link_bot_execute_trajectory',
@@ -59,7 +66,6 @@ class Services:
             rospy.wait_for_service(s)
         if verbose >= 1:
             print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
-
 
 def get_sdf_and_gradient(services,
                          env_w_cols,
@@ -206,21 +212,15 @@ def get_local_occupancy_data(rows,
 
 
 def make_trajectory_execution_request(dt, actions):
-    trajectory_execution_request = LinkBotTrajectoryRequest()
-    trajectory_execution_request.dt = dt
+    req = LinkBotTrajectoryRequest()
     for action in actions:
-        action_msg = LinkBotVelocityAction()
-        action_msg.gripper1_velocity.x = action[0]
-        action_msg.gripper1_velocity.y = action[1]
-        trajectory_execution_request.gripper1_traj.append(action_msg)
+        action_msg = LinkBotAction()
+        action_msg.max_time_per_step = dt
+        action_msg.gripper1_delta_pos.x = action[0]
+        action_msg.gripper1_delta_pos.y = action[1]
+        req.gripper1_traj.append(action_msg)
 
-    # NOTE: force stop at the end. Is this bad?
-    stop_msg = LinkBotVelocityAction()
-    stop_msg.gripper1_velocity.x = 0
-    stop_msg.gripper1_velocity.y = 0
-    trajectory_execution_request.gripper1_traj.append(stop_msg)
-
-    return trajectory_execution_request
+    return req
 
 
 def trajectory_execution_response_to_numpy(trajectory_execution_result,
@@ -232,7 +232,7 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result,
     }
     # throw out the last state because that one is due the adding the stop command, we don't care about it
     # since we assume stop actually stops
-    for objects in trajectory_execution_result.actual_path[:-1]:
+    for objects in trajectory_execution_result.actual_path:
         for object in objects.objects:
             if object.name not in actual_path:
                 actual_path[object.name] = []

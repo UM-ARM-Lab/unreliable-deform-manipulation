@@ -1,6 +1,7 @@
 #include "multi_link_bot_model_plugin.h"
 
 #include <link_bot_gazebo/GetObjects.h>
+#include <std_srvs/EmptyRequest.h>
 
 #include <cstdio>
 #include <gazebo/common/Time.hh>
@@ -43,8 +44,13 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto state_bind = boost::bind(&MultiLinkBotModelPlugin::StateServiceCallback, this, _1, _2);
   auto service_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotState>("/link_bot_state", state_bind,
                                                                                         ros::VoidPtr(), &queue_);
+  auto reset_bind = boost::bind(&MultiLinkBotModelPlugin::LinkBotReset, this, _1, _2);
+  auto reset_so =
+      ros::AdvertiseServiceOptions::create<std_srvs::Empty>("/link_bot_reset", reset_bind, ros::VoidPtr(), &queue_);
+
   joy_sub_ = ros_node_->subscribe(joy_so);
   execute_action_service_ = ros_node_->advertiseService(action_so);
+  reset_service_ = ros_node_->advertiseService(reset_so);
   action_mode_sub_ = ros_node_->subscribe(action_mode_so);
   config_sub_ = ros_node_->subscribe(config_so);
   state_service_ = ros_node_->advertiseService(service_so);
@@ -350,7 +356,7 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBot
     res.actual_path.emplace_back(objects);
 
     auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
-    auto const steps = static_cast<unsigned int>(req.max_time_per_step / seconds_per_step);
+    auto const steps = static_cast<unsigned int>(action.max_time_per_step / seconds_per_step);
     // Wait until the setpoint is reached
     model_->GetWorld()->Step(steps);
 
@@ -371,6 +377,12 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBot
             std::back_inserter(objects.objects));
   res.actual_path.emplace_back(objects);
 
+  return true;
+}
+
+bool MultiLinkBotModelPlugin::LinkBotReset(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
+{
+  gripper1_target_position_ = ignition::math::Vector3d::Zero;
   return true;
 }
 

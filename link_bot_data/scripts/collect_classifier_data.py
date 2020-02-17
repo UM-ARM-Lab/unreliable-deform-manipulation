@@ -150,9 +150,9 @@ class ClassifierDataCollector(plan_and_execute.PlanAndExecute):
                 json.dump(self.dataset_hparams, of, indent=2)
 
         current_features = {
-            'local_env_rows': float_tensor_to_bytes_feature([self.local_env_params.h_rows]),
-            'local_env_cols': float_tensor_to_bytes_feature([self.local_env_params.w_cols]),
-            'full_env/env': float_tensor_to_bytes_feature(full_env_data.data.flatten()),
+            'local_env_rows': float_tensor_to_bytes_feature(self.local_env_params.h_rows),
+            'local_env_cols': float_tensor_to_bytes_feature(self.local_env_params.w_cols),
+            'full_env/env': float_tensor_to_bytes_feature(full_env_data.data),
             'full_env/extent': float_tensor_to_bytes_feature(full_env_data.extent),
             'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),
         }
@@ -170,19 +170,19 @@ class ClassifierDataCollector(plan_and_execute.PlanAndExecute):
                     state = object_path[time_idx]
                 else:
                     state = object_path[-1]
-                current_features['{}/state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state.flatten())
+                current_features['{}/state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
 
             for name, object_path in planned_path.items():
                 if time_idx < n_steps:
                     state = object_path[time_idx]
                 else:
                     state = object_path[-1]
-                current_features['{}/planned_state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state.flatten())
+                current_features['{}/planned_state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
 
             current_features['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature(action)
-            current_features['{}/res'.format(time_idx)] = float_tensor_to_bytes_feature([self.local_env_params.res])
-            current_features['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature([self.traj_idx])
-            current_features['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature([time_idx])
+            current_features['{}/res'.format(time_idx)] = float_tensor_to_bytes_feature(self.local_env_params.res)
+            current_features['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature(self.traj_idx)
+            current_features['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature(time_idx)
 
         self.traj_idx += 1
 

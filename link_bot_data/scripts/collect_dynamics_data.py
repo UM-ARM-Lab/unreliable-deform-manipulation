@@ -48,8 +48,8 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
     full_env_data = ros_pycommon.get_occupancy_data(env_w=args.env_w, env_h=args.env_h, res=args.res, services=services)
 
     feature = {
-        'local_env_rows': float_tensor_to_bytes_feature(np.array([args.local_env_rows])),
-        'local_env_cols': float_tensor_to_bytes_feature(np.array([args.local_env_cols])),
+        'local_env_rows': float_tensor_to_bytes_feature([args.local_env_rows]),
+        'local_env_cols': float_tensor_to_bytes_feature([args.local_env_cols]),
         'full_env/env': float_tensor_to_bytes_feature(full_env_data.data),
         'full_env/extent': float_tensor_to_bytes_feature(full_env_data.extent),
         'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),

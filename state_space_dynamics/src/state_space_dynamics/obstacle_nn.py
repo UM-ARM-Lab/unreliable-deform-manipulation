@@ -87,10 +87,10 @@ class ObstacleNN(tf.keras.Model):
         self.flatten_conv_output = layers.Flatten()
 
     def call(self, input_dict, training=None, mask=None):
-        actions = input_dict['action_s']
+        actions = input_dict['action']
         input_sequence_length = actions.shape[1]
-        s_0 = tf.expand_dims(input_dict['state_s'][:, 0], axis=2)
-        resolution = input_dict['resolution_s'][:, 0]
+        s_0 = tf.expand_dims(input_dict['state'][:, 0], axis=2)
+        resolution = input_dict['res'][:, 0]
         res_2d = tf.expand_dims(tf.tile(resolution, [1, 2]), axis=1)
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']

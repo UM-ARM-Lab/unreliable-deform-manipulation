@@ -13,6 +13,7 @@
 #include <ros/subscribe_options.h>
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/String.h>
+#include <std_srvs/Empty.h>
 
 #include <gazebo/common/common.hh>
 #include <gazebo/gazebo.hh>
@@ -60,6 +61,8 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   bool ExecuteTrajectoryCallback(link_bot_gazebo::LinkBotTrajectoryRequest &req,
                                  link_bot_gazebo::LinkBotTrajectoryResponse &res);
 
+  bool LinkBotReset(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res);
+
  private:
   auto GetGripper1Pos() -> ignition::math::Vector3d const;
   auto GetGripper1Vel() -> ignition::math::Vector3d const;
@@ -91,9 +94,10 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   ros::ServiceServer state_service_;
   ros::ServiceServer execute_action_service_;
   ros::ServiceServer execute_traj_service_;
+  ros::ServiceServer reset_service_;
   ros::ServiceClient objects_service_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
-  std::string mode_{"position"};
+  std::string mode_{"disabled"};
 };
 }  // namespace gazebo

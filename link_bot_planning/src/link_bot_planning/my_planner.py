@@ -19,6 +19,15 @@ from link_bot_pycommon.ros_pycommon import get_local_occupancy_data
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
+def ompl_control_to_model_action(control, n_control):
+    distance_angle = to_numpy(control, n_control)
+    angle = distance_angle[0, 0]
+    distance = distance_angle[0, 1]
+    # action here needs to be batch_size,sequence_length,n_control == 1,1,2
+    np_u = np.array([[[np.cos(angle) * distance, np.sin(angle) * distance]]])
+    return np_u
+
+
 class MyPlanner:
 
     def __init__(self,
@@ -89,8 +98,11 @@ class MyPlanner:
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
 
         control_bounds = ob.RealVectorBounds(2)
-        control_bounds.setLow(-self.planner_params['max_v'])
-        control_bounds.setHigh(self.planner_params['max_v'])
+        control_bounds.setLow(0, -np.pi)
+        control_bounds.setHigh(0, np.pi)
+        control_bounds.setLow(1, 0)
+        max_delta_pos = ros_pycommon.get_max_speed() * self.fwd_model.dt * 0.9  # safety factor to make planning more accurate
+        control_bounds.setHigh(1, max_delta_pos)
         self.control_space = oc.RealVectorControlSpace(self.state_space, self.n_control)
         self.control_space.setBounds(control_bounds)
 
@@ -104,7 +116,7 @@ class MyPlanner:
         if planner_params['directed_control_sampler'] == 'simple':
             pass  # the default
         elif planner_params['directed_control_sampler'] == 'random':
-            raise ValueError("This DCS breaks NN somehow")
+            raise ValueError("This DCS breaks nearest neighbor somehow")
             self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator(self.seed, self))
 
         self.full_envs = None
@@ -134,22 +146,10 @@ class MyPlanner:
     def propagate(self, start, control, duration, state_out):
         del duration  # unused, multi-step propagation is handled inside propagateWhileValid
         np_s = to_numpy(start[0], self.n_state)
-        np_u = np.expand_dims(to_numpy(control, self.n_control), axis=0)
-        local_env_data = self.get_local_env_at(np_s[0, -2], np_s[0, -1])
 
-        # if self.viz_object.new_sample:
-        #     print(np_s[0, 0], np_s[0, 1])  # this should be the nearest neighbor
-        #     self.viz_object.new_sample = False
-        #
-        #     plt.figure()
-        #     plt.title("sampled local env")
-        #     plt.imshow(np.flipud(self.viz_object.debugging1))
-        #     plt.figure()
-        #     plt.title("nearest neighbor in search tree")
-        #     plt.imshow(local_env_data.image)
-        #     plt.show()
-        #     input()
-        #     # ipdb.set_trace()
+        np_u = ompl_control_to_model_action(control, self.n_control)
+
+        local_env_data = self.get_local_env_at(np_s[0, -2], np_s[0, -1])
 
         # use the forward model to predict the next configuration
         points_next = self.fwd_model.predict(full_envs=self.full_envs,
@@ -171,20 +171,6 @@ class MyPlanner:
         random_accept = self.classifier_rng.uniform(0, 1) <= self.planner_params['random_epsilon']
         # edge_is_valid = classifier_accept or random_accept
         edge_is_valid = classifier_accept  # or random_accept
-
-        # DEBUGGING
-        # visualize
-        # print(accept_probability)
-        # plot_classifier_data(planned_env=local_env_data.data,
-        #                      planned_env_origin=local_env_data.origin,
-        #                      planned_env_extent=local_env_data.extent,
-        #                      res=local_env_data.resolution,
-        #                      planned_state=np_s.squeeze(),
-        #                      planned_next_state=np_s_next.squeeze(),
-        #                      action=np_u.squeeze(),
-        #                      title="p={:.4f}, accept prob={:.4f}%".format(p, accept_probability))
-        # plt.show()
-        # input()
 
         # copy the result into the ompl state data structure
         if not edge_is_valid:
@@ -288,7 +274,7 @@ class MyPlanner:
         np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
         for time_idx, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
             # duration is always be 1 for control::RRT, not so for control::SST
-            np_controls[time_idx] = to_numpy(control, self.n_control)
+            np_controls[time_idx] = ompl_control_to_model_action(control, self.n_control)
 
         return np_controls, planned_path, full_env_data, solved
 

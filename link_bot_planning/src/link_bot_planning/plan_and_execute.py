@@ -7,7 +7,7 @@ from typing import List, Dict
 import numpy as np
 import std_srvs
 from colorama import Fore
-from link_bot_gazebo.srv import LinkBotStateRequest, WorldControlRequest
+from link_bot_gazebo.srv import LinkBotStateRequest, WorldControlRequest, ExecuteActionRequest
 from ompl import base as ob
 
 from ignition import markers
@@ -53,6 +53,7 @@ class PlanAndExecute:
         initial_poses_in_collision = 0
         while True:
             if self.sim_params.move_obstacles:
+                # FIXME: this sucks
                 # generate a new environment by rearranging the obstacles
                 objects = ['moving_box{}'.format(i) for i in range(1, 7)]
                 gazebo_utils.move_objects(self.services,
@@ -63,10 +64,6 @@ class PlanAndExecute:
                                           'velocity',
                                           padding=0.1,
                                           rng=self.gazebo_rng)
-
-            # nudge the rope so it is hopefully not in collision?
-            if self.sim_params.nudge:
-                self.services.nudge_rope(self.sim_params.max_step_size, self.gazebo_rng)
 
             # generate a bunch of plans to random goals
             state_req = LinkBotStateRequest()

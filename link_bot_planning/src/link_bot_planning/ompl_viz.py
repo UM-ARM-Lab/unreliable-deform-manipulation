@@ -40,6 +40,7 @@ def plot(ax,
         ax.scatter(rope_configuration[0], rope_configuration[1], label='final_path', s=10, c='cyan', zorder=4)
         # plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=1, c='cyan', zorder=4)
 
+    # Visualize Nearest Neighbor Selection (poorly...)
     # for sample in planner_data.getSamples():
     #     s = sample.getSampledState()
     #     neighbor_s = sample.getNeighbor()

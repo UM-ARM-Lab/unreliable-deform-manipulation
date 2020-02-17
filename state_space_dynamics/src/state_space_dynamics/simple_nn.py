@@ -26,8 +26,8 @@ class SimpleNN(tf.keras.Model):
         self.dense_layers.append(layers.Dense(self.hparams['dynamics_dataset_hparams']['n_state'], activation=None))
 
     def call(self, input_dict, training=None, mask=None):
-        states = input_dict['state_s']
-        actions = input_dict['action_s']
+        states = input_dict['state']
+        actions = input_dict['action']
         input_sequence_length = actions.shape[1]
         s_0 = tf.expand_dims(states[:, 0], axis=2)
 

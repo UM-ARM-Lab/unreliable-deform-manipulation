@@ -1,5 +1,4 @@
 link_bot_gazebo/LinkBotAction[] gripper1_traj
-float64 max_time_per_step
 ---
 link_bot_gazebo/Objects[] actual_path
 bool needs_reset

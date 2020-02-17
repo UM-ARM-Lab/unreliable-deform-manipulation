@@ -142,7 +142,7 @@ def main():
     parser.add_argument('--reset-world', action='store_true', help="reset world")
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float)
-    parser.add_argument("--real-time-rate", type=float, default=1.0, help='real time rate')
+    parser.add_argument("--real-time-rate", type=float, default=0.0, help='real time rate')
     parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
     parser.add_argument("--goal", type=point_arg, help='x,y in meters')
 

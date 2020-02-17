@@ -1,19 +1,17 @@
-from time import sleep
 from typing import Optional, Dict
 
 import numpy as np
 import rospy
 import std_msgs
 import std_srvs
-from link_bot_gazebo.msg import LinkBotVelocityAction, LinkBotJointConfiguration, Position2dAction, ObjectAction
-from link_bot_gazebo.srv import LinkBotPositionAction, LinkBotPath, \
-    CameraProjection, InverseCameraProjection, LinkBotStateRequest, WorldControlRequest, InverseCameraProjectionRequest, \
-    CameraProjectionRequest
-from std_msgs.msg import String, Empty
+from link_bot_gazebo.msg import Position2dAction, ObjectAction
+from link_bot_gazebo.srv import CameraProjection, InverseCameraProjection, LinkBotStateRequest, WorldControlRequest, \
+    InverseCameraProjectionRequest, \
+    CameraProjectionRequest, ExecuteActionRequest
+from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
 
-from gazebo_msgs.srv import ApplyBodyWrench, ApplyBodyWrenchRequest, \
-    SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
+from gazebo_msgs.srv import ApplyBodyWrench, SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
 from link_bot_pycommon.link_bot_pycommon import points_to_config
 from link_bot_pycommon.ros_pycommon import Services
 from visual_mpc import sensor_image_to_float_image
@@ -25,10 +23,9 @@ class GazeboServices(Services):
 
     def __init__(self):
         super().__init__()
-        self.reset = rospy.ServiceProxy("/gazebo/reset_simulation", std_srvs.srv.Empty)
-
         # we can't mock these
         self.apply_body_wrench = rospy.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
+        self.link_bot_reset = rospy.ServiceProxy("/link_bot_reset", std_srvs.srv.Empty)
 
         # FIXME: wrap up all this "automatically rearrange the environment" business
         self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
@@ -36,31 +33,13 @@ class GazeboServices(Services):
         self.position_2d_action = rospy.Publisher('/position_2d_action', Position2dAction, queue_size=10)
 
         # currently unused
-        self.position_action = rospy.ServiceProxy("/link_bot_position_action", LinkBotPositionAction)
-        self.execute_path = rospy.ServiceProxy("/link_bot_execute_path", LinkBotPath)
         self.xy_to_rowcol = rospy.ServiceProxy('/my_camera/xy_to_rowcol', CameraProjection)
         self.rowcol_to_xy = rospy.ServiceProxy('/my_camera/rowcol_to_xy', InverseCameraProjection)
-        self.config_pub = rospy.Publisher('/link_bot_configuration', LinkBotJointConfiguration, queue_size=10)
 
-        self.services_to_wait_for.extend([
-            '/gazebo/reset_simulation',
-        ])
-
-    def reset_gazebo_environment(self, reset_model_poses=True):
-        action_mode_msg = String()
-        action_mode_msg.data = "velocity"
-
-        stop_velocity_action = LinkBotVelocityAction()
-        stop_velocity_action.gripper1_velocity.x = 0
-        stop_velocity_action.gripper1_velocity.y = 0
-
-        self.unpause(EmptyRequest())
-        sleep(0.5)
-        self.link_bot_mode.publish(action_mode_msg)
-        self.velocity_action_pub.publish(stop_velocity_action)
-        if reset_model_poses:
-            self.reset(EmptyRequest())
-        sleep(0.5)
+    def reset_world(self):
+        empty = EmptyRequest()
+        self.reset.call(empty)
+        self.link_bot_reset(empty)
 
     def get_context(self, context_length, state_dim, action_dim, image_h=64, image_w=64, image_d=3):
         # TODO: don't require these dimensions as arguments, they can be figured out from the messages/services
@@ -84,22 +63,6 @@ class GazeboServices(Services):
         context_actions = np.zeros([context_length - 1, action_dim])
         return context_images, context_states, context_actions
 
-    def nudge_rope(self, max_step_size: float, rng: np.random.RandomState):
-        nudge = ApplyBodyWrenchRequest()
-        nudge.duration.secs = 0
-        nudge.duration.nsecs = 50000000
-        nudge.body_name = 'link_bot::head'
-        angle = rng.uniform(-np.pi, np.pi)
-        magnitude = 10  # newtons
-        nudge.wrench.force.x = np.cos(angle) * magnitude
-        nudge.wrench.force.y = np.sin(angle) * magnitude
-
-        self.apply_body_wrench(nudge)
-
-        wait = WorldControlRequest()
-        wait.steps = int(5 / max_step_size)  # assuming 0.001s per simulation step
-        self.world_control(wait)
-
 
 def rowcol_to_xy(services, row, col):
     req = InverseCameraProjectionRequest()
@@ -119,8 +82,14 @@ def setup_gazebo_env(verbose: int,
     services.wait(verbose)
 
     if reset_world:
-        empty = EmptyRequest()
-        services.reset.call(empty)
+        services.reset_world()
+
+    # first the controller
+    stop = ExecuteActionRequest()
+    stop.action.gripper1_delta_pos.x = 0
+    stop.action.gripper1_delta_pos.y = 0
+    stop.action.max_time_per_step = 1.0
+    services.execute_action(stop)
 
     # set up physics
     get = GetPhysicsPropertiesRequest()
@@ -150,7 +119,7 @@ def setup_gazebo_env(verbose: int,
             move_action.actions.append(move)
         services.position_2d_action.publish(move_action)
 
-    services.position_2d_stop.publish(Empty())
+    services.position_2d_stop.publish(std_msgs.msg.Empty())
     return services
 
 
@@ -217,7 +186,7 @@ def move_objects(services,
     step.steps = int(move_wait_duration / max_step_size)
     services.world_control(step)  # this will block until stepping is complete
     # disable the objects so they stop, enabled the rope controller
-    services.position_2d_stop.publish(Empty())
+    services.position_2d_stop.publish(std_msgs.msg.Empty())
     services.link_bot_mode.publish(enable_link_bot)
 
     # wait a few steps to ensure the stop message is received
