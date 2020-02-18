@@ -5,7 +5,7 @@ def plottable_rope_configuration(rope_configuration):
     return xs, ys
 
 
-def plot_rope_configuration(ax, rope_configuration, linewidth=None, linestyle=None, **kwargs):
+def plot_rope_configuration(ax, rope_configuration, linewidth=None, linestyle=None, s=None, **kwargs):
     xs, ys = plottable_rope_configuration(rope_configuration)
-    ax.scatter(xs, ys, **kwargs)
+    ax.scatter(xs, ys, s=s, **kwargs)
     return ax.plot(xs, ys, linewidth=linewidth, linestyle=linestyle, **kwargs)

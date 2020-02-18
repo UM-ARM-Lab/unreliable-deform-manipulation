@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import json
+import time
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -12,6 +13,7 @@ from link_bot_classifiers import visualization
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.classifier_dataset import ClassifierDataset, convert_sequences_to_transitions
 from link_bot_data.link_bot_dataset_utils import balance_by_augmentation
+from link_bot_data.visualization import plot_rope_configuration
 from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points, print_dict
 
 tf.compat.v1.enable_eager_execution()
@@ -54,8 +56,9 @@ def main():
     net = module.model(model_hparams, batch_size=1)
     dataset = net.post_process(dataset)
 
-    if classifier_dataset_params['balance']:
-        dataset = balance_by_augmentation(dataset, key='label')
+    # if classifier_dataset_params['balance']:
+        # TODO: make this faster somehow
+        # dataset = balance_by_augmentation(dataset, key='label')
 
     done = False
 
@@ -92,8 +95,19 @@ def main():
                      c=label_color, linewidth=4)
             plt.show(block=True)
         elif args.display_type == 'trajectory_plot':
-            # print_dict(example)
-            pass
+            full_env = example['full_env/env'].numpy()[0]
+            full_env_extent = example['full_env/extent'].numpy()[0]
+            link_bot_state_all = example['planned_state/link_bot_all'].numpy()[0]
+            link_bot_state_stop_idx = example['planned_state/link_bot_all_stop'].numpy()[0]
+
+            plt.figure()
+            plt.imshow(full_env, extent=full_env_extent)
+            ax = plt.gca()
+            for i in range(link_bot_state_stop_idx):
+                state = link_bot_state_all[i]
+                print(state)
+                plot_rope_configuration(ax, state, c='r', s=5)
+            plt.show()
         elif args.display_type == 'transition_plot':
             res = example['res'].numpy().squeeze()
             res = np.array([res, res])

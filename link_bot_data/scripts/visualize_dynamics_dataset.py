@@ -36,7 +36,7 @@ def main():
     dataset = LinkBotStateSpaceDataset(args.dataset_dir)
     train_dataset = dataset.get_datasets(shuffle=args.shuffle,
                                          mode=args.mode,
-                                         sequence_length=20,
+                                         sequence_length=None,
                                          seed=1,
                                          n_parallel_calls=1,
                                          batch_size=1)
