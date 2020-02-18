@@ -123,6 +123,12 @@ class TrainingSetCompoundSampler(ob.RealVectorStateSampler):
         # self.viz_object.new_sample = True
 
 
+def to_numpy_flat(state_or_control, dim: int):
+    np_state_or_control = np.ndarray(dim)
+    for i in range(dim):
+        np_state_or_control[i] = state_or_control[i]
+    return np_state_or_control
+
 def to_numpy(state_or_control, dim: int):
     np_state_or_control = np.ndarray((1, dim))
     for i in range(dim):

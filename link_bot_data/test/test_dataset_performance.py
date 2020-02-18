@@ -16,30 +16,47 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
+    parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
-    parser.add_argument('--sequence-length', type=int, default=10, help='sequence length. Must be < 100')
-    parser.add_argument('--batch-size', type=int, default=32, help='batch size')
-    parser.add_argument('--balance-key', type=str)
 
     args = parser.parse_args()
 
-    # dataset = LinkBotStateSpaceDataset(args.dataset_dir)
-    dataset = ClassifierDataset(args.dataset_dir)
+    dataset = LinkBotStateSpaceDataset(args.dataset_dir)
+    # params = {
+    #     "pre_close_threshold": 0.1,
+    #     "post_close_threshold": 0.1,
+    #     "discard_pre_far": True,
+    #     "balance": True,
+    #     "type": "trajectory"
+    # }
+    # dataset = ClassifierDataset(args.dataset_dir, params)
+
+    batch_size = 64
 
     t0 = time.time()
     tf_dataset = dataset.get_datasets(mode='train',
                                       shuffle=args.shuffle,
                                       seed=1,
-                                      sequence_length=args.sequence_length,
-                                      balance_key=args.balance_key,
-                                      batch_size=args.batch_size)
+                                      batch_size=batch_size)
     time_to_load = time.time() - t0
     print("Time to Load (s): {:5.3f}".format(time_to_load))
 
     print("Time to Iterate (s):")
     stats = []
-    for _ in range(7):
+    cached_tf_dataset = tf_dataset.cache('/tmp/test_perf_cache')
+    for _ in range(5):
+        t0 = time.time()
+        for _ in cached_tf_dataset:
+            pass
+        time_to_iterate = time.time() - t0
+        stats.append(time_to_iterate)
+        print("{:5.3f}".format(time_to_iterate))
+
+    print("{:5.3f}, {:5.3f}".format(np.mean(stats), np.std(stats)))
+
+    print("Time to Iterate (s):")
+    stats = []
+    for _ in range(5):
         t0 = time.time()
         for _ in tf_dataset:
             pass

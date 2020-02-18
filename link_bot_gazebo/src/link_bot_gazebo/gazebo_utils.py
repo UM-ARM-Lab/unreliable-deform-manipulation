@@ -36,10 +36,17 @@ class GazeboServices(Services):
         self.xy_to_rowcol = rospy.ServiceProxy('/my_camera/xy_to_rowcol', CameraProjection)
         self.rowcol_to_xy = rospy.ServiceProxy('/my_camera/rowcol_to_xy', InverseCameraProjection)
 
-    def reset_world(self):
+    def reset_world(self, verbose):
         empty = EmptyRequest()
         self.reset.call(empty)
+
+        enable_link_bot = String()
+        enable_link_bot.data = 'position'
+        self.link_bot_mode.publish(enable_link_bot)
+
         self.link_bot_reset(empty)
+        if verbose >= 1:
+            print("World is Reset")
 
     def get_context(self, context_length, state_dim, action_dim, image_h=64, image_w=64, image_d=3):
         # TODO: don't require these dimensions as arguments, they can be figured out from the messages/services
@@ -82,7 +89,7 @@ def setup_gazebo_env(verbose: int,
     services.wait(verbose)
 
     if reset_world:
-        services.reset_world()
+        services.reset_world(verbose)
 
     # first the controller
     stop = ExecuteActionRequest()
@@ -163,14 +170,13 @@ def move_objects(services,
                  objects,
                  env_w: float,
                  env_h: float,
-                 link_bot_mode,
                  padding: float,
                  rng: np.random.RandomState):
     disable_link_bot = String()
     disable_link_bot.data = 'disabled'
 
     enable_link_bot = String()
-    enable_link_bot.data = link_bot_mode
+    enable_link_bot.data = 'position'
 
     # disable the rope controller, enable the objects
     services.link_bot_mode.publish(disable_link_bot)

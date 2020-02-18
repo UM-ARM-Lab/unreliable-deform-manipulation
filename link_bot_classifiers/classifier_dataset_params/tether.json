@@ -1,0 +1,7 @@
+{
+  "pre_close_threshold": 0.1,
+  "post_close_threshold": 0.1,
+  "discard_pre_far": true,
+  "balance": true,
+  "type": "trajectory"
+}

@@ -17,7 +17,7 @@ n_colors = colors.length
         <link name="link_<%=i%>">
             <pose frame=""><%=(i-1)*link_length%> 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
-                <pose frame="">0 0 <%=link_length/2%> 0 0 0</pose>
+                <pose frame="">0 0 <%=-link_length/2%> 0 0 0</pose>
                 <mass><%=link_mass%></mass>
                 <inertia>
                     <ixx><%=1.0/12.0*link_mass*(3*radius*radius + link_length*link_length)%></ixx>
@@ -72,7 +72,7 @@ n_colors = colors.length
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.002</damping>
-                    <friction>0.02</friction>
+                    <friction>0.015</friction>
                     <spring_reference>0</spring_reference>
                     <spring_stiffness>0.0001</spring_stiffness>
                 </dynamics>
@@ -116,9 +116,10 @@ n_colors = colors.length
                 <cast_shadows>0</cast_shadows>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
-                    <sphere>
-                        <radius>0.02</radius>
-                    </sphere>
+                    <cylinder>
+                        <radius><%=4*radius%></radius>
+                        <length><%=2*radius%></length>
+                    </cylinder>
                 </geometry>
                 <material>
                     <script>
@@ -135,7 +136,7 @@ n_colors = colors.length
             </sensor>
         </link>
 
-        <joint name="head_joint" type="revolute">
+        <joint name="head_joint" type="fixed">
             <parent>head</parent>
             <child>link_<%=n_links%></child>
             <pose>0 0 <%=-link_length%> 0 0 0</pose>
@@ -175,18 +176,13 @@ n_colors = colors.length
             <num_links>0</num_links>
             <rope_length><%=length%></rope_length>
         </plugin>
-        <plugin name="tether_plugin" filename="libtether_plugin.so">
-            <linkName>link_1</linkName>
-            <num_links><%=n_links%></num_links>
-            <kP_pos>50</kP_pos>
-            <kI_pos>0.0</kI_pos>
-            <kD_pos>0.0</kD_pos>
-            <max_vel>1.0</max_vel>
-            <kP_vel>100.0</kP_vel>
-            <kI_vel>0.0</kI_vel>
-            <kD_vel>0.0</kD_vel>
-            <max_force>5.0</max_force>
-        </plugin>
 
+        <joint type='revolute' name='world_joint'>
+            <parent>world</parent>
+            <child>link_1</child>
+            <axis>
+                <xyz>1 0 0</xyz>
+            </axis>
+        </joint>
     </model>
 </sdf>

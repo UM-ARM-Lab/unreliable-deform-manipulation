@@ -36,6 +36,7 @@ def main():
     dataset = LinkBotStateSpaceDataset(args.dataset_dir)
     train_dataset = dataset.get_datasets(shuffle=args.shuffle,
                                          mode=args.mode,
+                                         sequence_length=20,
                                          seed=1,
                                          n_parallel_calls=1,
                                          batch_size=1)
@@ -54,10 +55,10 @@ def main():
 
     # print info about shapes
     input_data, output_data = next(iter(train_dataset))
-    print('inputs')
+    print('Inputs:')
     for k, v in input_data.items():
         print(k, v.shape)
-    print('outputs')
+    print('Outputs:')
     for k, v in output_data.items():
         print(k, v.shape)
 

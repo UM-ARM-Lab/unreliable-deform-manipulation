@@ -37,9 +37,16 @@ def center_point_to_origin_indices(h_rows: int,
 
 
 def compute_extent(rows, cols, resolution, origin):
+    """
+    :param rows: scalar
+    :param cols: scalar
+    :param resolution: [2]
+    :param origin: [2]
+    :return:
+    """
     xmin, ymin = idx_to_point(0, 0, resolution, origin)
     xmax, ymax = idx_to_point(rows, cols, resolution, origin)
-    return [xmin, xmax, ymin, ymax]
+    return np.array([xmin, xmax, ymin, ymax], dtype=np.float32)
 
 
 def point_to_idx(x, y, resolution, origin):

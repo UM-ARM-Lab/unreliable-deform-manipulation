@@ -3,18 +3,13 @@ import argparse
 import json
 import pathlib
 
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
 import link_bot_classifiers
-from link_bot_classifiers import visualization
-from link_bot_classifiers.visualization import plot_classifier_data
-from link_bot_data.image_classifier_dataset import ImageClassifierDataset
-from link_bot_data.new_classifier_dataset import NewClassifierDataset
-from link_bot_planning import classifier_utils
-from link_bot_pycommon import experiments_util, link_bot_sdf_utils
+from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_pycommon import experiments_util
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -29,23 +24,12 @@ def train(args, seed: int):
     else:
         log_path = None
 
-    model_hparams = json.load(args.model_hparams.open('r'))
-
-    hparams_path = args.dataset_dirs[0] / 'hparams.json'
-    dataset_hparams = json.load(hparams_path.open("r"))
-    dataset_type = dataset_hparams['type']
-
     ###############
     # Datasets
     ###############
-    if dataset_type == 'image':
-        train_dataset = ImageClassifierDataset(args.dataset_dirs)
-        val_dataset = ImageClassifierDataset(args.dataset_dirs)
-    elif dataset_type == 'new':
-        train_dataset = NewClassifierDataset(args.dataset_dirs)
-        val_dataset = NewClassifierDataset(args.dataset_dirs)
-    else:
-        raise ValueError()
+    labeling_params = json.load(args.labeling_hparams.open('w'))
+    train_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
+    val_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
 
     train_tf_dataset = train_dataset.get_datasets(mode='train',
                                                   shuffle=True,
@@ -59,6 +43,8 @@ def train(args, seed: int):
     ###############
     # Model
     ###############
+    model_hparams = json.load(args.model_hparams.open('r'))
+    model_hparams['labeling_hparams'] = labeling_params
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
 
@@ -66,7 +52,9 @@ def train(args, seed: int):
         ###############
         # Train
         ###############
-        module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args, dataset_type)
+        train_tf_dataset = train_tf_dataset.cache().shuffle()
+        val_tf_dataset = val_tf_dataset.cache()
+        module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
@@ -74,119 +62,30 @@ def train(args, seed: int):
 
 def eval(args, seed: int):
     ###############
+    # Model
+    ###############
+    model_hparams = json.load((args.checkpoint / 'hparams.json').open('r'))
+    module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
+
+    ###############
     # Dataset
     ###############
-    hparams_path = args.dataset_dirs[0] / 'hparams.json'
-    dataset_hparams = json.load(hparams_path.open("r"))
-    dataset_type = dataset_hparams['type']
-    if dataset_type == 'image':
-        test_dataset = ImageClassifierDataset(args.dataset_dirs)
-    elif dataset_type == 'new':
-        test_dataset = NewClassifierDataset(args.dataset_dirs)
-    else:
-        raise ValueError()
+    labeling_params = model_hparams['labeling_hparams']
+    test_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
 
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
                                                 shuffle=False,
                                                 seed=seed,
                                                 batch_size=args.batch_size)
 
-    ###############
-    # Model
-    ###############
-    model_hparams = json.load((args.checkpoint / 'hparams.json').open('r'))
-    module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
-
     try:
         ###############
         # Evaluate
         ###############
-        module.eval(model_hparams, test_tf_dataset, args, dataset_type)
+        module.eval(model_hparams, test_tf_dataset, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
-
-
-def eval_wrapper(args, seed: int):
-    classifier_model_dir = args.checkpoint
-    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, 'raster')
-
-    ###############
-    # Dataset
-    ###############
-
-    hparams_path = args.dataset_dirs[0] / 'hparams.json'
-    dataset_hparams = json.load(hparams_path.open("r"))
-    dataset_type = dataset_hparams['type']
-
-    ###############
-    # Datasets
-    ###############
-    if dataset_type == 'image':
-        test_dataset = ImageClassifierDataset(args.dataset_dirs)
-    elif dataset_type == 'new':
-        test_dataset = NewClassifierDataset(args.dataset_dirs)
-    test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
-                                                shuffle=False,
-                                                seed=seed,
-                                                batch_size=1)
-
-    for example in test_tf_dataset:
-        if dataset_type == 'image':
-            image = example['image']
-
-            accept_probability = classifier_model.predict_from_image(image).squeeze()
-
-            label = example['label'].numpy().squeeze()
-
-            prediction = 1 if accept_probability > 0.5 else 0
-            if prediction == label:
-                title = 'P(accept) = {:04.3f}%, Label={}'.format(100 * accept_probability, label)
-            else:
-                title = 'WRONG!!! P(accept) = {:04.3f}%, Label={}'.format(100 * accept_probability, label)
-
-            plt.figure()
-            interpretable_image = visualization.make_interpretable_image(image.numpy(), classifier_model.net.n_points)
-            plt.imshow(interpretable_image)
-            plt.title(title)
-            plt.show(block=True)
-        elif dataset_type == 'new':
-            local_env = example['planned_local_env/env'].numpy().squeeze()
-            origin = example['planned_local_env/origin'].numpy().squeeze()
-            res = example['resolution'].numpy().squeeze()
-            res_2d = np.array([res, res])
-            local_env_data = link_bot_sdf_utils.OccupancyData(data=local_env,
-                                                              resolution=res_2d,
-                                                              origin=origin)
-            planned_state = example['planned_state'].numpy()
-            planned_next_state = example['planned_state_next'].numpy()
-            state = example['state'].numpy()
-            next_state = example['state_next'].numpy()
-            action = example['action'].numpy()
-            label = example['label'].numpy().squeeze()
-
-            accept_probability = classifier_model.predict([local_env_data], planned_state, planned_next_state, action)[0]
-
-            prediction = 1 if accept_probability > 0.5 else 0
-            if prediction == label:
-                title = 'P(accept) = {:04.3f}%, Label={}'.format(100 * accept_probability, label)
-            else:
-                title = 'WRONG!!! P(accept) = {:04.3f}%, Label={}'.format(100 * accept_probability, label)
-
-            plot_classifier_data(planned_env=local_env_data.data,
-                                 planned_env_extent=local_env_data.extent,
-                                 planned_state=planned_state[0],
-                                 planned_next_state=planned_next_state[0],
-                                 planned_env_origin=local_env_data.origin,
-                                 res=local_env_data.resolution,
-                                 state=state[0],
-                                 next_state=next_state[0],
-                                 title=title,
-                                 actual_env=None,
-                                 actual_env_extent=None,
-                                 label=prediction)
-            plt.legend()
-            plt.show()
 
 
 def main():
@@ -198,6 +97,7 @@ def main():
     train_parser = subparsers.add_parser('train')
     train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
+    train_parser.add_argument('labeling_hparams', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--summary-freq', type=int, default=1)
@@ -219,15 +119,6 @@ def main():
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.set_defaults(func=eval)
     eval_parser.add_argument('--seed', type=int, default=None)
-
-    eval_wrapper_parser = subparsers.add_parser('evalw')
-    eval_wrapper_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
-    eval_wrapper_parser.add_argument('checkpoint', type=pathlib.Path)
-    eval_wrapper_parser.add_argument('--mode', type=str, choices=['test', 'val', 'train'], default='test')
-    eval_wrapper_parser.add_argument('--batch-size', type=int, default=32)
-    eval_wrapper_parser.add_argument('--verbose', '-v', action='count', default=0)
-    eval_wrapper_parser.set_defaults(func=eval_wrapper)
-    eval_wrapper_parser.add_argument('--seed', type=int, default=None)
 
     args = parser.parse_args()
 

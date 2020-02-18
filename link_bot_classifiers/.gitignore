@@ -4,3 +4,5 @@ data
 *.png
 results
 viz_results
+fwd_model_data
+ss_log_dir

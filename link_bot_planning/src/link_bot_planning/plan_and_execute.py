@@ -2,23 +2,23 @@
 from __future__ import division, print_function
 
 import time
-from typing import List, Dict
+from typing import Dict
 
 import numpy as np
 import std_srvs
 from colorama import Fore
-from link_bot_gazebo.srv import LinkBotStateRequest, WorldControlRequest, ExecuteActionRequest
+from link_bot_gazebo.srv import LinkBotStateRequest
 from ompl import base as ob
 
 from ignition import markers
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
-from link_bot_pycommon.ros_pycommon import Services
 from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon, link_bot_pycommon
+from link_bot_pycommon.ros_pycommon import Services
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 
 
@@ -61,7 +61,6 @@ class PlanAndExecute:
                                           objects,
                                           self.planner.full_env_params.w,
                                           self.planner.full_env_params.h,
-                                          'velocity',
                                           padding=0.1,
                                           rng=self.gazebo_rng)
 

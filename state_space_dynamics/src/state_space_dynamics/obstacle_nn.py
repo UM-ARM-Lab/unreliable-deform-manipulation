@@ -146,10 +146,10 @@ class ObstacleNN(tf.keras.Model):
             for dense_layer in self.dense_layers:
                 full_z_t = dense_layer(full_z_t)
 
-            # residual prediction, otherwise just take the final hidden representation as the next state
             if self.hparams['residual']:
-                ds_t = tf.expand_dims(full_z_t, axis=2)
-                s_t_plus_1_flat = s_t + ds_t
+                # residual prediction, otherwise just take the final hidden representation as the next state
+                residual_t = tf.expand_dims(full_z_t, axis=2)
+                s_t_plus_1_flat = s_t + residual_t
             else:
                 s_t_plus_1_flat = tf.expand_dims(full_z_t, axis=2)
 
@@ -343,8 +343,14 @@ class ObstacleNNWrapper(BaseForwardModel):
                 resolution_s: np.ndarray,
                 state: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
-        # TODO: consider querying gazebo for the local environment inside the prediction loop
-        # currently this breaks API compatibility between the different types of models
+        """
+        :param full_envs:        (batch, H, W)
+        :param full_env_origins: (batch, 2)
+        :param resolution_s:     (batch, T)
+        :param state:            (batch, n_state)
+        :param actions:          (batch, T, 2)
+        :return:
+        """
         batch, T, _ = actions.shape
         states = tf.convert_to_tensor(state, dtype=tf.float32)
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
@@ -358,9 +364,9 @@ class ObstacleNNWrapper(BaseForwardModel):
             'action': actions,
             # must be batch, T, 1
             'res': resolution_s,
-            # must be batch, T, H, W
+            # must be batch, H, W
             'full_env/env': tf.convert_to_tensor(full_envs, dtype=tf.float32),
-            # must be batch, T, 2
+            # must be batch, 2
             'full_env/origin': tf.convert_to_tensor(full_env_origins, dtype=tf.float32),
         }
         predictions = self.net(test_x)

@@ -111,7 +111,6 @@ def generate_trajs(args, full_output_directory, services, gazebo_rng: np.random.
                                       objects,
                                       args.env_w,
                                       args.env_h,
-                                      'velocity',
                                       padding=0.5,
                                       rng=gazebo_rng)
 

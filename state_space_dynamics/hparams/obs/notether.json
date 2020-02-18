@@ -1,13 +1,12 @@
 {
   "model_class": "ObstacleNN",
   "n_control": 2,
-  "sequence_length": 10,
+  "sequence_length": 20,
   "conv_filters": [
     [8, [5, 5]],
-    [8, [3, 3]],
     [8, [3, 3]]
   ],
-  "fc_layer_sizes": [256, 256],
+  "fc_layer_sizes": [256],
   "residual": true,
   "mixed": true,
   "kernel_reg": 0.05,

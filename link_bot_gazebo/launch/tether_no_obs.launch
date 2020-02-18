@@ -1,0 +1,19 @@
+<launch>
+    <arg name="verbose" default="false"/>
+    <arg name="gui" default="false"/>
+
+    <remap from="/gazebo/reset_simulation" to="/reset"/>
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/tether_no_obs.world"/>
+        <arg name="verbose" default="$(arg verbose)"/>
+        <arg name="paused" default="true"/>
+        <arg name="gui" value="$(arg gui)"/>
+    </include>
+
+    <!-- Spawn a robot into Gazebo -->
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
+          args="-file $(find link_bot_description)/sdf/tethered_point_robot.sdf -sdf -Y 0.785 -z 0 -model link_bot"/>
+
+    <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
+</launch>

@@ -11,10 +11,11 @@ from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
 from link_bot_planning.random_directed_control_sampler import RandomDirectedControlSampler
-from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_local_env, ValidRopeConfigurationCompoundSampler, \
-    TrainingSetCompoundSampler
+from link_bot_planning.state_spaces import to_numpy, from_numpy, ValidRopeConfigurationCompoundSampler, \
+    TrainingSetCompoundSampler, to_numpy_local_env, to_numpy_flat
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon, ros_pycommon
+from link_bot_pycommon.link_bot_pycommon import print_dict
 from link_bot_pycommon.ros_pycommon import get_local_occupancy_data
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
@@ -251,32 +252,36 @@ class MyPlanner:
         return sampler
 
     def convert_path(self, ompl_path: ob.Path, full_env_data: link_bot_sdf_utils.OccupancyData, solved: bool):
-        planned_path_tuples = []
-        for subspace_idx, name in enumerate(self.state_space_description.keys()):
-            subspace = self.state_space.getSubspace(subspace_idx)
-            dimension = subspace.getDimension()
-            subspace_path = np.zeros([ompl_path.getStateCount(), dimension])
-            planned_path_tuples.append((name, subspace_path))
-        planned_path = dict(planned_path_tuples)
-
+        planned_path = {}
         for time_idx, compound_state in enumerate(ompl_path.getStates()):
             for subspace_idx, name in enumerate(self.state_space_description):
+                if name not in planned_path:
+                    planned_path[name] = []
+
                 subspace_state = compound_state[subspace_idx]
                 if name == 'local_env':
-                    planned_path[name][time_idx] = to_numpy(subspace_state, self.n_local_env)
+                    planned_path[name].append(to_numpy_local_env(subspace_state,
+                                                                      self.fwd_model.local_env_params.w_cols,
+                                                                      self.fwd_model.local_env_params.h_rows))
                 elif name == 'local_env_origin':
-                    planned_path[name][time_idx] = to_numpy(subspace_state, 2)
+                    planned_path[name].append(to_numpy_flat(subspace_state, 2))
                 elif name == 'link_bot':
-                    planned_path[name][time_idx] = to_numpy(subspace_state, self.n_state)
+                    planned_path[name].append(to_numpy_flat(subspace_state, self.n_state))
                 elif name == 'tether':
-                    planned_path[name][time_idx] = to_numpy(subspace_state, self.n_tether_state)
+                    planned_path[name].append(to_numpy_flat(subspace_state, self.n_tether_state))
+
+        # now convert lists to arrays
+        planned_path_np = {}
+        for k, v in planned_path.items():
+            planned_path_np[k] = np.array(v)
+
 
         np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
         for time_idx, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
             # duration is always be 1 for control::RRT, not so for control::SST
-            np_controls[time_idx] = ompl_control_to_model_action(control, self.n_control)
+            np_controls[time_idx] = ompl_control_to_model_action(control, self.n_control).squeeze()
 
-        return np_controls, planned_path, full_env_data, solved
+        return np_controls, planned_path_np, full_env_data, solved
 
 
 def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0):

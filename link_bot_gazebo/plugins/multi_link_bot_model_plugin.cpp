@@ -13,6 +13,9 @@
 
 namespace gazebo {
 
+constexpr auto close_enough{0.001};
+constexpr auto stopped_threshold{0.01};
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "cppcoreguidelines-pro-type-vararg"
 void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
@@ -32,6 +35,9 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto execute_trajectory_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteTrajectoryCallback, this, _1, _2);
   auto execute_trajectory_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotTrajectory>(
       "/link_bot_execute_trajectory", execute_trajectory_bind, ros::VoidPtr(), &queue_);
+  auto execute_abs_action_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteAbsoluteAction, this, _1, _2);
+  auto execute_abs_action_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ExecuteAction>(
+      "/execute_absolute_action", execute_abs_action_bind, ros::VoidPtr(), &queue_);
   auto action_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteAction, this, _1, _2);
   auto action_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ExecuteAction>("/execute_action", action_bind,
                                                                                         ros::VoidPtr(), &queue_);
@@ -50,6 +56,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
 
   joy_sub_ = ros_node_->subscribe(joy_so);
   execute_action_service_ = ros_node_->advertiseService(action_so);
+  execute_absolute_action_service_ = ros_node_->advertiseService(execute_abs_action_so);
   reset_service_ = ros_node_->advertiseService(reset_so);
   action_mode_sub_ = ros_node_->subscribe(action_mode_so);
   config_sub_ = ros_node_->subscribe(config_so);
@@ -207,7 +214,7 @@ ControlResult MultiLinkBotModelPlugin::UpdateControl()
   control_result.link_bot_config = GetConfiguration();
 
   auto const gripper1_pos = GetGripper1Pos();
-  auto const gripper1_vel = GetGripper1Vel();
+  auto const gripper1_vel_ = GetGripper1Vel();
 
   // Gripper 1
   {
@@ -217,7 +224,7 @@ ControlResult MultiLinkBotModelPlugin::UpdateControl()
       auto const gripper1_target_velocity = gripper1_pos_error_.Normalized() * target_vel;
       control_result.gripper1_vel = gripper1_target_velocity;
 
-      auto const gripper1_vel_error = gripper1_vel - gripper1_target_velocity;
+      auto const gripper1_vel_error = gripper1_vel_ - gripper1_target_velocity;
       auto const force_mag = gripper1_vel_pid_.Update(gripper1_vel_error.Length(), dt);
       control_result.gripper1_force = gripper1_vel_error.Normalized() * force_mag;
     }
@@ -241,6 +248,29 @@ void MultiLinkBotModelPlugin::OnJoy(sensor_msgs::JoyConstPtr const msg)
   constexpr auto scale{2000.0 / 32768.0};
   gripper1_target_position_.X(gripper1_target_position_.X() - msg->axes[0] * scale);
   gripper1_target_position_.Y(gripper1_target_position_.Y() + msg->axes[1] * scale);
+}
+
+bool MultiLinkBotModelPlugin::ExecuteAbsoluteAction(link_bot_gazebo::ExecuteActionRequest &req,
+                                                    link_bot_gazebo::ExecuteActionResponse &res)
+{
+  mode_ = "position";
+
+  ignition::math::Vector3d position{req.action.gripper1_delta_pos.x, req.action.gripper1_delta_pos.y,
+                                    req.action.gripper1_delta_pos.z};
+  gripper1_target_position_ = position;
+
+  auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
+  auto const steps = static_cast<unsigned int>(req.action.max_time_per_step / seconds_per_step);
+  // Wait until the setpoint is reached
+  model_->GetWorld()->Step(steps);
+
+  // TODO: fill out state here
+  res.needs_reset = false;
+
+  // stop by setting the current position as the target
+  gripper1_target_position_ = GetGripper1Pos();
+
+  return true;
 }
 
 bool MultiLinkBotModelPlugin::ExecuteAction(link_bot_gazebo::ExecuteActionRequest &req,
@@ -357,8 +387,13 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBot
 
     auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
     auto const steps = static_cast<unsigned int>(action.max_time_per_step / seconds_per_step);
-    // Wait until the setpoint is reached
-    model_->GetWorld()->Step(steps);
+    for (auto i{0u}; i < steps; ++i) {
+      model_->GetWorld()->Step(1);
+      // check if setpoint is reached
+      if (gripper1_pos_error_.Length() < close_enough and gripper1_vel_.Length() < stopped_threshold) {
+        break;
+      }
+    }
 
     // stop by setting the current position as the target
     gripper1_target_position_ = GetGripper1Pos();
@@ -382,7 +417,6 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBot
 
 bool MultiLinkBotModelPlugin::LinkBotReset(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
 {
-  constexpr auto close_enough{0.001};
   gripper1_target_position_ = ignition::math::Vector3d::Zero;
 
   while (true) {

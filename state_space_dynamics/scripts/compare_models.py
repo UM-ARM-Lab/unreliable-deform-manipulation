@@ -45,7 +45,7 @@ def generate(args):
         model, _ = model_utils.load_generic_model(model_dir, model_type)
         models[name] = model
 
-    results = generate_results(base_folder, models, tf_dataset, args.mode)
+    results = generate_results(base_folder, models, tf_dataset, args.sequence_length)
 
     evaluate_metrics(results)
 
@@ -67,13 +67,11 @@ def visualize(args):
 def generate_results(base_folder: pathlib.Path,
                      models: Dict[str, BaseForwardModel],
                      tf_dataset,
-                     mode: str):
+                     sequence_length: int):
     results = {
         'true': {
             'points': [],
             'runtimes': [],
-            'local_env/env': [],
-            'local_env/extent': [],
             'full_env/env': [],
             'full_env/extent': [],
         }
@@ -87,19 +85,18 @@ def generate_results(base_folder: pathlib.Path,
         }
         metadata.append(model_info)
 
+    # Collect ground truth
     for x, y in tf_dataset:
-        output_states = y['output_states'].numpy().squeeze()
-        n_examples = output_states.shape[0]
-        true_points = output_states.reshape([n_examples, -1, 2])
-        local_env_extent = x['actual_local_env/extent'][:, 0].numpy()
-        local_env = tf.expand_dims(x['actual_local_env/env'][:, 0], axis=1).numpy()
-        full_env_extent = x['full_env/extent'][:].numpy()
-        full_env = tf.expand_dims(x['full_env/env'][:], axis=1).numpy()
+        output_states = y['output_states'].numpy()
+        true_points = output_states.reshape([sequence_length, -1, 2])
+
+        res = x['res'][0].numpy()
+        res_2d = np.array([res, res])
+        full_env_extent = x['full_env/extent'][0].numpy()
+        full_env = x['full_env/env'][0].numpy()
 
         results['true']['points'].append(true_points)
         results['true']['runtimes'].append(np.inf)
-        results['true']['local_env/env'].append(local_env)
-        results['true']['local_env/extent'].append(local_env_extent)
         results['true']['full_env/env'].append(full_env)
         results['true']['full_env/extent'].append(full_env_extent)
 
@@ -107,35 +104,32 @@ def generate_results(base_folder: pathlib.Path,
         results[model_name] = {
             'points': [],
             'runtimes': [],
-            'local_env/env': [],
-            'local_env/extent': [],
             'full_env/env': [],
             'full_env/extent': [],
         }
         print("generating results for {}".format(model_name))
         for x, y in tf_dataset:
-            states = x['state'].numpy()
+            states = x['state/link_bot'].numpy()
             actions = x['action'].numpy()
-            # this is supposed to give us a [batch, n_state] tensor
-            first_state = np.expand_dims(states[0, 0], axis=0)
-            local_env = tf.expand_dims(x['actual_local_env/env'][:, 0], axis=1).numpy()
-            local_env_extent = x['full_env/extent'][:, 0].numpy()
-            res = x['res'][:, 0].numpy()
-            full_env_origin_s = x['full_env/origin'].numpy()
+
+            first_state = states[:, 0]
+            res = x['res'].numpy()
+            if len(res.shape) == 3:
+                res = np.squeeze(res, axis=2)
+            full_env_origin = x['full_env/origin'].numpy()
             full_envs = x['full_env/env'].numpy()
             full_env_extents = x['full_env/extent'].numpy()
+
             t0 = time.time()
-            # Is this only one step prediction? why?
+
             predicted_points = model.predict(full_envs=full_envs,
-                                             full_env_origins=full_env_origin_s,
+                                             full_env_origins=full_env_origin,
                                              resolution_s=res,
                                              state=first_state,
                                              actions=actions)[0]
             runtime = time.time() - t0
-            # TODO: save and visualize the local environment
+
             results[model_name]['points'].append(predicted_points)
-            results[model_name]['local_env/env'].append(local_env)
-            results[model_name]['local_env/extent'].append(local_env_extent)
             results[model_name]['full_env/env'].append(full_envs)
             results[model_name]['full_env/extent'].append(full_env_extents)
             results[model_name]['runtimes'].append(runtime)
@@ -166,8 +160,8 @@ def visualize_predictions(results, n_examples, base_folder=None):
         plt.title(example_idx)
 
         time_text_handle = plt.text(5, 8, 't=0', fontdict={'color': 'white', 'size': 5}, bbox=dict(facecolor='black', alpha=0.5))
-        full_env = results['true']['full_env/env'][example_idx][0, 0]
-        extent = results['true']['full_env/extent'][example_idx][0]
+        full_env = results['true']['full_env/env'][example_idx]
+        extent = results['true']['full_env/extent'][example_idx]
         plt.imshow(np.flipud(full_env), extent=extent)
 
         # create all the necessary plotting handles
@@ -190,7 +184,7 @@ def visualize_predictions(results, n_examples, base_folder=None):
 
         plt.legend()
 
-        anim = FuncAnimation(fig, update, frames=sequence_length, interval=100)
+        anim = FuncAnimation(fig, update, frames=sequence_length, interval=1000)
         anim_path = base_folder / 'anim-{}.gif'.format(example_idx)
         anim.save(anim_path, writer='imagemagick', fps=4)
         plt.show()
@@ -236,7 +230,7 @@ def main():
     generate_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     generate_parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
     generate_parser.add_argument('outdir', type=pathlib.Path)
-    generate_parser.add_argument('--sequence-length', type=int, default=25)
+    generate_parser.add_argument('--sequence-length', type=int, default=50)
     generate_parser.add_argument('--no-plot', action='store_true')
     generate_parser.add_argument('--shuffle', action='store_true')
     generate_parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test')

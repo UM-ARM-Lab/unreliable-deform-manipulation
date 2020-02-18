@@ -133,7 +133,7 @@ def balance_xy_dataset(dataset, key):
     return balanced_dataset
 
 
-def balance_by_augmentation(dataset, key, fewer_negative):
+def balance_by_augmentation(dataset, key):
     """
     generate more examples by random 90 rotations or horizontal/vertical flipping
     :param dataset:
@@ -165,10 +165,15 @@ def balance_by_augmentation(dataset, key, fewer_negative):
         r = tf.random.uniform([], 0, 6, dtype=tf.int64)
         augmented_image = tf.numpy_function(_augment, inp=[r, image], Tout=tf.float32)
 
-        return {
-            'image': augmented_image,
-            'label': input_dict['label']
-        }
+        input_dict['image'] = augmented_image
+        return  input_dict
+
+    positive_examples = 0
+    total_examples = 0
+    for total_examples, example in enumerate(dataset):
+        if tf.squeeze(tf.equal(example[key], 1)):
+            positive_examples += 1
+    fewer_negative = positive_examples > total_examples / 2
 
     if fewer_negative:
         positive_examples = dataset.filter(_label_is(1))

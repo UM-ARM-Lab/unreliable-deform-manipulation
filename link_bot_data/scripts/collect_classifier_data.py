@@ -126,6 +126,7 @@ class ClassifierDataCollector(plan_and_execute.PlanAndExecute):
                           planned_path['link_bot'],
                           planned_actions,
                           full_env_data.extent)
+            plt.show()
 
         if self.verbose >= 1:
             if len(self.planning_times) % 16 == 0:

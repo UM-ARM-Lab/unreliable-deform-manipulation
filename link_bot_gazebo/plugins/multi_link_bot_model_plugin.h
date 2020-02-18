@@ -54,6 +54,8 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   void OnConfiguration(link_bot_gazebo::LinkBotJointConfigurationConstPtr msg);
 
+  bool ExecuteAbsoluteAction(link_bot_gazebo::ExecuteActionRequest &req, link_bot_gazebo::ExecuteActionResponse &res);
+
   bool ExecuteAction(link_bot_gazebo::ExecuteActionRequest &req, link_bot_gazebo::ExecuteActionResponse &res);
 
   bool StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req, link_bot_gazebo::LinkBotStateResponse &res);
@@ -87,12 +89,14 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   std::mutex control_mutex_;
   ignition::math::Vector3d gripper1_target_position_{0, 0, 0};
   ignition::math::Vector3d gripper1_pos_error_{0, 0, 0};
+  ignition::math::Vector3d gripper1_vel_{0, 0, 0};
   std::unique_ptr<ros::NodeHandle> ros_node_;
   ros::Subscriber joy_sub_;
   ros::Subscriber action_mode_sub_;
   ros::Subscriber config_sub_;
   ros::ServiceServer state_service_;
   ros::ServiceServer execute_action_service_;
+  ros::ServiceServer execute_absolute_action_service_;
   ros::ServiceServer execute_traj_service_;
   ros::ServiceServer reset_service_;
   ros::ServiceClient objects_service_;

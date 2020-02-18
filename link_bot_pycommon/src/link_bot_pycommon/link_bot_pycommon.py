@@ -132,3 +132,6 @@ def transpose_2d_lists(l):
     return list(map(list, zip(*l)))
 
 
+def print_dict(example):
+    for k, v in example.items():
+        print(k, v.shape)

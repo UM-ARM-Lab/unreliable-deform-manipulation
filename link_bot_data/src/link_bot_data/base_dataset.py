@@ -118,7 +118,7 @@ class BaseDataset:
             dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)
 
             def _slice_sequences(constant_data, state_like_seqs, action_like_seqs):
-                return self.slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length=sequence_length)
+                return self.slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length, seed)
 
             dataset = dataset.map(_slice_sequences, num_parallel_calls=n_parallel_calls)
 
@@ -126,8 +126,6 @@ class BaseDataset:
 
             if balance_key is not None:
                 dataset = balance_dataset(dataset, balance_key)
-
-        dataset = dataset.cache()
 
         if batch_size is not None:
             dataset = dataset.batch(batch_size, drop_remainder=False)
@@ -148,8 +146,8 @@ class BaseDataset:
 
         return dataset
 
-    @staticmethod
-    def slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length: int):
+    def slice_sequences(self, constant_data, state_like_seqs, action_like_seqs, sequence_length: int, seed: int):
+        # t_start = np.random.randint(0, self.max_sequence_length - sequence_length + 1)
         t_start = 0
         state_like_t_slice = slice(t_start, t_start + sequence_length)
         action_like_t_slice = slice(t_start, t_start + sequence_length - 1)

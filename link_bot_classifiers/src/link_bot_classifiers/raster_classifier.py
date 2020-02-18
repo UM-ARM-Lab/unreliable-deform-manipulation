@@ -17,6 +17,7 @@ from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import experiments_util, link_bot_sdf_utils, link_bot_pycommon
+from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.action_smear_layer import action_smear_layer
 from moonshine.raster_points_layer import RasterPoints
 
@@ -67,7 +68,7 @@ class RasterClassifier(tf.keras.Model):
 
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
-    def make_image(self, input_dict: dict):
+    def make_images(self, input_dict: dict):
         """
         Expected sizes:
             'action': n_batch, n_action
@@ -78,12 +79,13 @@ class RasterClassifier(tf.keras.Model):
             'planned_local_env/extent': n_batch, 4
             'resolution': n_batch, 1
         """
-        planned_state = input_dict['planned_state']
         action = input_dict['action']
-        planned_next_state = input_dict['planned_state_next']
-        planned_local_env = input_dict['planned_local_env/env']
-        planned_local_env_resolution = input_dict['resolution']
-        planned_local_env_origin = input_dict['planned_local_env/origin']
+        planned_local_env = input_dict['planned_state/local_env']
+        planned_local_env_resolution = input_dict['res']
+        res_2d = tf.tile(tf.expand_dims(planned_local_env_resolution, axis=1), [1, 2])
+        planned_local_env_origin = input_dict['planned_state/local_env_origin']
+        planned_state = input_dict['planned_state/link_bot']
+        planned_next_state = input_dict['planned_state_next/link_bot']
 
         # add channel index
         planned_local_env = tf.expand_dims(planned_local_env, axis=3)
@@ -93,7 +95,7 @@ class RasterClassifier(tf.keras.Model):
         action = tf.expand_dims(action, axis=1)
         planned_next_state = tf.expand_dims(planned_next_state, axis=1)
         planned_local_env_origin = tf.expand_dims(planned_local_env_origin, axis=1)
-        planned_local_env_resolution = tf.tile(tf.expand_dims(planned_local_env_resolution, axis=1), [1, 1, 2])
+        planned_local_env_resolution = tf.expand_dims(res_2d, axis=1)
 
         # raster each state into an image
         planned_rope_image = self.raster([planned_state, planned_local_env_resolution, planned_local_env_origin])
@@ -134,7 +136,7 @@ class RasterClassifier(tf.keras.Model):
             'planned_local_env/extent': n_batch, 4
             'resolution': n_batch, 1
         """
-        planned_rope_image, planned_next_rope_image, planned_local_env, concat_image = self.make_image(input_dict)
+        planned_rope_image, planned_next_rope_image, planned_local_env, concat_image = self.make_images(input_dict)
 
         accept_probability = self.from_image(concat_image)
         return planned_rope_image, planned_next_rope_image, planned_local_env, accept_probability
@@ -156,6 +158,14 @@ class RasterClassifier(tf.keras.Model):
         accept_probability = self.output_layer(out_h)
         return accept_probability
 
+    def post_process(self, dataset):
+        def _make_image(input_dict):
+            outputs = self.make_images(input_dict)
+            concat_image = outputs[-1]
+            input_dict['image'] = concat_image
+            return input_dict
+        dataset = dataset.map(_make_image)
+        return dataset
 
 def check_validation(val_tf_dataset, loss, net, dataset_type: str):
     val_losses = []

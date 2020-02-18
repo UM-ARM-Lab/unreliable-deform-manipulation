@@ -48,6 +48,8 @@ def train(args, seed):
         ###############
         # Train
         ###############
+        train_tf_dataset = train_tf_dataset.cache('/tmp/tf.train.cache').shuffle(buffer_size=1024)
+        val_tf_dataset = val_tf_dataset.cache('/tmp/tf.val.cache')
         module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
