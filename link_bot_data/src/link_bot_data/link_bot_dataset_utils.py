@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 
+import numpy as np
 import random
 from typing import Optional
 import tensorflow as tf
@@ -134,17 +135,14 @@ def balance_xy_dataset(dataset, key):
     return balanced_dataset
 
 
-def balance_by_augmentation(dataset, key):
+def balance_by_augmentation(dataset, image_key, label_key):
     """
     generate more examples by random 90 rotations or horizontal/vertical flipping
-    :param dataset:
-    :param key:
-    :return:
     """
     import time
     def _label_is(label_is):
         def __filter(transition):
-            result = tf.squeeze(tf.equal(transition[key], label_is))
+            result = tf.squeeze(tf.equal(transition[label_key], label_is))
             return result
 
         return __filter
@@ -163,11 +161,11 @@ def balance_by_augmentation(dataset, key):
         return augmented_image
 
     def augment(input_dict):
-        image = input_dict['image']
+        image = input_dict[image_key]
         r = tf.random.uniform([], 0, 6, dtype=tf.int64)
         augmented_image = tf.numpy_function(_augment, inp=[r, image], Tout=tf.float32)
 
-        input_dict['image'] = augmented_image
+        input_dict[image_key] = augmented_image
         return  input_dict
 
     # In order to figure out whether the are fewer negative or positive examples,
@@ -193,7 +191,7 @@ def balance_by_augmentation(dataset, key):
             elif negative_examples > positive_examples + margin:
                 fewer_negative = False
                 break
-        if tf.equal(tf.squeeze(example[key]), 1):
+        if tf.equal(tf.squeeze(example[label_key]), 1):
             positive_examples += 1
         else:
             negative_examples += 1
@@ -225,8 +223,41 @@ def balance_by_augmentation(dataset, key):
 
     return balanced_dataset
 
+# raster each state into an image
+def raster_rope_images(planned_states, res, h, w, n_points):
+    # NOTE: assumes full env is centered at origin
+    origin = [int(w/2), int(h/2)]
+    rope_images = np.zeros([h, w, n_points], dtype=np.float32)
+    for planned_state in planned_states:
+        rope_img_t = raster(planned_state, res, origin, h, w)
+        # NOTE: consider appending channel-wise instead?
+        rope_images += rope_img_t
+    return rope_images
 
-def add_image(input_dict):
+def add_traj_image(input_dict):
+    # TODO: incorporate action somehow? maybe one channel per action per time step
+    full_env = input_dict['full_env/env']
+    res = input_dict['res']
+    stop_index = input_dict['planned_state/link_bot_all_stop']
+    planned_states = input_dict['planned_state/link_bot_all'][:stop_index]
+
+    h, w = full_env.shape
+    t = planned_states.shape[0]
+    n_points = link_bot_pycommon.n_state_to_n_points(planned_states.shape[1])
+
+    # add channel index
+    full_env = tf.expand_dims(full_env, axis=2)
+
+
+    rope_imgs = tf.numpy_function(raster_rope_images, [planned_states, res, h, w, n_points], tf.float32)
+    rope_imgs.set_shape([h, w, n_points])
+
+    # h, w, channel
+    image = tf.concat((full_env, rope_imgs), axis=2)
+    input_dict['trajectory_image'] = image
+    return input_dict
+
+def add_transition_image(input_dict):
     """
     Expected sizes:
         'action': n_action
@@ -262,7 +293,7 @@ def add_image(input_dict):
 
     # h, w, channel
     image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env, action_image), axis=2)
-    input_dict['image'] = image
+    input_dict['transition_image'] = image
     return input_dict
 
 def cachename(mode : Optional[str] = None):

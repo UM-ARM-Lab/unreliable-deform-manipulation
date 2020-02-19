@@ -12,7 +12,7 @@ import link_bot_classifiers
 from link_bot_classifiers import visualization
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.classifier_dataset import ClassifierDataset, convert_sequences_to_transitions
-from link_bot_data.link_bot_dataset_utils import balance_by_augmentation
+from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_traj_image, add_transition_image
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points, print_dict
 
@@ -24,8 +24,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('classifier_dataset_params', type=pathlib.Path)
-    parser.add_argument('model_hparams', type=pathlib.Path)
-    parser.add_argument('display_type', choices=['transition_image', 'transition_plot', 'trajectory_plot'])
+    parser.add_argument('display_type', choices=['transition_image', 'transition_plot', 'trajectory_image', 'trajectory_plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
@@ -43,19 +42,19 @@ def main():
     classifier_dataset_params = json.load(args.classifier_dataset_params.open("r"))
 
     classifier_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
-    dataset = classifier_dataset.get_datasets(mode=args.mode,
-                                              n_parallel_calls=1,
-                                              seed=args.seed)
-
-    model_hparams = json.load(args.model_hparams.open('r'))
-    model_hparams['classifier_dataset_hparams'] = classifier_dataset.hparams
-    module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
-
-    net = module.model(model_hparams, batch_size=1)
-    dataset = net.post_process(dataset)
+    dataset = classifier_dataset.get_datasets(mode=args.mode)
+    if args.display_type == 'transition_image':
+        dataset = dataset.map(add_transition_image)
+    if args.display_type == 'trajectory_image':
+        dataset = dataset.map(add_traj_image)
 
     if classifier_dataset_params['balance']:
-        dataset = balance_by_augmentation(dataset, key='label')
+        if args.display_type == 'transition_image':
+            dataset = balance_by_augmentation(dataset, image_key='transition_image', label_key='label')
+        elif args.display_type == 'trajectory_image':
+            dataset = balance_by_augmentation(dataset, image_key='trajectory_image', label_key='label')
+        else:
+            print("can't balance...")
 
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=1024)
@@ -82,12 +81,24 @@ def main():
             continue
 
         if args.display_type == 'transition_image':
-            image = example['image'].numpy()
+            image = example['transition_image'].numpy()
             n_points = n_state_to_n_points(classifier_dataset.hparams['n_state'])
             interpretable_image = visualization.make_interpretable_image(image, n_points)
             # TODO: flipud?
-            plt.imshow(interpretable_image)
+            plt.imshow(np.flipud(interpretable_image))
             planned_env_extent = [1, 49, 1, 49]
+            label_color = 'g' if label else 'r'
+            plt.plot([planned_env_extent[0], planned_env_extent[0], planned_env_extent[1], planned_env_extent[1],
+                      planned_env_extent[0]],
+                     [planned_env_extent[2], planned_env_extent[3], planned_env_extent[3], planned_env_extent[2],
+                      planned_env_extent[2]],
+                     c=label_color, linewidth=4)
+            plt.show(block=True)
+        elif args.display_type == 'trajectory_image':
+            image = example['trajectory_image'].numpy()
+            image = np.pad(image, [[0,0], [0,0], [0,1]])
+            plt.imshow(np.flipud(image))
+            planned_env_extent = [1, 199, 1, 199]
             label_color = 'g' if label else 'r'
             plt.plot([planned_env_extent[0], planned_env_extent[0], planned_env_extent[1], planned_env_extent[1],
                       planned_env_extent[0]],

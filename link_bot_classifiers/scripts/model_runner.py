@@ -9,7 +9,7 @@ from colorama import Fore
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_image
+from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_transition_image, add_traj_image
 from link_bot_pycommon import experiments_util
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
@@ -34,8 +34,8 @@ def train(args, seed: int):
 
     train_tf_dataset = train_dataset.get_datasets(mode='train')
     val_tf_dataset = val_dataset.get_datasets(mode='val')
-    train_tf_dataset = train_tf_dataset.map(add_image)
-    val_tf_dataset = val_tf_dataset.map(add_image)
+    train_tf_dataset = train_tf_dataset.map(add_transition_image)
+    val_tf_dataset = val_tf_dataset.map(add_traj_image)
 
     ###############
     # Model
@@ -56,10 +56,6 @@ def train(args, seed: int):
         ###############
         # Train
         ###############
-        train_tmp = "/tmp/tf_train_{}".format(100000)
-        val_tmp = "/tmp/tf_val_{}".format(100000)
-        # train_tf_dataset = train_tf_dataset.cache(train_tmp).shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
-        # val_tf_dataset = val_tf_dataset.cache(val_tmp).batch(args.batch_size, drop_remainder=True)
         train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
         val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
         module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args)

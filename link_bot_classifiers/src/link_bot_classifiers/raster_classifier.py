@@ -63,9 +63,9 @@ class RasterClassifier(tf.keras.Model):
 
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
-    def _conv(self, concat_image):
+    def _conv(self, image):
         # feed into a CNN
-        conv_z = concat_image
+        conv_z = image
         for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
             conv_h = conv_layer(conv_z)
             conv_z = pool_layer(conv_h)
@@ -74,7 +74,8 @@ class RasterClassifier(tf.keras.Model):
         return out_conv_z
 
     def call(self, input_dict: dict, training=None, mask=None):
-        image = input_dict['image']
+        # choose what key to use here
+        image = input_dict[self.hparams['image_key']]
         out_conv_z = self._conv(image)
         conv_output = self.conv_flatten(out_conv_z)
 
