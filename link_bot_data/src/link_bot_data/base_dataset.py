@@ -40,9 +40,7 @@ class BaseDataset:
 
     def get_datasets(self,
                      mode: str,
-                     batch_size: Optional[int],
                      seed: int,
-                     shuffle: bool = True,
                      sequence_length: Optional[int] = None,
                      n_parallel_calls: int = tf.data.experimental.AUTOTUNE,
                      balance_key: Optional[str] = None,
@@ -52,17 +50,13 @@ class BaseDataset:
         for dataset_dir in self.dataset_dirs:
             records.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
         return self.get_datasets_from_records(records,
-                                              batch_size=batch_size,
                                               seed=seed,
-                                              shuffle=shuffle,
                                               sequence_length=sequence_length,
                                               balance_key=balance_key,
                                               n_parallel_calls=n_parallel_calls,
                                               do_not_process=do_not_process)
 
     def get_datasets_all_modes(self,
-                               batch_size: Optional[int],
-                               shuffle: bool = True,
                                seed: int = 0,
                                balance_key: Optional[str] = None,
                                do_not_process: bool = False,
@@ -80,17 +74,13 @@ class BaseDataset:
         all_filenames.extend(val_filenames)
 
         return self.get_datasets_from_records(records=all_filenames,
-                                              batch_size=batch_size,
-                                              shuffle=shuffle,
                                               seed=seed,
                                               balance_key=balance_key,
                                               do_not_process=do_not_process)
 
     def get_datasets_from_records(self,
                                   records: List[str],
-                                  batch_size: int,
                                   seed: int,
-                                  shuffle: bool = True,
                                   sequence_length: Optional[int] = None,
                                   balance_key: str = None,
                                   n_parallel_calls: int = None,
@@ -105,10 +95,6 @@ class BaseDataset:
 
         dataset = tf.data.TFRecordDataset(records, buffer_size=1 * 1024 * 1024,
                                           compression_type=self.hparams['compression_type'])
-
-        if shuffle:
-            # TODO: tune buffer size for performance
-            dataset = dataset.shuffle(buffer_size=1024, seed=seed)
 
         features_description = self.make_features_description()
 
@@ -126,23 +112,6 @@ class BaseDataset:
 
             if balance_key is not None:
                 dataset = balance_dataset(dataset, balance_key)
-
-        if batch_size is not None:
-            dataset = dataset.batch(batch_size, drop_remainder=False)
-
-        # sanity check that the dataset isn't empty, which can happen when debugging if batch size is bigger than dataset size
-        empty = True
-        for _ in dataset:
-            empty = False
-            break
-        if empty:
-            dataset_size = 0
-            for _ in dataset:
-                dataset_size += batch_size
-                if dataset_size >= 8 * batch_size:
-                    dataset_size = "... more than 8 batches"
-                    break
-            raise RuntimeError("Dataset is empty! batch size: {}, dataset size: {}".format(batch_size, dataset_size))
 
         return dataset
 

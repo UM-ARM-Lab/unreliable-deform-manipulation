@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 
-import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
 import tensorflow as tf
 
 
@@ -168,12 +165,35 @@ def balance_by_augmentation(dataset, key):
         input_dict['image'] = augmented_image
         return  input_dict
 
+    # In order to figure out whether the are fewer negative or positive examples,
+    # we iterate over the first `min_test_examples` elements. If after this many
+    # we see a clear imbalance in one direction, make the decision then.
+    # Otherwise, we keep iterating up until `max_test_examples`, checking until we 
+    # see a clear imabalance. This is nessecary because iterating over the whole thing (even once)
+    # is very slow (can take minutes), and most imbalanced datasets are obviously imbalanced
+    # so we need not check every example
     positive_examples = 0
-    total_examples = 0
-    for total_examples, example in enumerate(dataset):
-        if tf.squeeze(tf.equal(example[key], 1)):
+    negative_examples = 0
+    examples_considered = 0
+    min_test_examples = 100
+    max_test_examples = 1000
+    margin = 10
+    for examples_considered, example in enumerate(dataset):
+        if examples_considered > max_test_examples:
+            break
+        if examples_considered > min_test_examples:
+            if positive_examples > negative_examples + margin:
+                fewer_negative = True
+                break
+            elif negative_examples > positive_examples + margin:
+                fewer_negative = False
+                break
+        if tf.equal(tf.squeeze(example[key]), 1):
             positive_examples += 1
-    fewer_negative = positive_examples > total_examples / 2
+        else:
+            negative_examples += 1
+    fewer_negative = negative_examples < positive_examples
+    print("consisdered {} elements. found {} positive, {} negative".format(examples_considered, positive_examples, negative_examples))
 
     if fewer_negative:
         positive_examples = dataset.filter(_label_is(1))
@@ -186,7 +206,6 @@ def balance_by_augmentation(dataset, key):
 
         augmented_negative_examples = negative_examples.map(augment)
 
-        # zipping takes the shorter of the two, hence why this makes it balanced
         balanced_dataset = tf.data.Dataset.zip((positive_examples, augmented_negative_examples))
     else:
         negative_examples = dataset.filter(_label_is(0))
@@ -199,7 +218,6 @@ def balance_by_augmentation(dataset, key):
 
         augmented_positive_examples = positive_examples.map(augment)
 
-        # zipping takes the shorter of the two, hence why this makes it balanced
         balanced_dataset = tf.data.Dataset.zip((negative_examples, augmented_positive_examples))
 
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)

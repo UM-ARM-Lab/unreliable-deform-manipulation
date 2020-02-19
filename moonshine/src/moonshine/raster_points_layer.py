@@ -3,6 +3,24 @@ import tensorflow as tf
 
 from link_bot_pycommon import link_bot_pycommon
 
+def raster(state, res, origin, h, w):
+    """
+    state: [n]
+    res: [] scalar
+    origin: [2]
+    h: [] scalar
+    w: [] scalar
+    """
+    points = np.reshape(state, [-1, 2])
+    n_points = points.shape[0]
+    # points[:,1] is y, origin[0] is row index, so yes this is correct
+    row_y_indices = (points[:, 1] / res + origin[0]).astype(np.int64)
+    col_x_indices = (points[:, 0] / res + origin[1]).astype(np.int64)
+    channel_indeces = np.arange(n_points)
+
+    rope_images = np.zeros([h, w, n_points], dtype=np.float32)
+    rope_images[row_y_indices, col_x_indices, channel_indeces] = 1.0
+    return rope_images
 
 class RasterPoints(tf.keras.layers.Layer):
 

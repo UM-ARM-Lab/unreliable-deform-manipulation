@@ -45,4 +45,5 @@ class LinkBotStateSpaceDataset(BaseDataset):
             input_dict.update(const_data)
             return input_dict, output_dict
 
-        return dataset.map(_convert_full_sequence_to_input_and_output_sequences, num_parallel_calls=n_parallel_calls)
+        dataset = dataset.map(_convert_full_sequence_to_input_and_output_sequences, num_parallel_calls=n_parallel_calls)
+        return dataset

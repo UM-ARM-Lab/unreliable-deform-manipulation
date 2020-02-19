@@ -44,8 +44,6 @@ def main():
 
     classifier_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
     dataset = classifier_dataset.get_datasets(mode=args.mode,
-                                              shuffle=args.shuffle,
-                                              batch_size=1,
                                               n_parallel_calls=1,
                                               seed=args.seed)
 
@@ -56,9 +54,11 @@ def main():
     net = module.model(model_hparams, batch_size=1)
     dataset = net.post_process(dataset)
 
-    # if classifier_dataset_params['balance']:
-        # TODO: make this faster somehow
-        # dataset = balance_by_augmentation(dataset, key='label')
+    if classifier_dataset_params['balance']:
+        dataset = balance_by_augmentation(dataset, key='label')
+
+    if args.shuffle:
+        dataset = dataset.shuffle(buffer_size=1024)
 
     done = False
 
@@ -85,6 +85,7 @@ def main():
             image = example['image'].numpy()
             n_points = n_state_to_n_points(classifier_dataset.hparams['n_state'])
             interpretable_image = visualization.make_interpretable_image(image, n_points)
+            # TODO: flipud?
             plt.imshow(interpretable_image)
             planned_env_extent = [1, 49, 1, 49]
             label_color = 'g' if label else 'r'
@@ -95,34 +96,35 @@ def main():
                      c=label_color, linewidth=4)
             plt.show(block=True)
         elif args.display_type == 'trajectory_plot':
-            full_env = example['full_env/env'].numpy()[0]
-            full_env_extent = example['full_env/extent'].numpy()[0]
-            link_bot_state_all = example['planned_state/link_bot_all'].numpy()[0]
-            link_bot_state_stop_idx = example['planned_state/link_bot_all_stop'].numpy()[0]
+            full_env = example['full_env/env'].numpy()
+            full_env_extent = example['full_env/extent'].numpy()
+            link_bot_state_all = example['planned_state/link_bot_all'].numpy()
+            link_bot_state_stop_idx = example['planned_state/link_bot_all_stop'].numpy()
 
             plt.figure()
-            plt.imshow(full_env, extent=full_env_extent)
+            plt.imshow(np.flipud(full_env), extent=full_env_extent)
             ax = plt.gca()
             for i in range(link_bot_state_stop_idx):
                 state = link_bot_state_all[i]
                 print(state)
                 plot_rope_configuration(ax, state, c='r', s=5)
+            print()
             plt.show()
         elif args.display_type == 'transition_plot':
-            res = example['res'].numpy().squeeze()
+            res = example['res'].numpy()
             res = np.array([res, res])
-            planned_local_env = example['planned_state/local_env'].numpy().squeeze()
-            planned_local_env_extent = example['planned_state/local_env_extent'].numpy().squeeze()
-            planned_local_env_origin = example['planned_state/local_env_origin'].numpy().squeeze()
-            actual_local_env = example['state/local_env'].numpy().squeeze()
-            actual_local_env_extent = example['state/local_env_extent'].numpy().squeeze()
-            state = example['state/link_bot'].numpy().squeeze()
-            action = example['action'].numpy().squeeze()
-            next_state = example['state_next/link_bot'].numpy().squeeze()
-            planned_state = example['planned_state/link_bot'].numpy().squeeze()
-            planned_next_state = example['planned_state_next/link_bot'].numpy().squeeze()
-            pre_transition_distance = example['pre_dist'].numpy().squeeze()
-            post_transition_distance = example['post_dist'].numpy().squeeze()
+            planned_local_env = example['planned_state/local_env'].numpy()
+            planned_local_env_extent = example['planned_state/local_env_extent'].numpy()
+            planned_local_env_origin = example['planned_state/local_env_origin'].numpy()
+            actual_local_env = example['state/local_env'].numpy()
+            actual_local_env_extent = example['state/local_env_extent'].numpy()
+            state = example['state/link_bot'].numpy()
+            action = example['action'].numpy()
+            next_state = example['state_next/link_bot'].numpy()
+            planned_state = example['planned_state/link_bot'].numpy()
+            planned_next_state = example['planned_state_next/link_bot'].numpy()
+            pre_transition_distance = example['pre_dist'].numpy()
+            post_transition_distance = example['post_dist'].numpy()
 
             title = None
             if post_transition_distance > 0.25:

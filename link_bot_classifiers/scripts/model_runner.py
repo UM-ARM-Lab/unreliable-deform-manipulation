@@ -9,6 +9,7 @@ from colorama import Fore
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.link_bot_dataset_utils import balance_by_augmentation
 from link_bot_pycommon import experiments_util
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
@@ -27,33 +28,46 @@ def train(args, seed: int):
     ###############
     # Datasets
     ###############
-    labeling_params = json.load(args.labeling_hparams.open('w'))
-    train_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
-    val_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
+    classifier_dataset_params = json.load(args.classifier_dataset_params.open('r'))
+    train_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
+    val_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
 
     train_tf_dataset = train_dataset.get_datasets(mode='train',
-                                                  shuffle=True,
-                                                  seed=seed,
-                                                  batch_size=args.batch_size)
+                                                  seed=seed)
     val_tf_dataset = val_dataset.get_datasets(mode='val',
-                                              shuffle=True,
-                                              seed=seed,
-                                              batch_size=args.batch_size)
+                                              seed=seed)
 
     ###############
     # Model
     ###############
     model_hparams = json.load(args.model_hparams.open('r'))
-    model_hparams['labeling_hparams'] = labeling_params
+    # FIXME: just garbage
+    model_hparams['classifier_dataset_params'] = classifier_dataset_params
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
 
+    # FIXME: this is a different net, as the one we are training but has the same hparams...
+    #  technically that's fine but is bad design
+    net = module.model(model_hparams, batch_size=args.batch_size)
+    train_tf_dataset = net.post_process(train_tf_dataset)
+    val_tf_dataset = net.post_process(val_tf_dataset)
+
+    if classifier_dataset_params['balance']:
+        # TODO: make this faster somehow
+        print(Fore.GREEN + "balancing..." + Fore.RESET)
+        train_tf_dataset = balance_by_augmentation(train_tf_dataset, key='label')
+        val_tf_dataset = balance_by_augmentation(val_tf_dataset, key='label')
+    
     try:
         ###############
         # Train
         ###############
-        train_tf_dataset = train_tf_dataset.cache().shuffle()
-        val_tf_dataset = val_tf_dataset.cache()
+        train_tmp = "/tmp/tf_train_{}".format(100000)
+        val_tmp = "/tmp/tf_val_{}".format(100000)
+        # train_tf_dataset = train_tf_dataset.cache(train_tmp).shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
+        # val_tf_dataset = val_tf_dataset.cache(val_tmp).batch(args.batch_size, drop_remainder=True)
+        train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
+        val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
         module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
@@ -70,13 +84,11 @@ def eval(args, seed: int):
     ###############
     # Dataset
     ###############
-    labeling_params = model_hparams['labeling_hparams']
-    test_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
+    classifier_dataset_params = model_hparams['labeling_hparams']
+    test_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
 
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
-                                                shuffle=False,
-                                                seed=seed,
-                                                batch_size=args.batch_size)
+                                                seed=seed)
 
     try:
         ###############
@@ -97,7 +109,7 @@ def main():
     train_parser = subparsers.add_parser('train')
     train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
-    train_parser.add_argument('labeling_hparams', type=pathlib.Path)
+    train_parser.add_argument('classifier_dataset_params', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--summary-freq', type=int, default=1)
