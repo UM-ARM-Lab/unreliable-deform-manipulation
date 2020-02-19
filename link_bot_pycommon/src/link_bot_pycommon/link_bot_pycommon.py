@@ -1,6 +1,8 @@
 from __future__ import division
 
 import numpy as np
+import random
+import string
 from colorama import Fore
 import tensorflow as tf
 
@@ -135,3 +137,8 @@ def transpose_2d_lists(l):
 def print_dict(example):
     for k, v in example.items():
         print(k, v.shape)
+
+def rand_str(length=16):
+    """Generate a random string of fixed length """
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(length))

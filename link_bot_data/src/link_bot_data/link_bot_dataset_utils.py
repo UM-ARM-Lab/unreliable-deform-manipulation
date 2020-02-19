@@ -203,11 +203,9 @@ def balance_by_augmentation(dataset, key):
     if fewer_negative:
         positive_examples = dataset.filter(_label_is(1))
 
-        n_positive_examples = 0
-        for _ in positive_examples:
-            n_positive_examples += 1
-
-        negative_examples = dataset.filter(_label_is(0)).repeat().take(n_positive_examples)
+        negative_examples = dataset.filter(_label_is(0))
+        negative_examples = negative_examples.cache(cachename())
+        negative_examples = negative_examples.repeat()
 
         augmented_negative_examples = negative_examples.map(augment)
 
@@ -215,11 +213,9 @@ def balance_by_augmentation(dataset, key):
     else:
         negative_examples = dataset.filter(_label_is(0))
 
-        n_negative_examples = 0
-        for _ in negative_examples:
-            n_negative_examples += 1
-
-        positive_examples = dataset.filter(_label_is(1)).repeat().take(n_negative_examples)
+        positive_examples = dataset.filter(_label_is(1))
+        positive_examples = positive_examples.cache(cachename())
+        positive_examples = positive_examples.repeat()
 
         augmented_positive_examples = positive_examples.map(augment)
 
@@ -271,7 +267,7 @@ def add_image(input_dict):
 
 def cachename(mode : Optional[str] = None):
     if mode is not None:
-        tmpname = "/tmp/tf_{}_{}".format(mode, random.randint(0,100000))
+        tmpname = "/tmp/tf_{}_{}".format(mode, link_bot_pycommon.rand_str())
     else:
-        tmpname = "/tmp/tf_{}".format(random.randint(0,100000))
+        tmpname = "/tmp/tf_{}".format(link_bot_pycommon.rand_str())
     return tmpname
