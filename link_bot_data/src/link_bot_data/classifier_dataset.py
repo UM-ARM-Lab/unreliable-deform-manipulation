@@ -1,12 +1,20 @@
 import pathlib
+from enum import auto
 from typing import List, Dict
 
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
-from link_bot_pycommon.link_bot_pycommon import print_dict
+from link_bot_pycommon import args
 from link_bot_pycommon.link_bot_sdf_utils import compute_extent
+
+
+class ClassifierDatasetType(args.ArgsEnum):
+    TRANSITION = auto()
+    TRAJECTORY = auto()
+    TRANSITION_IMAGE = auto()
+    TRAJECTORY_IMAGE = auto()
 
 
 def add_next(feature_name):
@@ -43,7 +51,7 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
         transitions[feature_name] = []
 
     def _zero_pad_sequence(sequence, transition_idx):
-        if transition_idx + 1 < sequence.shape[0] :
+        if transition_idx + 1 < sequence.shape[0]:
             sequence[transition_idx + 1:] = -1
         return sequence
 
@@ -56,7 +64,7 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
             zps = tf.numpy_function(_zero_pad_sequence, [state_like_sequences[feature_name], transition_idx], tf.float32)
             zps.set_shape(state_like_sequences[feature_name].shape)
             transitions[feature_name + '_all'].append(zps)
-            transitions[feature_name + '_all_stop'].append(transition_idx+1)
+            transitions[feature_name + '_all_stop'].append(transition_idx + 1)
         for next_feature_name, feature_name in next_state_like_names:
             transitions[next_feature_name].append(state_like_sequences[feature_name][transition_idx + 1])
 
@@ -66,7 +74,7 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
             zps = tf.numpy_function(_zero_pad_sequence, [action_like_sequences[feature_name], transition_idx], tf.float32)
             zps.set_shape(action_like_sequences[feature_name].shape)
             transitions[feature_name + '_all'].append(zps)
-            transitions[feature_name + '_all_stop'].append(transition_idx+1)
+            transitions[feature_name + '_all_stop'].append(transition_idx + 1)
 
         for feature_name in constant_data.keys():
             transitions[feature_name].append(constant_data[feature_name])

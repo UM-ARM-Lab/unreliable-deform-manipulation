@@ -144,24 +144,17 @@ class MyPlanner:
     def is_valid(self, state):
         return self.state_space.getSubspace(0).satisfiesBounds(state[0])
 
-    def propagate(self, start, control, duration, state_out):
-        del duration  # unused, multi-step propagation is handled inside propagateWhileValid
-        np_s = to_numpy(start[0], self.n_state)
-
-        np_u = ompl_control_to_model_action(control, self.n_control)
-
+    def edge_is_valid(self, np_s: np.ndarray, np_u: np.ndarray, np_s_next: np.ndarray):
         local_env_data = self.get_local_env_at(np_s[0, -2], np_s[0, -1])
 
-        # use the forward model to predict the next configuration
-        points_next = self.fwd_model.predict(full_envs=self.full_envs,
-                                             full_env_origins=self.full_env_origins,
-                                             resolution_s=np.array([[self.fwd_model.full_env_params.res]]),
-                                             state=np_s,
-                                             actions=np_u)
-        np_s_next = points_next[:, 1].reshape([1, self.n_state])
+        if self.classifier_model.model_hparams['image_type'] == 'transition_image':
+        elif self.classifier_model.model_hparams['image_type'] == 'trajectory_image':
+            # Get the whole path?
+        else:
+            raise ValueError()
 
-        # validate the edge
         accept_probabilities = self.classifier_model.predict(local_env_data=[local_env_data], s1=np_s, s2=np_s_next, action=np_u)
+
         accept_probability = accept_probabilities[0]
         p = self.classifier_rng.uniform(0, 1)
         # classifier_accept = p <= accept_probability
@@ -172,6 +165,24 @@ class MyPlanner:
         random_accept = self.classifier_rng.uniform(0, 1) <= self.planner_params['random_epsilon']
         # edge_is_valid = classifier_accept or random_accept
         edge_is_valid = classifier_accept  # or random_accept
+        return edge_is_valid
+
+    def propagate(self, start, control, duration, state_out):
+        del duration  # unused, multi-step propagation is handled inside propagateWhileValid
+        np_s = to_numpy(start[0], self.n_state)
+
+        np_u = ompl_control_to_model_action(control, self.n_control)
+
+        # use the forward model to predict the next configuration
+        points_next = self.fwd_model.predict(full_envs=self.full_envs,
+                                             full_env_origins=self.full_env_origins,
+                                             resolution_s=np.array([[self.fwd_model.full_env_params.res]]),
+                                             state=np_s,
+                                             actions=np_u)
+        np_s_next = points_next[:, 1].reshape([1, self.n_state])
+
+        # validate the edge
+        edge_is_valid = self.edge_is_valid(np_s, np_u, np_s_next)
 
         # copy the result into the ompl state data structure
         if not edge_is_valid:
@@ -261,8 +272,8 @@ class MyPlanner:
                 subspace_state = compound_state[subspace_idx]
                 if name == 'local_env':
                     planned_path[name].append(to_numpy_local_env(subspace_state,
-                                                                      self.fwd_model.local_env_params.w_cols,
-                                                                      self.fwd_model.local_env_params.h_rows))
+                                                                 self.fwd_model.local_env_params.w_cols,
+                                                                 self.fwd_model.local_env_params.h_rows))
                 elif name == 'local_env_origin':
                     planned_path[name].append(to_numpy_flat(subspace_state, 2))
                 elif name == 'link_bot':
@@ -274,7 +285,6 @@ class MyPlanner:
         planned_path_np = {}
         for k, v in planned_path.items():
             planned_path_np[k] = np.array(v)
-
 
         np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
         for time_idx, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):

@@ -13,7 +13,7 @@
 
     <!-- Spawn a robot into Gazebo -->
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
-          args="-file $(find link_bot_description)/sdf/tethered_point_robot.sdf -sdf -Y 0.785 -z 0.02 -model link_bot"/>
+          args="-file $(find link_bot_description)/sdf/long_tethered.sdf -sdf -Y 0.785 -z 0.02 -model link_bot"/>
 
     <node name="setup_tether" pkg="link_bot_gazebo" type="setup_tether.py"/>
 

@@ -15,7 +15,7 @@ from link_bot_gazebo.srv import LinkBotStateRequest, ExecuteActionRequest
 
 from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
-from link_bot_gazebo import gazebo_utils
+from victor import victor_utils
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
 from link_bot_pycommon import ros_pycommon, link_bot_pycommon
 from link_bot_pycommon.args import my_formatter
@@ -26,6 +26,15 @@ tensorflow.compat.v1.enable_eager_execution(config=conf)
 
 
 def sample_delta_pos(action_rng, max_delta_pos, head_point, goal_env_w, goal_env_h):
+    """
+
+    :param action_rng:
+    :param max_delta_pos:
+    :param head_point:
+    :param goal_env_w: this is HALF the env width, assumed to be centered at 0
+    :param goal_env_h: this is HALF the env height, assumed to be centered at 0
+    :return:
+    """
     while True:
         delta_pos = action_rng.uniform(0, max_delta_pos)
         direction = action_rng.uniform(-np.pi, np.pi)
@@ -63,7 +72,7 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
         head_point = state.points[head_idx]
 
         gripper1_dx, gripper1_dy = sample_delta_pos(action_rng, max_delta_pos, head_point, args.goal_env_w, args.goal_env_h)
-        if args.verbose:
+        if args.verbose >= 2:
             print('gripper delta:', gripper1_dx, gripper1_dy)
             random_environment_data_utils.publish_marker(head_point.x + gripper1_dx, head_point.y + gripper1_dy, marker_size=0.05)
 
@@ -90,7 +99,7 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
 
         global_t_step += 1
 
-    if args.verbose:
+    if args.verbose >= 2:
         print(Fore.GREEN + "Trajectory {} Complete".format(traj_idx) + Fore.RESET)
 
     example_proto = tensorflow.train.Example(features=tensorflow.train.Features(feature=feature))
@@ -98,21 +107,11 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
     return example, global_t_step
 
 
-def generate_trajs(args, full_output_directory, services, gazebo_rng: np.random.RandomState, action_rng: np.random.RandomState):
+def generate_trajs(args, full_output_directory, services, env_rng: np.random.RandomState, action_rng: np.random.RandomState):
     examples = np.ndarray([args.trajs_per_file], dtype=object)
     global_t_step = 0
     for i in range(args.trajs):
         current_record_traj_idx = i % args.trajs_per_file
-
-        if not args.no_obstacles and i % args.move_objects_every_n == 0:
-            objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            gazebo_utils.move_objects(services,
-                                      args.max_step_size,
-                                      objects,
-                                      args.env_w,
-                                      args.env_h,
-                                      padding=0.5,
-                                      rng=gazebo_rng)
 
         # Generate a new trajectory
         example, global_t_step = generate_traj(args, services, i, global_t_step, action_rng)
@@ -131,13 +130,13 @@ def generate_trajs(args, full_output_directory, services, gazebo_rng: np.random.
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))
 
-        if not args.verbose:
+        if args.verbose == 1:
             print(".", end='')
             sys.stdout.flush()
 
 
 def generate(args):
-    rospy.init_node('collect_dynamics_data')
+    rospy.init_node('victor_collect_dynamics_data')
 
     n_state = ros_pycommon.get_n_state()
     rope_length = ros_pycommon.get_rope_length()
@@ -145,7 +144,7 @@ def generate(args):
     assert args.trajs % args.trajs_per_file == 0, "num trajs must be multiple of {}".format(args.trajs_per_file)
 
     full_output_directory = random_environment_data_utils.data_directory(args.outdir, args.trajs)
-    if not os.path.isdir(full_output_directory) and args.verbose:
+    if not os.path.isdir(full_output_directory) and args.verbose >= 1:
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)
 
@@ -177,12 +176,13 @@ def generate(args):
         args.seed = np.random.randint(0, 10000)
     print(Fore.CYAN + "Using seed: {}".format(args.seed) + Fore.RESET)
     np.random.seed(args.seed)
-    gazebo_rng = np.random.RandomState(args.seed)
+    env_rng = np.random.RandomState(args.seed)
     goal_rng = np.random.RandomState(args.seed)
 
-    services = gazebo_utils.setup_gazebo_env(args.verbose, args.real_time_rate, args.max_step_size, True, None)
+    services = victor_utils.setup_env(args.verbose, reset_world=True)
+    # services = victor_utils.setup_env(args.verbose, args.real_time_rate, args.max_step_size, True, None)
 
-    generate_trajs(args, full_output_directory, services, gazebo_rng, goal_rng)
+    generate_trajs(args, full_output_directory, services, env_rng, goal_rng)
 
 
 def main():

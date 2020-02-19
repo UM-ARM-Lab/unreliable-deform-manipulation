@@ -1,20 +1,18 @@
 #!/usr/bin/env python
 import argparse
 import json
-import time
 import pathlib
 
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-import link_bot_classifiers
 from link_bot_classifiers import visualization
 from link_bot_classifiers.visualization import plot_classifier_data
-from link_bot_data.classifier_dataset import ClassifierDataset, convert_sequences_to_transitions
+from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_traj_image, add_transition_image
 from link_bot_data.visualization import plot_rope_configuration
-from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points, print_dict
+from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
 
 tf.compat.v1.enable_eager_execution()
 
@@ -96,7 +94,7 @@ def main():
             plt.show(block=True)
         elif args.display_type == 'trajectory_image':
             image = example['trajectory_image'].numpy()
-            image = np.pad(image, [[0,0], [0,0], [0,1]])
+            image = np.pad(image, [[0, 0], [0, 0], [0, 1]])
             plt.imshow(np.flipud(image))
             planned_env_extent = [1, 199, 1, 199]
             label_color = 'g' if label else 'r'

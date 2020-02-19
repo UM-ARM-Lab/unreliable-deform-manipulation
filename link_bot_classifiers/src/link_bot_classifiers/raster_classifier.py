@@ -14,11 +14,10 @@ from colorama import Fore, Style
 from tensorflow import keras
 
 from link_bot_classifiers.base_classifier import BaseClassifier
-from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_planning.params import LocalEnvParams
-from link_bot_pycommon import experiments_util, link_bot_sdf_utils, link_bot_pycommon
-from link_bot_pycommon.link_bot_pycommon import print_dict
-from moonshine.raster_points_layer import RasterPoints, raster
+from link_bot_pycommon import experiments_util, link_bot_sdf_utils
+from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
+
 
 class RasterClassifier(tf.keras.Model):
 
@@ -201,7 +200,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                 format_message += " Accuracy: " + Style.BRIGHT + "{:5.3f}%" + Style.RESET_ALL
                 print(format_message.format(mean_val_loss, val_accuracy) + Style.RESET_ALL)
 
-
             ################
             # Checkpoint
             ################
@@ -274,7 +272,7 @@ def eval(hparams, test_tf_dataset, args):
 
 class RasterClassifierWrapper(BaseClassifier):
 
-    def __init__(self, path: pathlib.Path, batch_size: int, show: bool = False):
+    def __init__(self, path: pathlib.Path, batch_size: int):
         super().__init__()
         model_hparams_file = path / 'hparams.json'
         self.model_hparams = json.load(model_hparams_file.open('r'))
@@ -284,44 +282,34 @@ class RasterClassifierWrapper(BaseClassifier):
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.ckpt.restore(self.manager.latest_checkpoint)
-        self.show = show
 
-    def predict(self, local_env_data: List, s1: np.ndarray, s2: np.ndarray, action: np.ndarray) -> float:
+    def predict(self, local_env_data: OccupancyData, s1: np.ndarray, s2: np.ndarray, action: np.ndarray) -> float:
         """
         :param local_env_data:
-        :param s1: [batch, n_state] float64
-        :param s2: [batch, n_state] float64
-        :param action: [batch, n_action] float64
-        :return: [batch, 1] float64
+        :param s1: [n_state] float64
+        :param s2: [n_state] float64
+        :param action: [n_action] float64
+        :return: [1] float64
         """
+        image = raster
+        test_x = {self.model_hparams['image_key']: image}
+        image = test_x
+        accept_probabilities = self.net(image)
+        accept_probabilities = accept_probabilities.numpy()
+        accept_probabilities = accept_probabilities.astype(np.float64).squeeze()
+
+        return accept_probabilities
+
+
+class RasterTrajWrapper(RasterClassifierWrapper):
+
+    def predict_traj(self, full_env: OccupancyData, states: np.ndarray, actions: np.ndarray) -> float:
         data_s, res_s, origin_s, extent_s = link_bot_sdf_utils.batch_occupancy_data(local_env_data)
-        test_x = {
-            'planned_state': tf.convert_to_tensor(s1, dtype=tf.float32),
-            'planned_state_next': tf.convert_to_tensor(s2, dtype=tf.float32),
-            'action': tf.convert_to_tensor(action, dtype=tf.float32),
-            'planned_local_env/env': tf.convert_to_tensor(data_s, dtype=tf.float32),
-            'planned_local_env/origin': tf.convert_to_tensor(origin_s, dtype=tf.float32),
-            'planned_local_env/extent': tf.convert_to_tensor(extent_s, dtype=tf.float32),
-            'resolution': tf.convert_to_tensor(res_s, dtype=tf.float32),
-        }
+        image =
+        test_x = {self.model_hparams['image_key']: image}
         accept_probabilities = self.net(test_x)
         accept_probabilities = accept_probabilities.numpy()
         accept_probabilities = accept_probabilities.astype(np.float64)[:, 0]
-
-        if self.show:
-            title = "n_parallel_calls(accept) = {:5.3f}".format(accept_probabilities.squeeze())
-            plot_classifier_data(planned_env=local_env_data[0].data,
-                                 planned_env_extent=local_env_data[0].extent,
-                                 planned_state=s1[0],
-                                 planned_next_state=s2[0],
-                                 actual_env=None,
-                                 actual_env_extent=None,
-                                 action=action[0],
-                                 state=None,
-                                 next_state=None,
-                                 title=title,
-                                 label=None)
-            plt.show()
 
         return accept_probabilities
 
