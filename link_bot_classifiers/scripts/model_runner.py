@@ -37,6 +37,13 @@ def train(args, seed: int):
     train_tf_dataset = train_tf_dataset.map(add_image)
     val_tf_dataset = val_tf_dataset.map(add_image)
 
+    ###############
+    # Model
+    ###############
+    model_hparams = json.load((args.model_hparams).open('r'))
+    # FIXME: this sucks
+    model_hparams['classifier_dataset_params'] = classifier_dataset_params
+    model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
 
     if classifier_dataset_params['balance']:
