@@ -40,7 +40,6 @@ class BaseDataset:
 
     def get_datasets(self,
                      mode: str,
-                     seed: int,
                      sequence_length: Optional[int] = None,
                      n_parallel_calls: int = tf.data.experimental.AUTOTUNE,
                      balance_key: Optional[str] = None,
@@ -50,14 +49,12 @@ class BaseDataset:
         for dataset_dir in self.dataset_dirs:
             records.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
         return self.get_datasets_from_records(records,
-                                              seed=seed,
                                               sequence_length=sequence_length,
                                               balance_key=balance_key,
                                               n_parallel_calls=n_parallel_calls,
                                               do_not_process=do_not_process)
 
     def get_datasets_all_modes(self,
-                               seed: int = 0,
                                balance_key: Optional[str] = None,
                                do_not_process: bool = False,
                                ):
@@ -74,13 +71,11 @@ class BaseDataset:
         all_filenames.extend(val_filenames)
 
         return self.get_datasets_from_records(records=all_filenames,
-                                              seed=seed,
                                               balance_key=balance_key,
                                               do_not_process=do_not_process)
 
     def get_datasets_from_records(self,
                                   records: List[str],
-                                  seed: int,
                                   sequence_length: Optional[int] = None,
                                   balance_key: str = None,
                                   n_parallel_calls: int = None,
@@ -104,7 +99,7 @@ class BaseDataset:
             dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)
 
             def _slice_sequences(constant_data, state_like_seqs, action_like_seqs):
-                return self.slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length, seed)
+                return self.slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length)
 
             dataset = dataset.map(_slice_sequences, num_parallel_calls=n_parallel_calls)
 
@@ -115,8 +110,7 @@ class BaseDataset:
 
         return dataset
 
-    def slice_sequences(self, constant_data, state_like_seqs, action_like_seqs, sequence_length: int, seed: int):
-        # t_start = np.random.randint(0, self.max_sequence_length - sequence_length + 1)
+    def slice_sequences(self, constant_data, state_like_seqs, action_like_seqs, sequence_length: int):
         t_start = 0
         state_like_t_slice = slice(t_start, t_start + sequence_length)
         action_like_t_slice = slice(t_start, t_start + sequence_length - 1)

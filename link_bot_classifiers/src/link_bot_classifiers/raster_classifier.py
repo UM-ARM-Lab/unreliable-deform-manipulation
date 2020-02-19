@@ -20,7 +20,6 @@ from link_bot_pycommon import experiments_util, link_bot_sdf_utils, link_bot_pyc
 from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.raster_points_layer import RasterPoints, raster
 
-
 class RasterClassifier(tf.keras.Model):
 
     def __init__(self, hparams, batch_size, *args, **kwargs):
@@ -91,51 +90,6 @@ class RasterClassifier(tf.keras.Model):
         accept_probability = self.output_layer(out_h)
         return accept_probability
 
-    def make_image(self, input_dict: dict):
-        """
-        Expected sizes:
-            'action': n_action
-            'planned_state': n_state
-            'planned_state_next': n_state
-            'planned_local_env/env': h, w
-            'planned_local_env/origin': 2
-            'planned_local_env/extent': 4
-            'resolution': 1
-        """
-        action = input_dict['action']
-        local_env = input_dict['planned_state/local_env']
-        res = input_dict['res']
-        origin = input_dict['planned_state/local_env_origin']
-        planned_state = input_dict['planned_state/link_bot']
-        planned_next_state = input_dict['planned_state_next/link_bot']
-        h, w = local_env.shape
-        n_points = link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
-
-        # add channel index
-        planned_local_env = tf.expand_dims(local_env, axis=2)
-
-        # raster each state into an image
-        planned_rope_image = tf.numpy_function(raster, [planned_state, res, origin, h, w], tf.float32)
-        planned_rope_image.set_shape([h, w, n_points])
-        planned_next_rope_image = tf.numpy_function(raster, [planned_next_state, res, origin, h, w], tf.float32)
-        planned_next_rope_image.set_shape([h, w, n_points])
-
-        # action
-        # add spatial dimensions and tile
-        action_reshaped = tf.expand_dims(tf.expand_dims(action, axis=0), axis=0)
-        action_image = tf.tile(action_reshaped, [h, w, 1], name='action_spatial_tile')
-
-        # h, w, channel
-        concat_image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env, action_image), axis=2)
-        return concat_image
-
-    def post_process(self, dataset):
-        def _make_image(input_dict):
-            image = self.make_image(input_dict)
-            input_dict['image'] = image
-            return input_dict
-        dataset = dataset.map(_make_image)
-        return dataset
 
 def check_validation(val_tf_dataset, loss, net):
     val_losses = []
@@ -223,19 +177,6 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
                         tf.contrib.summary.scalar('batch accuracy', batch_accuracy.result(), step=step)
                         tf.contrib.summary.scalar("batch loss", training_batch_loss, step=step)
 
-                    ################
-                    # validation
-                    ################
-                    if step % args.validation_every == 0:
-                        val_losses, val_accuracy = check_validation(val_tf_dataset, loss, net)
-                        mean_val_loss = np.mean(val_losses)
-                        val_accuracy = val_accuracy.result().numpy() * 100
-                        tf.contrib.summary.scalar('validation loss', mean_val_loss, step=step)
-                        tf.contrib.summary.scalar('validation accuracy', val_accuracy, step=step)
-                        format_message = "Validation Loss: " + Style.BRIGHT + "{:7.4f}" + Style.RESET_ALL
-                        format_message += " Accuracy: " + Style.BRIGHT + "{:5.3f}%" + Style.RESET_ALL
-                        print(format_message.format(mean_val_loss, val_accuracy) + Style.RESET_ALL)
-
                 ####################
                 # Update global step
                 ####################
@@ -245,6 +186,20 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args):
             training_accuracy = train_epoch_accuracy.result().numpy() * 100
             log_msg = "Epoch: {:5d}, Training Loss: {:7.4f}, Training Accuracy: {:5.2f}%"
             print(log_msg.format(epoch, training_loss, training_accuracy))
+
+            ################
+            # validation
+            ################
+            if step % args.validation_every == 0:
+                val_losses, val_accuracy = check_validation(val_tf_dataset, loss, net)
+                mean_val_loss = np.mean(val_losses)
+                val_accuracy = val_accuracy.result().numpy() * 100
+                tf.contrib.summary.scalar('validation loss', mean_val_loss, step=step)
+                tf.contrib.summary.scalar('validation accuracy', val_accuracy, step=step)
+                format_message = "Validation Loss: " + Style.BRIGHT + "{:7.4f}" + Style.RESET_ALL
+                format_message += " Accuracy: " + Style.BRIGHT + "{:5.3f}%" + Style.RESET_ALL
+                print(format_message.format(mean_val_loss, val_accuracy) + Style.RESET_ALL)
+
 
             ################
             # Checkpoint

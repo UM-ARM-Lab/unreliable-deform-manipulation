@@ -9,7 +9,7 @@ from colorama import Fore
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance_by_augmentation
+from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_image
 from link_bot_pycommon import experiments_util
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
@@ -32,25 +32,12 @@ def train(args, seed: int):
     train_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
     val_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
 
-    train_tf_dataset = train_dataset.get_datasets(mode='train',
-                                                  seed=seed)
-    val_tf_dataset = val_dataset.get_datasets(mode='val',
-                                              seed=seed)
+    train_tf_dataset = train_dataset.get_datasets(mode='train')
+    val_tf_dataset = val_dataset.get_datasets(mode='val')
+    train_tf_dataset = train_tf_dataset.map(add_image)
+    val_tf_dataset = val_tf_dataset.map(add_image)
 
-    ###############
-    # Model
-    ###############
-    model_hparams = json.load(args.model_hparams.open('r'))
-    # FIXME: just garbage
-    model_hparams['classifier_dataset_params'] = classifier_dataset_params
-    model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
-
-    # FIXME: this is a different net, as the one we are training but has the same hparams...
-    #  technically that's fine but is bad design
-    net = module.model(model_hparams, batch_size=args.batch_size)
-    train_tf_dataset = net.post_process(train_tf_dataset)
-    val_tf_dataset = net.post_process(val_tf_dataset)
 
     if classifier_dataset_params['balance']:
         # TODO: make this faster somehow
@@ -87,8 +74,7 @@ def eval(args, seed: int):
     classifier_dataset_params = model_hparams['labeling_hparams']
     test_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
 
-    test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
-                                                seed=seed)
+    test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
     try:
         ###############
@@ -119,7 +105,7 @@ def main():
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-grad-every', type=int, help='gradients hists every this many steps/batches', default=1000)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=500)
-    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=2000)
+    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=1)
     train_parser.set_defaults(func=train)
     train_parser.add_argument('--seed', type=int, default=None)
 

@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 
+import random
+from typing import Optional
 import tensorflow as tf
+from link_bot_pycommon import link_bot_pycommon
+from moonshine.raster_points_layer import RasterPoints, raster
 
 
 def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
@@ -137,10 +141,11 @@ def balance_by_augmentation(dataset, key):
     :param key:
     :return:
     """
-
+    import time
     def _label_is(label_is):
         def __filter(transition):
-            return tf.squeeze(tf.equal(transition[key], label_is))
+            result = tf.squeeze(tf.equal(transition[key], label_is))
+            return result
 
         return __filter
 
@@ -193,7 +198,7 @@ def balance_by_augmentation(dataset, key):
         else:
             negative_examples += 1
     fewer_negative = negative_examples < positive_examples
-    print("consisdered {} elements. found {} positive, {} negative".format(examples_considered, positive_examples, negative_examples))
+    print("considered {} elements. found {} positive, {} negative".format(examples_considered, positive_examples, negative_examples))
 
     if fewer_negative:
         positive_examples = dataset.filter(_label_is(1))
@@ -223,3 +228,50 @@ def balance_by_augmentation(dataset, key):
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
 
     return balanced_dataset
+
+
+def add_image(input_dict):
+    """
+    Expected sizes:
+        'action': n_action
+        'planned_state': n_state
+        'planned_state_next': n_state
+        'planned_local_env/env': h, w
+        'planned_local_env/origin': 2
+        'planned_local_env/extent': 4
+        'resolution': 1
+    """
+    action = input_dict['action']
+    local_env = input_dict['planned_state/local_env']
+    res = input_dict['res']
+    origin = input_dict['planned_state/local_env_origin']
+    planned_state = input_dict['planned_state/link_bot']
+    planned_next_state = input_dict['planned_state_next/link_bot']
+    h, w = local_env.shape
+    n_points = link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
+
+    # add channel index
+    planned_local_env = tf.expand_dims(local_env, axis=2)
+
+    # raster each state into an image
+    planned_rope_image = tf.numpy_function(raster, [planned_state, res, origin, h, w], tf.float32)
+    planned_rope_image.set_shape([h, w, n_points])
+    planned_next_rope_image = tf.numpy_function(raster, [planned_next_state, res, origin, h, w], tf.float32)
+    planned_next_rope_image.set_shape([h, w, n_points])
+
+    # action
+    # add spatial dimensions and tile
+    action_reshaped = tf.expand_dims(tf.expand_dims(action, axis=0), axis=0)
+    action_image = tf.tile(action_reshaped, [h, w, 1], name='action_spatial_tile')
+
+    # h, w, channel
+    image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env, action_image), axis=2)
+    input_dict['image'] = image
+    return input_dict
+
+def cachename(mode : Optional[str] = None):
+    if mode is not None:
+        tmpname = "/tmp/tf_{}_{}".format(mode, random.randint(0,100000))
+    else:
+        tmpname = "/tmp/tf_{}".format(random.randint(0,100000))
+    return tmpname
