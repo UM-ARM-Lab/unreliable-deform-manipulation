@@ -50,9 +50,9 @@ def main():
 
     if classifier_dataset_params['balance']:
         if args.display_type == 'transition_image':
-            dataset = balance_by_augmentation(dataset, image_key='transition_image', label_key='label')
+            dataset = balance_by_augmentation(dataset, image_key='transition_image')
         elif args.display_type == 'trajectory_image':
-            dataset = balance_by_augmentation(dataset, image_key='trajectory_image', label_key='label')
+            dataset = balance_by_augmentation(dataset, image_key='trajectory_image')
         else:
             print("can't balance...")
 

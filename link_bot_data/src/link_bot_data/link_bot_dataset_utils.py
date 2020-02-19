@@ -135,7 +135,7 @@ def balance_xy_dataset(dataset, key):
     return balanced_dataset
 
 
-def balance_by_augmentation(dataset, image_key, label_key):
+def balance_by_augmentation(dataset, image_key, label_key='label'):
     """
     generate more examples by random 90 rotations or horizontal/vertical flipping
     """
