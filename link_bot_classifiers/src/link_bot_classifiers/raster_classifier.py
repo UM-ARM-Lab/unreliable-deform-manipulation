@@ -3,7 +3,6 @@ from __future__ import print_function
 
 import json
 import pathlib
-from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -305,7 +304,7 @@ class RasterTrajWrapper(RasterClassifierWrapper):
 
     def predict_traj(self, full_env: OccupancyData, states: np.ndarray, actions: np.ndarray) -> float:
         data_s, res_s, origin_s, extent_s = link_bot_sdf_utils.batch_occupancy_data(local_env_data)
-        image =
+        image = raster
         test_x = {self.model_hparams['image_key']: image}
         accept_probabilities = self.net(test_x)
         accept_probabilities = accept_probabilities.numpy()

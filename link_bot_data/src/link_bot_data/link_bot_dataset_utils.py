@@ -166,7 +166,7 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
         augmented_image = tf.numpy_function(_augment, inp=[r, image], Tout=tf.float32)
 
         input_dict[image_key] = augmented_image
-        return  input_dict
+        return input_dict
 
     # In order to figure out whether the are fewer negative or positive examples,
     # we iterate over the first `min_test_examples` elements. If after this many
@@ -196,7 +196,8 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
         else:
             negative_examples += 1
     fewer_negative = negative_examples < positive_examples
-    print("considered {} elements. found {} positive, {} negative".format(examples_considered, positive_examples, negative_examples))
+    print("considered {} elements. found {} positive, {} negative".format(examples_considered, positive_examples,
+                                                                          negative_examples))
 
     if fewer_negative:
         positive_examples = dataset.filter(_label_is(1))
@@ -223,16 +224,18 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
 
     return balanced_dataset
 
+
 # raster each state into an image
 def raster_rope_images(planned_states, res, h, w, n_points):
     # NOTE: assumes full env is centered at origin
-    origin = [int(w/2), int(h/2)]
+    origin = [int(w / 2), int(h / 2)]
     rope_images = np.zeros([h, w, n_points], dtype=np.float32)
     for planned_state in planned_states:
         rope_img_t = raster(planned_state, res, origin, h, w)
         # NOTE: consider appending channel-wise instead?
         rope_images += rope_img_t
     return rope_images
+
 
 def add_traj_image(input_dict):
     # TODO: incorporate action somehow? maybe one channel per action per time step
@@ -248,7 +251,6 @@ def add_traj_image(input_dict):
     # add channel index
     full_env = tf.expand_dims(full_env, axis=2)
 
-
     rope_imgs = tf.numpy_function(raster_rope_images, [planned_states, res, h, w, n_points], tf.float32)
     rope_imgs.set_shape([h, w, n_points])
 
@@ -256,6 +258,7 @@ def add_traj_image(input_dict):
     image = tf.concat((full_env, rope_imgs), axis=2)
     input_dict['trajectory_image'] = image
     return input_dict
+
 
 def add_transition_image(input_dict):
     """
@@ -296,7 +299,8 @@ def add_transition_image(input_dict):
     input_dict['transition_image'] = image
     return input_dict
 
-def cachename(mode : Optional[str] = None):
+
+def cachename(mode: Optional[str] = None):
     if mode is not None:
         tmpname = "/tmp/tf_{}_{}".format(mode, link_bot_pycommon.rand_str())
     else:

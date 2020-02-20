@@ -5,7 +5,7 @@ import argparse
 import json
 import os
 import pathlib
-from typing import Optional, List, Dict
+from typing import Optional, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,10 +20,11 @@ from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
-from link_bot_planning import plan_and_execute, ompl_viz
+from link_bot_planning import ompl_viz
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
+from link_bot_planning.plan_and_execute import PlanAndExecute
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 
@@ -32,7 +33,7 @@ config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
 
-class ClassifierDataCollector(plan_and_execute.PlanAndExecute):
+class ClassifierDataCollector(PlanAndExecute):
 
     def __init__(self,
                  planner: MyPlanner,
@@ -104,6 +105,10 @@ class ClassifierDataCollector(plan_and_execute.PlanAndExecute):
         self.examples = np.ndarray([n_examples_per_record], dtype=object)
         self.examples_idx = 0
         self.traj_idx = 0
+
+    def on_before_plan(self):
+        # reset the rope/tether config
+        self.services.reset_world(self.verbose)
 
     def on_plan_complete(self,
                          planned_path: Dict[str, np.ndarray],
@@ -209,6 +214,7 @@ def main():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
+    # TODO: make this take a json params file
     parser.add_argument("n_total_plans", type=int, help='number of plans')
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("outdir", type=pathlib.Path)

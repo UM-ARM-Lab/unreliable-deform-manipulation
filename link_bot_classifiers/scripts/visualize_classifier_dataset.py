@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 import argparse
 import json
+import time
 import pathlib
 
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
+import link_bot_classifiers
 from link_bot_classifiers import visualization
 from link_bot_classifiers.visualization import plot_classifier_data
-from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.classifier_dataset import ClassifierDataset, convert_sequences_to_transitions
 from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_traj_image, add_transition_image
 from link_bot_data.visualization import plot_rope_configuration
-from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
+from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points, print_dict
 
 tf.compat.v1.enable_eager_execution()
 
@@ -94,7 +96,7 @@ def main():
             plt.show(block=True)
         elif args.display_type == 'trajectory_image':
             image = example['trajectory_image'].numpy()
-            image = np.pad(image, [[0, 0], [0, 0], [0, 1]])
+            image = np.pad(image, [[0,0], [0,0], [0,1]])
             plt.imshow(np.flipud(image))
             planned_env_extent = [1, 199, 1, 199]
             label_color = 'g' if label else 'r'
@@ -109,15 +111,16 @@ def main():
             full_env_extent = example['full_env/extent'].numpy()
             link_bot_state_all = example['planned_state/link_bot_all'].numpy()
             link_bot_state_stop_idx = example['planned_state/link_bot_all_stop'].numpy()
+            actual_link_bot_state_all = example['state/link_bot_all'].numpy()
 
             plt.figure()
             plt.imshow(np.flipud(full_env), extent=full_env_extent)
             ax = plt.gca()
             for i in range(link_bot_state_stop_idx):
-                state = link_bot_state_all[i]
-                print(state)
-                plot_rope_configuration(ax, state, c='r', s=5)
-            print()
+                actual_state = actual_link_bot_state_all[i]
+                planned_state = link_bot_state_all[i]
+                plot_rope_configuration(ax, actual_state, c='white', s=8)
+                plot_rope_configuration(ax, planned_state, c='orange', s=6)
             plt.show()
         elif args.display_type == 'transition_plot':
             res = example['res'].numpy()

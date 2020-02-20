@@ -42,7 +42,7 @@ class PlanAndExecute:
         self.verbose = verbose
         self.services = services
         self.no_execution = no_execution
-        self.gazebo_rng = np.random.RandomState(seed)
+        self.env_rng = np.random.RandomState(seed)
         self.goal_rng = np.random.RandomState(seed)
 
         # remove all markers
@@ -52,17 +52,7 @@ class PlanAndExecute:
         total_plan_idx = 0
         initial_poses_in_collision = 0
         while True:
-            if self.sim_params.move_obstacles:
-                # FIXME: this sucks
-                # generate a new environment by rearranging the obstacles
-                objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-                gazebo_utils.move_objects(self.services,
-                                          self.sim_params.max_step_size,
-                                          objects,
-                                          self.planner.full_env_params.w,
-                                          self.planner.full_env_params.h,
-                                          padding=0.1,
-                                          rng=self.gazebo_rng)
+            self.on_before_plan()
 
             # generate a bunch of plans to random goals
             state_req = LinkBotStateRequest()
@@ -188,3 +178,16 @@ class PlanAndExecute:
                            tail_goal_point: np.ndarray,
                            full_env_data: link_bot_sdf_utils.OccupancyData):
         pass
+
+    def on_before_plan(self):
+        if self.sim_params.move_obstacles:
+            # FIXME: instead of hard coding obstacles names, use the /objects service
+            # generate a new environment by rearranging the obstacles
+            objects = ['moving_box{}'.format(i) for i in range(1, 7)]
+            gazebo_utils.move_objects(self.services,
+                                      self.sim_params.max_step_size,
+                                      objects,
+                                      self.planner.full_env_params.w,
+                                      self.planner.full_env_params.h,
+                                      padding=0.1,
+                                      rng=self.env_rng)
