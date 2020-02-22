@@ -38,6 +38,7 @@ class MyPlanner:
                  viz_object: VizObject,
                  seed: int,
                  ):
+        self.planner = None
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.n_state = self.fwd_model.n_state
@@ -125,11 +126,9 @@ class MyPlanner:
         if planner_params['sampler_type'] == 'sample_train':
             self.dataset_dirs = [pathlib.Path(p) for p in self.fwd_model.hparams['datasets']]
             dataset = LinkBotStateSpaceDataset(self.dataset_dirs)
-            self.training_dataset = dataset.get_datasets(mode='train',
-                                                         shuffle=True,
-                                                         seed=self.seed,
-                                                         sequence_length=None,
-                                                         batch_size=None)  # no batching
+            tf_dataset = dataset.get_datasets(mode='train', sequence_length=None)
+            tf_dataset = tf_dataset.shuffle(seed=args.seed, shuffle=True)
+            self.training_dataset = tf_dataset
             self.train_dataset_max_sequence_length = dataset.max_sequence_length
 
     def get_local_env_at(self, x: float, y: float):
@@ -232,7 +231,7 @@ class MyPlanner:
         if solved:
             ompl_path = self.ss.getSolutionPath()
             return self.convert_path(ompl_path, full_env_data, solved)
-        return None, None, [], full_env_data, solved
+        return None, None, full_env_data, solved
 
     def state_sampler_allocator(self, state_space):
         if self.planner_params['sampler_type'] == 'random':

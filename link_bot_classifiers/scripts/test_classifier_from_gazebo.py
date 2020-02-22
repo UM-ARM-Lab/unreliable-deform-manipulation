@@ -91,7 +91,7 @@ def main():
 
         # classifier_model.show = True
         accept_probability = classifier_model.predict(local_env_data, state.flatten(), next_state.flatten(), action.flatten())
-        prediction = 1 if accept_probability > 0.1 else 0
+        prediction = 1 if accept_probability > 0.5 else 0
         title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)
 
         print("v={:04.3f}m/s theta={:04.3f}deg    p(accept)={:04.3f}".format(v, theta_deg, accept_probability))

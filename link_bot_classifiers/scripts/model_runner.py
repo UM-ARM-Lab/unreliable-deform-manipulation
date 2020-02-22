@@ -132,7 +132,7 @@ def main():
     eval_parser = subparsers.add_parser('eval')
     eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
-    eval_parser.add_argument('--mode', type=str, choices=['test', 'val', 'train'], default='test')
+    eval_parser.add_argument('--mode', type=str, choices=['test', 'val'], default='test')
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.set_defaults(func=eval)

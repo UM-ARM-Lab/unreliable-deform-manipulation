@@ -1,8 +1,8 @@
 {
-  "fwd_model_dir": "ss_log_data/obs-cnn1",
-  "fwd_model_type": "obs",
-  "classifier_model_dir": "classifiers/hand_designed",
-  "classifier_model_type": "designed",
+  "fwd_model_dir": "ss_log_data/rigid_translation",
+  "fwd_model_type": "rigid",
+  "classifier_model_dir": "classifiers/transition-tether-no-obs/February_19_11-40-35_b0bbdbb5a5",
+  "classifier_model_type": "raster",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
@@ -13,6 +13,16 @@
   "random_epsilon": 0.0,
   "w": 5.0,
   "h": 5.0,
-  "timeout": 120,
-  "subspace_weights": [1, 0, 0]
+  "timeout": 30,
+  "state_space": {
+    "link_bot": {
+      "weight": 1.0
+    },
+    "local_env": {
+      "weight": 0.0
+    },
+    "local_env_origin": {
+      "weight": 0.0
+    }
+  }
 }

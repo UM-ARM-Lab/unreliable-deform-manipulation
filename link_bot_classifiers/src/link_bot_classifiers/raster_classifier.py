@@ -13,6 +13,7 @@ from tensorflow import keras
 
 from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_planning.params import LocalEnvParams
+from link_bot_pycommon.link_bot_pycommon import print_dict
 from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
 from moonshine.base_model import BaseModel
 from moonshine.raster_points_layer import make_transition_image
@@ -79,13 +80,9 @@ class RasterClassifier(BaseModel):
         out_conv_z = self._conv(image)
         conv_output = self.conv_flatten(out_conv_z)
 
-        if self.hparams['mixed']:
+        # FIXME: eventually remove this if I retrained fs-raster
+        if 'mixed' in self.hparams and self.hparams['mixed']:
             conv_output = tf.concat((conv_output, state, action, next_state), axis=1)
-
-        # plt.imshow(image[0, :, :, :-2])
-        # print(input_dict['label'][0])
-        # import ipdb; ipdb.set_trace()
-        # plt.show()
 
         if self.hparams['batch_norm']:
             conv_output = self.batch_norm(conv_output)
@@ -131,9 +128,17 @@ class RasterClassifierWrapper(BaseClassifier):
             image = tf.expand_dims(image, axis=0)
         elif image_key == 'trajectory_image':
             image = None
-        test_x = {image_key: image}
-        image = test_x
-        accept_probabilities = self.net(image)
+        else:
+            raise ValueError('invalid image_key')
+
+        net_inputs = {
+            image_key: image,
+            'planned_state/link_bot': tf.expand_dims(tf.convert_to_tensor(s1, tf.float32), axis=0),
+            'action': tf.expand_dims(tf.convert_to_tensor(action, tf.float32), axis=0),
+            'planned_state_next/link_bot': tf.expand_dims(tf.convert_to_tensor(s2, tf.float32), axis=0),
+        }
+
+        accept_probabilities = self.net(net_inputs)
         accept_probabilities = accept_probabilities.numpy()
         accept_probabilities = accept_probabilities.astype(np.float64).squeeze()
 

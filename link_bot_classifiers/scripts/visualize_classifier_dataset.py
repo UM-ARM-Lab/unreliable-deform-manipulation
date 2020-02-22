@@ -1,20 +1,19 @@
 #!/usr/bin/env python
 import argparse
 import json
-import time
 import pathlib
 
 import matplotlib.pyplot as plt
+from matplotlib import patches
 import numpy as np
 import tensorflow as tf
 
-import link_bot_classifiers
 from link_bot_classifiers import visualization
 from link_bot_classifiers.visualization import plot_classifier_data
-from link_bot_data.classifier_dataset import ClassifierDataset, convert_sequences_to_transitions
+from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_traj_image, add_transition_image
 from link_bot_data.visualization import plot_rope_configuration
-from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points, print_dict
+from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
 
 tf.compat.v1.enable_eager_execution()
 
@@ -31,6 +30,8 @@ def main():
     parser.add_argument('--pre', type=int, default=0.15)
     parser.add_argument('--post', type=int, default=0.21)
     parser.add_argument('--discard-pre-far', action='store_true')
+    parser.add_argument('--no-balance', action='store_true')
+    parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
 
@@ -48,13 +49,13 @@ def main():
     if args.display_type == 'trajectory_image':
         dataset = dataset.map(add_traj_image)
 
-    if classifier_dataset_params['balance']:
+    if classifier_dataset_params['balance'] and not args.no_balance:
         if args.display_type == 'transition_image':
             dataset = balance_by_augmentation(dataset, image_key='transition_image')
         elif args.display_type == 'trajectory_image':
             dataset = balance_by_augmentation(dataset, image_key='trajectory_image')
         else:
-            print("can't balance...")
+            print("no images, can't balance...")
 
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=1024)
@@ -70,14 +71,16 @@ def main():
             break
 
         label = example['label'].numpy().squeeze()
+
+        if args.only_negative and label != 0:
+            continue
+
         if label:
             positive_count += 1
         else:
             negative_count += 1
 
         count += 1
-
-        next_state = example['state_next/link_bot'].numpy()
 
         if args.no_plot:
             continue
@@ -160,11 +163,16 @@ def main():
                 actual_env=actual_local_env,
                 actual_env_extent=actual_local_env_extent,
                 label=label)
+            ax = plt.gca()
+            circle = patches.Circle([0, 0], radius=1.5, edgecolor='g', facecolor='#ffffff00', linewidth=3, zorder=1)
+            ax.add_patch(circle)
             plt.legend()
             plt.show(block=True)
 
     class_balance = positive_count / count * 100
     print("Number of examples: {}".format(count))
+    print("Number positive: {}".format(positive_count))
+    print("Number negative: {}".format(negative_count))
     print("Class balance: {:4.1f}% positive".format(class_balance))
 
 

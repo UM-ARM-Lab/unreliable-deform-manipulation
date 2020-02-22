@@ -51,7 +51,8 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                          sim_params=sim_params,
                          services=services,
                          no_execution=no_execution,
-                         seed=seed)
+                         seed=seed,
+                         retry_on_failure=False)
         self.goal = goal
 
     def get_goal(self, w, h, head_point, env_padding, full_env_data):
@@ -60,6 +61,24 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
             return np.array(self.goal)
         else:
             return super().get_goal(w, h, head_point, env_padding, full_env_data)
+
+    def on_planner_failure(self,
+                           start: np.ndarray,
+                           tail_goal_point: np.ndarray,
+                           full_env_data: link_bot_sdf_utils.OccupancyData,
+                           planner_data: ob.PlannerData):
+        plt.figure()
+        ax = plt.gca()
+        legend = ompl_viz.plot(ax,
+                               self.planner.n_state,
+                               self.planner.viz_object,
+                               planner_data,
+                               full_env_data.data,
+                               tail_goal_point,
+                               None,
+                               None,
+                               full_env_data.extent)
+        plt.show(block=True)
 
     def on_plan_complete(self,
                          planned_path: np.ndarray,
@@ -91,7 +110,8 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
 
         plt.figure()
         ax = plt.gca()
-        legend = ompl_viz.plot(ax,
+        plot_data_dict, legend = ompl_viz.plot(ax,
+                               self.planner.n_state,
                                self.planner.viz_object,
                                planner_data,
                                full_env_data.data,
@@ -99,6 +119,8 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                                link_bot_planned_path,
                                planned_actions,
                                full_env_data.extent)
+
+        np.savez("/tmp/.latest-plan.npz", **plot_data_dict)
         plt.savefig("/tmp/.latest-plan.png", dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
         plt.show(block=True)
 
@@ -138,7 +160,6 @@ def main():
     parser.add_argument("--seed", '-s', type=int, default=5)
     parser.add_argument("--no-execution", action='store_true', help='do not execute, only plan')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
-    parser.add_argument('--no-nudge', action='store_true', help="don't nudge")
     parser.add_argument('--reset-world', action='store_true', help="reset world")
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float)
@@ -161,7 +182,7 @@ def main():
                            max_step_size=args.max_step_size,
                            goal_padding=0.0,
                            move_obstacles=(not args.no_move_obstacles),
-                           nudge=(not args.no_nudge))
+                           nudge=False)
 
     rospy.init_node('test_planner_with_classifier')
 

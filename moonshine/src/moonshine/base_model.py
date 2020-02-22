@@ -188,6 +188,8 @@ class BaseModel(tf.keras.Model):
         plt.ylabel("count")
         plt.show(block=True)
 
+        print(net.get_weights())
+
         test_loss = np.mean(test_losses)
         test_accuracy = accuracy.result().numpy() * 100
         print("Test Loss:     {:7.4f}".format(test_loss))

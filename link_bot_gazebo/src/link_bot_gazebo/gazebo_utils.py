@@ -4,6 +4,7 @@ import numpy as np
 import rospy
 import std_msgs
 import std_srvs
+from colorama import Fore
 from link_bot_gazebo.msg import Position2dAction, ObjectAction
 from link_bot_gazebo.srv import CameraProjection, InverseCameraProjection, LinkBotStateRequest, WorldControlRequest, \
     InverseCameraProjectionRequest, \
@@ -46,7 +47,7 @@ class GazeboServices(Services):
 
         self.link_bot_reset(empty)
         if verbose >= 1:
-            print("World is Reset")
+            print(Fore.YELLOW + "World is Reset" + Fore.RESET)
 
     def get_context(self, context_length, state_dim, action_dim, image_h=64, image_w=64, image_d=3):
         # TODO: don't require these dimensions as arguments, they can be figured out from the messages/services

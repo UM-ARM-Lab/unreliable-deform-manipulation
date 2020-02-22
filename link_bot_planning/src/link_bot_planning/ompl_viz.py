@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, Optional
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -7,7 +7,7 @@ from geometry_msgs.msg import Point
 from ompl import base as ob
 from visualization_msgs.msg import MarkerArray, Marker
 
-from link_bot_data.visualization import plot_rope_configuration, plottable_rope_configuration
+from link_bot_data.visualization import plot_rope_configuration, plottable_rope_configuration, SavablePlotting
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning.state_spaces import to_numpy
 from link_bot_planning.viz_object import VizObject
@@ -15,30 +15,47 @@ from link_bot_pycommon.link_bot_sdf_utils import SDF
 
 
 def plot(ax,
+         n_state: int,
          viz_object: VizObject,
          planner_data: ob.PlannerData,
          environment: np.ndarray,
          goal: np.ndarray,
-         planned_path: np.ndarray,
-         planned_actions: np.ndarray,
+         planned_path: Optional[np.ndarray],
+         planned_actions: Optional[np.ndarray],
          extent: Iterable):
-    del planned_actions
-    n_state = planned_path.shape[1]
+
+    plot_data_dict = {
+        'n_state': n_state,
+        'goal': goal,
+        'environment': environment,
+        'planned_path': planned_path,
+        'extent': extent,
+        'planned_actions': planned_actions,
+        'sampled_states': [],
+        'rejected_states': [],
+        'final_path': [],
+        'tree_edges': [],
+    }
+
     ax.imshow(np.flipud(environment), extent=extent)
 
     for state_sampled_at in viz_object.states_sampled_at:
         plot_rope_configuration(ax, state_sampled_at, label='sampled states', linewidth=1.0, c='b', zorder=1)
+        plot_data_dict['sampled_states'].append(state_sampled_at)
 
     for rejected_state in viz_object.rejected_samples:
         plot_rope_configuration(ax, rejected_state, label='states rejected by classifier', linewidth=0.8, c='r', zorder=1)
+        plot_data_dict['rejected_states'].append(rejected_state)
 
-    start = planned_path[0]
-    ax.scatter(start[0], start[1], label='start', s=50, c='y', zorder=5)
-    ax.scatter(goal[0], goal[1], label='goal', s=50, c='g', zorder=5)
-    subsample_path_ = 1
-    for rope_configuration in planned_path[::subsample_path_]:
-        ax.scatter(rope_configuration[0], rope_configuration[1], label='final_path', s=10, c='cyan', zorder=4)
-        # plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=1, c='cyan', zorder=4)
+    if planned_path is not None:
+        start = planned_path[0]
+        ax.scatter(start[0], start[1], label='start', s=50, c='y', zorder=5)
+        ax.scatter(goal[0], goal[1], label='goal', s=50, c='g', zorder=5)
+        subsample_path_ = 1
+        for rope_configuration in planned_path[::subsample_path_]:
+            ax.scatter(rope_configuration[0], rope_configuration[1], label='final_path', s=10, c='cyan', zorder=4)
+            plot_data_dict['final_path'].append(rope_configuration)
+            # plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=1, c='cyan', zorder=4)
 
     # Visualize Nearest Neighbor Selection (poorly...)
     # for sample in planner_data.getSamples():
@@ -72,6 +89,7 @@ def plot(ax,
             s2 = v2.getState()
             np_s2 = to_numpy(s2[0], n_state)
             ax.plot([np_s[0, 0], np_s2[0, 0]], [np_s[0, 1], np_s2[0, 1]], c='gray', linewidth=0.5, zorder=1)
+            plot_data_dict['tree_edges'].append([np_s, np_s2])
 
     ax.set_xlabel("x")
     ax.set_ylabel("y")
@@ -82,7 +100,8 @@ def plot(ax,
     handles, labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     legend = ax.legend(by_label.values(), by_label.keys(), loc='upper left', bbox_to_anchor=(1, 1))
-    return legend
+
+    return plot_data_dict, legend
 
 
 def add_sampled_configuration(services: GazeboServices,

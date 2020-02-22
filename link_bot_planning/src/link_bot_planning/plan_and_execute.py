@@ -33,7 +33,9 @@ class PlanAndExecute:
                  sim_params: SimParams,
                  services: Services,
                  no_execution: bool,
-                 seed: int):
+                 seed: int,
+                 retry_on_failure: bool = True):
+        self.retry_on_failure = retry_on_failure
         self.planner = planner
         self.n_total_plans = n_total_plans
         self.n_plans_per_env = n_plans_per_env
@@ -93,48 +95,48 @@ class PlanAndExecute:
                 planner_results = self.planner.plan(start, tail_goal_point, full_env_data)
                 planned_actions, planned_path, full_env_data, planner_status = planner_results
                 my_planner.interpret_planner_status(planner_status, self.verbose)
+                planner_data = ob.PlannerData(self.planner.si)
+                self.planner.planner.getPlannerData(planner_data)
 
                 if self.verbose >= 1:
                     print(planner_status.asString())
 
                 if not planner_status:
-                    print("failure!")
-                    self.on_planner_failure(start, tail_goal_point, full_env_data)
-                    break
+                    self.on_planner_failure(start, tail_goal_point, full_env_data, planner_data)
+                    if self.retry_on_failure:
+                        break
+                else: # Approximate or Exact solution found!
+                    planning_time = time.time() - t0
+                    if self.verbose >= 1:
+                        print("Planning time: {:5.3f}s".format(planning_time))
 
-                planning_time = time.time() - t0
-                if self.verbose >= 1:
-                    print("Planning time: {:5.3f}s".format(planning_time))
+                    self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_env_data, planner_data, planning_time,
+                                          planner_status)
 
-                planner_data = ob.PlannerData(self.planner.si)
-                self.planner.planner.getPlannerData(planner_data)
-                self.on_plan_complete(planned_path, tail_goal_point, planned_actions, full_env_data, planner_data, planning_time,
-                                      planner_status)
+                    trajectory_execution_request = ros_pycommon.make_trajectory_execution_request(self.planner.fwd_model.dt,
+                                                                                                  planned_actions)
 
-                trajectory_execution_request = ros_pycommon.make_trajectory_execution_request(self.planner.fwd_model.dt,
-                                                                                              planned_actions)
+                    # execute the plan, collecting the states that actually occurred
+                    if not self.no_execution:
+                        #  TODO: Consider executing just a few steps, so that our start states don't diverge too much
+                        if self.verbose >= 2:
+                            print(Fore.CYAN + "Executing Plan.".format(tail_goal_point) + Fore.RESET)
 
-                # execute the plan, collecting the states that actually occurred
-                if not self.no_execution:
-                    #  TODO: Consider executing just a few steps, so that our start states don't diverge too much
-                    if self.verbose >= 2:
-                        print(Fore.CYAN + "Executing Plan.".format(tail_goal_point) + Fore.RESET)
+                        traj_exec_response = self.services.execute_trajectory(trajectory_execution_request)
+                        self.services.pause(std_srvs.srv.EmptyRequest())
 
-                    traj_exec_response = self.services.execute_trajectory(trajectory_execution_request)
-                    self.services.pause(std_srvs.srv.EmptyRequest())
-
-                    local_env_params = self.planner.fwd_model.local_env_params
-                    actual_path = ros_pycommon.trajectory_execution_response_to_numpy(traj_exec_response,
-                                                                                      local_env_params,
-                                                                                      self.services)
-                    self.on_execution_complete(planned_path,
-                                               planned_actions,
-                                               tail_goal_point,
-                                               actual_path,
-                                               full_env_data,
-                                               planner_data,
-                                               planning_time,
-                                               planner_status)
+                        local_env_params = self.planner.fwd_model.local_env_params
+                        actual_path = ros_pycommon.trajectory_execution_response_to_numpy(traj_exec_response,
+                                                                                          local_env_params,
+                                                                                          self.services)
+                        self.on_execution_complete(planned_path,
+                                                   planned_actions,
+                                                   tail_goal_point,
+                                                   actual_path,
+                                                   full_env_data,
+                                                   planner_data,
+                                                   planning_time,
+                                                   planner_status)
 
                 plan_idx += 1
                 total_plan_idx += 1
@@ -176,7 +178,8 @@ class PlanAndExecute:
     def on_planner_failure(self,
                            start: np.ndarray,
                            tail_goal_point: np.ndarray,
-                           full_env_data: link_bot_sdf_utils.OccupancyData):
+                           full_env_data: link_bot_sdf_utils.OccupancyData,
+                           planner_data: ob.PlannerData):
         pass
 
     def on_before_plan(self):

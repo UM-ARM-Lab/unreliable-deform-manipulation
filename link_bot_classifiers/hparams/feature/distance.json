@@ -1,0 +1,11 @@
+{
+  "model_class": "feature",
+  "fc_layer_sizes": [],
+  "dropout_rate": 0,
+  "kernel_reg": 0.0,
+  "bias_reg": 0.0,
+  "activity_reg": 0.0,
+  "features": [
+    "distances"
+  ]
+}
