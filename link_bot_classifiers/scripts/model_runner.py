@@ -10,7 +10,6 @@ from colorama import Fore
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_transition_image, add_traj_image
-from link_bot_planning import classifier_utils
 from moonshine import experiments_util
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
@@ -57,13 +56,14 @@ def train(args, seed: int):
         print(Fore.GREEN + "balancing..." + Fore.RESET)
         train_tf_dataset = balance_by_augmentation(train_tf_dataset, image_key=image_key)
         val_tf_dataset = balance_by_augmentation(val_tf_dataset, image_key=image_key)
-    
+
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
+    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
+
     try:
         ###############
         # Train
         ###############
-        train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
-        val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
         model.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)

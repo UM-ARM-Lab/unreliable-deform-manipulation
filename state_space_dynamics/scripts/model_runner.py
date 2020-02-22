@@ -28,17 +28,11 @@ def train(args, seed):
 
     # Datasets
     train_dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
-    train_tf_dataset = train_dataset.get_datasets(mode='train',
-                                                  shuffle=True,
-                                                  seed=args.seed,
-                                                  sequence_length=model_hparams['sequence_length'],
-                                                  batch_size=args.batch_size)
+    train_tf_dataset = train_dataset.get_datasets(mode='train', sequence_length=model_hparams['sequence_length'])
     val_dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
-    val_tf_dataset = val_dataset.get_datasets(mode='val',
-                                              shuffle=True,
-                                              seed=args.seed,
-                                              sequence_length=model_hparams['sequence_length'],
-                                              batch_size=args.batch_size)
+    val_tf_dataset = val_dataset.get_datasets(mode='val', sequence_length=model_hparams['sequence_length'])
+    train_tf_dataset = train_tf_dataset.shufle(seed=args.seed, buffer_size=1024).batch(args.batch_size, drop_remainder=True)
+    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
     # Copy parameters of the dataset into the model
     model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
@@ -62,10 +56,10 @@ def eval(args, seed):
     ###############
     test_dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
-                                                shuffle=False,
-                                                seed=args.seed,
                                                 sequence_length=args.sequence_length,
-                                                batch_size=args.batch_size)
+                                                )
+
+    test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
     ###############
     # Model
