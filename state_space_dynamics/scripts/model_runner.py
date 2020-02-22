@@ -31,7 +31,7 @@ def train(args, seed):
     train_tf_dataset = train_dataset.get_datasets(mode='train', sequence_length=model_hparams['sequence_length'])
     val_dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
     val_tf_dataset = val_dataset.get_datasets(mode='val', sequence_length=model_hparams['sequence_length'])
-    train_tf_dataset = train_tf_dataset.shufle(seed=args.seed, buffer_size=1024).batch(args.batch_size, drop_remainder=True)
+    train_tf_dataset = train_tf_dataset.shuffle(seed=args.seed, buffer_size=1024).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
     # Copy parameters of the dataset into the model
@@ -42,8 +42,6 @@ def train(args, seed):
         ###############
         # Train
         ###############
-        train_tf_dataset = train_tf_dataset.cache('/tmp/tf.train.cache').shuffle(buffer_size=1024)
-        val_tf_dataset = val_tf_dataset.cache('/tmp/tf.val.cache')
         module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
