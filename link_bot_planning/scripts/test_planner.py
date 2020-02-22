@@ -165,11 +165,11 @@ def main():
 
     rospy.init_node('test_planner_with_classifier')
 
-    services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
-                                             real_time_rate=sim_params.real_time_rate,
-                                             max_step_size=sim_params.max_step_size,
-                                             reset_world=args.reset_world,
-                                             initial_object_dict=None)
+    services = gazebo_utils.setup_env(verbose=args.verbose,
+                                      real_time_rate=sim_params.real_time_rate,
+                                      max_step_size=sim_params.max_step_size,
+                                      reset_world=args.reset_world,
+                                      initial_object_dict=None)
     services.pause(std_srvs.srv.EmptyRequest())
 
     planner, _ = get_planner(planner_params=planner_params, services=services, seed=args.seed)

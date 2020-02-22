@@ -79,11 +79,11 @@ def rowcol_to_xy(services, row, col):
     return res.xyz.x, res.xyz.y
 
 
-def setup_gazebo_env(verbose: int,
-                     real_time_rate: float,
-                     max_step_size: Optional[float] = None,
-                     reset_world: Optional[bool] = True,
-                     initial_object_dict: Optional[Dict] = None) -> GazeboServices:
+def setup_env(verbose: int,
+              real_time_rate: float,
+              max_step_size: Optional[float] = None,
+              reset_world: Optional[bool] = True,
+              initial_object_dict: Optional[Dict] = None) -> GazeboServices:
     # fire up services
     services = GazeboServices()
     services.wait(verbose)

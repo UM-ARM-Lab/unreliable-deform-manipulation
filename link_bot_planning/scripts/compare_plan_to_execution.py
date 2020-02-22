@@ -156,11 +156,11 @@ def main():
 
     rospy.init_node('planner_with_classifier')
 
-    services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
-                                             real_time_rate=sim_params.real_time_rate,
-                                             max_step_size=sim_params.max_step_size,
-                                             reset_world=True,
-                                             initial_object_dict=initial_object_dict)
+    services = gazebo_utils.setup_env(verbose=args.verbose,
+                                      real_time_rate=sim_params.real_time_rate,
+                                      max_step_size=sim_params.max_step_size,
+                                      reset_world=True,
+                                      initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
     planner, _ = get_planner(planner_class_str='NearestRRT',

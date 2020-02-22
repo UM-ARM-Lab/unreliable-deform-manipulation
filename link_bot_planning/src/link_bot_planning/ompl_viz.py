@@ -33,7 +33,7 @@ def plot(ax,
         plot_rope_configuration(ax, rejected_state, label='states rejected by classifier', linewidth=0.8, c='r', zorder=1)
 
     start = planned_path[0]
-    ax.scatter(start[0], start[1], label='start', s=50, c='r', zorder=5)
+    ax.scatter(start[0], start[1], label='start', s=50, c='y', zorder=5)
     ax.scatter(goal[0], goal[1], label='goal', s=50, c='g', zorder=5)
     subsample_path_ = 1
     for rope_configuration in planned_path[::subsample_path_]:

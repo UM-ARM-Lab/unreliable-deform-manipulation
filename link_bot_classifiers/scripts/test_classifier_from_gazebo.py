@@ -32,7 +32,7 @@ def main():
     parser.add_argument("classifier_model_type", choices=['collision', 'none', 'raster'], default='raster')
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--no-plot', action='store_true', help="don't show plots, useful for debugging")
-    parser.add_argument('-v', type=float, default=0.15, help='speed of test actions')
+    parser.add_argument('-v', type=float, default=0.3, help='speed of test actions')
 
     args = parser.parse_args()
 
@@ -90,8 +90,8 @@ def main():
         next_state = np.reshape(next_state, [2, 1, -1])[1]
 
         # classifier_model.show = True
-        accept_probability = classifier_model.predict([local_env_data], state, next_state, action)[0]
-        prediction = 1 if accept_probability > 0.5 else 0
+        accept_probability = classifier_model.predict(local_env_data, state.flatten(), next_state.flatten(), action.flatten())
+        prediction = 1 if accept_probability > 0.1 else 0
         title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)
 
         print("v={:04.3f}m/s theta={:04.3f}deg    p(accept)={:04.3f}".format(v, theta_deg, accept_probability))

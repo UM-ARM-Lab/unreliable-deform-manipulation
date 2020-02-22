@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 
-import argparse
 import json
 import os
 import pathlib
@@ -15,36 +14,26 @@ from link_bot_gazebo.srv import LinkBotStateRequest, ExecuteActionRequest
 
 from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
-from victor import victor_utils
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
 from link_bot_pycommon import ros_pycommon, link_bot_pycommon
-from link_bot_pycommon.args import my_formatter
-
-opts = tensorflow.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
-conf = tensorflow.compat.v1.ConfigProto(gpu_options=opts)
-tensorflow.compat.v1.enable_eager_execution(config=conf)
 
 
-def sample_delta_pos(action_rng, max_delta_pos, head_point, goal_env_w, goal_env_h):
-    """
-
-    :param action_rng:
-    :param max_delta_pos:
-    :param head_point:
-    :param goal_env_w: this is HALF the env width, assumed to be centered at 0
-    :param goal_env_h: this is HALF the env height, assumed to be centered at 0
-    :return:
-    """
+def sample_delta_pos(action_rng, max_delta_pos, head_point, goal_env_w, goal_env_h, last_dx, last_dy):
     while True:
-        delta_pos = action_rng.uniform(0, max_delta_pos)
-        direction = action_rng.uniform(-np.pi, np.pi)
-        gripper1_dx = np.cos(direction) * delta_pos
-        gripper1_dy = np.sin(direction) * delta_pos
+        if action_rng.uniform(0, 1) < 0.8:
+            gripper1_dx = last_dx
+            gripper1_dy = last_dy
+        else:
+            delta_pos = action_rng.uniform(0, max_delta_pos)
+            direction = action_rng.uniform(-np.pi, np.pi)
+            gripper1_dx = np.cos(direction) * delta_pos
+            gripper1_dy = np.sin(direction) * delta_pos
 
         if -goal_env_w <= head_point.x + gripper1_dx <= goal_env_w and -goal_env_h <= head_point.y + gripper1_dy <= goal_env_h:
             break
 
     return gripper1_dx, gripper1_dy
+
 
 def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random.RandomState):
     state_req = LinkBotStateRequest()
@@ -64,6 +53,7 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
         'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),
     }
 
+    gripper1_dx = gripper1_dy = 0
     for time_idx in range(args.steps_per_traj):
         # Query the current state
         state = services.get_state(state_req)
@@ -71,8 +61,9 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
         points_flat = link_bot_pycommon.flatten_points(state.points)
         head_point = state.points[head_idx]
 
-        gripper1_dx, gripper1_dy = sample_delta_pos(action_rng, max_delta_pos, head_point, args.goal_env_w, args.goal_env_h)
-        if args.verbose >= 2:
+        gripper1_dx, gripper1_dy = sample_delta_pos(action_rng, max_delta_pos, head_point, args.goal_env_w, args.goal_env_h,
+                                                    gripper1_dx, gripper1_dy)
+        if args.verbose:
             print('gripper delta:', gripper1_dx, gripper1_dy)
             random_environment_data_utils.publish_marker(head_point.x + gripper1_dx, head_point.y + gripper1_dy, marker_size=0.05)
 
@@ -99,7 +90,7 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
 
         global_t_step += 1
 
-    if args.verbose >= 2:
+    if args.verbose:
         print(Fore.GREEN + "Trajectory {} Complete".format(traj_idx) + Fore.RESET)
 
     example_proto = tensorflow.train.Example(features=tensorflow.train.Features(feature=feature))
@@ -107,11 +98,22 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
     return example, global_t_step
 
 
-def generate_trajs(args, full_output_directory, services, env_rng: np.random.RandomState, action_rng: np.random.RandomState):
+def generate_trajs(myenv_utils, args, full_output_directory, services, env_rng: np.random.RandomState,
+                   action_rng: np.random.RandomState):
     examples = np.ndarray([args.trajs_per_file], dtype=object)
     global_t_step = 0
     for i in range(args.trajs):
         current_record_traj_idx = i % args.trajs_per_file
+
+        if not args.no_obstacles and i % args.move_objects_every_n == 0:
+            objects = ['moving_box{}'.format(i) for i in range(1, 7)]
+            myenv_utils.move_objects(services,
+                                     args.max_step_size,
+                                     objects,
+                                     args.env_w,
+                                     args.env_h,
+                                     padding=0.5,
+                                     rng=env_rng)
 
         # Generate a new trajectory
         example, global_t_step = generate_traj(args, services, i, global_t_step, action_rng)
@@ -130,13 +132,13 @@ def generate_trajs(args, full_output_directory, services, env_rng: np.random.Ran
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))
 
-        if args.verbose == 1:
+        if not args.verbose:
             print(".", end='')
             sys.stdout.flush()
 
 
-def generate(args):
-    rospy.init_node('victor_collect_dynamics_data')
+def generate(myenv_utils, args):
+    rospy.init_node('collect_dynamics_data')
 
     n_state = ros_pycommon.get_n_state()
     rope_length = ros_pycommon.get_rope_length()
@@ -144,7 +146,7 @@ def generate(args):
     assert args.trajs % args.trajs_per_file == 0, "num trajs must be multiple of {}".format(args.trajs_per_file)
 
     full_output_directory = random_environment_data_utils.data_directory(args.outdir, args.trajs)
-    if not os.path.isdir(full_output_directory) and args.verbose >= 1:
+    if not os.path.isdir(full_output_directory) and args.verbose:
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)
 
@@ -177,44 +179,8 @@ def generate(args):
     print(Fore.CYAN + "Using seed: {}".format(args.seed) + Fore.RESET)
     np.random.seed(args.seed)
     env_rng = np.random.RandomState(args.seed)
-    goal_rng = np.random.RandomState(args.seed)
+    action_rng = np.random.RandomState(args.seed)
 
-    services = victor_utils.setup_env(args.verbose, reset_world=True)
-    # services = victor_utils.setup_env(args.verbose, args.real_time_rate, args.max_step_size, True, None)
+    services = myenv_utils.setup_env(args.verbose, args.real_time_rate, args.max_step_size, True, None)
 
-    generate_trajs(args, full_output_directory, services, env_rng, goal_rng)
-
-
-def main():
-    np.set_printoptions(precision=4, suppress=True, linewidth=220, threshold=5000)
-    tensorflow.compat.v1.logging.set_verbosity(tensorflow.compat.v1.logging.DEBUG)
-
-    parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("trajs", type=int, help='how many trajectories to collect')
-    parser.add_argument("outdir")
-    parser.add_argument('--dt', type=float, default=1.00, help='seconds to execute each delta position action')
-    parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
-    parser.add_argument('--env-w', type=float, default=6.0, help='full env w')
-    parser.add_argument('--env-h', type=float, default=6.0, help='full env h')
-    parser.add_argument('--goal-env-w', type=float, default=2.2, help='goal env w')
-    parser.add_argument('--goal-env-h', type=float, default=2.2, help='goal env h')
-    parser.add_argument('--local_env-cols', type=int, default=50, help='local env')
-    parser.add_argument('--local_env-rows', type=int, default=50, help='local env')
-    parser.add_argument("--steps-per-traj", type=int, default=100, help='steps per traj')
-    parser.add_argument("--start-idx-offset", type=int, default=0, help='offset TFRecord file names')
-    parser.add_argument("--move-objects-every-n", type=int, default=16, help='rearrange objects every n trajectories')
-    parser.add_argument("--no-obstacles", action='store_true', help='do not move obstacles')
-    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB', help='compression type')
-    parser.add_argument("--trajs-per-file", type=int, default=128, help='trajs per file')
-    parser.add_argument("--seed", '-s', type=int, help='seed')
-    parser.add_argument("--real-time-rate", type=float, default=0, help='number of times real time')
-    parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
-    parser.add_argument('--verbose', '-v', action='count', default=0)
-
-    args = parser.parse_args()
-
-    generate(args)
-
-
-if __name__ == '__main__':
-    main()
+    generate_trajs(myenv_utils, args, full_output_directory, services, env_rng, action_rng)

@@ -1,3 +1,5 @@
+from typing import Optional, Dict
+
 import numpy as np
 import rospy
 import std_srvs
@@ -66,6 +68,15 @@ class Services:
             rospy.wait_for_service(s)
         if verbose >= 1:
             print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
+
+    @staticmethod
+    def setup_env(verbose: int,
+                  real_time_rate: float,
+                  max_step_size: Optional[float] = None,
+                  reset_world: Optional[bool] = True,
+                  initial_object_dict: Optional[Dict] = None):
+        pass
+
 
 def get_sdf_and_gradient(services,
                          env_w_cols,

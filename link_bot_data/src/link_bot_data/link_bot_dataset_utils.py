@@ -6,7 +6,7 @@ import random
 from typing import Optional
 import tensorflow as tf
 from link_bot_pycommon import link_bot_pycommon
-from moonshine.raster_points_layer import RasterPoints, raster
+from moonshine.raster_points_layer import RasterPoints, raster, make_transition_image
 
 
 def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
@@ -229,11 +229,12 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
 def raster_rope_images(planned_states, res, h, w, n_points):
     # NOTE: assumes full env is centered at origin
     origin = [int(w / 2), int(h / 2)]
-    rope_images = np.zeros([h, w, n_points], dtype=np.float32)
-    for planned_state in planned_states:
+    n_time_steps = planned_states.shape[0]
+    rope_images = np.zeros([h, w, n_points * n_time_steps], dtype=np.float32)
+    for t, planned_state in enumerate(planned_states):
         rope_img_t = raster(planned_state, res, origin, h, w)
         # NOTE: consider appending channel-wise instead?
-        rope_images += rope_img_t
+        rope_images[:, :, t] = rope_img_t
     return rope_images
 
 
@@ -272,30 +273,20 @@ def add_transition_image(input_dict):
         'resolution': 1
     """
     action = input_dict['action']
-    local_env = input_dict['planned_state/local_env']
+    planned_local_env = input_dict['planned_state/local_env']
     res = input_dict['res']
     origin = input_dict['planned_state/local_env_origin']
     planned_state = input_dict['planned_state/link_bot']
     planned_next_state = input_dict['planned_state_next/link_bot']
-    h, w = local_env.shape
+    n_control = action.shape[0]
+    h, w = planned_local_env.shape
     n_points = link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
 
-    # add channel index
-    planned_local_env = tf.expand_dims(local_env, axis=2)
+    image = tf.numpy_function(make_transition_image,
+                              [planned_local_env, planned_state, action, planned_next_state, res, origin],
+                              tf.float32)
+    image.set_shape([h, w, 1 + n_points + n_points + n_control])
 
-    # raster each state into an image
-    planned_rope_image = tf.numpy_function(raster, [planned_state, res, origin, h, w], tf.float32)
-    planned_rope_image.set_shape([h, w, n_points])
-    planned_next_rope_image = tf.numpy_function(raster, [planned_next_state, res, origin, h, w], tf.float32)
-    planned_next_rope_image.set_shape([h, w, n_points])
-
-    # action
-    # add spatial dimensions and tile
-    action_reshaped = tf.expand_dims(tf.expand_dims(action, axis=0), axis=0)
-    action_image = tf.tile(action_reshaped, [h, w, 1], name='action_spatial_tile')
-
-    # h, w, channel
-    image = tf.concat((planned_rope_image, planned_next_rope_image, planned_local_env, action_image), axis=2)
     input_dict['transition_image'] = image
     return input_dict
 

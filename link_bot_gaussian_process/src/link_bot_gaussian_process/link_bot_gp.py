@@ -16,7 +16,8 @@ from matplotlib.animation import FuncAnimation
 from state_space_dynamics.base_forward_model import BaseForwardModel
 from link_bot_gaussian_process import data_reformatting
 from link_bot_gaussian_process.my_svgp import MySVGP
-from link_bot_pycommon import experiments_util, link_bot_sdf_utils
+from link_bot_pycommon import link_bot_sdf_utils
+from moonshine import experiments_util
 
 
 def predict_batch(fwd_model, np_states, np_controls, steps=None):

@@ -4,7 +4,6 @@ import argparse
 import json
 import pathlib
 from typing import List, Dict
-
 import matplotlib.pyplot as plt
 import numpy as np
 from colorama import Style
@@ -43,6 +42,8 @@ def invert_dict(data: List) -> Dict:
 
 
 def main():
+    plt.style.use('slides')
+
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('results_dirs', help='folders containing folders containing metrics.json', type=pathlib.Path, nargs='+')
     parser.add_argument('--no-plot', action='store_true')

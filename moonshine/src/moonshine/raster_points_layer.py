@@ -3,6 +3,7 @@ import tensorflow as tf
 
 from link_bot_pycommon import link_bot_pycommon
 
+
 def raster(state, res, origin, h, w):
     """
     state: [n]
@@ -21,6 +22,33 @@ def raster(state, res, origin, h, w):
     rope_images = np.zeros([h, w, n_points], dtype=np.float32)
     rope_images[row_y_indices, col_x_indices, channel_indeces] = 1.0
     return rope_images
+
+
+def make_transition_image(local_env, planned_state, action, planned_next_state, res, origin):
+    """
+    :param local_env: [h,w]
+    :param planned_state: [n_state]
+    :param action: [n_action]
+    :param planned_next_state: [n_state]
+    :param res: []
+    :param origin: [2]
+    :return: [n_points*2+n_action+1], aka  [n_state+n_action+1]
+    """
+    h, w = local_env.shape
+
+    planned_rope_image = raster(planned_state, res, origin, h, w)
+    planned_next_rope_image = raster(planned_next_state, res, origin, h, w)
+
+    # action
+    # add spatial dimensions and tile
+    action_reshaped = tf.expand_dims(tf.expand_dims(action, axis=0), axis=0)
+    action_image = tf.tile(action_reshaped, [h, w, 1], name='action_spatial_tile')
+
+    # h, w, channel
+    local_env = np.expand_dims(local_env, axis=2)
+    image = np.concatenate((planned_rope_image, planned_next_rope_image, local_env, action_image), axis=2)
+    return image
+
 
 class RasterPoints(tf.keras.layers.Layer):
 

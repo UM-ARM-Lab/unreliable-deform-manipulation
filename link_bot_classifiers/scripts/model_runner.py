@@ -10,7 +10,8 @@ from colorama import Fore
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_transition_image, add_traj_image
-from link_bot_pycommon import experiments_util
+from link_bot_planning import classifier_utils
+from moonshine import experiments_util
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -40,7 +41,7 @@ def train(args, seed: int):
     # FIXME: name things better
     model_hparams['classifier_dataset_params'] = classifier_dataset_params
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
-    module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
+    model = link_bot_classifiers.get_model(model_hparams['model_class'])
 
     # More dataset crap
     train_tf_dataset = train_dataset.get_datasets(mode='train')
@@ -63,7 +64,7 @@ def train(args, seed: int):
         ###############
         train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
         val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
-        module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args)
+        model.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
@@ -74,12 +75,13 @@ def eval(args, seed: int):
     # Model
     ###############
     model_hparams = json.load((args.checkpoint / 'hparams.json').open('r'))
-    module = link_bot_classifiers.get_model_module(model_hparams['model_class'])
+    model = link_bot_classifiers.get_model(model_hparams['model_class'])
 
     ###############
     # Dataset
     ###############
     classifier_dataset_params = model_hparams['classifier_dataset_params']
+    image_key = model_hparams['image_key']
     test_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
 
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
@@ -92,14 +94,13 @@ def eval(args, seed: int):
 
     if classifier_dataset_params['balance']:
         print(Fore.GREEN + "balancing..." + Fore.RESET)
-        train_tf_dataset = balance_by_augmentation(train_tf_dataset, image_key=image_key)
-        val_tf_dataset = balance_by_augmentation(val_tf_dataset, image_key=image_key)
-
+        test_tf_dataset = balance_by_augmentation(test_tf_dataset, image_key=image_key)
     try:
         ###############
         # Evaluate
         ###############
-        module.eval(model_hparams, test_tf_dataset, args)
+        test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
+        model.eval(model_hparams, test_tf_dataset, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass

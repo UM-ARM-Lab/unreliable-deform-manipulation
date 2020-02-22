@@ -15,6 +15,7 @@ from link_bot_planning.state_spaces import to_numpy, from_numpy, ValidRopeConfig
     TrainingSetCompoundSampler, to_numpy_local_env, to_numpy_flat
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon, ros_pycommon
+from link_bot_pycommon.link_bot_pycommon import print_dict
 from link_bot_pycommon.ros_pycommon import get_local_occupancy_data
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
@@ -48,6 +49,7 @@ class MyPlanner:
         self.planner_params = planner_params
         self.services = services
         self.viz_object = viz_object
+        # TODO:
         self.si = ob.SpaceInformation(ob.StateSpace())
         self.rope_length = fwd_model.hparams['dynamics_dataset_hparams']['rope_length']
         self.seed = seed
@@ -111,7 +113,7 @@ class MyPlanner:
         self.si = self.ss.getSpaceInformation()
 
         self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
-        self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
+        self.ss.setMotionsValidityChecker(oc.MotionsValidityCheckerFn(self.motions_valid))
 
         if planner_params['directed_control_sampler'] == 'simple':
             pass  # the default
@@ -123,6 +125,7 @@ class MyPlanner:
         self.full_env_origins = None
 
         if planner_params['sampler_type'] == 'sample_train':
+            raise NotImplementedError("need to redo dataset loading here")
             self.dataset_dirs = [pathlib.Path(p) for p in self.fwd_model.hparams['datasets']]
             dataset = LinkBotStateSpaceDataset(self.dataset_dirs)
             self.training_dataset = dataset.get_datasets(mode='train',
@@ -140,19 +143,29 @@ class MyPlanner:
                                         center_point=center_point,
                                         services=self.services)
 
-    def is_valid(self, state):
-        return self.state_space.getSubspace(0).satisfiesBounds(state[0])
+    def motions_valid(self, motions):
+        if self.classifier_model.model_hparams['image_type'] == 'transition_image':
+            last_motion = motions[-1]
+            np_s = to_numpy(last_motion.state, self.n_state)
+            np_u = ompl_control_to_model_action(last_motion.control, self.n_control)
+            np_s_next = to_numpy(last_motion.parent, self.n_state)
+            return self.edge_is_valid(np_s, np_u, np_s_next)
+        elif self.classifier_model.model_hparams['image_type'] == 'trajectory_image':
+            full_env = self.full_envs[0]
+            states = np.array([to_numpy(motion.state, self.n_state) for motion in motions])
+            actions = np.array([to_numpy(motion.control, self.n_control) for motion in motions])
+            accept_probability = self.classifier_model.predict_traj(full_env, states, actions)
+            return self.accept_probability_to_accept(accept_probability)
+        else:
+            raise ValueError()
 
     def edge_is_valid(self, np_s: np.ndarray, np_u: np.ndarray, np_s_next: np.ndarray):
-        # TODO: remove batch dimension everywhere in this code, we don't need it anymore since the predict finction doesn't
-        #  operate on batches anymore
-        # ^^^ This might be a mistake...
-        np_s = np_s.flatten()
-        np_s_next = np_s_next.flatten()
-        np_u = np_u.flatten()
-        local_env_data = self.get_local_env_at(np_s[-2], np_s[-1])
+        local_env_data = self.get_local_env_at(np_s[0, -2], np_s[0, -1])
 
         accept_probability = self.classifier_model.predict(local_env_data=local_env_data, s1=np_s, s2=np_s_next, action=np_u)
+        return self.accept_probability_to_accept(accept_probability)
+
+    def accept_probability_to_accept(self, accept_probability):
         p = self.classifier_rng.uniform(0, 1)
         # classifier_accept = p <= accept_probability
         classifier_accept = accept_probability > self.planner_params['accept_threshold']  # FIXME: use the probability
@@ -178,23 +191,14 @@ class MyPlanner:
                                              actions=np_u)
         np_s_next = points_next[:, 1].reshape([1, self.n_state])
 
-        # validate the edge
-        edge_is_valid = self.edge_is_valid(np_s, np_u, np_s_next)
-
-        # copy the result into the ompl state data structure
-        if not edge_is_valid:
-            # This will ensure this edge is not added to the tree
-            state_out[0][0] = 1000
-            self.viz_object.rejected_samples.append(np_s_next[0])
-        else:
-            from_numpy(np_s_next, state_out[0], self.n_state)
-            local_env_data = self.get_local_env_at(np_s_next[0, -2], np_s_next[0, -1])
-            local_env = local_env_data.data.flatten().astype(np.float64)
-            for idx in range(self.n_local_env):
-                occupancy_value = local_env[idx]
-                state_out[1][idx] = occupancy_value
-            origin = local_env_data.origin.astype(np.float64)
-            from_numpy(origin, state_out[2], 2)
+        from_numpy(np_s_next, state_out[0], self.n_state)
+        local_env_data = self.get_local_env_at(np_s_next[0, -2], np_s_next[0, -1])
+        local_env = local_env_data.data.flatten().astype(np.float64)
+        for idx in range(self.n_local_env):
+            occupancy_value = local_env[idx]
+            state_out[1][idx] = occupancy_value
+        origin = local_env_data.origin.astype(np.float64)
+        from_numpy(origin, state_out[2], 2)
 
     # TODO: make this return a data structure. something with a name
     def plan(self, np_start: np.ndarray, tail_goal_point: np.ndarray, full_env_data: link_bot_sdf_utils.OccupancyData):

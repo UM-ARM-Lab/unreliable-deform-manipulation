@@ -8,7 +8,8 @@ import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore, Style
 
-from link_bot_pycommon import experiments_util, link_bot_sdf_utils, link_bot_pycommon
+from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon
+from moonshine import experiments_util
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 

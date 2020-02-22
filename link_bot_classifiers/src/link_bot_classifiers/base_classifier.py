@@ -1,8 +1,5 @@
-from typing import List
-
 import numpy as np
 
-from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
 
 

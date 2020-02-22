@@ -77,14 +77,16 @@ def main():
 
         count += 1
 
+        next_state = example['state_next/link_bot'].numpy()
+
         if args.no_plot:
             continue
 
         if args.display_type == 'transition_image':
             image = example['transition_image'].numpy()
+            next_state = example['planned_state_next/link_bot'].numpy()
             n_points = n_state_to_n_points(classifier_dataset.hparams['n_state'])
             interpretable_image = visualization.make_interpretable_image(image, n_points)
-            # TODO: flipud?
             plt.imshow(np.flipud(interpretable_image))
             planned_env_extent = [1, 49, 1, 49]
             label_color = 'g' if label else 'r'
@@ -93,10 +95,11 @@ def main():
                      [planned_env_extent[2], planned_env_extent[3], planned_env_extent[3], planned_env_extent[2],
                       planned_env_extent[2]],
                      c=label_color, linewidth=4)
+            plt.title(next_state)
             plt.show(block=True)
         elif args.display_type == 'trajectory_image':
             image = example['trajectory_image'].numpy()
-            image = np.pad(image, [[0,0], [0,0], [0,1]])
+            image = np.pad(image, [[0, 0], [0, 0], [0, 1]])
             plt.imshow(np.flipud(image))
             planned_env_extent = [1, 199, 1, 199]
             label_color = 'g' if label else 'r'

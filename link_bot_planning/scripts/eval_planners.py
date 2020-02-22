@@ -231,11 +231,11 @@ def main():
 
         fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, fwd_model_type)
 
-        services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
-                                                 real_time_rate=args.real_time_rate,
-                                                 max_step_size=fwd_model.max_step_size,
-                                                 reset_world=True,
-                                                 initial_object_dict=initial_object_dict)
+        services = gazebo_utils.setup_env(verbose=args.verbose,
+                                          real_time_rate=args.real_time_rate,
+                                          max_step_size=fwd_model.max_step_size,
+                                          reset_world=True,
+                                          initial_object_dict=initial_object_dict)
 
         services.pause(std_srvs.srv.EmptyRequest())
 

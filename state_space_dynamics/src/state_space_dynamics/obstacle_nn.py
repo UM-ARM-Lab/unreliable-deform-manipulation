@@ -11,7 +11,8 @@ from colorama import Fore, Style
 from tensorflow import keras
 
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
-from link_bot_pycommon import experiments_util, link_bot_pycommon
+from link_bot_pycommon import link_bot_pycommon
+from moonshine import experiments_util
 from moonshine.action_smear_layer import action_smear_layer
 from moonshine.raster_points_layer import RasterPoints
 from state_space_dynamics.base_forward_model import BaseForwardModel

@@ -7,8 +7,8 @@ import numpy as np
 import tensorflow
 
 from link_bot_data import base_collect_dynamics_data
-from link_bot_gazebo import gazebo_utils
 from link_bot_pycommon.args import my_formatter
+from victor import victor_utils
 
 opts = tensorflow.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.compat.v1.ConfigProto(gpu_options=opts)
@@ -43,7 +43,7 @@ def main():
 
     args = parser.parse_args()
 
-    base_collect_dynamics_data.generate(gazebo_utils, args)
+    base_collect_dynamics_data.generate(victor_utils, args)
 
 
 if __name__ == '__main__':

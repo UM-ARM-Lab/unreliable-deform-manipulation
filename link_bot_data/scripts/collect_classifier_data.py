@@ -161,6 +161,8 @@ class ClassifierDataCollector(PlanAndExecute):
             'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),
         }
 
+        # FIXME: truncation is fine, but we need to throw out everything from then on otherwise the next example won't start at
+        #  the actual start. I think we need the rope to start from the same configuration? that's bad...
         for time_idx in range(self.n_steps_per_example):
             # we may have to truncate, or pad the trajectory, depending on the length of the plan
             if time_idx < planned_actions.shape[0]:
@@ -218,25 +220,8 @@ def main():
     parser.add_argument("n_total_plans", type=int, help='number of plans')
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("outdir", type=pathlib.Path)
-    parser.add_argument("--n-plans-per-env", type=int, default=8, help='number of targets/plans per environment')
-    # if the number of steps in the plan is larger than this number, we truncate.
-    # If it is smaller we pad with 0 actions/stationary states
-    parser.add_argument("--n-steps-per-example", type=int, default=50, help='time steps per example')
-    parser.add_argument("--n-examples-per-record", type=int, default=128, help='examples per tfrecord')
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
-    parser.add_argument("--planner-timeout", help="time in seconds", type=float, default=10.0)
-    parser.add_argument("--real-time-rate", type=float, default=10.0, help='real time rate')
-    parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
-    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
-    # these define the bounds of the C-space in the planner
-    parser.add_argument('--planner-env-w', type=float, default=5.0, help='planner env w')
-    parser.add_argument('--planner-env-h', type=float, default=5.0, help='planner env h')
-    parser.add_argument('--full-env-w', type=float, default=6.0, help='full env w')
-    parser.add_argument('--full-env-h', type=float, default=6.0, help='full env h')
-    parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
-    parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
-    parser.add_argument('--no-nudge', action='store_true', help="don't nudge")
 
     args = parser.parse_args()
 
@@ -246,11 +231,11 @@ def main():
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
 
-    planner_params = json.load(args.params.open("r"))
-    sim_params = SimParams(real_time_rate=args.real_time_rate,
-                           max_step_size=args.max_step_size,
-                           move_obstacles=(not args.no_move_obstacles),
-                           nudge=(not args.no_nudge),
+    params = json.load(args.params.open("r"))
+    sim_params = SimParams(real_time_rate=params['real_time_rate'],
+                           max_step_size=params['max_step_size'],
+                           move_obstacles=params['move_obstacles'],
+                           nudge=params['nudge'],
                            goal_padding=0.0)
 
     rospy.init_node('collect_classifier_data')
@@ -264,30 +249,30 @@ def main():
         'moving_box6': [-0.5, 2.0],
     }
 
-    services = gazebo_utils.setup_gazebo_env(verbose=args.verbose,
-                                             real_time_rate=sim_params.real_time_rate,
-                                             max_step_size=sim_params.max_step_size,
-                                             reset_world=True,
-                                             initial_object_dict=initial_object_dict)
+    services = gazebo_utils.setup_env(verbose=args.verbose,
+                                      real_time_rate=sim_params.real_time_rate,
+                                      max_step_size=sim_params.max_step_size,
+                                      reset_world=True,
+                                      initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
     # NOTE: we could make the classifier take a different sized local environment than the dynamics, just a thought.
-    planner, fwd_model_info = get_planner(planner_params=planner_params, services=services, seed=args.seed)
+    planner, fwd_model_info = get_planner(planner_params=params, services=services, seed=args.seed)
 
     data_collector = ClassifierDataCollector(
         planner=planner,
-        fwd_model_dir=planner_params['fwd_model_dir'],
-        fwd_model_type=planner_params['fwd_model_type'],
+        fwd_model_dir=params['fwd_model_dir'],
+        fwd_model_type=params['fwd_model_type'],
         fwd_model_info=fwd_model_info,
         n_total_plans=args.n_total_plans,
-        n_plans_per_env=args.n_plans_per_env,
+        n_plans_per_env=params['n_plans_per_env'],
         verbose=args.verbose,
         seed=args.seed,
-        planner_params=planner_params,
+        planner_params=params,
         sim_params=sim_params,
-        n_steps_per_example=args.n_steps_per_example,
-        n_examples_per_record=args.n_examples_per_record,
-        compression_type=args.compression_type,
+        n_steps_per_example=params['n_steps_per_example'],
+        n_examples_per_record=params['n_examples_per_record'],
+        compression_type='ZLIB',
         outdir=args.outdir,
         services=services,
     )

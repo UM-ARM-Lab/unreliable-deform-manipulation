@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import os
 import pathlib
 
 import gpflow as gpf
@@ -13,7 +12,7 @@ from colorama import Fore, Style
 from tabulate import tabulate
 
 from link_bot_gaussian_process import link_bot_gp, error_metrics, data_reformatting
-from link_bot_pycommon import experiments_util
+from moonshine import experiments_util
 from video_prediction.datasets import dataset_utils
 
 

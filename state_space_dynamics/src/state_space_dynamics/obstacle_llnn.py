@@ -8,7 +8,8 @@ import tensorflow.keras.layers as layers
 from colorama import Fore, Style
 
 from state_space_dynamics.base_forward_model import BaseForwardModel
-from link_bot_pycommon import experiments_util, link_bot_sdf_utils
+from link_bot_pycommon import link_bot_sdf_utils
+from moonshine import experiments_util
 
 
 class ObstacleLLNN(tf.keras.Model):
