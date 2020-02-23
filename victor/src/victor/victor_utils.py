@@ -1,6 +1,10 @@
+from typing import Tuple
+
 import rospy
 import std_msgs
 from link_bot_gazebo.srv import ExecuteActionRequest
+
+from std_srvs.srv import EmptyRequest
 
 from link_bot_pycommon.ros_pycommon import Services
 
@@ -15,6 +19,10 @@ class VictorServices(Services):
             '/cdcpd/tracked_points'
         ])
 
+    def reset_world(self, verbose, reset_gripper_to: Tuple[float]):
+        empty = EmptyRequest()
+        self.reset.call(empty)
+
 
 def setup_env(verbose: int,
               reset_world: bool = True):
@@ -23,7 +31,7 @@ def setup_env(verbose: int,
     services.wait(verbose)
 
     if reset_world:
-        services.reset_world(verbose)
+        services.reset_world(verbose, [])
 
     # first the controller
     stop = ExecuteActionRequest()
@@ -32,5 +40,4 @@ def setup_env(verbose: int,
     stop.action.max_time_per_step = 1.0
     services.execute_action(stop)
 
-    services.position_2d_stop.publish(std_msgs.msg.Empty())
     return services

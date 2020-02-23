@@ -2,25 +2,40 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon import link_bot_pycommon
+from moonshine.action_smear_layer import smear_action
 
 
 def raster(state, res, origin, h, w):
     """
-    state: [n]
-    res: [] scalar
-    origin: [2]
-    h: [] scalar
-    w: [] scalar
+    state: [batch, n]
+    res: [batch] scalar float
+    origin: [batch, 2] index (so int, or technically float is fine too)
+    h: scalar int
+    w: scalar int
     """
-    points = np.reshape(state, [-1, 2])
-    n_points = points.shape[0]
-    # points[:,1] is y, origin[0] is row index, so yes this is correct
-    row_y_indices = (points[:, 1] / res + origin[0]).astype(np.int64)
-    col_x_indices = (points[:, 0] / res + origin[1]).astype(np.int64)
-    channel_indeces = np.arange(n_points)
+    b = state.shape[0]
+    points = np.reshape(state, [b, -1, 2])
+    n_points = points.shape[1]
 
-    rope_images = np.zeros([h, w, n_points], dtype=np.float32)
-    rope_images[row_y_indices, col_x_indices, channel_indeces] = 1.0
+    res = res[0]  # NOTE: assume constant resolution
+
+    # points[:,1] is y, origin[0] is row index, so yes this is correct
+    row_y_indices = (points[:, :, 1] / res + origin[:, 0:1]).astype(np.int64).flatten()
+    col_x_indices = (points[:, :, 0] / res + origin[:, 1:2]).astype(np.int64).flatten()
+    channel_indices = np.tile(np.arange(n_points), b)
+    batch_indices = np.repeat(np.arange(b), n_points)
+
+    # filter out invalid indices, which can happen during training
+    rope_images = np.zeros([b, h, w, n_points], dtype=np.float32)
+    valid_indices = np.where(np.all([row_y_indices >= 0,
+                                     row_y_indices < h,
+                                     col_x_indices >= 0,
+                                     col_x_indices < w], axis=0))
+
+    rope_images[batch_indices[valid_indices],
+                row_y_indices[valid_indices],
+                col_x_indices[valid_indices],
+                channel_indices[valid_indices]] = 1.0
     return rope_images
 
 
@@ -37,6 +52,7 @@ def make_transition_image(local_env, planned_state, action, planned_next_state, 
     h, w = local_env.shape
     local_env = np.expand_dims(local_env, axis=2)
 
+    # TODO: ADD BATCH INDEX HERE
     planned_rope_image = raster(planned_state, res, origin, h, w)
     planned_next_rope_image = raster(planned_next_state, res, origin, h, w)
 
@@ -45,8 +61,7 @@ def make_transition_image(local_env, planned_state, action, planned_next_state, 
     if action_in_image:
         image = np.concatenate((planned_rope_image, planned_next_rope_image, local_env), axis=2)
     else:
-        action_reshaped = tf.expand_dims(tf.expand_dims(action, axis=0), axis=0)
-        action_image = tf.tile(action_reshaped, [h, w, 1], name='action_spatial_tile')
+        action_image = smear_action(action, h, w)
         image = np.concatenate((planned_rope_image, planned_next_rope_image, local_env, action_image), axis=2)
     return image
 

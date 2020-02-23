@@ -13,8 +13,8 @@ from tensorflow import keras
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
 from link_bot_pycommon import link_bot_pycommon
 from moonshine import experiments_util
-from moonshine.action_smear_layer import action_smear_layer
-from moonshine.raster_points_layer import RasterPoints
+from moonshine.raster_points_layer import raster
+from moonshine.action_smear_layer import smear_action
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
@@ -60,17 +60,17 @@ class ObstacleNN(tf.keras.Model):
         self.local_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['local_env_params'])
         self.full_env_params = FullEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['full_env_params'])
         self.batch_size = batch_size
-        self.raster = RasterPoints([self.local_env_params.h_rows, self.local_env_params.w_cols], batch_size=batch_size)
         self.concat = layers.Concatenate()
         self.concat2 = layers.Concatenate()
-        self.action_smear = action_smear_layer(1,
-                                               self.hparams['dynamics_dataset_hparams']['n_action'],
-                                               self.local_env_params.h_rows,
-                                               self.local_env_params.w_cols)
+        self.tether = self.hparams['dynamics_dataset_hparams']['tether']
+        self.n_link_bot_state = self.hparams['dynamics_dataset_hparams']['n_state']
+        self.out_dim = self.n_link_bot_state
+        if self.tether:
+            self.out_dim += self.hparams['dynamics_dataset_hparams']['n_tether_state']
         self.dense_layers = []
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
-        self.dense_layers.append(layers.Dense(self.hparams['dynamics_dataset_hparams']['n_state'], activation=None))
+        self.dense_layers.append(layers.Dense(self.out_dim, activation=None))
 
         self.conv_layers = []
         self.pool_layers = []
@@ -90,9 +90,14 @@ class ObstacleNN(tf.keras.Model):
     def call(self, input_dict, training=None, mask=None):
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
-        s_0 = tf.expand_dims(input_dict['state/link_bot'][:, 0], axis=2)
+        link_bot_0 = tf.expand_dims(input_dict['state/link_bot'][:, 0], axis=2)
+        if self.tether:
+            tether_0 = tf.expand_dims(input_dict['state/tether'][:, 0], axis=2)
+            s_0 = tf.concat((link_bot_0, tether_0), axis=1)
+        else:
+            s_0 = link_bot_0
+
         resolution = input_dict['res'][:, 0]
-        res_2d = tf.expand_dims(tf.tile(resolution, [1, 2]), axis=1)
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']
 
@@ -102,38 +107,40 @@ class ObstacleNN(tf.keras.Model):
         paddings = [[0, 0], [padding, padding], [padding, padding]]
         padded_full_envs_np = tf.pad(full_env, paddings=paddings).numpy()
 
-        gen_states = [s_0]
+        pred_states = [s_0]
         for t in range(input_sequence_length):
-            s_t = gen_states[-1]
+            s_t = pred_states[-1]
             s_t_squeeze = tf.squeeze(s_t, squeeze_dims=2)
 
             action_t = actions[:, t]
 
             # the local environment used at each time step is take as a rectangle centered on the predicted point of the head
             head_point_t = s_t_squeeze[:, -2:]
-            # FIXME: shouldn't this use resolution_s?
-            local_env, local_env_origin = get_local_env_at_in(rows=self.local_env_params.h_rows,
-                                                              cols=self.local_env_params.w_cols,
-                                                              res=self.local_env_params.res,
-                                                              center_points=head_point_t,  # has batch dimension
-                                                              padded_full_envs=padded_full_envs_np,  # has batch dimension
-                                                              padding=padding,
-                                                              full_env_origins=full_env_origin,  # has batch dimension
-                                                              )
+            if 'use_full_env' in self.hparams and self.hparams['use_full_env']:
+                env = full_env
+                env_origin = full_env_origin
+                env_h_rows = tf.convert_to_tensor(self.full_env_params.h_rows, tf.int64)
+                env_w_cols = tf.convert_to_tensor(self.full_env_params.w_cols, tf.int64)
+            else:
+                env, env_origin = get_local_env_at_in(rows=self.local_env_params.h_rows,
+                                                      cols=self.local_env_params.w_cols,
+                                                      res=self.local_env_params.res,
+                                                      center_points=head_point_t,  # has batch dimension
+                                                      padded_full_envs=padded_full_envs_np,  # has batch dimension
+                                                      padding=padding,
+                                                      full_env_origins=full_env_origin,  # has batch dimension
+                                                      )
+                env_h_rows = tf.convert_to_tensor(self.local_env_params.h_row, tf.int64)
+                env_w_cols = tf.convert_to_tensor(self.local_env_params.w_cols, tf.int64)
 
-            local_env = tf.expand_dims(local_env, axis=3)
-            local_env_origin = tf.expand_dims(local_env_origin, axis=1)
+            rope_image_t = tf.numpy_function(raster, [s_t_squeeze, resolution, env_origin, env_h_rows, env_w_cols], tf.float32)
 
-            # TODO: perform all this pre-processing in the dataset loading, then call cache to make this faster
-            #  this will also require converting to an image first, in the Wrapper
-            # filters out out of bounds points internally with no warnings
-            rope_image_s = self.raster([tf.expand_dims(s_t, axis=1), res_2d, local_env_origin])
-            rope_image_t = rope_image_s[:, 0]
-            action_image_s = self.action_smear(action_t)
-            action_image_t = action_image_s[:, 0]
+            action_image_t = tf.numpy_function(smear_action, [action_t, env_h_rows, env_w_cols], tf.float32)
+
+            env = tf.expand_dims(env, axis=3)
 
             # CNN
-            z_t = self.concat([rope_image_t, local_env, action_image_t])
+            z_t = self.concat([rope_image_t, env, action_image_t])
             for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
                 z_t = conv_layer(z_t)
                 z_t = pool_layer(z_t)
@@ -154,12 +161,30 @@ class ObstacleNN(tf.keras.Model):
             else:
                 s_t_plus_1_flat = tf.expand_dims(full_z_t, axis=2)
 
-            gen_states.append(s_t_plus_1_flat)
+            pred_states.append(s_t_plus_1_flat)
 
-        gen_states = tf.stack(gen_states)
-        gen_states = tf.transpose(gen_states, [1, 0, 2, 3])
-        gen_states = tf.squeeze(gen_states, squeeze_dims=3)
-        return gen_states
+        pred_states = tf.stack(pred_states)
+        pred_states = tf.transpose(pred_states, [1, 0, 2, 3])
+        pred_states = tf.squeeze(pred_states, squeeze_dims=3)
+
+        link_bot_states = pred_states[:, :, :self.n_link_bot_state]
+        output_states_dict = {
+            'link_bot': link_bot_states
+        }
+        if self.tether:
+            tether_states = pred_states[:, :, self.n_link_bot_state:]
+            output_states_dict['tether'] = tether_states
+
+        return output_states_dict
+
+
+def loss_on_dicts(loss, dict_true, dict_pred):
+    loss_by_key = []
+    for k, y_true in dict_true.items():
+        y_pred = dict_pred[k]
+        l = loss(y_true=y_true, y_pred=y_pred)
+        loss_by_key.append(l)
+    return tf.reduce_mean(loss_by_key)
 
 
 def eval(hparams, test_tf_dataset, args):
@@ -174,42 +199,21 @@ def eval(hparams, test_tf_dataset, args):
     test_losses = []
     test_position_errors = []
     for test_x, test_y in test_tf_dataset:
-        test_true_states = test_y['output_states']
-        test_gen_states = net(test_x)
-        batch_test_loss = loss(y_true=test_true_states, y_pred=test_gen_states)
-        test_gen_points = tf.reshape(test_gen_states, [test_gen_states.shape[0], test_gen_states.shape[1], -1, 2])
-        test_true_points = tf.reshape(test_true_states, [test_true_states.shape[0], test_true_states.shape[1], -1, 2])
-        batch_test_position_error = tf.reduce_mean(tf.linalg.norm(test_gen_points - test_true_points, axis=3), axis=0)
+        test_true_states_dict = test_y
+        test_pred_states_dict = net(test_x)
+        batch_test_loss = loss_on_dicts(loss, test_true_states_dict, test_pred_states_dict).numpy()
+        test_true_link_bot_states = test_true_states_dict['link_bot']
+        test_pred_link_bot_states = test_pred_states_dict['link_bot']
+        points_shape = [test_true_link_bot_states.shape[0], test_true_link_bot_states.shape[1], -1, 2]
+        test_pred_points = tf.reshape(test_pred_link_bot_states, points_shape)
+        test_true_points = tf.reshape(test_true_link_bot_states, points_shape)
+        batch_test_position_error = tf.reduce_mean(tf.linalg.norm(test_pred_points - test_true_points, axis=3), axis=0)
         test_losses.append(batch_test_loss)
         test_position_errors.append(batch_test_position_error)
     test_loss = np.mean(test_losses)
     test_position_error = np.mean(test_position_errors)
     print("Test Loss:  {:8.5f}".format(test_loss))
     print("Test Error: " + Style.BRIGHT + "{:8.4f}(m)".format(test_position_error) + Style.RESET_ALL)
-
-
-def eval_angled(net, test_tf_dataset):
-    angles = []
-    errors = []
-    for test_x, test_y in test_tf_dataset:
-        test_true_states = test_y['output_states']
-        test_gen_states = net(test_x)
-        for true_state_seq, gen_state_seq in zip(test_true_states, test_gen_states):
-            true_initial_state = true_state_seq[0]
-            true_final_state = true_state_seq[-1]
-            gen_final_state = gen_state_seq[-1]
-            angle = link_bot_pycommon.angle_from_configuration(true_initial_state)
-            error = np.linalg.norm(true_final_state - gen_final_state)
-            angles.append(angle)
-            errors.append(error)
-
-    import matplotlib.pyplot as plt
-    plt.figure()
-    plt.scatter(angles, errors)
-    plt.plot([0, np.pi], [0, 0], c='k')
-    plt.xlabel("angle (rad)")
-    plt.ylabel("increase in prediction error in R6 (m)")
-    plt.show()
 
 
 def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed: int):
@@ -257,9 +261,9 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed: int):
         ################
         val_losses = []
         for val_x, val_y in progressbar.progressbar(val_tf_dataset):
-            true_val_states = val_y['output_states']
-            val_gen_states = net(val_x)
-            batch_val_loss = loss(y_true=true_val_states, y_pred=val_gen_states)
+            true_val_states_dict = val_y
+            val_pred_states_dict = net(val_x)
+            batch_val_loss = loss_on_dicts(loss, true_val_states_dict, val_pred_states_dict).numpy()
             val_losses.append(batch_val_loss)
         val_loss = np.mean(val_losses)
         print("Validation loss before any training: " + Style.BRIGHT + "{:8.5f}".format(val_loss) + Style.RESET_ALL)
@@ -271,18 +275,16 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed: int):
             # metrics are averaged across batches in the epoch
             batch_losses = []
             epoch_t0 = time.time()
-            train_batch_x = None
-            train_batch_y = None
             for train_batch_x, train_batch_y in progressbar.progressbar(train_tf_dataset):
                 batch_t0 = time.time()
-                true_train_states = train_batch_y['output_states']
+                true_train_states_dict = train_batch_y
                 with tf.GradientTape() as tape:
-                    pred_states = net(train_batch_x)
-                    training_batch_loss = loss(y_true=true_train_states, y_pred=pred_states)
+                    pred_states_dict = net(train_batch_x)
+                    training_batch_loss = loss_on_dicts(loss, true_train_states_dict, pred_states_dict)
                 variables = net.trainable_variables
                 gradients = tape.gradient(training_batch_loss, variables)
                 optimizer.apply_gradients(zip(gradients, variables))
-                batch_losses.append(training_batch_loss.numpy())
+                batch_losses.append(training_batch_loss)
 
                 global_step.assign_add(1)
 
@@ -302,9 +304,9 @@ def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed: int):
             if epoch % args.validation_every == 0:
                 val_losses = []
                 for val_x, val_y in progressbar.progressbar(val_tf_dataset):
-                    true_val_states = val_y['output_states']
-                    val_gen_states = net(val_x)
-                    batch_val_loss = loss(y_true=true_val_states, y_pred=val_gen_states)
+                    true_val_states_dict = val_y
+                    val_pred_states_dict = net(val_x)
+                    batch_val_loss = loss_on_dicts(loss, true_val_states_dict, val_pred_states_dict).numpy()
                     val_losses.append(batch_val_loss)
                 val_loss = np.mean(val_losses)
                 tf.contrib.summary.scalar('validation loss', val_loss, step=int(ckpt.step))
@@ -370,6 +372,9 @@ class ObstacleNNWrapper(BaseForwardModel):
             # must be batch, 2
             'full_env/origin': tf.convert_to_tensor(full_env_origins, dtype=tf.float32),
         }
+
+        # TODO: implement a list of state keys to use, rather than just doing "if tether" everywhere
+
         predictions = self.net(test_x)
         predicted_points = predictions.numpy().reshape([batch, T + 1, -1, 2])
         # OMPL requires "doubles", which are float64, although our network outputs float32.

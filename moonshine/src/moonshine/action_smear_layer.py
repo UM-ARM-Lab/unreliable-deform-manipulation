@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 
@@ -13,3 +14,9 @@ def action_smear_layer(input_sequence_length, action_dim, h, w):
         return action_smear
 
     return forward
+
+
+def smear_action(action, h, w):
+    action_reshaped = np.expand_dims(np.expand_dims(action, axis=1), axis=1)
+    action_image = np.tile(action_reshaped, [1, h, w, 1])
+    return action_image

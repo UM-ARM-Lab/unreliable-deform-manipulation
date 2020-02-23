@@ -27,13 +27,6 @@ def generate(args):
     ###############
     # Datasets
     ###############
-    dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
-    tf_dataset = dataset.get_datasets(mode=args.mode,
-                                      shuffle=args.shuffle,
-                                      seed=0,
-                                      batch_size=1,
-                                      sequence_length=args.sequence_length)
-
     base_folder = args.outdir / 'compare_models-{}-{}'.format(args.mode, int(time.time()))
     base_folder.mkdir()
 
@@ -44,6 +37,10 @@ def generate(args):
         model_type = model_info['model_type']
         model, _ = model_utils.load_generic_model(model_dir, model_type)
         models[name] = model
+
+    dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
+    tf_dataset = dataset.get_datasets(mode=args.mode, sequence_length=args.sequence_length)
+    tf_dataset = tf_dataset.batch(1)
 
     results = generate_results(base_folder, models, tf_dataset, args.sequence_length)
 
@@ -87,11 +84,10 @@ def generate_results(base_folder: pathlib.Path,
 
     # Collect ground truth
     for x, y in tf_dataset:
-        output_states = y['output_states'].numpy()
-        true_points = output_states.reshape([sequence_length, -1, 2])
+        output_states_dict = y
+        pred_link_bot_states = output_states_dict['link_bot'].numpy()
+        true_points = pred_link_bot_states.reshape([sequence_length, -1, 2])
 
-        res = x['res'][0].numpy()
-        res_2d = np.array([res, res])
         full_env_extent = x['full_env/extent'][0].numpy()
         full_env = x['full_env/env'][0].numpy()
 
@@ -184,7 +180,7 @@ def visualize_predictions(results, n_examples, base_folder=None):
 
         plt.legend()
 
-        anim = FuncAnimation(fig, update, frames=sequence_length, interval=1000)
+        anim = FuncAnimation(fig, update, frames=sequence_length, interval=100)
         anim_path = base_folder / 'anim-{}.gif'.format(example_idx)
         anim.save(anim_path, writer='imagemagick', fps=4)
         plt.show()
@@ -232,7 +228,6 @@ def main():
     generate_parser.add_argument('outdir', type=pathlib.Path)
     generate_parser.add_argument('--sequence-length', type=int, default=50)
     generate_parser.add_argument('--no-plot', action='store_true')
-    generate_parser.add_argument('--shuffle', action='store_true')
     generate_parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test')
     generate_parser.add_argument('--n-examples', type=int, default=10)
     generate_parser.set_defaults(func=generate)

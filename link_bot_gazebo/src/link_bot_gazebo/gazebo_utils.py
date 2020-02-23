@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Tuple
 
 import numpy as np
 import rospy
@@ -7,8 +7,7 @@ import std_srvs
 from colorama import Fore
 from link_bot_gazebo.msg import Position2dAction, ObjectAction
 from link_bot_gazebo.srv import CameraProjection, InverseCameraProjection, LinkBotStateRequest, WorldControlRequest, \
-    InverseCameraProjectionRequest, \
-    CameraProjectionRequest, ExecuteActionRequest, GetObject
+    InverseCameraProjectionRequest, CameraProjectionRequest, ExecuteActionRequest, GetObject, LinkBotReset, LinkBotResetRequest
 from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
 
@@ -26,7 +25,7 @@ class GazeboServices(Services):
         super().__init__()
         # we can't mock these
         self.apply_body_wrench = rospy.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
-        self.link_bot_reset = rospy.ServiceProxy("/link_bot_reset", std_srvs.srv.Empty)
+        self.link_bot_reset = rospy.ServiceProxy("/link_bot_reset", LinkBotReset)
 
         # not used in real robot experiments
         self.get_tether_state = rospy.ServiceProxy("/tether", GetObject)
@@ -40,7 +39,7 @@ class GazeboServices(Services):
         self.xy_to_rowcol = rospy.ServiceProxy('/my_camera/xy_to_rowcol', CameraProjection)
         self.rowcol_to_xy = rospy.ServiceProxy('/my_camera/rowcol_to_xy', InverseCameraProjection)
 
-    def reset_world(self, verbose):
+    def reset_world(self, verbose, reset_gripper_to: Tuple[float]):
         empty = EmptyRequest()
         self.reset.call(empty)
 
@@ -48,7 +47,10 @@ class GazeboServices(Services):
         enable_link_bot.data = 'position'
         self.link_bot_mode.publish(enable_link_bot)
 
-        self.link_bot_reset(empty)
+        reset = LinkBotResetRequest()
+        reset.point.x = reset_gripper_to[0]
+        reset.point.y = reset_gripper_to[1]
+        self.link_bot_reset(reset)
         if verbose >= 1:
             print(Fore.YELLOW + "World is Reset" + Fore.RESET)
 
@@ -85,15 +87,15 @@ def rowcol_to_xy(services, row, col):
 
 def setup_env(verbose: int,
               real_time_rate: float,
+              reset_gripper_to: Optional,
               max_step_size: Optional[float] = None,
-              reset_world: Optional[bool] = True,
               initial_object_dict: Optional[Dict] = None) -> GazeboServices:
     # fire up services
     services = GazeboServices()
     services.wait(verbose)
 
-    if reset_world:
-        services.reset_world(verbose)
+    if reset_gripper_to is not None:
+        services.reset_world(verbose, reset_gripper_to)
 
     # first the controller
     stop = ExecuteActionRequest()

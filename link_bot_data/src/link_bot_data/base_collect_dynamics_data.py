@@ -148,6 +148,7 @@ def generate(myenv_utils, args):
     rospy.init_node('collect_dynamics_data')
 
     n_state = ros_pycommon.get_n_state()
+    n_tether_state = ros_pycommon.get_n_tether_state()
     rope_length = ros_pycommon.get_rope_length()
 
     assert args.trajs % args.trajs_per_file == 0, "num trajs must be multiple of {}".format(args.trajs_per_file)
@@ -179,6 +180,7 @@ def generate(myenv_utils, args):
             'n_state': n_state,
             'n_action': 2,
             'tether': args.tether,
+            'n_tether_state': n_tether_state,
         }
         json.dump(options, of, indent=1)
 
@@ -189,6 +191,6 @@ def generate(myenv_utils, args):
     env_rng = np.random.RandomState(args.seed)
     action_rng = np.random.RandomState(args.seed)
 
-    services = myenv_utils.setup_env(args.verbose, args.real_time_rate, args.max_step_size, True, None)
+    services = myenv_utils.setup_env(args.verbose, args.real_time_rate, args.max_step_size, (0, 0), None)
 
     generate_trajs(myenv_utils, args, full_output_directory, services, env_rng, action_rng)

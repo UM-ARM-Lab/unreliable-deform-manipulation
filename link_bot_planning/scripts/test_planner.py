@@ -111,14 +111,14 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         plt.figure()
         ax = plt.gca()
         plot_data_dict, legend = ompl_viz.plot(ax,
-                               self.planner.n_state,
-                               self.planner.viz_object,
-                               planner_data,
-                               full_env_data.data,
-                               tail_goal_point,
-                               link_bot_planned_path,
-                               planned_actions,
-                               full_env_data.extent)
+                                               self.planner.n_state,
+                                               self.planner.viz_object,
+                                               planner_data,
+                                               full_env_data.data,
+                                               tail_goal_point,
+                                               link_bot_planned_path,
+                                               planned_actions,
+                                               full_env_data.extent)
 
         np.savez("/tmp/.latest-plan.npz", **plot_data_dict)
         plt.savefig("/tmp/.latest-plan.png", dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
@@ -160,11 +160,11 @@ def main():
     parser.add_argument("--seed", '-s', type=int, default=5)
     parser.add_argument("--no-execution", action='store_true', help='do not execute, only plan')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
-    parser.add_argument('--reset-world', action='store_true', help="reset world")
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float)
     parser.add_argument("--real-time-rate", type=float, default=0.0, help='real time rate')
     parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
+    parser.add_argument("--reset-gripper-to", type=point_arg, help='x,y in meters')
     parser.add_argument("--goal", type=point_arg, help='x,y in meters')
 
     args = parser.parse_args()
@@ -188,8 +188,8 @@ def main():
 
     services = gazebo_utils.setup_env(verbose=args.verbose,
                                       real_time_rate=sim_params.real_time_rate,
+                                      reset_gripper_to=args.reset_gripper_t,
                                       max_step_size=sim_params.max_step_size,
-                                      reset_world=args.reset_world,
                                       initial_object_dict=None)
     services.pause(std_srvs.srv.EmptyRequest())
 

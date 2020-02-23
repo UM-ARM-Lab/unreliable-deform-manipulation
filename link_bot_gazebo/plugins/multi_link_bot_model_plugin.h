@@ -6,6 +6,7 @@
 #include <link_bot_gazebo/LinkBotJointConfiguration.h>
 #include <link_bot_gazebo/LinkBotPath.h>
 #include <link_bot_gazebo/LinkBotState.h>
+#include <link_bot_gazebo/LinkBotReset.h>
 #include <link_bot_gazebo/LinkBotTrajectory.h>
 #include <link_bot_gazebo/NamedPoints.h>
 #include <ros/callback_queue.h>
@@ -63,7 +64,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   bool ExecuteTrajectoryCallback(link_bot_gazebo::LinkBotTrajectoryRequest &req,
                                  link_bot_gazebo::LinkBotTrajectoryResponse &res);
 
-  bool LinkBotReset(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res);
+  bool LinkBotReset(link_bot_gazebo::LinkBotResetRequest &req, link_bot_gazebo::LinkBotResetResponse &res);
 
  private:
   auto GetGripper1Pos() -> ignition::math::Vector3d const;

@@ -26,7 +26,7 @@ from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
 from link_bot_planning.plan_and_execute import PlanAndExecute
 from link_bot_pycommon import link_bot_sdf_utils
-from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.args import my_formatter, point_arg
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -50,6 +50,8 @@ class ClassifierDataCollector(PlanAndExecute):
                  n_examples_per_record: int,
                  compression_type: str,
                  services: GazeboServices,
+                 reset_gripper_to,
+                 fixed_goal,
                  outdir: Optional[pathlib.Path] = None):
         super().__init__(planner,
                          n_total_plans,
@@ -69,6 +71,8 @@ class ClassifierDataCollector(PlanAndExecute):
         self.compression_type = compression_type
         self.outdir = outdir
         self.local_env_params = self.planner.fwd_model.local_env_params
+        self.reset_gripper_to = reset_gripper_to
+        self.fixed_goal = fixed_goal
 
         if outdir is not None:
             self.full_output_directory = random_environment_data_utils.data_directory(self.outdir, *self.fwd_model_info)
@@ -107,8 +111,17 @@ class ClassifierDataCollector(PlanAndExecute):
         self.traj_idx = 0
 
     def on_before_plan(self):
-        # reset the rope/tether config
-        self.services.reset_world(self.verbose)
+        if self.reset_gripper_to is not None:
+            # reset the rope/tether config
+            self.services.reset_world(self.verbose, reset_gripper_to=self.reset_gripper_to)
+        else:
+            super().on_before_plan()
+
+    def get_goal(self, w, h, head_point, env_padding, full_env_data):
+        if self.fixed_goal is not None:
+            return self.fixed_goal
+        else:
+            return super().get_goal(w, h, head_point, env_padding, full_env_data)
 
     def on_plan_complete(self,
                          planned_path: Dict[str, np.ndarray],
@@ -222,6 +235,7 @@ def main():
     parser.add_argument("outdir", type=pathlib.Path)
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
+    parser.add_argument("--reset-gripper-to", type=point_arg, help='x,y in meters')
 
     args = parser.parse_args()
 
@@ -251,8 +265,8 @@ def main():
 
     services = gazebo_utils.setup_env(verbose=args.verbose,
                                       real_time_rate=sim_params.real_time_rate,
+                                      reset_gripper_to=args.reset_gripper_to,
                                       max_step_size=sim_params.max_step_size,
-                                      reset_world=True,
                                       initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
@@ -275,6 +289,8 @@ def main():
         compression_type='ZLIB',
         outdir=args.outdir,
         services=services,
+        reset_gripper_to=params['reset_gripper_to'],
+        fixed_goal=params['fixed_goal']
     )
 
     data_collector.run()

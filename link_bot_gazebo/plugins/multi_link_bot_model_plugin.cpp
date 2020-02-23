@@ -52,7 +52,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
                                                                                         ros::VoidPtr(), &queue_);
   auto reset_bind = boost::bind(&MultiLinkBotModelPlugin::LinkBotReset, this, _1, _2);
   auto reset_so =
-      ros::AdvertiseServiceOptions::create<std_srvs::Empty>("/link_bot_reset", reset_bind, ros::VoidPtr(), &queue_);
+      ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotReset>("/link_bot_reset", reset_bind, ros::VoidPtr(), &queue_);
 
   joy_sub_ = ros_node_->subscribe(joy_so);
   execute_action_service_ = ros_node_->advertiseService(action_so);
@@ -415,9 +415,10 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBot
   return true;
 }
 
-bool MultiLinkBotModelPlugin::LinkBotReset(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
+bool MultiLinkBotModelPlugin::LinkBotReset(link_bot_gazebo::LinkBotResetRequest &req, link_bot_gazebo::LinkBotResetResponse &res)
 {
-  gripper1_target_position_ = ignition::math::Vector3d::Zero;
+  gripper1_target_position_.X(req.point.x);
+  gripper1_target_position_.Y(req.point.y);
 
   while (true) {
     auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();

@@ -233,8 +233,8 @@ def main():
 
         services = gazebo_utils.setup_env(verbose=args.verbose,
                                           real_time_rate=args.real_time_rate,
+                                          reset_gripper_to=[0.0, 0.0],
                                           max_step_size=fwd_model.max_step_size,
-                                          reset_world=True,
                                           initial_object_dict=initial_object_dict)
 
         services.pause(std_srvs.srv.EmptyRequest())

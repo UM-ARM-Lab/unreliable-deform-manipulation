@@ -44,7 +44,11 @@ class LinkBotStateSpaceDataset(BaseDataset):
             for k, v in state_like_sequences.items():
                 # chop off the last time step since that's not part of the input
                 input_dict[k] = v[:-1]
-            output_dict = {'output_states': state_like_sequences['state/link_bot']}
+            output_dict = {
+                'link_bot': state_like_sequences['state/link_bot']
+            }
+            if self.tether:
+                output_dict['tether'] = state_like_sequences['state/tether']
             input_dict.update(action_like_sequences)
             input_dict.update(const_data)
             return input_dict, output_dict

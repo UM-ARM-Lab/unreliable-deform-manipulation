@@ -38,6 +38,7 @@ add_service_files(
         GetObjects.srv
         GetObject.srv
         ExecuteAction.srv
+        LinkBotReset.srv
 )
 
 generate_messages(
