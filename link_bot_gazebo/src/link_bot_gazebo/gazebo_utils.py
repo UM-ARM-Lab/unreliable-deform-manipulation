@@ -8,7 +8,7 @@ from colorama import Fore
 from link_bot_gazebo.msg import Position2dAction, ObjectAction
 from link_bot_gazebo.srv import CameraProjection, InverseCameraProjection, LinkBotStateRequest, WorldControlRequest, \
     InverseCameraProjectionRequest, \
-    CameraProjectionRequest, ExecuteActionRequest
+    CameraProjectionRequest, ExecuteActionRequest, GetObject
 from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
 
@@ -27,6 +27,9 @@ class GazeboServices(Services):
         # we can't mock these
         self.apply_body_wrench = rospy.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
         self.link_bot_reset = rospy.ServiceProxy("/link_bot_reset", std_srvs.srv.Empty)
+
+        # not used in real robot experiments
+        self.get_tether_state = rospy.ServiceProxy("/tether", GetObject)
 
         # FIXME: wrap up all this "automatically rearrange the environment" business
         self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)

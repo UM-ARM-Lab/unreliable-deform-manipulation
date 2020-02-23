@@ -123,7 +123,8 @@ class RasterClassifierWrapper(BaseClassifier):
             origin = local_env_data.origin
             res = local_env_data.resolution[0]
             local_env = local_env_data.data
-            image = make_transition_image(local_env, s1, action, s2, res, origin)
+            action_in_image = self.model_hparams['action_in_image']
+            image = make_transition_image(local_env, s1, action, s2, res, origin, action_in_image)
             image = tf.convert_to_tensor(image, dtype=tf.float32)
             image = tf.expand_dims(image, axis=0)
         elif image_key == 'trajectory_image':

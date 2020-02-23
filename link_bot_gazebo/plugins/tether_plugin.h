@@ -26,14 +26,6 @@ class TetherPlugin : public ModelPlugin {
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
 
-  void OnUpdate();
-
-  void OnStop(std_msgs::EmptyConstPtr msg);
-
-  void OnEnable(link_bot_gazebo::ModelsEnableConstPtr msg);
-
-  void OnAction(link_bot_gazebo::ModelsPosesConstPtr msg);
-
   bool StateServiceCallback(link_bot_gazebo::GetObjectRequest &req, link_bot_gazebo::GetObjectResponse &res);
 
  private:
@@ -41,30 +33,12 @@ class TetherPlugin : public ModelPlugin {
 
   event::ConnectionPtr update_connection_;
   physics::ModelPtr model_;
-  physics::LinkPtr link_;
-  std::string link_name_;
-  bool enabled_{true};
   std::unique_ptr<ros::NodeHandle> ros_node_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
   ros::ServiceServer state_service_;
   ros::Publisher register_tether_pub_;
-  ros::Subscriber enable_sub_;
-  ros::Subscriber action_sub_;
-  ros::Subscriber stop_sub_;
   unsigned int num_links_{0u};
-  double kP_pos_{0.0};
-  double kI_pos_{0.0};
-  double kD_pos_{0.0};
-  double max_vel_{0.0};
-  double kP_vel_{0.0};
-  double kI_vel_{0.0};
-  double kD_vel_{0.0};
-  double max_force_{0.0};
-  common::PID pos_pid_;
-  common::PID vel_pid_;
-  ignition::math::Pose3d target_pose_{0, 0, 0, 0, 0, 0};
-  ignition::math::Vector3d target_velocity_{0, 0, 0};
 };
 
 }  // namespace gazebo

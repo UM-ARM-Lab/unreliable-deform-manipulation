@@ -34,6 +34,7 @@ def main():
     parser.add_argument("--start-idx-offset", type=int, default=0, help='offset TFRecord file names')
     parser.add_argument("--move-objects-every-n", type=int, default=16, help='rearrange objects every n trajectories')
     parser.add_argument("--no-obstacles", action='store_true', help='do not move obstacles')
+    parser.add_argument("--tether", action='store_true', help='include tether state in dataset')
     parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB', help='compression type')
     parser.add_argument("--trajs-per-file", type=int, default=128, help='trajs per file')
     parser.add_argument("--seed", '-s', type=int, help='seed')

@@ -34,12 +34,11 @@ def main():
     tf.random.set_random_seed(1)
 
     dataset = LinkBotStateSpaceDataset(args.dataset_dir)
-    train_dataset = dataset.get_datasets(shuffle=args.shuffle,
-                                         mode=args.mode,
+    train_dataset = dataset.get_datasets(mode=args.mode,
                                          sequence_length=None,
-                                         seed=1,
-                                         n_parallel_calls=1,
-                                         batch_size=1)
+                                         n_parallel_calls=1)
+    if args.shuffle:
+        train_dataset = train_dataset.shuffle(1024, seed=1)
 
     full_env_params = FullEnvParams.from_json(dataset.hparams['full_env_params'])
 
@@ -68,13 +67,17 @@ def main():
 
         out_of_bounds = False
 
-        rope_configurations = input_data['state/link_bot'].numpy().squeeze()
-        actions = input_data['action'].numpy().squeeze()
+        tether = ('state/tether' in input_data)
+
+        rope_configurations = input_data['state/link_bot'].numpy()
+        if tether:
+            tether_configurations = input_data['state/tether'].numpy()
+        actions = input_data['action'].numpy()
         all_vs.extend(actions.flatten().tolist())
 
         if not args.no_plot:
-            full_env = input_data['full_env/env'].numpy().squeeze()
-            full_env_extents = input_data['full_env/extent'].numpy().squeeze()
+            full_env = input_data['full_env/env'].numpy()
+            full_env_extents = input_data['full_env/extent'].numpy()
 
             fig, ax = plt.subplots()
             arrow_width = 0.1
@@ -90,23 +93,32 @@ def main():
             head_point = rope_configurations[0].reshape(-1, 2)[-1]
             arrow = plt.Arrow(head_point[0], head_point[1], actions[0, 0], actions[0, 1], width=arrow_width, zorder=4)
             patch = ax.add_patch(arrow)
-            line = plot_rope_configuration(ax, rope_configurations[0], linewidth=5, zorder=3, c='r')[0]
+            link_bot_line = plot_rope_configuration(ax, rope_configurations[0], linewidth=5, zorder=3, c='r')[0]
+            if tether:
+                tether_line = plot_rope_configuration(ax, tether_configurations[0], linewidth=1, zorder=2, c='w')[0]
 
             def update(t):
                 nonlocal patch
-                config = rope_configurations[t]
-                head_point = config.reshape(-1, 2)[-1]
+                link_bot_config = rope_configurations[t]
+                tether_config = tether_configurations[t]
+                head_point = link_bot_config.reshape(-1, 2)[-1]
                 action = actions[t]
 
                 full_env_handle.set_data(np.flipud(full_env))
                 full_env_handle.set_extent(full_env_extents)
 
                 if args.redraw:
-                    xs, ys = plottable_rope_configuration(config)
-                    line.set_xdata(xs)
-                    line.set_ydata(ys)
+                    xs, ys = plottable_rope_configuration(link_bot_config)
+                    link_bot_line.set_xdata(xs)
+                    link_bot_line.set_ydata(ys)
+                    if tether:
+                        xs, ys = plottable_rope_configuration(tether_config)
+                        tether_line.set_xdata(xs)
+                        tether_line.set_ydata(ys)
                 else:
-                    plot_rope_configuration(ax, config, linewidth=5, zorder=3, c='r')
+                    plot_rope_configuration(ax, link_bot_config, linewidth=5, zorder=3, c='r')
+                    if tether:
+                        plot_rope_configuration(ax, tether_config, linewidth=1, zorder=2, c='w')
                 patch.remove()
                 arrow = plt.Arrow(head_point[0], head_point[1], action[0], action[1], width=arrow_width, zorder=4)
                 patch = ax.add_patch(arrow)

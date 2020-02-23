@@ -162,6 +162,9 @@ n_colors = colors.length
             </physics>
         </joint>
 
+        <plugin name='tether_plugin' filename='libtether_plugin.so'>
+            <num_links><%=n_links%></num_links>
+        </plugin>
         <plugin name='multi_link_bot_model_plugin' filename='libmulti_link_bot_model_plugin.so'>
             <kP_pos>50</kP_pos>
             <kI_pos>0.001</kI_pos>

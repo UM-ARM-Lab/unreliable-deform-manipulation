@@ -10,7 +10,7 @@ import numpy as np
 import rospy
 import tensorflow
 from colorama import Fore
-from link_bot_gazebo.srv import LinkBotStateRequest, ExecuteActionRequest
+from link_bot_gazebo.srv import LinkBotStateRequest, ExecuteActionRequest, GetObjectRequest
 
 from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
@@ -37,6 +37,7 @@ def sample_delta_pos(action_rng, max_delta_pos, head_point, goal_env_w, goal_env
 
 def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random.RandomState):
     state_req = LinkBotStateRequest()
+    tether_req = GetObjectRequest()
     action_msg = ExecuteActionRequest()
 
     max_delta_pos = ros_pycommon.get_max_speed() * args.dt
@@ -58,8 +59,12 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
         # Query the current state
         state = services.get_state(state_req)
         head_idx = state.link_names.index("head")
-        points_flat = link_bot_pycommon.flatten_points(state.points)
+        link_bot_state = link_bot_pycommon.flatten_points(state.points)
         head_point = state.points[head_idx]
+
+        if args.tether:
+            tether_res = services.get_tether_state(tether_req)
+            tether_state = link_bot_pycommon.flatten_named_points(tether_res.object.points)
 
         gripper1_dx, gripper1_dy = sample_delta_pos(action_rng, max_delta_pos, head_point, args.goal_env_w, args.goal_env_h,
                                                     gripper1_dx, gripper1_dy)
@@ -81,7 +86,9 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
                                                                services=services)
 
         feature['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature([gripper1_dx, gripper1_dy])
-        feature['{}/state/link_bot'.format(time_idx)] = float_tensor_to_bytes_feature(points_flat)
+        feature['{}/state/link_bot'.format(time_idx)] = float_tensor_to_bytes_feature(link_bot_state)
+        if args.tether:
+            feature['{}/state/tether'.format(time_idx)] = float_tensor_to_bytes_feature(tether_state)
         feature['{}/state/local_env'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.data)
         feature['{}/state/local_env_origin'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.origin)
         feature['{}/res'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.resolution[0])
@@ -171,6 +178,7 @@ def generate(myenv_utils, args):
             'sequence_length': args.steps_per_traj,
             'n_state': n_state,
             'n_action': 2,
+            'tether': args.tether,
         }
         json.dump(options, of, indent=1)
 

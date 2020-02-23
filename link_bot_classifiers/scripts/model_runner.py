@@ -36,7 +36,6 @@ def train(args, seed: int):
     # Model
     ###############
     model_hparams = json.load((args.model_hparams).open('r'))
-    image_key = model_hparams['image_key']
     # FIXME: name things better
     model_hparams['classifier_dataset_params'] = classifier_dataset_params
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
@@ -45,12 +44,15 @@ def train(args, seed: int):
     # More dataset crap
     train_tf_dataset = train_dataset.get_datasets(mode='train')
     val_tf_dataset = val_dataset.get_datasets(mode='val')
-    if model_hparams['image_key'] == 'transition_image':
-        train_tf_dataset = train_tf_dataset.map(add_transition_image)
-        val_tf_dataset = train_tf_dataset.map(add_transition_image)
-    elif model_hparams['image_key'] == 'trajectory_image':
-        train_tf_dataset = train_tf_dataset.map(add_traj_image)
-        val_tf_dataset = val_tf_dataset.map(add_traj_image)
+    action_in_image = model_hparams['action_in_image']
+    if 'image_key' in model_hparams:
+        image_key = model_hparams['image_key']
+        if model_hparams['image_key'] == 'transition_image':
+            train_tf_dataset = add_transition_image(train_tf_dataset, action_in_image)
+            val_tf_dataset = add_transition_image(train_tf_dataset, action_in_image)
+        elif model_hparams['image_key'] == 'trajectory_image':
+            train_tf_dataset = add_traj_image(train_tf_dataset, action_in_image)
+            val_tf_dataset = add_traj_image(val_tf_dataset, action_in_image)
 
     if classifier_dataset_params['balance']:
         print(Fore.GREEN + "balancing..." + Fore.RESET)
@@ -87,10 +89,11 @@ def eval(args, seed: int):
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
     # More dataset crap
+    action_in_image = model_hparams['action_in_image']
     if model_hparams['image_key'] == 'transition_image':
-        test_tf_dataset = test_tf_dataset.map(add_transition_image)
+        test_tf_dataset = add_transition_image(test_tf_dataset, action_in_image)
     elif model_hparams['image_key'] == 'trajectory_image':
-        test_tf_dataset = test_tf_dataset.map(add_traj_image)
+        test_tf_dataset = add_traj_image(test_tf_dataset, action_in_image)
 
     if classifier_dataset_params['balance']:
         print(Fore.GREEN + "balancing..." + Fore.RESET)

@@ -30,6 +30,7 @@ def main():
     parser.add_argument('--pre', type=int, default=0.15)
     parser.add_argument('--post', type=int, default=0.21)
     parser.add_argument('--discard-pre-far', action='store_true')
+    parser.add_argument('--action-in-image', action='store_true')
     parser.add_argument('--no-balance', action='store_true')
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
@@ -45,9 +46,9 @@ def main():
     classifier_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
     dataset = classifier_dataset.get_datasets(mode=args.mode)
     if args.display_type == 'transition_image':
-        dataset = dataset.map(add_transition_image)
+        dataset = add_transition_image(dataset, args.action_in_image)
     if args.display_type == 'trajectory_image':
-        dataset = dataset.map(add_traj_image)
+        dataset = add_traj_image(dataset, args.action_in_image)
 
     if classifier_dataset_params['balance'] and not args.no_balance:
         if args.display_type == 'transition_image':

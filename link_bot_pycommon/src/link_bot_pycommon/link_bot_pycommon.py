@@ -129,6 +129,10 @@ def flatten_points(points):
     return np.array([[p.x, p.y] for p in points]).flatten()
 
 
+def flatten_named_points(points):
+    return np.array([[p.point.x, p.point.y] for p in points]).flatten()
+
+
 def transpose_2d_lists(l):
     # https://stackoverflow.com/questions/6473679/transpose-list-of-lists
     return list(map(list, zip(*l)))
@@ -137,6 +141,7 @@ def transpose_2d_lists(l):
 def print_dict(example):
     for k, v in example.items():
         print(k, v.shape)
+
 
 def rand_str(length=16):
     """Generate a random string of fixed length """

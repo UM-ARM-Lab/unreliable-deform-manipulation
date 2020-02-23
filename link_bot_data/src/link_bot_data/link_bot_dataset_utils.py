@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 
-import numpy as np
-import random
 from typing import Optional
+
+import numpy as np
 import tensorflow as tf
+
 from link_bot_pycommon import link_bot_pycommon
-from moonshine.raster_points_layer import RasterPoints, raster, make_transition_image
+from moonshine.raster_points_layer import raster, make_transition_image
 
 
 def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
@@ -139,7 +140,6 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
     """
     generate more examples by random 90 rotations or horizontal/vertical flipping
     """
-    import time
     def _label_is(label_is):
         def __filter(transition):
             result = tf.squeeze(tf.equal(transition[label_key], label_is))
@@ -238,57 +238,63 @@ def raster_rope_images(planned_states, res, h, w, n_points):
     return rope_images
 
 
-def add_traj_image(input_dict):
-    # TODO: incorporate action somehow? maybe one channel per action per time step
-    full_env = input_dict['full_env/env']
-    res = input_dict['res']
-    stop_index = input_dict['planned_state/link_bot_all_stop']
-    planned_states = input_dict['planned_state/link_bot_all'][:stop_index]
+def add_traj_image(dataset, action_in_image: bool):
+    def _add_traj_image(input_dict):
+        # TODO: incorporate action somehow? maybe one channel per action per time step
+        full_env = input_dict['full_env/env']
+        res = input_dict['res']
+        stop_index = input_dict['planned_state/link_bot_all_stop']
+        planned_states = input_dict['planned_state/link_bot_all'][:stop_index]
 
-    h, w = full_env.shape
-    t = planned_states.shape[0]
-    n_points = link_bot_pycommon.n_state_to_n_points(planned_states.shape[1])
+        h, w = full_env.shape
+        t = planned_states.shape[0]
+        n_points = link_bot_pycommon.n_state_to_n_points(planned_states.shape[1])
 
-    # add channel index
-    full_env = tf.expand_dims(full_env, axis=2)
+        # add channel index
+        full_env = tf.expand_dims(full_env, axis=2)
 
-    rope_imgs = tf.numpy_function(raster_rope_images, [planned_states, res, h, w, n_points], tf.float32)
-    rope_imgs.set_shape([h, w, n_points])
+        rope_imgs = tf.numpy_function(raster_rope_images, [planned_states, res, h, w, n_points], tf.float32)
+        rope_imgs.set_shape([h, w, n_points])
 
-    # h, w, channel
-    image = tf.concat((full_env, rope_imgs), axis=2)
-    input_dict['trajectory_image'] = image
-    return input_dict
+        # h, w, channel
+        image = tf.concat((full_env, rope_imgs), axis=2)
+        input_dict['trajectory_image'] = image
+        return input_dict
+
+    return dataset.map(_add_traj_image())
 
 
-def add_transition_image(input_dict):
-    """
-    Expected sizes:
-        'action': n_action
-        'planned_state': n_state
-        'planned_state_next': n_state
-        'planned_local_env/env': h, w
-        'planned_local_env/origin': 2
-        'planned_local_env/extent': 4
-        'resolution': 1
-    """
-    action = input_dict['action']
-    planned_local_env = input_dict['planned_state/local_env']
-    res = input_dict['res']
-    origin = input_dict['planned_state/local_env_origin']
-    planned_state = input_dict['planned_state/link_bot']
-    planned_next_state = input_dict['planned_state_next/link_bot']
-    n_control = action.shape[0]
-    h, w = planned_local_env.shape
-    n_points = link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
+def add_transition_image(dataset, action_in_image: bool):
+    def _add_transition_image(input_dict):
+        """
+        Expected sizes:
+            'action': n_action
+            'planned_state': n_state
+            'planned_state_next': n_state
+            'planned_local_env/env': h, w
+            'planned_local_env/origin': 2
+            'planned_local_env/extent': 4
+            'resolution': 1
+        """
+        action = input_dict['action']
+        planned_local_env = input_dict['planned_state/local_env']
+        res = input_dict['res']
+        origin = input_dict['planned_state/local_env_origin']
+        planned_state = input_dict['planned_state/link_bot']
+        planned_next_state = input_dict['planned_state_next/link_bot']
+        n_control = action.shape[0]
+        h, w = planned_local_env.shape
+        n_points = link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
 
-    image = tf.numpy_function(make_transition_image,
-                              [planned_local_env, planned_state, action, planned_next_state, res, origin],
-                              tf.float32)
-    image.set_shape([h, w, 1 + n_points + n_points + n_control])
+        image = tf.numpy_function(make_transition_image,
+                                  [planned_local_env, planned_state, action, planned_next_state, res, origin, action_in_image],
+                                  tf.float32)
+        image.set_shape([h, w, 1 + n_points + n_points + n_control])
 
-    input_dict['transition_image'] = image
-    return input_dict
+        input_dict['transition_image'] = image
+        return input_dict
+
+    return dataset.map(_add_transition_image)
 
 
 def cachename(mode: Optional[str] = None):

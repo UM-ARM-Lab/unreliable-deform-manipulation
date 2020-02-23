@@ -1,6 +1,7 @@
 {
   "model_class": "raster",
   "image_key": "transition_image",
+  "action_in_image": false,
   "fc_layer_sizes": [16],
   "conv_filters": [
     [8, [5, 5]],
