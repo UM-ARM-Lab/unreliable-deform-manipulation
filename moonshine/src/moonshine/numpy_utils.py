@@ -1,17 +1,14 @@
+from typing import Dict
+
 import numpy as np
 
 
-def add_batch(x, ndim_without_batch):
-    """
-    :param x: numpy array
-    :param ndim_without_batch: number of dimensions EXCLUDING batch dimension that you want
-    :return:
-    """
-    if isinstance(x, list):
-        return np.expand_dims(x, 0)
-    if x.ndim == ndim_without_batch + 1:
-        return x
-    elif x.ndim == ndim_without_batch:
-        return np.expand_dims(x, 0)
-    else:
-        raise ValueError("x has {} dimensions but you asked to make it have {}".format(x.ndim, ndim_without_batch + 1))
+def add_batch(*args):
+    return [np.expand_dims(x, axis=0) for x in args]
+
+
+def add_batch_to_dict(data_dict: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    new_dict = {}
+    for k, v in data_dict.items():
+        new_dict[k] = np.expand_dims(v, axis=0)
+    return new_dict

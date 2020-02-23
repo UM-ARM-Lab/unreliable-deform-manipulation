@@ -3,6 +3,7 @@ import tensorflow as tf
 
 from link_bot_pycommon import link_bot_pycommon
 from moonshine.action_smear_layer import smear_action
+from moonshine.numpy_utils import add_batch
 
 
 def raster(state, res, origin, h, w):
@@ -53,15 +54,15 @@ def make_transition_image(local_env, planned_state, action, planned_next_state, 
     local_env = np.expand_dims(local_env, axis=2)
 
     # TODO: ADD BATCH INDEX HERE
-    planned_rope_image = raster(planned_state, res, origin, h, w)
-    planned_next_rope_image = raster(planned_next_state, res, origin, h, w)
+    planned_rope_image = raster(*add_batch(planned_state, res, origin), h, w)[0]
+    planned_next_rope_image = raster(*add_batch(planned_next_state, res, origin), h, w)[0]
 
     # action
     # add spatial dimensions and tile
     if action_in_image:
         image = np.concatenate((planned_rope_image, planned_next_rope_image, local_env), axis=2)
     else:
-        action_image = smear_action(action, h, w)
+        action_image = smear_action(*add_batch(action), h, w)[0]
         image = np.concatenate((planned_rope_image, planned_next_rope_image, local_env, action_image), axis=2)
     return image
 
