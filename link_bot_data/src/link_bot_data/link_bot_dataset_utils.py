@@ -206,9 +206,7 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
         negative_examples = negative_examples.cache(cachename())
         negative_examples = negative_examples.repeat()
 
-        augmented_negative_examples = negative_examples.map(augment)
-
-        balanced_dataset = tf.data.Dataset.zip((positive_examples, augmented_negative_examples))
+        balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
     else:
         negative_examples = dataset.filter(_label_is(0))
 
@@ -216,9 +214,7 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
         positive_examples = positive_examples.cache(cachename())
         positive_examples = positive_examples.repeat()
 
-        augmented_positive_examples = positive_examples.map(augment)
-
-        balanced_dataset = tf.data.Dataset.zip((negative_examples, augmented_positive_examples))
+        balanced_dataset = tf.data.Dataset.zip((negative_examples, positive_examples))
 
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
 
