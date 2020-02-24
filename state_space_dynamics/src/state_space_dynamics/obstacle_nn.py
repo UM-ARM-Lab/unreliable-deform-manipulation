@@ -89,12 +89,14 @@ class ObstacleNN(tf.keras.Model):
     def call(self, input_dict, training=None, mask=None):
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
-        link_bot_0 = tf.expand_dims(input_dict['state/link_bot'][:, 0], axis=2)
-        if self.tether:
-            tether_0 = tf.expand_dims(input_dict['state/tether'][:, 0], axis=2)
-            s_0 = tf.concat((link_bot_0, tether_0), axis=1)
-        else:
-            s_0 = link_bot_0
+
+        substates_0 = []
+        for name, n in self.states_description.items():
+            state_key = 'state/{}'.format(name)
+            substate_0 = tf.expand_dims(input_dict[state_key][:, 0], axis=2)
+            substates_0.append(substate_0)
+
+        s_0 = tf.concat(substates_0, axis=1)
 
         resolution = input_dict['res']
         full_env = input_dict['full_env/env']
