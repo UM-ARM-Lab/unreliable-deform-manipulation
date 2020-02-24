@@ -64,7 +64,7 @@ class ObstacleNN(tf.keras.Model):
         self.concat = layers.Concatenate()
         self.concat2 = layers.Concatenate()
         # TODO: replace all "if tether" with generic Dict of state vectors stuff
-        self.states_description = self.hparams['dynamics_dataset_hparams']['states_desription']
+        self.states_description = self.hparams['dynamics_dataset_hparams']['states_description']
         self.out_dim = sum(self.states_description.values())
         self.dense_layers = []
         for fc_layer_size in self.hparams['fc_layer_sizes']:
