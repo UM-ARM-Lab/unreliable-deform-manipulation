@@ -14,30 +14,26 @@ class CollisionCheckerClassifier(BaseClassifier):
         super().__init__()
         self.inflation_radius = inflation_radius
 
-    def predict(self, local_env_data: List[OccupancyData], s1: np.ndarray, s2: np.ndarray, action: np.ndarray) -> float:
-        predictions = []
-        for local_env, s1, s2 in zip(local_env_data, s1, s2):
-            local_env = link_bot_sdf_utils.inflate(local_env, self.inflation_radius)
-            xs1, ys1 = plottable_rope_configuration(s1)
-            xs2, ys2 = plottable_rope_configuration(s2)
+    def predict(self, local_env_data: OccupancyData, s1: np.ndarray, s2: np.ndarray, action: np.ndarray) -> float:
+        local_env = link_bot_sdf_utils.inflate(local_env_data, self.inflation_radius)
+        xs1, ys1 = plottable_rope_configuration(s1)
+        xs2, ys2 = plottable_rope_configuration(s2)
 
-            def _check(xs, ys):
-                prediction = True
-                for x, y in zip(xs, ys):
-                    row, col = point_to_idx(x, y, local_env.resolution, origin=local_env.origin)
-                    try:
-                        # 1 means obstacle, aka in collision
-                        d = local_env.data[row, col]
-                        point_not_in_collision = not d
-                        # prediction of True means not in collision
-                        prediction = prediction and point_not_in_collision
-                    except IndexError:
-                        pass
-                return prediction
+        def _check(xs, ys):
+            prediction = True
+            for x, y in zip(xs, ys):
+                row, col = point_to_idx(x, y, local_env_data.resolution, origin=local_env_data.origin)
+                try:
+                    # 1 means obstacle, aka in collision
+                    d = local_env_data.data[row, col]
+                    point_not_in_collision = not d
+                    # prediction of True means not in collision
+                    prediction = prediction and point_not_in_collision
+                except IndexError:
+                    pass
+            return prediction
 
-            prediction = _check(xs1, ys1)
-            prediction = prediction and _check(xs2, ys2)
-            prediction = 1.0 if prediction else 0.0
-            predictions.append(prediction)
-
-        return predictions
+        prediction = _check(xs1, ys1)
+        prediction = prediction and _check(xs2, ys2)
+        prediction = 1.0 if prediction else 0.0
+        return prediction

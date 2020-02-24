@@ -1,7 +1,11 @@
 {
   "model_class": "ObstacleNN",
   "use_full_env": true,
-  "tether": false,
+  "tether": true,
+  "states_keys": 
+    "link_bot",
+    "tether"
+  ],
   "n_control": 2,
   "sequence_length": 20,
   "conv_filters": [

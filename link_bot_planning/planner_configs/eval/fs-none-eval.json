@@ -6,7 +6,6 @@
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
-  "max_v": 0.15,
   "goal_threshold": 0.15,
   "random_epsilon": 0.05,
   "max_angle_rad": 1.0,

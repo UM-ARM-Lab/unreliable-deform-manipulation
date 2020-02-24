@@ -14,10 +14,9 @@ from colorama import Fore
 from matplotlib import animation
 
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_data
-from link_bot_gazebo.srv import LinkBotStateRequest
+from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import model_utils
-from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.ros_pycommon import make_trajectory_execution_request, get_occupancy_data, \
     trajectory_execution_response_to_numpy, get_start_states
 from state_space_dynamics.base_forward_model import BaseForwardModel
@@ -63,16 +62,18 @@ def main():
     np.set_printoptions(suppress=True, linewidth=250, precision=4, threshold=64 * 64 * 3)
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("model_dir", type=pathlib.Path, help='path to model')
-    parser.add_argument("model_type", choices=['nn', 'llnn', 'gp', 'rigid'], default='llnn', help='type of model')
+    parser.add_argument("model_type", choices=['nn', 'llnn', 'rigid', 'obs'], default='obs', help='type of model')
     parser.add_argument("outdir", type=pathlib.Path, help="output metrics (and optionally visualizations) here")
     parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--max-step-size', type=float, default=0.01)
     parser.add_argument('--n-trajs', type=int, default=100)
     parser.add_argument('--n-actions-per-traj', type=int, default=5)
     parser.add_argument('--p-kink', type=int, default=0.1)
     parser.add_argument('--kinked-actions', action='store_true')
     parser.add_argument('--no-plot', action='store_true')
+    parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
 
     args = parser.parse_args()
 
@@ -111,17 +112,8 @@ def run_traj(args,
              fwd_model: BaseForwardModel,
              traj_idx: int,
              root: pathlib.Path):
-    services.reset_gazebo_environment(reset_model_poses=False)
+    services.setup_env(args.verbose, real_time_rate=1.0, max_step_size=args.max_step_size, reset_world=True)
     services.pause(std_srvs.srv.EmptyRequest())
-
-    # TODO: reset the rope to a random angle
-    # use a simple P controller?
-
-    state_req = LinkBotStateRequest()
-    state = services.get_state.call(state_req)
-    initial_rope_configuration = np.array([[p.x, p.y] for p in state.points]).flatten()
-    initial_head_point = np.array([state.points[2].x, state.points[2].y])
-    initial_angle = link_bot_pycommon.angle_from_configuration(initial_rope_configuration)
 
     if args.kinked_actions:
         actions = sample_kinked_action_sequence(args.n_actions_per_traj, args.p_kink)
@@ -132,26 +124,37 @@ def run_traj(args,
                                        env_h=fwd_model.full_env_params.h,
                                        res=fwd_model.full_env_params.res,
                                        services=services)
-    state_keys = fwd_model.hparams['state_keys']
+    state_keys = fwd_model.hparams['states_keys']
+    print("get")
     start_states, link_bot_start_state, head_point = get_start_states(services, state_keys)
 
-    predicted_points = fwd_model.predict(full_env=full_env_data.data,
+    print("pred")
+    predicted_paths = fwd_model.predict(full_env=full_env_data.data,
                                          full_env_origin=full_env_data.origin,
                                          res=full_env_data.resolution[0],
                                          states=start_states,
                                          actions=actions)
 
-    predicted_points = predicted_points[0]
     trajectory_execution_request = make_trajectory_execution_request(fwd_model.dt, actions)
+    print("exec")
     traj_res = services.execute_trajectory(trajectory_execution_request)
-    actual_points, _ = trajectory_execution_response_to_numpy(traj_res, None, services)
-    actual_points = actual_points.reshape([actual_points.shape[0], -1, 2])
-    position_errors = np.linalg.norm(predicted_points - actual_points, axis=2)
-    if not args.no_plot:
-        visualize(root, predicted_points, actual_points, traj_idx)
-        print("mean error: {:5.3f}".format(np.mean(position_errors)))
+    actual_paths = trajectory_execution_response_to_numpy(traj_res, None, services)
+    print("done")
 
-    return {'error': position_errors, 'initial_angle': initial_angle, 'actions': actions}
+    error_metrics = {'actions': actions}
+    for state_name, predicted_path in predicted_paths.items():
+        actual_path = actual_paths[state_name]
+        actual_path = actual_path.reshape([actual_path.shape[0], -1, 2])
+        predicted_path = predicted_path.reshape([predicted_path.shape[0], -1, 2])
+        errors = np.linalg.norm(predicted_path - actual_path, axis=2)
+
+        if not args.no_plot:
+            visualize(root, predicted_path, actual_path, traj_idx)
+            print("mean error for state {}: {:5.3f}".format(state_name, np.mean(errors)))
+
+        error_metrics[state_name] = errors
+
+    return error_metrics
 
 
 def sample_kinked_action_sequence(n_actions_per_traj, p_kink):
@@ -161,8 +164,7 @@ def sample_kinked_action_sequence(n_actions_per_traj, p_kink):
         r = np.random.uniform(0.0, 1.0)
         if r < p_kink:
             a_t = np.random.uniform([-0.15, -0.15], [0.15, 0.15])
-        a_t_noisy = a_t + np.random.multivariate_normal([0, 0], np.eye(2) * 1e-5)
-        actions.append(a_t_noisy)
+        actions.append(a_t)
     actions = np.array(actions)
     return actions
 

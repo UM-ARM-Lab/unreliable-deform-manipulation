@@ -73,7 +73,8 @@ def main():
         if tether:
             tether_configurations = input_data['state/tether'].numpy()
         actions = input_data['action'].numpy()
-        all_vs.extend(actions.flatten().tolist())
+        speeds = np.linalg.norm(actions, axis=1)
+        all_vs.extend(speeds.tolist())
 
         if not args.no_plot:
             full_env = input_data['full_env/env'].numpy()
@@ -139,9 +140,9 @@ def main():
         i += 1
     print("dataset mode={}, size={}".format(args.mode, i))
 
-    if not args.no_plot:
-        plt.hist(all_vs)
-        plt.show()
+    print(np.max(all_vs))
+    plt.hist(all_vs)
+    plt.show()
 
 
 if __name__ == '__main__':

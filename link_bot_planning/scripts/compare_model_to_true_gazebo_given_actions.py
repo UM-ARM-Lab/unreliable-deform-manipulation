@@ -10,47 +10,56 @@ import numpy as np
 import rospy
 import std_srvs
 import tensorflow as tf
-from link_bot_gazebo.srv import LinkBotStateRequest, WorldControlRequest
 from matplotlib import animation
 
 from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import get_local_occupancy_data
-from link_bot_planning import model_utils, classifier_utils
-from link_bot_pycommon.ros_pycommon import make_trajectory_execution_request, trajectory_execution_response_to_numpy
+from link_bot_planning import model_utils
+from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
+from link_bot_pycommon.ros_pycommon import make_trajectory_execution_request, trajectory_execution_response_to_numpy, \
+    get_occupancy_data, get_start_states
 from victor import victor_utils
 
-tf.enable_eager_execution()
+tf.compat.v1.enable_eager_execution()
 
 
-def visualize(args, env_data, predicted_points, actual_points, p_accept_s):
+def visualize(args, env_data: OccupancyData, predicted_paths, actual_paths, p_accept_s):
     fig, ax = plt.subplots(nrows=1, ncols=1)
 
-    predicted_rope_handle, = ax.plot([], [], color='r', label='predicted')
-    predicted_scatt = ax.scatter([], [], color='k', s=10)
-    actual_rope_handle, = ax.plot([], [], color='b', label='actual')
-    actual_scatt = ax.scatter([], [], color='k', s=10)
+    predicted_rope_handles = {}
+    predicted_scatts = {}
+    actual_rope_handles = {}
+    actual_scatts = {}
+    for state_name in predicted_paths.keys():
+        predicted_rope_handle, = ax.plot([], [], color='r', label='predicted {}'.format(state_name))
+        predicted_rope_handles[state_name] = predicted_rope_handle
+        predicted_scatt = ax.scatter([], [], color='k', s=10)
+        predicted_scatts[state_name] = predicted_scatt
+        actual_rope_handle, = ax.plot([], [], color='b', label='actual {}'.format(state_name))
+        actual_rope_handles[state_name] = actual_rope_handle
+        actual_scatt = ax.scatter([], [], color='k', s=10)
+        actual_scatts[state_name] = actual_scatt
+
     ax.axis('equal')
     ax.set_xlim([-5.0, 5.0])
     ax.set_ylim([-5.0, 5.0])
-    ax.imshow(env_data.image, extent=env_data.extent)
+    ax.imshow(np.flipud(env_data.data), extent=env_data.extent)
 
     def update(t):
-        predicted_xs = predicted_points[t, :, 0]
-        predicted_ys = predicted_points[t, :, 1]
-        predicted_rope_handle.set_data(predicted_xs, predicted_ys)
-        if t < len(p_accept_s):
-            if p_accept_s[t] > 0.5:
-                predicted_rope_handle.set_color('w')
-            else:
-                predicted_rope_handle.set_color('k')
-        predicted_scatt.set_offsets([predicted_xs[-1], predicted_ys[-1]])
+        for state_name, predicted_path in predicted_paths.items():
+            actual_path = actual_paths[state_name]
+            predicted_xs = predicted_path[t, :, 0]
+            predicted_ys = predicted_path[t, :, 1]
+            predicted_rope_handles[state_name].set_data(predicted_xs, predicted_ys)
+            predicted_scatts[state_name].set_offsets([predicted_xs[-1], predicted_ys[-1]])
 
-        actual_xs = actual_points[t, :, 0]
-        actual_ys = actual_points[t, :, 1]
-        actual_rope_handle.set_data(actual_xs, actual_ys)
-        actual_scatt.set_offsets([actual_xs[-1], actual_ys[-1]])
+            actual_xs = actual_path[t, :, 0]
+            actual_ys = actual_path[t, :, 1]
+            actual_rope_handles[state_name].set_data(actual_xs, actual_ys)
+            actual_scatts[state_name].set_offsets([actual_xs[-1], actual_ys[-1]])
 
-    anim = animation.FuncAnimation(fig, update, interval=250, frames=len(predicted_points))
+    T = predicted_paths['link_bot'].shape[0]
+    anim = animation.FuncAnimation(fig, update, interval=250, frames=T)
 
     plt.legend()
     plt.tight_layout()
@@ -65,18 +74,20 @@ def visualize(args, env_data, predicted_points, actual_points, p_accept_s):
 
 def main():
     np.set_printoptions(suppress=True, linewidth=250, precision=4, threshold=64 * 64 * 3)
-    tf.logging.set_verbosity(tf.logging.FATAL)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument("model_dir", type=pathlib.Path, help='path to model')
-    parser.add_argument("model_type", choices=['nn', 'obs'], default='nn', help='type of model')
+    parser.add_argument("model_type", choices=['nn', 'obs', 'rigid'], default='nn', help='type of model')
     parser.add_argument("classifier_dir", type=pathlib.Path, help='path to model')
     parser.add_argument("classifier_type", choices=['raster', 'collision', 'none'], default='raster', help='type of classifier')
     parser.add_argument("actions", type=pathlib.Path, help='csv file of actions')
     parser.add_argument("--outdir", type=pathlib.Path, help="output visualizations here")
+    parser.add_argument('--max-step-size', type=float, default=0.01)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--no-plot', action='store_true')
+    parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
 
     args = parser.parse_args()
 
@@ -91,59 +102,46 @@ def main():
         services = victor_utils.VictorServices()
     else:
         services = gazebo_utils.GazeboServices()
-        services.reset_gazebo_environment(reset_model_poses=True)
-        services.pause(std_srvs.srv.EmptyRequest())
 
-    step = WorldControlRequest()
-    step.steps = 5000
-    services.world_control(step)  # this will block until stepping is complete
-
-    state_req = LinkBotStateRequest()
-    state = services.get_state(state_req)
-    initial_rope_configuration = np.array([[p.x, p.y] for p in state.points]).flatten()
-
-    actions = np.genfromtxt(args.actions, delimiter=',')
-    actions = np.atleast_2d(actions)
+    services.setup_env(args.verbose, real_time_rate=10.0, max_step_size=args.max_step_size, reset_world=True)
+    services.pause(std_srvs.srv.EmptyRequest())
 
     fwd_model, _ = model_utils.load_generic_model(args.model_dir, args.model_type)
-    classifier_model = classifier_utils.load_generic_model(args.classifier_dir, args.classifier_type)
-    dt = fwd_model.dt
 
-    env_data = get_local_occupancy_data(rows=200,
-                                        cols=200,
-                                        res=fwd_model.local_env_params.res,
-                                        center_point=np.array([0, 0]),
-                                        services=services)
-    predicted_points = fwd_model.predict(local_env_data=[env_data],
-                                         state=np.expand_dims(initial_rope_configuration, axis=0),
-                                         actions=np.expand_dims(actions, axis=0))
-    predicted_points = predicted_points[0]
+    full_env_data = get_occupancy_data(env_w=fwd_model.full_env_params.w,
+                                       env_h=fwd_model.full_env_params.h,
+                                       res=fwd_model.full_env_params.res,
+                                       services=services)
+    state_keys = fwd_model.hparams['states_keys']
+    start_states, link_bot_start_state, head_point = get_start_states(services, state_keys)
 
-    p_accept_s = []
-    for i in range(actions.shape[0] - 1):
-        center_point = np.array([predicted_points[i][2, 0], predicted_points[i][2, 1]])
-        local_env_data = get_local_occupancy_data(rows=fwd_model.local_env_params.h_rows,
-                                                  cols=fwd_model.local_env_params.w_cols,
-                                                  res=fwd_model.local_env_params.res,
-                                                  center_point=center_point,
-                                                  services=services)
-        p_accept = classifier_model.predict(local_env_data=[local_env_data],
-                                            s1_s=predicted_points[i].reshape([1, 6]),
-                                            s2_s=predicted_points[i + 1].reshape([1, 6]))
-        print(p_accept)
-        p_accept_s.append(p_accept)
+    actions = np.genfromtxt(args.actions, delimiter=',')
+    actions = actions.reshape([-1, fwd_model.n_control])
 
-    trajectory_execution_request = make_trajectory_execution_request(dt, actions)
+    predicted_paths = fwd_model.predict(full_env=full_env_data.data,
+                                        full_env_origin=full_env_data.origin,
+                                        res=full_env_data.resolution[0],
+                                        states=start_states,
+                                        actions=actions)
+
+    trajectory_execution_request = make_trajectory_execution_request(fwd_model.dt, actions)
     traj_res = services.execute_trajectory(trajectory_execution_request)
+    actual_paths = trajectory_execution_response_to_numpy(traj_res, None, services)
 
-    actual_points, _ = trajectory_execution_response_to_numpy(traj_res, None, services)
-    actual_points = actual_points.reshape([actual_points.shape[0], -1, 2])
+    # Reshape into points for drawing
+    for state_name, predicted_path in predicted_paths.items():
+        actual_path = actual_paths[state_name]
+        actual_paths[state_name] = actual_path.reshape([actual_path.shape[0], -1, 2])
+        predicted_paths[state_name] = predicted_path.reshape([predicted_path.shape[0], -1, 2])
 
-    position_errors = np.linalg.norm(predicted_points - actual_points, axis=2)
-    print("mean error: {:5.3f}".format(np.mean(position_errors)))
+    # Compute some error metrics
+    for state_name, predicted_path in predicted_paths.items():
+        actual_path = actual_paths[state_name]
+        errors = np.linalg.norm(predicted_path - actual_path, axis=2)
+        print("mean error for state {}: {:5.3f}".format(state_name, np.mean(errors)))
 
-    if not args.no_plot:
-        visualize(args, env_data, predicted_points, actual_points, p_accept_s)
+    # animate prediction versus actual
+    visualize(args, full_env_data, predicted_paths, actual_paths, 0)
 
 
 if __name__ == '__main__':

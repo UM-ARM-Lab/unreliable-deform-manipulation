@@ -108,7 +108,7 @@ class MyPlanner:
         control_bounds.setLow(0, -np.pi)
         control_bounds.setHigh(0, np.pi)
         control_bounds.setLow(1, 0)
-        max_delta_pos = ros_pycommon.get_max_speed() * self.fwd_model.dt * 0.9  # safety factor to make planning more accurate
+        max_delta_pos = ros_pycommon.get_max_speed() * self.fwd_model.dt
         control_bounds.setHigh(1, max_delta_pos)
         self.control_space = oc.RealVectorControlSpace(self.state_space, self.n_control)
         self.control_space.setBounds(control_bounds)
@@ -186,8 +186,6 @@ class MyPlanner:
                                              states=states,
                                              actions=np_u[0])
 
-        print(next_states)
-
         # validate the edge
         # TODO: implement this inside OMPL
         edge_is_valid = self.edge_is_valid(states, np_u, next_states)
@@ -200,7 +198,8 @@ class MyPlanner:
             self.viz_object.rejected_samples.append(next_states['link_bot'])
         else:
             for name, (idx, n) in self.subspaces_to_plan_with.items():
-                next_state = next_states[name]
+                # -1 gets the last prediction, but since all actions are of length 1, this is also the second element
+                next_state = next_states[name][-1]
                 from_numpy(next_state, state_out[idx], n)
 
             head_point = states['link_bot'][-2:]

@@ -242,8 +242,7 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result,
         'local_env': [],
         'local_env_origin': [],
     }
-    # throw out the last state because that one is due the adding the stop command, we don't care about it
-    # since we assume stop actually stops
+
     for objects in trajectory_execution_result.actual_path:
         for object in objects.objects:
             if object.name not in actual_path:

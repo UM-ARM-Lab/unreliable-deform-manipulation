@@ -1,6 +1,7 @@
 from __future__ import division
 
 import numpy as np
+import warnings
 import random
 import string
 from colorama import Fore
@@ -31,6 +32,7 @@ def unit_vector(vector):
 
 
 def angle_from_configuration(state):
+    warnings.warn("invalid for multi link ropes", DeprecationWarning)
     v1 = np.array([state[4] - state[2], state[5] - state[3]])
     v2 = np.array([state[0] - state[2], state[1] - state[3]])
     return angle_2d(v1, v2)

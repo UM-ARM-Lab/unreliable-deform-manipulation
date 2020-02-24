@@ -34,7 +34,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto joy_so = ros::SubscribeOptions::create<sensor_msgs::Joy>("/joy", 1, joy_bind, ros::VoidPtr(), &queue_);
   auto execute_trajectory_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteTrajectoryCallback, this, _1, _2);
   auto execute_trajectory_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotTrajectory>(
-      "/link_bot_execute_trajectory", execute_trajectory_bind, ros::VoidPtr(), &queue_);
+      "/link_bot_execute_trajectory", execute_trajectory_bind, ros::VoidPtr(), &execute_trajs_queue_);
   auto execute_abs_action_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteAbsoluteAction, this, _1, _2);
   auto execute_abs_action_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ExecuteAction>(
       "/execute_absolute_action", execute_abs_action_bind, ros::VoidPtr(), &queue_);
@@ -70,8 +70,10 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   objects_service_ = ros_node_->serviceClient<link_bot_gazebo::GetObjects>("/objects");
 
   ros_queue_thread_ = std::thread(std::bind(&MultiLinkBotModelPlugin::QueueThread, this));
+  execute_trajs_ros_queue_thread_ = std::thread(std::bind(&MultiLinkBotModelPlugin::QueueThread, this));
 
-  while (register_link_bot_pub_.getNumSubscribers() < 1);
+  while (register_link_bot_pub_.getNumSubscribers() < 1) {
+  }
 
   std_msgs::String register_object;
   register_object.data = "link_bot";
@@ -386,7 +388,6 @@ bool MultiLinkBotModelPlugin::GetObjectServiceCallback(link_bot_gazebo::GetObjec
     res.object.points.emplace_back(named_point);
   }
 
-
   auto const link = model_->GetLink("head");
   link_bot_gazebo::NamedPoint head_point;
   geometry_msgs::Point pt;
@@ -401,7 +402,9 @@ bool MultiLinkBotModelPlugin::GetObjectServiceCallback(link_bot_gazebo::GetObjec
 bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBotTrajectoryRequest &req,
                                                         link_bot_gazebo::LinkBotTrajectoryResponse &res)
 {
-  // TODO: Implement gripper1 path in parallel
+  // TODO: Implement gripper2 path in parallel
+  link_bot_gazebo::GetObjectsRequest get_objects_req;
+  link_bot_gazebo::GetObjectsResponse get_objects_res;
   for (auto const &action : req.gripper1_traj) {
     mode_ = "position";
     ignition::math::Vector3d delta_position{action.gripper1_delta_pos.x, action.gripper1_delta_pos.y,
@@ -409,24 +412,14 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBot
     gripper1_target_position_ += delta_position;
 
     auto control_result = UpdateControl();
-    auto link_bot_object = control_result.link_bot_config;
-    link_bot_object.name = "link_bot";
 
-    // get tether (or other) object configurations
-    link_bot_gazebo::GetObjectsRequest get_objects_req;
-    link_bot_gazebo::GetObjectsResponse get_objects_res;
+    // get tether all object configurations
     objects_service_.call(get_objects_req, get_objects_res);
-
-    link_bot_gazebo::Objects objects;
-    objects.objects.push_back(link_bot_object);
-    std::copy(get_objects_res.objects.objects.begin(), get_objects_res.objects.objects.end(),
-              std::back_inserter(objects.objects));
-
-    res.actual_path.emplace_back(objects);
+    res.actual_path.emplace_back(get_objects_res.objects);
 
     auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
     auto const steps = static_cast<unsigned int>(action.max_time_per_step / seconds_per_step);
-    for (auto i{0u}; i < steps; ++i) {
+    for (auto i{0}; i < steps; ++i) {
       model_->GetWorld()->Step(1);
       // check if setpoint is reached
       if (gripper1_pos_error_.Length() < close_enough and gripper1_vel_.Length() < stopped_threshold) {
@@ -438,18 +431,9 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBot
     gripper1_target_position_ = GetGripper1Pos();
   }
 
-  auto link_bot_object = GetConfiguration();
-
-  // get tether (or other) object configurations
-  link_bot_gazebo::GetObjectsRequest get_objects_req;
-  link_bot_gazebo::GetObjectsResponse get_objects_res;
+  // get all object configurations
   objects_service_.call(get_objects_req, get_objects_res);
-
-  link_bot_gazebo::Objects objects;
-  objects.objects.push_back(link_bot_object);
-  std::copy(get_objects_res.objects.objects.begin(), get_objects_res.objects.objects.end(),
-            std::back_inserter(objects.objects));
-  res.actual_path.emplace_back(objects);
+  res.actual_path.emplace_back(get_objects_res.objects);
 
   return true;
 }
@@ -478,6 +462,7 @@ void MultiLinkBotModelPlugin::QueueThread()
   double constexpr timeout = 0.01;
   while (ros_node_->ok()) {
     queue_.callAvailable(ros::WallDuration(timeout));
+    execute_trajs_queue_.callAvailable(ros::WallDuration(timeout));
   }
 }
 
@@ -485,8 +470,11 @@ MultiLinkBotModelPlugin::~MultiLinkBotModelPlugin()
 {
   queue_.clear();
   queue_.disable();
+  execute_trajs_queue_.clear();
+  execute_trajs_queue_.disable();
   ros_node_->shutdown();
   ros_queue_thread_.join();
+  execute_trajs_ros_queue_thread_.join();
 }
 
 // Register this plugin with the simulator

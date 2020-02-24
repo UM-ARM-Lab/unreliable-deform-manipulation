@@ -79,7 +79,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   physics::ModelPtr model_;
   event::ConnectionPtr updateConnection_;
   double length_{0.0};
-  unsigned int num_links_{0u};
+  unsigned int num_links_{0U};
   double kP_pos_{0.0};
   double kI_pos_{0.0};
   double kD_pos_{0.0};
@@ -87,7 +87,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   double kI_vel_{0.0};
   double kD_vel_{0.0};
   double max_vel_{1.0};
-  double max_speed_{1.0};
+  double max_speed_{0.15};
   double max_force_{1.0};
   physics::LinkPtr gripper1_link_{nullptr};
   common::PID gripper1_pos_pid_;
@@ -110,6 +110,8 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   ros::Publisher register_link_bot_pub_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
+  ros::CallbackQueue execute_trajs_queue_;
+  std::thread execute_trajs_ros_queue_thread_;
   std::string mode_{"disabled"};
 };
 }  // namespace gazebo

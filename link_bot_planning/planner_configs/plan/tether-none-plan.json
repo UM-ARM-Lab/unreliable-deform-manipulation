@@ -34,7 +34,6 @@
 	"planner_env_h": 5.0,
 	"full_env_w": 6.0,
 	"full_env_h": 6.0,
-	"max_v": 0.35,
 	"move_obstacles": false,
 	"nudge": false
 }

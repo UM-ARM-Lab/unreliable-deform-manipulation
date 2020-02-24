@@ -1,0 +1,60 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+    <world name="default">
+        <gui>
+            <camera name='user_camera'>
+                <pose frame=''>0 0 1.02 0 1.5707 1.5707</pose>
+                <projection_type>orthographic</projection_type>
+            </camera>
+        </gui>
+        <include>
+            <uri>model://my_plane</uri>
+        </include>
+        <include>
+            <uri>model://sun</uri>
+        </include>
+        <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
+        <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
+        <physics name="ode" type="ode">
+            <real_time_update_rate>1000</real_time_update_rate>
+            <ode>
+                <solver>
+                    <type>quick</type>
+                    <friction_model>cone_model</friction_model>
+                </solver>
+                <constraints>
+                    <contact_surface_layer>0.002</contact_surface_layer>
+                </constraints>
+            </ode>
+        </physics>
+        <include>
+            <uri>model://arena_5</uri>
+            <pose>0 0 0 0 0 0</pose>
+            <name>arena</name>
+        </include>
+
+        <include>
+            <uri>model://small_moving_box</uri>
+            <pose>0 1.0 0 0 0 0</pose>
+            <name>moving_box1</name>
+        </include>
+
+        <include>
+            <uri>model://small_moving_box</uri>
+            <pose>1.5 0.1 0 0 0 0</pose>
+            <name>moving_box2</name>
+        </include>
+
+        <include>
+            <uri>model://small_moving_box</uri>
+            <pose>-1.0 0.0 0 0 0 0</pose>
+            <name>moving_box3</name>
+        </include>
+
+        <include>
+            <uri>model://small_moving_box</uri>
+            <pose>-0.2 -1.0 0 0 0 0</pose>
+            <name>moving_box4</name>
+        </include>
+    </world>
+</sdf>

@@ -41,12 +41,7 @@ def main():
     print(table)
 
     mean_errors = np.mean(tail_errors + head_errors + mid_errors, axis=1)
-    plt.figure()
-    plt.scatter(data['initial_angle'], mean_errors)
-    plt.plot([0, np.pi], [0, 0], c='k')
-    plt.xlabel("angle (rad)")
-    plt.ylabel("increase in prediction error in R^{n_state} (m)")
-    plt.show()
+    print(mean_errors)
 
 
 if __name__ == '__main__':

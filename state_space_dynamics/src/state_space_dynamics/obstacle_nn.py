@@ -11,7 +11,6 @@ from colorama import Fore, Style
 from tensorflow import keras
 
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
-from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine import experiments_util
 from moonshine.action_smear_layer import smear_action
 from moonshine.numpy_utils import add_batch_to_dict
@@ -63,9 +62,15 @@ class ObstacleNN(tf.keras.Model):
         self.batch_size = batch_size
         self.concat = layers.Concatenate()
         self.concat2 = layers.Concatenate()
-        # TODO: replace all "if tether" with generic Dict of state vectors stuff
-        self.states_description = self.hparams['dynamics_dataset_hparams']['states_description']
-        self.out_dim = sum(self.states_description.values())
+        # State keys is all the things we want the model to take in/predict
+        self.states_keys = self.hparams['states_keys']
+        self.used_states_description = {}
+        self.out_dim = 0
+        # the states_description lists what's available in the dataset
+        for available_state_name, n in self.hparams['dynamics_dataset_hparams']['states_description'].items():
+            if available_state_name in self.states_keys:
+                self.used_states_description[available_state_name] = n
+                self.out_dim += n
         self.dense_layers = []
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
@@ -91,7 +96,8 @@ class ObstacleNN(tf.keras.Model):
         input_sequence_length = actions.shape[1]
 
         substates_0 = []
-        for name, n in self.states_description.items():
+        # TODO: FINISH FIXING THIS MODEL
+        for name, n in self.used_states_description.items():
             state_key = 'state/{}'.format(name)
             substate_0 = tf.expand_dims(input_dict[state_key][:, 0], axis=2)
             substates_0.append(substate_0)
@@ -171,7 +177,7 @@ class ObstacleNN(tf.keras.Model):
         # Split the big state vectors up by state name/dim
         start_idx = 0
         output_states_dict = {}
-        for name, n in self.states_description.items():
+        for name, n in self.used_states_description.items():
             end_idx = start_idx + n
             output_states_dict[name] = pred_states[:, :, start_idx:end_idx]
             start_idx += n

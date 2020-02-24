@@ -1,4 +1,5 @@
 import pathlib
+from typing import Dict
 
 import numpy as np
 
@@ -15,19 +16,23 @@ class RigidTranslationModel(BaseForwardModel):
                 full_env: np.ndarray,
                 full_env_origin: np.ndarray,
                 res: np.ndarray,
-                state: np.ndarray,
-                actions: np.ndarray) -> np.ndarray:
-        predictions = []
-        for state, actions in zip(state, actions):
-            s_0 = np.reshape(state, [-1, 2])
-            prediction = [s_0]
-            s_t = s_0
-            for action in actions:
-                # I've tuned beta on the no_obj_new training set based on the total error
-                B = np.tile(np.eye(2), [self.n_points, 1])
-                s_t = s_t + np.reshape(B @ action, [-1, 2]) * self.dt * self.beta
-                prediction.append(s_t)
-            prediction = np.array(prediction)
-            predictions.append(prediction)
-        predictions = np.array(predictions)
-        return predictions
+                states: Dict[str, np.ndarray],
+                actions: np.ndarray) -> Dict[str, np.ndarray]:
+        """
+        :param full_env:        (H, W)
+        :param full_env_origin: (2)
+        :param res:     scalar
+        :param states:          each value in the dictionary should be of shape (batch, n_state)
+        :param actions:         (T, 2)
+        :return: states:         each value in the dictionary should be a of shape [batch, T+1, n_state)
+        """
+        state = states['link_bot']
+        prediction = [state]
+        s_0 = np.reshape(state, [-1, 2])
+        s_t = s_0
+        for action in actions:
+            B = np.tile(np.eye(2), [self.n_points, 1])
+            s_t = s_t + np.reshape(B @ action, [-1, 2]) * self.dt * self.beta
+            prediction.append(s_t.squeeze())
+        prediction = np.array(prediction)
+        return {'link_bot': prediction}
