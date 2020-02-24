@@ -246,14 +246,14 @@ class SimpleNNWrapper(BaseForwardModel):
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
 
     def predict(self,
-                full_envs: np.ndarray,
-                full_env_origins: np.ndarray,
-                resolution_s: np.ndarray,
+                full_env: np.ndarray,
+                full_env_origin: np.ndarray,
+                res: np.ndarray,
                 state: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
-        del full_envs  # unused
-        del full_env_origins  # unused
-        del resolution_s  # unsed
+        del full_env  # unused
+        del full_env_origin  # unused
+        del res  # unsed
         batch, T, _ = actions.shape
         states = tf.convert_to_tensor(state, dtype=tf.float32)
         states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])

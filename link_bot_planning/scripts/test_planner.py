@@ -89,6 +89,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                          planning_time: float,
                          planner_status: ob.PlannerStatus):
         link_bot_planned_path = planned_path['link_bot']
+        print(link_bot_planned_path)
         final_error = np.linalg.norm(link_bot_planned_path[-1, 0:2] - tail_goal_point)
         lengths = [np.linalg.norm(link_bot_planned_path[i] - link_bot_planned_path[i - 1]) for i in
                    range(1, len(link_bot_planned_path))]
@@ -188,7 +189,7 @@ def main():
 
     services = gazebo_utils.setup_env(verbose=args.verbose,
                                       real_time_rate=sim_params.real_time_rate,
-                                      reset_gripper_to=args.reset_gripper_t,
+                                      reset_gripper_to=args.reset_gripper_to,
                                       max_step_size=sim_params.max_step_size,
                                       initial_object_dict=None)
     services.pause(std_srvs.srv.EmptyRequest())

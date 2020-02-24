@@ -94,16 +94,6 @@ def setup_env(verbose: int,
     services = GazeboServices()
     services.wait(verbose)
 
-    if reset_gripper_to is not None:
-        services.reset_world(verbose, reset_gripper_to)
-
-    # first the controller
-    stop = ExecuteActionRequest()
-    stop.action.gripper1_delta_pos.x = 0
-    stop.action.gripper1_delta_pos.y = 0
-    stop.action.max_time_per_step = 1.0
-    services.execute_action(stop)
-
     # set up physics
     get = GetPhysicsPropertiesRequest()
     current_physics = services.get_physics.call(get)
@@ -116,6 +106,16 @@ def setup_env(verbose: int,
     set.time_step = max_step_size
     set.enabled = True
     services.set_physics.call(set)
+
+    if reset_gripper_to is not None:
+        services.reset_world(verbose, reset_gripper_to)
+
+    # first the controller
+    stop = ExecuteActionRequest()
+    stop.action.gripper1_delta_pos.x = 0
+    stop.action.gripper1_delta_pos.y = 0
+    stop.action.max_time_per_step = 1.0
+    services.execute_action(stop)
 
     # Set initial object positions
     if initial_object_dict is not None:

@@ -18,6 +18,8 @@ from link_bot_gazebo.gazebo_utils import GazeboServices, get_local_occupancy_dat
 from link_bot_gazebo.srv import LinkBotStateRequest
 from link_bot_planning import model_utils
 from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon.ros_pycommon import make_trajectory_execution_request, get_occupancy_data, \
+    trajectory_execution_response_to_numpy, get_start_states
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 tf.compat.v1.enable_eager_execution()
@@ -126,20 +128,23 @@ def run_traj(args,
     else:
         actions = sample_const_action_sequence(args.n_actions_per_traj)
 
-    local_env_data = get_local_occupancy_data(cols=fwd_model.local_env_params.w_cols,
-                                              rows=fwd_model.local_env_params.h_rows,
-                                              res=fwd_model.local_env_params.res,
-                                              center_point=initial_head_point,
-                                              services=services)
-    predicted_points = fwd_model.predict(local_env_data=[local_env_data],
-                                         state=np.expand_dims(initial_rope_configuration, axis=0),
-                                         actions=np.expand_dims(actions, axis=0))
+    full_env_data = get_occupancy_data(env_w=fwd_model.full_env_params.w,
+                                       env_h=fwd_model.full_env_params.h,
+                                       res=fwd_model.full_env_params.res,
+                                       services=services)
+    state_keys = fwd_model.hparams['state_keys']
+    start_states, link_bot_start_state, head_point = get_start_states(services, state_keys)
+
+    predicted_points = fwd_model.predict(full_env=full_env_data.data,
+                                         full_env_origin=full_env_data.origin,
+                                         res=full_env_data.resolution[0],
+                                         states=start_states,
+                                         actions=actions)
+
     predicted_points = predicted_points[0]
-    trajectory_execution_request = gazebo_utils.make_trajectory_execution_request(fwd_model.dt, actions)
+    trajectory_execution_request = make_trajectory_execution_request(fwd_model.dt, actions)
     traj_res = services.execute_trajectory(trajectory_execution_request)
-    actual_points, _ = gazebo_utils.trajectory_execution_response_to_numpy(traj_res,
-                                                                           None,
-                                                                           services)
+    actual_points, _ = trajectory_execution_response_to_numpy(traj_res, None, services)
     actual_points = actual_points.reshape([actual_points.shape[0], -1, 2])
     position_errors = np.linalg.norm(predicted_points - actual_points, axis=2)
     if not args.no_plot:

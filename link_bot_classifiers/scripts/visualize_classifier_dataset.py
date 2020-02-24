@@ -165,7 +165,7 @@ def main():
                 actual_env_extent=actual_local_env_extent,
                 label=label)
             ax = plt.gca()
-            circle = patches.Circle([0, 0], radius=1.5, edgecolor='g', facecolor='#ffffff00', linewidth=3, zorder=1)
+            circle = patches.Circle([0, 0], radius=2.4, edgecolor='g', facecolor='#ffffff00', linewidth=3, zorder=1)
             ax.add_patch(circle)
             plt.legend()
             plt.show(block=True)

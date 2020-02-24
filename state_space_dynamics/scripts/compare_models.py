@@ -118,10 +118,11 @@ def generate_results(base_folder: pathlib.Path,
 
             t0 = time.time()
 
-            predicted_points = model.predict(full_envs=full_envs,
-                                             full_env_origins=full_env_origin,
-                                             resolution_s=res,
-                                             state=first_state,
+            # take in a list of state arrays, according to whatever model hparams says
+            predicted_points = model.predict(full_env=full_envs,
+                                             full_env_origin=full_env_origin,
+                                             res=res,
+                                             first_states=first_states,
                                              actions=actions)[0]
             runtime = time.time() - t0
 

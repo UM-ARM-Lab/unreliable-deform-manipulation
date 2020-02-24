@@ -5,11 +5,11 @@ import rospy
 import std_srvs
 from colorama import Fore
 from link_bot_gazebo.srv import ComputeSDF2Request, ComputeOccupancyRequest, ComputeSDF2, ComputeOccupancy, \
-    LinkBotTrajectoryRequest, LinkBotState, WorldControl, LinkBotTrajectory, ExecuteAction
+    LinkBotTrajectoryRequest, LinkBotState, WorldControl, LinkBotTrajectory, ExecuteAction, GetObjects
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from link_bot_gazebo.msg import LinkBotAction
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon
 
 
 def get_n_state():
@@ -45,6 +45,7 @@ class Services:
         self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
         self.reset = rospy.ServiceProxy("/reset", std_srvs.srv.Empty)
+        self.get_objects = rospy.ServiceProxy("/objects", GetObjects)
 
         # currently unused
         self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
@@ -269,3 +270,20 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result,
         actual_path[k] = np.array(v)
 
     return actual_path
+
+
+def get_start_states(services, state_keys):
+    start_states = {}
+    objects_response = services.get_objects()
+    link_bot_start_state = None
+    head_point = None
+    for subspace_name in state_keys:
+        for object in objects_response.objects.objects:
+            if object.name == subspace_name:
+                state = link_bot_pycommon.flatten_named_points(object.points)
+                if subspace_name == 'link_bot':
+                    link_bot_start_state = state
+                    head_point = link_bot_pycommon.get_head_from_named_points(object.points)
+                start_states[subspace_name] = state
+    start_states['link_bot'] = link_bot_start_state
+    return start_states, link_bot_start_state, head_point

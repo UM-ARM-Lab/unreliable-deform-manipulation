@@ -181,6 +181,8 @@ def generate(myenv_utils, args):
             'n_action': 2,
             'tether': args.tether,
             'n_tether_state': n_tether_state,
+            # TODO: finish impmlementing this
+            'states_description': states_description,
         }
         json.dump(options, of, indent=1)
 

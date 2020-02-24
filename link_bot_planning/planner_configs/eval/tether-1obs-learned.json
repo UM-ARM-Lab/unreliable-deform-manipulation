@@ -6,14 +6,14 @@
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
-  "max_v": 0.5,
+  "max_v": 0.35,
   "accept_threshold": 0.5,
   "goal_threshold": 0.15,
   "max_angle_rad": 1.0,
   "random_epsilon": 0.0,
   "w": 5.0,
   "h": 5.0,
-  "timeout": 30,
+  "timeout": 60,
   "state_space": {
     "link_bot": {
       "weight": 1.0

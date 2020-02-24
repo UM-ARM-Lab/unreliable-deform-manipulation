@@ -184,9 +184,9 @@ class MyPlanner:
         np_u = ompl_control_to_model_action(control, self.n_control)
 
         # use the forward model to predict the next configuration
-        points_next = self.fwd_model.predict(full_envs=self.full_envs,
-                                             full_env_origins=self.full_env_origins,
-                                             resolution_s=np.array([[self.fwd_model.full_env_params.res]]),
+        points_next = self.fwd_model.predict(full_env=self.full_envs,
+                                             full_env_origin=self.full_env_origins,
+                                             res=np.array([[self.fwd_model.full_env_params.res]]),
                                              state=np_s,
                                              actions=np_u)
         np_s_next = points_next[:, 1].reshape([1, self.n_state])

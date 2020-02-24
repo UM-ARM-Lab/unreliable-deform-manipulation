@@ -41,6 +41,7 @@ class MyPlanner:
         self.planner = None
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
+        # TODO: remove this concept, it's ill posed. we need Dict[str, int]
         self.n_state = self.fwd_model.n_state
         self.n_links = link_bot_pycommon.n_state_to_n_links(self.n_state)
         self.n_control = self.fwd_model.n_control
@@ -59,6 +60,7 @@ class MyPlanner:
         self.state_space_description = self.planner_params['state_space']
 
         self.subspace_name_to_index = {}
+        self.subspaces_to_plan_with = {}
         for subspace_idx, (name, component_description) in enumerate(self.state_space_description.items()):
             self.subspace_name_to_index[name] = subspace_idx
             if name == 'local_env':
@@ -74,6 +76,7 @@ class MyPlanner:
             elif name == 'link_bot':
                 self.link_bot_space = ob.RealVectorStateSpace(self.n_state)
                 self.link_bot_space_bounds = ob.RealVectorBounds(self.n_state)
+                self.subspaces_to_plan_with[name] = (subspace_idx, self.n_state)
                 for i in range(self.n_state):
                     if i % 2 == 0:
                         self.link_bot_space_bounds.setLow(i, -self.planner_params['w'] / 2)
@@ -86,6 +89,7 @@ class MyPlanner:
             elif name == 'tether':
                 self.tether_space = ob.RealVectorStateSpace(self.n_tether_state)
                 self.tether_space_bounds = ob.RealVectorBounds(self.n_tether_state)
+                self.subspaces_to_plan_with[name] = (subspace_idx, self.n_tether_state)
                 for i in range(self.n_tether_state):
                     if i % 2 == 0:
                         self.tether_space_bounds.setLow(i, -self.planner_params['w'] / 2)
@@ -95,6 +99,8 @@ class MyPlanner:
                         self.tether_space_bounds.setHigh(i, self.planner_params['h'] / 2)
                 self.tether_space.setBounds(self.tether_space_bounds)
                 self.state_space.addSubspace(self.tether_space, weight=component_description['weight'])
+        self.local_env_subspace_idx = self.subspace_name_to_index['local_env']
+        self.local_env_origin_subspace_idx = self.subspace_name_to_index['local_env_origin']
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
 
@@ -120,8 +126,8 @@ class MyPlanner:
             raise ValueError("This DCS breaks nearest neighbor somehow")
             self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator(self.seed, self))
 
-        self.full_envs = None
-        self.full_env_origins = None
+        self.full_env = None
+        self.full_env_origin = None
 
         if planner_params['sampler_type'] == 'sample_train':
             self.dataset_dirs = [pathlib.Path(p) for p in self.fwd_model.hparams['datasets']]
@@ -140,12 +146,13 @@ class MyPlanner:
                                         services=self.services)
 
     def is_valid(self, state):
-        return self.state_space.getSubspace(0).satisfiesBounds(state[0])
+        for idx, _ in self.subspaces_to_plan_with.values():
+            return self.state_space.getSubspace(idx).satisfiesBounds(state[idx])
 
-    def edge_is_valid(self, np_s: np.ndarray, np_u: np.ndarray, np_s_next: np.ndarray):
-        # TODO: remove batch dimension everywhere in this code, we don't need it anymore since the predict finction doesn't
-        #  operate on batches anymore
-        # ^^^ This might be a mistake...
+    def edge_is_valid(self, states: Dict[str, np.ndarray], np_u: np.ndarray, states_next: Dict[str, np.ndarray]):
+        np_s = states['link_bot']
+        np_s_next = states_next['link_bot']
+
         np_s = np_s.flatten()
         np_s_next = np_s_next.flatten()
         np_u = np_u.flatten()
@@ -165,59 +172,72 @@ class MyPlanner:
 
     def propagate(self, start, control, duration, state_out):
         del duration  # unused, multi-step propagation is handled inside propagateWhileValid
-        np_s = to_numpy(start[0], self.n_state)
+        states = {}
+        for name, (idx, n) in self.subspaces_to_plan_with.items():
+            np_s = to_numpy_flat(start[idx], n)
+            states[name] = np_s
 
         np_u = ompl_control_to_model_action(control, self.n_control)
 
         # use the forward model to predict the next configuration
-        points_next = self.fwd_model.predict(full_envs=self.full_envs,
-                                             full_env_origins=self.full_env_origins,
-                                             resolution_s=np.array([[self.fwd_model.full_env_params.res]]),
-                                             state=np_s,
-                                             actions=np_u)
-        np_s_next = points_next[:, 1].reshape([1, self.n_state])
+        next_states = self.fwd_model.predict(full_env=self.full_env,
+                                             full_env_origin=self.full_env_origin,
+                                             res=self.fwd_model.full_env_params.res,
+                                             states=states,
+                                             actions=np_u[0])
+
+        print(next_states)
 
         # validate the edge
-        edge_is_valid = self.edge_is_valid(np_s, np_u, np_s_next)
+        # TODO: implement this inside OMPL
+        edge_is_valid = self.edge_is_valid(states, np_u, next_states)
 
         # copy the result into the ompl state data structure
         if not edge_is_valid:
             # This will ensure this edge is not added to the tree
-            state_out[0][0] = 1000
-            self.viz_object.rejected_samples.append(np_s_next[0])
+            link_bot_subspace_idx = self.subspaces_to_plan_with['link_bot'][0]
+            state_out[link_bot_subspace_idx][0] = 1000
+            self.viz_object.rejected_samples.append(next_states['link_bot'])
         else:
-            from_numpy(np_s_next, state_out[0], self.n_state)
-            local_env_data = self.get_local_env_at(np_s_next[0, -2], np_s_next[0, -1])
-            local_env = local_env_data.data.flatten().astype(np.float64)
+            for name, (idx, n) in self.subspaces_to_plan_with.items():
+                next_state = next_states[name]
+                from_numpy(next_state, state_out[idx], n)
+
+            head_point = states['link_bot'][-2:]
+            local_env_data_next = self.get_local_env_at(head_point[0], head_point[1])
+            local_env = local_env_data_next.data.flatten().astype(np.float64)
             for idx in range(self.n_local_env):
                 occupancy_value = local_env[idx]
-                state_out[1][idx] = occupancy_value
-            origin = local_env_data.origin.astype(np.float64)
-            from_numpy(origin, state_out[2], 2)
+                state_out[self.local_env_subspace_idx][idx] = occupancy_value
+            origin_next = local_env_data_next.origin.astype(np.float64)
+            # FIXME: 2 is hardcoded
+            from_numpy(origin_next, state_out[self.local_env_origin_subspace_idx], 2)
 
     # TODO: make this return a data structure. something with a name
-    def plan(self, np_start: np.ndarray, tail_goal_point: np.ndarray, full_env_data: link_bot_sdf_utils.OccupancyData):
+    def plan(self, start_states: Dict[str, np.ndarray], tail_goal_point: np.ndarray, full_env_data: link_bot_sdf_utils.OccupancyData):
         """
         :param full_env_data:
-        :param np_start: 1 by n matrix
+        :param start_states: each element is a vector
         :param tail_goal_point:  1 by n matrix
         :return: controls, states
         """
-        self.full_envs = np.array([full_env_data.data])
-        self.full_env_origins = np.array([full_env_data.origin])
+        self.full_env = full_env_data.data
+        self.full_env_origin = full_env_data.origin
 
         # create start and goal states
-        start_local_occupancy = self.get_local_env_at(np_start[0, -2], np_start[0, -1])
+        link_bot_start_state = start_states['link_bot']
+        start_local_occupancy = self.get_local_env_at(link_bot_start_state[-2], link_bot_start_state[-1])
         compound_start = ob.CompoundState(self.state_space)
-        for i in range(self.n_state):
-            compound_start()[0][i] = np_start[0, i]
+        for name, (idx, n) in self.subspaces_to_plan_with.items():
+            for i in range(n):
+                compound_start()[idx][i] = start_states[name][i]
         start_local_occupancy_flat_double = start_local_occupancy.data.flatten().astype(np.float64)
         for idx in range(self.n_local_env):
             occupancy_value = start_local_occupancy_flat_double[idx]
-            compound_start()[1][idx] = occupancy_value
+            compound_start()[self.local_env_subspace_idx][idx] = occupancy_value
         start_local_occupancy_origin_double = start_local_occupancy.origin.astype(np.float64)
-        compound_start()[2][0] = start_local_occupancy_origin_double[0]
-        compound_start()[2][1] = start_local_occupancy_origin_double[1]
+        compound_start()[self.local_env_origin_subspace_idx][0] = start_local_occupancy_origin_double[0]
+        compound_start()[self.local_env_origin_subspace_idx][1] = start_local_occupancy_origin_double[1]
 
         start = ob.State(compound_start)
         goal = LinkBotCompoundGoal(self.si, self.planner_params['goal_threshold'], tail_goal_point, self.viz_object, self.n_state)
@@ -226,6 +246,7 @@ class MyPlanner:
         self.viz_object.clear()
         self.ss.setStartState(start)
         self.ss.setGoal(goal)
+
         solved = self.ss.solve(self.planner_params['timeout'])
 
         if solved:
@@ -239,11 +260,13 @@ class MyPlanner:
                       self.planner_params['w'] / 2,
                       -self.planner_params['h'] / 2,
                       self.planner_params['h'] / 2]
+            # FIXME: need to handle arbitrary state space dictionary/description
             sampler = ValidRopeConfigurationCompoundSampler(state_space,
                                                             my_planner=self,
                                                             viz_object=self.viz_object,
                                                             extent=extent,
-                                                            n_state=self.n_state,
+                                                            n_rope_state=self.n_state,
+                                                            subspace_name_to_index=self.subspace_name_to_index,
                                                             rope_length=self.rope_length,
                                                             max_angle_rad=self.planner_params['max_angle_rad'],
                                                             rng=self.state_sampler_rng)

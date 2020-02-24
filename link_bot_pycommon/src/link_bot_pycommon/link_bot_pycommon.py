@@ -133,6 +133,13 @@ def flatten_named_points(points):
     return np.array([[p.point.x, p.point.y] for p in points]).flatten()
 
 
+def get_head_from_named_points(named_points):
+    for named_point in named_points:
+        if named_point == 'head':
+            head_point = np.array([named_point.x, named_point.y])
+            return head_point
+
+
 def transpose_2d_lists(l):
     # https://stackoverflow.com/questions/6473679/transpose-list-of-lists
     return list(map(list, zip(*l)))

@@ -82,9 +82,9 @@ def main():
         vy = np.sin(theta_rad) * v
         action = np.array([[[vx, vy]]])
 
-        next_state = fwd_model.predict(full_envs=[full_env_data.data],
-                                       full_env_origins=[full_env_data.origin],
-                                       resolution_s=[full_env_data.resolution],
+        next_state = fwd_model.predict(full_env=[full_env_data.data],
+                                       full_env_origin=[full_env_data.origin],
+                                       res=[full_env_data.resolution],
                                        state=state,
                                        actions=action)
         next_state = np.reshape(next_state, [2, 1, -1])[1]

@@ -42,7 +42,7 @@ def invert_dict(data: List) -> Dict:
 
 
 def main():
-    plt.style.use('slides')
+    plt.style.use('paper')
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('results_dirs', help='folders containing folders containing metrics.json', type=pathlib.Path, nargs='+')
@@ -63,21 +63,22 @@ def main():
 
     execution_to_goal_errors_comparisons = {}
     plan_to_execution_errors_comparisons = {}
-    errors_thresholds = np.linspace(0.05, 1.5, 49)
+    max_error = 1.5
+    errors_thresholds = np.linspace(0.05, max_error, 49)
     print('-' * 90)
     if not args.no_plot:
         plt.figure()
         execution_ax = plt.gca()
         execution_ax.set_xlabel("Success Threshold, Final Tail Error")
         execution_ax.set_ylabel("Success Rate")
-        execution_ax.set_ylim([0, 100])
+        execution_ax.set_ylim([-0.1, 100.1])
         execution_ax.set_title("Success In Execution")
 
         plt.figure()
         planning_ax = plt.gca()
         planning_ax.set_xlabel("Success Threshold, Final Tail Error")
         planning_ax.set_ylabel("Success Rate")
-        planning_ax.set_ylim([0, 100])
+        planning_ax.set_ylim([-0.1, 100.1])
         planning_ax.set_title("Success In Planning")
 
     for results_dir in args.results_dirs:
@@ -100,8 +101,7 @@ def main():
             for planned, actual in zip(data['planned_path'], data['actual_path']):
                 planned_path = np.array(planned)
                 actual_path = np.array(actual)
-                # figure out why actual_path has an extra step
-                error = np.linalg.norm(planned_path[:-1, 0:2] - actual_path[:-2, 0:2], axis=1)
+                error = np.linalg.norm(planned_path[:-1, 0:2] - actual_path[:-1, 0:2], axis=1)
                 mean_plan_to_execution_errors.append(np.mean(error))
             # TODO: rename these keys
             execution_to_goal_errors = data['final_execution_error']
@@ -118,14 +118,14 @@ def main():
                 for threshold in errors_thresholds:
                     success_percentage = np.count_nonzero(execution_to_goal_errors < threshold) / N * 100
                     execution_successes.append(success_percentage)
-                execution_ax.plot(errors_thresholds, execution_successes, label=name)
+                execution_ax.plot(errors_thresholds, execution_successes, label=name, linewidth=5)
 
                 if has_plan_to_execution_error:
                     planning_successes = []
                     for threshold in errors_thresholds:
                         success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / N * 100
                         planning_successes.append(success_percentage)
-                    planning_ax.plot(errors_thresholds, planning_successes, label=name)
+                    planning_ax.plot(errors_thresholds, planning_successes, label=name, linewidth=5)
 
             execution_to_goal_errors_comparisons[str(subfolder.name)] = execution_to_goal_errors
             if has_plan_to_execution_error:

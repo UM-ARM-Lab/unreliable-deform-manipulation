@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 import numpy as np
 import tensorflow as tf
@@ -49,7 +49,8 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
                  my_planner,
                  viz_object: VizObject,
                  extent: List[float],
-                 n_state: int,
+                 n_rope_state: int,
+                 subspace_name_to_index: Dict[str, int],
                  rope_length: float,
                  max_angle_rad: float,
                  rng: np.random.RandomState, ):
@@ -57,8 +58,10 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         self.my_planner = my_planner
         self.extent = extent
         self.rope_length = rope_length
-        self.n_links = link_bot_pycommon.n_state_to_n_links(n_state)
-        self.n_state = n_state
+        self.n_rope_state = n_rope_state
+        self.subspace_name_to_index = subspace_name_to_index
+        self.link_bot_subspace_idx = self.subspace_name_to_index['link_bot']
+        self.n_links = link_bot_pycommon.n_state_to_n_links(self.n_rope_state)
         if self.n_links == 0:
             self.link_length = 0
         else:
@@ -68,13 +71,15 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         self.rng = rng
 
     def sampleUniform(self, state_out: ob.CompoundStateInternal):
+        # We don't bother filling out the other components of state here because we assume they have zero weight
+        # so distance calculations won't consider them
         random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent,
-                                                                                     n_state=self.n_state,
+                                                                                     n_state=self.n_rope_state,
                                                                                      link_length=self.link_length,
                                                                                      max_angle_rad=self.max_angle_rad,
                                                                                      rng=self.rng)
 
-        from_numpy(random_rope_configuration, state_out[0], random_rope_configuration.shape[0])
+        from_numpy(random_rope_configuration, state_out[self.link_bot_subspace_idx], random_rope_configuration.shape[0])
 
         self.viz_object.states_sampled_at.append(random_rope_configuration)
 
@@ -128,6 +133,7 @@ def to_numpy_flat(state_or_control, dim: int):
     for i in range(dim):
         np_state_or_control[i] = state_or_control[i]
     return np_state_or_control
+
 
 def to_numpy(state_or_control, dim: int):
     np_state_or_control = np.ndarray((1, dim))

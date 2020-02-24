@@ -1,12 +1,14 @@
 #pragma once
 
 #include <link_bot_gazebo/ExecuteAction.h>
+#include <link_bot_gazebo/GetObject.h>
+#include <link_bot_gazebo/GetObjects.h>
 #include <link_bot_gazebo/LinkBotAction.h>
 #include <link_bot_gazebo/LinkBotConfiguration.h>
 #include <link_bot_gazebo/LinkBotJointConfiguration.h>
 #include <link_bot_gazebo/LinkBotPath.h>
-#include <link_bot_gazebo/LinkBotState.h>
 #include <link_bot_gazebo/LinkBotReset.h>
+#include <link_bot_gazebo/LinkBotState.h>
 #include <link_bot_gazebo/LinkBotTrajectory.h>
 #include <link_bot_gazebo/NamedPoints.h>
 #include <ros/callback_queue.h>
@@ -61,6 +63,8 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   bool StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req, link_bot_gazebo::LinkBotStateResponse &res);
 
+  bool GetObjectServiceCallback(link_bot_gazebo::GetObjectRequest &req, link_bot_gazebo::GetObjectResponse &res);
+
   bool ExecuteTrajectoryCallback(link_bot_gazebo::LinkBotTrajectoryRequest &req,
                                  link_bot_gazebo::LinkBotTrajectoryResponse &res);
 
@@ -74,7 +78,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   physics::ModelPtr model_;
   event::ConnectionPtr updateConnection_;
-  double length_{0u};
+  double length_{0.0};
   unsigned int num_links_{0u};
   double kP_pos_{0.0};
   double kI_pos_{0.0};
@@ -83,6 +87,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   double kI_vel_{0.0};
   double kD_vel_{0.0};
   double max_vel_{1.0};
+  double max_speed_{1.0};
   double max_force_{1.0};
   physics::LinkPtr gripper1_link_{nullptr};
   common::PID gripper1_pos_pid_;
@@ -96,11 +101,13 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   ros::Subscriber action_mode_sub_;
   ros::Subscriber config_sub_;
   ros::ServiceServer state_service_;
+  ros::ServiceServer get_object_service_;
   ros::ServiceServer execute_action_service_;
   ros::ServiceServer execute_absolute_action_service_;
   ros::ServiceServer execute_traj_service_;
   ros::ServiceServer reset_service_;
   ros::ServiceClient objects_service_;
+  ros::Publisher register_link_bot_pub_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
   std::string mode_{"disabled"};

@@ -12,9 +12,9 @@ class RigidTranslationModel(BaseForwardModel):
         self.beta = self.hparams['beta']
 
     def predict(self,
-                full_envs: np.ndarray,
-                full_env_origins: np.ndarray,
-                resolution_s: np.ndarray,
+                full_env: np.ndarray,
+                full_env_origin: np.ndarray,
+                res: np.ndarray,
                 state: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
         predictions = []

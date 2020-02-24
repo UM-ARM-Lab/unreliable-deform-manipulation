@@ -32,7 +32,7 @@ void TetherPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
   model_ = parent;
 
-  auto state_bind = boost::bind(&TetherPlugin::StateServiceCallback, this, _1, _2);
+  auto state_bind = boost::bind(&TetherPlugin::GetObjectServiceCallback, this, _1, _2);
   auto state_service_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::GetObject>("/tether", state_bind,
                                                                                        ros::VoidPtr(), &queue_);
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
@@ -40,6 +40,8 @@ void TetherPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   register_tether_pub_ = ros_node_->advertise<std_msgs::String>("/register_object", 10, true);
 
   ros_queue_thread_ = std::thread(std::bind(&TetherPlugin::QueueThread, this));
+
+  while (register_tether_pub_.getNumSubscribers() < 1);
 
   std_msgs::String register_object;
   register_object.data = "tether";
@@ -49,7 +51,7 @@ void TetherPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   ros_node_->setParam("/tether/n_state", static_cast<int>((num_links_ + 1) * 2));
 }
 
-bool TetherPlugin::StateServiceCallback(link_bot_gazebo::GetObjectRequest &req,
+bool TetherPlugin::GetObjectServiceCallback(link_bot_gazebo::GetObjectRequest &req,
                                         link_bot_gazebo::GetObjectResponse &res)
 {
   res.object.name = "tether";

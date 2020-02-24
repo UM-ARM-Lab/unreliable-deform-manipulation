@@ -25,14 +25,14 @@ from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
-from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.args import my_formatter, point_arg
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
 
-class ComputeClassifierMetrics(plan_and_execute.PlanAndExecute):
+class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
     def __init__(self,
                  planner: MyPlanner,
@@ -49,6 +49,8 @@ class ComputeClassifierMetrics(plan_and_execute.PlanAndExecute):
                  services: GazeboServices,
                  comparison_item_idx: int,
                  seed: int,
+                 goal,
+                 reset_gripper_to,
                  outdir: Optional[pathlib.Path] = None,
                  ):
         super().__init__(
@@ -87,6 +89,23 @@ class ComputeClassifierMetrics(plan_and_execute.PlanAndExecute):
         self.failures_root = self.root / 'failures'
         self.n_failures = 0
         self.successfully_completed_plan_idx = 0
+        self.goal = goal
+        self.reset_gripper_to = reset_gripper_to
+
+    def on_before_plan(self):
+        if self.reset_gripper_to is not None:
+            self.services.reset_world(self.verbose, self.reset_gripper_to)
+
+        super().on_before_plan()
+
+
+    def get_goal(self, w, h, head_point, env_padding, full_env_data):
+        if self.goal is not None:
+            if self.verbose >= 1:
+                print("Using Goal {}".format(self.goal))
+            return np.array(self.goal)
+        else:
+            return super().get_goal(w, h, head_point, env_padding, full_env_data)
 
     def on_execution_complete(self,
                               planned_path: np.ndarray,
@@ -97,10 +116,14 @@ class ComputeClassifierMetrics(plan_and_execute.PlanAndExecute):
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
-        execution_to_goal_error = np.linalg.norm(actual_path['link_bot'][-1, 0:2] - tail_goal_point)
-        plan_to_goal_error = np.linalg.norm(planned_path[-1, 0:2] - tail_goal_point)
-        plan_to_execution_error = np.linalg.norm(actual_path['link_bot'][-1, 0:2] - planned_path[-1, 0:2])
-        lengths = [np.linalg.norm(planned_path[i] - planned_path[i - 1]) for i in range(1, len(planned_path))]
+        link_bot_planned_path = planned_path['link_bot']
+        link_bot_actual_path = actual_path['link_bot']
+        del planned_path, actual_path
+        execution_to_goal_error = np.linalg.norm(link_bot_actual_path[-1, 0:2] - tail_goal_point)
+        plan_to_goal_error = np.linalg.norm(link_bot_planned_path[-1, 0:2] - tail_goal_point)
+        plan_to_execution_error = np.linalg.norm(link_bot_actual_path[-1, 0:2] - link_bot_planned_path[-1, 0:2])
+        lengths = [np.linalg.norm(link_bot_planned_path[i] - link_bot_planned_path[i - 1]) for i in
+                   range(1, len(link_bot_planned_path))]
         path_length = np.sum(lengths)
         num_nodes = planner_data.numVertices()
 
@@ -109,8 +132,8 @@ class ComputeClassifierMetrics(plan_and_execute.PlanAndExecute):
         metrics_for_plan = {
             'planner_status': planner_status.asString(),
             'full_env': full_env_data.data.tolist(),
-            'planned_path': planned_path.tolist(),
-            'actual_path': dict([(k, v.tolist()) for k, v in actual_path.items()]),
+            'planned_path': link_bot_planned_path.tolist(),
+            'actual_path': link_bot_actual_path.tolist(),
             'planning_time': planning_time,
             'final_planning_error': plan_to_goal_error,
             'final_execution_error': execution_to_goal_error,
@@ -124,15 +147,16 @@ class ComputeClassifierMetrics(plan_and_execute.PlanAndExecute):
 
         plt.figure()
         ax = plt.gca()
-        legend = plot(ax,
-                      self.planner.viz_object,
-                      planner_data,
-                      full_env_data.data,
-                      tail_goal_point,
-                      planned_path,
-                      planned_actions,
-                      full_env_data.extent)
-        ax.scatter(actual_path['link_bot'][-1, 0], actual_path['link_bot'][-1, 1], label='final actual tail position', zorder=5)
+        _, legend = plot(ax,
+                         self.planner.n_state,
+                         self.planner.viz_object,
+                         planner_data,
+                         full_env_data.data,
+                         tail_goal_point,
+                         link_bot_planned_path,
+                         planned_actions,
+                         full_env_data.extent)
+        ax.scatter(link_bot_actual_path[-1, 0], link_bot_actual_path[-1, 1], label='final actual tail position', zorder=5)
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
         plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
 
@@ -149,7 +173,7 @@ class ComputeClassifierMetrics(plan_and_execute.PlanAndExecute):
         metrics_file = self.metrics_filename.open('w')
         json.dump(self.metrics, metrics_file, indent=1)
 
-    def on_planner_failure(self, start, tail_goal_point, full_env_data: link_bot_sdf_utils.OccupancyData):
+    def on_planner_failure(self, start, tail_goal_point, full_env_data: link_bot_sdf_utils.OccupancyData, planner_data):
         self.n_failures += 1
         folder = self.failures_root / str(self.n_failures)
         folder.mkdir(parents=True)
@@ -188,7 +212,8 @@ def main():
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
     parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
-    parser.add_argument('--no-nudge', action='store_true', help="don't nudge")
+    parser.add_argument("--reset-gripper-to", type=point_arg, help='x,y in meters')
+    parser.add_argument("--goal", type=point_arg, help='x,y in meters')
     # TODO: sweep over random epsilon to see how it effects things
 
     args = parser.parse_args()
@@ -233,7 +258,7 @@ def main():
 
         services = gazebo_utils.setup_env(verbose=args.verbose,
                                           real_time_rate=args.real_time_rate,
-                                          reset_gripper_to=[0.0, 0.0],
+                                          reset_gripper_to=args.reset_gripper_to,
                                           max_step_size=fwd_model.max_step_size,
                                           initial_object_dict=initial_object_dict)
 
@@ -252,10 +277,10 @@ def main():
                                max_step_size=planner.fwd_model.max_step_size,
                                goal_padding=0.0,
                                move_obstacles=(not args.no_move_obstacles),
-                               nudge=(not args.no_nudge))
+                               nudge=False)
         print(Fore.GREEN + "Running {} Trials".format(args.n_total_plans) + Fore.RESET)
 
-        runner = ComputeClassifierMetrics(
+        runner = EvalPlannerConfigs(
             planner=planner,
             planner_config_name=planner_config_name,
             fwd_model_dir=fwd_model_dir,
@@ -270,7 +295,9 @@ def main():
             services=services,
             seed=args.seed,
             outdir=common_output_directory,
-            comparison_item_idx=comparison_idx
+            comparison_item_idx=comparison_idx,
+            reset_gripper_to=args.reset_gripper_to,
+            goal=args.goal
         )
         runner.run()
 

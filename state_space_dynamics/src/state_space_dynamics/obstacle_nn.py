@@ -11,10 +11,11 @@ from colorama import Fore, Style
 from tensorflow import keras
 
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
-from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine import experiments_util
-from moonshine.raster_points_layer import raster
 from moonshine.action_smear_layer import smear_action
+from moonshine.numpy_utils import add_batch_to_dict
+from moonshine.raster_points_layer import raster
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
@@ -62,11 +63,9 @@ class ObstacleNN(tf.keras.Model):
         self.batch_size = batch_size
         self.concat = layers.Concatenate()
         self.concat2 = layers.Concatenate()
-        self.tether = self.hparams['dynamics_dataset_hparams']['tether']
-        self.n_link_bot_state = self.hparams['dynamics_dataset_hparams']['n_state']
-        self.out_dim = self.n_link_bot_state
-        if self.tether:
-            self.out_dim += self.hparams['dynamics_dataset_hparams']['n_tether_state']
+        # TODO: replace all "if tether" with generic Dict of state vectors stuff
+        self.states_description = self.hparams['dynamics_dataset_hparams']['states_desription']
+        self.out_dim = sum(self.states_description.values())
         self.dense_layers = []
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
@@ -97,7 +96,7 @@ class ObstacleNN(tf.keras.Model):
         else:
             s_0 = link_bot_0
 
-        resolution = input_dict['res'][:, 0]
+        resolution = input_dict['res']
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']
 
@@ -167,13 +166,13 @@ class ObstacleNN(tf.keras.Model):
         pred_states = tf.transpose(pred_states, [1, 0, 2, 3])
         pred_states = tf.squeeze(pred_states, squeeze_dims=3)
 
-        link_bot_states = pred_states[:, :, :self.n_link_bot_state]
-        output_states_dict = {
-            'link_bot': link_bot_states
-        }
-        if self.tether:
-            tether_states = pred_states[:, :, self.n_link_bot_state:]
-            output_states_dict['tether'] = tether_states
+        # Split the big state vectors up by state name/dim
+        start_idx = 0
+        output_states_dict = {}
+        for name, n in self.states_description.items():
+            end_idx = start_idx + n
+            output_states_dict[name] = pred_states[:, :, start_idx:end_idx]
+            start_idx += n
 
         return output_states_dict
 
@@ -341,45 +340,48 @@ class ObstacleNNWrapper(BaseForwardModel):
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
 
     def predict(self,
-                full_envs: np.ndarray,
-                full_env_origins: np.ndarray,
-                resolution_s: np.ndarray,
-                state: np.ndarray,
+                full_env: np.ndarray,
+                full_env_origin: np.ndarray,
+                res: np.ndarray,
+                states: Dict[str, np.ndarray],
                 actions: np.ndarray) -> np.ndarray:
         """
-        :param full_envs:        (batch, H, W)
-        :param full_env_origins: (batch, 2)
-        :param resolution_s:     (batch, T)
-        :param state:            (batch, n_state)
-        :param actions:          (batch, T, 2)
-        :return:
+        :param full_env:        (H, W)
+        :param full_env_origin: (2)
+        :param res:     scalar
+        :param states:          each value in the dictionary should be of shape (batch, n_state)
+        :param actions:         (T, 2)
+        :return: states:         each value in the dictionary should be a of shape [batch, T+1, n_state)
         """
-        batch, T, _ = actions.shape
-        states = tf.convert_to_tensor(state, dtype=tf.float32)
-        states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
-        actions = tf.convert_to_tensor(actions, dtype=tf.float32)
-        resolution_s = tf.convert_to_tensor(np.expand_dims(resolution_s, axis=2), dtype=tf.float32)
+        T = actions.shape[0]
 
         test_x = {
-            # must be batch, 1, n_state
-            'state/link_bot': states,
-            # must be batch, T, 2
-            'action': actions,
-            # must be batch, T, 1
-            'res': resolution_s,
-            # must be batch, H, W
-            'full_env/env': tf.convert_to_tensor(full_envs, dtype=tf.float32),
-            # must be batch, 2
-            'full_env/origin': tf.convert_to_tensor(full_env_origins, dtype=tf.float32),
+            # must be T, 2
+            'action': tf.convert_to_tensor(actions, dtype=tf.float32),
+            # must be T, 1
+            'res': tf.convert_to_tensor(res, dtype=tf.float32),
+            # must be H, W
+            'full_env/env': tf.convert_to_tensor(full_env, dtype=tf.float32),
+            # must be 2
+            'full_env/origin': tf.convert_to_tensor(full_env_origin, dtype=tf.float32),
+            # batch dim is added below
         }
 
-        # TODO: implement a list of state keys to use, rather than just doing "if tether" everywhere
+        for k, v in states.items():
+            state_key = 'state/{}'.format(k)
+            # handles conversion from double -> float
+            state = tf.convert_to_tensor(v, dtype=tf.float32)
+            # TODO: remove extra dimension of size 1?
+            state = tf.reshape(state, [1, state.shape[0]])
+            test_x[state_key] = state
+
+        test_x = add_batch_to_dict(test_x)
 
         predictions = self.net(test_x)
-        predicted_points = predictions.numpy().reshape([batch, T + 1, -1, 2])
-        # OMPL requires "doubles", which are float64, although our network outputs float32.
-        predicted_points = predicted_points.astype(np.float64)
-        return predicted_points
+        for k, v in predictions.items():
+            predictions[k] = np.reshape(v.numpy(), [T + 1, -1]).astype(np.float64)
+
+        return predictions
 
 
 model = ObstacleNN

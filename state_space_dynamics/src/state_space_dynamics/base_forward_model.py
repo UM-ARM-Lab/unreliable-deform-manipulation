@@ -1,5 +1,6 @@
 import json
 import pathlib
+from typing import Dict
 
 import numpy as np
 
@@ -24,9 +25,9 @@ class BaseForwardModel:
         self.n_points = n_state_to_n_points(self.n_state)
 
     def predict(self,
-                full_envs: np.ndarray,
-                full_env_origins: np.ndarray,
-                resolution_s: np.ndarray,
-                state: np.ndarray,
-                actions: np.ndarray) -> np.ndarray:
+                full_env: np.ndarray,
+                full_env_origin: np.ndarray,
+                res: np.ndarray,
+                states: Dict[str, np.ndarray],
+                actions: np.ndarray) -> Dict[str, np.ndarray]:
         raise NotImplementedError()

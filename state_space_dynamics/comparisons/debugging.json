@@ -1,6 +1,6 @@
 {
   "tether obs-nn": {
-    "model_dir": "log_data/tether_1obs-debugging/February_22_22-23-19_9c28085dde",
+    "model_dir": "log_data/tether_1obs/February_23_11-51-28_b22b1faf28",
     "model_type": "obs"
   }
 }

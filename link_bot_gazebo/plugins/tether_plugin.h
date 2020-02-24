@@ -26,7 +26,7 @@ class TetherPlugin : public ModelPlugin {
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
 
-  bool StateServiceCallback(link_bot_gazebo::GetObjectRequest &req, link_bot_gazebo::GetObjectResponse &res);
+  bool GetObjectServiceCallback(link_bot_gazebo::GetObjectRequest &req, link_bot_gazebo::GetObjectResponse &res);
 
  private:
   void QueueThread();
