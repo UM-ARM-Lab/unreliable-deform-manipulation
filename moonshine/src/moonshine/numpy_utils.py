@@ -9,8 +9,10 @@ def add_batch(*args):
     for x in args:
         if isinstance(x, np.ndarray):
             new_args.append(np.expand_dims(x, axis=0))
-        else:
+        elif isinstance(x, tf.Tensor):
             new_args.append(tf.expand_dims(x, axis=0))
+        else:
+            new_args.append(np.array([x]))
     return new_args
 
 

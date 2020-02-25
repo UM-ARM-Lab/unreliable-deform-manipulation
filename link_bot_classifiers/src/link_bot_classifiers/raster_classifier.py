@@ -13,7 +13,6 @@ from tensorflow import keras
 
 from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_planning.params import LocalEnvParams
-from link_bot_pycommon.link_bot_pycommon import print_dict
 from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
 from moonshine.base_model import BaseModel
 from moonshine.raster_points_layer import make_transition_image

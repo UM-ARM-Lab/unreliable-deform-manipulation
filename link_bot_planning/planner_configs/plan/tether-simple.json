@@ -1,0 +1,38 @@
+{
+  "fwd_model_dir": "ss_log_data/rigid_translation",
+  "fwd_model_type": "rigid",
+  "classifier_model_dir": "", "classifier_model_type": "none",
+  "planner_type": "NearestRRT",
+  "sampler_type": "random",
+  "directed_control_sampler": "simple",
+  "goal_threshold": 0.15,
+  "accept_threshold": 0.5,
+  "random_epsilon": 0.05,
+  "max_angle_rad": 1.0,
+  "w": 5.0,
+  "h": 5.0,
+  "timeout": 5.0,
+  "state_space": {
+    "link_bot": {
+      "weight": 1.0
+    },
+    "local_env": {
+      "weight": 0.0
+    },
+    "local_env_origin": {
+      "weight": 0.0
+    }
+  },
+  "n_plans_per_env": 1,
+  "n_steps_per_example": 50,
+  "n_examples_per_record": 32,
+  "real_time_rate": 10.0,
+  "max_step_size": 0.01,
+  "planner_env_w": 5.0,
+  "planner_env_h": 5.0,
+  "full_env_w": 6.0,
+  "full_env_h": 6.0,
+  "move_obstacles": false,
+  "reset_gripper_to": [1.5,1.5],
+  "fixed_goal": null
+}

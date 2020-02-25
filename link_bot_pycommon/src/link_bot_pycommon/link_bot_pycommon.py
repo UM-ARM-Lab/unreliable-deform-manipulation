@@ -137,9 +137,10 @@ def flatten_named_points(points):
 
 def get_head_from_named_points(named_points):
     for named_point in named_points:
-        if named_point == 'head':
-            head_point = np.array([named_point.x, named_point.y])
+        if named_point.name == 'head':
+            head_point = np.array([named_point.point.x, named_point.point.y])
             return head_point
+    raise ValueError("No head found in points {}".format(named_points))
 
 
 def transpose_2d_lists(l):

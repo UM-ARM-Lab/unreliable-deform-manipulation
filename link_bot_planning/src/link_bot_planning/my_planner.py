@@ -185,22 +185,25 @@ class MyPlanner:
                                              res=self.fwd_model.full_env_params.res,
                                              states=states,
                                              actions=np_u[0])
+        # get only the final state predicted
+        final_states = {}
+        for state_name, pred_next_states in next_states.items():
+            final_states[state_name] = pred_next_states[-1]
+        del next_states  # prevent accidental use
 
         # validate the edge
         # TODO: implement this inside OMPL
-        edge_is_valid = self.edge_is_valid(states, np_u, next_states)
+        edge_is_valid = self.edge_is_valid(states, np_u, final_states)
 
         # copy the result into the ompl state data structure
         if not edge_is_valid:
             # This will ensure this edge is not added to the tree
             link_bot_subspace_idx = self.subspaces_to_plan_with['link_bot'][0]
             state_out[link_bot_subspace_idx][0] = 1000
-            self.viz_object.rejected_samples.append(next_states['link_bot'])
+            self.viz_object.rejected_samples.append(final_states['link_bot'])
         else:
             for name, (idx, n) in self.subspaces_to_plan_with.items():
-                # -1 gets the last prediction, but since all actions are of length 1, this is also the second element
-                next_state = next_states[name][-1]
-                from_numpy(next_state, state_out[idx], n)
+                from_numpy(final_states[name], state_out[idx], n)
 
             head_point = states['link_bot'][-2:]
             local_env_data_next = self.get_local_env_at(head_point[0], head_point[1])

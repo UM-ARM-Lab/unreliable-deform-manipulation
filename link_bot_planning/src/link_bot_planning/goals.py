@@ -3,9 +3,9 @@ import numpy as np
 from link_bot_pycommon import link_bot_sdf_utils
 
 
-def sample_goal(w: float, h: float, current_head_point, env_padding: float, rng: np.random.RandomState):
-    gripper1_current_x = current_head_point.x
-    gripper1_current_y = current_head_point.y
+def sample_goal(w: float, h: float, current_head_point : np.array, env_padding: float, rng: np.random.RandomState):
+    gripper1_current_x = current_head_point[0]
+    gripper1_current_y = current_head_point[1]
     current = np.array([gripper1_current_x, gripper1_current_y])
     min_near = 0.5
     while True:
