@@ -167,6 +167,13 @@ def generate(myenv_utils, args):
                            goal_padding=0.5,
                            move_obstacles=(not args.no_obstacles),
                            nudge=False)
+
+    states_description = {
+        'link_bot': n_state
+    }
+    if args.tether:
+        states_description['tether'] = n_tether_state
+
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': args.dt,
@@ -181,7 +188,6 @@ def generate(myenv_utils, args):
             'n_action': 2,
             'tether': args.tether,
             'n_tether_state': n_tether_state,
-            # TODO: finish impmlementing this
             'states_description': states_description,
         }
         json.dump(options, of, indent=1)

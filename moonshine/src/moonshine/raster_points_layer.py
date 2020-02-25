@@ -53,7 +53,6 @@ def make_transition_image(local_env, planned_state, action, planned_next_state, 
     h, w = local_env.shape
     local_env = np.expand_dims(local_env, axis=2)
 
-    # TODO: ADD BATCH INDEX HERE
     planned_rope_image = raster(*add_batch(planned_state, res, origin), h, w)[0]
     planned_next_rope_image = raster(*add_batch(planned_next_state, res, origin), h, w)[0]
 

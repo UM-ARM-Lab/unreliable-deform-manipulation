@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon import link_bot_pycommon
+from moonshine.numpy_utils import add_batch
 from moonshine.raster_points_layer import raster, make_transition_image
 
 
@@ -140,6 +141,7 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
     """
     generate more examples by random 90 rotations or horizontal/vertical flipping
     """
+
     def _label_is(label_is):
         def __filter(transition):
             result = tf.squeeze(tf.equal(transition[label_key], label_is))
@@ -222,42 +224,51 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
 
 
 # raster each state into an image
-def raster_rope_images(planned_states, res, h, w, n_points):
-    # NOTE: assumes full env is centered at origin
-    origin = [int(w / 2), int(h / 2)]
-    n_time_steps = planned_states.shape[0]
-    rope_images = np.zeros([h, w, n_points * n_time_steps], dtype=np.float32)
-    for t, planned_state in enumerate(planned_states):
-        rope_img_t = raster(planned_state, res, origin, h, w)
-        # NOTE: consider appending channel-wise instead?
-        rope_images[:, :, t] = rope_img_t
+def raster_rope_images(planned_states, res, origins, h, w):
+    """
+    :param planned_states: [batch, time, n_state]
+    :param res: [batch]
+    :param origins: [batch, 2]
+    :param h: scalar
+    :param w: scalar
+    :return: [batch, time, h, w, 2]
+    """
+    b, n_time_steps, _ = planned_states.shape
+    rope_images = np.zeros([b, h, w, 2], dtype=np.float32)
+    for t in range(n_time_steps):
+        planned_states_t = planned_states[:, t]
+        rope_img_t = raster(planned_states_t, res, origins, h, w)
+        rope_img_t = np.sum(rope_img_t, axis=3)
+        gradient_t = float(t) / n_time_steps
+        gradient_image_t = rope_img_t * gradient_t
+        rope_images[:, :, :, 0] += rope_img_t
+        rope_images[:, :, :, 1] += gradient_image_t
+    rope_images = np.clip(rope_images, 0, 1.0)
     return rope_images
 
 
 def add_traj_image(dataset, action_in_image: bool):
     def _add_traj_image(input_dict):
-        # TODO: incorporate action somehow? maybe one channel per action per time step
         full_env = input_dict['full_env/env']
+        full_env_origin = input_dict['full_env/origin']
         res = input_dict['res']
         stop_index = input_dict['planned_state/link_bot_all_stop']
         planned_states = input_dict['planned_state/link_bot_all'][:stop_index]
 
         h, w = full_env.shape
-        t = planned_states.shape[0]
-        n_points = link_bot_pycommon.n_state_to_n_points(planned_states.shape[1])
 
         # add channel index
         full_env = tf.expand_dims(full_env, axis=2)
 
-        rope_imgs = tf.numpy_function(raster_rope_images, [planned_states, res, h, w, n_points], tf.float32)
-        rope_imgs.set_shape([h, w, n_points])
+        rope_imgs = tf.numpy_function(raster_rope_images, [*add_batch(planned_states, res, full_env_origin), h, w], tf.float32)[0]
+        rope_imgs.set_shape([h, w, 2])
 
         # h, w, channel
         image = tf.concat((full_env, rope_imgs), axis=2)
         input_dict['trajectory_image'] = image
         return input_dict
 
-    return dataset.map(_add_traj_image())
+    return dataset.map(_add_traj_image)
 
 
 def add_transition_image(dataset, action_in_image: bool):

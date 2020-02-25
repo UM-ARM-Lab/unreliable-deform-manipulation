@@ -103,7 +103,6 @@ def main():
             plt.show(block=True)
         elif args.display_type == 'trajectory_image':
             image = example['trajectory_image'].numpy()
-            image = np.pad(image, [[0, 0], [0, 0], [0, 1]])
             plt.imshow(np.flipud(image))
             planned_env_extent = [1, 199, 1, 199]
             label_color = 'g' if label else 'r'
