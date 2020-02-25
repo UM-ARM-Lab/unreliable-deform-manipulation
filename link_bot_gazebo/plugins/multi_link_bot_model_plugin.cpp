@@ -417,6 +417,7 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBot
     objects_service_.call(get_objects_req, get_objects_res);
     res.actual_path.emplace_back(get_objects_res.objects);
 
+    // step world so action takes place
     auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
     auto const steps = static_cast<unsigned int>(action.max_time_per_step / seconds_per_step);
     for (auto i{0}; i < steps; ++i) {

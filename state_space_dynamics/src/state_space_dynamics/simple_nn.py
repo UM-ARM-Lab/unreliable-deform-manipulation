@@ -10,6 +10,7 @@ from colorama import Fore, Style
 
 from link_bot_pycommon import link_bot_pycommon
 from moonshine import experiments_util
+from moonshine.numpy_utils import add_batch_to_dict
 from state_space_dynamics.base_forward_model import BaseForwardModel
 
 
@@ -54,7 +55,7 @@ class SimpleNN(tf.keras.Model):
         gen_states = tf.stack(gen_states)
         gen_states = tf.transpose(gen_states, [1, 0, 2, 3])
         gen_states = tf.squeeze(gen_states, squeeze_dims=3)
-        return gen_states
+        return {'link_bot': gen_states}
 
 
 def eval(hparams, test_tf_dataset, args):
@@ -249,23 +250,26 @@ class SimpleNNWrapper(BaseForwardModel):
                 full_env: np.ndarray,
                 full_env_origin: np.ndarray,
                 res: np.ndarray,
-                state: np.ndarray,
+                states: np.ndarray,
                 actions: np.ndarray) -> np.ndarray:
         del full_env  # unused
         del full_env_origin  # unused
         del res  # unsed
-        batch, T, _ = actions.shape
-        states = tf.convert_to_tensor(state, dtype=tf.float32)
-        states = tf.reshape(states, [states.shape[0], 1, states.shape[1]])
+        link_bot_state = states['link_bot']
+        T, _ = actions.shape
+        link_bot_state = np.expand_dims(link_bot_state, axis=0)
+        link_bot_state = tf.convert_to_tensor(link_bot_state, dtype=tf.float32)
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {
             # must be batch, T, n_state
-            'state/link_bot': states,
+            'state/link_bot': link_bot_state,
             # must be batch, T, 2
             'action': actions,
         }
+        test_x = add_batch_to_dict(test_x)
         predictions = self.net(test_x)
-        predicted_points = predictions.numpy().reshape([batch, T + 1, -1, 2])
-        # OMPL requires "doubles", which are float64, although our network outputs float32.
-        predicted_points = predicted_points.astype(np.float64)
-        return predicted_points
+
+        for k, v in predictions.items():
+            predictions[k] = np.reshape(v.numpy(), [T + 1, -1]).astype(np.float64)
+
+        return predictions

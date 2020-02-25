@@ -29,7 +29,7 @@
   },
 	"move_obstacles": false,
   "fixed_goal": null,
-  "reset_gripper_to": null,
+  "reset_gripper_to": [1,5,1.5],
 	"real_time_rate": 10.0,
 	"max_step_size": 0.01
 }

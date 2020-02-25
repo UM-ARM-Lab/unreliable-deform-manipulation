@@ -41,8 +41,8 @@ def visualize(args, env_data: OccupancyData, predicted_paths, actual_paths, p_ac
         actual_scatts[state_name] = actual_scatt
 
     ax.axis('equal')
-    ax.set_xlim([-5.0, 5.0])
-    ax.set_ylim([-5.0, 5.0])
+    ax.set_xlim([env_data.extent[0], env_data.extent[1]])
+    ax.set_ylim([env_data.extent[2], env_data.extent[3]])
     ax.imshow(np.flipud(env_data.data), extent=env_data.extent)
 
     def update(t):
@@ -128,9 +128,8 @@ def main():
                                         actions=actions)
 
     trajectory_execution_request = make_trajectory_execution_request(fwd_model.dt, actions)
-    print(trajectory_execution_request)
     traj_res = services.execute_trajectory(trajectory_execution_request)
-    actual_paths = trajectory_execution_response_to_numpy(traj_res, None, services)
+    actual_paths = trajectory_execution_response_to_numpy(traj_res, fwd_model.local_env_params, services)
 
     # Reshape into points for drawing
     for state_name, predicted_path in predicted_paths.items():

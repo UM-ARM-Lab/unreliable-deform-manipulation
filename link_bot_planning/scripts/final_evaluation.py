@@ -98,7 +98,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
         super().on_before_plan()
 
-
     def get_goal(self, w, h, head_point, env_padding, full_env_data):
         if self.goal is not None:
             if self.verbose >= 1:
@@ -185,7 +184,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'sdf': {
                 'res': full_env_data.resolution.tolist(),
                 'origin': full_env_data.origin.tolist(),
-                'extent': full_env_data.extent,
+                'extent': full_env_data.extent.tolist(),
                 'data': full_env_data.data.tolist(),
             },
         }

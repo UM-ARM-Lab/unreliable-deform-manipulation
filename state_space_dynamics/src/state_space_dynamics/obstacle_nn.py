@@ -328,10 +328,10 @@ class ObstacleNNWrapper(BaseForwardModel):
         """
         :param full_env:        (H, W)
         :param full_env_origin: (2)
-        :param res:     scalar
+        :param res:             scalar
         :param states:          each value in the dictionary should be of shape (batch, n_state)
-        :param actions:         (T, 2)
-        :return: states:         each value in the dictionary should be a of shape [batch, T+1, n_state)
+        :param actions:        (T, 2)
+        :return: states:       each value in the dictionary should be a of shape [batch, T+1, n_state)
         """
         T = actions.shape[0]
 
