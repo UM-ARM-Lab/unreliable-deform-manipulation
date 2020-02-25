@@ -103,7 +103,10 @@ def main():
     else:
         services = gazebo_utils.GazeboServices()
 
-    services.setup_env(args.verbose, real_time_rate=10.0, max_step_size=args.max_step_size, reset_world=True)
+    services.setup_env(verbose=args.verbose,
+                       real_time_rate=10.0,
+                       reset_gripper_to=None,
+                       max_step_size=args.max_step_size)
     services.pause(std_srvs.srv.EmptyRequest())
 
     fwd_model, _ = model_utils.load_generic_model(args.model_dir, args.model_type)
@@ -125,6 +128,7 @@ def main():
                                         actions=actions)
 
     trajectory_execution_request = make_trajectory_execution_request(fwd_model.dt, actions)
+    print(trajectory_execution_request)
     traj_res = services.execute_trajectory(trajectory_execution_request)
     actual_paths = trajectory_execution_response_to_numpy(traj_res, None, services)
 
