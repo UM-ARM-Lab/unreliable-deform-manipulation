@@ -1,8 +1,8 @@
 {
   "fwd_model_dir": "ss_log_data/rigid_translation",
   "fwd_model_type": "rigid",
-  "classifier_model_dir": "classifiers/tether-1obs/February_23_11-35-10_6833be5d85/",
-  "classifier_model_type": "raster",
+  "classifier_model_dir": "",
+  "classifier_model_type": "none",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
@@ -12,7 +12,7 @@
   "random_epsilon": 0.0,
   "w": 5.0,
   "h": 5.0,
-  "timeout": 60,
+  "timeout": 120,
   "state_space": {
     "link_bot": {
       "weight": 1.0
@@ -23,5 +23,10 @@
     "local_env_origin": {
       "weight": 0.0
     }
-  }
+  },
+	"move_obstacles": false,
+  "fixed_goal": null,
+  "reset_gripper_to": null,
+	"real_time_rate": 10.0,
+	"max_step_size": 0.01
 }

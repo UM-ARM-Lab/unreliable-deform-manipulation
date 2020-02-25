@@ -1,7 +1,7 @@
 import json
 import pathlib
 import time
-from typing import Tuple, Dict
+from typing import Dict
 
 import numpy as np
 import progressbar
@@ -11,43 +11,12 @@ from colorama import Fore, Style
 from tensorflow import keras
 
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
-from moonshine import experiments_util
+from link_bot_pycommon import link_bot_sdf_utils
+from moonshine import experiments_util, loss_on_dicts
 from moonshine.action_smear_layer import smear_action
 from moonshine.numpy_utils import add_batch_to_dict
 from moonshine.raster_points_layer import raster
 from state_space_dynamics.base_forward_model import BaseForwardModel
-
-
-def get_local_env_at_in(rows: int,
-                        cols: int,
-                        res: float,
-                        center_points,
-                        padded_full_envs: np.ndarray,
-                        padding: int,
-                        full_env_origins) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    NOTE: Assumes both local and full env have the same resolution
-    :param rows: indices
-    :param cols: indices
-    :param res: meters
-    :param center_points: (x,y) meters
-    :param padded_full_envs: the full environment data
-    :return: local env array
-    """
-    batch_size = int(center_points.shape[0])
-
-    # indeces of the heads of the ropes in the full env, with a batch dimension up front
-    center_cols = tf.cast(center_points[:, 0] / res + full_env_origins[:, 1], dtype=tf.int64)
-    center_rows = tf.cast(center_points[:, 1] / res + full_env_origins[:, 0], dtype=tf.int64)
-    local_env_origins = full_env_origins - np.stack([center_rows, center_cols], axis=1) + np.array([rows // 2, cols // 2])
-    delta_rows = np.tile(np.arange(-rows // 2, rows // 2), [batch_size, cols, 1]).transpose([0, 2, 1])
-    delta_cols = np.tile(np.arange(-cols // 2, cols // 2), [batch_size, rows, 1])
-    row_indeces = np.tile(center_rows, [cols, rows, 1]).T + delta_rows
-    col_indeces = np.tile(center_cols, [cols, rows, 1]).T + delta_cols
-    batch_indeces = np.tile(np.arange(0, batch_size), [cols, rows, 1]).transpose()
-    local_env = padded_full_envs[batch_indeces, row_indeces + padding, col_indeces + padding]
-    local_env = tf.convert_to_tensor(local_env, dtype=tf.float32)
-    return local_env, tf.cast(local_env_origins, dtype=tf.float32)
 
 
 class ObstacleNN(tf.keras.Model):
@@ -91,12 +60,38 @@ class ObstacleNN(tf.keras.Model):
 
         self.flatten_conv_output = layers.Flatten()
 
+    def get_local_env(self, head_point_t, full_env_origin, full_env):
+        # NOTE: there are some really high velocities in my dataset, sort of accidentally, and the model likes to predict crazy
+        #  things in this case. Since this will go out of bounds of our environment, we want to assume 0 (free space), so we pad.
+        padding = 200
+        paddings = [[0, 0], [padding, padding], [padding, padding]]
+        padded_full_envs = tf.pad(full_env, paddings=paddings)
+
+        local_env_origin = tf.numpy_function(link_bot_sdf_utils.get_local_env_origins,
+                                             [head_point_t,
+                                              full_env_origin,
+                                              self.local_env_params.h_rows,
+                                              self.local_env_params.w_cols,
+                                              self.local_env_params.res],
+                                             tf.float32)
+        local_env = tf.numpy_function(link_bot_sdf_utils.get_local_env_at_in,
+                                      [head_point_t,
+                                       padded_full_envs,
+                                       full_env_origin,
+                                       padding,
+                                       self.local_env_params.h_rows,
+                                       self.local_env_params.w_cols,
+                                       self.local_env_params.res],
+                                      tf.float32)
+        env_h_rows = tf.convert_to_tensor(self.local_env_params.h_row, tf.int64)
+        env_w_cols = tf.convert_to_tensor(self.local_env_params.w_cols, tf.int64)
+        return local_env, local_env_origin, env_h_rows, env_w_cols
+
     def call(self, input_dict, training=None, mask=None):
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
 
         substates_0 = []
-        # TODO: FINISH FIXING THIS MODEL
         for name, n in self.used_states_description.items():
             state_key = 'state/{}'.format(name)
             substate_0 = tf.expand_dims(input_dict[state_key][:, 0], axis=2)
@@ -104,15 +99,10 @@ class ObstacleNN(tf.keras.Model):
 
         s_0 = tf.concat(substates_0, axis=1)
 
-        resolution = input_dict['res']
+        # TODO: don't collect resolution for every time step, it doesn't change
+        resolution = input_dict['res'][:, 0]
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']
-
-        # NOTE: there are some really high velocities in my dataset, sort of accidentally, and the model likes to predict crazy
-        #  things in this case. Since this will go out of bounds of our environment, we want to assume 0 (free space), so we pad.
-        padding = 200
-        paddings = [[0, 0], [padding, padding], [padding, padding]]
-        padded_full_envs_np = tf.pad(full_env, paddings=paddings).numpy()
 
         pred_states = [s_0]
         for t in range(input_sequence_length):
@@ -121,7 +111,6 @@ class ObstacleNN(tf.keras.Model):
 
             action_t = actions[:, t]
 
-            # the local environment used at each time step is take as a rectangle centered on the predicted point of the head
             head_point_t = s_t_squeeze[:, -2:]
             if 'use_full_env' in self.hparams and self.hparams['use_full_env']:
                 env = full_env
@@ -129,16 +118,8 @@ class ObstacleNN(tf.keras.Model):
                 env_h_rows = tf.convert_to_tensor(self.full_env_params.h_rows, tf.int64)
                 env_w_cols = tf.convert_to_tensor(self.full_env_params.w_cols, tf.int64)
             else:
-                env, env_origin = get_local_env_at_in(rows=self.local_env_params.h_rows,
-                                                      cols=self.local_env_params.w_cols,
-                                                      res=self.local_env_params.res,
-                                                      center_points=head_point_t,  # has batch dimension
-                                                      padded_full_envs=padded_full_envs_np,  # has batch dimension
-                                                      padding=padding,
-                                                      full_env_origins=full_env_origin,  # has batch dimension
-                                                      )
-                env_h_rows = tf.convert_to_tensor(self.local_env_params.h_row, tf.int64)
-                env_w_cols = tf.convert_to_tensor(self.local_env_params.w_cols, tf.int64)
+                # the local environment used at each time step is centered on the current point of the head
+                env, env_origin, env_h_rows, env_w_cols = self.get_local_env(head_point_t, full_env_origin, full_env)
 
             rope_image_t = tf.numpy_function(raster, [s_t_squeeze, resolution, env_origin, env_h_rows, env_w_cols], tf.float32)
 
@@ -183,15 +164,6 @@ class ObstacleNN(tf.keras.Model):
             start_idx += n
 
         return output_states_dict
-
-
-def loss_on_dicts(loss, dict_true, dict_pred):
-    loss_by_key = []
-    for k, y_true in dict_true.items():
-        y_pred = dict_pred[k]
-        l = loss(y_true=y_true, y_pred=y_pred)
-        loss_by_key.append(l)
-    return tf.reduce_mean(loss_by_key)
 
 
 def eval(hparams, test_tf_dataset, args):

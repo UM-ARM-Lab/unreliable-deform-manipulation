@@ -2,7 +2,7 @@
   "model_class": "ObstacleNN",
   "use_full_env": true,
   "tether": true,
-  "states_keys": 
+  "states_keys": [
     "link_bot",
     "tether"
   ],

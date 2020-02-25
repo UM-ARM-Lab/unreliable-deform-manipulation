@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict
 
 import numpy as np
 
@@ -11,5 +11,11 @@ class NoneClassifier(BaseClassifier):
     def __init__(self):
         super().__init__()
 
-    def predict(self, local_env_data: OccupancyData, s1: np.ndarray, s2: np.ndarray, action: np.ndarray) -> List[float]:
+    def predict_transition(self, local_env_data: OccupancyData, s1: np.ndarray, s2: np.ndarray, action: np.ndarray) -> float:
+        return 1.0
+
+    def predict_traj(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
+        return 1.0
+
+    def predict(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
         return 1.0

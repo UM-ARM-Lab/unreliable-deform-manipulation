@@ -3,12 +3,11 @@ from __future__ import print_function, division
 
 from typing import Optional
 
-import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon import link_bot_pycommon
 from moonshine.numpy_utils import add_batch
-from moonshine.raster_points_layer import raster, make_transition_image
+from moonshine.raster_points_layer import make_transition_image, make_traj_image
 
 
 def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
@@ -223,31 +222,7 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
     return balanced_dataset
 
 
-# raster each state into an image
-def raster_rope_images(planned_states, res, origins, h, w):
-    """
-    :param planned_states: [batch, time, n_state]
-    :param res: [batch]
-    :param origins: [batch, 2]
-    :param h: scalar
-    :param w: scalar
-    :return: [batch, time, h, w, 2]
-    """
-    b, n_time_steps, _ = planned_states.shape
-    rope_images = np.zeros([b, h, w, 2], dtype=np.float32)
-    for t in range(n_time_steps):
-        planned_states_t = planned_states[:, t]
-        rope_img_t = raster(planned_states_t, res, origins, h, w)
-        rope_img_t = np.sum(rope_img_t, axis=3)
-        gradient_t = float(t) / n_time_steps
-        gradient_image_t = rope_img_t * gradient_t
-        rope_images[:, :, :, 0] += rope_img_t
-        rope_images[:, :, :, 1] += gradient_image_t
-    rope_images = np.clip(rope_images, 0, 1.0)
-    return rope_images
-
-
-def add_traj_image(dataset, action_in_image: bool):
+def add_traj_image(dataset, action_in_image: Optional[bool] = False):
     def _add_traj_image(input_dict):
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']
@@ -257,14 +232,9 @@ def add_traj_image(dataset, action_in_image: bool):
 
         h, w = full_env.shape
 
-        # add channel index
-        full_env = tf.expand_dims(full_env, axis=2)
+        image = tf.numpy_function(make_traj_image, add_batch(full_env, full_env_origin, res, planned_states), tf.float32)[0]
+        image.set_shape([h, w, 3])
 
-        rope_imgs = tf.numpy_function(raster_rope_images, [*add_batch(planned_states, res, full_env_origin), h, w], tf.float32)[0]
-        rope_imgs.set_shape([h, w, 2])
-
-        # h, w, channel
-        image = tf.concat((full_env, rope_imgs), axis=2)
         input_dict['trajectory_image'] = image
         return input_dict
 

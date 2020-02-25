@@ -73,8 +73,8 @@ class Services:
     @staticmethod
     def setup_env(verbose: int,
                   real_time_rate: float,
+                  reset_gripper_to: Optional,
                   max_step_size: Optional[float] = None,
-                  reset_world: Optional[bool] = True,
                   initial_object_dict: Optional[Dict] = None):
         pass
 

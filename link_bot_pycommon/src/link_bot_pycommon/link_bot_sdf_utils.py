@@ -16,6 +16,7 @@ def idx_to_point(row: int,
     x = (col - origin[1]) * resolution[1]
     return np.array([x, y])
 
+
 def bounds_from_env_size(w_cols, h_rows, new_origin, resolution, origin):
     xmin = -w_cols / 2 + new_origin[1]
     ymin = -h_rows / 2 + new_origin[0]
@@ -191,3 +192,91 @@ def inflate(local_env: OccupancyData, radius_m: float):
             pass
 
     return inflated
+
+
+def get_local_env_origins(center_points,
+                          full_env_origins,
+                          rows: int,
+                          cols: int,
+                          res: float):
+    """
+    NOTE: Assumes both local and full env have the same resolution
+    :param center_points: [batch, 2] (x,y) meters
+    :param full_env_origins: the full environment data origins
+    :param rows: scalar, int
+    :param cols: scalar, int
+    :param res: scalar, meters
+    :return: local env origins
+    """
+    # indeces of the heads of the ropes in the full env, with a batch dimension up front
+    center_cols = (center_points[:, 0] / res + full_env_origins[:, 1]).astype(np.int64)
+    center_rows = (center_points[:, 1] / res + full_env_origins[:, 0]).astype(np.int64)
+    local_env_origins = full_env_origins - np.stack([center_rows, center_cols], axis=1) + np.array([rows // 2, cols // 2])
+    local_env_origins = local_env_origins.astype(np.float32)
+    return local_env_origins
+
+
+def get_local_env_at_in(center_points: np.ndarray,
+                        padded_full_envs: np.ndarray,
+                        full_env_origins: np.ndarray,
+                        padding: int,
+                        rows: int,
+                        cols: int,
+                        res: float):
+    """
+    NOTE: Assumes both local and full env have the same resolution
+    :param center_points: [batch, 2] (x,y) meters
+    :param padded_full_envs: [batch, h, w] the full environment data
+    :param full_env_origins: [batch, 2]
+    :param padding: scalar
+    :param rows: [batch]
+    :param cols: [batch]
+    :param res: scalar, meters
+    :return: local envs
+    """
+    batch_size = int(center_points.shape[0])
+
+    # indeces of the heads of the ropes in the full env, with a batch dimension up front
+    center_cols = (center_points[:, 0] / res + full_env_origins[:, 1]).astype(np.int64)
+    center_rows = (center_points[:, 1] / res + full_env_origins[:, 0]).astype(np.int64)
+    delta_rows = np.tile(np.arange(-rows // 2, rows // 2), [batch_size, cols, 1]).transpose([0, 2, 1])
+    delta_cols = np.tile(np.arange(-cols // 2, cols // 2), [batch_size, rows, 1])
+    row_indeces = np.tile(center_rows, [cols, rows, 1]).T + delta_rows
+    col_indeces = np.tile(center_cols, [cols, rows, 1]).T + delta_cols
+    batch_indeces = np.tile(np.arange(0, batch_size), [cols, rows, 1]).transpose()
+    local_env = padded_full_envs[batch_indeces, row_indeces + padding, col_indeces + padding]
+    local_env = local_env.astype(np.float32)
+    return local_env
+
+
+def get_local_env_and_origin(head_point_t: np.ndarray,
+                             full_env: np.ndarray,
+                             full_env_origin: np.ndarray,
+                             local_h_rows: int,
+                             local_w_cols: int,
+                             res: float):
+    """
+    :param local_h_rows: scalar
+    :param local_w_cols: scalar
+    :param head_point_t: [batch, 2]
+    :param full_env_origin: [batch, 2]
+    :param full_env: [batch, h, w]
+    :param res: scalar
+    :return:
+    """
+    padding = 200
+    paddings = [[0, 0], [padding, padding], [padding, padding]]
+    padded_full_envs = np.pad(full_env, paddings, 'constant', constant_values=0)
+    local_env_origin = get_local_env_origins(head_point_t,
+                                             full_env_origin,
+                                             local_h_rows,
+                                             local_w_cols,
+                                             res)
+    local_env = get_local_env_at_in(head_point_t,
+                                    padded_full_envs,
+                                    full_env_origin,
+                                    padding,
+                                    local_h_rows,
+                                    local_w_cols,
+                                    res)
+    return local_env, local_env_origin

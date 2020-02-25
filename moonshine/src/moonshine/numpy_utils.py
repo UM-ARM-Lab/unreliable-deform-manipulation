@@ -11,6 +11,8 @@ def add_batch(*args):
             new_args.append(np.expand_dims(x, axis=0))
         elif isinstance(x, tf.Tensor):
             new_args.append(tf.expand_dims(x, axis=0))
+        elif isinstance(x, dict):
+            new_args.append(add_batch_to_dict(x))
         else:
             new_args.append(np.array([x]))
     return new_args

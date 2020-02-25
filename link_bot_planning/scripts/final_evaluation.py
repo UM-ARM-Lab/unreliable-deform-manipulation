@@ -200,8 +200,7 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+', help='json file(s) describing what should be compared')
-    parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time',
-                        required=True)
+    parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time', required=True)
     parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
     parser.add_argument("--seed", '-s', type=int, default=3)
@@ -257,8 +256,8 @@ def main():
         fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, fwd_model_type)
 
         services = gazebo_utils.setup_env(verbose=args.verbose,
-                                          real_time_rate=args.real_time_rate,
-                                          reset_gripper_to=args.reset_gripper_to,
+                                          real_time_rate=planner_params['real_time_rate'],
+                                          reset_gripper_to=planner_params['reset_gripper_to'],
                                           max_step_size=fwd_model.max_step_size,
                                           initial_object_dict=initial_object_dict)
 
@@ -273,10 +272,10 @@ def main():
                                          services=services,
                                          seed=args.seed)
 
-        sim_params = SimParams(real_time_rate=args.real_time_rate,
+        sim_params = SimParams(real_time_rate=planner_params['real_time_rate'],
                                max_step_size=planner.fwd_model.max_step_size,
                                goal_padding=0.0,
-                               move_obstacles=(not args.no_move_obstacles),
+                               move_obstacles=planner_params['move_obstacles'],
                                nudge=False)
         print(Fore.GREEN + "Running {} Trials".format(args.n_total_plans) + Fore.RESET)
 
@@ -296,8 +295,8 @@ def main():
             seed=args.seed,
             outdir=common_output_directory,
             comparison_item_idx=comparison_idx,
-            reset_gripper_to=args.reset_gripper_to,
-            goal=args.goal
+            reset_gripper_to=planner_params['reset_gripper_to'],
+            goal=planner_params['fixed_goal']
         )
         runner.run()
 

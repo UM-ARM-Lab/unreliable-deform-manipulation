@@ -13,9 +13,11 @@ from tensorflow import keras
 
 from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_planning.params import LocalEnvParams
+from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
 from moonshine.base_model import BaseModel
-from moonshine.raster_points_layer import make_transition_image
+from moonshine.numpy_utils import add_batch
+from moonshine.raster_points_layer import make_transition_image, make_traj_image
 
 
 class RasterClassifier(BaseModel):
@@ -71,7 +73,7 @@ class RasterClassifier(BaseModel):
         return out_conv_z
 
     def call(self, input_dict: dict, training=None, mask=None):
-        # choose what key to use here
+        # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         image = input_dict[self.hparams['image_key']]
         state = input_dict['planned_state/link_bot']
         action = input_dict['action']
@@ -109,7 +111,7 @@ class RasterClassifierWrapper(BaseClassifier):
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.ckpt.restore(self.manager.latest_checkpoint)
 
-    def predict(self, local_env_data: OccupancyData, s1: np.ndarray, s2: np.ndarray, action: np.ndarray) -> float:
+    def predict_transition(self, local_env_data: OccupancyData, s1: np.ndarray, s2: np.ndarray, action: np.ndarray) -> float:
         """
         :param local_env_data:
         :param s1: [n_state] float64
@@ -117,22 +119,16 @@ class RasterClassifierWrapper(BaseClassifier):
         :param action: [n_action] float64
         :return: [1] float64
         """
-        image_key = self.model_hparams['image_key']
-        if image_key == 'transition_image':
-            origin = local_env_data.origin
-            res = local_env_data.resolution[0]
-            local_env = local_env_data.data
-            action_in_image = self.model_hparams['action_in_image']
-            image = make_transition_image(local_env, s1, action, s2, res, origin, action_in_image)
-            image = tf.convert_to_tensor(image, dtype=tf.float32)
-            image = tf.expand_dims(image, axis=0)
-        elif image_key == 'trajectory_image':
-            image = None
-        else:
-            raise ValueError('invalid image_key')
+        origin = local_env_data.origin
+        res = local_env_data.resolution[0]
+        local_env = local_env_data.data
+        action_in_image = self.model_hparams['action_in_image']
+        image = make_transition_image(local_env, s1, action, s2, res, origin, action_in_image)
+        image = tf.convert_to_tensor(image, dtype=tf.float32)
+        image = tf.expand_dims(image, axis=0)
 
         net_inputs = {
-            image_key: image,
+            'transition_image': image,
             'planned_state/link_bot': tf.expand_dims(tf.convert_to_tensor(s1, tf.float32), axis=0),
             'action': tf.expand_dims(tf.convert_to_tensor(action, tf.float32), axis=0),
             'planned_state_next/link_bot': tf.expand_dims(tf.convert_to_tensor(s2, tf.float32), axis=0),
@@ -143,3 +139,48 @@ class RasterClassifierWrapper(BaseClassifier):
         accept_probabilities = accept_probabilities.astype(np.float64).squeeze()
 
         return accept_probabilities
+
+    def predict_traj(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
+        s1 = states['link_bot'][-2]
+        s2 = states['link_bot'][-1]
+        action = actions[-1]
+
+        batched_inputs = add_batch(full_env.data, full_env.origin, full_env.resolution[0], states['link_bot'])
+        image = make_traj_image(*batched_inputs)
+        net_inputs = {
+            'trajectory_image': image,
+            'planned_state/link_bot': tf.expand_dims(tf.convert_to_tensor(s1, tf.float32), axis=0),
+            'action': tf.expand_dims(tf.convert_to_tensor(action, tf.float32), axis=0),
+            'planned_state_next/link_bot': tf.expand_dims(tf.convert_to_tensor(s2, tf.float32), axis=0),
+        }
+
+        accept_probabilities = self.net(net_inputs)
+        accept_probabilities = accept_probabilities.numpy()
+        accept_probabilities = accept_probabilities.astype(np.float64).squeeze()
+
+        return accept_probabilities
+
+    def predict(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
+        # TODO: pass in dicts to predict_transition, remove specialization for link_bot key
+        image_key = self.model_hparams['image_key']
+        if image_key == 'transition_image':
+            head_point = states['link_bot'][-2]
+            local_env_params = self.net.local_env_params
+            local_env, local_env_origin = link_bot_sdf_utils.get_local_env_and_origin(*add_batch(head_point,
+                                                                                                 full_env.data,
+                                                                                                 full_env.origin),
+                                                                                      local_h_rows=local_env_params.h_rows,
+                                                                                      local_w_cols=local_env_params.w_cols,
+                                                                                      res=full_env.resolution[0])
+            # remove batch dim with [0]
+            local_env = OccupancyData(data=local_env[0],
+                                      resolution=full_env.resolution,
+                                      origin=local_env_origin[0])
+            return self.predict_transition(local_env_data=local_env,
+                                           s1=states['link_bot'][-2],
+                                           s2=states['link_bot'][-1],
+                                           action=actions[-1])
+        elif image_key == 'trajectory_image':
+            return self.predict_traj(full_env, states, actions)
+        else:
+            raise ValueError('invalid image_key')

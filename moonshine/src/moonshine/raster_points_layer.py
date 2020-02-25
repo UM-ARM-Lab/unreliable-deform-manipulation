@@ -50,6 +50,7 @@ def make_transition_image(local_env, planned_state, action, planned_next_state, 
     :param origin: [2]
     :return: [n_points*2+n_action+1], aka  [n_state+n_action+1]
     """
+    # TODO: make this operate on batched data, or make make_traj_image NOT operate on batched data
     h, w = local_env.shape
     local_env = np.expand_dims(local_env, axis=2)
 
@@ -63,6 +64,49 @@ def make_transition_image(local_env, planned_state, action, planned_next_state, 
     else:
         action_image = smear_action(*add_batch(action), h, w)[0]
         image = np.concatenate((planned_rope_image, planned_next_rope_image, local_env, action_image), axis=2)
+    return image
+
+
+def raster_rope_images(planned_states, res, origins, h, w):
+    """
+    Raster all the state into one fixed-channel image representation using color gradient in the green channel
+    :param planned_states: [batch, time, n_state]
+    :param res: [batch]
+    :param origins: [batch, 2]
+    :param h: scalar
+    :param w: scalar
+    :return: [batch, time, h, w, 2]
+    """
+    b, n_time_steps, _ = planned_states.shape
+    rope_images = np.zeros([b, h, w, 2], dtype=np.float32)
+    for t in range(n_time_steps):
+        planned_states_t = planned_states[:, t]
+        rope_img_t = raster(planned_states_t, res, origins, h, w)
+        rope_img_t = np.sum(rope_img_t, axis=3)
+        gradient_t = float(t) / n_time_steps
+        gradient_image_t = rope_img_t * gradient_t
+        rope_images[:, :, :, 0] += rope_img_t
+        rope_images[:, :, :, 1] += gradient_image_t
+    rope_images = np.clip(rope_images, 0, 1.0)
+    return rope_images
+
+
+def make_traj_image(full_env, full_env_origin, res, states):
+    """
+    :param full_env: [batch, h, w]
+    :param full_env_origin:  [batch, 2]
+    :param res: [batch]
+    :param states: [batch, time, n]
+    :return: [batch, h, w, 3]
+    """
+    b, h, w = full_env.shape
+
+    # add channel index
+    full_env = np.expand_dims(full_env, axis=3)
+
+    rope_imgs = raster_rope_images(states, res, full_env_origin, h, w)
+
+    image = np.concatenate((full_env, rope_imgs), axis=3)
     return image
 
 

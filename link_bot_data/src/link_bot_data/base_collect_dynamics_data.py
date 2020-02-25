@@ -199,6 +199,10 @@ def generate(myenv_utils, args):
     env_rng = np.random.RandomState(args.seed)
     action_rng = np.random.RandomState(args.seed)
 
-    services = myenv_utils.setup_env(args.verbose, args.real_time_rate, args.max_step_size, (0, 0), None)
+    services = myenv_utils.setup_env(verbose=args.verbose,
+                                     real_time_rate=args.real_time_rate,
+                                     max_step_size=args.max_step_size,
+                                     reset_gripper_to=None,
+                                     initial_object_dict=None)
 
     generate_trajs(myenv_utils, args, full_output_directory, services, env_rng, action_rng)
