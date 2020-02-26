@@ -208,6 +208,7 @@ class ClassifierDataCollector(PlanAndExecute):
         example_proto = tf.train.Example(features=tf.train.Features(feature=current_features))
         example = example_proto.SerializeToString()
         self.examples[self.examples_idx] = example
+        print(".", end="", flush=True)
         self.examples_idx += 1
 
         if self.examples_idx == self.n_examples_per_record:
