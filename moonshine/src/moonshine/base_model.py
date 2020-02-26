@@ -163,7 +163,7 @@ class BaseModel(tf.keras.Model):
         fn = 0
         fp = 0
         tp = 0
-        for test_example_dict in test_tf_dataset:
+        for test_example_dict in progressbar.progressbar(test_tf_dataset):
             test_batch_labels = test_example_dict['label']
             test_batch_predictions = net(test_example_dict)
             test_predictions.extend(test_batch_predictions.numpy().flatten().tolist())
@@ -182,13 +182,6 @@ class BaseModel(tf.keras.Model):
                     fp += 1
                 elif pred_bin == 0 and label == 0:
                     tn += 1
-
-        plt.hist(test_predictions, bins=10)
-        plt.xlabel("accept probability")
-        plt.ylabel("count")
-        plt.show(block=True)
-
-        print(net.get_weights())
 
         test_loss = np.mean(test_losses)
         test_accuracy = accuracy.result().numpy() * 100
