@@ -139,14 +139,13 @@ def get_occupancy(services,
     request.w_cols = env_w_cols
     request.center.x = center_x
     request.center.y = center_y
-    request.min_z = 0.1  # FIXME: maybe lower this again?
+    request.min_z = 0.05
     request.max_z = 2.00
     request.robot_name = 'link_bot'
     request.request_new = True
     response = services.compute_occupancy(request)
-    grid = np.array(response.grid).reshape([response.h_rows, response.w_cols])
+    grid = np.array(response.grid).reshape([response.w_cols, response.h_rows])
     grid = grid.T
-    # import ipdb; ipdb.set_trace()
     return grid, response
 
 

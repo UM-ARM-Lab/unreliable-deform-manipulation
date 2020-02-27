@@ -72,8 +72,8 @@ class PlanAndExecute:
                                                                                   self.planner.subspaces_to_plan_with.keys())
 
                 # generate a random target
-                tail_goal = np.array(self.get_goal(self.planner_params['w'],
-                                                   self.planner_params['h'],
+                tail_goal = np.array(self.get_goal(self.planner_params['random_goal_w'],
+                                                   self.planner_params['random_goal_h'],
                                                    head_point,
                                                    env_padding=self.sim_params.goal_padding,
                                                    full_env_data=full_env_data))

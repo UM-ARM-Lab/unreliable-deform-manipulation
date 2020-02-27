@@ -12,6 +12,8 @@
   "random_epsilon": 0.0,
   "w": 5.0,
   "h": 5.0,
+  "random_goal_w": 3.5,
+  "random_goal_h": 3.5,
   "timeout": 120,
   "state_space": {
     "link_bot": {

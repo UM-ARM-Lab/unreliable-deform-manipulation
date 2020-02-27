@@ -220,7 +220,7 @@ def balance_by_augmentation(dataset, label_key='label'):
     return balanced_dataset
 
 
-def add_traj_image(dataset, action_in_image: Optional[bool] = False):
+def add_traj_image(dataset):
     def _add_traj_image(input_dict):
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']

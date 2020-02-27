@@ -142,12 +142,15 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         link_bot_planned_path = planned_path['link_bot']
         print("Execution to Plan Error: {:.4f}".format(np.linalg.norm(link_bot_planned_path[-1] - link_bot_actual_path[-1])))
 
+        print(link_bot_planned_path[:, 0:2])
+        print(link_bot_actual_path[:, 0:2])
+
         anim = ompl_viz.plan_vs_execution(full_env_data.data,
                                           tail_goal_point,
                                           link_bot_planned_path,
                                           link_bot_actual_path,
                                           full_env_data.extent)
-        anim.save("/tmp/.latest-plan-vs-execution.gif", dpi=300, writer='imagemagick')
+        # anim.save("/tmp/.latest-plan-vs-execution.gif", dpi=300, writer='imagemagick')
         plt.show(block=True)
 
 

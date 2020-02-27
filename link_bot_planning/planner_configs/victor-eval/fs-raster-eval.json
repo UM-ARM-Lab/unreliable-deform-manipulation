@@ -9,10 +9,12 @@
   "accept_threshold": 0.5,
   "timeout": 60,
   "max_angle_rad": 1.0,
-  "goal_threshold": 0.02,
+  "goal_threshold": 0.05,
   "random_epsilon": 0.05,
   "w": 0.76,
   "h": 1.01,
+  "random_goal_w": 0.76,
+  "random_goal_h": 1.01,
   "state_space": {
     "link_bot": {
       "weight": 1.0

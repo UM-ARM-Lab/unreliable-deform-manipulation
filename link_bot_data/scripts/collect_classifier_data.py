@@ -27,6 +27,7 @@ from link_bot_planning.params import SimParams
 from link_bot_planning.plan_and_execute import PlanAndExecute
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter, point_arg
+from victor import victor_utils
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -231,6 +232,7 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     # TODO: make this take a json params file
+    parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument("n_total_plans", type=int, help='number of plans')
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("outdir", type=pathlib.Path)
@@ -246,6 +248,13 @@ def main():
     print("random seed:", args.seed)
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
+
+    # Start Services
+    if args.env_type == 'victor':
+        service_provider = victor_utils.VictorServices
+    else:
+        service_provider = gazebo_utils.GazeboServices
+
 
     params = json.load(args.params.open("r"))
     sim_params = SimParams(real_time_rate=params['real_time_rate'],
@@ -265,7 +274,7 @@ def main():
         'moving_box6': [-0.5, 2.0],
     }
 
-    services = gazebo_utils.setup_env(verbose=args.verbose,
+    services = service_provider.setup_env(verbose=args.verbose,
                                       real_time_rate=sim_params.real_time_rate,
                                       reset_gripper_to=params['reset_gripper_to'],
                                       max_step_size=sim_params.max_step_size,

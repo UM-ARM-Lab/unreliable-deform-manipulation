@@ -48,7 +48,7 @@ def main():
     if args.display_type == 'transition_image':
         dataset = add_transition_image(dataset, args.action_in_image)
     if args.display_type == 'trajectory_image':
-        dataset = add_traj_image(dataset, args.action_in_image)
+        dataset = add_traj_image(dataset)
 
     if not args.no_balance:
         dataset = balance_by_augmentation(dataset)

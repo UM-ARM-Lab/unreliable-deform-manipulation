@@ -1,20 +1,11 @@
 import pathlib
-from enum import auto
 from typing import List, Dict
 
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
-from link_bot_pycommon import args
 from link_bot_pycommon.link_bot_sdf_utils import compute_extent
-
-
-class ClassifierDatasetType(args.ArgsEnum):
-    TRANSITION = auto()
-    TRAJECTORY = auto()
-    TRANSITION_IMAGE = auto()
-    TRAJECTORY_IMAGE = auto()
 
 
 def add_next(feature_name):

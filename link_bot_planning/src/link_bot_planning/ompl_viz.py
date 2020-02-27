@@ -55,7 +55,7 @@ def plot(ax,
         for rope_configuration in planned_path[::subsample_path_]:
             ax.scatter(rope_configuration[0], rope_configuration[1], label='final_path', s=10, c='cyan', zorder=4)
             plot_data_dict['final_path'].append(rope_configuration)
-            # plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=1, c='cyan', zorder=4)
+            plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=1, c='cyan', zorder=4)
 
     # Visualize Nearest Neighbor Selection (poorly...)
     # for sample in planner_data.getSamples():

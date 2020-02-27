@@ -1,5 +1,6 @@
 {
   "model_class": "raster",
+  "action_in_image": false,
   "fc_layer_sizes": [],
   "conv_filters": [],
   "kernel_reg": 0.05,
