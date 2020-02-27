@@ -9,6 +9,8 @@ from link_bot_gazebo.srv import ComputeSDF2Request, ComputeOccupancyRequest, Com
 
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from link_bot_gazebo.msg import LinkBotAction
+
+from ignition.markers import MarkerProvider
 from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon
 
 import matplotlib.pyplot as plt
@@ -47,6 +49,7 @@ class Services:
         self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
         self.reset = rospy.ServiceProxy("/reset", std_srvs.srv.Empty)
         self.get_objects = rospy.ServiceProxy("/objects", GetObjects)
+        self.marker_provider = MarkerProvider()
 
         # currently unused
         self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
@@ -288,3 +291,4 @@ def get_start_states(services, state_keys):
                 start_states[subspace_name] = state
     start_states['link_bot'] = link_bot_start_state
     return start_states, link_bot_start_state, head_point
+

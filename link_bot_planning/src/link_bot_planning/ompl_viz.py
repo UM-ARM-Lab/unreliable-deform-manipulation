@@ -22,7 +22,10 @@ def plot(ax,
          goal: np.ndarray,
          planned_path: Optional[np.ndarray],
          planned_actions: Optional[np.ndarray],
-         extent: Iterable):
+         extent: Iterable,
+         draw_tree: Optional[bool] = None,
+         draw_rejected: Optional[bool] = None,
+         ):
 
     plot_data_dict = {
         'n_state': n_state,
@@ -43,9 +46,10 @@ def plot(ax,
     #     plot_rope_configuration(ax, state_sampled_at, label='sampled states', linewidth=1.0, c='b', zorder=1)
     #     plot_data_dict['sampled_states'].append(state_sampled_at)
 
-    for rejected_state in viz_object.rejected_samples:
-        plot_rope_configuration(ax, rejected_state, label='states rejected by classifier', linewidth=0.8, c='r', zorder=1, s=10)
-        plot_data_dict['rejected_states'].append(rejected_state)
+    if draw_rejected:
+        for rejected_state in viz_object.rejected_samples:
+            plot_rope_configuration(ax, rejected_state, label='states rejected by classifier', linewidth=0.8, c='r', zorder=1, s=10)
+            plot_data_dict['rejected_states'].append(rejected_state)
 
     if planned_path is not None:
         start = planned_path[0]
@@ -55,7 +59,7 @@ def plot(ax,
         for rope_configuration in planned_path[::subsample_path_]:
             ax.scatter(rope_configuration[0], rope_configuration[1], label='final_path', s=10, c='cyan', zorder=4)
             plot_data_dict['final_path'].append(rope_configuration)
-            plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=1, c='cyan', zorder=4)
+            plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=1, c='blue', zorder=4, s=2)
 
     # Visualize Nearest Neighbor Selection (poorly...)
     # for sample in planner_data.getSamples():
@@ -69,27 +73,28 @@ def plot(ax,
     #     ax.plot(neighbor_s_xs, neighbor_s_ys, c='white')
     #     ax.plot([s_np[0, 0], neighbor_s_np[0, 0]], [s_np[0, 1], neighbor_s_np[0, 1]], c='gray')
 
-    for vertex_index in range(planner_data.numVertices()):
-        v = planner_data.getVertex(vertex_index)
-        # draw the configuration of the rope
-        s = v.getState()
-        edges_map = ob.mapUintToPlannerDataEdge()
+    if draw_tree:
+        for vertex_index in range(planner_data.numVertices()):
+            v = planner_data.getVertex(vertex_index)
+            # draw the configuration of the rope
+            s = v.getState()
+            edges_map = ob.mapUintToPlannerDataEdge()
 
-        # TODO: this assumes the specific compound state space I'm testing at the moment. Get the subspace by name maybe?
-        np_s = to_numpy(s[0], n_state)
-        ax.scatter(np_s[0, 0], np_s[0, 1], s=5, c='black', zorder=2, label='tail')
+            # TODO: this assumes the specific compound state space I'm testing at the moment. Get the subspace by name maybe?
+            np_s = to_numpy(s[0], n_state)
+            ax.scatter(np_s[0, 0], np_s[0, 1], s=5, c='black', zorder=2, label='tail')
 
-        # full rope is too noisy
-        # if len(edges_map.keys()) == 0:
-        #     plot_rope_configuration(ax, np_s[0], linewidth=1, c='black', zorder=3, label='full rope')
+            # full rope is too noisy
+            # if len(edges_map.keys()) == 0:
+            #     plot_rope_configuration(ax, np_s[0], linewidth=1, c='black', zorder=3, label='full rope')
 
-        planner_data.getEdges(vertex_index, edges_map)
-        for vertex_index2 in edges_map.keys():
-            v2 = planner_data.getVertex(vertex_index2)
-            s2 = v2.getState()
-            np_s2 = to_numpy(s2[0], n_state)
-            ax.plot([np_s[0, 0], np_s2[0, 0]], [np_s[0, 1], np_s2[0, 1]], c='gray', linewidth=0.5, zorder=1)
-            plot_data_dict['tree_edges'].append([np_s, np_s2])
+            planner_data.getEdges(vertex_index, edges_map)
+            for vertex_index2 in edges_map.keys():
+                v2 = planner_data.getVertex(vertex_index2)
+                s2 = v2.getState()
+                np_s2 = to_numpy(s2[0], n_state)
+                ax.plot([np_s[0, 0], np_s2[0, 0]], [np_s[0, 1], np_s2[0, 1]], c='gray', linewidth=0.5, zorder=1)
+                plot_data_dict['tree_edges'].append([np_s, np_s2])
 
     ax.set_xlabel("x")
     ax.set_ylabel("y")
@@ -173,11 +178,16 @@ def plan_vs_execution(environment: np.ndarray,
     def update(t):
         planned_xs, planned_ys = plottable_rope_configuration(planned_path[t])
         actual_xs, actual_ys = plottable_rope_configuration(actual_path[t])
+        actual_points = np.hstack((actual_xs, actual_ys)).T
+        planned_points = np.hstack((planned_xs, planned_ys)).T
+        print(actual_xs.shape, actual_ys.shape)
+        print(planned_xs.shape, planned_ys.shape)
+        print(actual_points.shape, planned_points.shape)
 
         planned_line.set_data(planned_xs, planned_ys)
         actual_line.set_data(actual_xs, actual_ys)
-        actual_scat.set_offsets(np.hstack((actual_xs, actual_ys)).T)
-        planned_scat.set_offsets(np.hstack((planned_xs, planned_ys)).T)
+        actual_scat.set_offsets(actual_points)
+        planned_scat.set_offsets(planned_points)
 
     anim = FuncAnimation(fig, update, frames=planned_path.shape[0], interval=200)
     return anim

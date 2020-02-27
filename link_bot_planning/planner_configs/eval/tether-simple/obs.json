@@ -1,5 +1,5 @@
 {
-  "fwd_model_dir": "ss_log_data/tether_simple2_obs",
+  "fwd_model_dir": "ss_log_data/tether_simple2_obs-new",
   "fwd_model_type": "obs",
   "classifier_model_dir": "",
   "classifier_model_type": "none",

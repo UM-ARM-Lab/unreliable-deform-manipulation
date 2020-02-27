@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 
+import os
+import pathlib
+
 from typing import Optional
 
+import git
 import tensorflow as tf
+from colorama import Fore
 
 from link_bot_pycommon import link_bot_pycommon
 from moonshine.numpy_utils import add_batch
@@ -278,3 +283,17 @@ def cachename(mode: Optional[str] = None):
     else:
         tmpname = "/tmp/tf_{}".format(link_bot_pycommon.rand_str())
     return tmpname
+
+
+def data_directory(outdir: pathlib.Path, *names):
+    repo = git.Repo(search_parent_directories=True)
+    sha = repo.head.object.hexsha[:10]
+    format_string = "{}_{}_" + "{}_" * (len(names) - 1) + "{}"
+    full_output_directory = pathlib.Path(format_string.format(outdir, sha, *names))
+    if outdir:
+        if full_output_directory.is_file():
+            print(Fore.RED + "argument outdir is an existing file, aborting." + Fore.RESET)
+            return
+        elif not full_output_directory.is_dir():
+            os.mkdir(full_output_directory)
+    return full_output_directory

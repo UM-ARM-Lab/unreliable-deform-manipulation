@@ -12,6 +12,8 @@ import tensorflow
 from colorama import Fore
 from link_bot_gazebo.srv import LinkBotStateRequest, ExecuteActionRequest, GetObjectRequest
 
+import ignition.markers
+import link_bot_data.link_bot_dataset_utils
 from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
@@ -70,7 +72,10 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
                                                     gripper1_dx, gripper1_dy)
         if args.verbose:
             print('gripper delta:', gripper1_dx, gripper1_dy)
-            random_environment_data_utils.publish_marker(head_point.x + gripper1_dx, head_point.y + gripper1_dy, marker_size=0.05)
+            ignition.markers.publish_marker(services.marker_provider,
+                                            head_point.x + gripper1_dx,
+                                            head_point.y + gripper1_dy,
+                                            marker_size=0.05)
 
         action_msg.action.gripper1_delta_pos.x = gripper1_dx
         action_msg.action.gripper1_delta_pos.y = gripper1_dy
@@ -153,7 +158,7 @@ def generate(myenv_utils, args):
 
     assert args.trajs % args.trajs_per_file == 0, "num trajs must be multiple of {}".format(args.trajs_per_file)
 
-    full_output_directory = random_environment_data_utils.data_directory(args.outdir, args.trajs)
+    full_output_directory = link_bot_data.link_bot_dataset_utils.data_directory(args.outdir, args.trajs)
     if not os.path.isdir(full_output_directory) and args.verbose:
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)

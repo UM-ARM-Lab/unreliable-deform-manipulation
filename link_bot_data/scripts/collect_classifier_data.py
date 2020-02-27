@@ -16,6 +16,7 @@ import tensorflow as tf
 from colorama import Fore
 from ompl import base as ob
 
+import link_bot_data.link_bot_dataset_utils
 from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_gazebo import gazebo_utils
@@ -53,7 +54,8 @@ class ClassifierDataCollector(PlanAndExecute):
                  services: GazeboServices,
                  reset_gripper_to,
                  fixed_goal,
-                 outdir: Optional[pathlib.Path] = None):
+                 outdir: Optional[pathlib.Path] = None,
+                 is_victor: Optional[bool] = None):
         super().__init__(planner,
                          n_total_plans,
                          n_plans_per_env,
@@ -74,9 +76,10 @@ class ClassifierDataCollector(PlanAndExecute):
         self.local_env_params = self.planner.fwd_model.local_env_params
         self.reset_gripper_to = reset_gripper_to
         self.fixed_goal = fixed_goal
+        self.is_victor = is_victor
 
         if outdir is not None:
-            self.full_output_directory = random_environment_data_utils.data_directory(self.outdir, *self.fwd_model_info)
+            self.full_output_directory = link_bot_data.link_bot_dataset_utils.data_directory(self.outdir, *self.fwd_model_info)
             self.full_output_directory = pathlib.Path(self.full_output_directory)
             if not self.full_output_directory.is_dir():
                 print(Fore.YELLOW + "Creating output directory: {}".format(self.full_output_directory) + Fore.RESET)
@@ -249,12 +252,14 @@ def main():
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
 
+    # TODO: make this code agnostic, use ros params or a separate node for the service provider?
     # Start Services
     if args.env_type == 'victor':
+        is_victor = True
         service_provider = victor_utils.VictorServices
     else:
+        is_victor = False
         service_provider = gazebo_utils.GazeboServices
-
 
     params = json.load(args.params.open("r"))
     sim_params = SimParams(real_time_rate=params['real_time_rate'],
@@ -275,10 +280,10 @@ def main():
     }
 
     services = service_provider.setup_env(verbose=args.verbose,
-                                      real_time_rate=sim_params.real_time_rate,
-                                      reset_gripper_to=params['reset_gripper_to'],
-                                      max_step_size=sim_params.max_step_size,
-                                      initial_object_dict=initial_object_dict)
+                                          real_time_rate=sim_params.real_time_rate,
+                                          reset_gripper_to=params['reset_gripper_to'],
+                                          max_step_size=sim_params.max_step_size,
+                                          initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
     # NOTE: we could make the classifier take a different sized local environment than the dynamics, just a thought.
@@ -301,7 +306,8 @@ def main():
         outdir=args.outdir,
         services=services,
         reset_gripper_to=params['reset_gripper_to'],
-        fixed_goal=params['fixed_goal']
+        fixed_goal=params['fixed_goal'],
+        is_victor=is_victor
     )
 
     data_collector.run()

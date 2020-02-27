@@ -16,6 +16,7 @@ import tensorflow as tf
 from colorama import Fore
 from ompl import base as ob
 
+import link_bot_data.link_bot_dataset_utils
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
@@ -204,16 +205,9 @@ def main():
     parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time', required=True)
     parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
+    parser.add_argument("--pause-between-plans", action='store_true', help='pause between plans')
     parser.add_argument("--seed", '-s', type=int, default=3)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
-    parser.add_argument("--real-time-rate", type=float, default=10.0, help='real time rate')
-    parser.add_argument("--goal-threshold", type=float, default=0.1, help='goal radius in meters')
-    parser.add_argument('--env-w', type=float, default=5, help='environment width')
-    parser.add_argument('--env-h', type=float, default=5, help='environment height')
-    parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
-    parser.add_argument("--reset-gripper-to", type=point_arg, help='x,y in meters')
-    parser.add_argument("--goal", type=point_arg, help='x,y in meters')
-    # TODO: sweep over random epsilon to see how it effects things
 
     args = parser.parse_args()
 
@@ -221,7 +215,7 @@ def main():
 
     now = str(int(time.time()))
     root = pathlib.Path('results') / "{}-compare".format(args.nickname)
-    common_output_directory = random_environment_data_utils.data_directory(root, now)
+    common_output_directory = link_bot_data.link_bot_dataset_utils.data_directory(root, now)
     common_output_directory = pathlib.Path(common_output_directory)
     print(Fore.CYAN + "common output directory: {}".format(common_output_directory) + Fore.RESET)
     if not common_output_directory.is_dir():
@@ -262,10 +256,10 @@ def main():
             service_provider = gazebo_utils.GazeboServices
 
         services = service_provider.setup_env(verbose=args.verbose,
-                                          real_time_rate=planner_params['real_time_rate'],
-                                          reset_gripper_to=planner_params['reset_gripper_to'],
-                                          max_step_size=fwd_model.max_step_size,
-                                          initial_object_dict=initial_object_dict)
+                                              real_time_rate=planner_params['real_time_rate'],
+                                              reset_gripper_to=planner_params['reset_gripper_to'],
+                                              max_step_size=fwd_model.max_step_size,
+                                              initial_object_dict=initial_object_dict)
 
         services.pause(std_srvs.srv.EmptyRequest())
 

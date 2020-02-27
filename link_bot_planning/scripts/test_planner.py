@@ -14,7 +14,7 @@ import std_srvs
 import tensorflow as tf
 from ompl import base as ob
 
-from ignition import markers
+import ignition.markers
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning import ompl_viz
@@ -42,7 +42,9 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                  services: GazeboServices,
                  no_execution: bool,
                  goal: Optional[Tuple[float, float]],
-                 seed: int):
+                 seed: int,
+                 draw_tree: Optional[bool] = True,
+                 draw_rejected: Optional[bool] = True):
         super().__init__(planner=planner,
                          n_total_plans=n_targets,
                          n_plans_per_env=n_targets,
@@ -54,6 +56,8 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                          seed=seed,
                          retry_on_failure=False)
         self.goal = goal
+        self.draw_tree = draw_tree
+        self.draw_rejected = draw_rejected
 
     def get_goal(self, w, h, head_point, env_padding, full_env_data):
         if self.goal is not None:
@@ -77,7 +81,9 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                                tail_goal_point,
                                None,
                                None,
-                               full_env_data.extent)
+                               full_env_data.extent,
+                               draw_tree=self.draw_tree,
+                               draw_rejected=self.draw_rejected)
         plt.show(block=True)
 
     def on_plan_complete(self,
@@ -96,11 +102,11 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         duration = self.planner.fwd_model.dt * len(link_bot_planned_path)
 
         if self.verbose >= 2:
-            # TODO: publish in rviz if running on victor
-            planned_final_tail_point_msg = markers.make_marker(id=3, rgb=[0, 0, 1], scale=0.05)
-            planned_final_tail_point_msg.pose.position.x = link_bot_planned_path[-1][0]
-            planned_final_tail_point_msg.pose.position.y = link_bot_planned_path[-1][1]
-            markers.publish(planned_final_tail_point_msg)
+            ignition.markers.publish_marker(id=3,
+                                            rgb=[0, 0, 1],
+                                            scale=0.05,
+                                            x=link_bot_planned_path[-1][0],
+                                            y=link_bot_planned_path[-1][1])
 
         msg = "Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s"
         print(msg.format(final_error, path_length, len(link_bot_planned_path), duration))
@@ -119,7 +125,9 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                                                tail_goal_point,
                                                link_bot_planned_path,
                                                planned_actions,
-                                               full_env_data.extent)
+                                               full_env_data.extent,
+                                               draw_tree=self.draw_tree,
+                                               draw_rejected=self.draw_rejected)
 
         np.savez("/tmp/.latest-plan.npz", **plot_data_dict)
         plt.savefig("/tmp/.latest-plan.png", dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
@@ -192,8 +200,10 @@ def main():
 
     # Start Services
     if args.env_type == 'victor':
+        rospy.set_param('service_provider', 'victor')
         service_provider = victor_utils.VictorServices
     else:
+        rospy.set_param('service_provider', 'gazebo')
         service_provider = gazebo_utils.GazeboServices
 
     services = service_provider.setup_env(verbose=args.verbose,
@@ -215,6 +225,8 @@ def main():
         no_execution=args.no_execution,
         goal=args.goal,
         seed=args.seed,
+        draw_tree=(args.env_type != 'victor'),
+        draw_rejected=(args.env_type != 'victor')
     )
     tester.run()
 

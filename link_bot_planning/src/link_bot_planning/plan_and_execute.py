@@ -2,7 +2,7 @@
 from __future__ import division, print_function
 
 import time
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 import std_srvs
@@ -10,14 +10,14 @@ from colorama import Fore
 from link_bot_gazebo.srv import LinkBotStateRequest
 from ompl import base as ob
 
-from ignition import markers
+import ignition.markers
 from link_bot_data import random_environment_data_utils
 from link_bot_gazebo import gazebo_utils
 from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
-from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon, link_bot_pycommon
+from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
 from link_bot_pycommon.ros_pycommon import Services, get_start_states
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 
@@ -34,7 +34,9 @@ class PlanAndExecute:
                  services: Services,
                  no_execution: bool,
                  seed: int,
-                 retry_on_failure: bool = True):
+                 retry_on_failure: Optional[bool] = True,
+                 pause_between_plans: Optional[bool] = False):
+        self.pause_between_plans = pause_between_plans
         self.retry_on_failure = retry_on_failure
         self.planner = planner
         self.n_total_plans = n_total_plans
@@ -48,7 +50,7 @@ class PlanAndExecute:
         self.goal_rng = np.random.RandomState(seed)
 
         # remove all markers
-        markers.remove_all()
+        self.services.marker_provider.remove_all()
 
     def run(self):
         total_plan_idx = 0
@@ -81,9 +83,11 @@ class PlanAndExecute:
                 # plan to that target
                 if self.verbose >= 2:
                     # tail start x,y and tail goal x,y
-                    random_environment_data_utils.publish_markers(tail_goal[0], tail_goal[1],
-                                                                  link_bot_start_state[0], link_bot_start_state[1],
-                                                                  marker_size=0.05)
+                    ignition.markers.publish_markers(self.services.marker_provider,
+                                                     tail_goal[0], tail_goal[1],
+                                                     link_bot_start_state[0],
+                                                     link_bot_start_state[1],
+                                                     marker_size=0.05)
                 if self.verbose >= 1:
                     print(Fore.CYAN + "Planning from {} to {}".format(link_bot_start_state, tail_goal) + Fore.RESET)
 
@@ -134,6 +138,9 @@ class PlanAndExecute:
                                                    planner_data,
                                                    planning_time,
                                                    planner_status)
+
+                    if self.pause_between_plans:
+                        input("Press enter to proceed to next plan...")
 
                 plan_idx += 1
                 total_plan_idx += 1
