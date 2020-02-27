@@ -136,7 +136,7 @@ def balance_xy_dataset(dataset, key):
     return balanced_dataset
 
 
-def balance_by_augmentation(dataset, image_key, label_key='label'):
+def balance_by_augmentation(dataset, label_key='label'):
     """
     generate more examples by random 90 rotations or horizontal/vertical flipping
     """
@@ -147,27 +147,27 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
             return result
 
         return __filter
+    #
+    # def _augment(r, image):
+    #     if r == 1:
+    #         augmented_image = tf.image.rot90(tf.image.rot90(tf.image.rot90(image)))
+    #     elif r == 2:
+    #         augmented_image = tf.image.rot90(tf.image.rot90(image))
+    #     elif r == 3:
+    #         augmented_image = tf.image.rot90(image)
+    #     elif r == 4:
+    #         augmented_image = tf.image.flip_up_down(image)
+    #     else:
+    #         augmented_image = tf.image.flip_left_right(image)
+    #     return augmented_image
 
-    def _augment(r, image):
-        if r == 1:
-            augmented_image = tf.image.rot90(tf.image.rot90(tf.image.rot90(image)))
-        elif r == 2:
-            augmented_image = tf.image.rot90(tf.image.rot90(image))
-        elif r == 3:
-            augmented_image = tf.image.rot90(image)
-        elif r == 4:
-            augmented_image = tf.image.flip_up_down(image)
-        else:
-            augmented_image = tf.image.flip_left_right(image)
-        return augmented_image
-
-    def augment(input_dict):
-        image = input_dict[image_key]
-        r = tf.random.uniform([], 0, 6, dtype=tf.int64)
-        augmented_image = tf.numpy_function(_augment, inp=[r, image], Tout=tf.float32)
-
-        input_dict[image_key] = augmented_image
-        return input_dict
+    # def augment(input_dict):
+    #     image = input_dict[image_key]
+    #     r = tf.random.uniform([], 0, 6, dtype=tf.int64)
+    #     augmented_image = tf.numpy_function(_augment, inp=[r, image], Tout=tf.float32)
+    #
+    #     input_dict[image_key] = augmented_image
+    #     return input_dict
 
     # In order to figure out whether the are fewer negative or positive examples,
     # we iterate over the first `min_test_examples` elements. If after this many
@@ -179,18 +179,16 @@ def balance_by_augmentation(dataset, image_key, label_key='label'):
     positive_examples = 0
     negative_examples = 0
     examples_considered = 0
-    min_test_examples = 100
-    max_test_examples = 1000
-    margin = 10
+    min_test_examples = 10
+    max_test_examples = 100
+    margin = 2
     for examples_considered, example in enumerate(dataset):
         if examples_considered > max_test_examples:
             break
         if examples_considered > min_test_examples:
             if positive_examples > negative_examples + margin:
-                fewer_negative = True
                 break
             elif negative_examples > positive_examples + margin:
-                fewer_negative = False
                 break
         if tf.equal(tf.squeeze(example[label_key]), 1):
             positive_examples += 1
@@ -241,7 +239,7 @@ def add_traj_image(dataset, action_in_image: Optional[bool] = False):
     return dataset.map(_add_traj_image)
 
 
-def add_transition_image(dataset, action_in_image: bool):
+def add_transition_image(dataset, action_in_image: Optional[bool] = False):
     def _add_transition_image(input_dict):
         """
         Expected sizes:

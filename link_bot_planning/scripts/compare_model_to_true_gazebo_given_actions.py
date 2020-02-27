@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import json
 import pathlib
 import random
 import time
@@ -78,14 +79,11 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
-    parser.add_argument("model_dir", type=pathlib.Path, help='path to model')
-    parser.add_argument("model_type", choices=['nn', 'obs', 'rigid'], default='nn', help='type of model')
-    parser.add_argument("classifier_dir", type=pathlib.Path, help='path to model')
-    parser.add_argument("classifier_type", choices=['raster', 'collision', 'none'], default='raster', help='type of classifier')
+    parser.add_argument("params", type=pathlib.Path, help='json file')
     parser.add_argument("actions", type=pathlib.Path, help='csv file of actions')
     parser.add_argument("--outdir", type=pathlib.Path, help="output visualizations here")
-    parser.add_argument('--max-step-size', type=float, default=0.01)
     parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--real-time-rate', type=float, default=10.0)
     parser.add_argument('--no-plot', action='store_true')
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
 
@@ -103,17 +101,19 @@ def main():
     else:
         services = gazebo_utils.GazeboServices()
 
+    params = json.load(args.params.open('r'))
+
+    fwd_model, _ = model_utils.load_generic_model(pathlib.Path(params['fwd_model_dir']), params['fwd_model_type'])
+
     services.setup_env(verbose=args.verbose,
-                       real_time_rate=10.0,
+                       real_time_rate=args.real_time_rate,
                        reset_gripper_to=None,
-                       max_step_size=args.max_step_size)
+                       max_step_size=fwd_model.max_step_size)
     services.pause(std_srvs.srv.EmptyRequest())
 
-    fwd_model, _ = model_utils.load_generic_model(args.model_dir, args.model_type)
-
-    full_env_data = get_occupancy_data(env_w=fwd_model.full_env_params.w,
-                                       env_h=fwd_model.full_env_params.h,
-                                       res=fwd_model.full_env_params.res,
+    full_env_data = get_occupancy_data(env_w=params['full_env_w_meters'],
+                                       env_h=params['full_env_h_meters'],
+                                       res=fwd_model.local_env_params.res,
                                        services=services)
     state_keys = fwd_model.hparams['states_keys']
     start_states, link_bot_start_state, head_point = get_start_states(services, state_keys)

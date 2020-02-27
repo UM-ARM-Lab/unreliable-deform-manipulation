@@ -36,8 +36,8 @@ class CollisionCheckerClassifier(BaseClassifier):
         xs1, ys1 = plottable_rope_configuration(s1)
         xs2, ys2 = plottable_rope_configuration(s2)
 
-        first_point_check = self.check_collision(inflated_local_env, local_env_data.resolution, local_env_data.origin, xs1, ys1)
-        second_point_check = self.check_collision(inflated_local_env, local_env_data.resolution, local_env_data.origin, xs2, ys2)
+        first_point_check = self.check_collision(inflated_local_env.data, local_env_data.resolution, local_env_data.origin, xs1, ys1)
+        second_point_check = self.check_collision(inflated_local_env.data, local_env_data.resolution, local_env_data.origin, xs2, ys2)
         prediction = 1.0 if (first_point_check and second_point_check) else 0.0
         return prediction
 

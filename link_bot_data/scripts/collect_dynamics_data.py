@@ -44,7 +44,7 @@ def main():
 
     args = parser.parse_args()
 
-    base_collect_dynamics_data.generate(gazebo_utils, args)
+    base_collect_dynamics_data.generate(gazebo_utils.GazeboServices, args)
 
 
 if __name__ == '__main__':

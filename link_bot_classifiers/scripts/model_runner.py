@@ -44,20 +44,19 @@ def train(args, seed: int):
     # More dataset crap
     train_tf_dataset = train_dataset.get_datasets(mode='train')
     val_tf_dataset = val_dataset.get_datasets(mode='val')
-    action_in_image = model_hparams['action_in_image']
     if 'image_key' in model_hparams:
         image_key = model_hparams['image_key']
         if model_hparams['image_key'] == 'transition_image':
-            train_tf_dataset = add_transition_image(train_tf_dataset, action_in_image)
-            val_tf_dataset = add_transition_image(train_tf_dataset, action_in_image)
+            train_tf_dataset = add_transition_image(train_tf_dataset)
+            val_tf_dataset = add_transition_image(train_tf_dataset)
         elif model_hparams['image_key'] == 'trajectory_image':
-            train_tf_dataset = add_traj_image(train_tf_dataset, action_in_image)
-            val_tf_dataset = add_traj_image(val_tf_dataset, action_in_image)
+            train_tf_dataset = add_traj_image(train_tf_dataset)
+            val_tf_dataset = add_traj_image(val_tf_dataset)
 
     if classifier_dataset_params['balance']:
         print(Fore.GREEN + "balancing..." + Fore.RESET)
-        train_tf_dataset = balance_by_augmentation(train_tf_dataset, image_key=image_key)
-        val_tf_dataset = balance_by_augmentation(val_tf_dataset, image_key=image_key)
+        train_tf_dataset = balance_by_augmentation(train_tf_dataset)
+        val_tf_dataset = balance_by_augmentation(val_tf_dataset)
 
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
@@ -83,21 +82,19 @@ def eval(args, seed: int):
     # Dataset
     ###############
     classifier_dataset_params = model_hparams['classifier_dataset_params']
-    image_key = model_hparams['image_key']
     test_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
 
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
     # More dataset crap
-    action_in_image = model_hparams['action_in_image']
     if model_hparams['image_key'] == 'transition_image':
-        test_tf_dataset = add_transition_image(test_tf_dataset, action_in_image)
+        test_tf_dataset = add_transition_image(test_tf_dataset)
     elif model_hparams['image_key'] == 'trajectory_image':
-        test_tf_dataset = add_traj_image(test_tf_dataset, action_in_image)
+        test_tf_dataset = add_traj_image(test_tf_dataset)
 
     if classifier_dataset_params['balance']:
         print(Fore.GREEN + "balancing..." + Fore.RESET)
-        test_tf_dataset = balance_by_augmentation(test_tf_dataset, image_key=image_key)
+        test_tf_dataset = balance_by_augmentation(test_tf_dataset)
     try:
         ###############
         # Evaluate

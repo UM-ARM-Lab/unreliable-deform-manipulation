@@ -4,10 +4,9 @@ from __future__ import division, print_function
 import argparse
 import json
 import pathlib
-from typing import List, Tuple, Optional, Dict
+from typing import Tuple, Optional, Dict
 
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 import numpy as np
 import ompl.util as ou
 import rospy
@@ -18,13 +17,14 @@ from ompl import base as ob
 from ignition import markers
 from link_bot_gazebo import gazebo_utils
 from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_planning import ompl_viz
 from link_bot_planning import plan_and_execute
 from link_bot_planning.mpc_planners import get_planner
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning import ompl_viz
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter, point_arg
+from victor import victor_utils
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -96,6 +96,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         duration = self.planner.fwd_model.dt * len(link_bot_planned_path)
 
         if self.verbose >= 2:
+            # TODO: publish in rviz if running on victor
             planned_final_tail_point_msg = markers.make_marker(id=3, rgb=[0, 0, 1], scale=0.05)
             planned_final_tail_point_msg.pose.position.x = link_bot_planned_path[-1][0]
             planned_final_tail_point_msg.pose.position.y = link_bot_planned_path[-1][1]
@@ -155,11 +156,11 @@ def main():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
+    parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("--n-targets", type=int, default=1, help='number of targets/plans')
     parser.add_argument("--seed", '-s', type=int, default=5)
     parser.add_argument("--no-execution", action='store_true', help='do not execute, only plan')
-    parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument("--planner-timeout", help="time in seconds", type=float)
     parser.add_argument("--real-time-rate", type=float, default=0.0, help='real time rate')
@@ -181,16 +182,22 @@ def main():
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
                            goal_padding=0.0,
-                           move_obstacles=(not args.no_move_obstacles),
+                           move_obstacles=planner_params['move_obstacles'],
                            nudge=False)
 
     rospy.init_node('test_planner_with_classifier')
 
-    services = gazebo_utils.setup_env(verbose=args.verbose,
-                                      real_time_rate=sim_params.real_time_rate,
-                                      reset_gripper_to=args.reset_gripper_to,
-                                      max_step_size=sim_params.max_step_size,
-                                      initial_object_dict=None)
+    # Start Services
+    if args.env_type == 'victor':
+        service_provider = victor_utils.VictorServices
+    else:
+        service_provider = gazebo_utils.GazeboServices
+
+    services = service_provider.setup_env(verbose=args.verbose,
+                                          real_time_rate=sim_params.real_time_rate,
+                                          reset_gripper_to=args.reset_gripper_to,
+                                          max_step_size=sim_params.max_step_size,
+                                          initial_object_dict=None)
     services.pause(std_srvs.srv.EmptyRequest())
 
     planner, _ = get_planner(planner_params=planner_params, services=services, seed=args.seed)

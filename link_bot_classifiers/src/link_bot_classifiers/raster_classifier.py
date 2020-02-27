@@ -5,6 +5,7 @@ import json
 import pathlib
 from typing import Dict
 
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.layers as layers
@@ -122,8 +123,7 @@ class RasterClassifierWrapper(BaseClassifier):
         origin = local_env_data.origin
         res = local_env_data.resolution[0]
         local_env = local_env_data.data
-        action_in_image = self.model_hparams['action_in_image']
-        image = make_transition_image(local_env, s1, action, s2, res, origin, action_in_image)
+        image = make_transition_image(local_env, s1, action, s2, res, origin)
         image = tf.convert_to_tensor(image, dtype=tf.float32)
         image = tf.expand_dims(image, axis=0)
 
@@ -145,6 +145,15 @@ class RasterClassifierWrapper(BaseClassifier):
         s2 = states['link_bot'][-1]
         action = actions[-1]
 
+        # x = states['link_bot']
+        # plt.figure()
+        # colors = np.linspace(0, 1, x.shape[0])
+        # plt.scatter(x[:, 0], x[:, 1], c=colors)
+        # plt.xlim([-2.5, 2.5])
+        # plt.ylim([-2.5, 2.5])
+        # plt.axis("equal")
+        # plt.show()
+
         batched_inputs = add_batch(full_env.data, full_env.origin, full_env.resolution[0], states['link_bot'])
         image = make_traj_image(*batched_inputs)
         net_inputs = {
@@ -156,9 +165,9 @@ class RasterClassifierWrapper(BaseClassifier):
 
         accept_probabilities = self.net(net_inputs)
         accept_probabilities = accept_probabilities.numpy()
-        accept_probabilities = accept_probabilities.astype(np.float64).squeeze()
+        accept_probability = accept_probabilities.astype(np.float64).squeeze()
 
-        return accept_probabilities
+        return accept_probability
 
     def predict(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
         # TODO: pass in dicts to predict_transition, remove specialization for link_bot key

@@ -1,5 +1,5 @@
 {
-  "fwd_model_dir": "ss_log_data/tether_simple_obs/February_25_09-28-15_c3b4a9cf96",
+  "fwd_model_dir": "ss_log_data/tether_simple2_obs",
   "fwd_model_type": "obs",
   "classifier_model_dir": "",
   "classifier_model_type": "none",
@@ -29,7 +29,7 @@
   },
 	"move_obstacles": false,
   "fixed_goal": null,
-  "reset_gripper_to": [1,5,1.5],
+  "reset_gripper_to": [1.0,1.0],
 	"real_time_rate": 10.0,
 	"max_step_size": 0.01
 }

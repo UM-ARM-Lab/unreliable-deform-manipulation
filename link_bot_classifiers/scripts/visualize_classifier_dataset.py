@@ -50,13 +50,8 @@ def main():
     if args.display_type == 'trajectory_image':
         dataset = add_traj_image(dataset, args.action_in_image)
 
-    if classifier_dataset_params['balance'] and not args.no_balance:
-        if args.display_type == 'transition_image':
-            dataset = balance_by_augmentation(dataset, image_key='transition_image')
-        elif args.display_type == 'trajectory_image':
-            dataset = balance_by_augmentation(dataset, image_key='trajectory_image')
-        else:
-            print("no images, can't balance...")
+    if not args.no_balance:
+        dataset = balance_by_augmentation(dataset)
 
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=1024)

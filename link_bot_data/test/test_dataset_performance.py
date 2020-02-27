@@ -43,7 +43,7 @@ def main():
     tf_dataset = dataset.get_datasets(mode=args.mode)
 
     tf_dataset = tf_dataset.map(add_traj_image)
-    tf_dataset = balance_by_augmentation(tf_dataset, key='label')
+    tf_dataset = balance_by_augmentation(tf_dataset, label_key='label')
     tf_dataset = tf_dataset.shuffle(1024)
     tf_dataset = tf_dataset.batch(batch_size)
 

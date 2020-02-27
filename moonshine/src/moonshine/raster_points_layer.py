@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 import tensorflow as tf
 
@@ -40,7 +42,13 @@ def raster(state, res, origin, h, w):
     return rope_images
 
 
-def make_transition_image(local_env, planned_state, action, planned_next_state, res, origin, action_in_image: bool):
+def make_transition_image(local_env,
+                          planned_state,
+                          action,
+                          planned_next_state,
+                          res,
+                          origin,
+                          action_in_image: Optional[bool] = False):
     """
     :param local_env: [h,w]
     :param planned_state: [n_state]

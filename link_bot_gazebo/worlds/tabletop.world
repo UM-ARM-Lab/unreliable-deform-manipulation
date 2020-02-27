@@ -1,0 +1,97 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+    <world name="default">
+        <gui>
+            <camera name='user_camera'>
+                <pose frame=''>0 0 1.02 0 1.5707 1.5707</pose>
+                <projection_type>orthographic</projection_type>
+            </camera>
+        </gui>
+        <include>
+            <uri>model://victor_table_plane</uri>
+        </include>
+        <include>
+            <uri>model://sun</uri>
+        </include>
+        <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
+        <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
+        <physics name="ode" type="ode">
+            <real_time_update_rate>1000</real_time_update_rate>
+            <ode>
+                <solver>
+                    <type>quick</type>
+                    <friction_model>cone_model</friction_model>
+                </solver>
+                <constraints>
+                    <contact_surface_layer>0.002</contact_surface_layer>
+                </constraints>
+            </ode>
+        </physics>
+        <include>
+            <uri>model://table_arena</uri>
+            <pose>0 0 0 0 0 0</pose>
+            <name>arena</name>
+        </include>
+
+        <model name="obstacle1">
+            <static>true</static>
+            <link name="link_1">
+                <pose>0.085 -0.047 0.05 0 0 0</pose>
+                <visual name="visual">
+                    <geometry>
+                        <box>
+                            <size>0.083 0.099 0.1</size>
+                        </box>
+                    </geometry>
+                </visual>
+                <collision name="collision">
+                    <geometry>
+                        <box>
+                            <size>0.083 0.099 0.1</size>
+                        </box>
+                    </geometry>
+                </collision>
+            </link>
+        </model>
+        <model name="obstacle2">
+            <static>true</static>
+            <link name="link_1">
+                <pose>0.036 0.227 0.05 0 0 0</pose>
+                <visual name="visual">
+                    <geometry>
+                        <box>
+                            <size>0.114 0.071 0.1</size>
+                        </box>
+                    </geometry>
+                </visual>
+                <collision name="collision">
+                    <geometry>
+                        <box>
+                            <size>0.114 0.071 0.1</size>
+                        </box>
+                    </geometry>
+                </collision>
+            </link>
+        </model>
+        <model name="obstacle3">
+            <static>true</static>
+            <link name="link_1">
+                <pose>-0.255 -0.133 0.05 0 0 0</pose>
+                <visual name="visual">
+                    <geometry>
+                        <box>
+                            <size>0.08 0.173 0.1</size>
+                        </box>
+                    </geometry>
+                </visual>
+                <collision name="collision">
+                    <geometry>
+                        <box>
+                            <size>0.08 0.173 0.1</size>
+                        </box>
+                    </geometry>
+                </collision>
+            </link>
+        </model>
+    </world>
+</sdf>

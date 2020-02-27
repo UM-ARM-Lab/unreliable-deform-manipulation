@@ -1,18 +1,18 @@
 {
-  "fwd_model_dir": "ss_log_data/rigid_translation",
-  "fwd_model_type": "rigid",
+  "fwd_model_dir": "ss_log_data/fs-nn",
+  "fwd_model_type": "nn",
   "classifier_model_dir": "",
-  "classifier_model_type": "none",
+  "classifier_model_type": "collision",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
+  "timeout": 60,
+  "max_angle_rad": 1.0,
   "accept_threshold": 0.5,
   "goal_threshold": 0.15,
-  "max_angle_rad": 1.0,
-  "random_epsilon": 0.0,
-  "w": 5.0,
-  "h": 5.0,
-  "timeout": 120,
+  "random_epsilon": 0.05,
+  "w": 0.76,
+  "h": 1.01,
   "state_space": {
     "link_bot": {
       "weight": 1.0
@@ -26,7 +26,7 @@
   },
 	"move_obstacles": false,
   "fixed_goal": null,
-  "reset_gripper_to": [1.0,1.0],
-	"real_time_rate": 10.0,
+  "reset_gripper_to": null,
+	"real_time_rate": 1.0,
 	"max_step_size": 0.01
 }

@@ -33,6 +33,6 @@
   "full_env_w": 6.0,
   "full_env_h": 6.0,
   "move_obstacles": false,
-  "reset_gripper_to": [1.5,1.5],
+  "reset_gripper_to": [1.0,1.0],
   "fixed_goal": null
 }

@@ -26,6 +26,7 @@ from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter, point_arg
+from victor import victor_utils
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -198,6 +199,7 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
+    parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+', help='json file(s) describing what should be compared')
     parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time', required=True)
     parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
@@ -209,7 +211,6 @@ def main():
     parser.add_argument('--env-w', type=float, default=5, help='environment width')
     parser.add_argument('--env-h', type=float, default=5, help='environment height')
     parser.add_argument('--max-v', type=float, default=0.15, help='max speed')
-    parser.add_argument('--no-move-obstacles', action='store_true', help="don't move obstacles")
     parser.add_argument("--reset-gripper-to", type=point_arg, help='x,y in meters')
     parser.add_argument("--goal", type=point_arg, help='x,y in meters')
     # TODO: sweep over random epsilon to see how it effects things
@@ -254,7 +255,13 @@ def main():
 
         fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, fwd_model_type)
 
-        services = gazebo_utils.setup_env(verbose=args.verbose,
+        # Start Services
+        if args.env_type == 'victor':
+            service_provider = victor_utils.VictorServices
+        else:
+            service_provider = gazebo_utils.GazeboServices
+
+        services = service_provider.setup_env(verbose=args.verbose,
                                           real_time_rate=planner_params['real_time_rate'],
                                           reset_gripper_to=planner_params['reset_gripper_to'],
                                           max_step_size=fwd_model.max_step_size,

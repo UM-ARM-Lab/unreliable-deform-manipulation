@@ -11,6 +11,7 @@ from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from link_bot_gazebo.msg import LinkBotAction
 from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon
 
+import matplotlib.pyplot as plt
 
 def get_n_state():
     return rospy.get_param("/link_bot/n_state")
@@ -143,8 +144,9 @@ def get_occupancy(services,
     request.robot_name = 'link_bot'
     request.request_new = True
     response = services.compute_occupancy(request)
-    grid = np.array(response.grid).reshape([response.w_cols, response.h_rows])
+    grid = np.array(response.grid).reshape([response.h_rows, response.w_cols])
     grid = grid.T
+    # import ipdb; ipdb.set_trace()
     return grid, response
 
 
@@ -220,6 +222,7 @@ def get_local_occupancy_data(rows,
     resolution = np.array(response.res)
     origin = np.array(response.origin)
     local_occupancy_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=resolution, origin=origin)
+    # import ipdb; ipdb.set_trace()
     return local_occupancy_data
 
 

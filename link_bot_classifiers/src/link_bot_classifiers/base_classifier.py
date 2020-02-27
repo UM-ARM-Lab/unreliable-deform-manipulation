@@ -9,6 +9,7 @@ class BaseClassifier:
 
     def __init__(self):
         self.model_hparams = {}
+        self.full_env_params = None
 
     def predict(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
         pass

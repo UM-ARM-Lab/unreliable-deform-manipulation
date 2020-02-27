@@ -1,7 +1,7 @@
 {
   "fwd_model_dir": "ss_log_data/rigid_translation",
   "fwd_model_type": "rigid",
-  "classifier_model_dir": "classifiers/tether-simple-trajs/February_25_10-09-11_7a3e5895f0",
+  "classifier_model_dir": "classifiers/tether-simple2/February_26_17-04-02_c983b045bc",
   "classifier_model_type": "raster",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
@@ -26,7 +26,7 @@
   },
 	"move_obstacles": false,
   "fixed_goal": null,
-  "reset_gripper_to": [1,5,1.5],
+  "reset_gripper_to": [1.0,1.0],
 	"real_time_rate": 10.0,
 	"max_step_size": 0.01
 }

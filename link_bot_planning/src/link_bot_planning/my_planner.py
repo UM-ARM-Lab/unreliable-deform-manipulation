@@ -10,6 +10,7 @@ from link_bot_classifiers.base_classifier import BaseClassifier
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_gazebo.gazebo_utils import GazeboServices
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
+from link_bot_planning.params import FullEnvParams
 from link_bot_planning.random_directed_control_sampler import RandomDirectedControlSampler
 from link_bot_planning.state_spaces import to_numpy, from_numpy, ValidRopeConfigurationCompoundSampler, \
     TrainingSetCompoundSampler, to_numpy_local_env, to_numpy_flat
@@ -45,8 +46,9 @@ class MyPlanner:
         self.n_links = link_bot_pycommon.n_state_to_n_links(self.n_state)
         self.n_control = self.fwd_model.n_control
         self.n_tether_state = ros_pycommon.get_n_tether_state()
-        self.full_env_params = self.fwd_model.full_env_params
         self.planner_params = planner_params
+        # TODO: consider making full env params h/w come from elsewhere. res should match the model though.
+        self.full_env_params = self.fwd_model.full_env_params
         self.services = services
         self.viz_object = viz_object
         self.si = ob.SpaceInformation(ob.StateSpace())
@@ -67,7 +69,7 @@ class MyPlanner:
             if name == 'local_env':
                 self.n_local_env = self.fwd_model.local_env_params.w_cols * self.fwd_model.local_env_params.h_rows
                 self.local_env_space = ob.RealVectorStateSpace(self.n_local_env)
-                epsilon = 1e-3
+                epsilon = 1e-3  # tolerance to make OMPL happy with bounds being inclusive
                 self.local_env_space.setBounds(-epsilon, 1 + epsilon)
                 self.state_space.addSubspace(self.local_env_space, weight=component_description['weight'])
                 self.subspace_name_to_dim[name] = (subspace_idx, self.n_local_env)
@@ -198,6 +200,8 @@ class MyPlanner:
 
     def predict(self, np_states, np_actions):
         # use the forward model to predict the next configuration
+        # NOTE full env here could be different than the full env the classifier gets? Maybe classifier should sub-select from
+        #  the actual full env?
         next_states = self.fwd_model.predict(full_env=self.full_env_data.data,
                                              full_env_origin=self.full_env_data.origin,
                                              res=self.fwd_model.full_env_params.res,

@@ -34,25 +34,25 @@
         </include>
 
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://small_box</uri>
             <pose>0 1.0 0 0 0 0</pose>
             <name>moving_box1</name>
         </include>
 
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://small_box</uri>
             <pose>1.5 0.1 0 0 0 0</pose>
             <name>moving_box2</name>
         </include>
 
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://small_box</uri>
             <pose>-1.0 0.0 0 0 0 0</pose>
             <name>moving_box3</name>
         </include>
 
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://small_box</uri>
             <pose>-0.2 -1.0 0 0 0 0</pose>
             <name>moving_box4</name>
         </include>

@@ -338,8 +338,8 @@ class ObstacleNNWrapper(BaseForwardModel):
         test_x = {
             # must be T, 2
             'action': tf.convert_to_tensor(actions, dtype=tf.float32),
-            # must be T, 1
-            'res': tf.convert_to_tensor(res, dtype=tf.float32),
+            # must be T, 1 FIXME: the T can be removed later
+            'res': tf.convert_to_tensor([res], dtype=tf.float32),
             # must be H, W
             'full_env/env': tf.convert_to_tensor(full_env, dtype=tf.float32),
             # must be 2

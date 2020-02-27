@@ -234,6 +234,8 @@ def main():
     parser.add_argument("n_total_plans", type=int, help='number of plans')
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("outdir", type=pathlib.Path)
+    # TODO: make full env size a parameter here, since it's independant of what "full env" meant for the model
+    #  current full env size for the classifier is indirectly defined by the full env size for the model used here to collect data
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
 
