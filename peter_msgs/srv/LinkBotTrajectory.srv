@@ -1,0 +1,5 @@
+link_bot_gazebo/LinkBotAction[] gripper1_traj
+---
+link_bot_gazebo/Objects[] actual_path
+bool needs_reset
+
