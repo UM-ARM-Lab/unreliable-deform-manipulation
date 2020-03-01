@@ -1,7 +1,7 @@
 import pathlib
 from typing import Tuple
 
-from state_space_dynamics.base_forward_model import BaseForwardModel
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 # from link_bot_gaussian_process import link_bot_gp
 from state_space_dynamics.locally_linear_nn import LocallyLinearNNWrapper
 from state_space_dynamics.obstacle_nn import ObstacleNNWrapper
@@ -9,7 +9,7 @@ from state_space_dynamics.rigid_translation_model import RigidTranslationModel
 from state_space_dynamics.simple_nn import SimpleNNWrapper
 
 
-def load_generic_model(model_dir: pathlib.Path, model_type: str) -> [BaseForwardModel, Tuple[str]]:
+def load_generic_model(model_dir: pathlib.Path, model_type: str) -> [BaseDynamicsFunction, Tuple[str]]:
     """
     Loads a model which exposes a unified model API (predict, dt, n_state, etc...)
     :param model_dir: directory which specifies which model should loaded (TF assumes latest checkpoint)

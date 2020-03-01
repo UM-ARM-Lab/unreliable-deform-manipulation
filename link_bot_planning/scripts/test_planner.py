@@ -14,17 +14,15 @@ import std_srvs
 import tensorflow as tf
 from ompl import base as ob
 
-import ignition.markers
-from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_gazebo import gazebo_services
+from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import ompl_viz
 from link_bot_planning import plan_and_execute
-from link_bot_planning.mpc_planners import get_planner
-from link_bot_planning.my_planner import MyPlanner
+from link_bot_planning.my_planner import MyPlanner, get_planner
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter, point_arg
-from victor import victor_utils
+from victor import victor_services
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -73,17 +71,17 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                            planner_data: ob.PlannerData):
         plt.figure()
         ax = plt.gca()
-        legend = ompl_viz.plot(ax,
-                               self.planner.n_state,
-                               self.planner.viz_object,
-                               planner_data,
-                               full_env_data.data,
-                               tail_goal_point,
-                               None,
-                               None,
-                               full_env_data.extent,
-                               draw_tree=self.draw_tree,
-                               draw_rejected=self.draw_rejected)
+        legend = ompl_viz.plot_plan(ax,
+                                    self.planner.n_state,
+                                    self.planner.viz_object,
+                                    planner_data,
+                                    full_env_data.data,
+                                    tail_goal_point,
+                                    None,
+                                    None,
+                                    full_env_data.extent,
+                                    draw_tree=self.draw_tree,
+                                    draw_rejected=self.draw_rejected)
         plt.show(block=True)
 
     def on_plan_complete(self,
@@ -102,11 +100,11 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         duration = self.planner.fwd_model.dt * len(link_bot_planned_path)
 
         if self.verbose >= 2:
-            ignition.markers.publish_marker(id=3,
-                                            rgb=[0, 0, 1],
-                                            scale=0.05,
-                                            x=link_bot_planned_path[-1][0],
-                                            y=link_bot_planned_path[-1][1])
+            self.services.marker_provider.publish_marker(id=3,
+                                                         rgb=[0, 0, 1],
+                                                         scale=0.05,
+                                                         x=link_bot_planned_path[-1][0],
+                                                         y=link_bot_planned_path[-1][1])
 
         msg = "Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s"
         print(msg.format(final_error, path_length, len(link_bot_planned_path), duration))
@@ -115,22 +113,30 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         print("num nodes {}".format(num_nodes))
         print("planning time {:0.4f}".format(planning_time))
 
-        plt.figure()
-        ax = plt.gca()
-        plot_data_dict, legend = ompl_viz.plot(ax,
-                                               self.planner.n_state,
-                                               self.planner.viz_object,
-                                               planner_data,
-                                               full_env_data.data,
-                                               tail_goal_point,
-                                               link_bot_planned_path,
-                                               planned_actions,
-                                               full_env_data.extent,
-                                               draw_tree=self.draw_tree,
-                                               draw_rejected=self.draw_rejected)
+        if rospy.get_param('service_provider') == 'victor':
+            anim = ompl_viz.animate_plan(link_bot_planned_path,
+                                         planned_actions,
+                                         tail_goal_point,
+                                         full_env_data.data,
+                                         full_env_data.extent)
+            plt.show()
+        else:
+            plt.figure()
+            ax = plt.gca()
+            plot_data_dict, legend = ompl_viz.plot_plan(ax,
+                                                        self.planner.n_state,
+                                                        self.planner.viz_object,
+                                                        planner_data,
+                                                        full_env_data.data,
+                                                        tail_goal_point,
+                                                        link_bot_planned_path,
+                                                        planned_actions,
+                                                        full_env_data.extent,
+                                                        draw_tree=self.draw_tree,
+                                                        draw_rejected=self.draw_rejected)
 
-        np.savez("/tmp/.latest-plan.npz", **plot_data_dict)
-        plt.savefig("/tmp/.latest-plan.png", dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
+            np.savez("/tmp/.latest-plan.npz", **plot_data_dict)
+            plt.savefig("/tmp/.latest-plan.png", dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
         plt.show(block=True)
 
     def on_execution_complete(self,
@@ -148,17 +154,14 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         # Convert from the actual space to the planning space, which may be identity, or may be some reduction
         link_bot_actual_path = actual_path['link_bot']
         link_bot_planned_path = planned_path['link_bot']
-        print("Execution to Plan Error: {:.4f}".format(np.linalg.norm(link_bot_planned_path[-1] - link_bot_actual_path[-1])))
-
-        print(link_bot_planned_path[:, 0:2])
-        print(link_bot_actual_path[:, 0:2])
+        print("Execution to Plan Error (tail): {:.4f}".format(np.linalg.norm(link_bot_planned_path[-1, 0:2] - link_bot_actual_path[-1, 0:2])))
 
         anim = ompl_viz.plan_vs_execution(full_env_data.data,
                                           tail_goal_point,
                                           link_bot_planned_path,
                                           link_bot_actual_path,
                                           full_env_data.extent)
-        # anim.save("/tmp/.latest-plan-vs-execution.gif", dpi=300, writer='imagemagick')
+        anim.save("/tmp/.latest-plan-vs-execution.gif", dpi=300, writer='imagemagick')
         plt.show(block=True)
 
 
@@ -178,6 +181,7 @@ def main():
     parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
     parser.add_argument("--reset-gripper-to", type=point_arg, help='x,y in meters')
     parser.add_argument("--goal", type=point_arg, help='x,y in meters')
+    parser.add_argument("--debug", action='store_true', help='wait to attach debugger')
 
     args = parser.parse_args()
 
@@ -198,13 +202,16 @@ def main():
 
     rospy.init_node('test_planner_with_classifier')
 
+    if args.debug:
+        input("waiting to let you attach debugger...")
+
     # Start Services
     if args.env_type == 'victor':
         rospy.set_param('service_provider', 'victor')
-        service_provider = victor_utils.VictorServices
+        service_provider = victor_services.VictorServices
     else:
         rospy.set_param('service_provider', 'gazebo')
-        service_provider = gazebo_utils.GazeboServices
+        service_provider = gazebo_services.GazeboServices
 
     services = service_provider.setup_env(verbose=args.verbose,
                                           real_time_rate=sim_params.real_time_rate,

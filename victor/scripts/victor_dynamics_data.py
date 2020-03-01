@@ -8,7 +8,7 @@ import tensorflow
 
 from link_bot_data import base_collect_dynamics_data
 from link_bot_pycommon.args import my_formatter
-from victor import victor_utils
+from victor import victor_services
 
 opts = tensorflow.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.compat.v1.ConfigProto(gpu_options=opts)
@@ -34,7 +34,6 @@ def main():
     parser.add_argument("--start-idx-offset", type=int, default=0, help='offset TFRecord file names')
     parser.add_argument("--move-objects-every-n", type=int, default=16, help='rearrange objects every n trajectories')
     parser.add_argument("--no-obstacles", action='store_true', help='do not move obstacles')
-    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB', help='compression type')
     parser.add_argument("--trajs-per-file", type=int, default=128, help='trajs per file')
     parser.add_argument("--seed", '-s', type=int, help='seed')
     parser.add_argument("--real-time-rate", type=float, default=0, help='number of times real time')
@@ -43,7 +42,7 @@ def main():
 
     args = parser.parse_args()
 
-    base_collect_dynamics_data.generate(victor_utils, args)
+    base_collect_dynamics_data.generate(victor_services, args)
 
 
 if __name__ == '__main__':

@@ -18,9 +18,8 @@ def add_batch(*args):
     return new_args
 
 
-def add_batch_to_dict(data_dict: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+def add_batch_to_dict(data_dict: Dict[str, np.ndarray]):
     new_dict = {}
     for k, v in data_dict.items():
-        # TODO: handle numpy or tf
-        new_dict[k] = np.expand_dims(v, axis=0)
+        new_dict[k] = add_batch(v)
     return new_dict

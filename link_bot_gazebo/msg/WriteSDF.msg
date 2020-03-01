@@ -1,8 +1,0 @@
-string filename
-string robot_name
-geometry_msgs/Point center
-float32 x_width
-float32 y_height
-float32 resolution
-float32 max_z
-float32 min_z

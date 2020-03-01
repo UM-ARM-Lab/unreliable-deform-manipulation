@@ -11,8 +11,7 @@ from link_bot_gazebo.srv import LinkBotStateRequest
 from ompl import base as ob
 
 import ignition.markers
-from link_bot_data import random_environment_data_utils
-from link_bot_gazebo import gazebo_utils
+from link_bot_gazebo import gazebo_services
 from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
@@ -52,8 +51,11 @@ class PlanAndExecute:
         # remove all markers
         self.services.marker_provider.remove_all()
 
+        self.plan_idx = 0
+        self.total_plan_idx = 0
+
     def run(self):
-        total_plan_idx = 0
+        self.total_plan_idx = 0
         initial_poses_in_collision = 0
         while True:
             self.on_before_plan()
@@ -61,7 +63,7 @@ class PlanAndExecute:
             # generate a bunch of plans to random goals
             state_req = LinkBotStateRequest()
 
-            plan_idx = 0
+            self.plan_idx = 0
             while True:
                 # get full env once
                 full_env_data = get_occupancy_data(env_w=self.planner.full_env_params.w,
@@ -81,7 +83,7 @@ class PlanAndExecute:
                                                    full_env_data=full_env_data))
 
                 # plan to that target
-                if self.verbose >= 2:
+                if self.verbose >= 1:
                     # tail start x,y and tail goal x,y
                     ignition.markers.publish_markers(self.services.marker_provider,
                                                      tail_goal[0], tail_goal[1],
@@ -93,13 +95,15 @@ class PlanAndExecute:
 
                 t0 = time.time()
                 planner_results = self.planner.plan(start_states, tail_goal, full_env_data)
-                planned_actions, planned_path, full_env_data, planner_status = planner_results
+                planned_actions, planned_path_dict, planner_status = planner_results
                 my_planner.interpret_planner_status(planner_status, self.verbose)
                 planner_data = ob.PlannerData(self.planner.si)
                 self.planner.planner.getPlannerData(planner_data)
 
                 if self.verbose >= 1:
                     print(planner_status.asString())
+
+                self.on_after_plan()
 
                 if not planner_status:
                     self.on_planner_failure(link_bot_start_state, tail_goal, full_env_data, planner_data)
@@ -110,7 +114,7 @@ class PlanAndExecute:
                     if self.verbose >= 1:
                         print("Planning time: {:5.3f}s".format(planning_time))
 
-                    self.on_plan_complete(planned_path, tail_goal, planned_actions, full_env_data, planner_data,
+                    self.on_plan_complete(planned_path_dict, tail_goal, planned_actions, full_env_data, planner_data,
                                           planning_time,
                                           planner_status)
 
@@ -119,7 +123,6 @@ class PlanAndExecute:
 
                     # execute the plan, collecting the states that actually occurred
                     if not self.no_execution:
-                        #  TODO: Consider executing just a few steps, so that our start states don't diverge too much
                         if self.verbose >= 2:
                             print(Fore.CYAN + "Executing Plan.".format(tail_goal) + Fore.RESET)
 
@@ -130,7 +133,7 @@ class PlanAndExecute:
                         actual_path = ros_pycommon.trajectory_execution_response_to_numpy(traj_exec_response,
                                                                                           local_env_params,
                                                                                           self.services)
-                        self.on_execution_complete(planned_path,
+                        self.on_execution_complete(planned_path_dict,
                                                    planned_actions,
                                                    tail_goal,
                                                    actual_path,
@@ -142,12 +145,12 @@ class PlanAndExecute:
                     if self.pause_between_plans:
                         input("Press enter to proceed to next plan...")
 
-                plan_idx += 1
-                total_plan_idx += 1
-                if plan_idx >= self.n_plans_per_env or total_plan_idx >= self.n_total_plans:
+                self.plan_idx += 1
+                self.total_plan_idx += 1
+                if self.plan_idx >= self.n_plans_per_env or self.total_plan_idx >= self.n_total_plans:
                     break
 
-            if total_plan_idx >= self.n_total_plans:
+            if self.total_plan_idx >= self.n_total_plans:
                 break
 
         self.on_complete(initial_poses_in_collision)
@@ -186,15 +189,19 @@ class PlanAndExecute:
                            planner_data: ob.PlannerData):
         pass
 
+    def on_after_plan(self):
+        pass
+
     def on_before_plan(self):
         if self.sim_params.move_obstacles:
             # FIXME: instead of hard coding obstacles names, use the /objects service
             # generate a new environment by rearranging the obstacles
             objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            gazebo_utils.move_objects(self.services,
-                                      self.sim_params.max_step_size,
-                                      objects,
-                                      self.planner.full_env_params.w,
-                                      self.planner.full_env_params.h,
-                                      padding=0.1,
-                                      rng=self.env_rng)
+            gazebo_services.move_objects(self.services,
+                                         self.sim_params.max_step_size,
+                                         objects,
+                                         self.planner.full_env_params.w,
+                                         self.planner.full_env_params.h,
+                                         padding=0.1,
+                                         rng=self.env_rng)
+

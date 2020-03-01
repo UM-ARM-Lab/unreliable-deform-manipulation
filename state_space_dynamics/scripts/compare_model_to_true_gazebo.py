@@ -13,13 +13,13 @@ import tensorflow as tf
 from colorama import Fore
 from matplotlib import animation
 
-from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_gazebo import gazebo_services
+from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import model_utils
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.ros_pycommon import make_trajectory_execution_request, get_occupancy_data, \
     trajectory_execution_response_to_numpy, get_start_states
-from state_space_dynamics.base_forward_model import BaseForwardModel
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 tf.compat.v1.enable_eager_execution()
 
@@ -86,7 +86,7 @@ def main():
     fwd_model, _ = model_utils.load_generic_model(args.model_dir, args.model_type)
 
     # Start Services
-    services = gazebo_utils.GazeboServices()
+    services = gazebo_services.GazeboServices()
 
     # Setup for saving results
     root = args.outdir / "compare_to_gz_{}".format(int(time.time()))
@@ -109,7 +109,7 @@ def main():
 
 def run_traj(args,
              services: GazeboServices,
-             fwd_model: BaseForwardModel,
+             fwd_model: BaseDynamicsFunction,
              traj_idx: int,
              root: pathlib.Path):
     services.setup_env(args.verbose, real_time_rate=1.0, max_step_size=args.max_step_size, reset_world=True)
@@ -129,11 +129,11 @@ def run_traj(args,
     start_states, link_bot_start_state, head_point = get_start_states(services, state_keys)
 
     print("pred")
-    predicted_paths = fwd_model.predict(full_env=full_env_data.data,
-                                         full_env_origin=full_env_data.origin,
-                                         res=full_env_data.resolution[0],
-                                         states=start_states,
-                                         actions=actions)
+    predicted_paths = fwd_model.propagate(full_env=full_env_data.data,
+                                          full_env_origin=full_env_data.origin,
+                                          res=full_env_data.resolution[0],
+                                          states=start_states,
+                                          actions=actions)
 
     trajectory_execution_request = make_trajectory_execution_request(fwd_model.dt, actions)
     print("exec")

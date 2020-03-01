@@ -2,18 +2,18 @@ from typing import Dict
 
 import ompl.control as oc
 
-from link_bot_classifiers.base_classifier import BaseClassifier
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
+from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.viz_object import VizObject
-from state_space_dynamics.base_forward_model import BaseForwardModel
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 class NearestRRT(MyPlanner):
 
     def __init__(self,
-                 fwd_model: BaseForwardModel,
-                 classifier_model: BaseClassifier,
+                 fwd_model: BaseDynamicsFunction,
+                 classifier_model: BaseConstraintChecker,
                  planner_params: Dict,
                  services: GazeboServices,
                  viz_object: VizObject,

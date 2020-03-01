@@ -1,6 +1,6 @@
 from typing import Tuple, Optional, Dict
 
-from link_bot_gazebo.srv import ExecuteActionRequest
+import numpy as np
 from std_srvs.srv import EmptyRequest
 
 from link_bot_pycommon.ros_pycommon import Services
@@ -13,7 +13,7 @@ class VictorServices(Services):
         self.services_to_wait_for.extend([
         ])
 
-    def reset_world(self, verbose, reset_gripper_to: Tuple[float]):
+    def reset_world(self, verbose, reset_gripper_to: Optional[Tuple[float]] = None):
         empty = EmptyRequest()
         self.reset.call(empty)
 
@@ -28,6 +28,15 @@ class VictorServices(Services):
         services.wait(verbose)
 
         if reset_gripper_to is not None:
-            services.reset_world(verbose, [])
+            services.reset_world(verbose, None)
 
         return services
+
+    def move_objects(self,
+                     max_step_size: float,
+                     objects,
+                     env_w: float,
+                     env_h: float,
+                     padding: float,
+                     rng: np.random.RandomState):
+        pass

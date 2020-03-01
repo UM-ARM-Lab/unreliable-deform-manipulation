@@ -14,20 +14,21 @@ class LinkBotStateSpaceDataset(BaseDataset):
         # local environment stuff
         self.local_env_params = LocalEnvParams.from_json(self.hparams['local_env_params'])
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
-        self.tether = self.hparams['tether']
 
         self.action_like_names_and_shapes = ['%d/action']
 
         self.state_like_names_and_shapes = [
-            '%d/state/link_bot',
-            '%d/state/local_env',
-            '%d/state/local_env_origin',
+            # '%d/state/link_bot',
+            # '%d/state/local_env',
+            # '%d/state/local_env_origin',
             '%d/res',
             '%d/time_idx',
             '%d/traj_idx',
         ]
-        if self.tether:
-            self.state_like_names_and_shapes.append('%d/state/tether')
+
+        self.states_keys = self.hparams['states_keys']
+        for state_key in self.states_keys:
+            self.state_like_names_and_shapes.append('%d/state/{}'.format(state_key))
 
         self.trajectory_constant_names_and_shapes = [
             'full_env/origin',

@@ -43,7 +43,7 @@ def main():
             'dt': 1.0,
         },
         "model_class": "ObstacleNN",
-        "n_control": n_action,
+        "n_action": n_action,
         "sequence_length": T,
         "n_points": n_points,
         "conv_filters": [

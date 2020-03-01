@@ -3,21 +3,21 @@ from typing import Dict
 
 import numpy as np
 
-from state_space_dynamics.base_forward_model import BaseForwardModel
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
-class RigidTranslationModel(BaseForwardModel):
+class RigidTranslationModel(BaseDynamicsFunction):
 
     def __init__(self, model_dir: pathlib.Path):
         super().__init__(model_dir)
         self.beta = self.hparams['beta']
 
-    def predict(self,
-                full_env: np.ndarray,
-                full_env_origin: np.ndarray,
-                res: np.ndarray,
-                states: Dict[str, np.ndarray],
-                actions: np.ndarray) -> Dict[str, np.ndarray]:
+    def propagate(self,
+                  full_env: np.ndarray,
+                  full_env_origin: np.ndarray,
+                  res: np.ndarray,
+                  states: Dict[str, np.ndarray],
+                  actions: np.ndarray) -> Dict[str, np.ndarray]:
         """
         :param full_env:        (H, W)
         :param full_env_origin: (2)

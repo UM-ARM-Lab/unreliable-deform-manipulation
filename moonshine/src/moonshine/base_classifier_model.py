@@ -2,7 +2,6 @@ import json
 import pathlib
 from typing import Dict
 
-import matplotlib.pyplot as plt
 import numpy as np
 import progressbar
 import tensorflow as tf
@@ -11,7 +10,7 @@ from colorama import Fore, Style
 from moonshine import experiments_util
 
 
-class BaseModel(tf.keras.Model):
+class BaseClassifierModel(tf.keras.Model):
 
     def __init__(self, hparams: Dict, batch_size: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -30,11 +29,12 @@ class BaseModel(tf.keras.Model):
             val_accuracy.update_state(y_true=val_true_labels_batch, y_pred=val_predictions_batch)
             val_losses.append(val_loss_batch)
         val_losses = np.array(val_losses)
-        return val_losses, val_accuracy
+        mean_val_loss = np.mean(val_losses)
+        return mean_val_loss, val_accuracy
 
     @classmethod
-    def train(cls, hparams, train_tf_dataset, val_tf_dataset, log_path, args):
-        optimizer = tf.train.AdamOptimizer(learning_rate=0.0001)
+    def train(cls, hparams, train_tf_dataset, val_tf_dataset, log_path, seed: int, args):
+        optimizer = tf.train.AdamOptimizer()
         loss = tf.keras.losses.BinaryCrossentropy()
         train_epoch_accuracy = tf.keras.metrics.BinaryAccuracy(name='accuracy')
         batch_accuracy = tf.keras.metrics.BinaryAccuracy(name='batch_accuracy')
@@ -68,12 +68,15 @@ class BaseModel(tf.keras.Model):
             hparams_path = full_log_path / "hparams.json"
             with hparams_path.open('w') as hparams_file:
                 hparams['log path'] = str(full_log_path)
+                hparams['seed'] = seed
+                hparams['batch_size'] = cls.batch_size
                 hparams['dataset'] = str(args.dataset_dirs)
                 hparams_file.write(json.dumps(hparams, indent=2))
 
             writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
 
         def train_loop():
+            step = None
             for epoch in range(args.epochs):
                 ################
                 # train
@@ -89,6 +92,7 @@ class BaseModel(tf.keras.Model):
                     with tf.GradientTape() as tape:
                         train_predictions_batch = net(train_example_dict_batch)
                         training_batch_loss = loss(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
+
                     variables = net.trainable_variables
                     gradients = tape.gradient(training_batch_loss, variables)
                     optimizer.apply_gradients(zip(gradients, variables))
@@ -96,9 +100,6 @@ class BaseModel(tf.keras.Model):
                     train_epoch_accuracy.update_state(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
 
                     if args.log:
-                        if step % args.log_grad_every == 0:
-                            for grad, var in zip(gradients, variables):
-                                tf.contrib.summary.histogram(var.name + '_grad', grad, step=step)
                         if step % args.log_scalars_every == 0:
                             batch_accuracy.reset_states()
                             batch_accuracy.update_state(y_true=train_true_labels_batch, y_pred=train_predictions_batch)
@@ -118,9 +119,8 @@ class BaseModel(tf.keras.Model):
                 ################
                 # validation
                 ################
-                if step % args.validation_every == 0:
-                    val_losses, val_accuracy = cls.check_validation(val_tf_dataset, loss, net)
-                    mean_val_loss = np.mean(val_losses)
+                if epoch % args.validation_every == 0:
+                    mean_val_loss, val_accuracy = cls.check_validation(val_tf_dataset, loss, net)
                     val_accuracy = val_accuracy.result().numpy() * 100
                     tf.contrib.summary.scalar('validation loss', mean_val_loss, step=step)
                     tf.contrib.summary.scalar('validation accuracy', val_accuracy, step=step)

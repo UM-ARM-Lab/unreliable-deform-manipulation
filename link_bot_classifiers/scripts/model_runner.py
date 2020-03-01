@@ -9,7 +9,7 @@ from colorama import Fore
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_transition_image, add_traj_image
+from link_bot_data.link_bot_dataset_utils import balance, add_transition_image, add_traj_image
 from moonshine import experiments_util
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
@@ -28,35 +28,34 @@ def train(args, seed: int):
     ###############
     # Datasets
     ###############
-    classifier_dataset_params = json.load(args.classifier_dataset_params.open('r'))
-    train_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
-    val_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
+    labeling_params = json.load(args.labeling_params.open('r'))
+    train_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
+    val_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
 
     ###############
     # Model
     ###############
     model_hparams = json.load((args.model_hparams).open('r'))
-    # FIXME: name things better
-    model_hparams['classifier_dataset_params'] = classifier_dataset_params
+    model_hparams['labeling_params'] = labeling_params
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     model = link_bot_classifiers.get_model(model_hparams['model_class'])
 
-    # More dataset crap
+    # More dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train')
     val_tf_dataset = val_dataset.get_datasets(mode='val')
     if 'image_key' in model_hparams:
         image_key = model_hparams['image_key']
-        if model_hparams['image_key'] == 'transition_image':
+        if image_key == 'transition_image':
             train_tf_dataset = add_transition_image(train_tf_dataset)
             val_tf_dataset = add_transition_image(train_tf_dataset)
-        elif model_hparams['image_key'] == 'trajectory_image':
+        elif image_key == 'trajectory_image':
             train_tf_dataset = add_traj_image(train_tf_dataset)
             val_tf_dataset = add_traj_image(val_tf_dataset)
 
-    if classifier_dataset_params['balance']:
+    if labeling_params['balance']:
         print(Fore.GREEN + "balancing..." + Fore.RESET)
-        train_tf_dataset = balance_by_augmentation(train_tf_dataset)
-        val_tf_dataset = balance_by_augmentation(val_tf_dataset)
+        train_tf_dataset = balance(train_tf_dataset)
+        val_tf_dataset = balance(val_tf_dataset)
 
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
@@ -65,7 +64,7 @@ def train(args, seed: int):
         ###############
         # Train
         ###############
-        model.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args)
+        model.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, seed, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
@@ -81,8 +80,8 @@ def eval(args, seed: int):
     ###############
     # Dataset
     ###############
-    classifier_dataset_params = model_hparams['classifier_dataset_params']
-    test_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
+    labeling_params = model_hparams['labeling_params']
+    test_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
 
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
@@ -92,9 +91,9 @@ def eval(args, seed: int):
     elif model_hparams['image_key'] == 'trajectory_image':
         test_tf_dataset = add_traj_image(test_tf_dataset)
 
-    if classifier_dataset_params['balance']:
+    if labeling_params['balance']:
         print(Fore.GREEN + "balancing..." + Fore.RESET)
-        test_tf_dataset = balance_by_augmentation(test_tf_dataset)
+        test_tf_dataset = balance(test_tf_dataset)
     try:
         ###############
         # Evaluate
@@ -115,7 +114,7 @@ def main():
     train_parser = subparsers.add_parser('train')
     train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
-    train_parser.add_argument('classifier_dataset_params', type=pathlib.Path)
+    train_parser.add_argument('labeling_params', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--summary-freq', type=int, default=1)

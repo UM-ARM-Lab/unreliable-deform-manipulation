@@ -12,7 +12,7 @@ import tensorflow as tf
 from link_bot_data.classifier_dataset import ClassifierDataset
 import link_bot_classifiers 
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
-from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_traj_image, cachename
+from link_bot_data.link_bot_dataset_utils import balance, add_traj_image, cachename
 from link_bot_pycommon.args import my_formatter
 
 tf.compat.v1.enable_eager_execution()
@@ -43,7 +43,7 @@ def main():
     tf_dataset = dataset.get_datasets(mode=args.mode)
 
     tf_dataset = tf_dataset.map(add_traj_image)
-    tf_dataset = balance_by_augmentation(tf_dataset, label_key='label')
+    tf_dataset = balance(tf_dataset, label_key='label')
     tf_dataset = tf_dataset.shuffle(1024)
     tf_dataset = tf_dataset.batch(batch_size)
 

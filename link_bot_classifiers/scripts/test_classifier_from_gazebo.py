@@ -8,8 +8,8 @@ import numpy as np
 import rospy
 import tensorflow as tf
 
-from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_gazebo import gazebo_services
+from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_gazebo.srv import LinkBotStateRequest
 from link_bot_planning import model_utils, classifier_utils
 from link_bot_classifiers.visualization import plot_classifier_data
@@ -60,7 +60,7 @@ def main():
                                        res=full_env_params.res,
                                        services=services)
 
-    state = np.expand_dims(gazebo_utils.flatten_points(link_bot_state.points), axis=0)
+    state = np.expand_dims(gazebo_services.flatten_points(link_bot_state.points), axis=0)
 
     v = args.v
     test_inputs = [
@@ -82,15 +82,15 @@ def main():
         vy = np.sin(theta_rad) * v
         action = np.array([[[vx, vy]]])
 
-        next_state = fwd_model.predict(full_env=[full_env_data.data],
-                                       full_env_origin=[full_env_data.origin],
-                                       res=[full_env_data.resolution],
-                                       state=state,
-                                       actions=action)
+        next_state = fwd_model.propagate(full_env=[full_env_data.data],
+                                         full_env_origin=[full_env_data.origin],
+                                         res=[full_env_data.resolution],
+                                         state=state,
+                                         actions=action)
         next_state = np.reshape(next_state, [2, 1, -1])[1]
 
         # classifier_model.show = True
-        accept_probability = classifier_model.predict(local_env_data, state.flatten(), next_state.flatten(), action.flatten())
+        accept_probability = classifier_model.check_constraint(local_env_data, state.flatten(), next_state.flatten(), action.flatten())
         prediction = 1 if accept_probability > 0.5 else 0
         title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)
 

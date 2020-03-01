@@ -5,7 +5,7 @@ import argparse
 import json
 import pathlib
 import time
-from typing import Optional, List, Dict
+from typing import Optional, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,17 +17,15 @@ from colorama import Fore
 from ompl import base as ob
 
 import link_bot_data.link_bot_dataset_utils
-from link_bot_data import random_environment_data_utils
-from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_gazebo import gazebo_services
+from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute, model_utils
-from link_bot_planning.mpc_planners import get_planner_with_model
-from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.ompl_viz import plot
+from link_bot_planning.my_planner import MyPlanner, get_planner_with_model
+from link_bot_planning.ompl_viz import plot_plan
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
-from link_bot_pycommon.args import my_formatter, point_arg
-from victor import victor_utils
+from link_bot_pycommon.args import my_formatter
+from victor import victor_services
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -53,7 +51,9 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  seed: int,
                  goal,
                  reset_gripper_to,
-                 outdir: Optional[pathlib.Path] = None,
+                 outdir: pathlib.Path,
+                 record: Optional[bool] = False,
+                 pause_between_plans: Optional[bool] = False,
                  ):
         super().__init__(
             planner,
@@ -64,7 +64,9 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             sim_params=sim_params,
             services=services,
             no_execution=False,
+            pause_between_plans=pause_between_plans,
             seed=seed)
+        self.record = record
         self.classifier_model_type = classifier_model_type
         self.planner_config_name = planner_config_name
         self.outdir = outdir
@@ -99,6 +101,13 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             self.services.reset_world(self.verbose, self.reset_gripper_to)
 
         super().on_before_plan()
+
+    def on_after_plan(self):
+        if self.record:
+            filename = self.root.absolute() / 'plan-{}.avi'.format(self.total_plan_idx)
+            self.services.start_record_trial(str(filename))
+
+        super().on_after_plan()
 
     def get_goal(self, w, h, head_point, env_padding, full_env_data):
         if self.goal is not None:
@@ -148,15 +157,15 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
         plt.figure()
         ax = plt.gca()
-        _, legend = plot(ax,
-                         self.planner.n_state,
-                         self.planner.viz_object,
-                         planner_data,
-                         full_env_data.data,
-                         tail_goal_point,
-                         link_bot_planned_path,
-                         planned_actions,
-                         full_env_data.extent)
+        _, legend = plot_plan(ax,
+                              self.planner.n_state,
+                              self.planner.viz_object,
+                              planner_data,
+                              full_env_data.data,
+                              tail_goal_point,
+                              link_bot_planned_path,
+                              planned_actions,
+                              full_env_data.extent)
         ax.scatter(link_bot_actual_path[-1, 0], link_bot_actual_path[-1, 1], label='final actual tail position', zorder=5)
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
         plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
@@ -168,6 +177,9 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             plt.close()
 
         self.successfully_completed_plan_idx += 1
+
+        if self.record:
+            self.services.stop_record_trial()
 
     def on_complete(self, initial_poses_in_collision):
         self.metrics['initial_poses_in_collision'] = initial_poses_in_collision
@@ -208,6 +220,7 @@ def main():
     parser.add_argument("--pause-between-plans", action='store_true', help='pause between plans')
     parser.add_argument("--seed", '-s', type=int, default=3)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
+    parser.add_argument('--record', action='store_true', help='record')
 
     args = parser.parse_args()
 
@@ -251,9 +264,9 @@ def main():
 
         # Start Services
         if args.env_type == 'victor':
-            service_provider = victor_utils.VictorServices
+            service_provider = victor_services.VictorServices
         else:
-            service_provider = gazebo_utils.GazeboServices
+            service_provider = gazebo_services.GazeboServices
 
         services = service_provider.setup_env(verbose=args.verbose,
                                               real_time_rate=planner_params['real_time_rate'],
@@ -296,7 +309,9 @@ def main():
             outdir=common_output_directory,
             comparison_item_idx=comparison_idx,
             reset_gripper_to=planner_params['reset_gripper_to'],
-            goal=planner_params['fixed_goal']
+            goal=planner_params['fixed_goal'],
+            record=args.record,
+            pause_between_plans=args.pause_between_plans
         )
         runner.run()
 

@@ -3,11 +3,10 @@ from typing import Optional, Dict, Tuple
 import numpy as np
 import rospy
 import std_msgs
-import std_srvs
 from colorama import Fore
 from link_bot_gazebo.msg import Position2dAction, ObjectAction
-from link_bot_gazebo.srv import CameraProjection, InverseCameraProjection, LinkBotStateRequest, WorldControlRequest, \
-    InverseCameraProjectionRequest, CameraProjectionRequest, ExecuteActionRequest, GetObject, LinkBotReset, LinkBotResetRequest
+from link_bot_gazebo.srv import LinkBotStateRequest, WorldControlRequest, \
+    ExecuteActionRequest, GetObject, LinkBotReset, LinkBotResetRequest
 from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
 
@@ -16,7 +15,6 @@ from link_bot_pycommon.link_bot_pycommon import flatten_points
 from link_bot_pycommon.ros_pycommon import Services
 from visual_mpc import sensor_image_to_float_image
 from visual_mpc.gazebo_trajectory_execution import quaternion_from_euler
-from visual_mpc.numpy_point import NumpyPoint
 
 
 class GazeboServices(Services):
@@ -30,14 +28,11 @@ class GazeboServices(Services):
         # not used in real robot experiments
         self.get_tether_state = rospy.ServiceProxy("/tether", GetObject)
 
-        # FIXME: wrap up all this "automatically rearrange the environment" business
+        # FIXME: Move this kind of interaction with the environment to a separate node, since we will probably
+        #  never be able to do it on a real robot
         self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
         self.position_2d_stop = rospy.Publisher('/position_2d_stop', std_msgs.msg.Empty, queue_size=10)
         self.position_2d_action = rospy.Publisher('/position_2d_action', Position2dAction, queue_size=10)
-
-        # currently unused
-        self.xy_to_rowcol = rospy.ServiceProxy('/my_camera/xy_to_rowcol', CameraProjection)
-        self.rowcol_to_xy = rospy.ServiceProxy('/my_camera/rowcol_to_xy', InverseCameraProjection)
 
         self.services_to_wait_for.append('/link_bot_reset')
 
@@ -92,74 +87,7 @@ class GazeboServices(Services):
         services.position_2d_stop.publish(std_msgs.msg.Empty())
         return services
 
-    def get_rope_head_pixel_coordinates(services):
-        state_req = LinkBotStateRequest()
-        state = services.get_state(state_req)
-        head_x_m = state.points[-1].x
-        head_y_m = state.points[-1].y
-        req = CameraProjectionRequest()
-        req.xyz.x = head_x_m
-        req.xyz.y = head_y_m
-        req.xyz.z = 0.01
-        res = services.xy_to_rowcol(req)
-        return NumpyPoint(int(res.rowcol.x_col), int(res.rowcol.y_row)), head_x_m, head_y_m
-
-    def xy_to_row_col(services, x, y, z):
-        req = CameraProjectionRequest()
-        req.xyz.x = x
-        req.xyz.y = y
-        req.xyz.z = z
-        res = services.xy_to_rowcol(req)
-        return NumpyPoint(int(res.rowcol.x_col), int(res.rowcol.y_row))
-
-    def random_object_move(model_name: str, w: float, h: float, padding: float, rng: np.random.RandomState):
-        move = ObjectAction()
-        move.pose.position.x = rng.uniform(-w / 2 + padding, w / 2 - padding)
-        move.pose.position.y = rng.uniform(-h / 2 + padding, h / 2 - padding)
-        q = quaternion_from_euler(0, 0, rng.uniform(-np.pi, np.pi))
-        move.pose.orientation.x = q[0]
-        move.pose.orientation.y = q[1]
-        move.pose.orientation.z = q[2]
-        move.pose.orientation.w = q[3]
-        move.model_name = model_name
-        return move
-
-    def move_objects(services,
-                     max_step_size: float,
-                     objects,
-                     env_w: float,
-                     env_h: float,
-                     padding: float,
-                     rng: np.random.RandomState):
-        disable_link_bot = String()
-        disable_link_bot.data = 'disabled'
-
-        enable_link_bot = String()
-        enable_link_bot.data = 'position'
-
-        # disable the rope controller, enable the objects
-        services.link_bot_mode.publish(disable_link_bot)
-        # Move the objects
-        move_action = Position2dAction()
-        for object_name in objects:
-            move = random_object_move(object_name, env_w, env_h, padding, rng)
-            move_action.actions.append(move)
-        services.position_2d_action.publish(move_action)
-        # let the move actually occur
-        step = WorldControlRequest()
-        move_wait_duration = 0.75
-        step.steps = int(move_wait_duration / max_step_size)
-        services.world_control(step)  # this will block until stepping is complete
-        # disable the objects so they stop, enabled the rope controller
-        services.position_2d_stop.publish(std_msgs.msg.Empty())
-        services.link_bot_mode.publish(enable_link_bot)
-
-        # wait a few steps to ensure the stop message is received
-        wait = WorldControlRequest()
-        wait.steps = int(2 / max_step_size)
-        services.world_control(wait)  # this will block until stepping is complete
-
-    def reset_world(self, verbose, reset_gripper_to: Tuple[float]):
+    def reset_world(self, verbose, reset_gripper_to: Optional[Tuple[float]] = None):
         empty = EmptyRequest()
         self.reset.call(empty)
 
@@ -196,10 +124,50 @@ class GazeboServices(Services):
         context_actions = np.zeros([context_length - 1, action_dim])
         return context_images, context_states, context_actions
 
+    @staticmethod
+    def random_object_move(model_name: str, w: float, h: float, padding: float, rng: np.random.RandomState):
+        move = ObjectAction()
+        move.pose.position.x = rng.uniform(-w / 2 + padding, w / 2 - padding)
+        move.pose.position.y = rng.uniform(-h / 2 + padding, h / 2 - padding)
+        q = quaternion_from_euler(0, 0, rng.uniform(-np.pi, np.pi))
+        move.pose.orientation.x = q[0]
+        move.pose.orientation.y = q[1]
+        move.pose.orientation.z = q[2]
+        move.pose.orientation.w = q[3]
+        move.model_name = model_name
+        return move
 
-def rowcol_to_xy(services, row, col):
-    req = InverseCameraProjectionRequest()
-    req.rowcol.x_col = col
-    req.rowcol.y_row = row
-    res = services.rowcol_to_xy(req)
-    return res.xyz.x, res.xyz.y
+    def move_objects(self,
+                     max_step_size: float,
+                     objects,
+                     env_w: float,
+                     env_h: float,
+                     padding: float,
+                     rng: np.random.RandomState):
+        disable_link_bot = String()
+        disable_link_bot.data = 'disabled'
+
+        enable_link_bot = String()
+        enable_link_bot.data = 'position'
+
+        # disable the rope controller, enable the objects
+        self.link_bot_mode.publish(disable_link_bot)
+        # Move the objects
+        move_action = Position2dAction()
+        for object_name in objects:
+            move = random_object_move(object_name, env_w, env_h, padding, rng)
+            move_action.actions.append(move)
+        self.position_2d_action.publish(move_action)
+        # let the move actually occur
+        step = WorldControlRequest()
+        move_wait_duration = 0.75
+        step.steps = int(move_wait_duration / max_step_size)
+        self.world_control(step)  # this will block until stepping is complete
+        # disable the objects so they stop, enabled the rope controller
+        self.position_2d_stop.publish(std_msgs.msg.Empty())
+        self.link_bot_mode.publish(enable_link_bot)
+
+        # wait a few steps to ensure the stop message is received
+        wait = WorldControlRequest()
+        wait.steps = int(2 / max_step_size)
+        self.world_control(wait)  # this will block until stepping is complete

@@ -1,8 +1,6 @@
 <launch>
-    <arg name="world_name" default="textures"/>
     <arg name="verbose" default="false"/>
     <arg name="gui" default="false"/>
-    <arg name="n_links" default="2"/>
     <arg name="spawn_x" default="0.0"/>
     <arg name="spawn_y" default="0.0"/>
 
@@ -11,13 +9,15 @@
     <remap from="/gazebo/reset_simulation" to="/reset"/>
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/$(arg world_name).world"/>
+        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/no_obstacles.world"/>
         <arg name="verbose" default="$(arg verbose)"/>
         <arg name="paused" default="false"/>
         <arg name="gui" value="$(arg gui)"/>
     </include>
 
+    <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
+
     <!-- Spawn a robot into Gazebo -->
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
-          args="-file $(find link_bot_description)/sdf/$(arg n_links)_link.sdf -sdf -x $(arg spawn_x) -y $(arg spawn_y) -Y $(arg spawn_yaw) -z 0.01 -model link_bot"/>
+          args="-file $(find link_bot_description)/sdf/10_link.sdf -sdf -x $(arg spawn_x) -y $(arg spawn_y) -Y $(arg spawn_yaw) -z 0.01 -model link_bot"/>
 </launch>

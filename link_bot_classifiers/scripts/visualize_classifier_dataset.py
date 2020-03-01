@@ -11,7 +11,7 @@ import tensorflow as tf
 from link_bot_classifiers import visualization
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance_by_augmentation, add_traj_image, add_transition_image
+from link_bot_data.link_bot_dataset_utils import balance, add_traj_image, add_transition_image
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
 
@@ -22,7 +22,7 @@ def main():
     np.set_printoptions(suppress=True, linewidth=200)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
-    parser.add_argument('classifier_dataset_params', type=pathlib.Path)
+    parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('display_type', choices=['transition_image', 'transition_plot', 'trajectory_image', 'trajectory_plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
     parser.add_argument('--shuffle', action='store_true')
@@ -34,16 +34,15 @@ def main():
     parser.add_argument('--no-balance', action='store_true')
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
-    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
 
     args = parser.parse_args()
 
     np.random.seed(args.seed)
     tf.compat.v1.random.set_random_seed(args.seed)
 
-    classifier_dataset_params = json.load(args.classifier_dataset_params.open("r"))
+    labeling_params = json.load(args.labeling_params.open("r"))
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs, classifier_dataset_params)
+    classifier_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
     dataset = classifier_dataset.get_datasets(mode=args.mode)
     if args.display_type == 'transition_image':
         dataset = add_transition_image(dataset, args.action_in_image)
@@ -51,7 +50,7 @@ def main():
         dataset = add_traj_image(dataset)
 
     if not args.no_balance:
-        dataset = balance_by_augmentation(dataset)
+        dataset = balance(dataset)
 
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=1024)

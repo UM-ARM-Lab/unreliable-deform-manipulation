@@ -79,7 +79,7 @@ class ClassifierDataset(BaseDataset):
     def __init__(self, dataset_dirs: List[pathlib.Path], params: Dict):
         super(ClassifierDataset, self).__init__(dataset_dirs)
 
-        self.classifier_dataset_params = params
+        self.labeling_params = params
 
         self.local_env_params = LocalEnvParams.from_json(self.hparams['local_env_params'])
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
@@ -114,8 +114,8 @@ class ClassifierDataset(BaseDataset):
             pre_transition_distance = tf.norm(transition['state/link_bot'] - transition['planned_state/link_bot'])
             post_transition_distance = tf.norm(transition['state_next/link_bot'] - transition['planned_state_next/link_bot'])
 
-            pre_threshold = self.classifier_dataset_params['pre_close_threshold']
-            post_threshold = self.classifier_dataset_params['post_close_threshold']
+            pre_threshold = self.labeling_params['pre_close_threshold']
+            post_threshold = self.labeling_params['post_close_threshold']
 
             pre_close = pre_transition_distance < pre_threshold
             post_close = post_transition_distance < post_threshold
@@ -136,7 +136,7 @@ class ClassifierDataset(BaseDataset):
             return new_transition
 
         def _filter_pre_far_transitions(transition):
-            if self.classifier_dataset_params['discard_pre_far'] and not transition['pre_close']:
+            if self.labeling_params['discard_pre_far'] and not transition['pre_close']:
                 return False
             return True
 
@@ -168,7 +168,6 @@ class ClassifierDataset(BaseDataset):
             return transition
 
         # At this point, the dataset consists of tuples (const_data, state_data, action_data)
-        # if self.classifier_dataset_params['type'] == 'transition':
         dataset = dataset.flat_map(convert_sequences_to_transitions)
         dataset = dataset.map(_label_transitions)
         dataset = dataset.filter(_filter_pre_far_transitions)

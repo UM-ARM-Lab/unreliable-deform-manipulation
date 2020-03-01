@@ -8,7 +8,7 @@ import tensorflow as tf
 
 from link_bot_classifiers import none_classifier
 from link_bot_data.visualization import plot_rope_configuration
-from link_bot_gazebo import gazebo_utils
+from link_bot_gazebo import gazebo_services
 from link_bot_planning import model_utils
 from link_bot_planning.params import LocalEnvParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSamplerInternal
@@ -33,7 +33,7 @@ def main():
     fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir, args.fwd_model_type)
     classifier_model = none_classifier.NoneClassifier()
 
-    services = gazebo_utils.GazeboServices()
+    services = gazebo_services.GazeboServices()
 
     # NOTE: these params don't matter at the moment, but they may soon
     local_env_params = LocalEnvParams(h_rows=100, w_cols=100, res=0.03)

@@ -6,12 +6,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rospy
 
-from link_bot_gazebo import gazebo_utils
+from link_bot_gazebo import gazebo_services
 from link_bot_pycommon.ros_pycommon import get_local_occupancy_data
 
 rospy.init_node("testing")
 
-services = gazebo_utils.GazeboServices()
+services = gazebo_services.GazeboServices()
 
 h_rows = 50
 w_cols = 50

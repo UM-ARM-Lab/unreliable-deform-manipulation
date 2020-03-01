@@ -8,7 +8,7 @@ from typing import List, Optional
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_data.link_bot_dataset_utils import balance_dataset, parse_and_deserialize
+from link_bot_data.link_bot_dataset_utils import parse_and_deserialize
 
 
 class BaseDataset:
@@ -88,8 +88,7 @@ class BaseDataset:
             msg = "sequence length not specified, assuming hparams sequence length: {}".format(sequence_length)
             print(Fore.YELLOW + msg + Fore.RESET)
 
-        dataset = tf.data.TFRecordDataset(records, buffer_size=1 * 1024 * 1024,
-                                          compression_type=self.hparams['compression_type'])
+        dataset = tf.data.TFRecordDataset(records, buffer_size=1 * 1024 * 1024, compression_type='ZLIB')
 
         features_description = self.make_features_description()
 
@@ -104,9 +103,6 @@ class BaseDataset:
             dataset = dataset.map(_slice_sequences, num_parallel_calls=n_parallel_calls)
 
             dataset = self.post_process(dataset, n_parallel_calls)
-
-            if balance_key is not None:
-                dataset = balance_dataset(dataset, balance_key)
 
         return dataset
 

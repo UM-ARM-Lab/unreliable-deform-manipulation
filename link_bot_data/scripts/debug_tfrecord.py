@@ -23,7 +23,7 @@ def main():
     hparams = json.load(open(str(dataset_hparams_filename), 'r'))
 
     filenames = [str(filename) for filename in args.dataset_dir.glob("{}/*.tfrecords".format(args.mode))]
-    options = tf.python_io.TFRecordOptions(compression_type=hparams['compression_type'])
+    options = tf.python_io.TFRecordOptions(compression_type='ZLIB')
     for filename in filenames:
         example = next(tf.python_io.tf_record_iterator(filename, options=options))
         dict_message = MessageToDict(tf.train.Example.FromString(example))

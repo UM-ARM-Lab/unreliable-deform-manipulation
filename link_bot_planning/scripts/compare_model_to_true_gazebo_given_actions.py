@@ -13,13 +13,13 @@ import std_srvs
 import tensorflow as tf
 from matplotlib import animation
 
-from link_bot_gazebo import gazebo_utils
+from link_bot_gazebo import gazebo_services
 from link_bot_planning import model_utils
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
 from link_bot_pycommon.ros_pycommon import make_trajectory_execution_request, trajectory_execution_response_to_numpy, \
     get_occupancy_data, get_start_states
-from victor import victor_utils
+from victor import victor_services
 
 tf.compat.v1.enable_eager_execution()
 
@@ -97,9 +97,9 @@ def main():
 
     # Start Services
     if args.env_type == 'victor':
-        services = victor_utils.VictorServices()
+        services = victor_services.VictorServices()
     else:
-        services = gazebo_utils.GazeboServices()
+        services = gazebo_services.GazeboServices()
 
     params = json.load(args.params.open('r'))
 
@@ -119,13 +119,13 @@ def main():
     start_states, link_bot_start_state, head_point = get_start_states(services, state_keys)
 
     actions = np.genfromtxt(args.actions, delimiter=',')
-    actions = actions.reshape([-1, fwd_model.n_control])
+    actions = actions.reshape([-1, fwd_model.n_action])
 
-    predicted_paths = fwd_model.predict(full_env=full_env_data.data,
-                                        full_env_origin=full_env_data.origin,
-                                        res=full_env_data.resolution[0],
-                                        states=start_states,
-                                        actions=actions)
+    predicted_paths = fwd_model.propagate(full_env=full_env_data.data,
+                                          full_env_origin=full_env_data.origin,
+                                          res=full_env_data.resolution[0],
+                                          states=start_states,
+                                          actions=actions)
 
     trajectory_execution_request = make_trajectory_execution_request(fwd_model.dt, actions)
     traj_res = services.execute_trajectory(trajectory_execution_request)

@@ -1,32 +1,79 @@
 from typing import Iterable, Optional
 
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 import numpy as np
 from geometry_msgs.msg import Point
+from matplotlib.animation import FuncAnimation
 from ompl import base as ob
 from visualization_msgs.msg import MarkerArray, Marker
 
-from link_bot_data.visualization import plot_rope_configuration, plottable_rope_configuration, SavablePlotting
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_data.visualization import plot_rope_configuration, plottable_rope_configuration
+from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning.state_spaces import to_numpy
+from matplotlib.patches import Arrow
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon.link_bot_sdf_utils import SDF
 
 
-def plot(ax,
-         n_state: int,
-         viz_object: VizObject,
-         planner_data: ob.PlannerData,
-         environment: np.ndarray,
-         goal: np.ndarray,
-         planned_path: Optional[np.ndarray],
-         planned_actions: Optional[np.ndarray],
-         extent: Iterable,
-         draw_tree: Optional[bool] = None,
-         draw_rejected: Optional[bool] = None,
-         ):
+def animate_plan(planned_path: Optional[np.ndarray],
+                 planned_actions: Optional[np.ndarray],
+                 goal: np.ndarray,
+                 environment: np.ndarray,
+                 extent: Iterable,
+                 ):
+    fig = plt.figure()
+    ax = plt.gca()
+    ax.imshow(np.flipud(environment), extent=extent)
 
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.axis("equal")
+    ax.set_xlim([-0.36, 0.36])
+    ax.set_ylim([-0.5, 0.5])
+    ax.legend()
+
+    arrow_width = 0.02
+
+    start = planned_path[0]
+    ax.scatter(start[0], start[1], label='start', s=50, c='m', zorder=5)
+    ax.scatter(goal[0], goal[1], label='goal', s=50, c='g', zorder=5)
+
+    arrow_0 = Arrow(planned_path[0, -2],
+                        planned_path[0, -1],
+                        planned_actions[0, 0],
+                        planned_actions[0, 1],
+                        width=arrow_width,
+                        zorder=4)
+    patch = ax.add_patch(arrow_0)
+
+    def update(t):
+        nonlocal patch
+        s_t = planned_path[t]
+        ax.scatter(s_t[0], s_t[1], label='final_path', s=10, c='cyan', zorder=3)
+        plot_rope_configuration(ax, s_t, label='final path', linewidth=1, c='blue', zorder=2, s=1)
+
+        if t < planned_actions.shape[0]:
+            u_t = planned_actions[t]
+            patch.remove()
+            arrow = Arrow(s_t[-2], s_t[-1], u_t[0], u_t[1], width=arrow_width, zorder=4)
+            patch = ax.add_patch(arrow)
+
+    anim = FuncAnimation(fig, update, frames=planned_path.shape[0], interval=500)
+    return anim
+
+
+def plot_plan(ax,
+              n_state: int,
+              viz_object: VizObject,
+              planner_data: ob.PlannerData,
+              environment: np.ndarray,
+              goal: np.ndarray,
+              planned_path: Optional[np.ndarray],
+              planned_actions: Optional[np.ndarray],
+              extent: Iterable,
+              draw_tree: Optional[bool] = None,
+              draw_rejected: Optional[bool] = None,
+              ):
     plot_data_dict = {
         'n_state': n_state,
         'goal': goal,
@@ -48,7 +95,8 @@ def plot(ax,
 
     if draw_rejected:
         for rejected_state in viz_object.rejected_samples:
-            plot_rope_configuration(ax, rejected_state, label='states rejected by classifier', linewidth=0.8, c='r', zorder=1, s=10)
+            plot_rope_configuration(ax, rejected_state, label='states rejected by classifier', linewidth=0.8, c='r', zorder=1,
+                                    s=10)
             plot_data_dict['rejected_states'].append(rejected_state)
 
     if planned_path is not None:
@@ -160,8 +208,8 @@ def plan_vs_execution(environment: np.ndarray,
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.axis("equal")
-    ax.set_xlim([-2.5, 2.5])
-    ax.set_ylim([-2.5, 2.5])
+    ax.set_xlim([-0.36, 0.36])
+    ax.set_ylim([-0.5, 0.5])
 
     start = planned_path[0]
     ax.scatter(start[0], start[1], label='start', s=50, c='r', zorder=5)
@@ -178,16 +226,13 @@ def plan_vs_execution(environment: np.ndarray,
     def update(t):
         planned_xs, planned_ys = plottable_rope_configuration(planned_path[t])
         actual_xs, actual_ys = plottable_rope_configuration(actual_path[t])
-        actual_points = np.hstack((actual_xs, actual_ys)).T
-        planned_points = np.hstack((planned_xs, planned_ys)).T
-        print(actual_xs.shape, actual_ys.shape)
-        print(planned_xs.shape, planned_ys.shape)
-        print(actual_points.shape, planned_points.shape)
+        actual_points = np.vstack((actual_xs, actual_ys)).T
+        planned_points = np.vstack((planned_xs, planned_ys)).T
 
         planned_line.set_data(planned_xs, planned_ys)
         actual_line.set_data(actual_xs, actual_ys)
         actual_scat.set_offsets(actual_points)
         planned_scat.set_offsets(planned_points)
 
-    anim = FuncAnimation(fig, update, frames=planned_path.shape[0], interval=200)
+    anim = FuncAnimation(fig, update, frames=planned_path.shape[0], interval=500)
     return anim

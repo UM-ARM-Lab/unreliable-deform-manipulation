@@ -101,6 +101,7 @@ def main():
             for planned, actual in zip(data['planned_path'], data['actual_path']):
                 planned_path = np.array(planned)
                 actual_path = np.array(actual)
+                # FIXME: old results included an extra state, we should rerun experiments
                 error = np.linalg.norm(planned_path[:-1, 0:2] - actual_path[:-1, 0:2], axis=1)
                 mean_plan_to_execution_errors.append(np.mean(error))
             # TODO: rename these keys
@@ -112,7 +113,7 @@ def main():
             num_nodes = data['num_nodes']
             timeouts = np.sum((planning_times > timeout).astype(np.int))
             timeout_percentage = timeouts / planning_times.shape[0] * 100
-            name = subfolder.name
+            name = str(subfolder.name).replace('_', ' ')
             if not args.no_plot:
                 execution_successes = []
                 for threshold in errors_thresholds:

@@ -1,7 +1,0 @@
-*.swp
-*.gif
-notebooks/*.mp4
-*.pyc
-__pycache__
-log_data
-.ipynb_checkpoints

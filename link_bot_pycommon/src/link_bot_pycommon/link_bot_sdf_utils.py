@@ -12,12 +12,17 @@ def idx_to_point(row: int,
                  col: int,
                  resolution: np.ndarray,
                  origin: np.ndarray):
-    y = (row - origin[0]) * resolution[0]
-    x = (col - origin[1]) * resolution[1]
+    y = (row - origin[0]) * resolution
+    x = (col - origin[1]) * resolution
     return np.array([x, y])
 
 
-def bounds_from_env_size(w_cols, h_rows, new_origin, resolution, origin):
+def bounds_from_env_size(w_cols: int,
+                         h_rows: int,
+                         new_origin: np.ndarray,
+                         resolution: float,
+                         origin: np.ndarray):
+    # NOTE: assumes centered?
     xmin = -w_cols / 2 + new_origin[1]
     ymin = -h_rows / 2 + new_origin[0]
     xmax = w_cols / 2 + new_origin[1]
@@ -32,16 +37,19 @@ def center_point_to_origin_indices(h_rows: int,
                                    center_x: float,
                                    center_y: float,
                                    res: float):
-    env_00_x = center_x - w_cols / 2 * res
-    env_00_y = center_y - h_rows / 2 * res
-    return np.array([int(-env_00_x / res), int(-env_00_y / res)])
+    env_origin_x = center_x - w_cols / 2 * res
+    env_origin_y = center_y - h_rows / 2 * res
+    return np.array([int(-env_origin_x / res), int(-env_origin_y / res)])
 
 
-def compute_extent(rows, cols, resolution, origin):
+def compute_extent(rows: int,
+                   cols: int,
+                   resolution: float,
+                   origin: np.ndarray):
     """
     :param rows: scalar
     :param cols: scalar
-    :param resolution: [2]
+    :param resolution: scalar
     :param origin: [2]
     :return:
     """
@@ -50,9 +58,12 @@ def compute_extent(rows, cols, resolution, origin):
     return np.array([xmin, xmax, ymin, ymax], dtype=np.float32)
 
 
-def point_to_idx(x, y, resolution, origin):
-    col = int(x / resolution[1] + origin[1])
-    row = int(y / resolution[0] + origin[0])
+def point_to_idx(x: float,
+                 y: float,
+                 resolution: float,
+                 origin: np.ndarray):
+    col = int(x / resolution + origin[1])
+    row = int(y / resolution + origin[0])
     return row, col
 
 
@@ -60,20 +71,21 @@ class OccupancyData:
 
     def __init__(self,
                  data: np.ndarray,
-                 resolution: np.ndarray,
+                 resolution: float,
                  origin: np.ndarray):
         """
 
         :param data:
-        :param resolution: should be [res_y, res_x]
+        :param resolution: scalar, assuming square pixels
         :param origin:
         """
+        assert (isinstance(resolution, float))
         self.data = data.astype(np.float32)
-        self.resolution = resolution.astype(np.float32)
+        self.resolution = resolution
         # Origin means the indeces (row/col) of the world point (0, 0)
         self.origin = origin.astype(np.float32)
         self.extent = compute_extent(self.data.shape[0], self.data.shape[1], resolution, origin)
-        # NOTE: when displaying an SDF as an image, matplotlib assumes rows increase going down,
+        # NOTE: when displaying an 2d data as an image, matplotlib assumes rows increase going down,
         #  but rows correspond to y which increases going up
         self.image = np.flipud(self.data)
 

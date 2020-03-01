@@ -3,21 +3,21 @@ import pathlib
 import numpy as np
 import ompl.control as oc
 
-from link_bot_classifiers.base_classifier import BaseClassifier
+from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import PlannerParams
 from link_bot_planning.state_spaces import TrainingSetCompoundSampler
 from link_bot_planning.viz_object import VizObject
-from state_space_dynamics.base_forward_model import BaseForwardModel
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 class BestFirstRRT(MyPlanner):
 
     def __init__(self,
-                 fwd_model: BaseForwardModel,
-                 classifier_model: BaseClassifier,
+                 fwd_model: BaseDynamicsFunction,
+                 classifier_model: BaseConstraintChecker,
                  planner_params: PlannerParams,
                  services: GazeboServices,
                  viz_object: VizObject):

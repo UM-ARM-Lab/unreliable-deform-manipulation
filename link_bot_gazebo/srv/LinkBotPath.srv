@@ -1,6 +1,0 @@
-geometry_msgs/Vector3[] gripper1_path
-geometry_msgs/Vector3[] gripper2_path
-float32 execute_path_dt
----
-link_bot_gazebo/LinkBotConfiguration[] actual_path
-

@@ -19,16 +19,15 @@ from ompl import base as ob
 import link_bot_data.link_bot_dataset_utils
 from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
-from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_gazebo import gazebo_services
+from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import ompl_viz
-from link_bot_planning.mpc_planners import get_planner
-from link_bot_planning.my_planner import MyPlanner
+from link_bot_planning.my_planner import MyPlanner, get_planner
 from link_bot_planning.params import SimParams
 from link_bot_planning.plan_and_execute import PlanAndExecute
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter, point_arg
-from victor import victor_utils
+from victor import victor_services
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -50,7 +49,6 @@ class ClassifierDataCollector(PlanAndExecute):
                  sim_params: SimParams,
                  n_steps_per_example: int,
                  n_examples_per_record: int,
-                 compression_type: str,
                  services: GazeboServices,
                  reset_gripper_to,
                  fixed_goal,
@@ -71,7 +69,6 @@ class ClassifierDataCollector(PlanAndExecute):
         self.fwd_model_info = fwd_model_info
         self.n_examples_per_record = n_examples_per_record
         self.n_steps_per_example = n_steps_per_example
-        self.compression_type = compression_type
         self.outdir = outdir
         self.local_env_params = self.planner.fwd_model.local_env_params
         self.reset_gripper_to = reset_gripper_to
@@ -90,7 +87,6 @@ class ClassifierDataCollector(PlanAndExecute):
         self.dataset_hparams = {
             'dt': self.planner.fwd_model.dt,
             'seed': seed,
-            'compression_type': compression_type,
             'n_total_plans': n_total_plans,
             'n_plans_per_env': n_plans_per_env,
             'verbose': verbose,
@@ -140,14 +136,14 @@ class ClassifierDataCollector(PlanAndExecute):
         if self.verbose >= 2:
             plt.figure()
             ax = plt.gca()
-            ompl_viz.plot(ax,
-                          self.planner.viz_object,
-                          planner_data,
-                          full_env_data.data,
-                          tail_goal_point,
-                          planned_path['link_bot'],
-                          planned_actions,
-                          full_env_data.extent)
+            ompl_viz.plot_plan(ax,
+                               self.planner.viz_object,
+                               planner_data,
+                               full_env_data.data,
+                               tail_goal_point,
+                               planned_path['link_bot'],
+                               planned_actions,
+                               full_env_data.extent)
             plt.show()
 
         if self.verbose >= 1:
@@ -178,8 +174,6 @@ class ClassifierDataCollector(PlanAndExecute):
             'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),
         }
 
-        # FIXME: truncation is fine, but we need to throw out everything from then on otherwise the next example won't start at
-        #  the actual start. I think we need the rope to start from the same configuration? that's bad...
         for time_idx in range(self.n_steps_per_example):
             # we may have to truncate, or pad the trajectory, depending on the length of the plan
             if time_idx < planned_actions.shape[0]:
@@ -223,7 +217,7 @@ class ClassifierDataCollector(PlanAndExecute):
             start_example_idx = end_example_idx - self.n_examples_per_record
             record_filename = "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx - 1)
             full_filename = self.full_output_directory / record_filename
-            writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=self.compression_type)
+            writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type='ZLIB')
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))
             self.examples_idx = 0
@@ -234,12 +228,11 @@ def main():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    # TODO: make this take a json params file
     parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument("n_total_plans", type=int, help='number of plans')
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("outdir", type=pathlib.Path)
-    # TODO: make full env size a parameter here, since it's independant of what "full env" meant for the model
+    # TODO: make full env size a parameter here, since it's independent of what "full env" meant for the model
     #  current full env size for the classifier is indirectly defined by the full env size for the model used here to collect data
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
@@ -256,10 +249,10 @@ def main():
     # Start Services
     if args.env_type == 'victor':
         is_victor = True
-        service_provider = victor_utils.VictorServices
+        service_provider = victor_services.VictorServices
     else:
         is_victor = False
-        service_provider = gazebo_utils.GazeboServices
+        service_provider = gazebo_services.GazeboServices
 
     params = json.load(args.params.open("r"))
     sim_params = SimParams(real_time_rate=params['real_time_rate'],
@@ -302,7 +295,6 @@ def main():
         sim_params=sim_params,
         n_steps_per_example=params['n_steps_per_example'],
         n_examples_per_record=params['n_examples_per_record'],
-        compression_type='ZLIB',
         outdir=args.outdir,
         services=services,
         reset_gripper_to=params['reset_gripper_to'],

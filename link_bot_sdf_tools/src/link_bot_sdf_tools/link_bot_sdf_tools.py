@@ -3,9 +3,8 @@ import struct
 import numpy as np
 
 import sdf_tools
-# FIXME: imports not working?!
 from link_bot_pycommon.link_bot_sdf_utils import SDF
-from .srv import ComputeSDFRequest
+from link_bot_sdf_tools.srv import ComputeSDFRequest
 
 
 def decompress_and_deserialize(sdf, gradient, msg):

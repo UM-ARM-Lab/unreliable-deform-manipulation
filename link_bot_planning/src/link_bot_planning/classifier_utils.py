@@ -5,7 +5,7 @@ from link_bot_classifiers.feature_classifier import FeatureClassifierWrapper
 from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_classifiers.raster_classifier import RasterClassifierWrapper
 from link_bot_classifiers.hand_designed_obs_classifier import HandDesignedObsClassifier
-from link_bot_classifiers.human_classifier import ManualClassifier
+from link_bot_classifiers.manual_classifier import ManualClassifier
 
 
 def load_generic_model(model_dir: pathlib.Path, model_type: str):

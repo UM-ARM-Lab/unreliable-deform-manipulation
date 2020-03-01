@@ -46,8 +46,7 @@ def main():
 
     for mode in ['test', 'val', 'train']:
         dataset = TmpDataset(args.dataset_dir)
-        tf_dataset = dataset.get_datasets(shuffle=False, mode=mode, seed=1, n_parallel_calls=1, batch_size=None,
-                                          do_not_process=True)
+        tf_dataset = dataset.get_datasets(mode=mode,  n_parallel_calls=1, do_not_process=True)
 
         full_output_directory = args.out_dir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)

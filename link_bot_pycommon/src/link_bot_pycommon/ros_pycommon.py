@@ -4,16 +4,15 @@ import numpy as np
 import rospy
 import std_srvs
 from colorama import Fore
+from link_bot_gazebo.msg import LinkBotAction
 from link_bot_gazebo.srv import ComputeSDF2Request, ComputeOccupancyRequest, ComputeSDF2, ComputeOccupancy, \
     LinkBotTrajectoryRequest, LinkBotState, WorldControl, LinkBotTrajectory, ExecuteAction, GetObjects
 
+from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingRequest
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
-from link_bot_gazebo.msg import LinkBotAction
-
 from ignition.markers import MarkerProvider
 from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon
 
-import matplotlib.pyplot as plt
 
 def get_n_state():
     return rospy.get_param("/link_bot/n_state")
@@ -47,6 +46,7 @@ class Services:
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', std_srvs.srv.Empty)
         self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
+        self.record = rospy.ServiceProxy('video_recorder', TriggerVideoRecording)
         self.reset = rospy.ServiceProxy("/reset", std_srvs.srv.Empty)
         self.get_objects = rospy.ServiceProxy("/objects", GetObjects)
         self.marker_provider = MarkerProvider()
@@ -66,6 +66,21 @@ class Services:
             '/gazebo/set_physics_properties',
         ]
 
+    def get_states_description(self):
+        states_response = self.states_description()
+
+    def start_record_trial(self, filename):
+        start_msg = TriggerVideoRecordingRequest()
+        start_msg.record = True
+        start_msg.filename = filename
+        start_msg.timeout_in_sec = 300.0
+        self.record(start_msg)
+
+    def stop_record_trial(self):
+        stop_msg = TriggerVideoRecordingRequest()
+        stop_msg.record = False
+        self.record(stop_msg)
+
     def wait(self, verbose):
         if verbose >= 1:
             print(Fore.CYAN + "Waiting for services..." + Fore.RESET)
@@ -73,6 +88,15 @@ class Services:
             rospy.wait_for_service(s)
         if verbose >= 1:
             print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
+
+    def move_objects(self,
+                     max_step_size: float,
+                     objects,
+                     env_w: float,
+                     env_h: float,
+                     padding: float,
+                     rng: np.random.RandomState):
+        pass
 
     @staticmethod
     def setup_env(verbose: int,
@@ -291,4 +315,3 @@ def get_start_states(services, state_keys):
                 start_states[subspace_name] = state
     start_states['link_bot'] = link_bot_start_state
     return start_states, link_bot_start_state, head_point
-

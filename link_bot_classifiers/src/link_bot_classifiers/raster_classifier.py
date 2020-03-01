@@ -5,23 +5,22 @@ import json
 import pathlib
 from typing import Dict
 
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore
 from tensorflow import keras
 
-from link_bot_classifiers.base_classifier import BaseClassifier
+from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
-from moonshine.base_model import BaseModel
+from moonshine.base_classifier_model import BaseClassifierModel
 from moonshine.numpy_utils import add_batch
 from moonshine.raster_points_layer import make_transition_image, make_traj_image
 
 
-class RasterClassifier(BaseModel):
+class RasterClassifier(BaseClassifierModel):
 
     def __init__(self, hparams: Dict, batch_size: int, *args, **kwargs):
         super().__init__(hparams, batch_size, *args, **kwargs)
@@ -99,7 +98,7 @@ class RasterClassifier(BaseModel):
         return accept_probability
 
 
-class RasterClassifierWrapper(BaseClassifier):
+class RasterClassifierWrapper(BaseConstraintChecker):
 
     def __init__(self, path: pathlib.Path, batch_size: int):
         super().__init__()
@@ -112,7 +111,7 @@ class RasterClassifierWrapper(BaseClassifier):
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.ckpt.restore(self.manager.latest_checkpoint)
 
-    def predict_transition(self, local_env_data: OccupancyData, s1: np.ndarray, s2: np.ndarray, action: np.ndarray) -> float:
+    def check_transition(self, local_env_data: OccupancyData, s1: np.ndarray, s2: np.ndarray, action: np.ndarray) -> float:
         """
         :param local_env_data:
         :param s1: [n_state] float64
@@ -141,7 +140,7 @@ class RasterClassifierWrapper(BaseClassifier):
 
         return accept_probabilities
 
-    def predict_traj(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
+    def check_traj(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
         s1 = states['link_bot'][-2]
         s2 = states['link_bot'][-1]
         action = actions[-1]
@@ -170,7 +169,7 @@ class RasterClassifierWrapper(BaseClassifier):
 
         return accept_probability
 
-    def predict(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
+    def check_constraint(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
         # TODO: pass in dicts to predict_transition, remove specialization for link_bot key
         image_key = self.model_hparams['image_key']
         if image_key == 'transition_image':
@@ -186,11 +185,14 @@ class RasterClassifierWrapper(BaseClassifier):
             local_env = OccupancyData(data=local_env[0],
                                       resolution=full_env.resolution,
                                       origin=local_env_origin[0])
-            return self.predict_transition(local_env_data=local_env,
-                                           s1=states['link_bot'][-2],
-                                           s2=states['link_bot'][-1],
-                                           action=actions[-1])
+            return self.check_transition(local_env_data=local_env,
+                                         s1=states['link_bot'][-2],
+                                         s2=states['link_bot'][-1],
+                                         action=actions[-1])
         elif image_key == 'trajectory_image':
-            return self.predict_traj(full_env, states, actions)
+            return self.check_traj(full_env, states, actions)
         else:
             raise ValueError('invalid image_key')
+
+
+model = RasterClassifierWrapper

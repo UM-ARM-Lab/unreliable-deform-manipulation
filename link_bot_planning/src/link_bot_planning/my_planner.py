@@ -1,38 +1,54 @@
 import pathlib
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
 from colorama import Fore
 
-from link_bot_classifiers.base_classifier import BaseClassifier
+import link_bot_planning.viz_object
+from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
-from link_bot_gazebo.gazebo_utils import GazeboServices
+from link_bot_gazebo.gazebo_services import GazeboServices
+from link_bot_planning import model_utils, classifier_utils
+from link_bot_planning.best_first_rrt import BestFirstRRT
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
-from link_bot_planning.params import FullEnvParams
+from link_bot_planning.nearest_rrt import NearestRRT
+from link_bot_planning.params import PlannerParams
 from link_bot_planning.random_directed_control_sampler import RandomDirectedControlSampler
+from link_bot_planning.sst import SST
 from link_bot_planning.state_spaces import to_numpy, from_numpy, ValidRopeConfigurationCompoundSampler, \
     TrainingSetCompoundSampler, to_numpy_local_env, to_numpy_flat
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon, ros_pycommon
 from link_bot_pycommon.ros_pycommon import get_local_occupancy_data
-from state_space_dynamics.base_forward_model import BaseForwardModel
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
-def ompl_control_to_model_action(control, n_control):
-    distance_angle = to_numpy(control, n_control)
+def ompl_control_to_model_action(control, n_action):
+    distance_angle = to_numpy(control, n_action)
     angle = distance_angle[0, 0]
     distance = distance_angle[0, 1]
     np_u = np.array([np.cos(angle) * distance, np.sin(angle) * distance])
     return np_u
 
 
+class PlannerResult:
+
+    def __init__(self,
+                 planned_status: ob.PlannerStatus,
+                 path: Optional[Dict[str, np.ndarray]] = None,
+                 controls: Optional[np.ndarray] = None):
+        self.path = path
+        self.controls = controls
+        self.planned_status = planned_status
+
+
 class MyPlanner:
 
     def __init__(self,
-                 fwd_model: BaseForwardModel,
-                 classifier_model: BaseClassifier,
+                 fwd_model: BaseDynamicsFunction,
+                 classifier_model: BaseConstraintChecker,
                  planner_params: Dict,
                  services: GazeboServices,
                  viz_object: VizObject,
@@ -44,7 +60,7 @@ class MyPlanner:
         # TODO: remove this concept, it's ill posed. we need Dict[str, int]
         self.n_state = self.fwd_model.n_state
         self.n_links = link_bot_pycommon.n_state_to_n_links(self.n_state)
-        self.n_control = self.fwd_model.n_control
+        self.n_action = self.fwd_model.n_action
         self.n_tether_state = ros_pycommon.get_n_tether_state()
         self.planner_params = planner_params
         # TODO: consider making full env params h/w come from elsewhere. res should match the model though.
@@ -117,7 +133,7 @@ class MyPlanner:
         control_bounds.setLow(1, 0)
         max_delta_pos = ros_pycommon.get_max_speed() * self.fwd_model.dt
         control_bounds.setHigh(1, max_delta_pos)
-        self.control_space = oc.RealVectorControlSpace(self.state_space, self.n_control)
+        self.control_space = oc.RealVectorControlSpace(self.state_space, self.n_action)
         self.control_space.setBounds(control_bounds)
 
         self.ss = oc.SimpleSetup(self.control_space)
@@ -172,9 +188,9 @@ class MyPlanner:
             named_states[subspace_name] = np.array(states)
         actions = np.array(actions)
 
-        accept_probability = self.classifier_model.predict(full_env=self.full_env_data,
-                                                           states=named_states,
-                                                           actions=actions)
+        accept_probability = self.classifier_model.check_constraint(full_env=self.full_env_data,
+                                                                    states=named_states,
+                                                                    actions=actions)
 
         classifier_accept = accept_probability > self.planner_params['accept_threshold']
         random_accept = self.classifier_rng.uniform(0, 1) <= self.planner_params['random_epsilon']
@@ -195,18 +211,18 @@ class MyPlanner:
         return np_states
 
     def control_to_numpy(self, control):
-        np_u = ompl_control_to_model_action(control, self.n_control)
+        np_u = ompl_control_to_model_action(control, self.n_action)
         return np_u
 
     def predict(self, np_states, np_actions):
         # use the forward model to predict the next configuration
         # NOTE full env here could be different than the full env the classifier gets? Maybe classifier should sub-select from
         #  the actual full env?
-        next_states = self.fwd_model.predict(full_env=self.full_env_data.data,
-                                             full_env_origin=self.full_env_data.origin,
-                                             res=self.fwd_model.full_env_params.res,
-                                             states=np_states,
-                                             actions=np_actions)
+        next_states = self.fwd_model.propagate(full_env=self.full_env_data.data,
+                                               full_env_origin=self.full_env_data.origin,
+                                               res=self.fwd_model.full_env_params.res,
+                                               states=np_states,
+                                               actions=np_actions)
         # get only the final state predicted
         final_states = {}
         for state_name, pred_next_states in next_states.items():
@@ -239,9 +255,8 @@ class MyPlanner:
         # Convert back Numpy -> OMPL
         self.compound_from_numpy(np_states, np_final_states, state_out)
 
-    # TODO: make this return a data structure. something with a name
     def plan(self, start_states: Dict[str, np.ndarray], tail_goal_point: np.ndarray,
-             full_env_data: link_bot_sdf_utils.OccupancyData):
+             full_env_data: link_bot_sdf_utils.OccupancyData) -> PlannerResult:
         """
         :param full_env_data:
         :param start_states: each element is a vector
@@ -273,12 +288,15 @@ class MyPlanner:
         self.ss.setStartState(start)
         self.ss.setGoal(goal)
 
-        solved = self.ss.solve(self.planner_params['timeout'])
+        planned_status = self.ss.solve(self.planner_params['timeout'])
 
-        if solved:
+        if planned_status:
             ompl_path = self.ss.getSolutionPath()
-            return self.convert_path(ompl_path, full_env_data, solved)
-        return None, None, full_env_data, solved
+            controls_np, planned_path_dict = self.convert_path(ompl_path)
+            return PlannerResult(planned_status=planned_status,
+                                 path=planned_path_dict,
+                                 controls=controls_np)
+        return PlannerResult(planned_status)
 
     def state_sampler_allocator(self, state_space):
         if self.planner_params['sampler_type'] == 'random':
@@ -307,7 +325,7 @@ class MyPlanner:
 
         return sampler
 
-    def convert_path(self, ompl_path: ob.Path, full_env_data: link_bot_sdf_utils.OccupancyData, solved: bool):
+    def convert_path(self, ompl_path: oc.PathControl):
         planned_path = {}
         for time_idx, compound_state in enumerate(ompl_path.getStates()):
             for subspace_idx, name in enumerate(self.state_space_description):
@@ -327,16 +345,16 @@ class MyPlanner:
                     planned_path[name].append(to_numpy_flat(subspace_state, self.n_tether_state))
 
         # now convert lists to arrays
-        planned_path_np = {}
+        planned_path_dict = {}
         for k, v in planned_path.items():
-            planned_path_np[k] = np.array(v)
+            planned_path_dict[k] = np.array(v)
 
-        np_controls = np.ndarray((ompl_path.getControlCount(), self.n_control))
+        np_controls = np.ndarray((ompl_path.getControlCount(), self.n_action))
         for time_idx, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
             # duration is always be 1 for control::RRT, not so for control::SST
-            np_controls[time_idx] = ompl_control_to_model_action(control, self.n_control).squeeze()
+            np_controls[time_idx] = ompl_control_to_model_action(control, self.n_action).squeeze()
 
-        return np_controls, planned_path_np, full_env_data, solved
+        return np_controls, planned_path_dict
 
 
 def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0):
@@ -344,3 +362,57 @@ def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0)
         # If the planner failed, print the error
         if not planner_status:
             print(Fore.RED + planner_status.asString() + Fore.RESET)
+
+
+def get_planner(planner_params: Dict, services: GazeboServices, seed: int):
+    fwd_model_dir = pathlib.Path(planner_params['fwd_model_dir'])
+    classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])
+    fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, planner_params['fwd_model_type'])
+    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, planner_params['classifier_model_type'])
+    viz_object = link_bot_planning.viz_object.VizObject()
+
+    planner_class_str = planner_params['planner_type']
+    if planner_class_str == 'NearestRRT':
+        planner_class = NearestRRT
+    elif planner_class_str == 'BestFirstRRT':
+        planner_class = BestFirstRRT
+    elif planner_class_str == 'SST':
+        planner_class = SST
+    else:
+        raise ValueError(planner_class_str)
+
+    planner = planner_class(fwd_model=fwd_model,
+                            classifier_model=classifier_model,
+                            planner_params=planner_params,
+                            viz_object=viz_object,
+                            services=services,
+                            seed=seed,
+                            )
+    return planner, model_path_info
+
+
+def get_planner_with_model(planner_class_str: str,
+                           fwd_model: BaseDynamicsFunction,
+                           classifier_model_dir: pathlib.Path,
+                           classifier_model_type: str,
+                           planner_params: PlannerParams,
+                           services: GazeboServices,
+                           seed: int):
+    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, classifier_model_type)
+    viz_object = link_bot_planning.viz_object.VizObject()
+
+    if planner_class_str == 'NearestRRT':
+        planner_class = NearestRRT
+    elif planner_class_str == 'SST':
+        planner_class = SST
+    else:
+        raise ValueError(planner_class_str)
+
+    planner = planner_class(fwd_model=fwd_model,
+                            classifier_model=classifier_model,
+                            planner_params=planner_params,
+                            viz_object=viz_object,
+                            services=services,
+                            seed=seed,
+                            )
+    return planner

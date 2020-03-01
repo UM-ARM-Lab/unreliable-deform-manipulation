@@ -15,7 +15,7 @@ from matplotlib.animation import FuncAnimation
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_planning import model_utils
 from link_bot_pycommon.args import my_formatter
-from state_space_dynamics.base_forward_model import BaseForwardModel
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -62,7 +62,7 @@ def visualize(args):
 
 
 def generate_results(base_folder: pathlib.Path,
-                     models: Dict[str, BaseForwardModel],
+                     models: Dict[str, BaseDynamicsFunction],
                      tf_dataset,
                      sequence_length: int):
     results = {
@@ -119,11 +119,11 @@ def generate_results(base_folder: pathlib.Path,
             t0 = time.time()
 
             # take in a list of state arrays, according to whatever model hparams says
-            predicted_points = model.predict(full_env=full_envs,
-                                             full_env_origin=full_env_origin,
-                                             res=res,
-                                             first_states=first_states,
-                                             actions=actions)[0]
+            predicted_points = model.propagate(full_env=full_envs,
+                                               full_env_origin=full_env_origin,
+                                               res=res,
+                                               first_states=first_states,
+                                               actions=actions)[0]
             runtime = time.time() - t0
 
             results[model_name]['points'].append(predicted_points)

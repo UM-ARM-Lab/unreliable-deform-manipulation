@@ -17,11 +17,10 @@ from link_bot_planning.shooting_directed_control_sampler import ShootingDirected
 from matplotlib.animation import FuncAnimation
 
 from link_bot_data.visualization import plottable_rope_configuration
-from link_bot_gazebo import gazebo_utils
-from link_bot_gazebo.gazebo_utils import GazeboServices, get_sdf_data
+from link_bot_gazebo import gazebo_services
+from link_bot_gazebo.gazebo_services import GazeboServices, get_sdf_data
 from link_bot_planning import plan_and_execute
-from link_bot_planning.mpc_planners import get_planner
-from link_bot_planning.my_planner import MyPlanner
+from link_bot_planning.my_planner import MyPlanner, get_planner
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import SimParams, PlannerParams
 from link_bot_pycommon import link_bot_sdf_utils
@@ -156,11 +155,11 @@ def main():
 
     rospy.init_node('planner_with_classifier')
 
-    services = gazebo_utils.setup_env(verbose=args.verbose,
-                                      real_time_rate=sim_params.real_time_rate,
-                                      max_step_size=sim_params.max_step_size,
-                                      reset_world=True,
-                                      initial_object_dict=initial_object_dict)
+    services = gazebo_services.setup_env(verbose=args.verbose,
+                                         real_time_rate=sim_params.real_time_rate,
+                                         max_step_size=sim_params.max_step_size,
+                                         reset_world=True,
+                                         initial_object_dict=initial_object_dict)
     services.pause(std_srvs.srv.EmptyRequest())
 
     planner, _ = get_planner(planner_class_str='NearestRRT',

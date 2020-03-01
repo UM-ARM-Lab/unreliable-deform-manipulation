@@ -17,7 +17,7 @@ tf.compat.v1.enable_eager_execution(config=config)
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
-def train(args, seed):
+def train(args, seed: int):
     if args.log:
         log_path = experiments_util.experiment_name(args.log)
     else:
@@ -36,19 +36,20 @@ def train(args, seed):
 
     # Copy parameters of the dataset into the model
     model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
-    module = state_space_dynamics.get_model_module(model_hparams['model_class'])
+    model_hparams['batch_size'] = args.batch_size
+    model = state_space_dynamics.get_model(model_hparams['model_class'])
 
     try:
         ###############
         # Train
         ###############
-        module.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed)
+        model.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
 
 
-def eval(args, seed):
+def eval(args, seed: int):
     ###############
     # Dataset
     ###############
@@ -66,13 +67,13 @@ def eval(args, seed):
     model_hparams = json.load(open(model_hparams_file, 'r'))
     model_hparams['dt'] = test_dataset.hparams['dt']
 
-    module = state_space_dynamics.get_model_module(model_hparams['model_class'])
+    model = state_space_dynamics.get_model(model_hparams['model_class'])
 
     try:
         ###############
         # Evaluate
         ###############
-        module.eval(model_hparams, test_tf_dataset, args)
+        model.eval(model_hparams, test_tf_dataset, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass

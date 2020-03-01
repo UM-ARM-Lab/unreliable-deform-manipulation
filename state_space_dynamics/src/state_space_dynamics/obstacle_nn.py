@@ -1,25 +1,22 @@
-import json
 import pathlib
-import time
 from typing import Dict
 
 import numpy as np
-import progressbar
 import tensorflow as tf
 import tensorflow.keras.layers as layers
-from colorama import Fore, Style
+from colorama import Fore
 from tensorflow import keras
 
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
-from moonshine import experiments_util, loss_on_dicts
 from moonshine.action_smear_layer import smear_action
+from moonshine.base_learned_dynamics_model import BaseLearnedDynamicsModel
 from moonshine.numpy_utils import add_batch_to_dict
 from moonshine.raster_points_layer import raster
-from state_space_dynamics.base_forward_model import BaseForwardModel
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
-class ObstacleNN(tf.keras.Model):
+class ObstacleNN(BaseLearnedDynamicsModel):
 
     def __init__(self, hparams: Dict, batch_size: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -94,13 +91,12 @@ class ObstacleNN(tf.keras.Model):
         substates_0 = []
         for name, n in self.used_states_description.items():
             state_key = 'state/{}'.format(name)
-            substate_0 = tf.expand_dims(input_dict[state_key][:, 0], axis=2)
+            substate_0 = tf.expand_dims(input_dict[state_key], axis=2)
             substates_0.append(substate_0)
 
         s_0 = tf.concat(substates_0, axis=1)
 
-        # TODO: don't collect resolution for every time step, it doesn't change
-        resolution = input_dict['res'][:, 0]
+        resolution = input_dict['res']
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']
 
@@ -166,149 +162,7 @@ class ObstacleNN(tf.keras.Model):
         return output_states_dict
 
 
-def eval(hparams, test_tf_dataset, args):
-    net = ObstacleNN(hparams=hparams, batch_size=args.batch_size)
-    ckpt = tf.train.Checkpoint(net=net)
-    manager = tf.train.CheckpointManager(ckpt, args.checkpoint, max_to_keep=1)
-    ckpt.restore(manager.latest_checkpoint)
-    print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
-
-    loss = tf.keras.losses.MeanSquaredError()
-
-    test_losses = []
-    test_position_errors = []
-    for test_x, test_y in test_tf_dataset:
-        test_true_states_dict = test_y
-        test_pred_states_dict = net(test_x)
-        batch_test_loss = loss_on_dicts(loss, test_true_states_dict, test_pred_states_dict).numpy()
-        test_true_link_bot_states = test_true_states_dict['link_bot']
-        test_pred_link_bot_states = test_pred_states_dict['link_bot']
-        points_shape = [test_true_link_bot_states.shape[0], test_true_link_bot_states.shape[1], -1, 2]
-        test_pred_points = tf.reshape(test_pred_link_bot_states, points_shape)
-        test_true_points = tf.reshape(test_true_link_bot_states, points_shape)
-        batch_test_position_error = tf.reduce_mean(tf.linalg.norm(test_pred_points - test_true_points, axis=3), axis=0)
-        test_losses.append(batch_test_loss)
-        test_position_errors.append(batch_test_position_error)
-    test_loss = np.mean(test_losses)
-    test_position_error = np.mean(test_position_errors)
-    print("Test Loss:  {:8.5f}".format(test_loss))
-    print("Test Error: " + Style.BRIGHT + "{:8.4f}(m)".format(test_position_error) + Style.RESET_ALL)
-
-
-def train(hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed: int):
-    optimizer = tf.train.AdamOptimizer()
-    loss = tf.keras.losses.MeanSquaredError()
-    net = ObstacleNN(hparams=hparams, batch_size=args.batch_size)
-    global_step = tf.train.get_or_create_global_step()
-
-    # If we're resuming a checkpoint, there is no new log path
-    if args.checkpoint is not None:
-        full_log_path = args.checkpoint
-    elif args.log:
-        full_log_path = pathlib.Path("log_data") / log_path
-    else:
-        full_log_path = '/tmp'
-
-    ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
-    manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=3)
-    ckpt.restore(manager.latest_checkpoint)
-    if manager.latest_checkpoint:
-        print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
-    elif args.checkpoint:
-        print(Fore.RED + "Failed to restore from checkpoint directory {}".format(args.checkpoint) + Fore.RESET)
-        print("Did you forget a subdirectory?")
-        return
-
-    writer = None
-    if args.log is not None:
-        print(Fore.CYAN + "Logging to {}".format(full_log_path) + Fore.RESET)
-
-        experiments_util.make_log_dir(full_log_path)
-
-        hparams_path = full_log_path / "hparams.json"
-        with open(hparams_path, 'w') as hparams_file:
-            hparams['log path'] = str(full_log_path)
-            hparams['seed'] = seed
-            hparams['datasets'] = [str(d) for d in args.dataset_dirs]
-            hparams_file.write(json.dumps(hparams, indent=2))
-
-        writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
-
-    def train_loop():
-        ################
-        # test the loss before any training occurs
-        ################
-        val_losses = []
-        for val_x, val_y in progressbar.progressbar(val_tf_dataset):
-            true_val_states_dict = val_y
-            val_pred_states_dict = net(val_x)
-            batch_val_loss = loss_on_dicts(loss, true_val_states_dict, val_pred_states_dict).numpy()
-            val_losses.append(batch_val_loss)
-        val_loss = np.mean(val_losses)
-        print("Validation loss before any training: " + Style.BRIGHT + "{:8.5f}".format(val_loss) + Style.RESET_ALL)
-
-        for epoch in range(args.epochs):
-            ################
-            # train
-            ################
-            # metrics are averaged across batches in the epoch
-            batch_losses = []
-            epoch_t0 = time.time()
-            for train_batch_x, train_batch_y in progressbar.progressbar(train_tf_dataset):
-                batch_t0 = time.time()
-                true_train_states_dict = train_batch_y
-                with tf.GradientTape() as tape:
-                    pred_states_dict = net(train_batch_x)
-                    training_batch_loss = loss_on_dicts(loss, true_train_states_dict, pred_states_dict)
-                variables = net.trainable_variables
-                gradients = tape.gradient(training_batch_loss, variables)
-                optimizer.apply_gradients(zip(gradients, variables))
-                batch_losses.append(training_batch_loss)
-
-                global_step.assign_add(1)
-
-                dt_per_step = time.time() - batch_t0
-                if args.verbose >= 3:
-                    print("{:4.1f}ms/step".format(dt_per_step * 1000.0))
-            dt_per_epoch = time.time() - epoch_t0
-
-            training_loss = np.mean(batch_losses)
-            print("Epoch: {:5d}, Time {:4.1f}s, Training loss: {:8.5f}".format(epoch, dt_per_epoch, training_loss))
-            if args.log:
-                tf.contrib.summary.scalar("training loss", training_loss)
-
-            ################
-            # validation
-            ################
-            if epoch % args.validation_every == 0:
-                val_losses = []
-                for val_x, val_y in progressbar.progressbar(val_tf_dataset):
-                    true_val_states_dict = val_y
-                    val_pred_states_dict = net(val_x)
-                    batch_val_loss = loss_on_dicts(loss, true_val_states_dict, val_pred_states_dict).numpy()
-                    val_losses.append(batch_val_loss)
-                val_loss = np.mean(val_losses)
-                tf.contrib.summary.scalar('validation loss', val_loss, step=int(ckpt.step))
-                print("\t\t\tValidation loss: " + Style.BRIGHT + "{:8.5f}".format(val_loss) + Style.RESET_ALL)
-
-            ################
-            # Checkpoint
-            ################
-            if args.log and epoch % args.save_freq == 0:
-                save_path = manager.save()
-                print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(int(ckpt.step), save_path) + Fore.RESET)
-
-        save_path = manager.save()
-        print(Fore.CYAN + "Step {:6d}: Saved final checkpoint {}".format(int(ckpt.step), save_path) + Fore.RESET)
-
-    if args.log:
-        with writer.as_default(), tf.contrib.summary.always_record_summaries():
-            train_loop()
-    else:
-        train_loop()
-
-
-class ObstacleNNWrapper(BaseForwardModel):
+class ObstacleNNWrapper(BaseDynamicsFunction):
 
     def __init__(self, model_dir: pathlib.Path, batch_size: int):
         super().__init__(model_dir)
@@ -319,12 +173,12 @@ class ObstacleNNWrapper(BaseForwardModel):
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
 
-    def predict(self,
-                full_env: np.ndarray,
-                full_env_origin: np.ndarray,
-                res: np.ndarray,
-                states: Dict[str, np.ndarray],
-                actions: np.ndarray) -> np.ndarray:
+    def propagate(self,
+                  full_env: np.ndarray,
+                  full_env_origin: np.ndarray,
+                  res: np.ndarray,
+                  states: Dict[str, np.ndarray],
+                  actions: np.ndarray) -> np.ndarray:
         """
         :param full_env:        (H, W)
         :param full_env_origin: (2)
@@ -335,25 +189,24 @@ class ObstacleNNWrapper(BaseForwardModel):
         """
         T = actions.shape[0]
 
+        # batch dim is added below
         test_x = {
-            # must be T, 2
+            # shape: T, 2
             'action': tf.convert_to_tensor(actions, dtype=tf.float32),
-            # must be T, 1 FIXME: the T can be removed later
-            'res': tf.convert_to_tensor([res], dtype=tf.float32),
-            # must be H, W
+            # shape: 1
+            'res': tf.convert_to_tensor(res, dtype=tf.float32),
+            # shape: H, W
             'full_env/env': tf.convert_to_tensor(full_env, dtype=tf.float32),
-            # must be 2
+            # shape: 2
             'full_env/origin': tf.convert_to_tensor(full_env_origin, dtype=tf.float32),
-            # batch dim is added below
         }
 
         for k, v in states.items():
             state_key = 'state/{}'.format(k)
             # handles conversion from double -> float
             state = tf.convert_to_tensor(v, dtype=tf.float32)
-            # TODO: remove extra dimension of size 1?
-            state = tf.reshape(state, [1, state.shape[0]])
-            test_x[state_key] = state
+            first_state = tf.reshape(state, state.shape[0])
+            test_x[state_key] = first_state
 
         test_x = add_batch_to_dict(test_x)
 

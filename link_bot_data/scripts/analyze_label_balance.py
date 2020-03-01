@@ -21,7 +21,6 @@ def main():
     parser.add_argument('--pre', type=float, default=0.15)
     parser.add_argument('--post', type=float, default=0.21)
     parser.add_argument('--discard-pre-far', action='store_true')
-    parser.add_argument("--compression-type", choices=['', 'ZLIB', 'GZIP'], default='ZLIB')
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
 
     args = parser.parse_args()
@@ -40,7 +39,7 @@ def main():
     classifier_dataset.hparams['labeling']['discard_pre_far'] = args.discard_pre_far
     classifier_dataset.hparams['labeling']['pre_close_threshold'] = args.pre
     classifier_dataset.hparams['labeling']['post_close_threshold'] = args.post
-    dataset = classifier_dataset.get_datasets(mode=args.mode, batch_size=1, shuffle=False, seed=1)
+    dataset = classifier_dataset.get_datasets(mode=args.mode)
 
     speeds = []
     errors = []

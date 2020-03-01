@@ -14,7 +14,6 @@ from link_bot_gazebo.srv import LinkBotStateRequest, ExecuteActionRequest, GetOb
 
 import ignition.markers
 import link_bot_data.link_bot_dataset_utils
-from link_bot_data import random_environment_data_utils
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
 from link_bot_pycommon import ros_pycommon, link_bot_pycommon
@@ -54,6 +53,8 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
         'full_env/env': float_tensor_to_bytes_feature(full_env_data.data),
         'full_env/extent': float_tensor_to_bytes_feature(full_env_data.extent),
         'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),
+        'full_env/res': float_tensor_to_bytes_feature(full_env_data.resolution),
+        'local_env/res': float_tensor_to_bytes_feature(args.resolution)
     }
 
     gripper1_dx = gripper1_dy = 0
@@ -65,8 +66,8 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
         head_point = state.points[head_idx]
 
         if args.tether:
-            tether_res = services.get_tether_state(tether_req)
-            tether_state = link_bot_pycommon.flatten_named_points(tether_res.object.points)
+            tether_response = services.get_tether_state(tether_req)
+            tether_state = link_bot_pycommon.flatten_named_points(tether_response.object.points)
 
         gripper1_dx, gripper1_dy = sample_delta_pos(action_rng, max_delta_pos, head_point, args.goal_env_w, args.goal_env_h,
                                                     gripper1_dx, gripper1_dy)
@@ -91,12 +92,11 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
                                                                services=services)
 
         feature['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature([gripper1_dx, gripper1_dy])
-        feature['{}/state/link_bot'.format(time_idx)] = float_tensor_to_bytes_feature(link_bot_state)
-        if args.tether:
-            feature['{}/state/tether'.format(time_idx)] = float_tensor_to_bytes_feature(tether_state)
-        feature['{}/state/local_env'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.data)
-        feature['{}/state/local_env_origin'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.origin)
-        feature['{}/res'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.resolution[0])
+        for state_key in states_keys:
+            feature['{}/state/{}'.format(time_idx, state_key)] = float_tensor_to_bytes_feature(states[state_key])
+        # feature['{}/state/tether'.format(time_idx)] = float_tensor_to_bytes_feature(tether_state)
+        # feature['{}/state/local_env'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.data)
+        # feature['{}/state/local_env_origin'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.origin)
         feature['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature(traj_idx)
         feature['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature(time_idx)
 
@@ -110,7 +110,7 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
     return example, global_t_step
 
 
-def generate_trajs(myenv_utils, args, full_output_directory, services, env_rng: np.random.RandomState,
+def generate_trajs(service_provider, args, full_output_directory, services, env_rng: np.random.RandomState,
                    action_rng: np.random.RandomState):
     examples = np.ndarray([args.trajs_per_file], dtype=object)
     global_t_step = 0
@@ -119,13 +119,13 @@ def generate_trajs(myenv_utils, args, full_output_directory, services, env_rng: 
 
         if not args.no_obstacles and i % args.move_objects_every_n == 0:
             objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            myenv_utils.move_objects(services,
-                                     args.max_step_size,
-                                     objects,
-                                     args.env_w,
-                                     args.env_h,
-                                     padding=0.5,
-                                     rng=env_rng)
+            service_provider.move_objects(services,
+                                          args.max_step_size,
+                                          objects,
+                                          args.env_w,
+                                          args.env_h,
+                                          padding=0.5,
+                                          rng=env_rng)
 
         # Generate a new trajectory
         example, global_t_step = generate_traj(args, services, i, global_t_step, action_rng)
@@ -134,13 +134,13 @@ def generate_trajs(myenv_utils, args, full_output_directory, services, env_rng: 
         # Save the data
         if current_record_traj_idx == args.trajs_per_file - 1:
             # Construct the dataset where each trajectory has been serialized into one big string
-            # since tfrecords don't really support hierarchical data structures
+            # since TFRecords don't really support hierarchical data structures
             serialized_dataset = tensorflow.data.Dataset.from_tensor_slices((examples))
 
             end_traj_idx = i + args.start_idx_offset
             start_traj_idx = end_traj_idx - args.trajs_per_file + 1
             full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
-            writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type=args.compression_type)
+            writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type='ZLIB')
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))
 
@@ -149,11 +149,9 @@ def generate_trajs(myenv_utils, args, full_output_directory, services, env_rng: 
             sys.stdout.flush()
 
 
-def generate(myenv_utils, args):
+def generate(service_provider, args):
     rospy.init_node('collect_dynamics_data')
 
-    n_state = ros_pycommon.get_n_state()
-    n_tether_state = ros_pycommon.get_n_tether_state()
     rope_length = ros_pycommon.get_rope_length()
 
     assert args.trajs % args.trajs_per_file == 0, "num trajs must be multiple of {}".format(args.trajs_per_file)
@@ -170,29 +168,18 @@ def generate(myenv_utils, args):
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
                            goal_padding=0.5,
-                           move_obstacles=(not args.no_obstacles),
-                           nudge=False)
+                           move_obstacles=not args.no_obstacles)
 
-    states_description = {
-        'link_bot': n_state
-    }
-    if args.tether:
-        states_description['tether'] = n_tether_state
+    states_description = service_provider.get_states_description()
 
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': args.dt,
             'max_step_size': args.max_step_size,
-            'rope_length': rope_length,
             'local_env_params': local_env_params.to_json(),
             'full_env_params': full_env_params.to_json(),
             'sim_params': sim_params.to_json(),
-            'compression_type': args.compression_type,
             'sequence_length': args.steps_per_traj,
-            'n_state': n_state,
-            'n_action': 2,
-            'tether': args.tether,
-            'n_tether_state': n_tether_state,
             'states_description': states_description,
         }
         json.dump(options, of, indent=1)
@@ -204,10 +191,10 @@ def generate(myenv_utils, args):
     env_rng = np.random.RandomState(args.seed)
     action_rng = np.random.RandomState(args.seed)
 
-    services = myenv_utils.setup_env(verbose=args.verbose,
-                                     real_time_rate=args.real_time_rate,
-                                     max_step_size=args.max_step_size,
-                                     reset_gripper_to=None,
-                                     initial_object_dict=None)
+    services = service_provider.setup_env(verbose=args.verbose,
+                                          real_time_rate=args.real_time_rate,
+                                          max_step_size=args.max_step_size,
+                                          reset_gripper_to=None,
+                                          initial_object_dict=None)
 
-    generate_trajs(myenv_utils, args, full_output_directory, services, env_rng, action_rng)
+    generate_trajs(service_provider, args, full_output_directory, services, env_rng, action_rng)
