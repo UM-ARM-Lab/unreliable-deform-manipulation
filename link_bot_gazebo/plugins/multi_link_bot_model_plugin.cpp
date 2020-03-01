@@ -1,6 +1,5 @@
 #include "multi_link_bot_model_plugin.h"
 
-#include <link_bot_gazebo/GetObjects.h>
 #include <std_srvs/EmptyRequest.h>
 
 #include <cstdio>
@@ -33,28 +32,25 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto joy_bind = boost::bind(&MultiLinkBotModelPlugin::OnJoy, this, _1);
   auto joy_so = ros::SubscribeOptions::create<sensor_msgs::Joy>("/joy", 1, joy_bind, ros::VoidPtr(), &queue_);
   auto execute_trajectory_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteTrajectoryCallback, this, _1, _2);
-  auto execute_trajectory_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotTrajectory>(
+  auto execute_trajectory_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotTrajectory>(
       "/link_bot_execute_trajectory", execute_trajectory_bind, ros::VoidPtr(), &execute_trajs_queue_);
   auto execute_abs_action_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteAbsoluteAction, this, _1, _2);
-  auto execute_abs_action_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ExecuteAction>(
+  auto execute_abs_action_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExecuteAction>(
       "/execute_absolute_action", execute_abs_action_bind, ros::VoidPtr(), &queue_);
   auto action_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteAction, this, _1, _2);
-  auto action_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::ExecuteAction>("/execute_action", action_bind,
+  auto action_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExecuteAction>("/execute_action", action_bind,
                                                                                         ros::VoidPtr(), &queue_);
   auto action_mode_bind = boost::bind(&MultiLinkBotModelPlugin::OnActionMode, this, _1);
   auto action_mode_so = ros::SubscribeOptions::create<std_msgs::String>("/link_bot_action_mode", 1, action_mode_bind,
                                                                         ros::VoidPtr(), &queue_);
-  auto config_bind = boost::bind(&MultiLinkBotModelPlugin::OnConfiguration, this, _1);
-  auto config_so = ros::SubscribeOptions::create<link_bot_gazebo::LinkBotJointConfiguration>(
-      "/link_bot_configuration", 1, config_bind, ros::VoidPtr(), &queue_);
   auto state_bind = boost::bind(&MultiLinkBotModelPlugin::StateServiceCallback, this, _1, _2);
-  auto service_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotState>("/link_bot_state", state_bind,
+  auto service_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotState>("/link_bot_state", state_bind,
                                                                                         ros::VoidPtr(), &queue_);
   auto get_object_bind = boost::bind(&MultiLinkBotModelPlugin::GetObjectServiceCallback, this, _1, _2);
-  auto get_object_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::GetObject>("/link_bot", get_object_bind,
+  auto get_object_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>("/link_bot", get_object_bind,
                                                                                         ros::VoidPtr(), &queue_);
   auto reset_bind = boost::bind(&MultiLinkBotModelPlugin::LinkBotReset, this, _1, _2);
-  auto reset_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::LinkBotReset>("/link_bot_reset", reset_bind,
+  auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("/link_bot_reset", reset_bind,
                                                                                       ros::VoidPtr(), &queue_);
 
   joy_sub_ = ros_node_->subscribe(joy_so);
@@ -63,11 +59,10 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   register_link_bot_pub_ = ros_node_->advertise<std_msgs::String>("/register_object", 10, true);
   reset_service_ = ros_node_->advertiseService(reset_so);
   action_mode_sub_ = ros_node_->subscribe(action_mode_so);
-  config_sub_ = ros_node_->subscribe(config_so);
   state_service_ = ros_node_->advertiseService(service_so);
   get_object_service_ = ros_node_->advertiseService(get_object_so);
   execute_traj_service_ = ros_node_->advertiseService(execute_trajectory_so);
-  objects_service_ = ros_node_->serviceClient<link_bot_gazebo::GetObjects>("/objects");
+  objects_service_ = ros_node_->serviceClient<peter_msgs::GetObjects>("/objects");
 
   ros_queue_thread_ = std::thread(std::bind(&MultiLinkBotModelPlugin::QueueThread, this));
   execute_trajs_ros_queue_thread_ = std::thread(std::bind(&MultiLinkBotModelPlugin::QueueThread, this));
@@ -177,16 +172,16 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
 }
 #pragma clang diagnostic pop
 
-link_bot_gazebo::NamedPoints MultiLinkBotModelPlugin::GetConfiguration()
+peter_msgs::NamedPoints MultiLinkBotModelPlugin::GetConfiguration()
 {
-  link_bot_gazebo::NamedPoints configuration;
+  peter_msgs::NamedPoints configuration;
   configuration.name = "link_bot";
   for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx) {
     std::stringstream ss;
     ss << "link_" << link_idx;
     auto link_name = ss.str();
     auto const link = model_->GetLink(link_name);
-    link_bot_gazebo::NamedPoint named_point;
+    peter_msgs::NamedPoint named_point;
     named_point.point.x = link->WorldPose().Pos().X();
     named_point.point.y = link->WorldPose().Pos().Y();
     named_point.name = link_name;
@@ -194,7 +189,7 @@ link_bot_gazebo::NamedPoints MultiLinkBotModelPlugin::GetConfiguration()
   }
 
   auto const head = model_->GetLink("head");
-  link_bot_gazebo::NamedPoint named_point;
+  peter_msgs::NamedPoint named_point;
   named_point.point.x = head->WorldPose().Pos().X();
   named_point.point.y = head->WorldPose().Pos().Y();
   named_point.name = "head";
@@ -263,8 +258,8 @@ void MultiLinkBotModelPlugin::OnJoy(sensor_msgs::JoyConstPtr const msg)
   gripper1_target_position_.Y(gripper1_target_position_.Y() + msg->axes[1] * scale);
 }
 
-bool MultiLinkBotModelPlugin::ExecuteAbsoluteAction(link_bot_gazebo::ExecuteActionRequest &req,
-                                                    link_bot_gazebo::ExecuteActionResponse &res)
+bool MultiLinkBotModelPlugin::ExecuteAbsoluteAction(peter_msgs::ExecuteActionRequest &req,
+                                                    peter_msgs::ExecuteActionResponse &res)
 {
   mode_ = "position";
 
@@ -286,8 +281,8 @@ bool MultiLinkBotModelPlugin::ExecuteAbsoluteAction(link_bot_gazebo::ExecuteActi
   return true;
 }
 
-bool MultiLinkBotModelPlugin::ExecuteAction(link_bot_gazebo::ExecuteActionRequest &req,
-                                            link_bot_gazebo::ExecuteActionResponse &res)
+bool MultiLinkBotModelPlugin::ExecuteAction(peter_msgs::ExecuteActionRequest &req,
+                                            peter_msgs::ExecuteActionResponse &res)
 {
   mode_ = "position";
 
@@ -311,32 +306,8 @@ bool MultiLinkBotModelPlugin::ExecuteAction(link_bot_gazebo::ExecuteActionReques
 
 void MultiLinkBotModelPlugin::OnActionMode(std_msgs::StringConstPtr msg) { mode_ = msg->data; }
 
-void MultiLinkBotModelPlugin::OnConfiguration(link_bot_gazebo::LinkBotJointConfigurationConstPtr msg)
-{
-  auto const &joints = model_->GetJoints();
-
-  if (joints.size() != msg->joint_angles_rad.size()) {
-    ROS_ERROR("Model as %lu joints config message had %lu", joints.size(), msg->joint_angles_rad.size());
-    return;
-  }
-
-  ignition::math::Pose3d pose{};
-  pose.Pos().X(msg->tail_pose.x);
-  pose.Pos().Y(msg->tail_pose.y);
-  pose.Pos().Z(HEAD_Z);
-  pose.Rot() = ignition::math::Quaterniond::EulerToQuaternion(0, 0, msg->tail_pose.theta);
-  model_->SetWorldPose(pose);
-  model_->SetWorldTwist({0, 0, 0}, {0, 0, 0});
-
-  for (size_t i = 0; i < joints.size(); ++i) {
-    auto const &joint = joints[i];
-    joint->SetPosition(0, msg->joint_angles_rad[i]);
-    joint->SetVelocity(0, 0);
-  }
-}
-
-bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req,
-                                                   link_bot_gazebo::LinkBotStateResponse &res)
+bool MultiLinkBotModelPlugin::StateServiceCallback(peter_msgs::LinkBotStateRequest &req,
+                                                   peter_msgs::LinkBotStateResponse &res)
 {
   // get all links named "link_%d" where d is in [1, num_links)
   for (auto const &link : model_->GetLinks()) {
@@ -372,8 +343,8 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(link_bot_gazebo::LinkBotState
   return true;
 }
 
-bool MultiLinkBotModelPlugin::GetObjectServiceCallback(link_bot_gazebo::GetObjectRequest &req,
-                                                       link_bot_gazebo::GetObjectResponse &res)
+bool MultiLinkBotModelPlugin::GetObjectServiceCallback(peter_msgs::GetObjectRequest &req,
+                                                       peter_msgs::GetObjectResponse &res)
 {
   res.object.name = "link_bot";
   for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx) {
@@ -381,7 +352,7 @@ bool MultiLinkBotModelPlugin::GetObjectServiceCallback(link_bot_gazebo::GetObjec
     ss << "link_" << link_idx;
     auto link_name = ss.str();
     auto const link = model_->GetLink(link_name);
-    link_bot_gazebo::NamedPoint named_point;
+    peter_msgs::NamedPoint named_point;
     named_point.point.x = link->WorldPose().Pos().X();
     named_point.point.y = link->WorldPose().Pos().Y();
     named_point.name = link_name;
@@ -389,7 +360,7 @@ bool MultiLinkBotModelPlugin::GetObjectServiceCallback(link_bot_gazebo::GetObjec
   }
 
   auto const link = model_->GetLink("head");
-  link_bot_gazebo::NamedPoint head_point;
+  peter_msgs::NamedPoint head_point;
   geometry_msgs::Point pt;
   head_point.point.x = link->WorldPose().Pos().X();
   head_point.point.y = link->WorldPose().Pos().Y();
@@ -399,12 +370,12 @@ bool MultiLinkBotModelPlugin::GetObjectServiceCallback(link_bot_gazebo::GetObjec
   return true;
 }
 
-bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBotTrajectoryRequest &req,
-                                                        link_bot_gazebo::LinkBotTrajectoryResponse &res)
+bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(peter_msgs::LinkBotTrajectoryRequest &req,
+                                                        peter_msgs::LinkBotTrajectoryResponse &res)
 {
   // TODO: Implement gripper2 path in parallel
-  link_bot_gazebo::GetObjectsRequest get_objects_req;
-  link_bot_gazebo::GetObjectsResponse get_objects_res;
+  peter_msgs::GetObjectsRequest get_objects_req;
+  peter_msgs::GetObjectsResponse get_objects_res;
   for (auto const &action : req.gripper1_traj) {
     mode_ = "position";
     ignition::math::Vector3d delta_position{action.gripper1_delta_pos.x, action.gripper1_delta_pos.y,
@@ -439,8 +410,8 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(link_bot_gazebo::LinkBot
   return true;
 }
 
-bool MultiLinkBotModelPlugin::LinkBotReset(link_bot_gazebo::LinkBotResetRequest &req,
-                                           link_bot_gazebo::LinkBotResetResponse &res)
+bool MultiLinkBotModelPlugin::LinkBotReset(peter_msgs::LinkBotResetRequest &req,
+                                           peter_msgs::LinkBotResetResponse &res)
 {
   gripper1_target_position_.X(req.point.x);
   gripper1_target_position_.Y(req.point.y);

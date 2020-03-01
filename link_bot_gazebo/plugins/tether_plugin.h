@@ -1,11 +1,11 @@
 #pragma once
 
 #include <geometry_msgs/Pose.h>
-#include <link_bot_gazebo/GetObject.h>
-#include <link_bot_gazebo/LinkBotState.h>
-#include <link_bot_gazebo/LinkBotTrajectory.h>
-#include <link_bot_gazebo/ModelsEnable.h>
-#include <link_bot_gazebo/ModelsPoses.h>
+#include <peter_msgs/GetObject.h>
+#include <peter_msgs/LinkBotState.h>
+#include <peter_msgs/LinkBotTrajectory.h>
+#include <peter_msgs/ModelsEnable.h>
+#include <peter_msgs/ModelsPoses.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
@@ -26,7 +26,7 @@ class TetherPlugin : public ModelPlugin {
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
 
-  bool GetObjectServiceCallback(link_bot_gazebo::GetObjectRequest &req, link_bot_gazebo::GetObjectResponse &res);
+  bool GetObjectServiceCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
 
  private:
   void QueueThread();

@@ -1,2 +1,2 @@
-link_bot_gazebo/NamedPoint[] points
+peter_msgs/NamedPoint[] points
 string name

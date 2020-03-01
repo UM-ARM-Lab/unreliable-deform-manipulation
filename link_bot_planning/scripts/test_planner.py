@@ -170,7 +170,7 @@ def main():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
+    parser.add_argument("service_provider", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("--n-targets", type=int, default=1, help='number of targets/plans')
     parser.add_argument("--seed", '-s', type=int, default=5)
@@ -206,7 +206,7 @@ def main():
         input("waiting to let you attach debugger...")
 
     # Start Services
-    if args.env_type == 'victor':
+    if args.service_provider == 'victor':
         rospy.set_param('service_provider', 'victor')
         service_provider = victor_services.VictorServices
     else:

@@ -33,7 +33,7 @@ void TetherPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   model_ = parent;
 
   auto state_bind = boost::bind(&TetherPlugin::GetObjectServiceCallback, this, _1, _2);
-  auto state_service_so = ros::AdvertiseServiceOptions::create<link_bot_gazebo::GetObject>("/tether", state_bind,
+  auto state_service_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>("/tether", state_bind,
                                                                                        ros::VoidPtr(), &queue_);
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   state_service_ = ros_node_->advertiseService(state_service_so);
@@ -51,8 +51,8 @@ void TetherPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   ros_node_->setParam("/tether/n_state", static_cast<int>((num_links_ + 1) * 2));
 }
 
-bool TetherPlugin::GetObjectServiceCallback(link_bot_gazebo::GetObjectRequest &req,
-                                        link_bot_gazebo::GetObjectResponse &res)
+bool TetherPlugin::GetObjectServiceCallback(peter_msgs::GetObjectRequest &req,
+                                        peter_msgs::GetObjectResponse &res)
 {
   res.object.name = "tether";
   for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx) {
@@ -60,7 +60,7 @@ bool TetherPlugin::GetObjectServiceCallback(link_bot_gazebo::GetObjectRequest &r
     ss << "link_" << link_idx;
     auto link_name = ss.str();
     auto const link = model_->GetLink(link_name);
-    link_bot_gazebo::NamedPoint named_point;
+    peter_msgs::NamedPoint named_point;
     named_point.point.x = link->WorldPose().Pos().X();
     named_point.point.y = link->WorldPose().Pos().Y();
     named_point.name = link_name;
@@ -68,7 +68,7 @@ bool TetherPlugin::GetObjectServiceCallback(link_bot_gazebo::GetObjectRequest &r
   }
 
   auto const link = model_->GetLink("head");
-  link_bot_gazebo::NamedPoint head_point;
+  peter_msgs::NamedPoint head_point;
   head_point.point.x = link->WorldPose().Pos().X();
   head_point.point.y = link->WorldPose().Pos().Y();
   head_point.name = "head";

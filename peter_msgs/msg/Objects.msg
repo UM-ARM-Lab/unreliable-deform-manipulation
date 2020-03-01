@@ -1,1 +1,1 @@
-link_bot_gazebo/NamedPoints[] objects
+peter_msgs/NamedPoints[] objects

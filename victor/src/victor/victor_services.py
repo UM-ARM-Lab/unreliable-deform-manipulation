@@ -17,20 +17,16 @@ class VictorServices(Services):
         empty = EmptyRequest()
         self.reset.call(empty)
 
-    @staticmethod
-    def setup_env(verbose: int,
+    def setup_env(self,
+                  verbose: int,
                   real_time_rate: float,
                   reset_gripper_to: Optional,
                   max_step_size: Optional[float] = None,
                   initial_object_dict: Optional[Dict] = None):
-        # fire up services
-        services = VictorServices()
-        services.wait(verbose)
+        self.wait(verbose)
 
         if reset_gripper_to is not None:
-            services.reset_world(verbose, None)
-
-        return services
+            self.reset_world(verbose, None)
 
     def move_objects(self,
                      max_step_size: float,

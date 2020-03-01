@@ -7,42 +7,34 @@ catkin_python_setup()
 
 add_message_files(
         FILES
-        LinkBotConfiguration.msg
-        LinkBotJointConfiguration.msg
-        WriteSDF.msg
+        IntPoint2D.msg
+        LinkBotAction.msg
         ModelPose.msg
         ModelsEnable.msg
         ModelsPoses.msg
-        IntPoint2D.msg
         NamedPoint.msg
         NamedPoints.msg
         Objects.msg
-        LinkBotAction.msg
+        SubspaceDescription.msg
 )
 
 add_service_files(
         FILES
-        WorldControl.srv
-        QuerySDF.srv
-        LinkBotState.srv
-        ComputeSDF2.srv
-        CameraProjection.srv
-        InverseCameraProjection.srv
-        LinkBotPositionAction.srv
-        LinkBotPath.srv
-        LinkBotTrajectory.srv
         ComputeOccupancy.srv
-        GetObjects.srv
-        GetObject.srv
         ExecuteAction.srv
+        GetObject.srv
+        GetObjects.srv
         LinkBotReset.srv
+        LinkBotState.srv
+        LinkBotTrajectory.srv
+        WorldControl.srv
+        StateSpaceDescription.srv
 )
 
 generate_messages(
         DEPENDENCIES
         geometry_msgs
         sensor_msgs
-        visualization_msgs
         std_msgs
 )
 

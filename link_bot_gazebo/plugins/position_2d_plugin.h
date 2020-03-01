@@ -10,8 +10,8 @@
 #include <gazebo/transport/TransportTypes.hh>
 
 #include <geometry_msgs/Pose.h>
-#include <link_bot_gazebo/ModelsPoses.h>
-#include <link_bot_gazebo/ModelsEnable.h>
+#include <peter_msgs/ModelsPoses.h>
+#include <peter_msgs/ModelsEnable.h>
 #include <std_msgs/Empty.h>
 
 namespace gazebo {
@@ -26,9 +26,9 @@ class Position2dPlugin : public ModelPlugin {
 
   void OnStop(std_msgs::EmptyConstPtr msg);
 
-  void OnEnable(link_bot_gazebo::ModelsEnableConstPtr msg);
+  void OnEnable(peter_msgs::ModelsEnableConstPtr msg);
 
-  void OnAction(link_bot_gazebo::ModelsPosesConstPtr msg);
+  void OnAction(peter_msgs::ModelsPosesConstPtr msg);
 
  private:
   void QueueThread();

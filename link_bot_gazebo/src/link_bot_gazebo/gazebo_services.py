@@ -4,9 +4,9 @@ import numpy as np
 import rospy
 import std_msgs
 from colorama import Fore
-from link_bot_gazebo.msg import Position2dAction, ObjectAction
-from link_bot_gazebo.srv import LinkBotStateRequest, WorldControlRequest, \
-    ExecuteActionRequest, GetObject, LinkBotReset, LinkBotResetRequest
+from peter_msgs.srv import LinkBotStateRequest, WorldControlRequest, ExecuteActionRequest, GetObject, LinkBotReset, \
+    LinkBotResetRequest
+from peter_msgs.msg import ModelsPoses, ModelPose
 from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
 
@@ -32,23 +32,21 @@ class GazeboServices(Services):
         #  never be able to do it on a real robot
         self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
         self.position_2d_stop = rospy.Publisher('/position_2d_stop', std_msgs.msg.Empty, queue_size=10)
-        self.position_2d_action = rospy.Publisher('/position_2d_action', Position2dAction, queue_size=10)
+        self.position_2d_action = rospy.Publisher('/position_2d_action', ModelsPoses, queue_size=10)
 
         self.services_to_wait_for.append('/link_bot_reset')
 
-    @staticmethod
-    def setup_env(verbose: int,
+    def setup_env(self,
+                  verbose: int,
                   real_time_rate: float,
                   reset_gripper_to: Optional,
                   max_step_size: Optional[float] = None,
                   initial_object_dict: Optional[Dict] = None):
-        # fire up services
-        services = GazeboServices()
-        services.wait(verbose)
+        self.wait(verbose)
 
         # set up physics
         get = GetPhysicsPropertiesRequest()
-        current_physics = services.get_physics.call(get)
+        current_physics = self.get_physics.call(get)
         set = SetPhysicsPropertiesRequest()
         set.gravity = current_physics.gravity
         set.ode_config = current_physics.ode_config
@@ -57,23 +55,23 @@ class GazeboServices(Services):
             max_step_size = current_physics.time_step
         set.time_step = max_step_size
         set.enabled = True
-        services.set_physics.call(set)
+        self.set_physics.call(set)
 
         if reset_gripper_to is not None:
-            services.reset_world(verbose, reset_gripper_to)
+            self.reset_world(verbose, reset_gripper_to)
 
         # first the controller
         stop = ExecuteActionRequest()
         stop.action.gripper1_delta_pos.x = 0
         stop.action.gripper1_delta_pos.y = 0
         stop.action.max_time_per_step = 1.0
-        services.execute_action(stop)
+        self.execute_action(stop)
 
         # Set initial object positions
         if initial_object_dict is not None:
-            move_action = Position2dAction()
+            move_action = ModelsPoses()
             for object_name, (x, y) in initial_object_dict.items():
-                move = ObjectAction()
+                move = ModelPose()
                 move.pose.position.x = x
                 move.pose.position.y = y
                 move.pose.orientation.x = 0
@@ -82,10 +80,9 @@ class GazeboServices(Services):
                 move.pose.orientation.w = 0
                 move.model_name = object_name
                 move_action.actions.append(move)
-            services.position_2d_action.publish(move_action)
+            self.position_2d_action.publish(move_action)
 
-        services.position_2d_stop.publish(std_msgs.msg.Empty())
-        return services
+        self.position_2d_stop.publish(std_msgs.msg.Empty())
 
     def reset_world(self, verbose, reset_gripper_to: Optional[Tuple[float]] = None):
         empty = EmptyRequest()
@@ -126,7 +123,7 @@ class GazeboServices(Services):
 
     @staticmethod
     def random_object_move(model_name: str, w: float, h: float, padding: float, rng: np.random.RandomState):
-        move = ObjectAction()
+        move = ModelPose()
         move.pose.position.x = rng.uniform(-w / 2 + padding, w / 2 - padding)
         move.pose.position.y = rng.uniform(-h / 2 + padding, h / 2 - padding)
         q = quaternion_from_euler(0, 0, rng.uniform(-np.pi, np.pi))
@@ -153,9 +150,9 @@ class GazeboServices(Services):
         # disable the rope controller, enable the objects
         self.link_bot_mode.publish(disable_link_bot)
         # Move the objects
-        move_action = Position2dAction()
+        move_action = ModelsPoses()
         for object_name in objects:
-            move = random_object_move(object_name, env_w, env_h, padding, rng)
+            move = self.random_object_move(object_name, env_w, env_h, padding, rng)
             move_action.actions.append(move)
         self.position_2d_action.publish(move_action)
         # let the move actually occur

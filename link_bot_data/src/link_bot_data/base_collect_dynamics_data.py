@@ -10,13 +10,12 @@ import numpy as np
 import rospy
 import tensorflow
 from colorama import Fore
-from link_bot_gazebo.srv import LinkBotStateRequest, ExecuteActionRequest, GetObjectRequest
 
 import ignition.markers
-import link_bot_data.link_bot_dataset_utils
-from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
+from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
 from link_bot_pycommon import ros_pycommon, link_bot_pycommon
+from peter_msgs.srv import LinkBotStateRequest, ExecuteActionRequest, GetObjectRequest
 
 
 def sample_delta_pos(action_rng, max_delta_pos, head_point, goal_env_w, goal_env_h, last_dx, last_dy):
@@ -36,7 +35,7 @@ def sample_delta_pos(action_rng, max_delta_pos, head_point, goal_env_w, goal_env
     return gripper1_dx, gripper1_dy
 
 
-def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random.RandomState):
+def generate_traj(args, service_provider, traj_idx, global_t_step, action_rng: np.random.RandomState):
     state_req = LinkBotStateRequest()
     tether_req = GetObjectRequest()
     action_msg = ExecuteActionRequest()
@@ -45,7 +44,7 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
 
     # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
     # over the course of this function
-    full_env_data = ros_pycommon.get_occupancy_data(env_w=args.env_w, env_h=args.env_h, res=args.res, services=services)
+    full_env_data = ros_pycommon.get_occupancy_data(env_w=args.env_w, env_h=args.env_h, res=args.res, services=service_provider)
 
     feature = {
         'local_env_rows': float_tensor_to_bytes_feature([args.local_env_rows]),
@@ -60,20 +59,20 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
     gripper1_dx = gripper1_dy = 0
     for time_idx in range(args.steps_per_traj):
         # Query the current state
-        state = services.get_state(state_req)
+        state = service_provider.get_state(state_req)
         head_idx = state.link_names.index("head")
         link_bot_state = link_bot_pycommon.flatten_points(state.points)
         head_point = state.points[head_idx]
 
         if args.tether:
-            tether_response = services.get_tether_state(tether_req)
+            tether_response = service_provider.get_tether_state(tether_req)
             tether_state = link_bot_pycommon.flatten_named_points(tether_response.object.points)
 
         gripper1_dx, gripper1_dy = sample_delta_pos(action_rng, max_delta_pos, head_point, args.goal_env_w, args.goal_env_h,
                                                     gripper1_dx, gripper1_dy)
         if args.verbose:
             print('gripper delta:', gripper1_dx, gripper1_dy)
-            ignition.markers.publish_marker(services.marker_provider,
+            ignition.markers.publish_marker(service_provider.marker_provider,
                                             head_point.x + gripper1_dx,
                                             head_point.y + gripper1_dy,
                                             marker_size=0.05)
@@ -81,7 +80,7 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
         action_msg.action.gripper1_delta_pos.x = gripper1_dx
         action_msg.action.gripper1_delta_pos.y = gripper1_dy
         action_msg.action.max_time_per_step = args.dt
-        services.execute_action(action_msg)
+        service_provider.execute_action(action_msg)
 
         # format the tf feature
         head_np = np.array([head_point.x, head_point.y])
@@ -89,7 +88,7 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
                                                                args.local_env_cols,
                                                                args.res,
                                                                center_point=head_np,
-                                                               services=services)
+                                                               services=service_provider)
 
         feature['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature([gripper1_dx, gripper1_dy])
         for state_key in states_keys:
@@ -110,7 +109,7 @@ def generate_traj(args, services, traj_idx, global_t_step, action_rng: np.random
     return example, global_t_step
 
 
-def generate_trajs(service_provider, args, full_output_directory, services, env_rng: np.random.RandomState,
+def generate_trajs(service_provider, args, full_output_directory, env_rng: np.random.RandomState,
                    action_rng: np.random.RandomState):
     examples = np.ndarray([args.trajs_per_file], dtype=object)
     global_t_step = 0
@@ -119,8 +118,7 @@ def generate_trajs(service_provider, args, full_output_directory, services, env_
 
         if not args.no_obstacles and i % args.move_objects_every_n == 0:
             objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            service_provider.move_objects(services,
-                                          args.max_step_size,
+            service_provider.move_objects(args.max_step_size,
                                           objects,
                                           args.env_w,
                                           args.env_h,
@@ -128,7 +126,7 @@ def generate_trajs(service_provider, args, full_output_directory, services, env_
                                           rng=env_rng)
 
         # Generate a new trajectory
-        example, global_t_step = generate_traj(args, services, i, global_t_step, action_rng)
+        example, global_t_step = generate_traj(args, service_provider, i, global_t_step, action_rng)
         examples[current_record_traj_idx] = example
 
         # Save the data
@@ -152,11 +150,9 @@ def generate_trajs(service_provider, args, full_output_directory, services, env_
 def generate(service_provider, args):
     rospy.init_node('collect_dynamics_data')
 
-    rope_length = ros_pycommon.get_rope_length()
-
     assert args.trajs % args.trajs_per_file == 0, "num trajs must be multiple of {}".format(args.trajs_per_file)
 
-    full_output_directory = link_bot_data.link_bot_dataset_utils.data_directory(args.outdir, args.trajs)
+    full_output_directory = data_directory(args.outdir, args.trajs)
     if not os.path.isdir(full_output_directory) and args.verbose:
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)
@@ -191,10 +187,10 @@ def generate(service_provider, args):
     env_rng = np.random.RandomState(args.seed)
     action_rng = np.random.RandomState(args.seed)
 
-    services = service_provider.setup_env(verbose=args.verbose,
+    service_provider.setup_env(verbose=args.verbose,
                                           real_time_rate=args.real_time_rate,
                                           max_step_size=args.max_step_size,
                                           reset_gripper_to=None,
                                           initial_object_dict=None)
 
-    generate_trajs(service_provider, args, full_output_directory, services, env_rng, action_rng)
+    generate_trajs(service_provider, args, full_output_directory, env_rng, action_rng)

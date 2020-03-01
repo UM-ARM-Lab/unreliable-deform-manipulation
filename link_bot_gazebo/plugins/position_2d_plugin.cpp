@@ -131,10 +131,10 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   auto stop_so =
       ros::SubscribeOptions::create<std_msgs::Empty>("/position_2d_stop", 1, stop_bind, ros::VoidPtr(), &queue_);
   auto enable_bind = boost::bind(&Position2dPlugin::OnEnable, this, _1);
-  auto enable_so = ros::SubscribeOptions::create<link_bot_gazebo::ModelsEnable>(
+  auto enable_so = ros::SubscribeOptions::create<peter_msgs::ModelsEnable>(
       "/position_2d_enable", 1, enable_bind, ros::VoidPtr(), &queue_);
   auto pos_action_bind = boost::bind(&Position2dPlugin::OnAction, this, _1);
-  auto pos_action_so = ros::SubscribeOptions::create<link_bot_gazebo::ModelsPoses>(
+  auto pos_action_so = ros::SubscribeOptions::create<peter_msgs::ModelsPoses>(
       "/position_2d_action", 1, pos_action_bind, ros::VoidPtr(), &queue_);
 
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
@@ -200,7 +200,7 @@ void Position2dPlugin::OnStop(std_msgs::EmptyConstPtr const msg)
   target_pose_ = link_->WorldPose();
 }
 
-void Position2dPlugin::OnEnable(link_bot_gazebo::ModelsEnableConstPtr const msg)
+void Position2dPlugin::OnEnable(peter_msgs::ModelsEnableConstPtr const msg)
 {
   for (auto const &model_name : msg->model_names) {
     if (model_name == model_->GetScopedName()) {
@@ -209,7 +209,7 @@ void Position2dPlugin::OnEnable(link_bot_gazebo::ModelsEnableConstPtr const msg)
   }
 }
 
-void Position2dPlugin::OnAction(link_bot_gazebo::ModelsPosesConstPtr const msg)
+void Position2dPlugin::OnAction(peter_msgs::ModelsPosesConstPtr const msg)
 {
   for (auto const &action : msg->actions) {
     if (action.model_name == model_->GetScopedName()) {

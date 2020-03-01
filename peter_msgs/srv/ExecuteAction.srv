@@ -1,4 +1,4 @@
-link_bot_gazebo/LinkBotAction action
+peter_msgs/LinkBotAction action
 ---
-link_bot_gazebo/Objects objects
+peter_msgs/Objects objects
 bool needs_reset

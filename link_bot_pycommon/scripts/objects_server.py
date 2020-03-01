@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 import rospy
 
-from link_bot_gazebo.srv import GetObjects, GetObject, GetObjectRequest, GetObjectsResponse
+from peter_msgs.msg import SubspaceDescription
+from peter_msgs.srv import GetObjects, GetObject, GetObjectRequest, GetObjectsResponse, StateSpaceDescription, \
+    StateSpaceDescriptionResponse
 from std_msgs.msg import String
 
 object_services = {}
@@ -19,6 +21,21 @@ def objects_handler(req):
     return res
 
 
+def state_space_handler(req):
+    global object_services
+
+    res = StateSpaceDescriptionResponse()
+    for service in object_services.values():
+        object_req = GetObjectRequest()
+        object_res = service.call(object_req)
+        subspace = SubspaceDescription()
+        subspace.name = object_res.object.name
+        subspace.dimensions = len(object_res.object.points)
+        res.subspaces.append(subspace)
+
+    return res
+
+
 def register_object_handler(msg):
     global object_services
 
@@ -29,6 +46,7 @@ def register_object_handler(msg):
 if __name__ == '__main__':
     rospy.init_node('objects_server')
 
-    objects_service = rospy.Service("/objects", GetObjects, objects_handler)
-    register_object = rospy.Subscriber("/register_object", String, register_object_handler)
+    objects_service = rospy.Service("objects", GetObjects, objects_handler)
+    states_description_service = rospy.Service("states_description", StateSpaceDescription, state_space_handler)
+    register_object = rospy.Subscriber("register_object", String, register_object_handler)
     rospy.spin()

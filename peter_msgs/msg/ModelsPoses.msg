@@ -1,1 +1,1 @@
-link_bot_gazebo/ModelPose[] actions
+peter_msgs/ModelPose[] actions

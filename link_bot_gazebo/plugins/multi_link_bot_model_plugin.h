@@ -1,16 +1,13 @@
 #pragma once
 
-#include <link_bot_gazebo/ExecuteAction.h>
-#include <link_bot_gazebo/GetObject.h>
-#include <link_bot_gazebo/GetObjects.h>
-#include <link_bot_gazebo/LinkBotAction.h>
-#include <link_bot_gazebo/LinkBotConfiguration.h>
-#include <link_bot_gazebo/LinkBotJointConfiguration.h>
-#include <link_bot_gazebo/LinkBotPath.h>
-#include <link_bot_gazebo/LinkBotReset.h>
-#include <link_bot_gazebo/LinkBotState.h>
-#include <link_bot_gazebo/LinkBotTrajectory.h>
-#include <link_bot_gazebo/NamedPoints.h>
+#include <peter_msgs/ExecuteAction.h>
+#include <peter_msgs/GetObject.h>
+#include <peter_msgs/GetObjects.h>
+#include <peter_msgs/LinkBotAction.h>
+#include <peter_msgs/LinkBotReset.h>
+#include <peter_msgs/LinkBotState.h>
+#include <peter_msgs/LinkBotTrajectory.h>
+#include <peter_msgs/NamedPoints.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <ros/subscribe_options.h>
@@ -33,7 +30,7 @@ namespace gazebo {
 constexpr auto HEAD_Z{0.01};
 
 struct ControlResult {
-  link_bot_gazebo::NamedPoints link_bot_config{};
+  peter_msgs::NamedPoints link_bot_config{};
   ignition::math::Vector3d gripper1_vel{ignition::math::Vector3d::Zero};
   ignition::math::Vector3d gripper1_force{ignition::math::Vector3d::Zero};
 };
@@ -47,7 +44,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   ControlResult UpdateControl();
 
   // This is thread safe
-  link_bot_gazebo::NamedPoints GetConfiguration();
+  peter_msgs::NamedPoints GetConfiguration();
 
   void OnUpdate();
 
@@ -55,20 +52,17 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   void OnActionMode(std_msgs::StringConstPtr msg);
 
-  void OnConfiguration(link_bot_gazebo::LinkBotJointConfigurationConstPtr msg);
+  bool ExecuteAbsoluteAction(peter_msgs::ExecuteActionRequest &req, peter_msgs::ExecuteActionResponse &res);
 
-  bool ExecuteAbsoluteAction(link_bot_gazebo::ExecuteActionRequest &req, link_bot_gazebo::ExecuteActionResponse &res);
+  bool ExecuteAction(peter_msgs::ExecuteActionRequest &req, peter_msgs::ExecuteActionResponse &res);
 
-  bool ExecuteAction(link_bot_gazebo::ExecuteActionRequest &req, link_bot_gazebo::ExecuteActionResponse &res);
+  bool StateServiceCallback(peter_msgs::LinkBotStateRequest &req, peter_msgs::LinkBotStateResponse &res);
 
-  bool StateServiceCallback(link_bot_gazebo::LinkBotStateRequest &req, link_bot_gazebo::LinkBotStateResponse &res);
+  bool GetObjectServiceCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
 
-  bool GetObjectServiceCallback(link_bot_gazebo::GetObjectRequest &req, link_bot_gazebo::GetObjectResponse &res);
+  bool ExecuteTrajectoryCallback(peter_msgs::LinkBotTrajectoryRequest &req, peter_msgs::LinkBotTrajectoryResponse &res);
 
-  bool ExecuteTrajectoryCallback(link_bot_gazebo::LinkBotTrajectoryRequest &req,
-                                 link_bot_gazebo::LinkBotTrajectoryResponse &res);
-
-  bool LinkBotReset(link_bot_gazebo::LinkBotResetRequest &req, link_bot_gazebo::LinkBotResetResponse &res);
+  bool LinkBotReset(peter_msgs::LinkBotResetRequest &req, peter_msgs::LinkBotResetResponse &res);
 
  private:
   auto GetGripper1Pos() -> ignition::math::Vector3d const;

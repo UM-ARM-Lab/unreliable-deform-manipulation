@@ -4,9 +4,9 @@ import numpy as np
 import rospy
 import std_srvs
 from colorama import Fore
-from link_bot_gazebo.msg import LinkBotAction
-from link_bot_gazebo.srv import ComputeSDF2Request, ComputeOccupancyRequest, ComputeSDF2, ComputeOccupancy, \
-    LinkBotTrajectoryRequest, LinkBotState, WorldControl, LinkBotTrajectory, ExecuteAction, GetObjects
+from peter_msgs.msg import LinkBotAction
+from peter_msgs.srv import ComputeOccupancyRequest, ComputeOccupancy, LinkBotTrajectoryRequest, LinkBotState, WorldControl, \
+    LinkBotTrajectory, ExecuteAction, GetObjects, StateSpaceDescription, StateSpaceDescriptionRequest
 
 from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingRequest
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
@@ -37,37 +37,37 @@ class EmptyRequest(object):
 class Services:
 
     def __init__(self):
-        self.compute_occupancy = rospy.ServiceProxy('/occupancy', ComputeOccupancy)
-        self.get_state = rospy.ServiceProxy('/link_bot_state', LinkBotState)
-        self.execute_action = rospy.ServiceProxy("/execute_action", ExecuteAction)
-        self.world_control = rospy.ServiceProxy('/world_control', WorldControl)
-        self.pause = rospy.ServiceProxy('/gazebo/pause_physics', std_srvs.srv.Empty)
-        self.execute_trajectory = rospy.ServiceProxy("/link_bot_execute_trajectory", LinkBotTrajectory)
-        self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', std_srvs.srv.Empty)
-        self.get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
-        self.set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
+        self.compute_occupancy = rospy.ServiceProxy('occupancy', ComputeOccupancy)
+        self.get_state = rospy.ServiceProxy('link_bot_state', LinkBotState)
+        self.execute_action = rospy.ServiceProxy("execute_action", ExecuteAction)
+        self.world_control = rospy.ServiceProxy('world_control', WorldControl)
+        self.pause = rospy.ServiceProxy('gazebo/pause_physics', std_srvs.srv.Empty)
+        self.execute_trajectory = rospy.ServiceProxy("link_bot_execute_trajectory", LinkBotTrajectory)
+        self.unpause = rospy.ServiceProxy('gazebo/unpause_physics', std_srvs.srv.Empty)
+        self.get_physics = rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
+        self.set_physics = rospy.ServiceProxy('gazebo/set_physics_properties', SetPhysicsProperties)
         self.record = rospy.ServiceProxy('video_recorder', TriggerVideoRecording)
-        self.reset = rospy.ServiceProxy("/reset", std_srvs.srv.Empty)
-        self.get_objects = rospy.ServiceProxy("/objects", GetObjects)
+        self.reset = rospy.ServiceProxy("reset", std_srvs.srv.Empty)
+        self.get_objects = rospy.ServiceProxy("objects", GetObjects)
+        self.states_description = rospy.ServiceProxy("states_description", StateSpaceDescription)
         self.marker_provider = MarkerProvider()
 
-        # currently unused
-        self.compute_sdf2 = rospy.ServiceProxy('/sdf2', ComputeSDF2)
-
         self.services_to_wait_for = [
-            '/reset',
-            '/world_control',
-            '/link_bot_state',
-            '/link_bot_execute_trajectory',
-            '/occupancy',
-            '/gazebo/pause_physics',
-            '/gazebo/unpause_physics',
-            '/gazebo/get_physics_properties',
-            '/gazebo/set_physics_properties',
+            'reset',
+            'world_control',
+            'link_bot_state',
+            'link_bot_execute_trajectory',
+            'occupancy',
+            'gazebo/pause_physics',
+            'gazebo/unpause_physics',
+            'gazebo/get_physics_properties',
+            'gazebo/set_physics_properties',
         ]
 
     def get_states_description(self):
-        states_response = self.states_description()
+        request = StateSpaceDescriptionRequest()
+        states_response = self.states_description(request)
+        return states_response
 
     def start_record_trial(self, filename):
         start_msg = TriggerVideoRecordingRequest()
@@ -98,60 +98,13 @@ class Services:
                      rng: np.random.RandomState):
         pass
 
-    @staticmethod
-    def setup_env(verbose: int,
+    def setup_env(self,
+                  verbose: int,
                   real_time_rate: float,
                   reset_gripper_to: Optional,
                   max_step_size: Optional[float] = None,
                   initial_object_dict: Optional[Dict] = None):
         pass
-
-
-def get_sdf_and_gradient(services,
-                         env_w_cols,
-                         env_h_rows,
-                         res,
-                         center_x,
-                         center_y):
-    sdf_request = ComputeSDF2Request()
-    sdf_request.resolution = res
-    sdf_request.h_rows = env_h_rows
-    sdf_request.w_cols = env_w_cols
-    sdf_request.center.x = center_x
-    sdf_request.center.y = center_y
-    sdf_request.min_z = 0.01
-    sdf_request.max_z = 2.00
-    sdf_request.robot_name = 'link_bot'
-    sdf_request.request_new = True
-    sdf_response = services.compute_sdf2(sdf_request)
-    sdf = np.array(sdf_response.sdf).reshape([sdf_response.gradient.layout.dim[0].size, sdf_response.gradient.layout.dim[1].size])
-    sdf = sdf.T
-    gradient = np.array(sdf_response.gradient.data).reshape([sdf_response.gradient.layout.dim[0].size,
-                                                             sdf_response.gradient.layout.dim[1].size,
-                                                             sdf_response.gradient.layout.dim[2].size])
-    gradient = np.transpose(gradient, [1, 0, 2])
-
-    return gradient, sdf, sdf_response
-
-
-def get_sdf_data(env_h,
-                 env_w,
-                 res,
-                 services):
-    """
-    :param env_h:  meters
-    :param env_w: meters
-    :param res: meters
-    :param services: from gazebo_utils
-    :return: SDF object for full sdf
-    """
-    env_h_rows = int(env_h / res)
-    env_w_cols = int(env_w / res)
-    gradient, sdf, sdf_response = get_sdf_and_gradient(services, env_w_cols=env_w_cols, env_h_rows=env_h_rows, res=res)
-    resolution = np.array(sdf_response.res)
-    origin = np.array(sdf_response.origin)
-    full_sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)
-    return full_sdf_data
 
 
 def get_occupancy(services,
@@ -185,7 +138,7 @@ def get_occupancy_data(env_h,
     :param env_w: meters
     :param res: meters
     :param services: from gazebo_utils
-    :return: SDF object for full sdf
+    :return:
     """
     env_h_rows = int(env_h / res)
     env_w_cols = int(env_w / res)
@@ -195,35 +148,10 @@ def get_occupancy_data(env_h,
                                    res=res,
                                    center_x=0,
                                    center_y=0)
-    resolution = np.array(response.res)
+    resolution = response.res
     origin = np.array(response.origin)
     full_env_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=resolution, origin=origin)
     return full_env_data
-
-
-def get_local_sdf_data(sdf_rows,
-                       sdf_cols,
-                       res,
-                       center_point,
-                       services):
-    """
-    :param sdf_rows: indices
-    :param sdf_cols: indices
-    :param res: meters
-    :param center_point: (x,y) meters
-    :param services: from gazebo_utils
-    :return: SDF object for local sdf
-    """
-    gradient, sdf, sdf_response = get_sdf_and_gradient(services,
-                                                       env_h_rows=sdf_rows,
-                                                       env_w_cols=sdf_cols,
-                                                       res=res,
-                                                       center_x=center_point[0],
-                                                       center_y=center_point[1])
-    resolution = np.array(sdf_response.res)
-    origin = np.array(sdf_response.origin)
-    local_sdf_data = link_bot_sdf_utils.SDF(sdf=sdf, gradient=gradient, resolution=resolution, origin=origin)
-    return local_sdf_data
 
 
 def get_local_occupancy_data(rows,
@@ -245,7 +173,7 @@ def get_local_occupancy_data(rows,
                                    res=res,
                                    center_x=center_point[0],
                                    center_y=center_point[1])
-    resolution = np.array(response.res)
+    resolution = response.res
     origin = np.array(response.origin)
     local_occupancy_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=resolution, origin=origin)
     # import ipdb; ipdb.set_trace()

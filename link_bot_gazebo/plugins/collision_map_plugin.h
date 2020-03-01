@@ -13,11 +13,11 @@
 #include <gazebo/transport/transport.hh>
 #include <ignition/math/Vector3.hh>
 
-#include <link_bot_gazebo/WriteSDF.h>
 #include <sdf_tools/SDF.h>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/voxel_grid.hpp>
 #include <sdf_tools/collision_map.hpp>
+#include <peter_msgs/ComputeOccupancy.h>
 
 namespace gazebo {
 
@@ -46,8 +46,6 @@ class CollisionMapPlugin : public WorldPlugin {
   void Load(physics::WorldPtr world, sdf::ElementPtr _sdf) override;
 
  public:
-  void OnWriteSDF(link_bot_gazebo::WriteSDFConstPtr msg);
-
   ~CollisionMapPlugin() override;
 
  private:

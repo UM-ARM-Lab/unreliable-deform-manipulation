@@ -2,6 +2,7 @@
 from __future__ import print_function, division
 
 import argparse
+import rospy
 
 import numpy as np
 import tensorflow
@@ -9,6 +10,7 @@ import tensorflow
 from link_bot_data import base_collect_dynamics_data
 from link_bot_gazebo import gazebo_services
 from link_bot_pycommon.args import my_formatter
+from victor import victor_services
 
 opts = tensorflow.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
 conf = tensorflow.compat.v1.ConfigProto(gpu_options=opts)
@@ -20,6 +22,7 @@ def main():
     tensorflow.compat.v1.logging.set_verbosity(tensorflow.compat.v1.logging.DEBUG)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
+    parser.add_argument("service_provider", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument("trajs", type=int, help='how many trajectories to collect')
     parser.add_argument("outdir")
     parser.add_argument('--dt', type=float, default=1.00, help='seconds to execute each delta position action')
@@ -42,7 +45,15 @@ def main():
 
     args = parser.parse_args()
 
-    base_collect_dynamics_data.generate(gazebo_services.GazeboServices, args)
+    # Start Services
+    if args.service_provider == 'victor':
+        rospy.set_param('service_provider', 'victor')
+        service_provider = victor_services.VictorServices()
+    else:
+        rospy.set_param('service_provider', 'gazebo')
+        service_provider = gazebo_services.GazeboServices()
+
+    base_collect_dynamics_data.generate(service_provider, args)
 
 
 if __name__ == '__main__':

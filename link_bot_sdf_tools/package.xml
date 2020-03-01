@@ -1,26 +1,17 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>link_bot_sdf_tools</name>
-  <version>0.0.0</version>
-  <description>link bot sdf tools</description>
+    <name>link_bot_sdf_tools</name>
+    <version>0.0.0</version>
+    <description>link bot sdf tools</description>
 
-  <maintainer email="pmitrano@umich.edu">pmitrano</maintainer>
+    <maintainer email="pmitrano@umich.edu">pmitrano</maintainer>
 
-  <license>BSD</license>
+    <license>BSD</license>
 
-  <author >Peter Mitrano</author>
+    <author>Peter Mitrano</author>
 
-  <buildtool_depend>catkin</buildtool_depend>
+    <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>sdf_tools</depend>
-  <depend>geometry_msgs</depend>
-
-  <build_depend>message_generation</build_depend>
-  <build_depend>rospy</build_depend>
-
-  <build_export_depend>rospy</build_export_depend>
-
-  <exec_depend>rospy</exec_depend>
-  <exec_depend>message_runtime</exec_depend>
+    <depend>rospy</depend>
 
 </package>
