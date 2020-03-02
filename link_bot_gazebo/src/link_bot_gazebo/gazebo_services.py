@@ -58,7 +58,6 @@ class GazeboServices(Services):
         if max_step_size is None:
             max_step_size = current_physics.time_step
         set.time_step = max_step_size
-        set.enabled = True
         self.set_physics.call(set)
 
         self.reset_world(verbose, reset_gripper_to)
