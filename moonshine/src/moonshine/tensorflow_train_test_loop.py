@@ -1,0 +1,217 @@
+import json
+import pathlib
+from typing import Dict, Callable, Optional, List
+
+import numpy as np
+import progressbar
+import tensorflow as tf
+from colorama import Fore, Style
+
+from moonshine import experiments_util
+
+
+class MyKerasModel(tf.keras.Model):
+    """
+    the "call" method is expected to take and return a dictionary
+    """
+
+    def __init__(self, hparams: Dict, batch_size: int):
+        super().__init__()
+        self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
+        self.batch_size = batch_size
+
+
+def compute_loss_and_metrics(tf_dataset, loss_function, metrics_function):
+    losses = []
+    metrics = {}
+    for dataset_element in progressbar.progressbar(tf_dataset):
+        batch_loss = loss_function(dataset_element)
+        losses.append(batch_loss)
+
+        metrics_element = metrics_function(dataset_element)
+        for k, v in metrics_element.items():
+            if k not in metrics:
+                metrics[k] = []
+            metrics[k].append(v)
+
+    mean_loss = np.mean(losses)
+
+    mean_metrics = {}
+    for k, v in metrics.items():
+        mean_metrics[k] = np.mean(v)
+    return mean_loss, mean_metrics
+
+
+def train(keras_model: MyKerasModel,
+          hparams: Dict,
+          train_tf_dataset,
+          val_tf_dataset,
+          dataset_dirs: List[pathlib.Path],
+          seed: int,
+          batch_size: int,
+          epochs: int,
+          loss_function: Callable,
+          metrics_function: Optional[Callable],
+          checkpoint: Optional[pathlib.Path] = None,
+          log_path: Optional[pathlib.Path] = None,
+          log_loss_every: int = 500,
+          validation_every: int = 1,
+          key_metric: str = 'loss'
+          ):
+    """
+
+    :param keras_model: the class name you want to instantiate.
+    :param hparams:
+    :param train_tf_dataset:
+    :param val_tf_dataset:
+    :param dataset_dirs:
+    :param seed:
+    :param batch_size:
+    :param epochs:
+    :param loss_function: Takes an element of the dataset and the predictions on that element and returns the loss
+    :param metrics_function: Takes an element of the dataset and the predictions on that element and returns a dict of metrics
+    :param checkpoint:
+    :param log_path:
+    :param log_loss_every:
+    :param validation_every:
+    :param key_metric: Used to determine what the "best" model is for saving
+    :return:
+    """
+    optimizer = tf.train.AdamOptimizer()
+
+    net = keras_model(hparams=hparams, batch_size=batch_size)
+    global_step = tf.train.get_or_create_global_step()
+
+    # If we're resuming a checkpoint, there is no new log path
+    if checkpoint is not None:
+        full_log_path = checkpoint
+        logging = True
+    elif log_path:
+        full_log_path = pathlib.Path("log_data") / log_path
+        logging = True
+    else:
+        full_log_path = '/tmp'
+        logging = False
+
+    ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
+    manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=5)
+    ckpt.restore(manager.latest_checkpoint)
+    if checkpoint is not None:
+        if manager.latest_checkpoint:
+            print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
+        else:
+            print(Fore.RED + "Failed to restore from checkpoint directory {}".format(checkpoint) + Fore.RESET)
+            print("Did you forget a subdirectory?")
+            return
+
+    writer = None
+    if logging:
+        print(Fore.CYAN + "Logging to {}".format(full_log_path) + Fore.RESET)
+
+        experiments_util.make_log_dir(full_log_path)
+
+        hparams_path = full_log_path / "hparams.json"
+        with hparams_path.open('w') as hparams_file:
+            hparams['log path'] = str(full_log_path)
+            hparams['seed'] = seed
+            hparams['batch_size'] = keras_model.batch_size
+            hparams['dataset'] = [str(dataset_dir) for dataset_dir in dataset_dirs]
+            hparams_file.write(json.dumps(hparams, indent=2))
+
+        writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
+
+    def train_loop():
+        step = None
+        best_key_metric_value = None
+
+        for epoch in range(epochs):
+            ################
+            # train
+            ################
+            # metrics are averaged across batches in the epoch
+            batch_losses = []
+
+            for train_element in progressbar.progressbar(train_tf_dataset):
+                step = int(global_step.numpy())
+
+                with tf.GradientTape() as tape:
+                    train_predictions = net(train_element)
+                    train_batch_loss = loss_function(train_element, train_predictions)
+
+                variables = net.trainable_variables
+                gradients = tape.gradient(train_batch_loss, variables)
+                optimizer.apply_gradients(zip(gradients, variables))
+                batch_losses.append(train_batch_loss.numpy())
+
+                if metrics_function:
+                    train_batch_metrics = metrics_function(train_element, train_predictions)
+                else:
+                    train_batch_metrics = {}
+
+                if logging:
+                    if step % log_loss_every == 0:
+                        tf.contrib.summary.scalar("batch loss", train_batch_loss, step=step)
+                        for metric_name, metric_value in train_batch_metrics.items():
+                            tf.contrib.summary.scalar(metric_name, metric_value, step=step)
+
+                ####################
+                # Update global step
+                ####################
+                global_step.assign_add(1)
+
+            training_loss = np.mean(batch_losses)
+            log_msg = "Epoch: {:5d}, Training Loss: {:7.4f}"
+            print(log_msg.format(epoch, training_loss))
+
+            ################
+            # validation
+            ################
+            if epoch % validation_every == 0:
+                val_mean_loss, val_mean_metrics = compute_loss_and_metrics(val_tf_dataset, loss_function, metrics_function)
+                if logging:
+                    tf.contrib.summary.scalar('validation loss', val_mean_loss, step=step)
+                    for metric_name, mean_metric_value in val_mean_metrics:
+                        tf.contrib.summary.scalar(metric_name, mean_metric_value, step=step)
+
+                # check new best based on the desired metric (or loss)
+                if key_metric == 'loss':
+                    key_metric_value = val_mean_loss
+                else:
+                    key_metric_value = val_mean_metrics[key_metric]
+
+                if key_metric_value < best_key_metric_value:
+                    best_key_metric_value = key_metric_value
+                    if logging:
+                        save_path = manager.save()
+                        print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(step, save_path) + Fore.RESET)
+
+        # Unconditionally save the last model just in case
+        save_path = manager.save()
+        print(Fore.CYAN + "Step {:6d}: Saved final checkpoint {}".format(step, save_path) + Fore.RESET)
+
+    if logging:
+        with writer.as_default(), tf.contrib.summary.always_record_summaries():
+            train_loop()
+    else:
+        train_loop()
+
+
+def eval(keras_model: MyKerasModel,
+         hparams: Dict,
+         test_tf_dataset,
+         batch_size: int,
+         loss_function: Callable,
+         metrics_function: Optional[Callable],
+         checkpoint: Optional[pathlib.Path] = None,
+         ):
+    net = keras_model(hparams=hparams, batch_size=batch_size)
+    ckpt = tf.train.Checkpoint(net=net)
+    manager = tf.train.CheckpointManager(ckpt, checkpoint, max_to_keep=1)  # doesn't matter here, we're not saving
+    ckpt.restore(manager.latest_checkpoint)
+    print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
+
+    test_mean_loss, test_mean_metrics = compute_loss_and_metrics(test_tf_dataset, loss_function, metrics_function)
+    print("Test Loss:  {:8.5f}".format(test_mean_loss))
+
+    for metric_name, metric_value in test_mean_metrics.items():
+        print("{} {:8.4f}".format(metric_name, metric_value))
