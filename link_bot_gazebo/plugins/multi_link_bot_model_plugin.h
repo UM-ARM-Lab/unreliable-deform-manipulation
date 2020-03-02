@@ -101,7 +101,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   ros::ServiceServer execute_traj_service_;
   ros::ServiceServer reset_service_;
   ros::ServiceClient objects_service_;
-  ros::Publisher register_link_bot_pub_;
+  ros::Publisher register_object_pub_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
   ros::CallbackQueue execute_trajs_queue_;

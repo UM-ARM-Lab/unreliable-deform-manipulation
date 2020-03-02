@@ -1,6 +1,6 @@
 <launch>
     <arg name="verbose" default="false"/>
-    <arg name="gui" default="false"/>
+    <arg name="gui" default="true"/>
 
     <remap from="/gazebo/reset_simulation" to="/reset"/>
 

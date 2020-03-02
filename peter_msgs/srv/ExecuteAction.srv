@@ -1,4 +1,0 @@
-peter_msgs/LinkBotAction action
----
-peter_msgs/Objects objects
-bool needs_reset

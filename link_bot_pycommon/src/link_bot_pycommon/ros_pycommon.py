@@ -9,7 +9,6 @@ from peter_msgs.srv import ComputeOccupancyRequest, ComputeOccupancy, LinkBotTra
     LinkBotTrajectory, ExecuteAction, GetObjects, StateSpaceDescription, StateSpaceDescriptionRequest
 
 from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingRequest
-from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from ignition.markers import MarkerProvider
 from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon
 
@@ -30,10 +29,6 @@ def get_max_speed():
     return rospy.get_param("/link_bot/max_speed")
 
 
-class EmptyRequest(object):
-    pass
-
-
 class Services:
 
     def __init__(self):
@@ -44,8 +39,6 @@ class Services:
         self.pause = rospy.ServiceProxy('gazebo/pause_physics', std_srvs.srv.Empty)
         self.execute_trajectory = rospy.ServiceProxy("link_bot_execute_trajectory", LinkBotTrajectory)
         self.unpause = rospy.ServiceProxy('gazebo/unpause_physics', std_srvs.srv.Empty)
-        self.get_physics = rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
-        self.set_physics = rospy.ServiceProxy('gazebo/set_physics_properties', SetPhysicsProperties)
         self.record = rospy.ServiceProxy('video_recorder', TriggerVideoRecording)
         self.reset = rospy.ServiceProxy("reset", std_srvs.srv.Empty)
         self.get_objects = rospy.ServiceProxy("objects", GetObjects)
@@ -67,6 +60,9 @@ class Services:
     def get_states_description(self):
         request = StateSpaceDescriptionRequest()
         states_response = self.states_description(request)
+        states_dict = {}
+        for subspace in states_response.subspaces:
+            states_dict[subspace.name] = subspace.dimensions
         return states_response
 
     def start_record_trial(self, filename):
@@ -102,8 +98,7 @@ class Services:
                   verbose: int,
                   real_time_rate: float,
                   reset_gripper_to: Optional,
-                  max_step_size: Optional[float] = None,
-                  initial_object_dict: Optional[Dict] = None):
+                  max_step_size: Optional[float] = None):
         pass
 
 
@@ -176,7 +171,6 @@ def get_local_occupancy_data(rows,
     resolution = response.res
     origin = np.array(response.origin)
     local_occupancy_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=resolution, origin=origin)
-    # import ipdb; ipdb.set_trace()
     return local_occupancy_data
 
 

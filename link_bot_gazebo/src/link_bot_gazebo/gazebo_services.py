@@ -4,6 +4,7 @@ import numpy as np
 import rospy
 import std_msgs
 from colorama import Fore
+from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from peter_msgs.srv import LinkBotStateRequest, WorldControlRequest, ExecuteActionRequest, GetObject, LinkBotReset, \
     LinkBotResetRequest
 from peter_msgs.msg import ModelsPoses, ModelPose
@@ -25,6 +26,10 @@ class GazeboServices(Services):
         self.apply_body_wrench = rospy.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
         self.link_bot_reset = rospy.ServiceProxy("/link_bot_reset", LinkBotReset)
 
+        # don't want to mock these
+        self.get_physics = rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
+        self.set_physics = rospy.ServiceProxy('gazebo/set_physics_properties', SetPhysicsProperties)
+
         # not used in real robot experiments
         self.get_tether_state = rospy.ServiceProxy("/tether", GetObject)
 
@@ -40,8 +45,7 @@ class GazeboServices(Services):
                   verbose: int,
                   real_time_rate: float,
                   reset_gripper_to: Optional,
-                  max_step_size: Optional[float] = None,
-                  initial_object_dict: Optional[Dict] = None):
+                  max_step_size: Optional[float] = None):
         self.wait(verbose)
 
         # set up physics
@@ -66,21 +70,6 @@ class GazeboServices(Services):
         stop.action.gripper1_delta_pos.y = 0
         stop.action.max_time_per_step = 1.0
         self.execute_action(stop)
-
-        # Set initial object positions
-        if initial_object_dict is not None:
-            move_action = ModelsPoses()
-            for object_name, (x, y) in initial_object_dict.items():
-                move = ModelPose()
-                move.pose.position.x = x
-                move.pose.position.y = y
-                move.pose.orientation.x = 0
-                move.pose.orientation.y = 0
-                move.pose.orientation.z = 0
-                move.pose.orientation.w = 0
-                move.model_name = object_name
-                move_action.actions.append(move)
-            self.position_2d_action.publish(move_action)
 
         self.position_2d_stop.publish(std_msgs.msg.Empty())
 

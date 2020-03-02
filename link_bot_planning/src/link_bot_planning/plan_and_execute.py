@@ -7,7 +7,6 @@ from typing import Dict, Optional
 import numpy as np
 import std_srvs
 from colorama import Fore
-from link_bot_gazebo.srv import LinkBotStateRequest
 from ompl import base as ob
 
 import ignition.markers
@@ -60,9 +59,6 @@ class PlanAndExecute:
         while True:
             self.on_before_plan()
 
-            # generate a bunch of plans to random goals
-            state_req = LinkBotStateRequest()
-
             self.plan_idx = 0
             while True:
                 # get full env once
@@ -79,7 +75,6 @@ class PlanAndExecute:
                 tail_goal = np.array(self.get_goal(self.planner_params['random_goal_w'],
                                                    self.planner_params['random_goal_h'],
                                                    head_point,
-                                                   env_padding=self.sim_params.goal_padding,
                                                    full_env_data=full_env_data))
 
                 # plan to that target
@@ -155,8 +150,8 @@ class PlanAndExecute:
 
         self.on_complete(initial_poses_in_collision)
 
-    def get_goal(self, w, h, head_point, env_padding, full_env_data):
-        return sample_collision_free_goal(w, h, head_point, env_padding, full_env_data, self.goal_rng)
+    def get_goal(self, w, h, head_point, full_env_data):
+        return sample_collision_free_goal(w, h, head_point, full_env_data, self.goal_rng)
 
     def on_plan_complete(self,
                          planned_path: Dict[str, np.ndarray],
@@ -204,4 +199,3 @@ class PlanAndExecute:
                                          self.planner.full_env_params.h,
                                          padding=0.1,
                                          rng=self.env_rng)
-

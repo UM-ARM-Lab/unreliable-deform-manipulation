@@ -1,4 +1,5 @@
 import pathlib
+from typing import Dict
 
 import numpy as np
 import tensorflow as tf
@@ -12,19 +13,21 @@ from moonshine.base_learned_dynamics_model import BaseLearnedDynamicsModel
 
 class SimpleNN(BaseLearnedDynamicsModel):
 
-    def __init__(self, hparams, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, hparams: Dict, batch_size: int):
+        super().__init__(hparams=hparams, batch_size=batch_size)
         self.initial_epoch = 0
-        self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
 
         self.concat = layers.Concatenate()
         self.dense_layers = []
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
-        self.dense_layers.append(layers.Dense(self.hparams['dynamics_dataset_hparams']['n_state'], activation=None))
+        self.state_key = self.hparams['state_key']
+        self.state_feature = "state/{}".format(self.state_key)
+        self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
+        self.dense_layers.append(layers.Dense(self.n_state, activation=None))
 
     def call(self, input_dict, training=None, mask=None):
-        states = input_dict['state/link_bot']
+        states = input_dict[self.state_feature]
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
         s_0 = tf.expand_dims(states[:, 0], axis=2)
@@ -51,7 +54,7 @@ class SimpleNN(BaseLearnedDynamicsModel):
         gen_states = tf.stack(gen_states)
         gen_states = tf.transpose(gen_states, [1, 0, 2, 3])
         gen_states = tf.squeeze(gen_states, squeeze_dims=3)
-        return {'link_bot': gen_states}
+        return {self.state_feature: gen_states}
 
 
 class SimpleNNWrapper(BaseDynamicsFunction):
@@ -74,14 +77,14 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         del full_env  # unused
         del full_env_origin  # unused
         del res  # unsed
-        link_bot_state = states['link_bot']
+        state = states[self.net.state_key]  # consider making this an hparam?
         T, _ = actions.shape
-        link_bot_state = np.expand_dims(link_bot_state, axis=0)
-        link_bot_state = tf.convert_to_tensor(link_bot_state, dtype=tf.float32)
+        state = np.expand_dims(state, axis=0)
+        state = tf.convert_to_tensor(state, dtype=tf.float32)
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {
             # must be batch, T, n_state
-            'state/link_bot': link_bot_state,
+            'state/{}'.format(self.net.state_key): state,
             # must be batch, T, 2
             'action': actions,
         }

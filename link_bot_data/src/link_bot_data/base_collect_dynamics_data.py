@@ -15,29 +15,24 @@ import ignition.markers
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
 from link_bot_pycommon import ros_pycommon, link_bot_pycommon
-from peter_msgs.srv import LinkBotStateRequest, ExecuteActionRequest, GetObjectRequest
+from peter_msgs.srv import ExecuteActionRequest
 
 
-def sample_delta_pos(action_rng, max_delta_pos, head_point, goal_env_w, goal_env_h, last_dx, last_dy):
-    while True:
-        if action_rng.uniform(0, 1) < 0.8:
-            gripper1_dx = last_dx
-            gripper1_dy = last_dy
-        else:
-            delta_pos = action_rng.uniform(0, max_delta_pos)
-            direction = action_rng.uniform(-np.pi, np.pi)
-            gripper1_dx = np.cos(direction) * delta_pos
-            gripper1_dy = np.sin(direction) * delta_pos
-
-        if -goal_env_w <= head_point.x + gripper1_dx <= goal_env_w and -goal_env_h <= head_point.y + gripper1_dy <= goal_env_h:
-            break
+def sample_delta_pos(action_rng, max_delta_pos, last_dx, last_dy):
+    # TODO: consider resetting on out-of-bounds? right now there is no notion of bounds
+    if action_rng.uniform(0, 1) < 0.8:
+        gripper1_dx = last_dx
+        gripper1_dy = last_dy
+    else:
+        delta_pos = action_rng.uniform(0, max_delta_pos)
+        direction = action_rng.uniform(-np.pi, np.pi)
+        gripper1_dx = np.cos(direction) * delta_pos
+        gripper1_dy = np.sin(direction) * delta_pos
 
     return gripper1_dx, gripper1_dy
 
 
 def generate_traj(args, service_provider, traj_idx, global_t_step, action_rng: np.random.RandomState):
-    state_req = LinkBotStateRequest()
-    tether_req = GetObjectRequest()
     action_msg = ExecuteActionRequest()
 
     max_delta_pos = ros_pycommon.get_max_speed() * args.dt
@@ -58,44 +53,29 @@ def generate_traj(args, service_provider, traj_idx, global_t_step, action_rng: n
 
     gripper1_dx = gripper1_dy = 0
     for time_idx in range(args.steps_per_traj):
-        # Query the current state
-        state = service_provider.get_state(state_req)
-        head_idx = state.link_names.index("head")
-        link_bot_state = link_bot_pycommon.flatten_points(state.points)
-        head_point = state.points[head_idx]
+        objects_response = service_provider.get_objects()
+        states_dict = {}
+        # FIXME: how to get state in a generic way?
+        for object in objects_response.objects:
+            state = link_bot_pycommon.flatten_named_points(object.points)
+            local_env_point = ?
+            local_env_data = ros_pycommon.get_local_occupancy_data(args.local_env_rows,
+                                                                   args.local_env_cols,
+                                                                   args.res,
+                                                                   center_point=local_env_point,
+                                                                   services=service_provider)
+            states_dict[object.name] = state
 
-        if args.tether:
-            tether_response = service_provider.get_tether_state(tether_req)
-            tether_state = link_bot_pycommon.flatten_named_points(tether_response.object.points)
-
-        gripper1_dx, gripper1_dy = sample_delta_pos(action_rng, max_delta_pos, head_point, args.goal_env_w, args.goal_env_h,
-                                                    gripper1_dx, gripper1_dy)
-        if args.verbose:
-            print('gripper delta:', gripper1_dx, gripper1_dy)
-            ignition.markers.publish_marker(service_provider.marker_provider,
-                                            head_point.x + gripper1_dx,
-                                            head_point.y + gripper1_dy,
-                                            marker_size=0.05)
+        gripper1_dx, gripper1_dy = sample_delta_pos(action_rng, max_delta_pos, gripper1_dx, gripper1_dy)
 
         action_msg.action.gripper1_delta_pos.x = gripper1_dx
         action_msg.action.gripper1_delta_pos.y = gripper1_dy
         action_msg.action.max_time_per_step = args.dt
         service_provider.execute_action(action_msg)
 
-        # format the tf feature
-        head_np = np.array([head_point.x, head_point.y])
-        local_env_data = ros_pycommon.get_local_occupancy_data(args.local_env_rows,
-                                                               args.local_env_cols,
-                                                               args.res,
-                                                               center_point=head_np,
-                                                               services=service_provider)
-
         feature['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature([gripper1_dx, gripper1_dy])
-        for state_key in states_keys:
-            feature['{}/state/{}'.format(time_idx, state_key)] = float_tensor_to_bytes_feature(states[state_key])
-        # feature['{}/state/tether'.format(time_idx)] = float_tensor_to_bytes_feature(tether_state)
-        # feature['{}/state/local_env'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.data)
-        # feature['{}/state/local_env_origin'.format(time_idx)] = float_tensor_to_bytes_feature(local_env_data.origin)
+        for name, state in states_dict.items():
+            feature['{}/state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
         feature['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature(traj_idx)
         feature['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature(time_idx)
 
@@ -188,9 +168,9 @@ def generate(service_provider, args):
     action_rng = np.random.RandomState(args.seed)
 
     service_provider.setup_env(verbose=args.verbose,
-                                          real_time_rate=args.real_time_rate,
-                                          max_step_size=args.max_step_size,
-                                          reset_gripper_to=None,
-                                          initial_object_dict=None)
+                               real_time_rate=args.real_time_rate,
+                               max_step_size=args.max_step_size,
+                               reset_gripper_to=None,
+                               initial_object_dict=None)
 
     generate_trajs(service_provider, args, full_output_directory, env_rng, action_rng)

@@ -21,8 +21,7 @@ class VictorServices(Services):
                   verbose: int,
                   real_time_rate: float,
                   reset_gripper_to: Optional,
-                  max_step_size: Optional[float] = None,
-                  initial_object_dict: Optional[Dict] = None):
+                  max_step_size: Optional[float] = None):
         self.wait(verbose)
 
         if reset_gripper_to is not None:

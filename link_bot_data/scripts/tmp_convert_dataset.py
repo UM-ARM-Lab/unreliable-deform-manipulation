@@ -20,9 +20,9 @@ class TmpDataset(BaseDataset):
         self.action_like_names_and_shapes = ['%d/action']
 
         self.state_like_names_and_shapes = [
-            '%d/state',
-            '%d/actual_local_env/env',
-            '%d/actual_local_env/origin',
+            '%d/state/local_env',
+            '%d/state/local_env_origin',
+            '%d/state/link_bot',
             '%d/res',
             '%d/time_idx',
             '%d/traj_idx',
@@ -55,21 +55,13 @@ def main():
         examples = np.ndarray([n_examples_per_record], dtype=np.object)
         for example_idx, example_dict in enumerate(tf_dataset):
 
-            features = {}
+            features = {
+                'full_env/res': float_tensor_to_bytes_feature(0.03),
+                'local_env/res': float_tensor_to_bytes_feature(0.03),
+            }
             for k, v in example_dict.items():
-                if re.fullmatch(r"(\d+)/state", k):
-                    m = re.search(r"\d+", k)
-                    new_k = "{}/state/link_bot".format(m.group(0))
-                elif re.fullmatch(r"(\d+)/actual_local_env/env", k):
-                    m = re.search(r"\d+", k)
-                    new_k = "{}/state/local_env".format(m.group(0))
-                elif re.fullmatch(r"(\d+)/actual_local_env/origin", k):
-                    m = re.search(r"\d+", k)
-                    new_k = "{}/state/local_env_origin".format(m.group(0))
-                else:
-                    new_k = k
-                bytes_feature = float_tensor_to_bytes_feature(v)
-                features[new_k] = bytes_feature
+                if 'res' not in k:
+                    features[k] = float_tensor_to_bytes_feature(v)
 
             example_proto = tf.train.Example(features=tf.train.Features(feature=features))
             example = example_proto.SerializeToString()

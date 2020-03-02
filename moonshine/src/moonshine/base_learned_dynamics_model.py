@@ -7,7 +7,7 @@ import progressbar
 import tensorflow as tf
 from colorama import Fore, Style
 
-from moonshine import experiments_util
+from moonshine import experiments_util, loss_on_dicts
 
 
 class BaseLearnedDynamicsModel(tf.keras.Model):
@@ -21,15 +21,21 @@ class BaseLearnedDynamicsModel(tf.keras.Model):
     def check_validation(val_tf_dataset, loss, net):
         val_losses = []
         for val_x, val_y in progressbar.progressbar(val_tf_dataset):
-            true_val_states = val_y['output_states']
-            val_gen_states = net(val_x)
-            batch_val_loss = loss(y_true=true_val_states, y_pred=val_gen_states)
+            val_pred_states = net(val_x)
+            # val_y is a dict containing all the state sequences which we should be predicting
+            batch_val_loss = loss_on_dicts(loss, dict_true=val_y, dict_pred=val_pred_states)
             val_losses.append(batch_val_loss)
         mean_val_loss = np.mean(val_losses)
         return mean_val_loss
 
     @classmethod
-    def train(cls, hparams, train_tf_dataset, val_tf_dataset, log_path, seed: int, args):
+    def train(cls,
+              hparams: Dict,
+              train_tf_dataset,
+              val_tf_dataset,
+              log_path: pathlib.Path,
+              seed: int,
+              args):
         optimizer = tf.train.AdamOptimizer()
         loss = tf.keras.losses.MeanSquaredError()
         net = cls(hparams=hparams, batch_size=args.batch_size)
@@ -63,7 +69,7 @@ class BaseLearnedDynamicsModel(tf.keras.Model):
             with open(hparams_path, 'w') as hparams_file:
                 hparams['log path'] = str(full_log_path)
                 hparams['seed'] = seed
-                hparams['batch_size'] = cls.batch_size
+                hparams['batch_size'] = args.batch_size
                 hparams['dataset'] = str(args.dataset_dirs)
                 hparams_file.write(json.dumps(hparams, indent=2))
 
@@ -82,11 +88,10 @@ class BaseLearnedDynamicsModel(tf.keras.Model):
                 #  be an x/y dataset as well
                 for train_batch_x, train_batch_y in progressbar.progressbar(train_tf_dataset):
                     step = int(global_step.numpy())
-                    true_train_states = train_batch_y['output_states']
 
                     with tf.GradientTape() as tape:
                         pred_states = net(train_batch_x)
-                        training_batch_loss = loss(y_true=true_train_states, y_pred=pred_states)
+                        training_batch_loss = loss_on_dicts(loss, dict_true=train_batch_y, dict_pred=pred_states)
 
                     variables = net.trainable_variables
                     gradients = tape.gradient(training_batch_loss, variables)
@@ -141,25 +146,35 @@ class BaseLearnedDynamicsModel(tf.keras.Model):
         loss = tf.keras.losses.MeanSquaredError()
 
         test_losses = []
-        test_position_errors = []
-        final_tail_position_errors = []
+        errors = {}
         for test_x, test_y in test_tf_dataset:
-            test_true_states = test_y['output_states']
-            test_gen_states = net(test_x)
-            batch_test_loss = loss(y_true=test_true_states, y_pred=test_gen_states)
-            test_gen_points = tf.reshape(test_gen_states, [test_gen_states.shape[0], test_gen_states.shape[1], -1, 2])
-            test_true_points = tf.reshape(test_true_states, [test_true_states.shape[0], test_true_states.shape[1], -1, 2])
-            batch_test_position_error = tf.reduce_mean(tf.linalg.norm(test_gen_points - test_true_points, axis=3), axis=0)
-            final_tail_position_error = tf.reduce_mean(
-                tf.linalg.norm(test_gen_points[:, -1, -1] - test_true_points[:, -1, -1], axis=1), axis=0)
+            test_pred_states = net(test_x)
+            batch_test_loss = loss_on_dicts(loss, dict_true=test_y, dict_pred=test_pred_states)
             test_losses.append(batch_test_loss)
-            test_position_errors.append(batch_test_position_error)
-            final_tail_position_errors.append(final_tail_position_error)
+
+            for state_key, test_pred_state in test_pred_states.items():
+                test_true_state = test_y[state_key]
+                test_pred_points = tf.reshape(test_pred_state, [test_pred_state.shape[0], test_pred_state.shape[1], -1, 2])
+                test_true_points = tf.reshape(test_true_state, [test_true_state.shape[0], test_true_state.shape[1], -1, 2])
+                batch_test_position_error = tf.reduce_mean(tf.linalg.norm(test_pred_points - test_true_points, axis=3), axis=0)
+                last_pred_point = test_pred_points[:, -1]
+                last_true_point = test_true_points[:, -1]
+                final_tail_position_error = tf.reduce_mean(tf.linalg.norm(last_pred_point - last_true_point, axis=2))
+
+                if state_key not in errors:
+                    errors[state_key] = {
+                        'full_traj': [],
+                        'final_step': []
+                    }
+
+                errors[state_key]['full_traj'].append(batch_test_position_error)
+                errors[state_key]['final_step'].append(final_tail_position_error)
+
         test_loss = np.mean(test_losses)
-        test_position_error = np.mean(test_position_errors)
         print("Test Loss:  {:8.5f}".format(test_loss))
-        mean_final_tail_position_error = np.mean(final_tail_position_errors)
-        print("Mean over Examples of Mean Position Error between points along trajectory: " + Style.BRIGHT + "{:8.4f}(m)".format(
-            test_position_error) + Style.RESET_ALL)
-        print("Mean over Examples of Final Position Error: " + Style.BRIGHT + "{:8.4f}(m)".format(
-            mean_final_tail_position_error) + Style.RESET_ALL)
+
+        for state_key, error_dict in errors.items():
+            mean_position_error = np.mean(error_dict['full_traj'])
+            mean_final_position_error = np.mean(error_dict['final_step'])
+            print("Mean Position Error:" + Style.BRIGHT + "{:8.4f}(m)".format(mean_position_error) + Style.RESET_ALL)
+            print("Mean Final Position Error: " + Style.BRIGHT + "{:8.4f}(m)".format(mean_final_position_error) + Style.RESET_ALL)

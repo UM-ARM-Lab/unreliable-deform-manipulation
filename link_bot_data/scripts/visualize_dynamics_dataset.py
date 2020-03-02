@@ -54,10 +54,10 @@ def main():
 
     # print info about shapes
     input_data, output_data = next(iter(train_dataset))
-    print('Inputs:')
+    print("INPUTS:")
     for k, v in input_data.items():
         print(k, v.shape)
-    print('Outputs:')
+    print("OUTPUTS:")
     for k, v in output_data.items():
         print(k, v.shape)
 
@@ -67,11 +67,8 @@ def main():
 
         out_of_bounds = False
 
-        tether = ('state/tether' in input_data)
-
+        # TODO: draw all kinds of states, not just link bot
         rope_configurations = input_data['state/link_bot'].numpy()
-        if tether:
-            tether_configurations = input_data['state/tether'].numpy()
         actions = input_data['action'].numpy()
         speeds = np.linalg.norm(actions, axis=1)
         all_vs.extend(speeds.tolist())
@@ -95,13 +92,10 @@ def main():
             arrow = plt.Arrow(head_point[0], head_point[1], actions[0, 0], actions[0, 1], width=arrow_width, zorder=4)
             patch = ax.add_patch(arrow)
             link_bot_line = plot_rope_configuration(ax, rope_configurations[0], linewidth=5, zorder=3, c='r')[0]
-            if tether:
-                tether_line = plot_rope_configuration(ax, tether_configurations[0], linewidth=1, zorder=2, c='w')[0]
 
             def update(t):
                 nonlocal patch
                 link_bot_config = rope_configurations[t]
-                tether_config = tether_configurations[t]
                 head_point = link_bot_config.reshape(-1, 2)[-1]
                 action = actions[t]
 
@@ -112,14 +106,8 @@ def main():
                     xs, ys = plottable_rope_configuration(link_bot_config)
                     link_bot_line.set_xdata(xs)
                     link_bot_line.set_ydata(ys)
-                    if tether:
-                        xs, ys = plottable_rope_configuration(tether_config)
-                        tether_line.set_xdata(xs)
-                        tether_line.set_ydata(ys)
                 else:
                     plot_rope_configuration(ax, link_bot_config, linewidth=5, zorder=3, c='r')
-                    if tether:
-                        plot_rope_configuration(ax, tether_config, linewidth=1, zorder=2, c='w')
                 patch.remove()
                 arrow = plt.Arrow(head_point[0], head_point[1], action[0], action[1], width=arrow_width, zorder=4)
                 patch = ax.add_patch(arrow)

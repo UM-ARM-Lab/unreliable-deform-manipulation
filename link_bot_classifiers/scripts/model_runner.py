@@ -122,7 +122,6 @@ def main():
     train_parser.add_argument('--epochs', type=int, default=50)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
-    train_parser.add_argument('--log-grad-every', type=int, help='gradients hists every this many steps/batches', default=1000)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=500)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=1)
     train_parser.set_defaults(func=train)

@@ -1,3 +1,0 @@
-geometry_msgs/Point gripper1_delta_pos
-geometry_msgs/Point gripper2_delta_pos
-float64 max_time_per_step

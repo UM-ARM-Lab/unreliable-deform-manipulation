@@ -39,24 +39,24 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
       "/execute_absolute_action", execute_abs_action_bind, ros::VoidPtr(), &queue_);
   auto action_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteAction, this, _1, _2);
   auto action_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExecuteAction>("/execute_action", action_bind,
-                                                                                        ros::VoidPtr(), &queue_);
+                                                                                   ros::VoidPtr(), &queue_);
   auto action_mode_bind = boost::bind(&MultiLinkBotModelPlugin::OnActionMode, this, _1);
   auto action_mode_so = ros::SubscribeOptions::create<std_msgs::String>("/link_bot_action_mode", 1, action_mode_bind,
                                                                         ros::VoidPtr(), &queue_);
   auto state_bind = boost::bind(&MultiLinkBotModelPlugin::StateServiceCallback, this, _1, _2);
   auto service_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotState>("/link_bot_state", state_bind,
-                                                                                        ros::VoidPtr(), &queue_);
+                                                                                   ros::VoidPtr(), &queue_);
   auto get_object_bind = boost::bind(&MultiLinkBotModelPlugin::GetObjectServiceCallback, this, _1, _2);
   auto get_object_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>("/link_bot", get_object_bind,
-                                                                                        ros::VoidPtr(), &queue_);
+                                                                                   ros::VoidPtr(), &queue_);
   auto reset_bind = boost::bind(&MultiLinkBotModelPlugin::LinkBotReset, this, _1, _2);
   auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("/link_bot_reset", reset_bind,
-                                                                                      ros::VoidPtr(), &queue_);
+                                                                                 ros::VoidPtr(), &queue_);
 
   joy_sub_ = ros_node_->subscribe(joy_so);
   execute_action_service_ = ros_node_->advertiseService(action_so);
   execute_absolute_action_service_ = ros_node_->advertiseService(execute_abs_action_so);
-  register_link_bot_pub_ = ros_node_->advertise<std_msgs::String>("/register_object", 10, true);
+  register_object_pub_ = ros_node_->advertise<std_msgs::String>("/register_object", 10, true);
   reset_service_ = ros_node_->advertiseService(reset_so);
   action_mode_sub_ = ros_node_->subscribe(action_mode_so);
   state_service_ = ros_node_->advertiseService(service_so);
@@ -67,12 +67,20 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   ros_queue_thread_ = std::thread(std::bind(&MultiLinkBotModelPlugin::QueueThread, this));
   execute_trajs_ros_queue_thread_ = std::thread(std::bind(&MultiLinkBotModelPlugin::QueueThread, this));
 
-  while (register_link_bot_pub_.getNumSubscribers() < 1) {
+  while (register_object_pub_.getNumSubscribers() < 1) {
   }
 
-  std_msgs::String register_object;
-  register_object.data = "link_bot";
-  register_link_bot_pub_.publish(register_object);
+  {
+    std_msgs::String register_object;
+    register_object.data = "link_bot";
+    register_object_pub_.publish(register_object);
+  }
+
+  {
+    std_msgs::String register_object;
+    register_object.data = "gripper";
+    register_object_pub_.publish(register_object);
+  }
 
   model_ = parent;
 
@@ -410,8 +418,7 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(peter_msgs::LinkBotTraje
   return true;
 }
 
-bool MultiLinkBotModelPlugin::LinkBotReset(peter_msgs::LinkBotResetRequest &req,
-                                           peter_msgs::LinkBotResetResponse &res)
+bool MultiLinkBotModelPlugin::LinkBotReset(peter_msgs::LinkBotResetRequest &req, peter_msgs::LinkBotResetResponse &res)
 {
   gripper1_target_position_.X(req.point.x);
   gripper1_target_position_.Y(req.point.y);

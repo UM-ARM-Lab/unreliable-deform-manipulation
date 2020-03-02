@@ -43,7 +43,7 @@ def train(args, seed: int):
         ###############
         # Train
         ###############
-        model.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, args, seed)
+        model.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, seed, args)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
         pass
@@ -96,7 +96,7 @@ def main():
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=4)
-    train_parser.add_argument('--debug', action='store_true')
+    train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=500)
     train_parser.set_defaults(func=train)
 
     eval_parser = subparsers.add_parser('eval')

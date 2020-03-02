@@ -1,4 +1,5 @@
 import pathlib
+from dataclasses import dataclass
 from typing import Dict, Optional
 
 import numpy as np
@@ -6,17 +7,11 @@ import ompl.base as ob
 import ompl.control as oc
 from colorama import Fore
 
-import link_bot_planning.viz_object
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_gazebo.gazebo_services import GazeboServices
-from link_bot_planning import model_utils, classifier_utils
-from link_bot_planning.best_first_rrt import BestFirstRRT
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
-from link_bot_planning.nearest_rrt import NearestRRT
-from link_bot_planning.params import PlannerParams
 from link_bot_planning.random_directed_control_sampler import RandomDirectedControlSampler
-from link_bot_planning.sst import SST
 from link_bot_planning.state_spaces import to_numpy, from_numpy, ValidRopeConfigurationCompoundSampler, \
     TrainingSetCompoundSampler, to_numpy_local_env, to_numpy_flat
 from link_bot_planning.viz_object import VizObject
@@ -33,15 +28,11 @@ def ompl_control_to_model_action(control, n_action):
     return np_u
 
 
+@dataclass
 class PlannerResult:
-
-    def __init__(self,
-                 planned_status: ob.PlannerStatus,
-                 path: Optional[Dict[str, np.ndarray]] = None,
-                 controls: Optional[np.ndarray] = None):
-        self.path = path
-        self.controls = controls
-        self.planned_status = planned_status
+    path: Dict[str, np.ndarray]
+    controls: np.ndarray
+    planner_status: ob.PlannerStatus
 
 
 class MyPlanner:
@@ -80,9 +71,11 @@ class MyPlanner:
         self.subspace_name_to_index = {}
         self.subspaces_to_plan_with = {}
         self.subspace_name_to_dim = {}
+        # FIXME: cleanup this whole crappy loop
         for subspace_idx, (name, component_description) in enumerate(self.state_space_description.items()):
             self.subspace_name_to_index[name] = subspace_idx
             if name == 'local_env':
+                # FIXME: Do I even need to set the bounds here???
                 self.n_local_env = self.fwd_model.local_env_params.w_cols * self.fwd_model.local_env_params.h_rows
                 self.local_env_space = ob.RealVectorStateSpace(self.n_local_env)
                 epsilon = 1e-3  # tolerance to make OMPL happy with bounds being inclusive
@@ -90,6 +83,9 @@ class MyPlanner:
                 self.state_space.addSubspace(self.local_env_space, weight=component_description['weight'])
                 self.subspace_name_to_dim[name] = (subspace_idx, self.n_local_env)
             elif name == 'local_env_origin':
+                # FIXME: local env is constant [25,25]
+                #  why track it as part of the state? we should track the origin POINT in meters?
+                # FIXME: Do I even need to set the bounds here???
                 self.local_env_origin_space = ob.RealVectorStateSpace(2)
                 self.local_env_origin_space.setBounds(-10000, 10000)  # 2 is hard coded here
                 self.state_space.addSubspace(self.local_env_origin_space, weight=component_description['weight'])
@@ -362,57 +358,3 @@ def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0)
         # If the planner failed, print the error
         if not planner_status:
             print(Fore.RED + planner_status.asString() + Fore.RESET)
-
-
-def get_planner(planner_params: Dict, services: GazeboServices, seed: int):
-    fwd_model_dir = pathlib.Path(planner_params['fwd_model_dir'])
-    classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])
-    fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, planner_params['fwd_model_type'])
-    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, planner_params['classifier_model_type'])
-    viz_object = link_bot_planning.viz_object.VizObject()
-
-    planner_class_str = planner_params['planner_type']
-    if planner_class_str == 'NearestRRT':
-        planner_class = NearestRRT
-    elif planner_class_str == 'BestFirstRRT':
-        planner_class = BestFirstRRT
-    elif planner_class_str == 'SST':
-        planner_class = SST
-    else:
-        raise ValueError(planner_class_str)
-
-    planner = planner_class(fwd_model=fwd_model,
-                            classifier_model=classifier_model,
-                            planner_params=planner_params,
-                            viz_object=viz_object,
-                            services=services,
-                            seed=seed,
-                            )
-    return planner, model_path_info
-
-
-def get_planner_with_model(planner_class_str: str,
-                           fwd_model: BaseDynamicsFunction,
-                           classifier_model_dir: pathlib.Path,
-                           classifier_model_type: str,
-                           planner_params: PlannerParams,
-                           services: GazeboServices,
-                           seed: int):
-    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, classifier_model_type)
-    viz_object = link_bot_planning.viz_object.VizObject()
-
-    if planner_class_str == 'NearestRRT':
-        planner_class = NearestRRT
-    elif planner_class_str == 'SST':
-        planner_class = SST
-    else:
-        raise ValueError(planner_class_str)
-
-    planner = planner_class(fwd_model=fwd_model,
-                            classifier_model=classifier_model,
-                            planner_params=planner_params,
-                            viz_object=viz_object,
-                            services=services,
-                            seed=seed,
-                            )
-    return planner

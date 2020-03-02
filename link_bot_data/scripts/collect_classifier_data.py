@@ -16,17 +16,17 @@ import tensorflow as tf
 from colorama import Fore
 from ompl import base as ob
 
-import link_bot_data.link_bot_dataset_utils
-from link_bot_data import random_environment_data_utils
-from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
+from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory
 from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import ompl_viz
-from link_bot_planning.my_planner import MyPlanner, get_planner
+from link_bot_planning.my_planner import MyPlanner
+from link_bot_planning.get_planner import get_planner
 from link_bot_planning.params import SimParams
 from link_bot_planning.plan_and_execute import PlanAndExecute
 from link_bot_pycommon import link_bot_sdf_utils
-from link_bot_pycommon.args import my_formatter, point_arg
+from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.ros_pycommon import Services
 from victor import victor_services
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
@@ -49,7 +49,7 @@ class ClassifierDataCollector(PlanAndExecute):
                  sim_params: SimParams,
                  n_steps_per_example: int,
                  n_examples_per_record: int,
-                 services: GazeboServices,
+                 services: Services,
                  reset_gripper_to,
                  fixed_goal,
                  outdir: Optional[pathlib.Path] = None,
@@ -76,7 +76,7 @@ class ClassifierDataCollector(PlanAndExecute):
         self.is_victor = is_victor
 
         if outdir is not None:
-            self.full_output_directory = link_bot_data.link_bot_dataset_utils.data_directory(self.outdir, *self.fwd_model_info)
+            self.full_output_directory = data_directory(self.outdir, *self.fwd_model_info)
             self.full_output_directory = pathlib.Path(self.full_output_directory)
             if not self.full_output_directory.is_dir():
                 print(Fore.YELLOW + "Creating output directory: {}".format(self.full_output_directory) + Fore.RESET)
@@ -117,11 +117,11 @@ class ClassifierDataCollector(PlanAndExecute):
         else:
             super().on_before_plan()
 
-    def get_goal(self, w, h, head_point, env_padding, full_env_data):
+    def get_goal(self, w, h, head_point, full_env_data):
         if self.fixed_goal is not None:
             return self.fixed_goal
         else:
-            return super().get_goal(w, h, head_point, env_padding, full_env_data)
+            return super().get_goal(w, h, head_point, full_env_data)
 
     def on_plan_complete(self,
                          planned_path: Dict[str, np.ndarray],
@@ -249,38 +249,26 @@ def main():
     # Start Services
     if args.env_type == 'victor':
         is_victor = True
-        service_provider = victor_services.VictorServices
+        service_provider = victor_services.VictorServices()
     else:
         is_victor = False
-        service_provider = gazebo_services.GazeboServices
+        service_provider = gazebo_services.GazeboServices()
 
     params = json.load(args.params.open("r"))
     sim_params = SimParams(real_time_rate=params['real_time_rate'],
                            max_step_size=params['max_step_size'],
-                           move_obstacles=params['move_obstacles'],
-                           nudge=False,
-                           goal_padding=0.0)
+                           move_obstacles=params['move_obstacles'])
 
     rospy.init_node('collect_classifier_data')
 
-    initial_object_dict = {
-        'moving_box1': [2.0, 0],
-        'moving_box2': [-1.5, 0],
-        'moving_box3': [-0.5, 1],
-        'moving_box4': [1.5, - 2],
-        'moving_box5': [-1.5, - 2.0],
-        'moving_box6': [-0.5, 2.0],
-    }
-
-    services = service_provider.setup_env(verbose=args.verbose,
-                                          real_time_rate=sim_params.real_time_rate,
-                                          reset_gripper_to=params['reset_gripper_to'],
-                                          max_step_size=sim_params.max_step_size,
-                                          initial_object_dict=initial_object_dict)
-    services.pause(std_srvs.srv.EmptyRequest())
+    service_provider.setup_env(verbose=args.verbose,
+                               real_time_rate=sim_params.real_time_rate,
+                               reset_gripper_to=params['reset_gripper_to'],
+                               max_step_size=sim_params.max_step_size)
+    service_provider.pause(std_srvs.srv.EmptyRequest())
 
     # NOTE: we could make the classifier take a different sized local environment than the dynamics, just a thought.
-    planner, fwd_model_info = get_planner(planner_params=params, services=services, seed=args.seed)
+    planner, fwd_model_info = get_planner(planner_params=params, services=service_provider, seed=args.seed)
 
     data_collector = ClassifierDataCollector(
         planner=planner,
@@ -296,7 +284,7 @@ def main():
         n_steps_per_example=params['n_steps_per_example'],
         n_examples_per_record=params['n_examples_per_record'],
         outdir=args.outdir,
-        services=services,
+        services=service_provider,
         reset_gripper_to=params['reset_gripper_to'],
         fixed_goal=params['fixed_goal'],
         is_victor=is_victor
