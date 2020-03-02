@@ -21,14 +21,15 @@ class MyKerasModel(tf.keras.Model):
         self.batch_size = batch_size
 
 
-def compute_loss_and_metrics(tf_dataset, loss_function, metrics_function):
+def compute_loss_and_metrics(tf_dataset, net, loss_function, metrics_function):
     losses = []
     metrics = {}
     for dataset_element in progressbar.progressbar(tf_dataset):
-        batch_loss = loss_function(dataset_element)
+        predictions = net(dataset_element)
+        batch_loss = loss_function(dataset_element, predictions)
         losses.append(batch_loss)
 
-        metrics_element = metrics_function(dataset_element)
+        metrics_element = metrics_function(dataset_element, predictions)
         for k, v in metrics_element.items():
             if k not in metrics:
                 metrics[k] = []
@@ -43,7 +44,7 @@ def compute_loss_and_metrics(tf_dataset, loss_function, metrics_function):
 
 
 def train(keras_model: MyKerasModel,
-          hparams: Dict,
+          model_hparams: Dict,
           train_tf_dataset,
           val_tf_dataset,
           dataset_dirs: List[pathlib.Path],
@@ -54,14 +55,14 @@ def train(keras_model: MyKerasModel,
           metrics_function: Optional[Callable],
           checkpoint: Optional[pathlib.Path] = None,
           log_path: Optional[pathlib.Path] = None,
-          log_loss_every: int = 500,
+          log_scalars_every: int = 500,
           validation_every: int = 1,
           key_metric: str = 'loss'
           ):
     """
 
     :param keras_model: the class name you want to instantiate.
-    :param hparams:
+    :param model_hparams:
     :param train_tf_dataset:
     :param val_tf_dataset:
     :param dataset_dirs:
@@ -72,14 +73,14 @@ def train(keras_model: MyKerasModel,
     :param metrics_function: Takes an element of the dataset and the predictions on that element and returns a dict of metrics
     :param checkpoint:
     :param log_path:
-    :param log_loss_every:
+    :param log_scalars_every:
     :param validation_every:
     :param key_metric: Used to determine what the "best" model is for saving
     :return:
     """
     optimizer = tf.train.AdamOptimizer()
 
-    net = keras_model(hparams=hparams, batch_size=batch_size)
+    net = keras_model(hparams=model_hparams, batch_size=batch_size)
     global_step = tf.train.get_or_create_global_step()
 
     # If we're resuming a checkpoint, there is no new log path
@@ -112,11 +113,11 @@ def train(keras_model: MyKerasModel,
 
         hparams_path = full_log_path / "hparams.json"
         with hparams_path.open('w') as hparams_file:
-            hparams['log path'] = str(full_log_path)
-            hparams['seed'] = seed
-            hparams['batch_size'] = keras_model.batch_size
-            hparams['dataset'] = [str(dataset_dir) for dataset_dir in dataset_dirs]
-            hparams_file.write(json.dumps(hparams, indent=2))
+            model_hparams['log path'] = str(full_log_path)
+            model_hparams['seed'] = seed
+            model_hparams['batch_size'] = batch_size
+            model_hparams['dataset'] = [str(dataset_dir) for dataset_dir in dataset_dirs]
+            hparams_file.write(json.dumps(model_hparams, indent=2))
 
         writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
 
@@ -149,7 +150,7 @@ def train(keras_model: MyKerasModel,
                     train_batch_metrics = {}
 
                 if logging:
-                    if step % log_loss_every == 0:
+                    if step % log_scalars_every == 0:
                         tf.contrib.summary.scalar("batch loss", train_batch_loss, step=step)
                         for metric_name, metric_value in train_batch_metrics.items():
                             tf.contrib.summary.scalar(metric_name, metric_value, step=step)
@@ -167,10 +168,14 @@ def train(keras_model: MyKerasModel,
             # validation
             ################
             if epoch % validation_every == 0:
-                val_mean_loss, val_mean_metrics = compute_loss_and_metrics(val_tf_dataset, loss_function, metrics_function)
+                val_mean_loss, val_mean_metrics = compute_loss_and_metrics(val_tf_dataset, net, loss_function, metrics_function)
+
+                log_msg = "Epoch: {:5d}, Validation Loss: {:7.4f}"
+                print(Style.BRIGHT + log_msg.format(epoch, training_loss) + Style.NORMAL)
+
                 if logging:
                     tf.contrib.summary.scalar('validation loss', val_mean_loss, step=step)
-                    for metric_name, mean_metric_value in val_mean_metrics:
+                    for metric_name, mean_metric_value in val_mean_metrics.items():
                         tf.contrib.summary.scalar(metric_name, mean_metric_value, step=step)
 
                 # check new best based on the desired metric (or loss)
@@ -179,7 +184,7 @@ def train(keras_model: MyKerasModel,
                 else:
                     key_metric_value = val_mean_metrics[key_metric]
 
-                if key_metric_value < best_key_metric_value:
+                if best_key_metric_value is None or key_metric_value < best_key_metric_value:
                     best_key_metric_value = key_metric_value
                     if logging:
                         save_path = manager.save()
@@ -189,29 +194,35 @@ def train(keras_model: MyKerasModel,
         save_path = manager.save()
         print(Fore.CYAN + "Step {:6d}: Saved final checkpoint {}".format(step, save_path) + Fore.RESET)
 
-    if logging:
-        with writer.as_default(), tf.contrib.summary.always_record_summaries():
+    try:
+        if logging:
+            with writer.as_default(), tf.contrib.summary.always_record_summaries():
+                train_loop()
+        else:
             train_loop()
-    else:
-        train_loop()
+    except KeyboardInterrupt:
+        print(Fore.YELLOW + "Interrupted." + Fore.RESET)
 
 
-def eval(keras_model: MyKerasModel,
-         hparams: Dict,
-         test_tf_dataset,
-         batch_size: int,
-         loss_function: Callable,
-         metrics_function: Optional[Callable],
-         checkpoint: Optional[pathlib.Path] = None,
-         ):
-    net = keras_model(hparams=hparams, batch_size=batch_size)
+def evaluate(keras_model: MyKerasModel,
+             model_hparams: Dict,
+             test_tf_dataset,
+             batch_size: int,
+             loss_function: Callable,
+             checkpoint: pathlib.Path,
+             metrics_function: Optional[Callable],
+             ):
+    net = keras_model(hparams=model_hparams, batch_size=batch_size)
     ckpt = tf.train.Checkpoint(net=net)
     manager = tf.train.CheckpointManager(ckpt, checkpoint, max_to_keep=1)  # doesn't matter here, we're not saving
     ckpt.restore(manager.latest_checkpoint)
     print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
 
-    test_mean_loss, test_mean_metrics = compute_loss_and_metrics(test_tf_dataset, loss_function, metrics_function)
-    print("Test Loss:  {:8.5f}".format(test_mean_loss))
+    try:
+        test_mean_loss, test_mean_metrics = compute_loss_and_metrics(test_tf_dataset, net, loss_function, metrics_function)
+        print("Test Loss:  {:8.5f}".format(test_mean_loss))
 
-    for metric_name, metric_value in test_mean_metrics.items():
-        print("{} {:8.4f}".format(metric_name, metric_value))
+        for metric_name, metric_value in test_mean_metrics.items():
+            print("{} {:8.4f}".format(metric_name, metric_value))
+    except KeyboardInterrupt:
+        print(Fore.YELLOW + "Interrupted." + Fore.RESET)

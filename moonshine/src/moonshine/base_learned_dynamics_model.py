@@ -9,7 +9,7 @@ def dynamics_loss_function(dataset_element, predictions):
     return loss_on_dicts(loss, dict_true=output_data, dict_pred=predictions)
 
 
-def dynamics_metric_function(dataset_element, predictions):
+def dynamics_metrics_function(dataset_element, predictions):
     input_data, output_data = dataset_element
     metrics = {}
     for state_key, pred_state in predictions.items():

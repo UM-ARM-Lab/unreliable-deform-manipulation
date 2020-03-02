@@ -10,13 +10,13 @@ from tensorflow import keras
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from moonshine.action_smear_layer import smear_action
-from moonshine.base_learned_dynamics_model import BaseLearnedDynamicsModel
 from moonshine.numpy_utils import add_batch_to_dict
 from moonshine.raster_points_layer import raster
+from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
-class ObstacleNN(BaseLearnedDynamicsModel):
+class ObstacleNN(MyKerasModel):
 
     def __init__(self, hparams: Dict, batch_size: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -84,7 +84,8 @@ class ObstacleNN(BaseLearnedDynamicsModel):
         env_w_cols = tf.convert_to_tensor(self.local_env_params.w_cols, tf.int64)
         return local_env, local_env_origin, env_h_rows, env_w_cols
 
-    def call(self, input_dict, training=None, mask=None):
+    def call(self, dataset_element, training=None, mask=None):
+        input_dict, _ = dataset_element
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
 

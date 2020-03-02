@@ -30,7 +30,6 @@ class LinkBotStateSpaceDataset(BaseDataset):
             'full_env/extent',
             'full_env/origin',
             'full_env/res',
-            'local_env/res',
         ]
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):

@@ -9,7 +9,8 @@ from colorama import Fore
 
 import state_space_dynamics
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
-from moonshine import experiments_util
+from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_metrics_function
+from moonshine.tensorflow_train_test_loop import evaluate, train
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.6)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -17,7 +18,7 @@ tf.compat.v1.enable_eager_execution(config=config)
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
-def train(args, seed: int):
+def train_func(args, seed: int):
     if args.log:
         log_path = experiments_util.experiment_name(args.log)
     else:
@@ -39,17 +40,25 @@ def train(args, seed: int):
     model_hparams['batch_size'] = args.batch_size
     model = state_space_dynamics.get_model(model_hparams['model_class'])
 
-    try:
-        ###############
-        # Train
-        ###############
-        model.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, seed, args)
-    except KeyboardInterrupt:
-        print(Fore.YELLOW + "Interrupted." + Fore.RESET)
-        pass
+    ###############
+    # Train
+    ###############
+    train(keras_model=model,
+          model_hparams=model_hparams,
+          train_tf_dataset=train_tf_dataset,
+          val_tf_dataset=val_tf_dataset,
+          dataset_dirs=args.dataset_dirs,
+          seed=seed,
+          batch_size=args.batch_size,
+          epochs=args.epochs,
+          loss_function=dynamics_loss_function,
+          metrics_function=dynamics_metrics_function,
+          checkpoint=args.checkpoint,
+          log_path=log_path,
+          log_scalars_every=args.log_scalars_every)
 
 
-def eval(args, seed: int):
+def eval_func(args, seed: int):
     ###############
     # Dataset
     ###############
@@ -69,14 +78,16 @@ def eval(args, seed: int):
 
     model = state_space_dynamics.get_model(model_hparams['model_class'])
 
-    try:
-        ###############
-        # Evaluate
-        ###############
-        model.eval(model_hparams, test_tf_dataset, args)
-    except KeyboardInterrupt:
-        print(Fore.YELLOW + "Interrupted." + Fore.RESET)
-        pass
+    ###############
+    # Evaluate
+    ###############
+    evaluate(keras_model=model,
+             model_hparams=model_hparams,
+             test_tf_dataset=test_tf_dataset,
+             batch_size=args.batch_size,
+             loss_function=dynamics_loss_function,
+             metrics_function=dynamics_metrics_function,
+             checkpoint=args.checkpoint)
 
 
 def main():
@@ -97,7 +108,7 @@ def main():
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=4)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=500)
-    train_parser.set_defaults(func=train)
+    train_parser.set_defaults(func=train_func)
 
     eval_parser = subparsers.add_parser('eval')
     eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
@@ -106,7 +117,7 @@ def main():
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--mode', type=str, choices=['test', 'val', 'train'], default='test')
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
-    eval_parser.set_defaults(func=eval)
+    eval_parser.set_defaults(func=eval_func)
 
     args = parser.parse_args()
 

@@ -11,6 +11,8 @@ import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance, add_transition_image, add_traj_image
 from moonshine import experiments_util
+from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function
+from moonshine.tensorflow_train_test_loop import evaluate, train
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -19,7 +21,7 @@ tf.compat.v1.enable_eager_execution(config=config)
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
-def train(args, seed: int):
+def train_main(args, seed: int):
     if args.log:
         log_path = experiments_util.experiment_name(args.log)
     else:
@@ -60,17 +62,25 @@ def train(args, seed: int):
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
-    try:
-        ###############
-        # Train
-        ###############
-        model.train(model_hparams, train_tf_dataset, val_tf_dataset, log_path, seed, args)
-    except KeyboardInterrupt:
-        print(Fore.YELLOW + "Interrupted." + Fore.RESET)
-        pass
+    ###############
+    # Train
+    ###############
+    train(keras_model=model,
+          model_hparams=model_hparams,
+          train_tf_dataset=train_tf_dataset,
+          val_tf_dataset=val_tf_dataset,
+          dataset_dirs=args.dataset_dirs,
+          seed=seed,
+          batch_size=args.batch_size,
+          epochs=args.epochs,
+          loss_function=binary_classification_loss_function,
+          metrics_function=binary_classification_metrics_function,
+          checkpoint=args.checkpoint,
+          log_path=log_path,
+          log_scalars_every=args.log_scalars_every)
 
 
-def eval(args, seed: int):
+def eval_main(args, seed: int):
     ###############
     # Model
     ###############
@@ -94,15 +104,11 @@ def eval(args, seed: int):
     if labeling_params['balance']:
         print(Fore.GREEN + "balancing..." + Fore.RESET)
         test_tf_dataset = balance(test_tf_dataset)
-    try:
-        ###############
-        # Evaluate
-        ###############
-        test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
-        model.eval(model_hparams, test_tf_dataset, args)
-    except KeyboardInterrupt:
-        print(Fore.YELLOW + "Interrupted." + Fore.RESET)
-        pass
+    ###############
+    # Evaluate
+    ###############
+    test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    evaluate(model_hparams, test_tf_dataset, args)
 
 
 def main():
@@ -124,7 +130,7 @@ def main():
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=500)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=1)
-    train_parser.set_defaults(func=train)
+    train_parser.set_defaults(func=train_main)
     train_parser.add_argument('--seed', type=int, default=None)
 
     eval_parser = subparsers.add_parser('eval')
@@ -133,7 +139,7 @@ def main():
     eval_parser.add_argument('--mode', type=str, choices=['test', 'val'], default='test')
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
-    eval_parser.set_defaults(func=eval)
+    eval_parser.set_defaults(func=eval_main)
     eval_parser.add_argument('--seed', type=int, default=None)
 
     args = parser.parse_args()

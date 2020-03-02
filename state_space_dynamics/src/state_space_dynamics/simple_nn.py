@@ -7,11 +7,11 @@ import tensorflow.keras.layers as layers
 from colorama import Fore
 
 from moonshine.numpy_utils import add_batch_to_dict
+from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
-from moonshine.base_learned_dynamics_model import BaseLearnedDynamicsModel
 
 
-class SimpleNN(BaseLearnedDynamicsModel):
+class SimpleNN(MyKerasModel):
 
     def __init__(self, hparams: Dict, batch_size: int):
         super().__init__(hparams=hparams, batch_size=batch_size)
@@ -27,7 +27,8 @@ class SimpleNN(BaseLearnedDynamicsModel):
         self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
 
-    def call(self, input_dict, training=None, mask=None):
+    def call(self, dataset_element, training=None, mask=None):
+        input_dict, _ = dataset_element
         states = input_dict[self.state_feature]
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
