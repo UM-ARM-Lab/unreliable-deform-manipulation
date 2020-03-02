@@ -19,50 +19,53 @@ constexpr auto stopped_threshold{0.01};
 #pragma ide diagnostic ignored "cppcoreguidelines-pro-type-vararg"
 void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 {
-  // Make sure the ROS node for Gazebo has already been initalized
-  // Initialize ros, if it has not already bee initialized.
+  // Make sure the ROS node for Gazebo has already been initialized
   if (!ros::isInitialized()) {
     auto argc = 0;
     char **argv = nullptr;
     ros::init(argc, argv, "multi_link_bot_model_plugin", ros::init_options::NoSigintHandler);
   }
 
-  ros_node_ = std::make_unique<ros::NodeHandle>("multi_link_bot_model_plugin");
-
   auto joy_bind = boost::bind(&MultiLinkBotModelPlugin::OnJoy, this, _1);
-  auto joy_so = ros::SubscribeOptions::create<sensor_msgs::Joy>("/joy", 1, joy_bind, ros::VoidPtr(), &queue_);
+  auto joy_so = ros::SubscribeOptions::create<sensor_msgs::Joy>("joy", 1, joy_bind, ros::VoidPtr(), &queue_);
   auto execute_trajectory_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteTrajectoryCallback, this, _1, _2);
   auto execute_trajectory_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotTrajectory>(
-      "/link_bot_execute_trajectory", execute_trajectory_bind, ros::VoidPtr(), &execute_trajs_queue_);
+      "link_bot_execute_trajectory", execute_trajectory_bind, ros::VoidPtr(), &execute_trajs_queue_);
   auto execute_abs_action_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteAbsoluteAction, this, _1, _2);
   auto execute_abs_action_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExecuteAction>(
-      "/execute_absolute_action", execute_abs_action_bind, ros::VoidPtr(), &queue_);
+      "execute_absolute_action", execute_abs_action_bind, ros::VoidPtr(), &queue_);
   auto action_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteAction, this, _1, _2);
-  auto action_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExecuteAction>("/execute_action", action_bind,
+  auto action_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExecuteAction>("execute_action", action_bind,
                                                                                    ros::VoidPtr(), &queue_);
   auto action_mode_bind = boost::bind(&MultiLinkBotModelPlugin::OnActionMode, this, _1);
-  auto action_mode_so = ros::SubscribeOptions::create<std_msgs::String>("/link_bot_action_mode", 1, action_mode_bind,
+  auto action_mode_so = ros::SubscribeOptions::create<std_msgs::String>("link_bot_action_mode", 1, action_mode_bind,
                                                                         ros::VoidPtr(), &queue_);
   auto state_bind = boost::bind(&MultiLinkBotModelPlugin::StateServiceCallback, this, _1, _2);
-  auto service_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotState>("/link_bot_state", state_bind,
+  auto service_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotState>("link_bot_state", state_bind,
                                                                                    ros::VoidPtr(), &queue_);
-  auto get_object_bind = boost::bind(&MultiLinkBotModelPlugin::GetObjectServiceCallback, this, _1, _2);
-  auto get_object_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>("/link_bot", get_object_bind,
-                                                                                   ros::VoidPtr(), &queue_);
+  constexpr auto gripper_service_name{"gripper"};
+  auto get_object_gripper_bind = boost::bind(&MultiLinkBotModelPlugin::GetObjectGripperCallback, this, _1, _2);
+  auto get_object_gripper_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>(
+      gripper_service_name, get_object_gripper_bind, ros::VoidPtr(), &queue_);
+  constexpr auto link_bot_service_name{"link_bot"};
+  auto get_object_link_bot_bind = boost::bind(&MultiLinkBotModelPlugin::GetObjectLinkBotCallback, this, _1, _2);
+  auto get_object_link_bot_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>(
+      link_bot_service_name, get_object_link_bot_bind, ros::VoidPtr(), &queue_);
   auto reset_bind = boost::bind(&MultiLinkBotModelPlugin::LinkBotReset, this, _1, _2);
-  auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("/link_bot_reset", reset_bind,
+  auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("link_bot_reset", reset_bind,
                                                                                  ros::VoidPtr(), &queue_);
 
-  joy_sub_ = ros_node_->subscribe(joy_so);
-  execute_action_service_ = ros_node_->advertiseService(action_so);
-  execute_absolute_action_service_ = ros_node_->advertiseService(execute_abs_action_so);
-  register_object_pub_ = ros_node_->advertise<std_msgs::String>("/register_object", 10, true);
-  reset_service_ = ros_node_->advertiseService(reset_so);
-  action_mode_sub_ = ros_node_->subscribe(action_mode_so);
-  state_service_ = ros_node_->advertiseService(service_so);
-  get_object_service_ = ros_node_->advertiseService(get_object_so);
-  execute_traj_service_ = ros_node_->advertiseService(execute_trajectory_so);
-  objects_service_ = ros_node_->serviceClient<peter_msgs::GetObjects>("/objects");
+  joy_sub_ = ros_node_.subscribe(joy_so);
+  execute_action_service_ = ros_node_.advertiseService(action_so);
+  execute_absolute_action_service_ = ros_node_.advertiseService(execute_abs_action_so);
+  register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
+  reset_service_ = ros_node_.advertiseService(reset_so);
+  action_mode_sub_ = ros_node_.subscribe(action_mode_so);
+  state_service_ = ros_node_.advertiseService(service_so);
+  get_object_gripper_service_ = ros_node_.advertiseService(get_object_gripper_so);
+  get_object_link_bot_service_ = ros_node_.advertiseService(get_object_link_bot_so);
+  execute_traj_service_ = ros_node_.advertiseService(execute_trajectory_so);
+  objects_service_ = ros_node_.serviceClient<peter_msgs::GetObjects>("objects");
 
   ros_queue_thread_ = std::thread(std::bind(&MultiLinkBotModelPlugin::QueueThread, this));
   execute_trajs_ros_queue_thread_ = std::thread(std::bind(&MultiLinkBotModelPlugin::QueueThread, this));
@@ -72,13 +75,13 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
 
   {
     std_msgs::String register_object;
-    register_object.data = "link_bot";
+    register_object.data = link_bot_service_name;
     register_object_pub_.publish(register_object);
   }
 
   {
     std_msgs::String register_object;
-    register_object.data = "gripper";
+    register_object.data = gripper_service_name;
     register_object_pub_.publish(register_object);
   }
 
@@ -161,9 +164,9 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   }
 
   // plus 1 because we want both end points inclusive
-  ros_node_->setParam("/link_bot/n_state", static_cast<int>((num_links_ + 1) * 2));
-  ros_node_->setParam("/link_bot/rope_length", length_);
-  ros_node_->setParam("/link_bot/max_speed", max_speed_);
+  ros_node_.setParam("link_bot/n_state", static_cast<int>((num_links_ + 1) * 2));
+  ros_node_.setParam("link_bot/rope_length", length_);
+  ros_node_.setParam("link_bot/max_speed", max_speed_);
 
   auto const &gripper1_link_name = sdf->GetElement("gripper1_link")->Get<std::string>();
   gripper1_link_ = model_->GetLink(gripper1_link_name);
@@ -351,7 +354,22 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(peter_msgs::LinkBotStateReque
   return true;
 }
 
-bool MultiLinkBotModelPlugin::GetObjectServiceCallback(peter_msgs::GetObjectRequest &req,
+bool MultiLinkBotModelPlugin::GetObjectGripperCallback(peter_msgs::GetObjectRequest &req,
+                                                       peter_msgs::GetObjectResponse &res)
+{
+  auto const link = model_->GetLink("head");
+  peter_msgs::NamedPoint head_point;
+  geometry_msgs::Point pt;
+  head_point.point.x = link->WorldPose().Pos().X();
+  head_point.point.y = link->WorldPose().Pos().Y();
+  head_point.name = "gripper";
+  res.object.points.emplace_back(head_point);
+  res.object.name = "gripper";
+
+  return true;
+}
+
+bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req,
                                                        peter_msgs::GetObjectResponse &res)
 {
   res.object.name = "link_bot";
@@ -439,7 +457,7 @@ bool MultiLinkBotModelPlugin::LinkBotReset(peter_msgs::LinkBotResetRequest &req,
 void MultiLinkBotModelPlugin::QueueThread()
 {
   double constexpr timeout = 0.01;
-  while (ros_node_->ok()) {
+  while (ros_node_.ok()) {
     queue_.callAvailable(ros::WallDuration(timeout));
     execute_trajs_queue_.callAvailable(ros::WallDuration(timeout));
   }
@@ -451,7 +469,7 @@ MultiLinkBotModelPlugin::~MultiLinkBotModelPlugin()
   queue_.disable();
   execute_trajs_queue_.clear();
   execute_trajs_queue_.disable();
-  ros_node_->shutdown();
+  ros_node_.shutdown();
   ros_queue_thread_.join();
   execute_trajs_ros_queue_thread_.join();
 }

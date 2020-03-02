@@ -1,6 +1,6 @@
-import pathlib
 from dataclasses import dataclass
-from typing import Dict, Optional
+from dataclasses import dataclass
+from typing import Dict
 
 import numpy as np
 import ompl.base as ob
@@ -8,15 +8,12 @@ import ompl.control as oc
 from colorama import Fore
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
-from link_bot_planning.random_directed_control_sampler import RandomDirectedControlSampler
 from link_bot_planning.state_spaces import to_numpy, from_numpy, ValidRopeConfigurationCompoundSampler, \
     TrainingSetCompoundSampler, to_numpy_local_env, to_numpy_flat
 from link_bot_planning.viz_object import VizObject
-from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon, ros_pycommon
-from link_bot_pycommon.ros_pycommon import get_local_occupancy_data
+from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
@@ -48,11 +45,7 @@ class MyPlanner:
         self.planner = None
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
-        # TODO: remove this concept, it's ill posed. we need Dict[str, int]
-        self.n_state = self.fwd_model.n_state
-        self.n_links = link_bot_pycommon.n_state_to_n_links(self.n_state)
         self.n_action = self.fwd_model.n_action
-        self.n_tether_state = ros_pycommon.get_n_tether_state()
         self.planner_params = planner_params
         # TODO: consider making full env params h/w come from elsewhere. res should match the model though.
         self.full_env_params = self.fwd_model.full_env_params
@@ -65,61 +58,31 @@ class MyPlanner:
         self.state_sampler_rng = np.random.RandomState(seed)
 
         self.state_space = ob.CompoundStateSpace()
-        self.state_space_description = self.planner_params['state_space']
+        self.state_space_weights = self.planner_params['state_space_weights']
 
-        # TODO: unify these three dicts
-        self.subspace_name_to_index = {}
-        self.subspaces_to_plan_with = {}
-        self.subspace_name_to_dim = {}
-        # FIXME: cleanup this whole crappy loop
-        for subspace_idx, (name, component_description) in enumerate(self.state_space_description.items()):
-            self.subspace_name_to_index[name] = subspace_idx
-            if name == 'local_env':
-                # FIXME: Do I even need to set the bounds here???
-                self.n_local_env = self.fwd_model.local_env_params.w_cols * self.fwd_model.local_env_params.h_rows
-                self.local_env_space = ob.RealVectorStateSpace(self.n_local_env)
-                epsilon = 1e-3  # tolerance to make OMPL happy with bounds being inclusive
-                self.local_env_space.setBounds(-epsilon, 1 + epsilon)
-                self.state_space.addSubspace(self.local_env_space, weight=component_description['weight'])
-                self.subspace_name_to_dim[name] = (subspace_idx, self.n_local_env)
-            elif name == 'local_env_origin':
-                # FIXME: local env is constant [25,25]
-                #  why track it as part of the state? we should track the origin POINT in meters?
-                # FIXME: Do I even need to set the bounds here???
-                self.local_env_origin_space = ob.RealVectorStateSpace(2)
-                self.local_env_origin_space.setBounds(-10000, 10000)  # 2 is hard coded here
-                self.state_space.addSubspace(self.local_env_origin_space, weight=component_description['weight'])
-                self.subspace_name_to_dim[name] = (subspace_idx, 2)
-            elif name == 'link_bot':
-                self.link_bot_space = ob.RealVectorStateSpace(self.n_state)
-                self.link_bot_space_bounds = ob.RealVectorBounds(self.n_state)
-                self.subspaces_to_plan_with[name] = (subspace_idx, self.n_state)
-                for i in range(self.n_state):
-                    if i % 2 == 0:
-                        self.link_bot_space_bounds.setLow(i, -self.planner_params['w'] / 2)
-                        self.link_bot_space_bounds.setHigh(i, self.planner_params['w'] / 2)
-                    else:
-                        self.link_bot_space_bounds.setLow(i, -self.planner_params['h'] / 2)
-                        self.link_bot_space_bounds.setHigh(i, self.planner_params['h'] / 2)
-                self.link_bot_space.setBounds(self.link_bot_space_bounds)
-                self.state_space.addSubspace(self.link_bot_space, weight=component_description['weight'])
-                self.subspace_name_to_dim[name] = (subspace_idx, self.n_state)
-            elif name == 'tether':
-                self.tether_space = ob.RealVectorStateSpace(self.n_tether_state)
-                self.tether_space_bounds = ob.RealVectorBounds(self.n_tether_state)
-                self.subspaces_to_plan_with[name] = (subspace_idx, self.n_tether_state)
-                for i in range(self.n_tether_state):
-                    if i % 2 == 0:
-                        self.tether_space_bounds.setLow(i, -self.planner_params['w'] / 2)
-                        self.tether_space_bounds.setHigh(i, self.planner_params['w'] / 2)
-                    else:
-                        self.tether_space_bounds.setLow(i, -self.planner_params['h'] / 2)
-                        self.tether_space_bounds.setHigh(i, self.planner_params['h'] / 2)
-                self.tether_space.setBounds(self.tether_space_bounds)
-                self.state_space.addSubspace(self.tether_space, weight=component_description['weight'])
-                self.subspace_name_to_dim[name] = (subspace_idx, self.n_tether_state)
-        self.local_env_subspace_idx = self.subspace_name_to_index['local_env']
-        self.local_env_origin_subspace_idx = self.subspace_name_to_index['local_env_origin']
+        assert (self.fwd_model.state_keys == list(self.state_space_weights.keys()))
+
+        self.state_space_description = {}
+        for subspace_idx, (state_key, weight) in enumerate(self.state_space_weights.items()):
+            n_state = self.fwd_model.states_description[state_key]
+            subspace_description = {
+                "idx": subspace_idx,
+                "weight": weight,
+                "n_state": n_state
+            }
+            self.state_space_description[state_key] = subspace_description
+
+            self.link_bot_space = ob.RealVectorStateSpace(n_state)
+            self.link_bot_space_bounds = ob.RealVectorBounds(n_state)
+            for i in range(n_state):
+                if i % 2 == 0:
+                    self.link_bot_space_bounds.setLow(i, -self.planner_params['w'] / 2)
+                    self.link_bot_space_bounds.setHigh(i, self.planner_params['w'] / 2)
+                else:
+                    self.link_bot_space_bounds.setLow(i, -self.planner_params['h'] / 2)
+                    self.link_bot_space_bounds.setHigh(i, self.planner_params['h'] / 2)
+            self.link_bot_space.setBounds(self.link_bot_space_bounds)
+            self.state_space.addSubspace(self.link_bot_space, weight=weight)
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
 
@@ -142,50 +105,43 @@ class MyPlanner:
 
         if planner_params['directed_control_sampler'] == 'simple':
             pass  # the default
-        elif planner_params['directed_control_sampler'] == 'random':
-            raise ValueError("This DCS breaks nearest neighbor somehow")
-            self.si.setDirectedControlSamplerAllocator(RandomDirectedControlSampler.allocator(self.seed, self))
+        else:
+            raise NotImplementedError()
 
         self.full_env_data = None
 
         if planner_params['sampler_type'] == 'sample_train':
-            self.dataset_dirs = [pathlib.Path(p) for p in self.fwd_model.hparams['datasets']]
-            dataset = LinkBotStateSpaceDataset(self.dataset_dirs)
-            tf_dataset = dataset.get_datasets(mode='train', sequence_length=None)
-            tf_dataset = tf_dataset.shuffle(seed=args.seed, shuffle=True)
-            self.training_dataset = tf_dataset
-            self.train_dataset_max_sequence_length = dataset.max_sequence_length
+            raise NotImplementedError()
 
-    def get_local_env_at(self, x: float, y: float):
-        center_point = np.array([x, y])
-        return get_local_occupancy_data(rows=self.fwd_model.local_env_params.h_rows,
-                                        cols=self.fwd_model.local_env_params.w_cols,
-                                        res=self.fwd_model.local_env_params.res,
-                                        center_point=center_point,
-                                        services=self.services)
+        self.goal_description = self.planner_params['goal_description']
+        self.goal_subspace_name = self.goal_description['state_key']
+        self.goal_subspace_idx = self.state_space_description[self.goal_subspace_name]['idx']
+        self.goal_n_state = self.state_space_description[self.goal_subspace_name]['n_state']
+        self.goal_point_idx = self.goal_description['point_idx']
 
     def is_valid(self, state):
-        for idx, _ in self.subspaces_to_plan_with.values():
-            return self.state_space.getSubspace(idx).satisfiesBounds(state[idx])
+        return self.state_space.satisfiesBounds(state)
 
     def motions_valid(self, motions):
-        named_states = dict((subspace_name, []) for subspace_name in self.subspaces_to_plan_with.keys())
+        # Dict of state_key: np.ndarray [n_state]
+        named_states = dict((subspace_name, []) for subspace_name in self.state_space_description.keys())
         actions = []
         for t, motion in enumerate(motions):
             # motions is a vector of oc.Motion, which has a state, parent, and control
             state = motion.getState()
-            np_states = self.subspaces_to_plan_with_to_numpy(state)
+            np_states = self.compound_to_numpy(state)
             for subspace_name, state_t in np_states.items():
                 named_states[subspace_name].append(state_t)
             if t > 0:  # skip the first (null) action, because that would represent the action that brings us to the first state
                 actions.append(self.control_to_numpy(motion.getControl()))
 
+        named_states_np = {}
         for subspace_name, states in named_states.items():
-            named_states[subspace_name] = np.array(states)
+            named_states_np[subspace_name] = np.array(states)
         actions = np.array(actions)
 
         accept_probability = self.classifier_model.check_constraint(full_env=self.full_env_data,
-                                                                    states=named_states,
+                                                                    states=named_states_np,
                                                                     actions=actions)
 
         classifier_accept = accept_probability > self.planner_params['accept_threshold']
@@ -198,11 +154,12 @@ class MyPlanner:
 
         return motions_is_valid
 
-    def subspaces_to_plan_with_to_numpy(self, start):
-        # we only need to convert the components of state that we plan with
+    def compound_to_numpy(self, state):
         np_states = {}
-        for name, (idx, n) in self.subspaces_to_plan_with.items():
-            np_s = to_numpy_flat(start[idx], n)
+        for name, subspace_description in self.state_space_description.items():
+            idx = subspace_description['idx']
+            n_state = subspace_description['n_state']
+            np_s = to_numpy_flat(state[idx], n_state)
             np_states[name] = np_s
         return np_states
 
@@ -225,31 +182,24 @@ class MyPlanner:
             final_states[state_name] = pred_next_states[-1]
         return final_states
 
-    def compound_from_numpy(self, np_start_states, np_final_states, state_out):
-        for name, (idx, n) in self.subspaces_to_plan_with.items():
-            from_numpy(np_final_states[name], state_out[idx], n)
-
-        # we need the start link bot head point because that's where the local environment should be centered
-        start_head_point = np_start_states['link_bot'][-2:]
-        local_env_data_next = self.get_local_env_at(start_head_point[0], start_head_point[1])
-        local_env_next = local_env_data_next.data.flatten().astype(np.float64)
-        for idx in range(self.n_local_env):
-            state_out[self.local_env_subspace_idx][idx] = local_env_next[idx]
-        origin_next = local_env_data_next.origin.astype(np.float64)
-        from_numpy(origin_next, state_out[self.local_env_origin_subspace_idx], 2)  # FIXME: 2 is hardcoded
+    def compound_from_numpy(self, np_final_states: Dict[str, np.ndarray], state_out):
+        for name, subspace_description in self.state_space_description.items():
+            idx = subspace_description['idx']
+            n_state = subspace_description['n_state']
+            from_numpy(np_final_states[name], state_out[idx], n_state)
 
     def propagate(self, start, control, duration, state_out):
         del duration  # unused, multi-step propagation is handled inside propagateMotionsWhileValid
 
         # Convert from OMPL -> Numpy
-        np_states = self.subspaces_to_plan_with_to_numpy(start)
+        np_states = self.compound_to_numpy(start)
         np_action = self.control_to_numpy(control)
         np_actions = np.expand_dims(np_action, axis=0)
 
         np_final_states = self.predict(np_states, np_actions)
 
         # Convert back Numpy -> OMPL
-        self.compound_from_numpy(np_states, np_final_states, state_out)
+        self.compound_from_numpy(np_final_states, state_out)
 
     def plan(self, start_states: Dict[str, np.ndarray], tail_goal_point: np.ndarray,
              full_env_data: link_bot_sdf_utils.OccupancyData) -> PlannerResult:
@@ -262,22 +212,17 @@ class MyPlanner:
         self.full_env_data = full_env_data
 
         # create start and goal states
-        link_bot_start_state = start_states['link_bot']
-        start_local_occupancy = self.get_local_env_at(link_bot_start_state[-2], link_bot_start_state[-1])
         compound_start = ob.CompoundState(self.state_space)
-        for name, (idx, n) in self.subspaces_to_plan_with.items():
-            for i in range(n):
-                compound_start()[idx][i] = start_states[name][i]
-        start_local_occupancy_flat_double = start_local_occupancy.data.flatten().astype(np.float64)
-        for idx in range(self.n_local_env):
-            occupancy_value = start_local_occupancy_flat_double[idx]
-            compound_start()[self.local_env_subspace_idx][idx] = occupancy_value
-        start_local_occupancy_origin_double = start_local_occupancy.origin.astype(np.float64)
-        compound_start()[self.local_env_origin_subspace_idx][0] = start_local_occupancy_origin_double[0]
-        compound_start()[self.local_env_origin_subspace_idx][1] = start_local_occupancy_origin_double[1]
+        self.compound_from_numpy(start_states, compound_start())
 
         start = ob.State(compound_start)
-        goal = LinkBotCompoundGoal(self.si, self.planner_params['goal_threshold'], tail_goal_point, self.viz_object, self.n_state)
+        goal = LinkBotCompoundGoal(self.si,
+                                   self.goal_description['threshold'],
+                                   tail_goal_point,
+                                   self.viz_object,
+                                   self.goal_subspace_idx,
+                                   self.goal_point_idx,
+                                   self.goal_n_state)
 
         self.ss.clear()
         self.viz_object.clear()
@@ -324,7 +269,7 @@ class MyPlanner:
     def convert_path(self, ompl_path: oc.PathControl):
         planned_path = {}
         for time_idx, compound_state in enumerate(ompl_path.getStates()):
-            for subspace_idx, name in enumerate(self.state_space_description):
+            for subspace_idx, name in enumerate(self.state_space_weights):
                 if name not in planned_path:
                     planned_path[name] = []
 

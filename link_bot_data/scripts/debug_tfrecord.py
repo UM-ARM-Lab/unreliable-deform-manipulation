@@ -7,9 +7,9 @@ import tensorflow as tf
 from google.protobuf.json_format import MessageToDict
 import argparse
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
-config = tf.ConfigProto(gpu_options=gpu_options)
-tf.enable_eager_execution(config=config)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+tf.compat.v1.enable_eager_execution(config=config)
 
 
 def main():
@@ -18,9 +18,6 @@ def main():
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train')
 
     args = parser.parse_args()
-
-    dataset_hparams_filename = args.dataset_dir / 'hparams.json'
-    hparams = json.load(open(str(dataset_hparams_filename), 'r'))
 
     filenames = [str(filename) for filename in args.dataset_dir.glob("{}/*.tfrecords".format(args.mode))]
     options = tf.python_io.TFRecordOptions(compression_type='ZLIB')

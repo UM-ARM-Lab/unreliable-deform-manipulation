@@ -58,7 +58,9 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   bool StateServiceCallback(peter_msgs::LinkBotStateRequest &req, peter_msgs::LinkBotStateResponse &res);
 
-  bool GetObjectServiceCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
+  bool GetObjectGripperCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
+
+  bool GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
 
   bool ExecuteTrajectoryCallback(peter_msgs::LinkBotTrajectoryRequest &req, peter_msgs::LinkBotTrajectoryResponse &res);
 
@@ -90,12 +92,13 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   ignition::math::Vector3d gripper1_target_position_{0, 0, 0};
   ignition::math::Vector3d gripper1_pos_error_{0, 0, 0};
   ignition::math::Vector3d gripper1_vel_{0, 0, 0};
-  std::unique_ptr<ros::NodeHandle> ros_node_;
+  ros::NodeHandle ros_node_;
   ros::Subscriber joy_sub_;
   ros::Subscriber action_mode_sub_;
   ros::Subscriber config_sub_;
   ros::ServiceServer state_service_;
-  ros::ServiceServer get_object_service_;
+  ros::ServiceServer get_object_link_bot_service_;
+  ros::ServiceServer get_object_gripper_service_;
   ros::ServiceServer execute_action_service_;
   ros::ServiceServer execute_absolute_action_service_;
   ros::ServiceServer execute_traj_service_;

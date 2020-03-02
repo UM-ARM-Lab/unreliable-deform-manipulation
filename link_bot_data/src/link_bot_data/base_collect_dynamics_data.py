@@ -11,23 +11,32 @@ import rospy
 import tensorflow
 from colorama import Fore
 
-import ignition.markers
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory
+from geometry_msgs.msg import Point
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
 from link_bot_pycommon import ros_pycommon, link_bot_pycommon
 from peter_msgs.srv import ExecuteActionRequest
 
 
-def sample_delta_pos(action_rng, max_delta_pos, last_dx, last_dy):
-    # TODO: consider resetting on out-of-bounds? right now there is no notion of bounds
-    if action_rng.uniform(0, 1) < 0.8:
-        gripper1_dx = last_dx
-        gripper1_dy = last_dy
-    else:
-        delta_pos = action_rng.uniform(0, max_delta_pos)
-        direction = action_rng.uniform(-np.pi, np.pi)
-        gripper1_dx = np.cos(direction) * delta_pos
-        gripper1_dy = np.sin(direction) * delta_pos
+def sample_delta_pos(action_rng: np.random.RandomState,
+                     max_delta_pos: float,
+                     gripper_point: Point,
+                     goal_env_w: float,
+                     goal_env_h: float,
+                     last_dx: float,
+                     last_dy: float):
+    while True:
+        if action_rng.uniform(0, 1) < 0.8:
+            gripper1_dx = last_dx
+            gripper1_dy = last_dy
+        else:
+            delta_pos = action_rng.uniform(0, max_delta_pos)
+            direction = action_rng.uniform(-np.pi, np.pi)
+            gripper1_dx = np.cos(direction) * delta_pos
+            gripper1_dy = np.sin(direction) * delta_pos
+
+        if -goal_env_w <= gripper_point.x + gripper1_dx <= goal_env_w and -goal_env_h <= gripper_point.y + gripper1_dy <= goal_env_h:
+            break
 
     return gripper1_dx, gripper1_dy
 
@@ -42,31 +51,30 @@ def generate_traj(args, service_provider, traj_idx, global_t_step, action_rng: n
     full_env_data = ros_pycommon.get_occupancy_data(env_w=args.env_w, env_h=args.env_h, res=args.res, services=service_provider)
 
     feature = {
-        'local_env_rows': float_tensor_to_bytes_feature([args.local_env_rows]),
-        'local_env_cols': float_tensor_to_bytes_feature([args.local_env_cols]),
         'full_env/env': float_tensor_to_bytes_feature(full_env_data.data),
         'full_env/extent': float_tensor_to_bytes_feature(full_env_data.extent),
         'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),
         'full_env/res': float_tensor_to_bytes_feature(full_env_data.resolution),
-        'local_env/res': float_tensor_to_bytes_feature(args.resolution)
     }
 
     gripper1_dx = gripper1_dy = 0
     for time_idx in range(args.steps_per_traj):
         objects_response = service_provider.get_objects()
         states_dict = {}
-        # FIXME: how to get state in a generic way?
-        for object in objects_response.objects:
+        for object in objects_response.objects.objects:
             state = link_bot_pycommon.flatten_named_points(object.points)
-            local_env_point = ?
-            local_env_data = ros_pycommon.get_local_occupancy_data(args.local_env_rows,
-                                                                   args.local_env_cols,
-                                                                   args.res,
-                                                                   center_point=local_env_point,
-                                                                   services=service_provider)
             states_dict[object.name] = state
 
-        gripper1_dx, gripper1_dy = sample_delta_pos(action_rng, max_delta_pos, gripper1_dx, gripper1_dy)
+        gripper_point = Point()
+        gripper_point.x = states_dict['gripper'][0]
+        gripper_point.y = states_dict['gripper'][1]
+        gripper1_dx, gripper1_dy = sample_delta_pos(action_rng=action_rng,
+                                                    max_delta_pos=max_delta_pos,
+                                                    gripper_point=gripper_point,
+                                                    goal_env_w=args.goal_env_w,
+                                                    goal_env_h=args.goal_env_h,
+                                                    last_dx=gripper1_dx,
+                                                    last_dy=gripper1_dy)
 
         action_msg.action.gripper1_delta_pos.x = gripper1_dx
         action_msg.action.gripper1_delta_pos.y = gripper1_dy
@@ -143,7 +151,6 @@ def generate(service_provider, args):
     full_env_params = FullEnvParams(h_rows=full_env_rows, w_cols=full_env_cols, res=args.res)
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
-                           goal_padding=0.5,
                            move_obstacles=not args.no_obstacles)
 
     states_description = service_provider.get_states_description()
@@ -170,7 +177,6 @@ def generate(service_provider, args):
     service_provider.setup_env(verbose=args.verbose,
                                real_time_rate=args.real_time_rate,
                                max_step_size=args.max_step_size,
-                               reset_gripper_to=None,
-                               initial_object_dict=None)
+                               reset_gripper_to=None)
 
     generate_trajs(service_provider, args, full_output_directory, env_rng, action_rng)

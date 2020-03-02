@@ -89,7 +89,7 @@ def main():
                                          actions=action)
         next_state = np.reshape(next_state, [2, 1, -1])[1]
 
-        # classifier_model.show = True
+        # FIXME: give classifier model access to something that lets it's get the environment information
         accept_probability = classifier_model.check_constraint(local_env_data, state.flatten(), next_state.flatten(), action.flatten())
         prediction = 1 if accept_probability > 0.5 else 0
         title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)

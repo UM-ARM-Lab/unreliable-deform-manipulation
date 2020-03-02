@@ -21,6 +21,7 @@ class SimpleNN(BaseLearnedDynamicsModel):
         self.dense_layers = []
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
+        # TODO: make state_key always mean without "state/" and state_feature always mean with
         self.state_key = self.hparams['state_key']
         self.state_feature = "state/{}".format(self.state_key)
         self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
@@ -59,14 +60,15 @@ class SimpleNN(BaseLearnedDynamicsModel):
 
 class SimpleNNWrapper(BaseDynamicsFunction):
 
-    def __init__(self, model_dir: pathlib.Path):
-        super().__init__(model_dir)
-        self.net = SimpleNN(hparams=self.hparams)
+    def __init__(self, model_dir: pathlib.Path, batch_size: int):
+        super().__init__(model_dir, batch_size)
+        self.net = SimpleNN(hparams=self.hparams, batch_size=batch_size)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
+        self.state_keys = [self.net.state_key]
 
     def propagate(self,
                   full_env: np.ndarray,
@@ -77,14 +79,14 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         del full_env  # unused
         del full_env_origin  # unused
         del res  # unsed
-        state = states[self.net.state_key]  # consider making this an hparam?
+        state = states[self.net.state_key]
         T, _ = actions.shape
         state = np.expand_dims(state, axis=0)
         state = tf.convert_to_tensor(state, dtype=tf.float32)
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {
             # must be batch, T, n_state
-            'state/{}'.format(self.net.state_key): state,
+            self.net.state_feature: state,
             # must be batch, T, 2
             'action': actions,
         }

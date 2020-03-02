@@ -61,8 +61,7 @@ class GazeboServices(Services):
         set.enabled = True
         self.set_physics.call(set)
 
-        if reset_gripper_to is not None:
-            self.reset_world(verbose, reset_gripper_to)
+        self.reset_world(verbose, reset_gripper_to)
 
         # first the controller
         stop = ExecuteActionRequest()
@@ -81,10 +80,12 @@ class GazeboServices(Services):
         enable_link_bot.data = 'position'
         self.link_bot_mode.publish(enable_link_bot)
 
-        reset = LinkBotResetRequest()
-        reset.point.x = reset_gripper_to[0]
-        reset.point.y = reset_gripper_to[1]
-        self.link_bot_reset(reset)
+        if reset_gripper_to is not None:
+            reset = LinkBotResetRequest()
+            reset.point.x = reset_gripper_to[0]
+            reset.point.y = reset_gripper_to[1]
+            self.link_bot_reset(reset)
+
         if verbose >= 1:
             print(Fore.YELLOW + "World is Reset" + Fore.RESET)
 

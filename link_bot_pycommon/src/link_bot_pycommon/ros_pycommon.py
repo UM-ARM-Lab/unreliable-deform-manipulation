@@ -63,7 +63,7 @@ class Services:
         states_dict = {}
         for subspace in states_response.subspaces:
             states_dict[subspace.name] = subspace.dimensions
-        return states_response
+        return states_dict
 
     def start_record_trial(self, filename):
         start_msg = TriggerVideoRecordingRequest()
@@ -143,9 +143,8 @@ def get_occupancy_data(env_h,
                                    res=res,
                                    center_x=0,
                                    center_y=0)
-    resolution = response.res
     origin = np.array(response.origin)
-    full_env_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=resolution, origin=origin)
+    full_env_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=res, origin=origin)
     return full_env_data
 
 
@@ -208,6 +207,7 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result,
 
             if object.name == 'link_bot' and local_env_params is not None:
                 actual_head_point = np.array([np_config[-2], np_config[-1]])
+                # FIXME: remove get_local_occupancy?
                 actual_local_env = get_local_occupancy_data(rows=local_env_params.h_rows,
                                                             cols=local_env_params.w_cols,
                                                             res=local_env_params.res,

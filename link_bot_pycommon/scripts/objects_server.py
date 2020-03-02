@@ -30,7 +30,8 @@ def state_space_handler(req):
         object_res = service.call(object_req)
         subspace = SubspaceDescription()
         subspace.name = object_res.object.name
-        subspace.dimensions = len(object_res.object.points)
+        # FIXME: this assumes points are in 2D...
+        subspace.dimensions = len(object_res.object.points) * 2
         res.subspaces.append(subspace)
 
     return res

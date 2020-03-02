@@ -7,7 +7,6 @@
   "sampler_type": "random",
   "directed_control_sampler": "simple",
   "accept_threshold": 0.5,
-  "goal_threshold": 0.15,
   "max_angle_rad": 1.0,
   "random_epsilon": 0.05,
   "w": 5.0,
@@ -15,16 +14,13 @@
   "random_goal_w": 4.5,
   "random_goal_h": 4.5,
   "timeout": 10,
-  "state_space": {
-    "link_bot": {
-      "weight": 1.0
-    },
-    "local_env": {
-      "weight": 0.0
-    },
-    "local_env_origin": {
-      "weight": 0.0
-    }
+  "state_space_weights": {
+    "link_bot": 1.0
+  },
+  "goal_description": {
+    "threshold": 0.15,
+    "state_key": "link_bot",
+    "point_idx": "0"
   },
 	"move_obstacles": true,
   "fixed_goal": null,
