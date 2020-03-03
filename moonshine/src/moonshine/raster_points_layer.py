@@ -4,7 +4,6 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon import link_bot_pycommon
-from link_bot_pycommon.link_bot_sdf_utils import idx_to_point
 from moonshine.action_smear_layer import smear_action
 from moonshine.numpy_utils import add_batch
 
