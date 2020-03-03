@@ -18,10 +18,9 @@ from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 class ObstacleNN(MyKerasModel):
 
-    def __init__(self, hparams: Dict, batch_size: int, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, hparams: Dict, batch_size: int):
+        super().__init__(hparams, batch_size)
         self.initial_epoch = 0
-        self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
 
         self.local_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['local_env_params'])
         self.full_env_params = FullEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['full_env_params'])
@@ -92,23 +91,22 @@ class ObstacleNN(MyKerasModel):
         substates_0 = []
         for name, n in self.used_states_description.items():
             state_key = 'state/{}'.format(name)
-            substate_0 = tf.expand_dims(input_dict[state_key], axis=2)
+            substate_0 = input_dict[state_key][:, 0]
             substates_0.append(substate_0)
 
         s_0 = tf.concat(substates_0, axis=1)
 
-        resolution = input_dict['res']
+        resolution = input_dict['full_env/res']
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']
 
         pred_states = [s_0]
         for t in range(input_sequence_length):
             s_t = pred_states[-1]
-            s_t_squeeze = tf.squeeze(s_t, squeeze_dims=2)
 
             action_t = actions[:, t]
 
-            head_point_t = s_t_squeeze[:, -2:]
+            head_point_t = s_t[:, -2:]
             if 'use_full_env' in self.hparams and self.hparams['use_full_env']:
                 env = full_env
                 env_origin = full_env_origin
@@ -118,7 +116,7 @@ class ObstacleNN(MyKerasModel):
                 # the local environment used at each time step is centered on the current point of the head
                 env, env_origin, env_h_rows, env_w_cols = self.get_local_env(head_point_t, full_env_origin, full_env)
 
-            rope_image_t = tf.numpy_function(raster, [s_t_squeeze, resolution, env_origin, env_h_rows, env_w_cols], tf.float32)
+            rope_image_t = tf.numpy_function(raster, [s_t, resolution, env_origin, env_h_rows, env_w_cols], tf.float32)
 
             action_image_t = tf.numpy_function(smear_action, [action_t, env_h_rows, env_w_cols], tf.float32)
 
@@ -131,7 +129,7 @@ class ObstacleNN(MyKerasModel):
                 z_t = pool_layer(z_t)
             conv_z_t = self.flatten_conv_output(z_t)
             if self.hparams['mixed']:
-                full_z_t = self.concat2([s_t_squeeze, action_t, conv_z_t])
+                full_z_t = self.concat2([s_t, action_t, conv_z_t])
             else:
                 full_z_t = conv_z_t
 
@@ -141,23 +139,22 @@ class ObstacleNN(MyKerasModel):
 
             if self.hparams['residual']:
                 # residual prediction, otherwise just take the final hidden representation as the next state
-                residual_t = tf.expand_dims(full_z_t, axis=2)
+                residual_t = full_z_t
                 s_t_plus_1_flat = s_t + residual_t
             else:
-                s_t_plus_1_flat = tf.expand_dims(full_z_t, axis=2)
+                s_t_plus_1_flat = full_z_t
 
             pred_states.append(s_t_plus_1_flat)
 
-        pred_states = tf.stack(pred_states)
-        pred_states = tf.transpose(pred_states, [1, 0, 2, 3])
-        pred_states = tf.squeeze(pred_states, squeeze_dims=3)
+        pred_states = tf.stack(pred_states, axis=1)
 
         # Split the big state vectors up by state name/dim
         start_idx = 0
         output_states_dict = {}
         for name, n in self.used_states_description.items():
             end_idx = start_idx + n
-            output_states_dict[name] = pred_states[:, :, start_idx:end_idx]
+            name_feature = 'state/{}'.format(name)
+            output_states_dict[name_feature] = pred_states[:, :, start_idx:end_idx]
             start_idx += n
 
         return output_states_dict
@@ -166,7 +163,7 @@ class ObstacleNN(MyKerasModel):
 class ObstacleNNWrapper(BaseDynamicsFunction):
 
     def __init__(self, model_dir: pathlib.Path, batch_size: int):
-        super().__init__(model_dir)
+        super().__init__(model_dir, batch_size)
         self.net = ObstacleNN(hparams=self.hparams, batch_size=batch_size)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)

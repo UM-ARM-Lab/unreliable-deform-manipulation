@@ -1,5 +1,6 @@
 {
   "model_class": "ObstacleNN",
+  "type": "obs",
   "use_full_env": true,
   "tether": true,
   "states_keys": [
