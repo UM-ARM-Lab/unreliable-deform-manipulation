@@ -103,7 +103,7 @@ def main():
 
     params = json.load(args.params.open('r'))
 
-    fwd_model, _ = model_utils.load_generic_model(pathlib.Path(params['fwd_model_dir']), params['fwd_model_type'])
+    fwd_model, _ = model_utils.load_generic_model(pathlib.Path(params['fwd_model_dir']))
 
     services.setup_env(verbose=args.verbose,
                        real_time_rate=args.real_time_rate,

@@ -5,10 +5,10 @@ import pathlib
 
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
 
 import state_space_dynamics
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
+from moonshine import experiments_util
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_metrics_function
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
@@ -107,7 +107,7 @@ def main():
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=4)
-    train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=500)
+    train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=111)
     train_parser.set_defaults(func=train_func)
 
     eval_parser = subparsers.add_parser('eval')

@@ -260,7 +260,7 @@ def main():
         classifier_model_type = planner_params['classifier_model_type']
         planner_type = planner_params['planner_type']
 
-        fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, fwd_model_type)
+        fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir)
 
         # Start Services
         if args.env_type == 'victor':
@@ -271,8 +271,7 @@ def main():
         services = service_provider.setup_env(verbose=args.verbose,
                                               real_time_rate=planner_params['real_time_rate'],
                                               reset_gripper_to=planner_params['reset_gripper_to'],
-                                              max_step_size=fwd_model.max_step_size,
-                                              initial_object_dict=initial_object_dict)
+                                              max_step_size=fwd_model.max_step_size)
 
         services.pause(std_srvs.srv.EmptyRequest())
 

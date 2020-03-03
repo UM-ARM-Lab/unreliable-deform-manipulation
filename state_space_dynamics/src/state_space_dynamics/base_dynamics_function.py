@@ -30,3 +30,11 @@ class BaseDynamicsFunction:
                   states: Dict[str, np.ndarray],
                   actions: np.ndarray) -> Dict[str, np.ndarray]:
         raise NotImplementedError()
+
+    def propagate_differentiable(self,
+                                 full_env: np.ndarray,
+                                 full_env_origin: np.ndarray,
+                                 res: np.ndarray,
+                                 states: Dict[str, np.ndarray],
+                                 actions: np.ndarray) -> Dict[str, np.ndarray]:
+        raise NotImplementedError()

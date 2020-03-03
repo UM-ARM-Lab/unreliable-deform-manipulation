@@ -64,7 +64,6 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("model_dir", type=pathlib.Path, help='path to model')
-    parser.add_argument("model_type", choices=['nn', 'llnn', 'rigid', 'obs'], default='obs', help='type of model')
     parser.add_argument("outdir", type=pathlib.Path, help="output metrics (and optionally visualizations) here")
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--max-step-size', type=float, default=0.01)
@@ -83,7 +82,7 @@ def main():
 
     rospy.init_node('compare_to_true_gazebo')
 
-    fwd_model, _ = model_utils.load_generic_model(args.model_dir, args.model_type)
+    fwd_model, _ = model_utils.load_generic_model(args.model_dir)
 
     # Start Services
     services = gazebo_services.GazeboServices()

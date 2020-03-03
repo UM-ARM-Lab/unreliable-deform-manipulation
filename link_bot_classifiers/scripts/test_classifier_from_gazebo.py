@@ -27,9 +27,7 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
-    parser.add_argument("fwd_model_type", choices=['nn', 'gp', 'llnn', 'rigid', 'obs'], default='nn')
     parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
-    parser.add_argument("classifier_model_type", choices=['collision', 'none', 'raster'], default='raster')
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--no-plot', action='store_true', help="don't show plots, useful for debugging")
     parser.add_argument('-v', type=float, default=0.3, help='speed of test actions')
@@ -37,8 +35,8 @@ def main():
     args = parser.parse_args()
 
     # use forward model to predict given the input action
-    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir, args.fwd_model_type)
-    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, args.classifier_model_type)
+    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir)
+    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir)
     local_env_params = fwd_model.local_env_params
     full_env_params = fwd_model.full_env_params
     cols = local_env_params.w_cols

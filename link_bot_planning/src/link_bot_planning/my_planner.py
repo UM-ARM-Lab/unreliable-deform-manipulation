@@ -10,8 +10,9 @@ from colorama import Fore
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
+from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_planning.state_spaces import to_numpy, from_numpy, ValidRopeConfigurationCompoundSampler, \
-    TrainingSetCompoundSampler, to_numpy_local_env, to_numpy_flat
+    TrainingSetCompoundSampler, to_numpy_flat
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
@@ -37,7 +38,7 @@ class MyPlanner:
     def __init__(self,
                  fwd_model: BaseDynamicsFunction,
                  classifier_model: BaseConstraintChecker,
-                 planner_params: Dict,
+                 params: Dict,
                  services: GazeboServices,
                  viz_object: VizObject,
                  seed: int,
@@ -46,7 +47,7 @@ class MyPlanner:
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.n_action = self.fwd_model.n_action
-        self.planner_params = planner_params
+        self.params = params
         # TODO: consider making full env params h/w come from elsewhere. res should match the model though.
         self.full_env_params = self.fwd_model.full_env_params
         self.services = services
@@ -58,7 +59,7 @@ class MyPlanner:
         self.state_sampler_rng = np.random.RandomState(seed)
 
         self.state_space = ob.CompoundStateSpace()
-        self.state_space_weights = self.planner_params['state_space_weights']
+        self.state_space_weights = self.params['state_space_weights']
 
         assert (self.fwd_model.state_keys == list(self.state_space_weights.keys()))
 
@@ -76,11 +77,11 @@ class MyPlanner:
             self.link_bot_space_bounds = ob.RealVectorBounds(n_state)
             for i in range(n_state):
                 if i % 2 == 0:
-                    self.link_bot_space_bounds.setLow(i, -self.planner_params['w'] / 2)
-                    self.link_bot_space_bounds.setHigh(i, self.planner_params['w'] / 2)
+                    self.link_bot_space_bounds.setLow(i, -self.params['w'] / 2)
+                    self.link_bot_space_bounds.setHigh(i, self.params['w'] / 2)
                 else:
-                    self.link_bot_space_bounds.setLow(i, -self.planner_params['h'] / 2)
-                    self.link_bot_space_bounds.setHigh(i, self.planner_params['h'] / 2)
+                    self.link_bot_space_bounds.setLow(i, -self.params['h'] / 2)
+                    self.link_bot_space_bounds.setHigh(i, self.params['h'] / 2)
             self.link_bot_space.setBounds(self.link_bot_space_bounds)
             self.state_space.addSubspace(self.link_bot_space, weight=weight)
 
@@ -103,21 +104,27 @@ class MyPlanner:
         self.ss.setMotionsValidityChecker(oc.MotionsValidityCheckerFn(self.motions_valid))
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
 
-        if planner_params['directed_control_sampler'] == 'simple':
+        if params['directed_control_sampler'] == 'simple':
             pass  # the default
         else:
             raise NotImplementedError()
 
         self.full_env_data = None
 
-        if planner_params['sampler_type'] == 'sample_train':
+        if params['sampler_type'] == 'sample_train':
             raise NotImplementedError()
 
-        self.goal_description = self.planner_params['goal_description']
+        self.goal_description = self.params['goal_description']
         self.goal_subspace_name = self.goal_description['state_key']
         self.goal_subspace_idx = self.state_space_description[self.goal_subspace_name]['idx']
         self.goal_n_state = self.state_space_description[self.goal_subspace_name]['n_state']
         self.goal_point_idx = self.goal_description['point_idx']
+
+        smoothing_params = self.params['smoothing']
+        self.smoother = TrajectorySmoother(fwd_model=fwd_model,
+                                           classifier_model=classifier_model,
+                                           params=smoothing_params,
+                                           goal_point_idx=self.goal_point_idx)
 
     def is_valid(self, state):
         return self.state_space.satisfiesBounds(state)
@@ -144,8 +151,8 @@ class MyPlanner:
                                                                     states=named_states_np,
                                                                     actions=actions)
 
-        classifier_accept = accept_probability > self.planner_params['accept_threshold']
-        random_accept = self.classifier_rng.uniform(0, 1) <= self.planner_params['random_epsilon']
+        classifier_accept = accept_probability > self.params['accept_threshold']
+        random_accept = self.classifier_rng.uniform(0, 1) <= self.params['random_epsilon']
         motions_is_valid = classifier_accept or random_accept
 
         if not motions_is_valid:
@@ -201,12 +208,20 @@ class MyPlanner:
         # Convert back Numpy -> OMPL
         self.compound_from_numpy(np_final_states, state_out)
 
-    def plan(self, start_states: Dict[str, np.ndarray], tail_goal_point: np.ndarray,
+    def smooth_path(self,
+                    goal_point: np.ndarray,
+                    controls: np.ndarray,
+                    planned_path: Dict[str, np.ndarray]):
+        return self.smoother.smooth(goal_point, controls, planned_path)
+
+    def plan(self,
+             start_states: Dict[str, np.ndarray],
+             goal_point: np.ndarray,
              full_env_data: link_bot_sdf_utils.OccupancyData) -> PlannerResult:
         """
         :param full_env_data:
         :param start_states: each element is a vector
-        :param tail_goal_point:  1 by n matrix
+        :param goal_point:  1 by n matrix
         :return: controls, states
         """
         self.full_env_data = full_env_data
@@ -218,7 +233,7 @@ class MyPlanner:
         start = ob.State(compound_start)
         goal = LinkBotCompoundGoal(self.si,
                                    self.goal_description['threshold'],
-                                   tail_goal_point,
+                                   goal_point,
                                    self.viz_object,
                                    self.goal_subspace_idx,
                                    self.goal_point_idx,
@@ -229,22 +244,23 @@ class MyPlanner:
         self.ss.setStartState(start)
         self.ss.setGoal(goal)
 
-        planned_status = self.ss.solve(self.planner_params['timeout'])
+        planned_status = self.ss.solve(self.params['timeout'])
 
         if planned_status:
             ompl_path = self.ss.getSolutionPath()
             controls_np, planned_path_dict = self.convert_path(ompl_path)
+            controls_np, planned_path_dict = self.smooth_path(goal_point, controls_np, planned_path_dict)
             return PlannerResult(planned_status=planned_status,
                                  path=planned_path_dict,
                                  controls=controls_np)
         return PlannerResult(planned_status)
 
     def state_sampler_allocator(self, state_space):
-        if self.planner_params['sampler_type'] == 'random':
-            extent = [-self.planner_params['w'] / 2,
-                      self.planner_params['w'] / 2,
-                      -self.planner_params['h'] / 2,
-                      self.planner_params['h'] / 2]
+        if self.params['sampler_type'] == 'random':
+            extent = [-self.params['w'] / 2,
+                      self.params['w'] / 2,
+                      -self.params['h'] / 2,
+                      self.params['h'] / 2]
             # FIXME: need to handle arbitrary state space dictionary/description
             sampler = ValidRopeConfigurationCompoundSampler(state_space,
                                                             my_planner=self,
@@ -253,37 +269,30 @@ class MyPlanner:
                                                             n_rope_state=self.n_state,
                                                             subspace_name_to_index=self.subspace_name_to_index,
                                                             rope_length=self.rope_length,
-                                                            max_angle_rad=self.planner_params['max_angle_rad'],
+                                                            max_angle_rad=self.params['max_angle_rad'],
                                                             rng=self.state_sampler_rng)
-        elif self.planner_params['sampler_type'] == 'sample_train':
+        elif self.params['sampler_type'] == 'sample_train':
             sampler = TrainingSetCompoundSampler(state_space,
                                                  self.viz_object,
                                                  train_dataset=self.training_dataset,
                                                  sequence_length=self.train_dataset_max_sequence_length,
                                                  rng=self.state_sampler_rng)
         else:
-            raise ValueError("Invalid sampler type {}".format(self.planner_params['sampler_type']))
+            raise ValueError("Invalid sampler type {}".format(self.params['sampler_type']))
 
         return sampler
 
     def convert_path(self, ompl_path: oc.PathControl):
         planned_path = {}
         for time_idx, compound_state in enumerate(ompl_path.getStates()):
-            for subspace_idx, name in enumerate(self.state_space_weights):
+            for name, subspace_description in self.state_space_description.items():
                 if name not in planned_path:
                     planned_path[name] = []
 
-                subspace_state = compound_state[subspace_idx]
-                if name == 'local_env':
-                    planned_path[name].append(to_numpy_local_env(subspace_state,
-                                                                 self.fwd_model.local_env_params.w_cols,
-                                                                 self.fwd_model.local_env_params.h_rows))
-                elif name == 'local_env_origin':
-                    planned_path[name].append(to_numpy_flat(subspace_state, 2))
-                elif name == 'link_bot':
-                    planned_path[name].append(to_numpy_flat(subspace_state, self.n_state))
-                elif name == 'tether':
-                    planned_path[name].append(to_numpy_flat(subspace_state, self.n_tether_state))
+                idx = subspace_description['idx']
+                n_state = subspace_description['n_state']
+                subspace_state = compound_state[idx]
+                planned_path[name].append(to_numpy_flat(subspace_state, n_state))
 
         # now convert lists to arrays
         planned_path_dict = {}

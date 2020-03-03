@@ -144,16 +144,14 @@ def train(keras_model: MyKerasModel,
                 optimizer.apply_gradients(zip(gradients, variables))
                 batch_losses.append(train_batch_loss.numpy())
 
-                if metrics_function:
-                    train_batch_metrics = metrics_function(train_element, train_predictions)
-                else:
-                    train_batch_metrics = {}
-
                 if logging:
                     if step % log_scalars_every == 0:
                         tf.contrib.summary.scalar("batch loss", train_batch_loss, step=step)
-                        for metric_name, metric_value in train_batch_metrics.items():
-                            tf.contrib.summary.scalar(metric_name, metric_value, step=step)
+
+                        if metrics_function:
+                            train_batch_metrics = metrics_function(train_element, train_predictions)
+                            for metric_name, metric_value in train_batch_metrics.items():
+                                tf.contrib.summary.scalar(metric_name, metric_value, step=step)
 
                 ####################
                 # Update global step
@@ -161,7 +159,7 @@ def train(keras_model: MyKerasModel,
                 global_step.assign_add(1)
 
             training_loss = np.mean(batch_losses)
-            log_msg = "Epoch: {:5d}, Training Loss: {:7.4f}"
+            log_msg = "Epoch: {:5d}, Training Loss: {:8.5f}"
             print(log_msg.format(epoch, training_loss))
 
             ################
@@ -170,7 +168,7 @@ def train(keras_model: MyKerasModel,
             if epoch % validation_every == 0:
                 val_mean_loss, val_mean_metrics = compute_loss_and_metrics(val_tf_dataset, net, loss_function, metrics_function)
 
-                log_msg = "Epoch: {:5d}, Validation Loss: {:7.4f}"
+                log_msg = "Epoch: {:5d}, Validation Loss: {:8.5f}"
                 print(Style.BRIGHT + log_msg.format(epoch, training_loss) + Style.NORMAL)
 
                 if logging:

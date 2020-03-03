@@ -34,8 +34,7 @@ def generate(args):
     models = {}
     for name, model_info in comparison_info.items():
         model_dir = pathlib.Path(model_info['model_dir'])
-        model_type = model_info['model_type']
-        model, _ = model_utils.load_generic_model(model_dir, model_type)
+        model, _ = model_utils.load_generic_model(model_dir)
         models[name] = model
 
     dataset = LinkBotStateSpaceDataset(args.dataset_dirs)

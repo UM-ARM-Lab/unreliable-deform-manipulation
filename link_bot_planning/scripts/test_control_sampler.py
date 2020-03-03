@@ -30,7 +30,7 @@ def main():
 
     args = parser.parse_args()
 
-    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir, args.fwd_model_type)
+    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir)
     classifier_model = none_classifier.NoneClassifier()
 
     services = gazebo_services.GazeboServices()
