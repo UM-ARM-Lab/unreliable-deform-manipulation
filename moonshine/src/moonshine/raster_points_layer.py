@@ -18,7 +18,7 @@ def differentiable_raster(state, res, origins, h, w):
     w: scalar int
     """
     b = state.shape[0]
-    points = np.reshape(state, [b, -1, 2])
+    points = tf.reshape(state, [b, -1, 2])
     n_points = points.shape[1]
 
     res = res[0]
@@ -40,26 +40,26 @@ def differentiable_raster(state, res, origins, h, w):
     ## vectorized implementation
 
     # add h & w dimensions
-    tiled_points = np.expand_dims(np.expand_dims(points, axis=1), axis=1)
-    tiled_points = np.tile(tiled_points, [1, h, w, 1, 1])
-    pixel_row_indices = np.arange(0, h)
-    pixel_col_indices = np.arange(0, w)
+    tiled_points = tf.expand_dims(tf.expand_dims(points, axis=1), axis=1)
+    tiled_points = tf.tile(tiled_points, [1, h, w, 1, 1])
+    pixel_row_indices = tf.range(0, h, dtype=tf.float32)
+    pixel_col_indices = tf.range(0, w, dtype=tf.float32)
     # pixel_indices is b, n_points, 2
-    pixel_indices = np.stack(np.meshgrid(pixel_row_indices, pixel_col_indices), axis=2)
+    pixel_indices = tf.stack(tf.meshgrid(pixel_row_indices, pixel_col_indices), axis=2)
     # add batch dim
-    pixel_indices = np.expand_dims(pixel_indices, axis=0)
-    pixel_indices = np.tile(pixel_indices, [b, 1, 1, 1])
+    pixel_indices = tf.expand_dims(pixel_indices, axis=0)
+    pixel_indices = tf.tile(pixel_indices, [b, 1, 1, 1])
 
     # shape [b, h, w, 2]
     pixel_centers = (pixel_indices - origins) * res
 
     # add n_point sdim
-    pixel_centers = np.expand_dims(pixel_centers, axis=3)
-    pixel_centers = np.tile(pixel_centers, [1, 1, 1, n_points, 1])
+    pixel_centers = tf.expand_dims(pixel_centers, axis=3)
+    pixel_centers = tf.tile(pixel_centers, [1, 1, 1, n_points, 1])
 
-    squared_distances = np.sum(np.square(pixel_centers - tiled_points), axis=4)
-    pixel_values = np.exp(-beta * squared_distances)
-    rope_images = pixel_values.reshape([b, h, w, n_points])
+    squared_distances = tf.reduce_sum(tf.square(pixel_centers - tiled_points), axis=4)
+    pixel_values = tf.exp(-beta * squared_distances)
+    rope_images = tf.reshape(pixel_values, [b, h, w, n_points])
     return rope_images
 
 
