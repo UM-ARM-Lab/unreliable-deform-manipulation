@@ -9,12 +9,12 @@ from moonshine.action_smear_layer import smear_action
 from moonshine.numpy_utils import add_batch
 
 
-def differentiable_raster(state, res, origin, h, w):
+def differentiable_raster(state, res, origins, h, w):
     # TODO: gradients?
     """
     state: [batch, n]
     res: [batch] scalar float
-    origin: [batch, 2] index (so int, or technically float is fine too)
+    origins: [batch, 2] index (so int, or technically float is fine too)
     h: scalar int
     w: scalar int
     """
@@ -24,17 +24,43 @@ def differentiable_raster(state, res, origin, h, w):
 
     res = res[0]
 
-    rope_images = np.zeros([b, h, w, n_points], dtype=np.float32)
     beta = 50.0
-    for batch_index in range(b):
-        for point_idx in range(n_points):
-            for row, col in np.ndindex(h, w):
-                point_in_meters = points[batch_index, point_idx]
-                pixel_center_in_meters = idx_to_point(row, col, res, origin[batch_index])
-                squared_distance = np.sum(np.square(point_in_meters - pixel_center_in_meters))
-                pixel_value = np.exp(-beta*squared_distance)
-                rope_images[batch_index, row, col, point_idx] += pixel_value
-    rope_images = rope_images
+
+    ## Below is a un-vectorized implementation, which is much easier to read and understand
+    # rope_images = np.zeros([b, h, w, n_points], dtype=np.float32)
+    # for batch_index in range(b):
+    #     for point_idx in range(n_points):
+    #         for row, col in np.ndindex(h, w):
+    #             point_in_meters = points[batch_index, point_idx]
+    #             pixel_center_in_meters = idx_to_point(row, col, res, origins[batch_index])
+    #             squared_distance = np.sum(np.square(point_in_meters - pixel_center_in_meters))
+    #             pixel_value = np.exp(-beta*squared_distance)
+    #             rope_images[batch_index, row, col, point_idx] += pixel_value
+    # rope_images = rope_images
+
+    ## vectorized implementation
+
+    # add h & w dimensions
+    tiled_points = np.expand_dims(np.expand_dims(points, axis=1), axis=1)
+    tiled_points = np.tile(tiled_points, [1, h, w, 1, 1])
+    pixel_row_indices = np.arange(0, h)
+    pixel_col_indices = np.arange(0, w)
+    # pixel_indices is b, n_points, 2
+    pixel_indices = np.stack(np.meshgrid(pixel_row_indices, pixel_col_indices), axis=2)
+    # add batch dim
+    pixel_indices = np.expand_dims(pixel_indices, axis=0)
+    pixel_indices = np.tile(pixel_indices, [b, 1, 1, 1])
+
+    # shape [b, h, w, 2]
+    pixel_centers = (pixel_indices - origins) * res
+
+    # add n_point sdim
+    pixel_centers = np.expand_dims(pixel_centers, axis=3)
+    pixel_centers = np.tile(pixel_centers, [1, 1, 1, n_points, 1])
+
+    squared_distances = np.sum(np.square(pixel_centers - tiled_points), axis=4)
+    pixel_values = np.exp(-beta * squared_distances)
+    rope_images = pixel_values.reshape([b, h, w, n_points])
     return rope_images
 
 
