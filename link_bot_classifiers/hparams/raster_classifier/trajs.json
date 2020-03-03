@@ -1,6 +1,9 @@
 {
   "model_class": "raster",
   "mixed": true,
+  "states_keys": [
+    "link_bot"
+  ],
   "image_key": "trajectory_image",
   "action_in_image": false,
   "fc_layer_sizes": [16],

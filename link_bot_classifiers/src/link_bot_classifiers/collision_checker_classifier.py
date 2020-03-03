@@ -43,7 +43,7 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
         prediction = 1.0 if (first_point_check and second_point_check) else 0.0
         return prediction
 
-    def check_traj(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
+    def check_trajectory(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
         raise NotImplementedError()
 
     def check_constraint(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:

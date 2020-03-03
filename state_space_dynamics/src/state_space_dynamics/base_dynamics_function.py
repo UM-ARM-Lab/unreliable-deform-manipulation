@@ -1,6 +1,7 @@
 import json
 import pathlib
 from typing import Dict
+import tensorflow as tf
 
 import numpy as np
 
@@ -26,15 +27,24 @@ class BaseDynamicsFunction:
     def propagate(self,
                   full_env: np.ndarray,
                   full_env_origin: np.ndarray,
-                  res: np.ndarray,
-                  states: Dict[str, np.ndarray],
+                  res: float,
+                  start_states: Dict[str, np.ndarray],
                   actions: np.ndarray) -> Dict[str, np.ndarray]:
-        raise NotImplementedError()
+        T = actions.shape[0]
+        actions = tf.Variable(actions, dtype=tf.float32, name='actions')
+        predictions = self.propagate_differentiable(full_env,
+                                                    full_env_origin,
+                                                    res,
+                                                    start_states,
+                                                    actions)
+        for k, v in predictions.items():
+            predictions[k] = v.numpy().astype(np.float64)
+        return predictions
 
     def propagate_differentiable(self,
                                  full_env: np.ndarray,
                                  full_env_origin: np.ndarray,
-                                 res: np.ndarray,
-                                 states: Dict[str, np.ndarray],
-                                 actions: np.ndarray) -> Dict[str, np.ndarray]:
+                                 res: float,
+                                 start_states: Dict[str, np.ndarray],
+                                 actions: tf.Variable) -> Dict[str, tf.Tensor]:
         raise NotImplementedError()

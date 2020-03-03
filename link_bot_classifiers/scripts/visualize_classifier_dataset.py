@@ -42,10 +42,12 @@ def main():
 
     labeling_params = json.load(args.labeling_params.open("r"))
 
+    states_keys = ['link_bot']
+
     classifier_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
     dataset = classifier_dataset.get_datasets(mode=args.mode)
     if args.display_type == 'transition_image':
-        dataset = add_transition_image(dataset, args.action_in_image)
+        dataset = add_transition_image(dataset, states_keys=states_keys, action_in_image=args.action_in_image)
     if args.display_type == 'trajectory_image':
         dataset = add_traj_image(dataset)
 

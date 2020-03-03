@@ -4,7 +4,7 @@ from __future__ import print_function, division
 import os
 import pathlib
 
-from typing import Optional
+from typing import Optional, List
 
 import git
 import tensorflow as tf
@@ -12,7 +12,7 @@ from colorama import Fore
 
 from link_bot_pycommon import link_bot_pycommon
 from moonshine.numpy_utils import add_batch
-from moonshine.raster_points_layer import make_transition_image, make_traj_image
+from moonshine.raster_points_layer import make_transition_images, make_traj_images
 
 
 def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
@@ -138,7 +138,7 @@ def add_traj_image(dataset):
 
         h, w = full_env.shape
 
-        image = tf.numpy_function(make_traj_image, add_batch(full_env, full_env_origin, res, planned_states), tf.float32)[0]
+        image = tf.numpy_function(make_traj_images, add_batch(full_env, full_env_origin, res, planned_states), tf.float32)[0]
         image.set_shape([h, w, 3])
 
         input_dict['trajectory_image'] = image
@@ -147,7 +147,9 @@ def add_traj_image(dataset):
     return dataset.map(_add_traj_image)
 
 
-def add_transition_image(dataset, action_in_image: Optional[bool] = False):
+def add_transition_image(dataset,
+                         states_keys: List[str],
+                         action_in_image: Optional[bool] = False):
     def _add_transition_image(input_dict):
         """
         Expected sizes:
@@ -163,16 +165,24 @@ def add_transition_image(dataset, action_in_image: Optional[bool] = False):
         planned_local_env = input_dict['planned_state/local_env']
         res = input_dict['res']
         origin = input_dict['planned_state/local_env_origin']
-        planned_state = input_dict['planned_state/link_bot']
-        planned_next_state = input_dict['planned_state_next/link_bot']
         n_action = action.shape[0]
         h, w = planned_local_env.shape
-        n_points = link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
 
-        image = tf.numpy_function(make_transition_image,
-                                  [planned_local_env, planned_state, action, planned_next_state, res, origin, action_in_image],
-                                  tf.float32)
-        image.set_shape([h, w, 1 + n_points + n_points + n_action])
+        planned_states = {}
+        planned_next_states = {}
+        n_total_points = 0
+        for state_key in states_keys:
+            planned_state_feature = 'planned_state/{}'.format(state_key)
+            planned_state_next_feature = 'planned_state_next/{}'.format(state_key)
+            planned_state = input_dict[planned_state_feature]
+            planned_next_state = input_dict[planned_state_next_feature]
+            n_total_points += link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
+            planned_states[state_key] = planned_state
+            planned_next_states[state_key] = planned_next_state
+
+        image = make_transition_images(planned_local_env, planned_states, action, planned_next_states, res, origin,
+                                       action_in_image)
+        image.set_shape([h, w, 1 + 2 * n_total_points + n_action])
 
         input_dict['transition_image'] = image
         return input_dict

@@ -10,8 +10,8 @@ from tensorflow import keras
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from moonshine.action_smear_layer import smear_action
-from moonshine.numpy_utils import add_batch_to_dict
-from moonshine.raster_points_layer import raster
+from moonshine.numpy_utils import add_batch
+from moonshine.raster_points_layer import differentiable_raster
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -57,8 +57,6 @@ class ObstacleNN(MyKerasModel):
         self.flatten_conv_output = layers.Flatten()
 
     def get_local_env(self, head_point_t, full_env_origin, full_env):
-        # NOTE: there are some really high velocities in my dataset, sort of accidentally, and the model likes to predict crazy
-        #  things in this case. Since this will go out of bounds of our environment, we want to assume 0 (free space), so we pad.
         padding = 200
         paddings = [[0, 0], [padding, padding], [padding, padding]]
         padded_full_envs = tf.pad(full_env, paddings=paddings)
@@ -70,15 +68,13 @@ class ObstacleNN(MyKerasModel):
                                               self.local_env_params.w_cols,
                                               self.local_env_params.res],
                                              tf.float32)
-        local_env = tf.numpy_function(link_bot_sdf_utils.get_local_env_at_in,
-                                      [head_point_t,
-                                       padded_full_envs,
-                                       full_env_origin,
-                                       padding,
-                                       self.local_env_params.h_rows,
-                                       self.local_env_params.w_cols,
-                                       self.local_env_params.res],
-                                      tf.float32)
+        local_env = link_bot_sdf_utils.differentiable_get_local_env(head_point_t,
+                                                                    padded_full_envs,
+                                                                    full_env_origin,
+                                                                    padding,
+                                                                    self.local_env_params.h_rows,
+                                                                    self.local_env_params.w_cols,
+                                                                    self.local_env_params.res)
         env_h_rows = tf.convert_to_tensor(self.local_env_params.h_row, tf.int64)
         env_w_cols = tf.convert_to_tensor(self.local_env_params.w_cols, tf.int64)
         return local_env, local_env_origin, env_h_rows, env_w_cols
@@ -116,8 +112,9 @@ class ObstacleNN(MyKerasModel):
                 # the local environment used at each time step is centered on the current point of the head
                 env, env_origin, env_h_rows, env_w_cols = self.get_local_env(head_point_t, full_env_origin, full_env)
 
-            rope_image_t = tf.numpy_function(raster, [s_t, resolution, env_origin, env_h_rows, env_w_cols], tf.float32)
+            rope_image_t = differentiable_raster(s_t, resolution, env_origin, env_h_rows, env_w_cols)
 
+            # FIXME: this differentiable already, but we need to implement it in TensorFlow
             action_image_t = tf.numpy_function(smear_action, [action_t, env_h_rows, env_w_cols], tf.float32)
 
             env = tf.expand_dims(env, axis=3)
@@ -171,23 +168,20 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
 
-    def propagate(self,
-                  full_env: np.ndarray,
-                  full_env_origin: np.ndarray,
-                  res: np.ndarray,
-                  states: Dict[str, np.ndarray],
-                  actions: np.ndarray) -> np.ndarray:
+    def propagate_differentiable(self,
+                                 full_env: np.ndarray,
+                                 full_env_origin: np.ndarray,
+                                 res: float,
+                                 start_states: Dict[str, np.ndarray],
+                                 actions: tf.Variable) -> Dict[str, tf.Tensor]:
         """
         :param full_env:        (H, W)
         :param full_env_origin: (2)
         :param res:             scalar
-        :param states:          each value in the dictionary should be of shape (batch, n_state)
+        :param start_states:          each value in the dictionary should be of shape (batch, n_state)
         :param actions:        (T, 2)
         :return: states:       each value in the dictionary should be a of shape [batch, T+1, n_state)
         """
-        T = actions.shape[0]
-
-        # batch dim is added below
         test_x = {
             # shape: T, 2
             'action': tf.convert_to_tensor(actions, dtype=tf.float32),
@@ -199,18 +193,15 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
             'full_env/origin': tf.convert_to_tensor(full_env_origin, dtype=tf.float32),
         }
 
-        for k, v in states.items():
+        for k, v in start_states.items():
             state_key = 'state/{}'.format(k)
             # handles conversion from double -> float
             state = tf.convert_to_tensor(v, dtype=tf.float32)
             first_state = tf.reshape(state, state.shape[0])
             test_x[state_key] = first_state
 
-        test_x = add_batch_to_dict(test_x)
-
-        predictions = self.net(test_x)
-        for k, v in predictions.items():
-            predictions[k] = np.reshape(v.numpy(), [T + 1, -1]).astype(np.float64)
+        test_x = add_batch(test_x)
+        predictions = self.net((test_x, None))
 
         return predictions
 

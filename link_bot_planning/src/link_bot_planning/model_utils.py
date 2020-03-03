@@ -16,14 +16,14 @@ def load_generic_model(model_dir: pathlib.Path) -> [BaseDynamicsFunction, Tuple[
     """
     model_hparams_file = model_dir / 'hparams.json'
     hparams = json.load(model_hparams_file.open('r'))
-    model_type = hparams['model_type']
+    model_type = hparams['model_class']
     if model_type == 'rigid':
-        # this dt here is sort of made up
-        return RigidTranslationModel(model_dir), model_dir.parts[1:]
-    elif model_type == 'nn':
-        nn = SimpleNNWrapper(model_dir)
+        # FIXME: remove batch_size=1 here? can I put it in base model?
+        return RigidTranslationModel(model_dir, batch_size=1), model_dir.parts[1:]
+    elif model_type == 'SimpleNN':
+        nn = SimpleNNWrapper(model_dir, batch_size=1)
         return nn, model_dir.parts[1:]
-    elif model_type == 'obs':
+    elif model_type == 'ObstacleNN':
         nn = ObstacleNNWrapper(model_dir, batch_size=1)
         return nn, model_dir.parts[1:]
     else:
@@ -38,12 +38,12 @@ def get_model_info(model_dir: pathlib.Path) -> Tuple[str]:
     """
     model_hparams_file = model_dir / 'hparams.json'
     hparams = json.load(model_hparams_file.open('r'))
-    model_type = hparams['model_type']
+    model_type = hparams['type']
     if model_type == 'rigid':
         return model_dir.parts[1:]
-    elif model_type == 'nn':
+    elif model_type == 'SimpleNN':
         return model_dir.parts[1:]
-    elif model_type == 'obs':
+    elif model_type == 'ObstacleNN':
         return model_dir.parts[1:]
     else:
         raise NotImplementedError("invalid model type {}".format(model_type))

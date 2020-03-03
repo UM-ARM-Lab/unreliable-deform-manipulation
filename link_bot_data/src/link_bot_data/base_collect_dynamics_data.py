@@ -164,6 +164,8 @@ def generate(service_provider, args):
             'sim_params': sim_params.to_json(),
             'sequence_length': args.steps_per_traj,
             'states_description': states_description,
+            # FIXME: where does this really come from?
+            'n_action': 2,
         }
         json.dump(options, of, indent=1)
 

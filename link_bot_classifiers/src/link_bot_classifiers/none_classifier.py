@@ -1,9 +1,9 @@
 from typing import Dict
 
 import numpy as np
+import tensorflow as tf
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
 
 
 class NoneClassifier(BaseConstraintChecker):
@@ -11,14 +11,21 @@ class NoneClassifier(BaseConstraintChecker):
     def __init__(self):
         super().__init__()
 
-    def check_transition(self, local_env_data: OccupancyData, s1: np.ndarray, s2: np.ndarray, action: np.ndarray) -> float:
+    def check_constraint(self,
+                         full_env: np.ndarray,
+                         full_env_origin: np.ndarray,
+                         res: float,
+                         states_trajs: Dict[str, np.ndarray],
+                         actions: np.ndarray) -> float:
         return 1.0
 
-    def check_traj(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
-        return 1.0
-
-    def check_constraint(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
-        return 1.0
+    def check_constraint_differentiable(self,
+                                        full_env: np.ndarray,
+                                        full_env_origin: np.ndarray,
+                                        res: float,
+                                        states_trajs: Dict[str, np.ndarray],
+                                        actions: tf.Variable) -> tf.Tensor:
+        return tf.ones([], dtype=tf.float32)
 
 
 model = NoneClassifier

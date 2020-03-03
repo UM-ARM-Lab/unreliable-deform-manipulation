@@ -14,7 +14,7 @@ def load_generic_model(model_dir: pathlib.Path):
     """
     model_hparams_file = model_dir / 'hparams.json'
     hparams = json.load(model_hparams_file.open('r'))
-    model_type = hparams['model_type']
+    model_type = hparams['model_class']
     if model_type == 'raster':
         return RasterClassifierWrapper(model_dir, batch_size=1)
     elif model_type == 'collision':

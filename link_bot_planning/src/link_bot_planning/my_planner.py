@@ -121,10 +121,12 @@ class MyPlanner:
         self.goal_point_idx = self.goal_description['point_idx']
 
         smoothing_params = self.params['smoothing']
+        # FIXME actions or controls?
         self.smoother = TrajectorySmoother(fwd_model=fwd_model,
                                            classifier_model=classifier_model,
                                            params=smoothing_params,
-                                           goal_point_idx=self.goal_point_idx)
+                                           goal_point_idx=self.goal_point_idx,
+                                           goal_subspace_name=self.goal_subspace_name)
 
     def is_valid(self, state):
         return self.state_space.satisfiesBounds(state)
@@ -147,8 +149,10 @@ class MyPlanner:
             named_states_np[subspace_name] = np.array(states)
         actions = np.array(actions)
 
-        accept_probability = self.classifier_model.check_constraint(full_env=self.full_env_data,
-                                                                    states=named_states_np,
+        accept_probability = self.classifier_model.check_constraint(full_env=self.full_env_data.data,
+                                                                    full_env_origin=self.full_env_data.origin,
+                                                                    res=self.full_env_data.resolution,
+                                                                    states_trajs=named_states_np,
                                                                     actions=actions)
 
         classifier_accept = accept_probability > self.params['accept_threshold']
@@ -181,7 +185,7 @@ class MyPlanner:
         next_states = self.fwd_model.propagate(full_env=self.full_env_data.data,
                                                full_env_origin=self.full_env_data.origin,
                                                res=self.fwd_model.full_env_params.res,
-                                               states=np_states,
+                                               start_states=np_states,
                                                actions=np_actions)
         # get only the final state predicted
         final_states = {}
@@ -212,7 +216,12 @@ class MyPlanner:
                     goal_point: np.ndarray,
                     controls: np.ndarray,
                     planned_path: Dict[str, np.ndarray]):
-        return self.smoother.smooth(goal_point, controls, planned_path)
+        return self.smoother.smooth(full_env=self.full_env_data.data,
+                                    full_env_origin=self.full_env_data.origin,
+                                    res=self.full_env_data.resolution,
+                                    goal_point=goal_point,
+                                    actions=controls,
+                                    planned_path=planned_path)
 
     def plan(self,
              start_states: Dict[str, np.ndarray],
@@ -244,39 +253,43 @@ class MyPlanner:
         self.ss.setStartState(start)
         self.ss.setGoal(goal)
 
-        planned_status = self.ss.solve(self.params['timeout'])
+        planner_status = self.ss.solve(self.params['timeout'])
 
-        if planned_status:
+        if planner_status:
             ompl_path = self.ss.getSolutionPath()
             controls_np, planned_path_dict = self.convert_path(ompl_path)
             controls_np, planned_path_dict = self.smooth_path(goal_point, controls_np, planned_path_dict)
-            return PlannerResult(planned_status=planned_status,
+            return PlannerResult(planner_status=planner_status,
                                  path=planned_path_dict,
                                  controls=controls_np)
-        return PlannerResult(planned_status)
+        return PlannerResult(planner_status)
 
     def state_sampler_allocator(self, state_space):
-        if self.params['sampler_type'] == 'random':
+        if self.params['sampler_type'] == 'simple':
+            sampler = ob.RealVectorStateSampler(state_space)
+        elif self.params['sampler_type'] == 'random':
             extent = [-self.params['w'] / 2,
                       self.params['w'] / 2,
                       -self.params['h'] / 2,
                       self.params['h'] / 2]
             # FIXME: need to handle arbitrary state space dictionary/description
-            sampler = ValidRopeConfigurationCompoundSampler(state_space,
-                                                            my_planner=self,
-                                                            viz_object=self.viz_object,
-                                                            extent=extent,
-                                                            n_rope_state=self.n_state,
-                                                            subspace_name_to_index=self.subspace_name_to_index,
-                                                            rope_length=self.rope_length,
-                                                            max_angle_rad=self.params['max_angle_rad'],
-                                                            rng=self.state_sampler_rng)
+            raise NotImplementedError()
+            # sampler = ValidRopeConfigurationCompoundSampler(state_space,
+            #                                                 my_planner=self,
+            #                                                 viz_object=self.viz_object,
+            #                                                 extent=extent,
+            #                                                 n_rope_state=self.n_state,
+            #                                                 subspace_name_to_index=self.subspace_name_to_index,
+            #                                                 rope_length=self.rope_length,
+            #                                                 max_angle_rad=self.params['max_angle_rad'],
+            #                                                 rng=self.state_sampler_rng)
         elif self.params['sampler_type'] == 'sample_train':
-            sampler = TrainingSetCompoundSampler(state_space,
-                                                 self.viz_object,
-                                                 train_dataset=self.training_dataset,
-                                                 sequence_length=self.train_dataset_max_sequence_length,
-                                                 rng=self.state_sampler_rng)
+            raise NotImplementedError()
+            # sampler = TrainingSetCompoundSampler(state_space,
+            #                                      self.viz_object,
+            #                                      train_dataset=self.training_dataset,
+            #                                      sequence_length=self.train_dataset_max_sequence_length,
+            #                                      rng=self.state_sampler_rng)
         else:
             raise ValueError("Invalid sampler type {}".format(self.params['sampler_type']))
 

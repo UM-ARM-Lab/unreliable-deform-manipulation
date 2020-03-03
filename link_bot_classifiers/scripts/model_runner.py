@@ -48,8 +48,8 @@ def train_main(args, seed: int):
     if 'image_key' in model_hparams:
         image_key = model_hparams['image_key']
         if image_key == 'transition_image':
-            train_tf_dataset = add_transition_image(train_tf_dataset)
-            val_tf_dataset = add_transition_image(train_tf_dataset)
+            train_tf_dataset = add_transition_image(train_tf_dataset, states_keys=model.states_keys)
+            val_tf_dataset = add_transition_image(train_tf_dataset, states_keys=model.states_keys)
         elif image_key == 'trajectory_image':
             train_tf_dataset = add_traj_image(train_tf_dataset)
             val_tf_dataset = add_traj_image(val_tf_dataset)
@@ -97,7 +97,7 @@ def eval_main(args, seed: int):
 
     # More dataset crap
     if model_hparams['image_key'] == 'transition_image':
-        test_tf_dataset = add_transition_image(test_tf_dataset)
+        test_tf_dataset = add_transition_image(test_tf_dataset, states_keys=model.states_keys)
     elif model_hparams['image_key'] == 'trajectory_image':
         test_tf_dataset = add_traj_image(test_tf_dataset)
 

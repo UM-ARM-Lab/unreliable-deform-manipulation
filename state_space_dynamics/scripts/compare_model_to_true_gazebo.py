@@ -131,7 +131,7 @@ def run_traj(args,
     predicted_paths = fwd_model.propagate(full_env=full_env_data.data,
                                           full_env_origin=full_env_data.origin,
                                           res=full_env_data.resolution[0],
-                                          states=start_states,
+                                          start_states=start_states,
                                           actions=actions)
 
     trajectory_execution_request = make_trajectory_execution_request(fwd_model.dt, actions)

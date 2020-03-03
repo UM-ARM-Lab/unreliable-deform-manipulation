@@ -18,10 +18,9 @@ from ompl import base as ob
 
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory
 from link_bot_gazebo import gazebo_services
-from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import ompl_viz
-from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.get_planner import get_planner
+from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
 from link_bot_planning.plan_and_execute import PlanAndExecute
 from link_bot_pycommon import link_bot_sdf_utils
@@ -99,7 +98,6 @@ class ClassifierDataCollector(PlanAndExecute):
             'fwd_model_type': self.fwd_model_type,
             'fwd_model_hparams': self.planner.fwd_model.hparams,
             'filter_free_space_only': False,
-            'n_state': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_state'],
             'n_action': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_action']
         }
 
@@ -172,6 +170,7 @@ class ClassifierDataCollector(PlanAndExecute):
             'full_env/env': float_tensor_to_bytes_feature(full_env_data.data),
             'full_env/extent': float_tensor_to_bytes_feature(full_env_data.extent),
             'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),
+            'full_env/res': float_tensor_to_bytes_feature(full_env_data.resolution),
         }
 
         for time_idx in range(self.n_steps_per_example):

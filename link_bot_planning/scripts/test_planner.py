@@ -217,8 +217,7 @@ def main():
     services = service_provider.setup_env(verbose=args.verbose,
                                           real_time_rate=sim_params.real_time_rate,
                                           reset_gripper_to=args.reset_gripper_to,
-                                          max_step_size=sim_params.max_step_size,
-                                          initial_object_dict=None)
+                                          max_step_size=sim_params.max_step_size)
     services.pause(std_srvs.srv.EmptyRequest())
 
     planner, _ = get_planner(planner_params=planner_params, services=services, seed=args.seed)

@@ -228,6 +228,39 @@ def get_local_env_origins(center_points,
     return local_env_origins
 
 
+def differentiable_get_local_env(center_points: np.ndarray,
+                                 padded_full_envs: np.ndarray,
+                                 full_env_origins: np.ndarray,
+                                 padding: int,
+                                 rows: int,
+                                 cols: int,
+                                 res: float):
+    """
+    NOTE: Assumes both local and full env have the same resolution
+    :param center_points: [batch, 2] (x,y) meters
+    :param padded_full_envs: [batch, h, w] the full environment data
+    :param full_env_origins: [batch, 2]
+    :param padding: scalar
+    :param rows: [batch]
+    :param cols: [batch]
+    :param res: scalar, meters
+    :return: local envs
+    """
+    batch_size = int(center_points.shape[0])
+
+    # indeces of the heads of the ropes in the full env, with a batch dimension up front
+    center_cols = (center_points[:, 0] / res + full_env_origins[:, 1]).astype(np.int64)
+    center_rows = (center_points[:, 1] / res + full_env_origins[:, 0]).astype(np.int64)
+    delta_rows = np.tile(np.arange(-rows // 2, rows // 2), [batch_size, cols, 1]).transpose([0, 2, 1])
+    delta_cols = np.tile(np.arange(-cols // 2, cols // 2), [batch_size, rows, 1])
+    row_indeces = np.tile(center_rows, [cols, rows, 1]).T + delta_rows
+    col_indeces = np.tile(center_cols, [cols, rows, 1]).T + delta_cols
+    batch_indeces = np.tile(np.arange(0, batch_size), [cols, rows, 1]).transpose()
+    local_env = padded_full_envs[batch_indeces, row_indeces + padding, col_indeces + padding]
+    local_env = local_env.astype(np.float32)
+    return local_env
+
+
 def get_local_env_at_in(center_points: np.ndarray,
                         padded_full_envs: np.ndarray,
                         full_env_origins: np.ndarray,
