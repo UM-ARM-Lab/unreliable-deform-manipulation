@@ -4,8 +4,38 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon.link_bot_sdf_utils import idx_to_point
 from moonshine.action_smear_layer import smear_action
 from moonshine.numpy_utils import add_batch
+
+
+def differentiable_raster(state, res, origin, h, w):
+    # TODO: gradients?
+    """
+    state: [batch, n]
+    res: [batch] scalar float
+    origin: [batch, 2] index (so int, or technically float is fine too)
+    h: scalar int
+    w: scalar int
+    """
+    b = state.shape[0]
+    points = np.reshape(state, [b, -1, 2])
+    n_points = points.shape[1]
+
+    res = res[0]
+
+    rope_images = np.zeros([b, h, w, n_points], dtype=np.float32)
+    beta = 50.0
+    for batch_index in range(b):
+        for point_idx in range(n_points):
+            for row, col in np.ndindex(h, w):
+                point_in_meters = points[batch_index, point_idx]
+                pixel_center_in_meters = idx_to_point(row, col, res, origin[batch_index])
+                squared_distance = np.sum(np.square(point_in_meters - pixel_center_in_meters))
+                pixel_value = np.exp(-beta*squared_distance)
+                rope_images[batch_index, row, col, point_idx] += pixel_value
+    rope_images = rope_images
+    return rope_images
 
 
 def raster(state, res, origin, h, w):
@@ -20,7 +50,7 @@ def raster(state, res, origin, h, w):
     points = np.reshape(state, [b, -1, 2])
     n_points = points.shape[1]
 
-    res = res[0]  # NOTE: assume constant resolution
+    res = res[0]
 
     # points[:,1] is y, origin[0] is row index, so yes this is correct
     row_y_indices = (points[:, :, 1] / res + origin[:, 0:1]).astype(np.int64).flatten()
