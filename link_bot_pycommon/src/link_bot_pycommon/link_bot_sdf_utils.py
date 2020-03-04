@@ -192,7 +192,7 @@ def inflate(local_env: OccupancyData, radius_m: float):
         return local_env
 
     inflated = local_env
-    radius = int(radius_m / local_env.resolution[0])
+    radius = int(radius_m / local_env.resolution)
 
     for i, j in np.ndindex(local_env.data.shape):
         try:

@@ -10,12 +10,12 @@ from colorama import Fore
 from ompl import base as ob
 
 import ignition.markers
-from link_bot_gazebo import gazebo_services
 from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
+from link_bot_pycommon.link_bot_pycommon import print_dict
 from link_bot_pycommon.ros_pycommon import Services, get_start_states
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 
@@ -68,40 +68,42 @@ class PlanAndExecute:
                                                    services=self.services)
 
                 # get start states
-                start_states, link_bot_start_state, head_point = get_start_states(self.services,
-                                                                                  self.planner.subspaces_to_plan_with.keys())
+                start_states, all_objects = get_start_states(self.services, self.planner.state_space_description.keys())
+                gripper_point = all_objects['gripper']
 
                 # generate a random target
-                tail_goal = np.array(self.get_goal(self.planner_params['random_goal_w'],
-                                                   self.planner_params['random_goal_h'],
-                                                   head_point,
-                                                   full_env_data=full_env_data))
+                goal_point = np.array(self.get_goal(self.planner_params['random_goal_w'],
+                                                    self.planner_params['random_goal_h'],
+                                                    gripper_point,
+                                                    full_env_data=full_env_data))
+                start_points = np.reshape(start_states[self.planner.goal_subspace_feature_name], [-1, 2])
+                start_point = start_points[self.planner.goal_point_idx]
 
                 # plan to that target
                 if self.verbose >= 1:
-                    # tail start x,y and tail goal x,y
                     ignition.markers.publish_markers(self.services.marker_provider,
-                                                     tail_goal[0], tail_goal[1],
-                                                     link_bot_start_state[0],
-                                                     link_bot_start_state[1],
+                                                     goal_point[0], goal_point[1],
+                                                     start_point[0],
+                                                     start_point[1],
                                                      marker_size=0.05)
                 if self.verbose >= 1:
-                    print(Fore.CYAN + "Planning from {} to {}".format(link_bot_start_state, tail_goal) + Fore.RESET)
+                    print(Fore.CYAN + "Planning from {} to {}".format(start_point, goal_point) + Fore.RESET)
 
                 t0 = time.time()
-                planner_results = self.planner.plan(start_states, tail_goal, full_env_data)
-                planned_actions, planned_path_dict, planner_status = planner_results
-                my_planner.interpret_planner_status(planner_status, self.verbose)
+                planner_result = self.planner.plan(start_states, goal_point, full_env_data)
+                # planned_actions, planned_path_dict, planner_status =
+                # planner_result
+                my_planner.interpret_planner_status(planner_result.planner_status, self.verbose)
                 planner_data = ob.PlannerData(self.planner.si)
                 self.planner.planner.getPlannerData(planner_data)
 
                 if self.verbose >= 1:
-                    print(planner_status.asString())
+                    print(planner_result.planner_status.asString())
 
                 self.on_after_plan()
 
-                if not planner_status:
-                    self.on_planner_failure(link_bot_start_state, tail_goal, full_env_data, planner_data)
+                if not planner_result.planner_status:
+                    self.on_planner_failure(start_states, goal_point, full_env_data, planner_data)
                     if self.retry_on_failure:
                         break
                 else:  # Approximate or Exact solution found!
@@ -109,33 +111,31 @@ class PlanAndExecute:
                     if self.verbose >= 1:
                         print("Planning time: {:5.3f}s".format(planning_time))
 
-                    self.on_plan_complete(planned_path_dict, tail_goal, planned_actions, full_env_data, planner_data,
+                    self.on_plan_complete(planner_result.path, goal_point, planner_result.actions, full_env_data, planner_data,
                                           planning_time,
-                                          planner_status)
+                                          planner_result.planner_status)
 
                     trajectory_execution_request = ros_pycommon.make_trajectory_execution_request(self.planner.fwd_model.dt,
-                                                                                                  planned_actions)
+                                                                                                  planner_result.actions)
 
                     # execute the plan, collecting the states that actually occurred
                     if not self.no_execution:
                         if self.verbose >= 2:
-                            print(Fore.CYAN + "Executing Plan.".format(tail_goal) + Fore.RESET)
+                            print(Fore.CYAN + "Executing Plan.".format(goal_point) + Fore.RESET)
 
                         traj_exec_response = self.services.execute_trajectory(trajectory_execution_request)
                         self.services.pause(std_srvs.srv.EmptyRequest())
 
                         local_env_params = self.planner.fwd_model.local_env_params
-                        actual_path = ros_pycommon.trajectory_execution_response_to_numpy(traj_exec_response,
-                                                                                          local_env_params,
-                                                                                          self.services)
-                        self.on_execution_complete(planned_path_dict,
-                                                   planned_actions,
-                                                   tail_goal,
+                        actual_path = ros_pycommon.trajectory_execution_response_to_numpy(traj_exec_response)
+                        self.on_execution_complete(planner_result.path,
+                                                   planner_result.actions,
+                                                   goal_point,
                                                    actual_path,
                                                    full_env_data,
                                                    planner_data,
                                                    planning_time,
-                                                   planner_status)
+                                                   planner_result.planner_status)
 
                     if self.pause_between_plans:
                         input("Press enter to proceed to next plan...")
@@ -178,7 +178,7 @@ class PlanAndExecute:
         pass
 
     def on_planner_failure(self,
-                           start: np.ndarray,
+                           start_states: Dict[str, np.ndarray],
                            tail_goal_point: np.ndarray,
                            full_env_data: link_bot_sdf_utils.OccupancyData,
                            planner_data: ob.PlannerData):
@@ -192,10 +192,9 @@ class PlanAndExecute:
             # FIXME: instead of hard coding obstacles names, use the /objects service
             # generate a new environment by rearranging the obstacles
             objects = ['moving_box{}'.format(i) for i in range(1, 7)]
-            gazebo_services.move_objects(self.services,
-                                         self.sim_params.max_step_size,
-                                         objects,
-                                         self.planner.full_env_params.w,
-                                         self.planner.full_env_params.h,
-                                         padding=0.1,
-                                         rng=self.env_rng)
+            self.services.move_objects(self.sim_params.max_step_size,
+                                       objects,
+                                       self.planner.full_env_params.w,
+                                       self.planner.full_env_params.h,
+                                       padding=0.1,
+                                       rng=self.env_rng)

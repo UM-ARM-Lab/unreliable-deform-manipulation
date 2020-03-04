@@ -50,7 +50,7 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
                  viz_object: VizObject,
                  extent: List[float],
                  n_rope_state: int,
-                 subspace_name_to_index: Dict[str, int],
+                 link_bot_state_idx: int,
                  rope_length: float,
                  max_angle_rad: float,
                  rng: np.random.RandomState, ):
@@ -59,8 +59,7 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         self.extent = extent
         self.rope_length = rope_length
         self.n_rope_state = n_rope_state
-        self.subspace_name_to_index = subspace_name_to_index
-        self.link_bot_subspace_idx = self.subspace_name_to_index['link_bot']
+        self.link_bot_subspace_idx = link_bot_state_idx
         self.n_links = link_bot_pycommon.n_state_to_n_links(self.n_rope_state)
         if self.n_links == 0:
             self.link_length = 0

@@ -45,10 +45,6 @@ class LinkBotCompoundGoal(ob.GoalSampleableRegion):
         state_out[self.subspace_idx][self.y_idx] = self.goal_y
 
         self.viz.states_sampled_at.append(to_numpy(state_out[self.subspace_idx], self.n_state))
-        # TODO: test this
-        print(">>>> TEST THIS!!!!! <<<<")
-        import ipdb;
-        ipdb.set_trace()
 
     def maxSampleCount(self):
         return 100

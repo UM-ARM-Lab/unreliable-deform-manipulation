@@ -150,8 +150,8 @@ class ObstacleNN(MyKerasModel):
         output_states_dict = {}
         for name, n in self.used_states_description.items():
             end_idx = start_idx + n
-            name_feature = 'state/{}'.format(name)
-            output_states_dict[name_feature] = pred_states[:, :, start_idx:end_idx]
+            name_feature_name = 'state/{}'.format(name)
+            output_states_dict[name_feature_name] = pred_states[:, :, start_idx:end_idx]
             start_idx += n
 
         return output_states_dict

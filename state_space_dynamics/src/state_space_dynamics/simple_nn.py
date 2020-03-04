@@ -21,16 +21,16 @@ class SimpleNN(MyKerasModel):
         self.dense_layers = []
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
-        # TODO: make state_key always mean without "state/" and state_feature always mean with
+        # TODO: make state_key always mean without "state/" and state_feature_name always mean with
         self.state_key = self.hparams['state_key']
         # TODO: support multiple state keys like in obstacle_nn
-        self.state_feature = "state/{}".format(self.state_key)
+        self.state_feature_name = "state/{}".format(self.state_key)
         self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
 
     def call(self, dataset_element, training=None, mask=None):
         input_dict, _ = dataset_element
-        states = input_dict[self.state_feature]
+        states = input_dict[self.state_feature_name]
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
         s_0 = states[:, 0]
@@ -54,7 +54,7 @@ class SimpleNN(MyKerasModel):
             pred_states.append(s_t_plus_1_flat)
 
         pred_states = tf.stack(pred_states, axis=1)
-        return {self.state_feature: pred_states}
+        return {self.state_feature_name: pred_states}
 
 
 class SimpleNNWrapper(BaseDynamicsFunction):
@@ -86,13 +86,13 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         del full_env  # unused
         del full_env_origin  # unused
         del res  # unsed
-        state = start_states[self.net.state_feature]
+        state = start_states[self.net.state_feature_name]
         state = np.expand_dims(state, axis=0)
         state = tf.convert_to_tensor(state, dtype=tf.float32)
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {
             # must be batch, T, n_state
-            self.net.state_feature: state,
+            self.net.state_feature_name: state,
             # must be batch, T, 2
             'action': actions,
         }

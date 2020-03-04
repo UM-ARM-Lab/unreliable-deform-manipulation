@@ -85,8 +85,8 @@ def plot_all(train_dataset, states_description):
         color_float_idx = (i % 100) / 100.0
         c = jet(color_float_idx)
         for state_key in states_description.keys():
-            state_feature = 'state/{}'.format(state_key)
-            states_traj = input_data[state_feature].numpy()
+            state_feature_name = 'state/{}'.format(state_key)
+            states_traj = input_data[state_feature_name].numpy()
             first_state = states_traj[0]
             plot_rope_configuration(ax, first_state, linewidth=1, alpha=0.3, c=c, scatt=False)
 

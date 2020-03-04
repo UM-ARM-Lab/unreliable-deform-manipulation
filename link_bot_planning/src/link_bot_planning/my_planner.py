@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from dataclasses import dataclass
 from typing import Dict
+import rospy
 
 import numpy as np
 import ompl.base as ob
@@ -10,9 +10,8 @@ from colorama import Fore
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
+from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_flat, ValidRopeConfigurationCompoundSampler
 from link_bot_planning.trajectory_smoother import TrajectorySmoother
-from link_bot_planning.state_spaces import to_numpy, from_numpy, ValidRopeConfigurationCompoundSampler, \
-    TrainingSetCompoundSampler, to_numpy_flat
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
@@ -29,7 +28,7 @@ def ompl_control_to_model_action(control, n_action):
 @dataclass
 class PlannerResult:
     path: Dict[str, np.ndarray]
-    controls: np.ndarray
+    actions: np.ndarray
     planner_status: ob.PlannerStatus
 
 
@@ -43,6 +42,8 @@ class MyPlanner:
                  viz_object: VizObject,
                  seed: int,
                  ):
+        # FIXME:
+        self.rope_length = rospy.get_param('/link_bot/rope_length')
         self.planner = None
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
@@ -53,17 +54,18 @@ class MyPlanner:
         self.services = services
         self.viz_object = viz_object
         self.si = ob.SpaceInformation(ob.StateSpace())
-        self.rope_length = fwd_model.hparams['dynamics_dataset_hparams']['rope_length']
         self.seed = seed
         self.classifier_rng = np.random.RandomState(seed)
         self.state_sampler_rng = np.random.RandomState(seed)
 
-        self.state_space = ob.CompoundStateSpace()
         self.state_space_weights = self.params['state_space_weights']
 
         assert (self.fwd_model.state_keys == list(self.state_space_weights.keys()))
 
         self.state_space_description = {}
+        self.state_space = ob.CompoundStateSpace()
+        self.subspaces = []
+        self.subspace_bounds = []
         for subspace_idx, (state_key, weight) in enumerate(self.state_space_weights.items()):
             n_state = self.fwd_model.states_description[state_key]
             subspace_description = {
@@ -73,18 +75,21 @@ class MyPlanner:
             }
             self.state_space_description[state_key] = subspace_description
 
-            self.link_bot_space = ob.RealVectorStateSpace(n_state)
-            self.link_bot_space_bounds = ob.RealVectorBounds(n_state)
+            subspace = ob.RealVectorStateSpace(n_state)
+            bounds = ob.RealVectorBounds(n_state)
             for i in range(n_state):
                 if i % 2 == 0:
-                    self.link_bot_space_bounds.setLow(i, -self.params['w'] / 2)
-                    self.link_bot_space_bounds.setHigh(i, self.params['w'] / 2)
+                    bounds.setLow(i, -self.params['w'] / 2)
+                    bounds.setHigh(i, self.params['w'] / 2)
                 else:
-                    self.link_bot_space_bounds.setLow(i, -self.params['h'] / 2)
-                    self.link_bot_space_bounds.setHigh(i, self.params['h'] / 2)
-            self.link_bot_space.setBounds(self.link_bot_space_bounds)
-            self.state_space.addSubspace(self.link_bot_space, weight=weight)
+                    bounds.setLow(i, -self.params['h'] / 2)
+                    bounds.setHigh(i, self.params['h'] / 2)
+            subspace.setBounds(bounds)
+            self.subspaces.append(subspace_idx)
+            self.subspace_bounds.append(bounds)
+            self.state_space.addSubspace(subspace, weight=weight)
 
+        # TODO: debug why bounds are not working...
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
 
         control_bounds = ob.RealVectorBounds(2)
@@ -116,9 +121,10 @@ class MyPlanner:
 
         self.goal_description = self.params['goal_description']
         self.goal_subspace_name = self.goal_description['state_key']
+        self.goal_subspace_feature_name = 'state/{}'.format(self.goal_subspace_name)
+        self.goal_point_idx = self.goal_description['point_idx']
         self.goal_subspace_idx = self.state_space_description[self.goal_subspace_name]['idx']
         self.goal_n_state = self.state_space_description[self.goal_subspace_name]['n_state']
-        self.goal_point_idx = self.goal_description['point_idx']
 
         smoothing_params = self.params['smoothing']
         # FIXME actions or controls?
@@ -126,27 +132,26 @@ class MyPlanner:
                                            classifier_model=classifier_model,
                                            params=smoothing_params,
                                            goal_point_idx=self.goal_point_idx,
-                                           goal_subspace_name=self.goal_subspace_name)
+                                           goal_subspace_feature_name=self.goal_subspace_feature_name)
 
     def is_valid(self, state):
         return self.state_space.satisfiesBounds(state)
 
     def motions_valid(self, motions):
-        # Dict of state_key: np.ndarray [n_state]
-        named_states = dict((subspace_name, []) for subspace_name in self.state_space_description.keys())
+        named_states = dict(('state/{}'.format(subspace_name), []) for subspace_name in self.state_space_description.keys())
         actions = []
         for t, motion in enumerate(motions):
             # motions is a vector of oc.Motion, which has a state, parent, and control
             state = motion.getState()
             np_states = self.compound_to_numpy(state)
-            for subspace_name, state_t in np_states.items():
-                named_states[subspace_name].append(state_t)
+            for subspace_feature_name, state_t in np_states.items():
+                named_states[subspace_feature_name].append(state_t)
             if t > 0:  # skip the first (null) action, because that would represent the action that brings us to the first state
                 actions.append(self.control_to_numpy(motion.getControl()))
 
         named_states_np = {}
-        for subspace_name, states in named_states.items():
-            named_states_np[subspace_name] = np.array(states)
+        for subspace_feature_name, states in named_states.items():
+            named_states_np[subspace_feature_name] = np.array(states)
         actions = np.array(actions)
 
         accept_probability = self.classifier_model.check_constraint(full_env=self.full_env_data.data,
@@ -168,10 +173,11 @@ class MyPlanner:
     def compound_to_numpy(self, state):
         np_states = {}
         for name, subspace_description in self.state_space_description.items():
+            feature_name = 'state/{}'.format(name)
             idx = subspace_description['idx']
             n_state = subspace_description['n_state']
             np_s = to_numpy_flat(state[idx], n_state)
-            np_states[name] = np_s
+            np_states[feature_name] = np_s
         return np_states
 
     def control_to_numpy(self, control):
@@ -197,7 +203,7 @@ class MyPlanner:
         for name, subspace_description in self.state_space_description.items():
             idx = subspace_description['idx']
             n_state = subspace_description['n_state']
-            from_numpy(np_final_states[name], state_out[idx], n_state)
+            from_numpy(np_final_states['state/{}'.format(name)], state_out[idx], n_state)
 
     def propagate(self, start, control, duration, state_out):
         del duration  # unused, multi-step propagation is handled inside propagateMotionsWhileValid
@@ -216,12 +222,17 @@ class MyPlanner:
                     goal_point: np.ndarray,
                     controls: np.ndarray,
                     planned_path: Dict[str, np.ndarray]):
-        return self.smoother.smooth(full_env=self.full_env_data.data,
-                                    full_env_origin=self.full_env_data.origin,
-                                    res=self.full_env_data.resolution,
-                                    goal_point=goal_point,
-                                    actions=controls,
-                                    planned_path=planned_path)
+        smoothed_actions_tf, smoothed_path_tf = self.smoother.smooth(full_env=self.full_env_data.data,
+                                                                     full_env_origin=self.full_env_data.origin,
+                                                                     res=self.full_env_data.resolution,
+                                                                     goal_point=goal_point,
+                                                                     actions=controls,
+                                                                     planned_path=planned_path)
+        smoothed_path = {}
+        for k, v in smoothed_path_tf.items():
+            smoothed_path[k] = v.numpy()
+
+        return smoothed_actions_tf.numpy(), smoothed_path
 
     def plan(self,
              start_states: Dict[str, np.ndarray],
@@ -261,28 +272,26 @@ class MyPlanner:
             controls_np, planned_path_dict = self.smooth_path(goal_point, controls_np, planned_path_dict)
             return PlannerResult(planner_status=planner_status,
                                  path=planned_path_dict,
-                                 controls=controls_np)
+                                 actions=controls_np)
         return PlannerResult(planner_status)
 
     def state_sampler_allocator(self, state_space):
-        if self.params['sampler_type'] == 'simple':
-            sampler = ob.RealVectorStateSampler(state_space)
-        elif self.params['sampler_type'] == 'random':
+        if self.params['sampler_type'] == 'random':
             extent = [-self.params['w'] / 2,
                       self.params['w'] / 2,
                       -self.params['h'] / 2,
                       self.params['h'] / 2]
             # FIXME: need to handle arbitrary state space dictionary/description
-            raise NotImplementedError()
-            # sampler = ValidRopeConfigurationCompoundSampler(state_space,
-            #                                                 my_planner=self,
-            #                                                 viz_object=self.viz_object,
-            #                                                 extent=extent,
-            #                                                 n_rope_state=self.n_state,
-            #                                                 subspace_name_to_index=self.subspace_name_to_index,
-            #                                                 rope_length=self.rope_length,
-            #                                                 max_angle_rad=self.params['max_angle_rad'],
-            #                                                 rng=self.state_sampler_rng)
+            #  this is such a hack
+            sampler = ValidRopeConfigurationCompoundSampler(state_space,
+                                                            my_planner=self,
+                                                            viz_object=self.viz_object,
+                                                            extent=extent,
+                                                            link_bot_state_idx=self.state_space_description['link_bot']['idx'],
+                                                            n_rope_state=self.state_space_description['link_bot']['n_state'],
+                                                            rope_length=self.rope_length,
+                                                            max_angle_rad=self.params['max_angle_rad'],
+                                                            rng=self.state_sampler_rng)
         elif self.params['sampler_type'] == 'sample_train':
             raise NotImplementedError()
             # sampler = TrainingSetCompoundSampler(state_space,
@@ -299,13 +308,14 @@ class MyPlanner:
         planned_path = {}
         for time_idx, compound_state in enumerate(ompl_path.getStates()):
             for name, subspace_description in self.state_space_description.items():
-                if name not in planned_path:
-                    planned_path[name] = []
+                feature_name = 'state/{}'.format(name)
+                if feature_name not in planned_path:
+                    planned_path[feature_name] = []
 
                 idx = subspace_description['idx']
                 n_state = subspace_description['n_state']
                 subspace_state = compound_state[idx]
-                planned_path[name].append(to_numpy_flat(subspace_state, n_state))
+                planned_path[feature_name].append(to_numpy_flat(subspace_state, n_state))
 
         # now convert lists to arrays
         planned_path_dict = {}

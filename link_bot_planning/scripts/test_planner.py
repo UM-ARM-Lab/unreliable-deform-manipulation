@@ -58,31 +58,31 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         self.draw_tree = draw_tree
         self.draw_rejected = draw_rejected
 
-    def get_goal(self, w, h, head_point, env_padding, full_env_data):
+    def get_goal(self, w, h, head_point, full_env_data):
         if self.goal is not None:
             print("Using Goal {}".format(self.goal))
             return np.array(self.goal)
         else:
-            return super().get_goal(w, h, head_point, env_padding, full_env_data)
+            return super().get_goal(w, h, head_point, full_env_data)
 
     def on_planner_failure(self,
-                           start: np.ndarray,
+                           start: Dict[str, np.ndarray],
                            tail_goal_point: np.ndarray,
                            full_env_data: link_bot_sdf_utils.OccupancyData,
                            planner_data: ob.PlannerData):
         plt.figure()
         ax = plt.gca()
-        legend = ompl_viz.plot_plan(ax,
-                                    self.planner.n_state,
-                                    self.planner.viz_object,
-                                    planner_data,
-                                    full_env_data.data,
-                                    tail_goal_point,
-                                    None,
-                                    None,
-                                    full_env_data.extent,
-                                    draw_tree=self.draw_tree,
-                                    draw_rejected=self.draw_rejected)
+        ompl_viz.plot_plan(ax,
+                           self.planner.state_space_description['link_bot']['n_state'],
+                           self.planner.viz_object,
+                           planner_data,
+                           full_env_data.data,
+                           tail_goal_point,
+                           None,
+                           None,
+                           full_env_data.extent,
+                           draw_tree=self.draw_tree,
+                           draw_rejected=self.draw_rejected)
         plt.show(block=True)
 
     def on_plan_complete(self,
@@ -93,7 +93,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                          planner_data: ob.PlannerData,
                          planning_time: float,
                          planner_status: ob.PlannerStatus):
-        link_bot_planned_path = planned_path['link_bot']
+        link_bot_planned_path = planned_path['state/link_bot']
         final_error = np.linalg.norm(link_bot_planned_path[-1, 0:2] - tail_goal_point)
         lengths = [np.linalg.norm(link_bot_planned_path[i] - link_bot_planned_path[i - 1]) for i in
                    range(1, len(link_bot_planned_path))]
@@ -125,7 +125,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
             plt.figure()
             ax = plt.gca()
             plot_data_dict, legend = ompl_viz.plot_plan(ax,
-                                                        self.planner.n_state,
+                                                        self.planner.state_space_description['link_bot']['n_state'],
                                                         self.planner.viz_object,
                                                         planner_data,
                                                         full_env_data.data,
@@ -149,13 +149,14 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
-        execution_to_goal_error = np.linalg.norm(actual_path['link_bot'][-1, 0:2] - tail_goal_point)
+        execution_to_goal_error = np.linalg.norm(actual_path['state/link_bot'][-1, 0:2] - tail_goal_point)
         print('Execution to Goal Error: {:0.3f}'.format(execution_to_goal_error))
 
         # Convert from the actual space to the planning space, which may be identity, or may be some reduction
-        link_bot_actual_path = actual_path['link_bot']
-        link_bot_planned_path = planned_path['link_bot']
-        print("Execution to Plan Error (tail): {:.4f}".format(np.linalg.norm(link_bot_planned_path[-1, 0:2] - link_bot_actual_path[-1, 0:2])))
+        link_bot_actual_path = actual_path['state/link_bot']
+        link_bot_planned_path = planned_path['state/link_bot']
+        print("Execution to Plan Error (tail): {:.4f}".format(
+            np.linalg.norm(link_bot_planned_path[-1, 0:2] - link_bot_actual_path[-1, 0:2])))
 
         anim = ompl_viz.plan_vs_execution(full_env_data.data,
                                           tail_goal_point,
@@ -197,9 +198,7 @@ def main():
 
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
-                           goal_padding=0.0,
-                           move_obstacles=planner_params['move_obstacles'],
-                           nudge=False)
+                           move_obstacles=planner_params['move_obstacles'])
 
     rospy.init_node('test_planner_with_classifier')
 
@@ -209,18 +208,18 @@ def main():
     # Start Services
     if args.service_provider == 'victor':
         rospy.set_param('service_provider', 'victor')
-        service_provider = victor_services.VictorServices
+        service_provider = victor_services.VictorServices()
     else:
         rospy.set_param('service_provider', 'gazebo')
-        service_provider = gazebo_services.GazeboServices
+        service_provider = gazebo_services.GazeboServices()
 
-    services = service_provider.setup_env(verbose=args.verbose,
-                                          real_time_rate=sim_params.real_time_rate,
-                                          reset_gripper_to=args.reset_gripper_to,
-                                          max_step_size=sim_params.max_step_size)
-    services.pause(std_srvs.srv.EmptyRequest())
+    service_provider.setup_env(verbose=args.verbose,
+                               real_time_rate=sim_params.real_time_rate,
+                               reset_gripper_to=args.reset_gripper_to,
+                               max_step_size=sim_params.max_step_size)
+    service_provider.pause(std_srvs.srv.EmptyRequest())
 
-    planner, _ = get_planner(planner_params=planner_params, services=services, seed=args.seed)
+    planner, _ = get_planner(planner_params=planner_params, services=service_provider, seed=args.seed)
 
     tester = TestWithClassifier(
         planner=planner,
@@ -228,12 +227,12 @@ def main():
         verbose=args.verbose,
         planner_params=planner_params,
         sim_params=sim_params,
-        services=services,
+        services=service_provider,
         no_execution=args.no_execution,
         goal=args.goal,
         seed=args.seed,
-        draw_tree=(args.env_type != 'victor'),
-        draw_rejected=(args.env_type != 'victor')
+        draw_tree=(args.service_provider != 'victor'),
+        draw_rejected=(args.service_provider != 'victor')
     )
     tester.run()
 

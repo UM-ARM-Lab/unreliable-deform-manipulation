@@ -172,10 +172,10 @@ def add_transition_image(dataset,
         planned_next_states = {}
         n_total_points = 0
         for state_key in states_keys:
-            planned_state_feature = 'planned_state/{}'.format(state_key)
-            planned_state_next_feature = 'planned_state_next/{}'.format(state_key)
-            planned_state = input_dict[planned_state_feature]
-            planned_next_state = input_dict[planned_state_next_feature]
+            planned_state_feature_name = 'planned_state/{}'.format(state_key)
+            planned_state_next_feature_name = 'planned_state_next/{}'.format(state_key)
+            planned_state = input_dict[planned_state_feature_name]
+            planned_next_state = input_dict[planned_state_next_feature_name]
             n_total_points += link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
             planned_states[state_key] = planned_state
             planned_next_states[state_key] = planned_next_state

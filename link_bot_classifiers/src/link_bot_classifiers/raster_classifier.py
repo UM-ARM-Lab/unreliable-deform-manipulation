@@ -84,10 +84,10 @@ class RasterClassifier(MyKerasModel):
         if self.hparams['mixed']:
             concat_args = [conv_output, action]
             for state_key in self.states_keys:
-                state_feature = 'planned_state/{}'.format(state_key)
-                state_feature_next = 'planned_state_next/{}'.format(state_key)
-                state = input_dict[state_feature]
-                next_state = input_dict[state_feature_next]
+                state_feature_name = 'planned_state/{}'.format(state_key)
+                state_feature_name_next = 'planned_state_next/{}'.format(state_key)
+                state = input_dict[state_feature_name]
+                next_state = input_dict[state_feature_name_next]
                 concat_args.append(state)
                 concat_args.append(next_state)
             conv_output = tf.concat(concat_args, axis=1)
@@ -146,10 +146,10 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         }
 
         for state_key in self.net.states_keys:
-            state_feature = 'planned_state/{}'.format(state_key)
-            state_feature_next = 'planned_state_next/{}'.format(state_key)
-            net_inputs[state_feature] = tf.convert_to_tensor(states[state_key], tf.float32)
-            net_inputs[state_feature_next] = tf.convert_to_tensor(states_next[state_key], tf.float32)
+            state_feature_name = 'planned_state/{}'.format(state_key)
+            state_feature_name_next = 'planned_state_next/{}'.format(state_key)
+            net_inputs[state_feature_name] = tf.convert_to_tensor(states[state_key], tf.float32)
+            net_inputs[state_feature_name_next] = tf.convert_to_tensor(states_next[state_key], tf.float32)
 
         accept_probabilities = self.net(add_batch(net_inputs))
         return accept_probabilities
@@ -176,10 +176,10 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         }
 
         for state_key in self.net.states_keys:
-            state_feature = 'planned_state/{}'.format(state_key)
-            state_feature_next = 'planned_state_next/{}'.format(state_key)
-            net_inputs[state_feature] = tf.convert_to_tensor(states_i[state_key], tf.float32)
-            net_inputs[state_feature_next] = tf.convert_to_tensor(states_i_plus_1[state_key], tf.float32)
+            state_feature_name = 'planned_state/{}'.format(state_key)
+            state_feature_name_next = 'planned_state_next/{}'.format(state_key)
+            net_inputs[state_feature_name] = tf.convert_to_tensor(states_i[state_key], tf.float32)
+            net_inputs[state_feature_name_next] = tf.convert_to_tensor(states_i_plus_1[state_key], tf.float32)
 
         accept_probabilities = self.net(add_batch(net_inputs))
         return accept_probabilities

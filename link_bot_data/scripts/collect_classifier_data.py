@@ -38,7 +38,6 @@ class ClassifierDataCollector(PlanAndExecute):
     def __init__(self,
                  planner: MyPlanner,
                  fwd_model_dir: pathlib.Path,
-                 fwd_model_type: str,
                  fwd_model_info: str,
                  n_total_plans: int,
                  n_plans_per_env: int,
@@ -64,7 +63,6 @@ class ClassifierDataCollector(PlanAndExecute):
                          seed=seed)
         self.hparams_written = False
         self.fwd_model_dir = fwd_model_dir
-        self.fwd_model_type = fwd_model_type
         self.fwd_model_info = fwd_model_info
         self.n_examples_per_record = n_examples_per_record
         self.n_steps_per_example = n_steps_per_example
@@ -95,7 +93,6 @@ class ClassifierDataCollector(PlanAndExecute):
             'full_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['full_env_params'],
             'sequence_length': self.n_steps_per_example,
             'fwd_model_dir': str(self.fwd_model_dir),
-            'fwd_model_type': self.fwd_model_type,
             'fwd_model_hparams': self.planner.fwd_model.hparams,
             'filter_free_space_only': False,
             'n_action': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['n_action']
@@ -109,11 +106,8 @@ class ClassifierDataCollector(PlanAndExecute):
         self.traj_idx = 0
 
     def on_before_plan(self):
-        if self.reset_gripper_to is not None:
-            # reset the rope/tether config
-            self.services.reset_world(self.verbose, reset_gripper_to=self.reset_gripper_to)
-        else:
-            super().on_before_plan()
+        self.services.reset_world(self.verbose, reset_gripper_to=self.reset_gripper_to)
+        super().on_before_plan()
 
     def get_goal(self, w, h, head_point, full_env_data):
         if self.fixed_goal is not None:
@@ -229,6 +223,9 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument("n_total_plans", type=int, help='number of plans')
+    parser.add_argument("--n-plans-per-env", type=int, help='number of plans per env', default=16)
+    parser.add_argument("--n-steps-per-example", type=int, help='number of steps per example', default=16)
+    parser.add_argument("--n-examples-per-record", type=int, help='number of examples per tfrecord', default=128)
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("outdir", type=pathlib.Path)
     # TODO: make full env size a parameter here, since it's independent of what "full env" meant for the model
@@ -246,6 +243,7 @@ def main():
 
     # TODO: make this code agnostic, use ros params or a separate node for the service provider?
     # Start Services
+    rospy.set_param('service_provider', args.env_type)
     if args.env_type == 'victor':
         is_victor = True
         service_provider = victor_services.VictorServices()
@@ -272,16 +270,15 @@ def main():
     data_collector = ClassifierDataCollector(
         planner=planner,
         fwd_model_dir=params['fwd_model_dir'],
-        fwd_model_type=params['fwd_model_type'],
         fwd_model_info=fwd_model_info,
         n_total_plans=args.n_total_plans,
-        n_plans_per_env=params['n_plans_per_env'],
+        n_plans_per_env=args.n_plans_per_env,
         verbose=args.verbose,
         seed=args.seed,
         planner_params=params,
         sim_params=sim_params,
-        n_steps_per_example=params['n_steps_per_example'],
-        n_examples_per_record=params['n_examples_per_record'],
+        n_steps_per_example=args.n_steps_per_example,
+        n_examples_per_record=args.n_examples_per_record,
         outdir=args.outdir,
         services=service_provider,
         reset_gripper_to=params['reset_gripper_to'],

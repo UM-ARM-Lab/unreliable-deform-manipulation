@@ -4,7 +4,6 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_pycommon.link_bot_pycommon import print_dict
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
@@ -14,7 +13,7 @@ class TrajectorySmoother:
                  fwd_model: BaseDynamicsFunction,
                  classifier_model: BaseConstraintChecker,
                  goal_point_idx: int,
-                 goal_subspace_name: str,
+                 goal_subspace_feature_name: str,
                  params: Dict):
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
@@ -23,8 +22,8 @@ class TrajectorySmoother:
         self.constraints_alpha = params["constraints_alpha"]
         self.action_alpha = params["action_alpha"]
         self.goal_point_idx = goal_point_idx
-        self.goal_subspace_feature = 'state/{}'.format(goal_subspace_name)
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+        self.goal_subspace_feature_name = goal_subspace_feature_name
+        self.optimizer = tf.keras.optimizers.Adam(0.02)
 
     def smooth(self,
                full_env: np.ndarray,
@@ -37,7 +36,7 @@ class TrajectorySmoother:
         actions = tf.Variable(actions, dtype=tf.float32, name='controls', trainable=True)
 
         for i in range(self.iters):
-            actions = self.step(full_env, full_env_origin, res, goal_point, actions, planned_path)[0]
+            actions, planned_path, _ = self.step(full_env, full_env_origin, res, goal_point, actions, planned_path)
         return actions, planned_path
 
     def step(self, full_env, full_env_origin, res, goal_point, actions, planned_path):
@@ -58,7 +57,7 @@ class TrajectorySmoother:
                                                                                            states_trajs=predictions,
                                                                                            actions=actions)
 
-            goal_subspace_predictions = predictions[self.goal_subspace_feature]
+            goal_subspace_predictions = predictions[self.goal_subspace_feature_name]
             predicted_points = tf.reshape(goal_subspace_predictions, [T + 1, -1, 2])
             deltas = predicted_points[1:] - predicted_points[:-1]
             final_target_point_pred = predicted_points[-1, self.goal_point_idx]
@@ -74,4 +73,4 @@ class TrajectorySmoother:
         gradients = tape.gradient(loss, variables)
         self.optimizer.apply_gradients(zip(gradients, variables))
 
-        return actions, predictions, weighted_losses[0], weighted_losses[1], weighted_losses[2], weighted_losses[3], loss
+        return actions, predictions, [weighted_losses[0], weighted_losses[1], weighted_losses[2], weighted_losses[3], loss]

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import pathlib
+from time import perf_counter
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -54,9 +55,9 @@ def main():
 
     T = actions.shape[0]
 
-    goal_point = np.array([2.0, 0.0])
+    goal_point = np.array([-1.25, 1.667])
     goal_point_idx = 0
-    goal_subspace_name = 'link_bot'
+    goal_subspace_feature_name = 'state/link_bot'
 
     params = {
         "iters": args.iters,
@@ -96,7 +97,7 @@ def main():
                                   classifier_model=classifier_model,
                                   params=params,
                                   goal_point_idx=goal_point_idx,
-                                  goal_subspace_name=goal_subspace_name)
+                                  goal_subspace_feature_name=goal_subspace_feature_name)
 
     actions = tf.Variable(actions, dtype=tf.float32, name='controls', trainable=True)
 
@@ -104,9 +105,8 @@ def main():
     axes[0].set_title("Path")
     axes[0].scatter(goal_point[0], goal_point[1], label='goal', s=50, c='k')
     axes[0].scatter(start_states['state/link_bot'][0], start_states['state/link_bot'][1], label='start', s=50, c='r')
-    axes[0].set_xlim([-3, 3])
-    axes[0].set_ylim([-3, 3])
-    axes[0].axis("equal")
+    axes[0].set_xlim([-2.5, 1.0])
+    axes[0].set_ylim([-1, 2.5])
     axes[0].legend()
     path_lines = []
     for t in range(T + 1):
@@ -120,6 +120,7 @@ def main():
     action_losses_line = axes[1].plot([], label='action loss')[0]
     axes[1].set_xlabel("iter")
     axes[1].set_ylabel("loss")
+    axes[1].set_yscale("log")
     axes[1].set_title("Losses")
     axes[1].legend()
 
@@ -129,17 +130,21 @@ def main():
     goal_losses = []
     constraints_losses = []
     action_losses = []
+    step_times = []
 
     def update(iter):
         nonlocal actions
-        step_result = smoother.step(full_env=full_env,
-                                    full_env_origin=full_env_origin,
-                                    goal_point=goal_point,
-                                    res=res,
-                                    actions=actions,
-                                    planned_path=planned_path)
+        t0 = perf_counter()
+        actions, predictions, step_losses = smoother.step(full_env=full_env,
+                                                          full_env_origin=full_env_origin,
+                                                          goal_point=goal_point,
+                                                          res=res,
+                                                          actions=actions,
+                                                          planned_path=planned_path)
+        dt = perf_counter() - t0
+        step_times.append(dt)
 
-        actions, predictions, length_loss, goal_loss, constraint_loss, action_loss, loss = step_result
+        length_loss, goal_loss, constraint_loss, action_loss, loss = step_losses
         loss = loss.numpy()
         length_loss = length_loss.numpy()
         goal_loss = goal_loss.numpy()
@@ -165,13 +170,14 @@ def main():
         constraint_losses_line.set_data(iters, constraints_losses)
         action_losses_line.set_data(iters, action_losses)
 
-        axes[0].relim()
-        axes[0].autoscale_view()
+        # axes[0].relim()
+        # axes[0].autoscale_view()
         axes[1].relim()
         axes[1].autoscale_view()
 
-    anim = FuncAnimation(fig, update, frames=args.iters, interval=0, repeat=False)
-
+    anim = FuncAnimation(fig, update, frames=args.iters, interval=1, repeat=False)
+    anim.save("smoothing_animation.gif", writer='imagemagick')
+    print("Mean step time: {:8.5f}s, {:8.5f}".format(np.mean(step_times), np.std(step_times)))
     plt.show()
 
 

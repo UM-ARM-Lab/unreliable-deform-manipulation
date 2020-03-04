@@ -32,7 +32,7 @@ class RigidTranslationModel(BaseDynamicsFunction):
         """
         predictions = {}
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
-        for state_feature, start_state in start_states.items():
+        for state_feature_name, start_state in start_states.items():
             s_t = tf.convert_to_tensor(start_state, dtype=tf.float32)
             n_points = n_state_to_n_points(s_t.shape[0])
             pred_states = [s_t]
@@ -44,5 +44,5 @@ class RigidTranslationModel(BaseDynamicsFunction):
                 pred_states.append(s_t)
 
             pred_states = tf.stack(pred_states, axis=0)
-            predictions[state_feature] = pred_states
+            predictions[state_feature_name] = pred_states
         return predictions

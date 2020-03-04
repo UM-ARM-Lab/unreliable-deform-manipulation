@@ -185,36 +185,16 @@ def make_trajectory_execution_request(dt, actions):
     return req
 
 
-def trajectory_execution_response_to_numpy(trajectory_execution_result,
-                                           local_env_params,
-                                           services):
-    actual_path = {
-        'local_env': [],
-        'local_env_origin': [],
-    }
-
+def trajectory_execution_response_to_numpy(trajectory_execution_result):
+    actual_path = {}
     for objects in trajectory_execution_result.actual_path:
         for object in objects.objects:
             if object.name not in actual_path:
                 actual_path[object.name] = []
 
-            np_config = []
-            for named_point in object.points:
-                np_config.append(named_point.point.x)
-                np_config.append(named_point.point.y)
+            np_config = link_bot_pycommon.flatten_named_points(object.points)
 
             actual_path[object.name].append(np_config)
-
-            if object.name == 'link_bot' and local_env_params is not None:
-                actual_head_point = np.array([np_config[-2], np_config[-1]])
-                # FIXME: remove get_local_occupancy?
-                actual_local_env = get_local_occupancy_data(rows=local_env_params.h_rows,
-                                                            cols=local_env_params.w_cols,
-                                                            res=local_env_params.res,
-                                                            center_point=actual_head_point,
-                                                            services=services)
-                actual_path['local_env'].append(actual_local_env.data)
-                actual_path['local_env_origin'].append(actual_local_env.origin)
 
     for k, v in actual_path.items():
         actual_path[k] = np.array(v)
@@ -225,15 +205,13 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result,
 def get_start_states(services, state_keys):
     start_states = {}
     objects_response = services.get_objects()
-    link_bot_start_state = None
-    head_point = None
     for subspace_name in state_keys:
         for object in objects_response.objects.objects:
             if object.name == subspace_name:
                 state = link_bot_pycommon.flatten_named_points(object.points)
-                if subspace_name == 'link_bot':
-                    link_bot_start_state = state
-                    head_point = link_bot_pycommon.get_head_from_named_points(object.points)
-                start_states[subspace_name] = state
-    start_states['link_bot'] = link_bot_start_state
-    return start_states, link_bot_start_state, head_point
+                start_states['state/{}'.format(subspace_name)] = state
+
+    all_objects = {}
+    for object in objects_response.objects.objects:
+        all_objects[object.name] = link_bot_pycommon.flatten_named_points(object.points)
+    return start_states, all_objects

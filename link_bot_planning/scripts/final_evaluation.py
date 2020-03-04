@@ -186,14 +186,14 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         metrics_file = self.metrics_filename.open('w')
         json.dump(self.metrics, metrics_file, indent=1)
 
-    def on_planner_failure(self, start, tail_goal_point, full_env_data: link_bot_sdf_utils.OccupancyData, planner_data):
+    def on_planner_failure(self, start_states, tail_goal_point, full_env_data: link_bot_sdf_utils.OccupancyData, planner_data):
         self.n_failures += 1
         folder = self.failures_root / str(self.n_failures)
         folder.mkdir(parents=True)
         image_file = (folder / 'full_env.png')
         info_file = (folder / 'info.json').open('w')
         info = {
-            'start': start.tolist(),
+            'start_states': dict([(k, v.tolist()) for k, v in start_states.items()]),
             'tail_goal_point': tail_goal_point.tolist(),
             'sdf': {
                 'res': full_env_data.resolution.tolist(),

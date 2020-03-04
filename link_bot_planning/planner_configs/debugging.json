@@ -1,8 +1,6 @@
 {
-  "fwd_model_dir": "ss_log_data/fs-1",
-  "fwd_model_type": "nn",
-  "classifier_model_dir": "",
-  "classifier_model_type": "none",
+  "fwd_model_dir": "ss_log_data/with_gripper/March_03_12-07-54_c9cc9e4aa0",
+  "classifier_model_dir": "classifiers/none",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
@@ -20,17 +18,17 @@
   "goal_description": {
     "threshold": 0.15,
     "state_key": "link_bot",
-    "point_idx": "0"
+    "point_idx": 0
   },
-  "move_obstacles": true,
+	"move_obstacles": false,
   "fixed_goal": null,
   "reset_gripper_to": null,
-  "real_time_rate": 10.0,
-  "max_step_size": 0.01,
+	"real_time_rate": 10.0,
+	"max_step_size": 0.01,
   "smoothing": {
       "iters": 500,
       "goal_alpha": 1000,
-      "constraints_alpha": 1000,
+      "constraints_alpha": 1,
       "action_alpha": 1
   }
 }
