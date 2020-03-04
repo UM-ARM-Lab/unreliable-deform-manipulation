@@ -19,7 +19,7 @@ from ompl import base as ob
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory
 from link_bot_gazebo import gazebo_services
 from link_bot_planning import ompl_viz
-from link_bot_planning.get_planner import get_planner
+from link_bot_planning.get_scenario import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
 from link_bot_planning.plan_and_execute import PlanAndExecute
@@ -109,11 +109,11 @@ class ClassifierDataCollector(PlanAndExecute):
         self.services.reset_world(self.verbose, reset_gripper_to=self.reset_gripper_to)
         super().on_before_plan()
 
-    def get_goal(self, w, h, head_point, full_env_data):
+    def get_goal(self, w, h, full_env_data):
         if self.fixed_goal is not None:
             return self.fixed_goal
         else:
-            return super().get_goal(w, h, head_point, full_env_data)
+            return super().get_goal(w, h, full_env_data)
 
     def on_plan_complete(self,
                          planned_path: Dict[str, np.ndarray],
@@ -151,7 +151,6 @@ class ClassifierDataCollector(PlanAndExecute):
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
-
         # write the hparams once we've figured out what objects we're going to have
         if not self.hparams_written:
             self.hparams_written = True
@@ -180,7 +179,7 @@ class ClassifierDataCollector(PlanAndExecute):
                     state = object_path[time_idx]
                 else:
                     state = object_path[-1]
-                current_features['{}/state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
+                current_features['{}/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
 
             for name, object_path in planned_path.items():
                 if time_idx < n_steps:

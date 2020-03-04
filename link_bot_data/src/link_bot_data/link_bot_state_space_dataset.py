@@ -23,7 +23,7 @@ class LinkBotStateSpaceDataset(BaseDataset):
 
         self.states_description = self.hparams['states_description']
         for state_key in self.states_description.keys():
-            self.state_like_names_and_shapes.append('%d/state/{}'.format(state_key))
+            self.state_like_names_and_shapes.append('%d/{}'.format(state_key))
 
         self.trajectory_constant_names_and_shapes = [
             'full_env/env',

@@ -116,7 +116,7 @@ def main():
                                        res=fwd_model.local_env_params.res,
                                        services=services)
     state_keys = fwd_model.hparams['states_keys']
-    start_states, link_bot_start_state, head_point = get_start_states(services, state_keys)
+    start_states = get_start_states(services, state_keys)
 
     actions = np.genfromtxt(args.actions, delimiter=',')
     actions = actions.reshape([-1, fwd_model.n_action])
@@ -129,7 +129,7 @@ def main():
 
     trajectory_execution_request = make_trajectory_execution_request(fwd_model.dt, actions)
     traj_res = services.execute_trajectory(trajectory_execution_request)
-    actual_paths = trajectory_execution_response_to_numpy(traj_res, fwd_model.local_env_params, services)
+    actual_paths = trajectory_execution_response_to_numpy(traj_res)
 
     # Reshape into points for drawing
     for state_name, predicted_path in predicted_paths.items():

@@ -11,24 +11,18 @@
   "h": 5.0,
   "random_goal_w": 4.5,
   "random_goal_h": 4.5,
-  "timeout": 10,
-  "state_space_weights": {
-    "link_bot": 1.0
-  },
-  "goal_description": {
-    "threshold": 0.15,
-    "state_key": "link_bot",
-    "point_idx": 0
-  },
+  "timeout": 30,
 	"move_obstacles": false,
+  "goal_threshold": 0.15,
   "fixed_goal": null,
   "reset_gripper_to": null,
 	"real_time_rate": 10.0,
 	"max_step_size": 0.01,
   "smoothing": {
-      "iters": 500,
+      "iters": 200,
       "goal_alpha": 1000,
       "constraints_alpha": 1,
       "action_alpha": 1
-  }
+  },
+  "scenario": "link_bot"
 }

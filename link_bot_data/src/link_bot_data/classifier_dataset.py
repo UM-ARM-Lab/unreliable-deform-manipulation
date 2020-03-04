@@ -5,13 +5,9 @@ import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
-from link_bot_pycommon.link_bot_sdf_utils import compute_extent
 
 
 def add_next(feature_name):
-    if '/' in feature_name:
-        prefix, suffix = feature_name.split('/')
-        return prefix + '_next/' + suffix
     return feature_name + '_next'
 
 
@@ -96,7 +92,7 @@ class ClassifierDataset(BaseDataset):
         ]
 
         for k in actual_state_keys:
-            self.state_like_names_and_shapes.append('%d/state/{}'.format(k))
+            self.state_like_names_and_shapes.append('%d/{}'.format(k))
 
         for k in planned_state_keys:
             self.state_like_names_and_shapes.append('%d/planned_state/{}'.format(k))
@@ -105,14 +101,20 @@ class ClassifierDataset(BaseDataset):
             'full_env/origin',
             'full_env/extent',
             'full_env/env',
+            'full_env/res',
         ]
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
 
         @tf.function
         def _label_transitions(transition: dict):
-            pre_transition_distance = tf.norm(transition['state/link_bot'] - transition['planned_state/link_bot'])
-            post_transition_distance = tf.norm(transition['state_next/link_bot'] - transition['planned_state_next/link_bot'])
+            # FIXME: don't hard code this
+            state_key = self.labeling_params['state_key']
+            state_key_next = add_next(state_key)
+            planned_state_key = 'planned_state/{}'.format(state_key)
+            planned_state_key_next = add_next(planned_state_key)
+            pre_transition_distance = tf.norm(transition[state_key] - transition[planned_state_key])
+            post_transition_distance = tf.norm(transition[state_key_next] - transition[planned_state_key_next])
 
             pre_threshold = self.labeling_params['pre_close_threshold']
             post_threshold = self.labeling_params['post_close_threshold']
@@ -140,38 +142,9 @@ class ClassifierDataset(BaseDataset):
                 return False
             return True
 
-        def _compute_extent(transition):
-            res = transition['res']
-            res_2d = tf.tile(tf.expand_dims(res, axis=0), [2])
-            origin = transition['state/local_env_origin']
-            next_origin = transition['state_next/local_env_origin']
-            planned_origin = transition['planned_state/local_env_origin']
-            planned_next_origin = transition['planned_state_next/local_env_origin']
-            w_cols, h_rows = transition['state/local_env'].shape
-
-            extent = tf.numpy_function(compute_extent, inp=[h_rows, w_cols, res_2d, origin], Tout=tf.float32)
-            extent.set_shape([4])
-            transition['state/local_env_extent'] = extent
-
-            next_extent = tf.numpy_function(compute_extent, inp=[h_rows, w_cols, res_2d, next_origin], Tout=tf.float32)
-            next_extent.set_shape([4])
-            transition['state_next/local_env_extent'] = next_extent
-
-            planned_extent = tf.numpy_function(compute_extent, inp=[h_rows, w_cols, res_2d, planned_origin], Tout=tf.float32)
-            planned_extent.set_shape([4])
-            transition['planned_state/local_env_extent'] = planned_extent
-
-            planned_next_extent = tf.numpy_function(compute_extent, inp=[h_rows, w_cols, res_2d, planned_next_origin],
-                                                    Tout=tf.float32)
-            planned_next_extent.set_shape([4])
-            transition['planned_state_next/local_env_extent'] = planned_next_extent
-            return transition
-
         # At this point, the dataset consists of tuples (const_data, state_data, action_data)
         dataset = dataset.flat_map(convert_sequences_to_transitions)
         dataset = dataset.map(_label_transitions)
         dataset = dataset.filter(_filter_pre_far_transitions)
-
-        dataset = dataset.map(_compute_extent)
 
         return dataset

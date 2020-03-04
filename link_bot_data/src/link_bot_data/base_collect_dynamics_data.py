@@ -83,7 +83,7 @@ def generate_traj(args, service_provider, traj_idx, global_t_step, action_rng: n
 
         feature['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature([gripper1_dx, gripper1_dy])
         for name, state in states_dict.items():
-            feature['{}/state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
+            feature['{}/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
         feature['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature(traj_idx)
         feature['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature(time_idx)
 

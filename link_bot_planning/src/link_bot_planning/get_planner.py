@@ -8,7 +8,7 @@ from link_bot_planning.nearest_rrt import NearestRRT
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
-def get_planner(planner_params: Dict, services: GazeboServices, seed: int):
+def get_planner(planner_params: Dict, services: GazeboServices, seed: int, verbose: int):
     fwd_model_dir = pathlib.Path(planner_params['fwd_model_dir'])
     classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])
     fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir)
@@ -27,6 +27,7 @@ def get_planner(planner_params: Dict, services: GazeboServices, seed: int):
                             viz_object=viz_object,
                             services=services,
                             seed=seed,
+                            verbose=verbose,
                             )
     return planner, model_path_info
 
@@ -36,7 +37,8 @@ def get_planner_with_model(planner_class_str: str,
                            classifier_model_dir: pathlib.Path,
                            planner_params: Dict,
                            services: GazeboServices,
-                           seed: int):
+                           seed: int,
+                           verbose: int):
     classifier_model = classifier_utils.load_generic_model(classifier_model_dir)
     viz_object = link_bot_planning.viz_object.VizObject()
 
@@ -51,5 +53,6 @@ def get_planner_with_model(planner_class_str: str,
                             viz_object=viz_object,
                             services=services,
                             seed=seed,
+                            verbose=verbose,
                             )
     return planner

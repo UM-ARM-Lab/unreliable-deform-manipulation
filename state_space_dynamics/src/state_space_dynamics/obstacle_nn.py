@@ -1,5 +1,5 @@
 import pathlib
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import tensorflow as tf
@@ -10,7 +10,7 @@ from tensorflow import keras
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
 from link_bot_pycommon import link_bot_sdf_utils
 from moonshine.action_smear_layer import smear_action
-from moonshine.numpy_utils import add_batch
+from moonshine.numpy_utils import add_batch, dict_of_sequences_to_sequence_of_dicts
 from moonshine.raster_points_layer import differentiable_raster
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
@@ -85,8 +85,7 @@ class ObstacleNN(MyKerasModel):
         input_sequence_length = actions.shape[1]
 
         substates_0 = []
-        for name, n in self.used_states_description.items():
-            state_key = 'state/{}'.format(name)
+        for state_key, n in self.used_states_description.items():
             substate_0 = input_dict[state_key][:, 0]
             substates_0.append(substate_0)
 
@@ -150,8 +149,7 @@ class ObstacleNN(MyKerasModel):
         output_states_dict = {}
         for name, n in self.used_states_description.items():
             end_idx = start_idx + n
-            name_feature_name = 'state/{}'.format(name)
-            output_states_dict[name_feature_name] = pred_states[:, :, start_idx:end_idx]
+            output_states_dict[state_key] = pred_states[:, :, start_idx:end_idx]
             start_idx += n
 
         return output_states_dict
@@ -173,7 +171,7 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
                                  full_env_origin: np.ndarray,
                                  res: float,
                                  start_states: Dict[str, np.ndarray],
-                                 actions: tf.Variable) -> Dict[str, tf.Tensor]:
+                                 actions: tf.Variable) -> List[Dict]:
         """
         :param full_env:        (H, W)
         :param full_env_origin: (2)
@@ -193,8 +191,7 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
             'full_env/origin': tf.convert_to_tensor(full_env_origin, dtype=tf.float32),
         }
 
-        for k, v in start_states.items():
-            state_key = 'state/{}'.format(k)
+        for state_key, v in start_states.items():
             # handles conversion from double -> float
             state = tf.convert_to_tensor(v, dtype=tf.float32)
             first_state = tf.reshape(state, state.shape[0])
@@ -202,6 +199,7 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
 
         test_x = add_batch(test_x)
         predictions = self.net((test_x, None))
+        predictions = dict_of_sequences_to_sequence_of_dicts(predictions)
 
         return predictions
 

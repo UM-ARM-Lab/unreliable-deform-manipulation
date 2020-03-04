@@ -1,12 +1,12 @@
 import pathlib
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore
 
-from moonshine.numpy_utils import add_batch, remove_batch
+from moonshine.numpy_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -21,16 +21,14 @@ class SimpleNN(MyKerasModel):
         self.dense_layers = []
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
-        # TODO: make state_key always mean without "state/" and state_feature_name always mean with
         self.state_key = self.hparams['state_key']
         # TODO: support multiple state keys like in obstacle_nn
-        self.state_feature_name = "state/{}".format(self.state_key)
         self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
 
     def call(self, dataset_element, training=None, mask=None):
         input_dict, _ = dataset_element
-        states = input_dict[self.state_feature_name]
+        states = input_dict[self.state_key]
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
         s_0 = states[:, 0]
@@ -54,7 +52,7 @@ class SimpleNN(MyKerasModel):
             pred_states.append(s_t_plus_1_flat)
 
         pred_states = tf.stack(pred_states, axis=1)
-        return {self.state_feature_name: pred_states}
+        return {self.state_key: pred_states}
 
 
 class SimpleNNWrapper(BaseDynamicsFunction):
@@ -74,7 +72,7 @@ class SimpleNNWrapper(BaseDynamicsFunction):
                                  full_env_origin: np.ndarray,
                                  res: float,
                                  start_states: Dict[str, np.ndarray],
-                                 actions: tf.Variable) -> Dict[str, tf.Tensor]:
+                                 actions: tf.Variable) -> List[Dict]:
         """
         :param full_env:        (H, W)
         :param full_env_origin: (2)
@@ -86,17 +84,21 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         del full_env  # unused
         del full_env_origin  # unused
         del res  # unsed
-        state = start_states[self.net.state_feature_name]
+        state = start_states[self.net.state_key]
         state = np.expand_dims(state, axis=0)
         state = tf.convert_to_tensor(state, dtype=tf.float32)
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {
             # must be batch, T, n_state
-            self.net.state_feature_name: state,
+            self.net.state_key: state,
             # must be batch, T, 2
             'action': actions,
         }
         test_x = add_batch(test_x)
+        # the network returns a dictionary where each value is [T, n_state]
+        # which is what you'd want for training, but for planning and execution and everything else
+        # it is easier to deal with a list of states where each state is a dictionary
         predictions = self.net((test_x, None))
         predictions = remove_batch(predictions)
+        predictions = dict_of_sequences_to_sequence_of_dicts(predictions)
         return predictions

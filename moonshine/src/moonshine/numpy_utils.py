@@ -4,6 +4,19 @@ import tensorflow as tf
 import numpy as np
 
 
+def dict_of_sequences_to_sequence_of_dicts(dict_of_seqs):
+    seq_of_dicts = []
+    # assumes all values in the dict have the same first dimension size (num time steps)
+    T = len(list(dict_of_seqs.values())[0])
+    for t in range(T):
+        dict_t = {}
+        for k, v in dict_of_seqs.items():
+            dict_t[k] = v[t]
+        seq_of_dicts.append(dict_t)
+
+    return seq_of_dicts
+
+
 def remove_batch(*xs):
     if len(xs) == 1:
         return remove_batch_single(xs[0])

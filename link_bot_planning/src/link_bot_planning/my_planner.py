@@ -1,28 +1,22 @@
 from dataclasses import dataclass
 from typing import Dict
-import rospy
 
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
+import rospy
 from colorama import Fore
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_gazebo.gazebo_services import GazeboServices
-from link_bot_planning.link_bot_goal import LinkBotCompoundGoal
-from link_bot_planning.state_spaces import to_numpy, from_numpy, to_numpy_flat, ValidRopeConfigurationCompoundSampler
+from link_bot_planning.get_scenario import get_scenario
+from link_bot_planning.link_bot_goal import MyGoalRegion
+from link_bot_planning.state_spaces import from_numpy, to_numpy_flat, ValidRopeConfigurationCompoundSampler, \
+    compound_to_numpy, ompl_control_to_model_action
 from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
-
-
-def ompl_control_to_model_action(control, n_action):
-    distance_angle = to_numpy(control, n_action)
-    angle = distance_angle[0, 0]
-    distance = distance_angle[0, 1]
-    np_u = np.array([np.cos(angle) * distance, np.sin(angle) * distance])
-    return np_u
 
 
 @dataclass
@@ -41,8 +35,10 @@ class MyPlanner:
                  services: GazeboServices,
                  viz_object: VizObject,
                  seed: int,
+                 verbose: int,
                  ):
         # FIXME:
+        self.verbose = verbose
         self.rope_length = rospy.get_param('/link_bot/rope_length')
         self.planner = None
         self.fwd_model = fwd_model
@@ -57,16 +53,14 @@ class MyPlanner:
         self.seed = seed
         self.classifier_rng = np.random.RandomState(seed)
         self.state_sampler_rng = np.random.RandomState(seed)
-
-        self.state_space_weights = self.params['state_space_weights']
-
-        assert (self.fwd_model.state_keys == list(self.state_space_weights.keys()))
+        self.planning_scenario = get_scenario(params['scenario'])
 
         self.state_space_description = {}
         self.state_space = ob.CompoundStateSpace()
         self.subspaces = []
         self.subspace_bounds = []
-        for subspace_idx, (state_key, weight) in enumerate(self.state_space_weights.items()):
+        for subspace_idx, state_key in enumerate(self.fwd_model.state_keys):
+            weight = self.planning_scenario.get_subspace_weight(state_key)
             n_state = self.fwd_model.states_description[state_key]
             subspace_description = {
                 "idx": subspace_idx,
@@ -89,7 +83,6 @@ class MyPlanner:
             self.subspace_bounds.append(bounds)
             self.state_space.addSubspace(subspace, weight=weight)
 
-        # TODO: debug why bounds are not working...
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
 
         control_bounds = ob.RealVectorBounds(2)
@@ -119,39 +112,32 @@ class MyPlanner:
         if params['sampler_type'] == 'sample_train':
             raise NotImplementedError()
 
-        self.goal_description = self.params['goal_description']
-        self.goal_subspace_name = self.goal_description['state_key']
-        self.goal_subspace_feature_name = 'state/{}'.format(self.goal_subspace_name)
-        self.goal_point_idx = self.goal_description['point_idx']
-        self.goal_subspace_idx = self.state_space_description[self.goal_subspace_name]['idx']
-        self.goal_n_state = self.state_space_description[self.goal_subspace_name]['n_state']
-
         smoothing_params = self.params['smoothing']
         # FIXME actions or controls?
-        self.smoother = TrajectorySmoother(fwd_model=fwd_model,
+        self.smoother = TrajectorySmoother(verbose=self.verbose,
+                                           fwd_model=fwd_model,
                                            classifier_model=classifier_model,
                                            params=smoothing_params,
-                                           goal_point_idx=self.goal_point_idx,
-                                           goal_subspace_feature_name=self.goal_subspace_feature_name)
+                                           planning_scenario=self.planning_scenario)
 
     def is_valid(self, state):
         return self.state_space.satisfiesBounds(state)
 
     def motions_valid(self, motions):
-        named_states = dict(('state/{}'.format(subspace_name), []) for subspace_name in self.state_space_description.keys())
+        named_states = dict((subspace_name, []) for subspace_name in self.state_space_description.keys())
         actions = []
         for t, motion in enumerate(motions):
             # motions is a vector of oc.Motion, which has a state, parent, and control
             state = motion.getState()
-            np_states = self.compound_to_numpy(state)
-            for subspace_feature_name, state_t in np_states.items():
-                named_states[subspace_feature_name].append(state_t)
+            np_states = compound_to_numpy(self.state_space_description, state)
+            for subspace_name, state_t in np_states.items():
+                named_states[subspace_name].append(state_t)
             if t > 0:  # skip the first (null) action, because that would represent the action that brings us to the first state
                 actions.append(self.control_to_numpy(motion.getControl()))
 
         named_states_np = {}
-        for subspace_feature_name, states in named_states.items():
-            named_states_np[subspace_feature_name] = np.array(states)
+        for subspace_name, states in named_states.items():
+            named_states_np[subspace_name] = np.array(states)
         actions = np.array(actions)
 
         accept_probability = self.classifier_model.check_constraint(full_env=self.full_env_data.data,
@@ -170,16 +156,6 @@ class MyPlanner:
 
         return motions_is_valid
 
-    def compound_to_numpy(self, state):
-        np_states = {}
-        for name, subspace_description in self.state_space_description.items():
-            feature_name = 'state/{}'.format(name)
-            idx = subspace_description['idx']
-            n_state = subspace_description['n_state']
-            np_s = to_numpy_flat(state[idx], n_state)
-            np_states[feature_name] = np_s
-        return np_states
-
     def control_to_numpy(self, control):
         np_u = ompl_control_to_model_action(control, self.n_action)
         return np_u
@@ -194,22 +170,20 @@ class MyPlanner:
                                                start_states=np_states,
                                                actions=np_actions)
         # get only the final state predicted
-        final_states = {}
-        for state_name, pred_next_states in next_states.items():
-            final_states[state_name] = pred_next_states[-1]
+        final_states = next_states[-1]
         return final_states
 
     def compound_from_numpy(self, np_final_states: Dict[str, np.ndarray], state_out):
-        for name, subspace_description in self.state_space_description.items():
+        for subspace_name, subspace_description in self.state_space_description.items():
             idx = subspace_description['idx']
             n_state = subspace_description['n_state']
-            from_numpy(np_final_states['state/{}'.format(name)], state_out[idx], n_state)
+            from_numpy(np_final_states[subspace_name], state_out[idx], n_state)
 
     def propagate(self, start, control, duration, state_out):
         del duration  # unused, multi-step propagation is handled inside propagateMotionsWhileValid
 
         # Convert from OMPL -> Numpy
-        np_states = self.compound_to_numpy(start)
+        np_states = compound_to_numpy(self.state_space_description, start)
         np_action = self.control_to_numpy(control)
         np_actions = np.expand_dims(np_action, axis=0)
 
@@ -219,63 +193,66 @@ class MyPlanner:
         self.compound_from_numpy(np_final_states, state_out)
 
     def smooth_path(self,
-                    goal_point: np.ndarray,
+                    goal,
                     controls: np.ndarray,
                     planned_path: Dict[str, np.ndarray]):
         smoothed_actions_tf, smoothed_path_tf = self.smoother.smooth(full_env=self.full_env_data.data,
                                                                      full_env_origin=self.full_env_data.origin,
                                                                      res=self.full_env_data.resolution,
-                                                                     goal_point=goal_point,
+                                                                     goal=goal,
                                                                      actions=controls,
                                                                      planned_path=planned_path)
-        smoothed_path = {}
-        for k, v in smoothed_path_tf.items():
-            smoothed_path[k] = v.numpy()
+        smoothed_path = []
+        for state_tf in smoothed_path_tf:
+            state_np = {}
+            for k, v in state_tf.items():
+                state_np[k] = v.numpy()
+            smoothed_path.append(state_np)
 
         return smoothed_actions_tf.numpy(), smoothed_path
 
     def plan(self,
              start_states: Dict[str, np.ndarray],
-             goal_point: np.ndarray,
+             goal,
              full_env_data: link_bot_sdf_utils.OccupancyData) -> PlannerResult:
         """
         :param full_env_data:
         :param start_states: each element is a vector
-        :param goal_point:  1 by n matrix
+        :param goal:
         :return: controls, states
         """
         self.full_env_data = full_env_data
 
         # create start and goal states
-        compound_start = ob.CompoundState(self.state_space)
-        self.compound_from_numpy(start_states, compound_start())
+        ompl_start = ob.CompoundState(self.state_space)
+        self.compound_from_numpy(start_states, ompl_start())
 
-        start = ob.State(compound_start)
-        goal = LinkBotCompoundGoal(self.si,
-                                   self.goal_description['threshold'],
-                                   goal_point,
-                                   self.viz_object,
-                                   self.goal_subspace_idx,
-                                   self.goal_point_idx,
-                                   self.goal_n_state)
+        start = ob.State(ompl_start)
+        ompl_goal = MyGoalRegion(self.si,
+                                 self.params['goal_threshold'],
+                                 goal,
+                                 self.viz_object,
+                                 self.planning_scenario,
+                                 self.state_space_description)
 
         self.ss.clear()
         self.viz_object.clear()
         self.ss.setStartState(start)
-        self.ss.setGoal(goal)
+        self.ss.setGoal(ompl_goal)
 
         planner_status = self.ss.solve(self.params['timeout'])
 
         if planner_status:
             ompl_path = self.ss.getSolutionPath()
             controls_np, planned_path_dict = self.convert_path(ompl_path)
-            controls_np, planned_path_dict = self.smooth_path(goal_point, controls_np, planned_path_dict)
+            controls_np, planned_path_dict = self.smooth_path(goal, controls_np, planned_path_dict)
             return PlannerResult(planner_status=planner_status,
                                  path=planned_path_dict,
                                  actions=controls_np)
         return PlannerResult(planner_status)
 
     def state_sampler_allocator(self, state_space):
+        # Note: I had issues using RealVectorStateSampler() here...
         if self.params['sampler_type'] == 'random':
             extent = [-self.params['w'] / 2,
                       self.params['w'] / 2,
@@ -305,29 +282,22 @@ class MyPlanner:
         return sampler
 
     def convert_path(self, ompl_path: oc.PathControl):
-        planned_path = {}
+        planned_path = []
         for time_idx, compound_state in enumerate(ompl_path.getStates()):
+            state = {}
             for name, subspace_description in self.state_space_description.items():
-                feature_name = 'state/{}'.format(name)
-                if feature_name not in planned_path:
-                    planned_path[feature_name] = []
-
                 idx = subspace_description['idx']
                 n_state = subspace_description['n_state']
                 subspace_state = compound_state[idx]
-                planned_path[feature_name].append(to_numpy_flat(subspace_state, n_state))
-
-        # now convert lists to arrays
-        planned_path_dict = {}
-        for k, v in planned_path.items():
-            planned_path_dict[k] = np.array(v)
+                state[name] = to_numpy_flat(subspace_state, n_state)
+            planned_path.append(state)
 
         np_controls = np.ndarray((ompl_path.getControlCount(), self.n_action))
         for time_idx, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
             # duration is always be 1 for control::RRT, not so for control::SST
             np_controls[time_idx] = ompl_control_to_model_action(control, self.n_action).squeeze()
 
-        return np_controls, planned_path_dict
+        return np_controls, planned_path
 
 
 def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0):

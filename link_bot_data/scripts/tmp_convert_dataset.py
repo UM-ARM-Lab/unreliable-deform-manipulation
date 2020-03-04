@@ -20,17 +20,16 @@ class TmpDataset(BaseDataset):
         self.action_like_names_and_shapes = ['%d/action']
 
         self.state_like_names_and_shapes = [
-            '%d/state/local_env',
-            '%d/state/local_env_origin',
             '%d/state/link_bot',
-            '%d/res',
+            '%d/state/gripper',
             '%d/time_idx',
             '%d/traj_idx',
         ]
         self.trajectory_constant_names_and_shapes = [
-            'full_env/origin',
-            'full_env/extent',
             'full_env/env',
+            'full_env/extent',
+            'full_env/origin',
+            'full_env/res',
         ]
 
 
@@ -56,12 +55,14 @@ def main():
         for example_idx, example_dict in enumerate(tf_dataset):
 
             features = {
-                'full_env/res': float_tensor_to_bytes_feature(0.03),
-                'local_env/res': float_tensor_to_bytes_feature(0.03),
             }
             for k, v in example_dict.items():
-                if 'res' not in k:
-                    features[k] = float_tensor_to_bytes_feature(v)
+                if 'state' in k:
+                    num, _, name = k.split("/")
+                    new_k = num + "/" + name
+                else:
+                    new_k = k
+                features[new_k] = float_tensor_to_bytes_feature(v)
 
             example_proto = tf.train.Example(features=tf.train.Features(feature=features))
             example = example_proto.SerializeToString()

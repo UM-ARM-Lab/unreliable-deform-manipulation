@@ -21,7 +21,7 @@ from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices, get_sdf_data
 from link_bot_planning import plan_and_execute
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.get_planner import get_planner
+from link_bot_planning.get_scenario import get_planner
 from link_bot_planning.ompl_viz import plot
 from link_bot_planning.params import SimParams, PlannerParams
 from link_bot_pycommon import link_bot_sdf_utils

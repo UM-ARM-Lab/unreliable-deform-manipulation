@@ -9,5 +9,5 @@ setup_args = generate_distutils_setup(
     package_dir={'': 'src'},
 )
 
-setup(requires=['control', 'matplotlib', 'numpy', 'tensorflow', 'colorama', 'tabulate', 'gpflow', 'PIL',
+setup(requires=['control', 'matplotlib', 'numpy', 'tensorflow', 'colorama', 'tabulate', 'gpflow', 'PIL', 'more_itertools',
                 'scipy'], **setup_args)

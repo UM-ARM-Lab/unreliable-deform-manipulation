@@ -1,12 +1,13 @@
 from __future__ import division
 
-import numpy as np
-import warnings
 import math
 import random
 import string
-from colorama import Fore
+import warnings
+
+import numpy as np
 import tensorflow as tf
+from colorama import Fore
 
 
 def yaw_diff(a, b):
@@ -158,6 +159,7 @@ def rand_str(length=16):
     """Generate a random string of fixed length """
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(length))
+
 
 # epsilon for testing whether a number is close to zero
 _EPS = np.finfo(float).eps * 4.0

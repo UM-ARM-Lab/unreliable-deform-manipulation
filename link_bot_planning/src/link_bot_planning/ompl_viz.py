@@ -1,113 +1,44 @@
-from typing import Iterable, Optional
+from typing import Optional, List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
-from geometry_msgs.msg import Point
 from matplotlib.animation import FuncAnimation
 from ompl import base as ob
-from visualization_msgs.msg import MarkerArray, Marker
 
-from link_bot_data.visualization import plot_rope_configuration, plottable_rope_configuration
-from link_bot_gazebo.gazebo_services import GazeboServices
-from link_bot_planning.state_spaces import to_numpy
-from matplotlib.patches import Arrow
+from link_bot_planning.planning_scenario import PlanningScenario
+from link_bot_planning.state_spaces import compound_to_numpy
 from link_bot_planning.viz_object import VizObject
-from link_bot_pycommon.link_bot_sdf_utils import SDF
-
-
-def animate_plan(planned_path: Optional[np.ndarray],
-                 planned_actions: Optional[np.ndarray],
-                 goal: np.ndarray,
-                 environment: np.ndarray,
-                 extent: Iterable,
-                 ):
-    fig = plt.figure()
-    ax = plt.gca()
-    ax.imshow(np.flipud(environment), extent=extent)
-
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.axis("equal")
-    ax.set_xlim([-0.36, 0.36])
-    ax.set_ylim([-0.5, 0.5])
-    ax.legend()
-
-    arrow_width = 0.02
-
-    start = planned_path[0]
-    ax.scatter(start[0], start[1], label='start', s=50, c='m', zorder=5)
-    ax.scatter(goal[0], goal[1], label='goal', s=50, c='g', zorder=5)
-
-    arrow_0 = Arrow(planned_path[0, -2],
-                        planned_path[0, -1],
-                        planned_actions[0, 0],
-                        planned_actions[0, 1],
-                        width=arrow_width,
-                        zorder=4)
-    patch = ax.add_patch(arrow_0)
-
-    def update(t):
-        nonlocal patch
-        s_t = planned_path[t]
-        ax.scatter(s_t[0], s_t[1], label='final_path', s=10, c='cyan', zorder=3)
-        plot_rope_configuration(ax, s_t, label='final path', linewidth=1, c='blue', zorder=2, s=1)
-
-        if t < planned_actions.shape[0]:
-            u_t = planned_actions[t]
-            patch.remove()
-            arrow = Arrow(s_t[-2], s_t[-1], u_t[0], u_t[1], width=arrow_width, zorder=4)
-            patch = ax.add_patch(arrow)
-
-    anim = FuncAnimation(fig, update, frames=planned_path.shape[0], interval=500)
-    return anim
 
 
 def plot_plan(ax,
-              n_state: int,
+              state_space_description: Dict,
+              planning_scenario: PlanningScenario,
               viz_object: VizObject,
               planner_data: ob.PlannerData,
               environment: np.ndarray,
-              goal: np.ndarray,
-              planned_path: Optional[np.ndarray],
+              goal,
+              planned_path: Optional[List[Dict[str, np.ndarray]]],
               planned_actions: Optional[np.ndarray],
-              extent: Iterable,
+              extent,
               draw_tree: Optional[bool] = None,
               draw_rejected: Optional[bool] = None,
               ):
-    plot_data_dict = {
-        'n_state': n_state,
-        'goal': goal,
-        'environment': environment,
-        'planned_path': planned_path,
-        'extent': extent,
-        'planned_actions': planned_actions,
-        'sampled_states': [],
-        'rejected_states': [],
-        'final_path': [],
-        'tree_edges': [],
-    }
-
     ax.imshow(np.flipud(environment), extent=extent)
 
     # for state_sampled_at in viz_object.states_sampled_at:
     #     plot_rope_configuration(ax, state_sampled_at, label='sampled states', linewidth=1.0, c='b', zorder=1)
-    #     plot_data_dict['sampled_states'].append(state_sampled_at)
 
     if draw_rejected:
         for rejected_state in viz_object.rejected_samples:
-            plot_rope_configuration(ax, rejected_state, label='states rejected by classifier', linewidth=0.8, c='r', zorder=1,
-                                    s=10)
-            plot_data_dict['rejected_states'].append(rejected_state)
+            planning_scenario.plot_state(ax, rejected_state, color='o')
 
     if planned_path is not None:
         start = planned_path[0]
-        ax.scatter(start[0], start[1], label='start', s=50, c='m', zorder=5)
-        ax.scatter(goal[0], goal[1], label='goal', s=50, c='g', zorder=5)
-        subsample_path_ = 1
-        for rope_configuration in planned_path[::subsample_path_]:
-            ax.scatter(rope_configuration[0], rope_configuration[1], label='final_path', s=10, c='cyan', zorder=4)
-            plot_data_dict['final_path'].append(rope_configuration)
-            plot_rope_configuration(ax, rope_configuration, label='final path', linewidth=1, c='blue', zorder=4, s=2)
+        planning_scenario.plot_state(ax, start, color='b')
+        planning_scenario.plot_goal(ax, goal, color='c')
+        draw_every_n = 6
+        for state in planned_path[::draw_every_n]:
+            planning_scenario.plot_state(ax, state, color='g')
 
     # Visualize Nearest Neighbor Selection (poorly...)
     # for sample in planner_data.getSamples():
@@ -128,9 +59,8 @@ def plot_plan(ax,
             s = v.getState()
             edges_map = ob.mapUintToPlannerDataEdge()
 
-            # TODO: this assumes the specific compound state space I'm testing at the moment. Get the subspace by name maybe?
-            np_s = to_numpy(s[0], n_state)
-            ax.scatter(np_s[0, 0], np_s[0, 1], s=5, c='black', zorder=2, label='tail')
+            np_s = compound_to_numpy(state_space_description, s)
+            planning_scenario.plot_state_simple(ax, np_s, color='k')
 
             # full rope is too noisy
             # if len(edges_map.keys()) == 0:
@@ -140,67 +70,28 @@ def plot_plan(ax,
             for vertex_index2 in edges_map.keys():
                 v2 = planner_data.getVertex(vertex_index2)
                 s2 = v2.getState()
-                np_s2 = to_numpy(s2[0], n_state)
-                ax.plot([np_s[0, 0], np_s2[0, 0]], [np_s[0, 1], np_s2[0, 1]], c='gray', linewidth=0.5, zorder=1)
-                plot_data_dict['tree_edges'].append([np_s, np_s2])
+                np_s2 = compound_to_numpy(state_space_description, s2)
+                planning_scenario.plot_state_simple(ax, np_s2, color='k')
 
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.axis("equal")
-    ax.set_xlim([-2.5, 2.5])
-    ax.set_ylim([-2.5, 2.5])
+    ax.set_xlim([extent[0], extent[1]])
+    ax.set_ylim([extent[2], extent[3]])
 
     handles, labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     legend = ax.legend(by_label.values(), by_label.keys(), loc='upper left', bbox_to_anchor=(1, 1))
 
-    return plot_data_dict, legend
-
-
-def add_sampled_configuration(services: GazeboServices,
-                              np_s: np.ndarray,
-                              u: np.ndarray,
-                              np_s_reached: np.ndarray,
-                              sdf_data: SDF):
-    markers = MarkerArray()
-
-    pre_marker = Marker()
-    pre_marker.header.frame_id = '/world'
-    pre_marker.scale.x = 1
-    tail = Point()
-    tail.x = np_s[0, 0]
-    tail.y = np_s[0, 1]
-    tail.z = 0
-    mid = Point()
-    mid.x = np_s[0, 2]
-    mid.y = np_s[0, 3]
-    mid.z = 0
-    head = Point()
-    head.x = np_s[0, 4]
-    head.y = np_s[0, 5]
-    head.z = 0
-    pre_marker.points.append(tail)
-    pre_marker.points.append(mid)
-    pre_marker.points.append(head)
-    pre_marker.type = Marker.LINE_STRIP
-    pre_marker.color.r = 1.0
-    pre_marker.color.g = 0.0
-    pre_marker.color.b = 0.0
-    pre_marker.color.a = 1.0
-
-    post_marker = Marker()
-    post_marker.header.frame_id = '/world'
-
-    markers.markers.append(pre_marker)
-    markers.markers.append(post_marker)
-    return None
+    return legend
 
 
 def plan_vs_execution(environment: np.ndarray,
-                      goal: np.ndarray,
-                      planned_path: np.ndarray,
-                      actual_path: np.ndarray,
-                      extent: Iterable):
+                      extent,
+                      planning_scenario: PlanningScenario,
+                      goal,
+                      planned_path: Optional[List[Dict[str, np.ndarray]]] = None,
+                      actual_path: Optional[List[Dict[str, np.ndarray]]] = None):
     fig = plt.figure()
     ax = plt.gca()
     ax.imshow(np.flipud(environment), extent=extent)
@@ -208,31 +99,24 @@ def plan_vs_execution(environment: np.ndarray,
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.axis("equal")
-    ax.set_xlim([-0.36, 0.36])
-    ax.set_ylim([-0.5, 0.5])
+    ax.set_xlim([extent[0], extent[1]])
+    ax.set_ylim([extent[2], extent[3]])
 
     start = planned_path[0]
-    ax.scatter(start[0], start[1], label='start', s=50, c='r', zorder=5)
-    ax.scatter(goal[0], goal[1], label='goal', s=50, c='g', zorder=5)
+    planning_scenario.plot_state(ax, start, 'b')
+    planning_scenario.plot_goal(ax, goal, 'c')
 
-    planned_xs, planned_ys = plottable_rope_configuration(planned_path[0])
-    actual_xs, actual_ys = plottable_rope_configuration(actual_path[0])
-    actual_line = plt.plot(actual_xs, actual_ys, linewidth=1, c='c', zorder=3)[0]
-    planned_line = plt.plot(planned_xs, planned_ys, linewidth=1, c='m', zorder=4)[0]
-    actual_scat = plt.scatter(actual_xs, actual_ys, s=10, c='c', zorder=3, label='actual')
-    planned_scat = plt.scatter(planned_xs, planned_ys, s=10, c='m', zorder=4, label='planned')
+    if planned_path is not None:
+        planned_path_artist = planning_scenario.plot_state(ax, planned_path[0], 'g')
+    if actual_path is not None:
+        actual_path_artist = planning_scenario.plot_state(ax, actual_path[0], '#00ff00')
     plt.legend()
 
     def update(t):
-        planned_xs, planned_ys = plottable_rope_configuration(planned_path[t])
-        actual_xs, actual_ys = plottable_rope_configuration(actual_path[t])
-        actual_points = np.vstack((actual_xs, actual_ys)).T
-        planned_points = np.vstack((planned_xs, planned_ys)).T
+        if planned_path is not None:
+            planning_scenario.update_artist(planned_path_artist, planned_path[t])
+        if actual_path is not None:
+            planning_scenario.update_artist(actual_path_artist, actual_path[t])
 
-        planned_line.set_data(planned_xs, planned_ys)
-        actual_line.set_data(actual_xs, actual_ys)
-        actual_scat.set_offsets(actual_points)
-        planned_scat.set_offsets(planned_points)
-
-    anim = FuncAnimation(fig, update, frames=planned_path.shape[0], interval=500)
+    anim = FuncAnimation(fig, update, frames=len(planned_path), interval=500)
     return anim

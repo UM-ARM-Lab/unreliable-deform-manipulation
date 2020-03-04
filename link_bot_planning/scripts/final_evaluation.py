@@ -5,7 +5,7 @@ import argparse
 import json
 import pathlib
 import time
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,7 +20,7 @@ import link_bot_data.link_bot_dataset_utils
 from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute, model_utils
-from link_bot_planning.my_planner import MyPlanner, get_planner_with_model
+from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot_plan
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
@@ -109,19 +109,19 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
         super().on_after_plan()
 
-    def get_goal(self, w, h, head_point, env_padding, full_env_data):
+    def get_goal(self, w, h, full_env_data):
         if self.goal is not None:
             if self.verbose >= 1:
                 print("Using Goal {}".format(self.goal))
             return np.array(self.goal)
         else:
-            return super().get_goal(w, h, head_point, env_padding, full_env_data)
+            return super().get_goal(w, h, full_env_data)
 
     def on_execution_complete(self,
-                              planned_path: np.ndarray,
+                              planned_path: List[Dict[str, np.ndarray]],
                               planned_actions: np.ndarray,
                               tail_goal_point: np.ndarray,
-                              actual_path: Dict[str, np.ndarray],
+                              actual_path: List[Dict[str, np.ndarray]],
                               full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,

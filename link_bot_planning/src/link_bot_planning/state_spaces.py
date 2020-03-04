@@ -158,3 +158,21 @@ def from_numpy(np_state_or_control: np.ndarray,
     else:
         for i in range(dim):
             out[i] = np_state_or_control[i]
+
+
+def compound_to_numpy(state_space_description, state):
+    np_states = {}
+    for name, subspace_description in state_space_description.items():
+        idx = subspace_description['idx']
+        n_state = subspace_description['n_state']
+        np_s = to_numpy_flat(state[idx], n_state)
+        np_states[name] = np_s
+    return np_states
+
+
+def ompl_control_to_model_action(control, n_action):
+    distance_angle = to_numpy(control, n_action)
+    angle = distance_angle[0, 0]
+    distance = distance_angle[0, 1]
+    np_u = np.array([np.cos(angle) * distance, np.sin(angle) * distance])
+    return np_u

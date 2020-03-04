@@ -4,7 +4,7 @@ from __future__ import division, print_function
 import argparse
 import json
 import pathlib
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional, Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,8 +18,8 @@ from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import ompl_viz
 from link_bot_planning import plan_and_execute
-from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.get_planner import get_planner
+from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter, point_arg
@@ -58,111 +58,81 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         self.draw_tree = draw_tree
         self.draw_rejected = draw_rejected
 
-    def get_goal(self, w, h, head_point, full_env_data):
+    def get_goal(self, w, h, full_env_data):
         if self.goal is not None:
             print("Using Goal {}".format(self.goal))
             return np.array(self.goal)
         else:
-            return super().get_goal(w, h, head_point, full_env_data)
-
-    def on_planner_failure(self,
-                           start: Dict[str, np.ndarray],
-                           tail_goal_point: np.ndarray,
-                           full_env_data: link_bot_sdf_utils.OccupancyData,
-                           planner_data: ob.PlannerData):
-        plt.figure()
-        ax = plt.gca()
-        ompl_viz.plot_plan(ax,
-                           self.planner.state_space_description['link_bot']['n_state'],
-                           self.planner.viz_object,
-                           planner_data,
-                           full_env_data.data,
-                           tail_goal_point,
-                           None,
-                           None,
-                           full_env_data.extent,
-                           draw_tree=self.draw_tree,
-                           draw_rejected=self.draw_rejected)
-        plt.show(block=True)
+            return super().get_goal(w, h, full_env_data)
 
     def on_plan_complete(self,
-                         planned_path: np.ndarray,
-                         tail_goal_point: np.ndarray,
+                         planned_path: List[Dict[str, np.ndarray]],
+                         goal,
                          planned_actions: np.ndarray,
                          full_env_data: link_bot_sdf_utils.OccupancyData,
                          planner_data: ob.PlannerData,
                          planning_time: float,
                          planner_status: ob.PlannerStatus):
-        link_bot_planned_path = planned_path['state/link_bot']
-        final_error = np.linalg.norm(link_bot_planned_path[-1, 0:2] - tail_goal_point)
-        lengths = [np.linalg.norm(link_bot_planned_path[i] - link_bot_planned_path[i - 1]) for i in
-                   range(1, len(link_bot_planned_path))]
-        path_length = np.sum(lengths)
-        duration = self.planner.fwd_model.dt * len(link_bot_planned_path)
+        n_actions = len(planned_actions)
+        final_state = planned_path[-1]
+        final_error = self.planner.planning_scenario.distance_to_goal(final_state, goal)
 
-        if self.verbose >= 2:
-            self.services.marker_provider.publish_marker(id=3,
-                                                         rgb=[0, 0, 1],
-                                                         scale=0.05,
-                                                         x=link_bot_planned_path[-1][0],
-                                                         y=link_bot_planned_path[-1][1])
+        if self.verbose >= 1:
+            self.planner.planning_scenario.publish_state_marker(self.services.marker_provider, final_state)
 
-        msg = "Final Error: {:0.4f}, Path Length: {:0.4f}, Steps {}, Duration: {:0.2f}s"
-        print(msg.format(final_error, path_length, len(link_bot_planned_path), duration))
-
-        num_nodes = planner_data.numVertices()
-        print("num nodes {}".format(num_nodes))
-        print("planning time {:0.4f}".format(planning_time))
+        print("Final Error: {:0.4f}, # Actions {}".format(final_error, n_actions))
+        print("Planning Time {:0.3f}".format(planning_time))
 
         if rospy.get_param('service_provider') == 'victor':
-            anim = ompl_viz.animate_plan(link_bot_planned_path,
-                                         planned_actions,
-                                         tail_goal_point,
-                                         full_env_data.data,
-                                         full_env_data.extent)
+            anim = ompl_viz.plan_vs_execution(full_env_data.data,
+                                              full_env_data.extent,
+                                              self.planner.planning_scenario,
+                                              goal,
+                                              planned_path,
+                                              actual_path=None)
             plt.show()
         else:
             plt.figure()
             ax = plt.gca()
-            plot_data_dict, legend = ompl_viz.plot_plan(ax,
-                                                        self.planner.state_space_description['link_bot']['n_state'],
-                                                        self.planner.viz_object,
-                                                        planner_data,
-                                                        full_env_data.data,
-                                                        tail_goal_point,
-                                                        link_bot_planned_path,
-                                                        planned_actions,
-                                                        full_env_data.extent,
-                                                        draw_tree=self.draw_tree,
-                                                        draw_rejected=self.draw_rejected)
+            legend = ompl_viz.plot_plan(ax,
+                                        self.planner.state_space_description,
+                                        self.planner.planning_scenario,
+                                        self.planner.viz_object,
+                                        planner_data,
+                                        full_env_data.data,
+                                        goal,
+                                        planned_path,
+                                        planned_actions,
+                                        full_env_data.extent,
+                                        draw_tree=self.draw_tree,
+                                        draw_rejected=self.draw_rejected)
 
-            np.savez("/tmp/.latest-plan.npz", **plot_data_dict)
             plt.savefig("/tmp/.latest-plan.png", dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
         plt.show(block=True)
 
     def on_execution_complete(self,
-                              planned_path: np.ndarray,
+                              planned_path: List[Dict[str, np.ndarray]],
                               planned_actions: np.ndarray,
-                              tail_goal_point: np.ndarray,
-                              actual_path: Dict[str, np.ndarray],
+                              goal: np.ndarray,
+                              actual_path: List[Dict[str, np.ndarray]],
                               full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
-        execution_to_goal_error = np.linalg.norm(actual_path['state/link_bot'][-1, 0:2] - tail_goal_point)
+        final_planned_state = planned_path[-1]
+        plan_to_goal_error = self.planner.planning_scenario.distance_to_goal(final_planned_state, goal)
+        print("Execution to Plan Error: {:.4f}".format(plan_to_goal_error))
+
+        final_state = actual_path[-1]
+        execution_to_goal_error = self.planner.planning_scenario.distance_to_goal(final_state, goal)
         print('Execution to Goal Error: {:0.3f}'.format(execution_to_goal_error))
 
-        # Convert from the actual space to the planning space, which may be identity, or may be some reduction
-        link_bot_actual_path = actual_path['state/link_bot']
-        link_bot_planned_path = planned_path['state/link_bot']
-        print("Execution to Plan Error (tail): {:.4f}".format(
-            np.linalg.norm(link_bot_planned_path[-1, 0:2] - link_bot_actual_path[-1, 0:2])))
-
         anim = ompl_viz.plan_vs_execution(full_env_data.data,
-                                          tail_goal_point,
-                                          link_bot_planned_path,
-                                          link_bot_actual_path,
-                                          full_env_data.extent)
+                                          full_env_data.extent,
+                                          self.planner.planning_scenario,
+                                          goal,
+                                          planned_path,
+                                          actual_path)
         anim.save("/tmp/.latest-plan-vs-execution.gif", dpi=300, writer='imagemagick')
         plt.show(block=True)
 
@@ -219,7 +189,7 @@ def main():
                                max_step_size=sim_params.max_step_size)
     service_provider.pause(std_srvs.srv.EmptyRequest())
 
-    planner, _ = get_planner(planner_params=planner_params, services=service_provider, seed=args.seed)
+    planner, _ = get_planner(planner_params=planner_params, services=service_provider, seed=args.seed, verbose=args.verbose)
 
     tester = TestWithClassifier(
         planner=planner,

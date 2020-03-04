@@ -82,9 +82,10 @@ def main():
         if args.no_plot:
             continue
 
+        # FIXME: make this support arbitrary state keys
         if args.display_type == 'transition_image':
             image = example['transition_image'].numpy()
-            next_state = example['planned_state_next/link_bot'].numpy()
+            next_state = example['planned_state/link_bot_next'].numpy()
             n_points = n_state_to_n_points(classifier_dataset.hparams['n_state'])
             interpretable_image = visualization.make_interpretable_image(image, n_points)
             plt.imshow(np.flipud(interpretable_image))
@@ -113,7 +114,7 @@ def main():
             full_env_extent = example['full_env/extent'].numpy()
             link_bot_state_all = example['planned_state/link_bot_all'].numpy()
             link_bot_state_stop_idx = example['planned_state/link_bot_all_stop'].numpy()
-            actual_link_bot_state_all = example['state/link_bot_all'].numpy()
+            actual_link_bot_state_all = example['link_bot_all'].numpy()
 
             plt.figure()
             plt.imshow(np.flipud(full_env), extent=full_env_extent)
@@ -125,39 +126,22 @@ def main():
                 plot_rope_configuration(ax, planned_state, c='orange', s=6)
             plt.show()
         elif args.display_type == 'transition_plot':
-            res = example['res'].numpy()
-            res = np.array([res, res])
-            planned_local_env = example['planned_state/local_env'].numpy()
-            planned_local_env_extent = example['planned_state/local_env_extent'].numpy()
-            planned_local_env_origin = example['planned_state/local_env_origin'].numpy()
-            actual_local_env = example['state/local_env'].numpy()
-            actual_local_env_extent = example['state/local_env_extent'].numpy()
-            state = example['state/link_bot'].numpy()
+            full_env = example['full_env/env'].numpy()
+            full_env_extent = example['full_env/extent'].numpy()
+            res = example['full_env/res'].numpy()
+            state = example['link_bot'].numpy()
             action = example['action'].numpy()
-            next_state = example['state_next/link_bot'].numpy()
-            planned_state = example['planned_state/link_bot'].numpy()
-            planned_next_state = example['planned_state_next/link_bot'].numpy()
-            pre_transition_distance = example['pre_dist'].numpy()
-            post_transition_distance = example['post_dist'].numpy()
+            next_state = example['link_bot_next'].numpy()
+            planned_next_state = example['planned_state/link_bot_next'].numpy()
 
-            title = None
-            if post_transition_distance > 0.25:
-                title = "BAD Example {}, {:0.3f}".format(i, post_transition_distance)
-            if post_transition_distance < 0.05:
-                title = "GOOD Example {}, {:0.3f}".format(i, post_transition_distance)
             plot_classifier_data(
                 next_state=next_state,
                 action=action,
                 planned_next_state=planned_next_state,
-                planned_env=planned_local_env,
-                planned_env_extent=planned_local_env_extent,
-                planned_state=planned_state,
-                planned_env_origin=planned_local_env_origin,
                 res=res,
                 state=state,
-                title=title,
-                actual_env=actual_local_env,
-                actual_env_extent=actual_local_env_extent,
+                actual_env=full_env,
+                actual_env_extent=full_env_extent,
                 label=label)
             ax = plt.gca()
             circle = patches.Circle([0, 0], radius=2.4, edgecolor='g', facecolor='#ffffff00', linewidth=3, zorder=1)

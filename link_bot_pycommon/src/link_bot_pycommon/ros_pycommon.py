@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 import numpy as np
 import rospy
@@ -185,19 +185,14 @@ def make_trajectory_execution_request(dt, actions):
     return req
 
 
-def trajectory_execution_response_to_numpy(trajectory_execution_result):
-    actual_path = {}
+def trajectory_execution_response_to_numpy(trajectory_execution_result) -> List[Dict[str, np.ndarray]]:
+    actual_path = []
     for objects in trajectory_execution_result.actual_path:
+        state = {}
         for object in objects.objects:
-            if object.name not in actual_path:
-                actual_path[object.name] = []
-
             np_config = link_bot_pycommon.flatten_named_points(object.points)
-
-            actual_path[object.name].append(np_config)
-
-    for k, v in actual_path.items():
-        actual_path[k] = np.array(v)
+            state[object.name] = np_config
+        actual_path.append(state)
 
     return actual_path
 
@@ -205,13 +200,10 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result):
 def get_start_states(services, state_keys):
     start_states = {}
     objects_response = services.get_objects()
-    for subspace_name in state_keys:
+    for state_key in state_keys:
         for object in objects_response.objects.objects:
-            if object.name == subspace_name:
+            if object.name == state_key:
                 state = link_bot_pycommon.flatten_named_points(object.points)
-                start_states['state/{}'.format(subspace_name)] = state
+                start_states[state_key] = state
 
-    all_objects = {}
-    for object in objects_response.objects.objects:
-        all_objects[object.name] = link_bot_pycommon.flatten_named_points(object.points)
-    return start_states, all_objects
+    return start_states
