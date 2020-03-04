@@ -12,10 +12,8 @@ from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
 
 from gazebo_msgs.srv import ApplyBodyWrench, SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
-from link_bot_pycommon.link_bot_pycommon import flatten_points
+from link_bot_pycommon.link_bot_pycommon import flatten_points, quaternion_from_euler
 from link_bot_pycommon.ros_pycommon import Services
-from visual_mpc import sensor_image_to_float_image
-from visual_mpc.gazebo_trajectory_execution import quaternion_from_euler
 
 
 class GazeboServices(Services):
@@ -87,28 +85,6 @@ class GazeboServices(Services):
 
         if verbose >= 1:
             print(Fore.YELLOW + "World is Reset" + Fore.RESET)
-
-    def get_context(self, context_length, state_dim, action_dim, image_h=64, image_w=64, image_d=3):
-        # TODO: don't require these dimensions as arguments, they can be figured out from the messages/services
-        state_req = LinkBotStateRequest()
-        initial_context_images = np.ndarray((context_length, image_h, image_w, image_d))
-        initial_context_states = np.ndarray((context_length, state_dim))
-        for t in range(context_length):
-            state = self.get_state.call(state_req)
-            # FIXME: wtf is this shit
-            if state_dim == 6:
-                rope_config = flatten_points(state.points)
-            else:
-                rope_config = np.array([state.points[-1].x, state.points[-1].y])
-            # Convert to float image
-            image = sensor_image_to_float_image(state.camera_image.data, image_h, image_w, image_d)
-            initial_context_images[t] = image
-            initial_context_states[t] = rope_config
-
-        context_images = initial_context_images
-        context_states = initial_context_states
-        context_actions = np.zeros([context_length - 1, action_dim])
-        return context_images, context_states, context_actions
 
     @staticmethod
     def random_object_move(model_name: str, w: float, h: float, padding: float, rng: np.random.RandomState):
