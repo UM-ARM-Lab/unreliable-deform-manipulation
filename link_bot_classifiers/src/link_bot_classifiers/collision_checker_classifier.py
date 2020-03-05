@@ -1,18 +1,18 @@
-from typing import List, Dict, Callable
+from typing import List, Dict
 
 import numpy as np
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.link_bot_pycommon import vector_to_points_2d
 from link_bot_pycommon.link_bot_sdf_utils import point_to_idx, OccupancyData, get_local_env_and_origin
-from moonshine.numpy_utils import add_batch
 
 
 class CollisionCheckerClassifier(BaseConstraintChecker):
 
-    def __init__(self, inflation_radius: float, get_local_environment_center: Callable):
-        super().__init__(get_local_environment_center)
+    def __init__(self, inflation_radius: float, scenario: ExperimentScenario):
+        super().__init__(scenario)
         self.inflation_radius = inflation_radius
 
     @staticmethod

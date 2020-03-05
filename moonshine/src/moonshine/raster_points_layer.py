@@ -1,28 +1,25 @@
 from typing import Optional, Dict
 
-import numpy as np
 import tensorflow as tf
 
-from link_bot_pycommon import link_bot_pycommon
 from moonshine.action_smear_layer import smear_action
-from moonshine.numpy_utils import add_batch
 
 
 def differentiable_get_local_env():
     pass
 
 
-def raster_differentiable(state: Dict, res, origin, h, w):
+def raster_differentiable(state, res, origin, h, w):
     """
     Even though this data is batched, we use singular and reserve plural for sequences in time
-    state: each value is [batch, n]
+    state: [batch, n]
     res: [batch] scalar float
     origins: [batch, 2] index (so int, or technically float is fine too)
     h: scalar int
     w: scalar int
     return: [batch, h, w, n_points]
     """
-    b = list(state.values())[0].shape[0]
+    b = int(state.shape[0])
     points = tf.reshape(state, [b, -1, 2])
     n_points = points.shape[1]
 
@@ -94,8 +91,10 @@ def make_transition_images(local_env,
     :param action_in_image: include new channels for actions
     :return: [batch,n_points*2+n_action+1], aka  [batch,n_state+n_action+1]
     """
-    b, h, w = local_env.shape
-    local_env = np.expand_dims(local_env, axis=3)
+    b = int(local_env.shape[0])
+    h = int(local_env.shape[1])
+    w = int(local_env.shape[2])
+    local_env = tf.expand_dims(local_env, axis=3)
 
     concat_args = [local_env]
     for planned_state in planned_states.values():
@@ -109,7 +108,7 @@ def make_transition_images(local_env,
         # FIXME: use tf to make sure its differentiable
         action_image = smear_action(action, h, w)
         concat_args.append(action_image)
-    image = np.concatenate(concat_args, axis=3)
+    image = tf.concat(concat_args, axis=3)
     return image
 
 
@@ -127,14 +126,16 @@ def raster_rope_images(planned_states: Dict,
     :param w: scalar
     :return: [batch, time, h, w, 2 * n_points]
     """
-    b, n_time_steps, _ = list(planned_states.values())[0].shape
+    state_shape = list(planned_states.values())[0].shape
+    b = int(state_shape[0])
+    n_time_steps = int(state_shape[1])
     binary_rope_images = []
     time_colored_rope_images = []
     for t in range(n_time_steps):
         for vector in planned_states.values():
             planned_state_t = planned_states[:, t]
             rope_img_t = raster_differentiable(state=planned_state_t, origin=origin, res=res, h=h, w=w)
-            rope_img_t = np.sum(rope_img_t, axis=3)
+            rope_img_t = tf.reduce_sum(rope_img_t, axis=3)
             time_color = float(t) / n_time_steps
             time_color_image_t = rope_img_t * time_color
             binary_rope_images.append(rope_img_t)
@@ -156,7 +157,8 @@ def make_traj_images(full_env,
     :param states: each element is [batch, time, n]
     :return: [batch, h, w, 3]
     """
-    b, h, w = full_env.shape
+    h = int(full_env.shape[1])
+    w = int(full_env.shape[2])
 
     # add channel index
     full_env = tf.expand_dims(full_env, axis=3)

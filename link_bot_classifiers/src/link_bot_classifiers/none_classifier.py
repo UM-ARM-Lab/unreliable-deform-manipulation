@@ -4,12 +4,13 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
+from link_bot_planning.experiment_scenario import ExperimentScenario
 
 
 class NoneClassifier(BaseConstraintChecker):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, scenario: ExperimentScenario):
+        super().__init__(scenario)
 
     def check_constraint(self,
                          full_env: np.ndarray,

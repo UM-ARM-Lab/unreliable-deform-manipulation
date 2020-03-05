@@ -26,9 +26,9 @@ class LinkBotScenario(ExperimentScenario):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         xs = link_bot_points[:, 0]
         ys = link_bot_points[:, 1]
-        ax.scatter(xs[0], ys[0], c=color, s=1)
+        scatt = ax.scatter(xs[0], ys[0], c=color, s=1)
         line = ax.plot(xs, ys, linewidth=1, c=color)[0]
-        return line
+        return line, scatt
 
     @staticmethod
     def distance_to_goal(
@@ -58,7 +58,13 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def distance_differentiable(s1, s2):
-        return tf.linalg.norm(s1['link_bot'] - s2['link_bot'])
+        # NOTE: using R^22 distance mangles the rope shape more, so we don't use it.
+        # return tf.linalg.norm(s1['link_bot'] - s2['link_bot'])
+        link_bot_points1 = tf.reshape(s1['link_bot'], [-1, 2])
+        tail_point1 = link_bot_points1[0]
+        link_bot_points2 = tf.reshape(s2['link_bot'], [-1, 2])
+        tail_point2 = link_bot_points2[0]
+        return tf.linalg.norm(tail_point1 - tail_point2)
 
     @staticmethod
     def get_subspace_weight(subspace_name: str):
@@ -81,16 +87,18 @@ class LinkBotScenario(ExperimentScenario):
         }
 
     @staticmethod
-    def plot_goal(ax, goal, color='g'):
-        ax.scatter(goal[0], goal[1], s=50, c=color)
+    def plot_goal(ax, goal, color='g', label=None):
+        ax.scatter(goal[0], goal[1], s=50, c=color, label=label)
 
     @staticmethod
     def update_artist(artist, state):
         """ artist: Whatever was returned by plot_state """
+        line, scatt = artist
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         xs = link_bot_points[:, 0]
         ys = link_bot_points[:, 1]
-        artist.set_data(xs, ys)
+        line.set_data(xs, ys)
+        scatt.set_offsets(link_bot_points[0])
 
     @staticmethod
     def publish_state_marker(marker_provider: MarkerProvider, state):

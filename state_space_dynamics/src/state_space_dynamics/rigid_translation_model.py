@@ -4,14 +4,15 @@ from typing import Dict
 import numpy as np
 import tensorflow as tf
 
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 class RigidTranslationModel(BaseDynamicsFunction):
 
-    def __init__(self, model_dir: pathlib.Path, batch_size: int):
-        super().__init__(model_dir, batch_size)
+    def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
+        super().__init__(model_dir, batch_size, scenario)
         self.beta = self.hparams['beta']
         self.batch_size = batch_size
         self.B = tf.constant([[1.0, 0.0], [0.0, 1.0]], dtype=tf.float32) * self.beta

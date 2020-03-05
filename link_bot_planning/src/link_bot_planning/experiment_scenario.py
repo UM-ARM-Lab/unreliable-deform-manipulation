@@ -16,7 +16,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def plot_goal(ax, goal, color):
+    def plot_goal(ax, goal, color, label):
         raise NotImplementedError()
 
     @staticmethod

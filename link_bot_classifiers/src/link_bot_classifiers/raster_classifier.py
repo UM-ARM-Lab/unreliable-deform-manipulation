@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import json
 import pathlib
-from typing import Dict, List, Callable
+from typing import Dict, List
 
 import numpy as np
 import tensorflow as tf
@@ -12,6 +12,7 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon.link_bot_sdf_utils import get_local_env_and_origin_differentiable
 from moonshine.numpy_utils import add_batch
@@ -107,8 +108,8 @@ class RasterClassifier(MyKerasModel):
 
 class RasterClassifierWrapper(BaseConstraintChecker):
 
-    def __init__(self, path: pathlib.Path, batch_size: int, get_local_environment_center: Callable):
-        super().__init__(get_local_environment_center)
+    def __init__(self, path: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
+        super().__init__(scenario)
         model_hparams_file = path / 'hparams.json'
         self.model_hparams = json.load(model_hparams_file.open('r'))
         self.net = RasterClassifier(hparams=self.model_hparams, batch_size=batch_size)
@@ -122,8 +123,8 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                          local_env: np.ndarray,
                          local_env_origin: np.ndarray,
                          res: float,
-                         states_i: Dict[str, np.ndarray],
-                         states_i_plus_1: Dict[str, np.ndarray],
+                         states_i: Dict,
+                         states_i_plus_1: Dict,
                          action_i: tf.Variable) -> tf.Tensor:
         """
         # FIXME: actually everything might be a tensor here...?
@@ -143,8 +144,8 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
         net_inputs['transition_image'] = image
 
-        accept_probabilities = self.net(add_batch(net_inputs))
-        return accept_probabilities
+        accept_probability = self.net(add_batch(net_inputs))[0, 0]
+        return accept_probability
 
     def check_trajectory(self,
                          full_env: np.ndarray,
@@ -163,8 +164,8 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
         net_inputs['trajectory_image'] = image
 
-        accept_probabilities = self.net(add_batch(net_inputs))
-        return accept_probabilities
+        accept_probability = self.net(add_batch(net_inputs))[0, 0]
+        return accept_probability
 
     def get_transition_inputs(self,
                               full_env: np.ndarray,
@@ -179,7 +180,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         local_env_params = self.net.local_env_params
 
         # add and then remove batch
-        local_env_center = self.get_local_environment_center(states_i)
+        local_env_center = self.scenario.local_environment_center(states_i)
         batched_inputs = add_batch(local_env_center, full_env, full_env_origin)
         local_env, local_env_origin = get_local_env_and_origin_differentiable(*batched_inputs,
                                                                               local_h_rows=local_env_params.h_rows,

@@ -9,6 +9,7 @@ from colorama import Fore
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_gazebo.gazebo_services import GazeboServices
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_planning.link_bot_goal import MyGoalRegion
 from link_bot_planning.state_spaces import from_numpy, to_numpy_flat, ValidRopeConfigurationCompoundSampler, \
@@ -33,6 +34,7 @@ class MyPlanner:
                  classifier_model: BaseConstraintChecker,
                  params: Dict,
                  services: GazeboServices,
+                 scenario: ExperimentScenario,
                  viz_object: VizObject,
                  seed: int,
                  verbose: int,
@@ -53,7 +55,7 @@ class MyPlanner:
         self.seed = seed
         self.classifier_rng = np.random.RandomState(seed)
         self.state_sampler_rng = np.random.RandomState(seed)
-        self.experiment_scenario = get_scenario(params['scenario'])
+        self.experiment_scenario = scenario
 
         self.state_space_description = {}
         self.state_space = ob.CompoundStateSpace()

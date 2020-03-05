@@ -14,6 +14,7 @@ from matplotlib.animation import FuncAnimation
 
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_planning import model_utils
+from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -30,11 +31,13 @@ def generate(args):
     base_folder = args.outdir / 'compare_models-{}-{}'.format(args.mode, int(time.time()))
     base_folder.mkdir()
 
+    scenario = get_scenario(args.scenario)
+
     comparison_info = json.load(args.comparison.open("r"))
     models = {}
     for name, model_info in comparison_info.items():
         model_dir = pathlib.Path(model_info['model_dir'])
-        model, _ = model_utils.load_generic_model(model_dir)
+        model, _ = model_utils.load_generic_model(model_dir, scenario)
         models[name] = model
 
     dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
@@ -223,6 +226,7 @@ def main():
     subparsers = parser.add_subparsers()
 
     generate_parser = subparsers.add_parser('generate')
+    generate_parser.add_argument('scenario', choices=['link_bot', 'tether'])
     generate_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     generate_parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
     generate_parser.add_argument('outdir', type=pathlib.Path)

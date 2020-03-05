@@ -224,8 +224,10 @@ def get_local_env_and_origin_differentiable(center_point: np.ndarray,
     :param local_w_cols: scalar
     :return:
     """
-    # batch_size = int(center_point.shape[0])
-
+    res = tf.convert_to_tensor(res, dtype=tf.float32)
+    local_h_rows = tf.convert_to_tensor(local_h_rows, dtype=tf.float32)
+    local_w_cols = tf.convert_to_tensor(local_w_cols, dtype=tf.float32)
+    full_env_origin = tf.convert_to_tensor(full_env_origin, dtype=tf.float32)
     b, full_h_rows, full_w_cols = full_env.shape
 
     k = 2.0
@@ -241,8 +243,8 @@ def get_local_env_and_origin_differentiable(center_point: np.ndarray,
     #             local_env_pixel_value += np.exp(-k * squared_distance)
     #         local_env[u, v] = local_env_pixel_value
 
-    local_center = tf.constant([local_h_rows / 2, local_w_cols / 2], dtype=tf.float32)
-    full_center = tf.constant([full_h_rows / 2, full_w_cols / 2], dtype=tf.float32)
+    local_center = tf.stack([local_h_rows / 2, local_w_cols / 2], axis=0)
+    full_center = tf.stack([full_h_rows / 2, full_w_cols / 2], axis=0)
 
     center_cols = center_point[:, 0] / res + full_env_origin[:, 1]
     center_rows = center_point[:, 1] / res + full_env_origin[:, 0]

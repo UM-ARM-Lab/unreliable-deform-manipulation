@@ -7,20 +7,22 @@ import tensorflow.keras.layers as layers
 from colorama import Fore
 from tensorflow import keras
 
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
 from link_bot_pycommon.link_bot_sdf_utils import get_local_env_and_origin_differentiable
 from moonshine.action_smear_layer import smear_action
 from moonshine.numpy_utils import add_batch, dict_of_sequences_to_sequence_of_dicts
-from moonshine.raster_points_layer import differentiable_raster
+from moonshine.raster_points_layer import raster_differentiable
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 class ObstacleNN(MyKerasModel):
 
-    def __init__(self, hparams: Dict, batch_size: int):
+    def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams, batch_size)
         self.initial_epoch = 0
+        self.scenario = scenario
 
         self.local_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['local_env_params'])
         self.full_env_params = FullEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['full_env_params'])
@@ -97,11 +99,11 @@ class ObstacleNN(MyKerasModel):
                 env_w_cols = tf.convert_to_tensor(self.full_env_params.w_cols, tf.int64)
             else:
                 state = self.state_vector_to_state_dict(s_t)
-                local_env_center = self.get_local_environment_center(state)
+                local_env_center = self.scenario.local_environment_center(state)
                 # NOTE: we assume same resolution for local and full environment
                 env, env_origin, env_h_rows, env_w_cols = self.get_local_env(local_env_center, full_env_origin, full_env, res)
 
-            rope_image_t = differentiable_raster(s_t, res, env_origin, env_h_rows, env_w_cols)
+            rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols)
 
             # FIXME: this is differentiable already, but we need to implement it in TensorFlow
             action_image_t = tf.numpy_function(smear_action, [action_t, env_h_rows, env_w_cols], tf.float32)
@@ -160,9 +162,9 @@ class ObstacleNN(MyKerasModel):
 
 class ObstacleNNWrapper(BaseDynamicsFunction):
 
-    def __init__(self, model_dir: pathlib.Path, batch_size: int):
-        super().__init__(model_dir, batch_size)
-        self.net = ObstacleNN(hparams=self.hparams, batch_size=batch_size)
+    def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
+        super().__init__(model_dir, batch_size, scenario)
+        self.net = ObstacleNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)

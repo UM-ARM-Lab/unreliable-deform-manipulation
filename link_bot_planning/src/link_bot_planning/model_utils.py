@@ -2,13 +2,14 @@ import json
 import pathlib
 from typing import Tuple
 
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from state_space_dynamics.obstacle_nn import ObstacleNNWrapper
 from state_space_dynamics.rigid_translation_model import RigidTranslationModel
 from state_space_dynamics.simple_nn import SimpleNNWrapper
 
 
-def load_generic_model(model_dir: pathlib.Path) -> [BaseDynamicsFunction, Tuple[str]]:
+def load_generic_model(model_dir: pathlib.Path, scenario : ExperimentScenario) -> [BaseDynamicsFunction, Tuple[str]]:
     """
     Loads a model which exposes a unified model API (predict, dt, n_state, etc...)
     :param model_dir: directory which specifies which model should loaded (TF assumes latest checkpoint)
@@ -19,12 +20,12 @@ def load_generic_model(model_dir: pathlib.Path) -> [BaseDynamicsFunction, Tuple[
     model_type = hparams['model_class']
     if model_type == 'rigid':
         # FIXME: remove batch_size=1 here? can I put it in base model?
-        return RigidTranslationModel(model_dir, batch_size=1), model_dir.parts[1:]
+        return RigidTranslationModel(model_dir, batch_size=1, scenario=scenario), model_dir.parts[1:]
     elif model_type == 'SimpleNN':
-        nn = SimpleNNWrapper(model_dir, batch_size=1)
+        nn = SimpleNNWrapper(model_dir, batch_size=1, scenario=scenario)
         return nn, model_dir.parts[1:]
     elif model_type == 'ObstacleNN':
-        nn = ObstacleNNWrapper(model_dir, batch_size=1)
+        nn = ObstacleNNWrapper(model_dir, batch_size=1, scenario=scenario)
         return nn, model_dir.parts[1:]
     else:
         raise NotImplementedError("invalid model type {}".format(model_type))

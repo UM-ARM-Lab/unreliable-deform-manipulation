@@ -12,11 +12,11 @@ from link_bot_planning import model_utils, classifier_utils
 from link_bot_planning.link_bot_scenario import LinkBotScenario
 from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.link_bot_sdf_utils import compute_extent
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.5)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
-
 
 
 def main():
@@ -34,44 +34,49 @@ def main():
     ######################
     # Setup
     ######################
-    res = 0.1
-    full_env = np.zeros([200, 200], dtype=np.float32)
-    full_env[20:50, 40:100] = 1.0
-    full_env_origin = np.array([100, 100])
+    res = 0.03
+    w = 200
+    h = 200
+    full_env = np.zeros([h, w], dtype=np.float32)
+    full_env[50:110, 116:135] = 1.0
+    full_env_origin = np.array([h // 2, w // 2])
+    full_env_extent = compute_extent(h, w, res, full_env_origin)
 
-    fwd_model, _ = model_utils.load_generic_model(pathlib.Path(args.fwd_model_dir))
-    classifier_model = classifier_utils.load_generic_model(pathlib.Path(args.classifier_model_dir))
+    experiment_scenario = LinkBotScenario()
+
+    fwd_model, _ = model_utils.load_generic_model(pathlib.Path(args.fwd_model_dir), experiment_scenario)
+    classifier_model = classifier_utils.load_generic_model(pathlib.Path(args.classifier_model_dir), experiment_scenario)
     actions = np.genfromtxt(args.actions, delimiter=',')
 
     T = actions.shape[0]
 
-    goal = np.array([-1.25, 1.667])
-    goal_idx = 0
-    goal_subspace_feature_name = 'link_bot'
+    goal = np.array([1.5, 0.0])
 
     params = {
         "iters": args.iters,
-        "goal_alpha": 1000,
-        "constraints_alpha": 1,
-        "action_alpha": 1
+        "length_alpha": 0,
+        "goal_alpha": 0,
+        "initial_learning_rate": 0.002,
+        "constraints_alpha": 1.0,
+        "action_alpha": 0
     }
 
     ###########################
     # Construct initial path
     ###########################
     start_states = {
-        'link_bot': np.array([0.0, 0.0,
-                                    0.05, 0.0,
-                                    0.10, 0.0,
-                                    0.15, 0.0,
-                                    0.20, 0.0,
-                                    0.25, 0.0,
-                                    0.30, 0.0,
-                                    0.35, 0.0,
-                                    0.40, 0.0,
-                                    0.45, 0.0,
-                                    0.55, 0.0,
-                                    ])
+        'link_bot': np.array([-0.10, 0.0,
+                              -0.05, 0.0,
+                              0.00, 0.0,
+                              0.05, 0.0,
+                              0.10, 0.0,
+                              0.15, 0.0,
+                              0.20, 0.0,
+                              0.25, 0.0,
+                              0.30, 0.0,
+                              0.35, 0.0,
+                              0.40, 0.0,
+                              ])
     }
 
     planned_path = fwd_model.propagate_differentiable(full_env=full_env,
@@ -79,8 +84,6 @@ def main():
                                                       res=res,
                                                       start_states=start_states,
                                                       actions=actions)
-
-    experiment_scenario = LinkBotScenario()
 
     #####################################################
     # Interactive Visualization - Do the Actual Smoothing
@@ -96,10 +99,11 @@ def main():
 
     fig, axes = plt.subplots(1, 2)
     axes[0].set_title("Path")
-    experiment_scenario.plot_goal(axes[0], goal, 'g')
-    experiment_scenario.plot_state_simple(axes[0], start_states, 'r')
-    axes[0].set_xlim([-2.5,2.5])
-    axes[0].set_ylim([-2.5, 2.5])
+    experiment_scenario.plot_goal(axes[0], goal, color='g', label='goal')
+    experiment_scenario.plot_state_simple(axes[0], start_states, color='r')
+    axes[0].imshow(np.flipud(full_env), extent=full_env_extent)
+    axes[0].set_xlim(full_env_extent[0:2])
+    axes[0].set_ylim(full_env_extent[2:4])
     axes[0].legend()
 
     losses_line = axes[1].plot([], label='total loss')[0]
@@ -122,19 +126,22 @@ def main():
     step_times = []
 
     artists = []
-    for t in range(T + 1):
-        artist = experiment_scenario.plot_state(axes[0], planned_path[t], 'b')
+    viz_every = 1
+    artist_idx_to_t = {}
+    for artist_idx, t in enumerate(range(0, T + 1, viz_every)):
+        artist = experiment_scenario.plot_state(axes[0], planned_path[t], 'c')
         artists.append(artist)
+        artist_idx_to_t[artist_idx] = t
 
     def update(iter):
         nonlocal actions
         t0 = perf_counter()
-        actions, predictions, step_losses = smoother.step(full_env=full_env,
-                                                          full_env_origin=full_env_origin,
-                                                          goal=goal,
-                                                          res=res,
-                                                          actions=actions,
-                                                          planned_path=planned_path)
+        actions, predictions, step_losses, length = smoother.step(full_env=full_env,
+                                                                  full_env_origin=full_env_origin,
+                                                                  goal=goal,
+                                                                  res=res,
+                                                                  actions=actions,
+                                                                  planned_path=planned_path)
         dt = perf_counter() - t0
         step_times.append(dt)
 
@@ -145,8 +152,9 @@ def main():
         constraint_loss = constraint_loss.numpy()
         action_loss = action_loss.numpy()
 
-        for t in range(T + 1):
-            experiment_scenario.update_artist(artists[t], predictions[t])
+        for artist_idx in range(len(artists)):
+            t = artist_idx_to_t[artist_idx]
+            experiment_scenario.update_artist(artists[artist_idx], predictions[t])
 
         iters.append(iter)
         losses.append(loss)
@@ -155,6 +163,7 @@ def main():
         constraints_losses.append(constraint_loss)
         action_losses.append(action_loss)
 
+        print(length.numpy())
         losses_line.set_data(iters, losses)
         length_losses_line.set_data(iters, length_losses)
         goal_losses_line.set_data(iters, goal_losses)
@@ -167,9 +176,9 @@ def main():
         axes[1].autoscale_view()
 
     anim = FuncAnimation(fig, update, frames=args.iters, interval=1, repeat=False)
-    anim.save("smoothing_animation.gif", writer='imagemagick')
-    print("Mean step time: {:8.5f}s, {:8.5f}".format(np.mean(step_times), np.std(step_times)))
+    # anim.save("smoothing_animation.gif", writer='imagemagick')
     plt.show()
+    print("Mean step time: {:8.5f}s, {:8.5f}".format(np.mean(step_times), np.std(step_times)))
 
 
 if __name__ == '__main__':

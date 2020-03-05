@@ -13,6 +13,7 @@ from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_gazebo.srv import LinkBotStateRequest
 from link_bot_planning import model_utils, classifier_utils
 from link_bot_classifiers.visualization import plot_classifier_data
+from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.ros_pycommon import get_local_occupancy_data, get_occupancy_data
 
@@ -26,6 +27,7 @@ def main():
     tf.logging.set_verbosity(tf.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
+    parser.add_argument("scenario", choices=['link_bot', 'tether'], default='link_bot', help='scneario name')
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
     parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
@@ -34,9 +36,11 @@ def main():
 
     args = parser.parse_args()
 
+    scenario = get_scenario(args.scenario)
+
     # use forward model to predict given the input action
-    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir)
-    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir)
+    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir, scenario)
+    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, scenario)
     local_env_params = fwd_model.local_env_params
     full_env_params = fwd_model.full_env_params
     cols = local_env_params.w_cols

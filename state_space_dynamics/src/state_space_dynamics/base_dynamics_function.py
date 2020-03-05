@@ -1,17 +1,19 @@
 import json
 import pathlib
 from typing import Dict, List
-import tensorflow as tf
 
 import numpy as np
+import tensorflow as tf
 
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
 
 
 class BaseDynamicsFunction:
 
-    def __init__(self, model_dir: pathlib.Path, batch_size: int):
+    def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario : ExperimentScenario):
         model_hparams_file = model_dir / 'hparams.json'
+        self.scenario = scenario
         self.hparams = json.load(model_hparams_file.open('r'))
         self.batch_size = batch_size
         self.n_action = self.hparams['dynamics_dataset_hparams']['n_action']

@@ -15,6 +15,7 @@ from matplotlib import animation
 
 from link_bot_gazebo import gazebo_services
 from link_bot_planning import model_utils
+from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
 from link_bot_pycommon.ros_pycommon import make_trajectory_execution_request, trajectory_execution_response_to_numpy, \
@@ -103,7 +104,8 @@ def main():
 
     params = json.load(args.params.open('r'))
 
-    fwd_model, _ = model_utils.load_generic_model(pathlib.Path(params['fwd_model_dir']))
+    scenario = get_scenario(params['scenario'])
+    fwd_model, _ = model_utils.load_generic_model(pathlib.Path(params['fwd_model_dir']), scenario)
 
     services.setup_env(verbose=args.verbose,
                        real_time_rate=args.real_time_rate,

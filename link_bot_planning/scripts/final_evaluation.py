@@ -20,6 +20,7 @@ import link_bot_data.link_bot_dataset_utils
 from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute, model_utils
+from link_bot_planning.get_scenario import get_scenario
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot_plan
 from link_bot_planning.params import SimParams
@@ -260,7 +261,8 @@ def main():
         classifier_model_type = planner_params['classifier_model_type']
         planner_type = planner_params['planner_type']
 
-        fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir)
+        scenario = get_scenario(planner_params['scenario'])
+        fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, scenario)
 
         # Start Services
         if args.env_type == 'victor':
