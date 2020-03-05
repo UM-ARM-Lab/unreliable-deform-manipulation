@@ -236,3 +236,10 @@ def quaternion_from_euler(ai, aj, ak, axes='sxyz'):
         quaternion[j] *= -1
 
     return quaternion
+
+
+def vector_to_points_2d(x):
+    x_points = x.reshape(-1, 2)
+    xs = x_points[:, 0]
+    ys = x_points[:, 1]
+    return xs, ys

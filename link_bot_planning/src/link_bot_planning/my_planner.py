@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import ompl.base as ob
@@ -53,14 +53,14 @@ class MyPlanner:
         self.seed = seed
         self.classifier_rng = np.random.RandomState(seed)
         self.state_sampler_rng = np.random.RandomState(seed)
-        self.planning_scenario = get_scenario(params['scenario'])
+        self.experiment_scenario = get_scenario(params['scenario'])
 
         self.state_space_description = {}
         self.state_space = ob.CompoundStateSpace()
         self.subspaces = []
         self.subspace_bounds = []
         for subspace_idx, state_key in enumerate(self.fwd_model.state_keys):
-            weight = self.planning_scenario.get_subspace_weight(state_key)
+            weight = self.experiment_scenario.get_subspace_weight(state_key)
             n_state = self.fwd_model.states_description[state_key]
             subspace_description = {
                 "idx": subspace_idx,
@@ -118,32 +118,28 @@ class MyPlanner:
                                            fwd_model=fwd_model,
                                            classifier_model=classifier_model,
                                            params=smoothing_params,
-                                           planning_scenario=self.planning_scenario)
+                                           experiment_scenario=self.experiment_scenario)
 
     def is_valid(self, state):
         return self.state_space.satisfiesBounds(state)
 
     def motions_valid(self, motions):
-        named_states = dict((subspace_name, []) for subspace_name in self.state_space_description.keys())
+        states_sequence = []
         actions = []
         for t, motion in enumerate(motions):
             # motions is a vector of oc.Motion, which has a state, parent, and control
             state = motion.getState()
-            np_states = compound_to_numpy(self.state_space_description, state)
-            for subspace_name, state_t in np_states.items():
-                named_states[subspace_name].append(state_t)
+            state_t = compound_to_numpy(self.state_space_description, state)
+            states_sequence.append(state_t)
             if t > 0:  # skip the first (null) action, because that would represent the action that brings us to the first state
                 actions.append(self.control_to_numpy(motion.getControl()))
 
-        named_states_np = {}
-        for subspace_name, states in named_states.items():
-            named_states_np[subspace_name] = np.array(states)
         actions = np.array(actions)
 
         accept_probability = self.classifier_model.check_constraint(full_env=self.full_env_data.data,
                                                                     full_env_origin=self.full_env_data.origin,
                                                                     res=self.full_env_data.resolution,
-                                                                    states_trajs=named_states_np,
+                                                                    states_sequence=states_sequence,
                                                                     actions=actions)
 
         classifier_accept = accept_probability > self.params['accept_threshold']
@@ -151,7 +147,7 @@ class MyPlanner:
         motions_is_valid = classifier_accept or random_accept
 
         if not motions_is_valid:
-            final_link_bot_state = named_states['link_bot'][-1]
+            final_link_bot_state = states_sequence[-1]
             self.viz_object.rejected_samples.append(final_link_bot_state)
 
         return motions_is_valid
@@ -195,7 +191,7 @@ class MyPlanner:
     def smooth_path(self,
                     goal,
                     controls: np.ndarray,
-                    planned_path: Dict[str, np.ndarray]):
+                    planned_path: List[Dict]):
         smoothed_actions_tf, smoothed_path_tf = self.smoother.smooth(full_env=self.full_env_data.data,
                                                                      full_env_origin=self.full_env_data.origin,
                                                                      res=self.full_env_data.resolution,
@@ -232,7 +228,7 @@ class MyPlanner:
                                  self.params['goal_threshold'],
                                  goal,
                                  self.viz_object,
-                                 self.planning_scenario,
+                                 self.experiment_scenario,
                                  self.state_space_description)
 
         self.ss.clear()
@@ -244,10 +240,10 @@ class MyPlanner:
 
         if planner_status:
             ompl_path = self.ss.getSolutionPath()
-            controls_np, planned_path_dict = self.convert_path(ompl_path)
-            controls_np, planned_path_dict = self.smooth_path(goal, controls_np, planned_path_dict)
+            controls_np, planned_path = self.convert_path(ompl_path)
+            controls_np, planned_path = self.smooth_path(goal, controls_np, planned_path)
             return PlannerResult(planner_status=planner_status,
-                                 path=planned_path_dict,
+                                 path=planned_path,
                                  actions=controls_np)
         return PlannerResult(planner_status)
 

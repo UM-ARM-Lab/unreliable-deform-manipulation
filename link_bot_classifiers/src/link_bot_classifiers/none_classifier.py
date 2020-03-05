@@ -15,7 +15,7 @@ class NoneClassifier(BaseConstraintChecker):
                          full_env: np.ndarray,
                          full_env_origin: np.ndarray,
                          res: float,
-                         states_trajs: List[Dict],
+                         states_sequence: List[Dict],
                          actions: np.ndarray) -> float:
         return 1.0
 
@@ -23,7 +23,7 @@ class NoneClassifier(BaseConstraintChecker):
                                         full_env: np.ndarray,
                                         full_env_origin: np.ndarray,
                                         res: float,
-                                        states_trajs: List[Dict],
+                                        states_sequence: List[Dict],
                                         actions: tf.Variable) -> tf.Tensor:
         return tf.ones([], dtype=tf.float32)
 

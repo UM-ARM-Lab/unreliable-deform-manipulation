@@ -49,9 +49,9 @@ def main():
     state_req = LinkBotStateRequest()
     link_bot_state = services.get_state(state_req)
     head_idx = link_bot_state.link_names.index("head")
-    head_point = link_bot_state.points[head_idx]
-    head_point = np.array([head_point.x, head_point.y])
-    local_env_data = get_local_occupancy_data(rows, cols, args.res, center_point=head_point, services=services)
+    center_point = link_bot_state.points[head_idx]
+    center_point = np.array([center_point.x, center_point.y])
+    local_env_data = get_local_occupancy_data(rows, cols, args.res, center_point=center_point, services=services)
 
     full_env_data = get_occupancy_data(env_w=full_env_params.w,
                                        env_h=full_env_params.h,

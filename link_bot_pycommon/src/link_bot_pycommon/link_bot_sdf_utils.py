@@ -1,7 +1,10 @@
 from typing import Optional, List, Tuple
 
+import tensorflow as tf
 import numpy as np
 from colorama import Fore
+
+from moonshine.numpy_utils import add_batch
 
 
 def indeces_to_point(rowcols, resolution, origin):
@@ -10,7 +13,7 @@ def indeces_to_point(rowcols, resolution, origin):
 
 def idx_to_point(row: int,
                  col: int,
-                 resolution: np.ndarray,
+                 resolution: float,
                  origin: np.ndarray):
     y = (row - origin[0]) * resolution
     x = (col - origin[1]) * resolution
@@ -206,122 +209,83 @@ def inflate(local_env: OccupancyData, radius_m: float):
     return inflated
 
 
-def get_local_env_origins(center_points,
-                          full_env_origins,
-                          rows: int,
-                          cols: int,
-                          res: float):
+def get_local_env_and_origin_differentiable(center_point: np.ndarray,
+                                            full_env: np.ndarray,
+                                            full_env_origin: np.ndarray,
+                                            res: float,
+                                            local_h_rows: int,
+                                            local_w_cols: int):
     """
-    NOTE: Assumes both local and full env have the same resolution
-    :param center_points: [batch, 2] (x,y) meters
-    :param full_env_origins: the full environment data origins
-    :param rows: scalar, int
-    :param cols: scalar, int
-    :param res: scalar, meters
-    :return: local env origins
-    """
-    # indeces of the heads of the ropes in the full env, with a batch dimension up front
-    center_cols = (center_points[:, 0] / res + full_env_origins[:, 1]).astype(np.int64)
-    center_rows = (center_points[:, 1] / res + full_env_origins[:, 0]).astype(np.int64)
-    local_env_origins = full_env_origins - np.stack([center_rows, center_cols], axis=1) + np.array([rows // 2, cols // 2])
-    local_env_origins = local_env_origins.astype(np.float32)
-    return local_env_origins
-
-
-def differentiable_get_local_env(center_points: np.ndarray,
-                                 padded_full_envs: np.ndarray,
-                                 full_env_origins: np.ndarray,
-                                 padding: int,
-                                 rows: int,
-                                 cols: int,
-                                 res: float):
-    """
-    NOTE: Assumes both local and full env have the same resolution
-    :param center_points: [batch, 2] (x,y) meters
-    :param padded_full_envs: [batch, h, w] the full environment data
-    :param full_env_origins: [batch, 2]
-    :param padding: scalar
-    :param rows: [batch]
-    :param cols: [batch]
-    :param res: scalar, meters
-    :return: local envs
-    """
-    batch_size = int(center_points.shape[0])
-
-    # indeces of the heads of the ropes in the full env, with a batch dimension up front
-    center_cols = (center_points[:, 0] / res + full_env_origins[:, 1]).astype(np.int64)
-    center_rows = (center_points[:, 1] / res + full_env_origins[:, 0]).astype(np.int64)
-    delta_rows = np.tile(np.arange(-rows // 2, rows // 2), [batch_size, cols, 1]).transpose([0, 2, 1])
-    delta_cols = np.tile(np.arange(-cols // 2, cols // 2), [batch_size, rows, 1])
-    row_indeces = np.tile(center_rows, [cols, rows, 1]).T + delta_rows
-    col_indeces = np.tile(center_cols, [cols, rows, 1]).T + delta_cols
-    batch_indeces = np.tile(np.arange(0, batch_size), [cols, rows, 1]).transpose()
-    local_env = padded_full_envs[batch_indeces, row_indeces + padding, col_indeces + padding]
-    local_env = local_env.astype(np.float32)
-    return local_env
-
-
-def get_local_env_at_in(center_points: np.ndarray,
-                        padded_full_envs: np.ndarray,
-                        full_env_origins: np.ndarray,
-                        padding: int,
-                        rows: int,
-                        cols: int,
-                        res: float):
-    """
-    NOTE: Assumes both local and full env have the same resolution
-    :param center_points: [batch, 2] (x,y) meters
-    :param padded_full_envs: [batch, h, w] the full environment data
-    :param full_env_origins: [batch, 2]
-    :param padding: scalar
-    :param rows: [batch]
-    :param cols: [batch]
-    :param res: scalar, meters
-    :return: local envs
-    """
-    batch_size = int(center_points.shape[0])
-
-    # indeces of the heads of the ropes in the full env, with a batch dimension up front
-    center_cols = (center_points[:, 0] / res + full_env_origins[:, 1]).astype(np.int64)
-    center_rows = (center_points[:, 1] / res + full_env_origins[:, 0]).astype(np.int64)
-    delta_rows = np.tile(np.arange(-rows // 2, rows // 2), [batch_size, cols, 1]).transpose([0, 2, 1])
-    delta_cols = np.tile(np.arange(-cols // 2, cols // 2), [batch_size, rows, 1])
-    row_indeces = np.tile(center_rows, [cols, rows, 1]).T + delta_rows
-    col_indeces = np.tile(center_cols, [cols, rows, 1]).T + delta_cols
-    batch_indeces = np.tile(np.arange(0, batch_size), [cols, rows, 1]).transpose()
-    local_env = padded_full_envs[batch_indeces, row_indeces + padding, col_indeces + padding]
-    local_env = local_env.astype(np.float32)
-    return local_env
-
-
-def get_local_env_and_origin(head_point_t: np.ndarray,
-                             full_env: np.ndarray,
-                             full_env_origin: np.ndarray,
-                             local_h_rows: int,
-                             local_w_cols: int,
-                             res: float):
-    """
+    :param center_point: [batch, 2]
+    :param full_env: [h, w]
+    :param full_env_origin: [batch, 2]
+    :param res: [batch]
     :param local_h_rows: scalar
     :param local_w_cols: scalar
-    :param head_point_t: [batch, 2]
-    :param full_env_origin: [batch, 2]
-    :param full_env: [batch, h, w]
-    :param res: scalar
     :return:
     """
-    padding = 200
-    paddings = [[0, 0], [padding, padding], [padding, padding]]
-    padded_full_envs = np.pad(full_env, paddings, 'constant', constant_values=0)
-    local_env_origin = get_local_env_origins(head_point_t,
-                                             full_env_origin,
-                                             local_h_rows,
-                                             local_w_cols,
-                                             res)
-    local_env = get_local_env_at_in(head_point_t,
-                                    padded_full_envs,
-                                    full_env_origin,
-                                    padding,
-                                    local_h_rows,
-                                    local_w_cols,
-                                    res)
+    # batch_size = int(center_point.shape[0])
+
+    b, full_h_rows, full_w_cols = full_env.shape
+
+    k = 2.0
+    # Unvectorized version numpy
+    # local_env = np.zeros([b, local_h_rows, local_w_cols], dtype=np.float32)
+    # for batch_idx in range(b):
+    #     for u, v in np.ndindex(local_h_rows, local_w_cols):
+    #         local_env_pixel_value = 0
+    #         for h, w in np.ndindex(full_h_rows, full_w_cols):
+    #             local_env_pixel_coordinates = np.array([u, v])
+    #             full_env_pixel_coordinates = np.array([h, w])
+    #             squared_distance = np.sum(np.square(full_env_pixel_coordinates - local_env_pixel_coordinates))
+    #             local_env_pixel_value += np.exp(-k * squared_distance)
+    #         local_env[u, v] = local_env_pixel_value
+
+    local_center = tf.constant([local_h_rows / 2, local_w_cols / 2], dtype=tf.float32)
+    full_center = tf.constant([full_h_rows / 2, full_w_cols / 2], dtype=tf.float32)
+
+    center_cols = center_point[:, 0] / res + full_env_origin[:, 1]
+    center_rows = center_point[:, 1] / res + full_env_origin[:, 0]
+    center_point_coordinates = tf.stack([center_rows, center_cols], axis=1)
+    local_env_origin = full_env_origin - center_point_coordinates + local_center
+
+    local_env_pixel_row_indices = tf.range(0, local_h_rows, dtype=tf.float32)
+    local_env_pixel_col_indices = tf.range(0, local_w_cols, dtype=tf.float32)
+    local_env_pixel_coordinates = tf.stack(tf.meshgrid(local_env_pixel_row_indices, local_env_pixel_col_indices), axis=2)
+    local_env_pixel_coordinates = tf.reshape(tf.transpose(local_env_pixel_coordinates, [1, 0, 2]), [-1, 2])
+    local_to_full_offset = full_center - local_env_origin
+    local_env_pixel_coordinates_in_full_env_frame = local_env_pixel_coordinates + local_to_full_offset
+    local_env_pixel_coordinates_in_full_env_frame = tf.expand_dims(local_env_pixel_coordinates_in_full_env_frame, axis=0)
+    local_env_pixel_coordinates_matrix = tf.tile(local_env_pixel_coordinates_in_full_env_frame, [full_h_rows * full_w_cols, 1, 1])
+
+    full_env_pixel_row_indices = tf.range(0, full_h_rows, dtype=tf.float32)
+    full_env_pixel_col_indices = tf.range(0, full_w_cols, dtype=tf.float32)
+    full_env_pixel_coordinates = tf.stack(tf.meshgrid(full_env_pixel_row_indices, full_env_pixel_col_indices), axis=2)
+    full_env_pixel_coordinates = tf.reshape(tf.transpose(full_env_pixel_coordinates, [1, 0, 2]), [-1, 2])
+    full_env_pixel_coordinates = tf.expand_dims(full_env_pixel_coordinates, axis=1)
+    full_env_pixel_coordinates_matrix = tf.tile(full_env_pixel_coordinates, [1, local_h_rows * local_w_cols, 1])
+
+    # this will have shape [h*w, h'*w']
+    coordinate_difference_matrix = full_env_pixel_coordinates_matrix - local_env_pixel_coordinates_matrix
+    squared_distances = tf.reduce_sum(tf.square(coordinate_difference_matrix), axis=2)
+    weights = tf.exp(-k * squared_distances)
+
+    full_env_flat = tf.reshape(full_env, [b, full_h_rows * full_w_cols])
+    local_env_flat = tf.matmul(full_env_flat, weights)
+    local_env = tf.reshape(local_env_flat, [b, local_h_rows, local_w_cols])
+
     return local_env, local_env_origin
+
+
+def get_local_env_and_origin(center_point: np.ndarray,
+                             full_env: np.ndarray,
+                             full_env_origin: np.ndarray,
+                             res: float,
+                             local_h_rows: int,
+                             local_w_cols: int):
+    batched_inputs = add_batch(center_point, full_env, full_env_origin, res)
+    local_env, local_env_origin = get_local_env_and_origin_differentiable(*batched_inputs,
+                                                                          local_h_rows=local_h_rows,
+                                                                          local_w_cols=local_w_cols)
+    # convert back from TF
+    return local_env.numpy(), local_env_origin.numpy()

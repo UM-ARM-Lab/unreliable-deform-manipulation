@@ -8,7 +8,7 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_planning.params import LocalEnvParams, FullEnvParams
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon.link_bot_sdf_utils import get_local_env_and_origin_differentiable
 from moonshine.action_smear_layer import smear_action
 from moonshine.numpy_utils import add_batch, dict_of_sequences_to_sequence_of_dicts
 from moonshine.raster_points_layer import differentiable_raster
@@ -56,25 +56,13 @@ class ObstacleNN(MyKerasModel):
 
         self.flatten_conv_output = layers.Flatten()
 
-    def get_local_env(self, head_point_t, full_env_origin, full_env):
-        padding = 200
-        paddings = [[0, 0], [padding, padding], [padding, padding]]
-        padded_full_envs = tf.pad(full_env, paddings=paddings)
-
-        local_env_origin = tf.numpy_function(link_bot_sdf_utils.get_local_env_origins,
-                                             [head_point_t,
-                                              full_env_origin,
-                                              self.local_env_params.h_rows,
-                                              self.local_env_params.w_cols,
-                                              self.local_env_params.res],
-                                             tf.float32)
-        local_env = link_bot_sdf_utils.differentiable_get_local_env(head_point_t,
-                                                                    padded_full_envs,
-                                                                    full_env_origin,
-                                                                    padding,
-                                                                    self.local_env_params.h_rows,
-                                                                    self.local_env_params.w_cols,
-                                                                    self.local_env_params.res)
+    def get_local_env(self, center_point, full_env_origin, full_env, res):
+        local_env, local_env_origin = get_local_env_and_origin_differentiable(center_point=center_point,
+                                                                              full_env=full_env,
+                                                                              full_env_origin=full_env_origin,
+                                                                              res=res,
+                                                                              local_h_rows=self.local_env_params.h_rows,
+                                                                              local_w_cols=self.local_env_params.w_cols)
         env_h_rows = tf.convert_to_tensor(self.local_env_params.h_row, tf.int64)
         env_w_cols = tf.convert_to_tensor(self.local_env_params.w_cols, tf.int64)
         return local_env, local_env_origin, env_h_rows, env_w_cols
@@ -84,14 +72,15 @@ class ObstacleNN(MyKerasModel):
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
 
+        # Combine all the states into one big vector, based on which states were listed in the hparams file
         substates_0 = []
         for state_key, n in self.used_states_description.items():
             substate_0 = input_dict[state_key][:, 0]
             substates_0.append(substate_0)
-
         s_0 = tf.concat(substates_0, axis=1)
 
-        resolution = input_dict['full_env/res']
+        # Remember everything this batched, but to keep things clear plural variable names will be reserved for sequences
+        res = input_dict['full_env/res']
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']
 
@@ -101,19 +90,20 @@ class ObstacleNN(MyKerasModel):
 
             action_t = actions[:, t]
 
-            head_point_t = s_t[:, -2:]
             if 'use_full_env' in self.hparams and self.hparams['use_full_env']:
                 env = full_env
                 env_origin = full_env_origin
                 env_h_rows = tf.convert_to_tensor(self.full_env_params.h_rows, tf.int64)
                 env_w_cols = tf.convert_to_tensor(self.full_env_params.w_cols, tf.int64)
             else:
-                # the local environment used at each time step is centered on the current point of the head
-                env, env_origin, env_h_rows, env_w_cols = self.get_local_env(head_point_t, full_env_origin, full_env)
+                state = self.state_vector_to_state_dict(s_t)
+                local_env_center = self.get_local_environment_center(state)
+                # NOTE: we assume same resolution for local and full environment
+                env, env_origin, env_h_rows, env_w_cols = self.get_local_env(local_env_center, full_env_origin, full_env, res)
 
-            rope_image_t = differentiable_raster(s_t, resolution, env_origin, env_h_rows, env_w_cols)
+            rope_image_t = differentiable_raster(s_t, res, env_origin, env_h_rows, env_w_cols)
 
-            # FIXME: this differentiable already, but we need to implement it in TensorFlow
+            # FIXME: this is differentiable already, but we need to implement it in TensorFlow
             action_image_t = tf.numpy_function(smear_action, [action_t, env_h_rows, env_w_cols], tf.float32)
 
             env = tf.expand_dims(env, axis=3)
@@ -144,15 +134,28 @@ class ObstacleNN(MyKerasModel):
 
         pred_states = tf.stack(pred_states, axis=1)
 
-        # Split the big state vectors up by state name/dim
-        start_idx = 0
-        output_states_dict = {}
-        for name, n in self.used_states_description.items():
-            end_idx = start_idx + n
-            output_states_dict[state_key] = pred_states[:, :, start_idx:end_idx]
-            start_idx += n
+        # Split the stack of state vectors up by state name/dim
+        output_states = self.state_vector_to_state_dict(pred_states)
 
-        return output_states_dict
+        return output_states
+
+    def state_vector_to_state_dict(self, s_t):
+        state_dict = {}
+        start_idx = 0
+        for state_key, n in self.used_states_description.items():
+            end_idx = start_idx + n
+            state_dict[state_key] = s_t[:, start_idx:end_idx]
+            start_idx += n
+        return state_dict
+
+    def state_vector_to_state_sequence_dict(self, pred_states):
+        state_dict = {}
+        start_idx = 0
+        for state_key, n in self.used_states_description.items():
+            end_idx = start_idx + n
+            state_dict[state_key] = pred_states[:, :, start_idx:end_idx]
+            start_idx += n
+        return state_dict
 
 
 class ObstacleNNWrapper(BaseDynamicsFunction):

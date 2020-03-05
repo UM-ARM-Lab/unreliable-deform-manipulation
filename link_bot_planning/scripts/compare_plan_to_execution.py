@@ -16,7 +16,7 @@ import tensorflow as tf
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSampler
 from matplotlib.animation import FuncAnimation
 
-from link_bot_data.visualization import plottable_rope_configuration
+from link_bot_pycommon.link_bot_pycommon import vector_to_points_2d
 from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices, get_sdf_data
 from link_bot_planning import plan_and_execute
@@ -47,8 +47,8 @@ def plot_comparison(outdir, planned_path, actual_rope_configurations, full_sdf_d
     def func(t):
         planned_config = planned_path[t]
         actual_config = actual_rope_configurations[t]
-        planned_xs, planned_ys = plottable_rope_configuration(planned_config)
-        actual_xs, actual_ys = plottable_rope_configuration(actual_config)
+        planned_xs, planned_ys = vector_to_points_2d(planned_config)
+        actual_xs, actual_ys = vector_to_points_2d(actual_config)
         planned_handle.set_xdata(planned_xs)
         planned_handle.set_ydata(planned_ys)
         actual_handle.set_xdata(actual_xs)

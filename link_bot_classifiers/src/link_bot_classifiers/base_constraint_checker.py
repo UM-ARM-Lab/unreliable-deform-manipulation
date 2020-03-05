@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Callable
 
 import numpy as np
 import tensorflow as tf
@@ -6,7 +6,8 @@ import tensorflow as tf
 
 class BaseConstraintChecker:
 
-    def __init__(self):
+    def __init__(self, get_local_environment_center: Callable):
+        self.get_local_environment_center = get_local_environment_center
         self.model_hparams = {}
         self.full_env_params = None
 
@@ -14,7 +15,7 @@ class BaseConstraintChecker:
                          full_env: np.ndarray,
                          full_env_origin: np.ndarray,
                          res: float,
-                         states_trajs: List[Dict],
+                         states_sequence: List[Dict],
                          actions: np.ndarray) -> float:
         pass
 
@@ -22,6 +23,6 @@ class BaseConstraintChecker:
                                         full_env: np.ndarray,
                                         full_env_origin: np.ndarray,
                                         res: float,
-                                        states_trajs: List[Dict],
+                                        states_sequence: List[Dict],
                                         actions: tf.Variable) -> tf.Tensor:
         pass

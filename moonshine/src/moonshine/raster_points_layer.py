@@ -12,22 +12,23 @@ def differentiable_get_local_env():
     pass
 
 
-def differentiable_raster(state, res, origins, h, w):
-    # TODO: gradients?
+def raster_differentiable(state: Dict, res, origin, h, w):
     """
-    state: [batch, n]
+    Even though this data is batched, we use singular and reserve plural for sequences in time
+    state: each value is [batch, n]
     res: [batch] scalar float
     origins: [batch, 2] index (so int, or technically float is fine too)
     h: scalar int
     w: scalar int
+    return: [batch, h, w, n_points]
     """
-    b = state.shape[0]
+    b = list(state.values())[0].shape[0]
     points = tf.reshape(state, [b, -1, 2])
     n_points = points.shape[1]
 
     res = res[0]
 
-    beta = 50.0
+    k = 50.0
 
     ## Below is a un-vectorized implementation, which is much easier to read and understand
     # rope_images = np.zeros([b, h, w, n_points], dtype=np.float32)
@@ -37,7 +38,7 @@ def differentiable_raster(state, res, origins, h, w):
     #             point_in_meters = points[batch_index, point_idx]
     #             pixel_center_in_meters = idx_to_point(row, col, res, origins[batch_index])
     #             squared_distance = np.sum(np.square(point_in_meters - pixel_center_in_meters))
-    #             pixel_value = np.exp(-beta*squared_distance)
+    #             pixel_value = np.exp(-k*squared_distance)
     #             rope_images[batch_index, row, col, point_idx] += pixel_value
     # rope_images = rope_images
 
@@ -55,58 +56,33 @@ def differentiable_raster(state, res, origins, h, w):
     pixel_indices = tf.tile(pixel_indices, [b, 1, 1, 1])
 
     # shape [b, h, w, 2]
-    pixel_centers = (pixel_indices - origins) * res
+    pixel_centers = (pixel_indices - origin) * res
 
     # add n_points dim
     pixel_centers = tf.expand_dims(pixel_centers, axis=3)
     pixel_centers = tf.tile(pixel_centers, [1, 1, 1, n_points, 1])
 
     squared_distances = tf.reduce_sum(tf.square(pixel_centers - tiled_points), axis=4)
-    pixel_values = tf.exp(-beta * squared_distances)
+    pixel_values = tf.exp(-k * squared_distances)
     rope_images = tf.reshape(pixel_values, [b, h, w, n_points])
     return rope_images
 
 
 def raster(state, res, origin, h, w):
-    """
-    state: [batch, n]
-    res: [batch] scalar float
-    origin: [batch, 2] index (so int, or technically float is fine too)
-    h: scalar int
-    w: scalar int
-    """
-    b = state.shape[0]
-    points = np.reshape(state, [b, -1, 2])
-    n_points = points.shape[1]
-
-    res = res[0]
-
-    # points[:,1] is y, origin[0] is row index, so yes this is correct
-    row_y_indices = (points[:, :, 1] / res + origin[:, 0:1]).astype(np.int64).flatten()
-    col_x_indices = (points[:, :, 0] / res + origin[:, 1:2]).astype(np.int64).flatten()
-    channel_indices = np.tile(np.arange(n_points), b)
-    batch_indices = np.repeat(np.arange(b), n_points)
-
-    # filter out invalid indices, which can happen during training
-    rope_images = np.zeros([b, h, w, n_points], dtype=np.float32)
-    valid_indices = np.where(np.all([row_y_indices >= 0,
-                                     row_y_indices < h,
-                                     col_x_indices >= 0,
-                                     col_x_indices < w], axis=0))
-
-    rope_images[batch_indices[valid_indices],
-                row_y_indices[valid_indices],
-                col_x_indices[valid_indices],
-                channel_indices[valid_indices]] = 1.0
-    return rope_images
+    rope_image = raster_differentiable(state=state,
+                                       origin=origin,
+                                       res=res,
+                                       h=h,
+                                       w=w)
+    return rope_image.numpy()
 
 
-def make_transition_images(local_env: np.ndarray,
-                           planned_states: Dict[str, np.ndarray],
-                           action: np.ndarray,
-                           planned_next_states: Dict[str, np.ndarray],
-                           res: np.ndarray,
-                           origin: np.ndarray,
+def make_transition_images(local_env,
+                           planned_states,
+                           action,
+                           planned_next_states,
+                           res,
+                           origin,
                            action_in_image: Optional[bool] = False):
     """
     :param local_env: [batch,h,w]
@@ -123,10 +99,10 @@ def make_transition_images(local_env: np.ndarray,
 
     concat_args = [local_env]
     for planned_state in planned_states.values():
-        planned_rope_image = raster(planned_state, res, origin, h, w)
+        planned_rope_image = raster_differentiable(state=planned_state, res=res, origin=origin, h=h, w=w)
         concat_args.append(planned_rope_image)
     for planned_next_state in planned_next_states.values():
-        planned_next_rope_image = raster(planned_next_state, res, origin, h, w)
+        planned_next_rope_image = raster_differentiable(state=planned_next_state, origin=origin, res=res, h=h, w=w)
         concat_args.append(planned_next_rope_image)
 
     if action_in_image:
@@ -137,38 +113,42 @@ def make_transition_images(local_env: np.ndarray,
     return image
 
 
-def raster_rope_images(planned_states: Dict[str, np.ndarray],
-                       res: np.ndarray,
-                       origins: np.ndarray,
+def raster_rope_images(planned_states: Dict,
+                       res,
+                       origin,
                        h: float,
                        w: float):
     """
     Raster all the state into one fixed-channel image representation using color gradient in the green channel
     :param planned_states: each element is [batch, time, n_state]
     :param res: [batch]
-    :param origins: [batch, 2]
+    :param origin: [batch, 2]
     :param h: scalar
     :param w: scalar
-    :return: [batch, time, h, w, 2]
+    :return: [batch, time, h, w, 2 * n_points]
     """
-    b, n_time_steps, _ = planned_states.shape
-    rope_images = np.zeros([b, h, w, 2], dtype=np.float32)
+    b, n_time_steps, _ = list(planned_states.values())[0].shape
+    binary_rope_images = []
+    time_colored_rope_images = []
     for t in range(n_time_steps):
-        planned_states_t = planned_states[:, t]
-        rope_img_t = raster(planned_states_t, res, origins, h, w)
-        rope_img_t = np.sum(rope_img_t, axis=3)
-        gradient_t = float(t) / n_time_steps
-        gradient_image_t = rope_img_t * gradient_t
-        rope_images[:, :, :, 0] += rope_img_t
-        rope_images[:, :, :, 1] += gradient_image_t
-    rope_images = np.clip(rope_images, 0, 1.0)
+        for vector in planned_states.values():
+            planned_state_t = planned_states[:, t]
+            rope_img_t = raster_differentiable(state=planned_state_t, origin=origin, res=res, h=h, w=w)
+            rope_img_t = np.sum(rope_img_t, axis=3)
+            time_color = float(t) / n_time_steps
+            time_color_image_t = rope_img_t * time_color
+            binary_rope_images.append(rope_img_t)
+            time_colored_rope_images.append(time_color_image_t)
+    binary_rope_images = tf.reduce_sum(binary_rope_images, axis=0)
+    time_colored_rope_images = tf.reduce_sum(time_colored_rope_images, axis=0)
+    rope_images = tf.concat((binary_rope_images, time_colored_rope_images))
     return rope_images
 
 
-def make_traj_images(full_env: np.ndarray,
-                     full_env_origin: np.ndarray,
-                     res: np.ndarray,
-                     states: Dict[str, np.ndarray]):
+def make_traj_images(full_env,
+                     full_env_origin,
+                     res,
+                     states: Dict):
     """
     :param full_env: [batch, h, w]
     :param full_env_origin:  [batch, 2]
@@ -179,9 +159,9 @@ def make_traj_images(full_env: np.ndarray,
     b, h, w = full_env.shape
 
     # add channel index
-    full_env = np.expand_dims(full_env, axis=3)
+    full_env = tf.expand_dims(full_env, axis=3)
 
     rope_imgs = raster_rope_images(states, res, full_env_origin, h, w)
 
-    image = np.concatenate((full_env, rope_imgs), axis=3)
+    image = tf.concatenate((full_env, rope_imgs), axis=3)
     return image

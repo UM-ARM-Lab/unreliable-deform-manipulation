@@ -136,10 +136,7 @@ def add_traj_image(dataset):
         stop_index = input_dict['planned_state/link_bot_all_stop']
         planned_states = input_dict['planned_state/link_bot_all'][:stop_index]
 
-        h, w = full_env.shape
-
-        image = tf.numpy_function(make_traj_images, add_batch(full_env, full_env_origin, res, planned_states), tf.float32)[0]
-        image.set_shape([h, w, 3])
+        image = make_traj_images(*add_batch(full_env, full_env_origin, res, planned_states))[0]
 
         input_dict['trajectory_image'] = image
         return input_dict

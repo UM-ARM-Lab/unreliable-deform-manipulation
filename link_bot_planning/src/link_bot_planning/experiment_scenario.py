@@ -1,7 +1,11 @@
 from ignition.markers import MarkerProvider
 
 
-class PlanningScenario:
+class ExperimentScenario:
+
+    @staticmethod
+    def local_environment_center(state):
+        raise NotImplementedError()
 
     @staticmethod
     def plot_state_simple(ax, state, color):

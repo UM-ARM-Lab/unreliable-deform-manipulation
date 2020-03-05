@@ -75,10 +75,10 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                          planner_status: ob.PlannerStatus):
         n_actions = len(planned_actions)
         final_state = planned_path[-1]
-        final_error = self.planner.planning_scenario.distance_to_goal(final_state, goal)
+        final_error = self.planner.experiment_scenario.distance_to_goal(final_state, goal)
 
         if self.verbose >= 1:
-            self.planner.planning_scenario.publish_state_marker(self.services.marker_provider, final_state)
+            self.planner.experiment_scenario.publish_state_marker(self.services.marker_provider, final_state)
 
         print("Final Error: {:0.4f}, # Actions {}".format(final_error, n_actions))
         print("Planning Time {:0.3f}".format(planning_time))
@@ -86,7 +86,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         if rospy.get_param('service_provider') == 'victor':
             anim = ompl_viz.plan_vs_execution(full_env_data.data,
                                               full_env_data.extent,
-                                              self.planner.planning_scenario,
+                                              self.planner.experiment_scenario,
                                               goal,
                                               planned_path,
                                               actual_path=None)
@@ -96,7 +96,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
             ax = plt.gca()
             legend = ompl_viz.plot_plan(ax,
                                         self.planner.state_space_description,
-                                        self.planner.planning_scenario,
+                                        self.planner.experiment_scenario,
                                         self.planner.viz_object,
                                         planner_data,
                                         full_env_data.data,
@@ -120,16 +120,16 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
         final_planned_state = planned_path[-1]
-        plan_to_goal_error = self.planner.planning_scenario.distance_to_goal(final_planned_state, goal)
+        plan_to_goal_error = self.planner.experiment_scenario.distance_to_goal(final_planned_state, goal)
         print("Execution to Plan Error: {:.4f}".format(plan_to_goal_error))
 
         final_state = actual_path[-1]
-        execution_to_goal_error = self.planner.planning_scenario.distance_to_goal(final_state, goal)
+        execution_to_goal_error = self.planner.experiment_scenario.distance_to_goal(final_state, goal)
         print('Execution to Goal Error: {:0.3f}'.format(execution_to_goal_error))
 
         anim = ompl_viz.plan_vs_execution(full_env_data.data,
                                           full_env_data.extent,
-                                          self.planner.planning_scenario,
+                                          self.planner.experiment_scenario,
                                           goal,
                                           planned_path,
                                           actual_path)

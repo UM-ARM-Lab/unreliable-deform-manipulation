@@ -2,7 +2,7 @@
 from __future__ import division, print_function
 
 import time
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import numpy as np
 import std_srvs
@@ -75,7 +75,7 @@ class PlanAndExecute:
 
                 if self.verbose >= 1:
                     # publish goal marker
-                    self.planner.planning_scenario.publish_goal_marker(self.services.marker_provider, goal)
+                    self.planner.experiment_scenario.publish_goal_marker(self.services.marker_provider, goal)
 
                 if self.verbose >= 1:
                     print(Fore.CYAN + "Planning from {} to {}".format(start_states, goal) + Fore.RESET)
@@ -141,7 +141,7 @@ class PlanAndExecute:
         return sample_collision_free_goal(w, h, full_env_data, self.goal_rng)
 
     def on_plan_complete(self,
-                         planned_path: Dict[str, np.ndarray],
+                         planned_path: List[Dict],
                          goal,
                          planned_actions: np.ndarray,
                          full_env_data: link_bot_sdf_utils.OccupancyData,
@@ -151,10 +151,10 @@ class PlanAndExecute:
         pass
 
     def on_execution_complete(self,
-                              planned_path: Dict[str, np.ndarray],
+                              planned_path: List[Dict],
                               planned_actions: np.ndarray,
                               goal,
-                              actual_path: Dict[str, np.ndarray],
+                              actual_path: List[Dict],
                               full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,

@@ -10,7 +10,8 @@ import tensorflow as tf
 from matplotlib.animation import FuncAnimation
 
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
-from link_bot_data.visualization import plot_rope_configuration, plottable_rope_configuration
+from link_bot_data.visualization import plot_rope_configuration
+from link_bot_pycommon.link_bot_pycommon import vector_to_points_2d
 from link_bot_pycommon.args import my_formatter
 
 tf.compat.v1.enable_eager_execution()
@@ -52,7 +53,7 @@ def plot_individual(train_dataset, redraw, states_description):
             full_env_handle.set_extent(full_env_extents)
 
             if redraw:
-                xs, ys = plottable_rope_configuration(link_bot_config)
+                xs, ys = vector_to_points_2d(link_bot_config)
                 link_bot_line.set_xdata(xs)
                 link_bot_line.set_ydata(ys)
             else:
@@ -85,8 +86,8 @@ def plot_all(train_dataset, states_description):
         color_float_idx = (i % 100) / 100.0
         c = jet(color_float_idx)
         for state_key in states_description.keys():
-            states_traj = input_data[state_key].numpy()
-            first_state = states_traj[0]
+            states_sequence = input_data[state_key].numpy()
+            first_state = states_sequence[0]
             plot_rope_configuration(ax, first_state, linewidth=1, alpha=0.3, c=c, scatt=False)
 
     plt.savefig('dataset_visualization.png', transparent=True, dpi=600)

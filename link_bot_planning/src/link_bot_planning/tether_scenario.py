@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from link_bot_data.visualization import plot_rope_configuration
-from link_bot_planning.planning_scenario import PlanningScenario
+from link_bot_planning.experiment_scenario import ExperimentScenario
 
 
-class TetherScenario(PlanningScenario):
+class TetherScenario(ExperimentScenario):
 
     @staticmethod
     def plot_state(ax: plt.Axes,

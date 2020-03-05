@@ -5,10 +5,10 @@ import numpy as np
 import tensorflow as tf
 
 from ignition.markers import MarkerProvider
-from link_bot_planning.planning_scenario import PlanningScenario
+from link_bot_planning.experiment_scenario import ExperimentScenario
 
 
-class LinkBotScenario(PlanningScenario):
+class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def plot_state_simple(ax: plt.Axes,
@@ -101,3 +101,9 @@ class LinkBotScenario(PlanningScenario):
     @staticmethod
     def publish_goal_marker(marker_provider: MarkerProvider, goal):
         marker_provider.publish_marker(id=0, rgb=[1, 0, 0], scale=0.05, x=goal[0], y=goal[1])
+
+    @staticmethod
+    def local_environment_center(state):
+        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+        head_point_where_gripper_is = link_bot_points[-1]
+        return head_point_where_gripper_is

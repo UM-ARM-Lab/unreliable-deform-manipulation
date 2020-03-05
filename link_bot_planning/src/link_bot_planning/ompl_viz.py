@@ -5,14 +5,14 @@ import numpy as np
 from matplotlib.animation import FuncAnimation
 from ompl import base as ob
 
-from link_bot_planning.planning_scenario import PlanningScenario
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.state_spaces import compound_to_numpy
 from link_bot_planning.viz_object import VizObject
 
 
 def plot_plan(ax,
               state_space_description: Dict,
-              planning_scenario: PlanningScenario,
+              experiment_scenario: ExperimentScenario,
               viz_object: VizObject,
               planner_data: ob.PlannerData,
               environment: np.ndarray,
@@ -30,15 +30,15 @@ def plot_plan(ax,
 
     if draw_rejected:
         for rejected_state in viz_object.rejected_samples:
-            planning_scenario.plot_state(ax, rejected_state, color='o')
+            experiment_scenario.plot_state(ax, rejected_state, color='o')
 
     if planned_path is not None:
         start = planned_path[0]
-        planning_scenario.plot_state(ax, start, color='b')
-        planning_scenario.plot_goal(ax, goal, color='c')
+        experiment_scenario.plot_state(ax, start, color='b')
+        experiment_scenario.plot_goal(ax, goal, color='c')
         draw_every_n = 6
         for state in planned_path[::draw_every_n]:
-            planning_scenario.plot_state(ax, state, color='g')
+            experiment_scenario.plot_state(ax, state, color='g')
 
     # Visualize Nearest Neighbor Selection (poorly...)
     # for sample in planner_data.getSamples():
@@ -60,7 +60,7 @@ def plot_plan(ax,
             edges_map = ob.mapUintToPlannerDataEdge()
 
             np_s = compound_to_numpy(state_space_description, s)
-            planning_scenario.plot_state_simple(ax, np_s, color='k')
+            experiment_scenario.plot_state_simple(ax, np_s, color='k')
 
             # full rope is too noisy
             # if len(edges_map.keys()) == 0:
@@ -71,7 +71,7 @@ def plot_plan(ax,
                 v2 = planner_data.getVertex(vertex_index2)
                 s2 = v2.getState()
                 np_s2 = compound_to_numpy(state_space_description, s2)
-                planning_scenario.plot_state_simple(ax, np_s2, color='k')
+                experiment_scenario.plot_state_simple(ax, np_s2, color='k')
 
     ax.set_xlabel("x")
     ax.set_ylabel("y")
@@ -88,7 +88,7 @@ def plot_plan(ax,
 
 def plan_vs_execution(environment: np.ndarray,
                       extent,
-                      planning_scenario: PlanningScenario,
+                      experiment_scenario: ExperimentScenario,
                       goal,
                       planned_path: Optional[List[Dict[str, np.ndarray]]] = None,
                       actual_path: Optional[List[Dict[str, np.ndarray]]] = None):
@@ -103,20 +103,20 @@ def plan_vs_execution(environment: np.ndarray,
     ax.set_ylim([extent[2], extent[3]])
 
     start = planned_path[0]
-    planning_scenario.plot_state(ax, start, 'b')
-    planning_scenario.plot_goal(ax, goal, 'c')
+    experiment_scenario.plot_state(ax, start, 'b')
+    experiment_scenario.plot_goal(ax, goal, 'c')
 
     if planned_path is not None:
-        planned_path_artist = planning_scenario.plot_state(ax, planned_path[0], 'g')
+        planned_path_artist = experiment_scenario.plot_state(ax, planned_path[0], 'g')
     if actual_path is not None:
-        actual_path_artist = planning_scenario.plot_state(ax, actual_path[0], '#00ff00')
+        actual_path_artist = experiment_scenario.plot_state(ax, actual_path[0], '#00ff00')
     plt.legend()
 
     def update(t):
         if planned_path is not None:
-            planning_scenario.update_artist(planned_path_artist, planned_path[t])
+            experiment_scenario.update_artist(planned_path_artist, planned_path[t])
         if actual_path is not None:
-            planning_scenario.update_artist(actual_path_artist, actual_path[t])
+            experiment_scenario.update_artist(actual_path_artist, actual_path[t])
 
     anim = FuncAnimation(fig, update, frames=len(planned_path), interval=500)
     return anim

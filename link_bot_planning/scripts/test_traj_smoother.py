@@ -9,6 +9,7 @@ import tensorflow as tf
 from matplotlib.animation import FuncAnimation
 
 from link_bot_planning import model_utils, classifier_utils
+from link_bot_planning.link_bot_scenario import LinkBotScenario
 from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_pycommon.args import my_formatter
 
@@ -16,17 +17,6 @@ gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
-
-def mock_fwd_model(state, actions):
-    predictions = [state]
-    for t in range(actions.shape[0]):
-        action = actions[t]
-        points = tf.reshape(state, [3, 2])
-        next_points = points + action
-        next_state = tf.reshape(next_points, [1, 6])
-        predictions.append(next_state)
-        state = next_state
-    return predictions
 
 
 def main():
@@ -55,9 +45,9 @@ def main():
 
     T = actions.shape[0]
 
-    goal_point = np.array([-1.25, 1.667])
-    goal_point_idx = 0
-    goal_subspace_feature_name = 'state/link_bot'
+    goal = np.array([-1.25, 1.667])
+    goal_idx = 0
+    goal_subspace_feature_name = 'link_bot'
 
     params = {
         "iters": args.iters,
@@ -70,7 +60,7 @@ def main():
     # Construct initial path
     ###########################
     start_states = {
-        'state/link_bot': np.array([0.0, 0.0,
+        'link_bot': np.array([0.0, 0.0,
                                     0.05, 0.0,
                                     0.10, 0.0,
                                     0.15, 0.0,
@@ -90,28 +80,27 @@ def main():
                                                       start_states=start_states,
                                                       actions=actions)
 
+    experiment_scenario = LinkBotScenario()
+
     #####################################################
     # Interactive Visualization - Do the Actual Smoothing
     #####################################################
     smoother = TrajectorySmoother(fwd_model=fwd_model,
                                   classifier_model=classifier_model,
+                                  experiment_scenario=experiment_scenario,
                                   params=params,
-                                  goal_point_idx=goal_point_idx,
-                                  goal_subspace_feature_name=goal_subspace_feature_name)
+                                  verbose=2,
+                                  )
 
     actions = tf.Variable(actions, dtype=tf.float32, name='controls', trainable=True)
 
     fig, axes = plt.subplots(1, 2)
     axes[0].set_title("Path")
-    axes[0].scatter(goal_point[0], goal_point[1], label='goal', s=50, c='k')
-    axes[0].scatter(start_states['state/link_bot'][0], start_states['state/link_bot'][1], label='start', s=50, c='r')
-    axes[0].set_xlim([-2.5, 1.0])
-    axes[0].set_ylim([-1, 2.5])
+    experiment_scenario.plot_goal(axes[0], goal, 'g')
+    experiment_scenario.plot_state_simple(axes[0], start_states, 'r')
+    axes[0].set_xlim([-2.5,2.5])
+    axes[0].set_ylim([-2.5, 2.5])
     axes[0].legend()
-    path_lines = []
-    for t in range(T + 1):
-        line = axes[0].plot([], [])[0]
-        path_lines.append(line)
 
     losses_line = axes[1].plot([], label='total loss')[0]
     length_losses_line = axes[1].plot([], label='length loss')[0]
@@ -132,12 +121,17 @@ def main():
     action_losses = []
     step_times = []
 
+    artists = []
+    for t in range(T + 1):
+        artist = experiment_scenario.plot_state(axes[0], planned_path[t], 'b')
+        artists.append(artist)
+
     def update(iter):
         nonlocal actions
         t0 = perf_counter()
         actions, predictions, step_losses = smoother.step(full_env=full_env,
                                                           full_env_origin=full_env_origin,
-                                                          goal_point=goal_point,
+                                                          goal=goal,
                                                           res=res,
                                                           actions=actions,
                                                           planned_path=planned_path)
@@ -151,11 +145,8 @@ def main():
         constraint_loss = constraint_loss.numpy()
         action_loss = action_loss.numpy()
 
-        predicted_points = tf.reshape(predictions['state/link_bot'], [T + 1, -1, 2]).numpy()
         for t in range(T + 1):
-            xs = predicted_points[t, :, 0]
-            ys = predicted_points[t, :, 1]
-            path_lines[t].set_data(xs, ys)
+            experiment_scenario.update_artist(artists[t], predictions[t])
 
         iters.append(iter)
         losses.append(loss)

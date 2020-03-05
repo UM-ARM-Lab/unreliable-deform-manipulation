@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import json
 import pathlib
-from typing import Dict
+from typing import Dict, List, Callable
 
 import numpy as np
 import tensorflow as tf
@@ -13,7 +13,7 @@ from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_planning.params import LocalEnvParams
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon.link_bot_sdf_utils import get_local_env_and_origin_differentiable
 from moonshine.numpy_utils import add_batch
 from moonshine.raster_points_layer import make_transition_images, make_traj_images
 from moonshine.tensorflow_train_test_loop import MyKerasModel
@@ -107,8 +107,8 @@ class RasterClassifier(MyKerasModel):
 
 class RasterClassifierWrapper(BaseConstraintChecker):
 
-    def __init__(self, path: pathlib.Path, batch_size: int):
-        super().__init__()
+    def __init__(self, path: pathlib.Path, batch_size: int, get_local_environment_center: Callable):
+        super().__init__(get_local_environment_center)
         model_hparams_file = path / 'hparams.json'
         self.model_hparams = json.load(model_hparams_file.open('r'))
         self.net = RasterClassifier(hparams=self.model_hparams, batch_size=batch_size)
@@ -122,34 +122,26 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                          local_env: np.ndarray,
                          local_env_origin: np.ndarray,
                          res: float,
-                         states: Dict[str, np.ndarray],
-                         states_next: Dict[str, np.ndarray],
-                         action: tf.Variable) -> tf.Tensor:
+                         states_i: Dict[str, np.ndarray],
+                         states_i_plus_1: Dict[str, np.ndarray],
+                         action_i: tf.Variable) -> tf.Tensor:
         """
         # FIXME: actually everything might be a tensor here...?
         :param local_env: np.ndarray
         :param local_env_origin: np.ndarray
         :param res: float
-        :param states: each value has shape [n_state]
-        :param states_next: each value has shape [n_state]
-        :param action: [n_action] float64
+        :param states_i: each value has shape [n_state]
+        :param states_i_plus_1: each value has shape [n_state]
+        :param action_i: [n_action] float64
         :return: [1] float64
         """
         action_in_image = self.model_hparams['action_in_image']
-        image = make_transition_images(*add_batch(local_env, states, action, states_next, res, local_env_origin), action_in_image)
+        batched_inputs = add_batch(local_env, states_i, action_i, states_i_plus_1, res, local_env_origin)
+        image = make_transition_images(*batched_inputs, action_in_image)[0]
         image = tf.convert_to_tensor(image, dtype=tf.float32)
-        image = tf.expand_dims(image, axis=0)
 
-        net_inputs = {
-            'transition_image': image,
-            'action': tf.expand_dims(tf.convert_to_tensor(action, tf.float32), axis=0),
-        }
-
-        for state_key in self.net.states_keys:
-            planned_state_key = 'planned_state/{}'.format(state_key)
-            planned_state_key_next = 'planned_state_next/{}'.format(state_key)
-            net_inputs[planned_state_key] = tf.convert_to_tensor(states[state_key], tf.float32)
-            net_inputs[planned_state_key_next] = tf.convert_to_tensor(states_next[state_key], tf.float32)
+        net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
+        net_inputs['transition_image'] = image
 
         accept_probabilities = self.net(add_batch(net_inputs))
         return accept_probabilities
@@ -158,28 +150,18 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                          full_env: np.ndarray,
                          full_env_origin: np.ndarray,
                          res: float,
-                         states_trajs: Dict[str, np.ndarray],
+                         states_sequence: List[Dict],
                          actions: tf.Variable) -> tf.Tensor:
         # Get state states/action for just the transition, which we also feed into the classifier
         action_i = actions[-1]
-        states_i = {}
-        states_i_plus_1 = {}
-        for state_key, states_i in states_trajs.items():
-            states_i_plus_1[state_key] = states_i[-2]
-            states_i[state_key] = states_i[-1]
+        states_i = states_sequence[-2]
+        states_i_plus_1 = states_sequence[1]
 
-        batched_inputs = add_batch(full_env.data, full_env_origin, res, states_trajs)
-        image = make_traj_images(*batched_inputs)
-        net_inputs = {
-            'trajectory_image': image,
-            'action': tf.expand_dims(tf.convert_to_tensor(action_i, tf.float32), axis=0),
-        }
+        batched_inputs = add_batch(full_env.data, full_env_origin, res, states_sequence)
+        image = make_traj_images(*batched_inputs)[0]
 
-        for state_key in self.net.states_keys:
-            planned_state_key = 'planned_state/{}'.format(state_key)
-            planned_state_key_next = 'planned_state_next/{}'.format(state_key)
-            net_inputs[planned_state_key] = tf.convert_to_tensor(states_i[state_key], tf.float32)
-            net_inputs[planned_state_key_next] = tf.convert_to_tensor(states_i_plus_1[state_key], tf.float32)
+        net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
+        net_inputs['trajectory_image'] = image
 
         accept_probabilities = self.net(add_batch(net_inputs))
         return accept_probabilities
@@ -188,26 +170,21 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                               full_env: np.ndarray,
                               full_env_origin: np.ndarray,
                               res: float,
-                              states_trajs: Dict[str, np.ndarray],
+                              states_sequence: List[Dict],
                               actions: tf.Variable):
-        # Remove previous states for the single-transition based classification
         action_i = actions[-1]
-        states_i = {}
-        states_i_plus_1 = {}
-        for state_key, states_i in states_trajs.items():
-            states_i_plus_1[state_key] = states_i[-2]
-            states_i[state_key] = states_i[-1]
+        states_i = states_sequence[-2]
+        states_i_plus_1 = states_sequence[-1]
 
-        # FIXME: fix this crap. gripper should be used to define where the local environment is centered??
-        gripper_point = states_i['gripper']
         local_env_params = self.net.local_env_params
+
         # add and then remove batch
-        local_env, local_env_origin = link_bot_sdf_utils.get_local_env_and_origin(*add_batch(gripper_point,
-                                                                                             full_env,
-                                                                                             full_env_origin),
-                                                                                  local_h_rows=local_env_params.h_rows,
-                                                                                  local_w_cols=local_env_params.w_cols,
-                                                                                  res=res)
+        local_env_center = self.get_local_environment_center(states_i)
+        batched_inputs = add_batch(local_env_center, full_env, full_env_origin)
+        local_env, local_env_origin = get_local_env_and_origin_differentiable(*batched_inputs,
+                                                                              local_h_rows=local_env_params.h_rows,
+                                                                              local_w_cols=local_env_params.w_cols,
+                                                                              res=res)
         # remove batch dim
         local_env = local_env[0]
         local_env_origin = local_env_origin[0]
@@ -218,23 +195,23 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                                         full_env: np.ndarray,
                                         full_env_origin: np.ndarray,
                                         res: float,
-                                        states_trajs: Dict[str, np.ndarray],
+                                        states_sequence: List[Dict],
                                         actions: tf.Variable) -> tf.Tensor:
         image_key = self.model_hparams['image_key']
         if image_key == 'transition_image':
             local_env, local_env_origin, states, states_next, action = self.get_transition_inputs(full_env,
                                                                                                   full_env_origin,
                                                                                                   res,
-                                                                                                  states_trajs,
+                                                                                                  states_sequence,
                                                                                                   actions)
             return self.check_transition(local_env=local_env,
                                          local_env_origin=local_env_origin,
                                          res=res,
-                                         states=states,
-                                         states_next=states_next,
-                                         action=action)
+                                         states_i=states,
+                                         states_i_plus_1=states_next,
+                                         action_i=action)
         elif image_key == 'trajectory_image':
-            return self.check_trajectory(full_env, full_env_origin, res, states_trajs, actions)
+            return self.check_trajectory(full_env, full_env_origin, res, states_sequence, actions)
         else:
             raise ValueError('invalid image_key')
 
@@ -242,7 +219,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                          full_env: np.ndarray,
                          full_env_origin: np.ndarray,
                          res: float,
-                         states: Dict[str, np.ndarray],
+                         states: List[Dict],
                          actions: np.ndarray) -> float:
         actions = tf.Variable(actions, dtype=tf.float32, name="actions")
         prediction = self.check_constraint_differentiable(full_env,
@@ -251,6 +228,19 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                                                           states,
                                                           actions)
         return prediction.numpy()
+
+    def net_inputs(self, action_i, states_i, states_i_plus_1):
+        net_inputs = {
+            'action': tf.convert_to_tensor(action_i, tf.float32),
+        }
+
+        for state_key in self.net.states_keys:
+            planned_state_key = 'planned_state/{}'.format(state_key)
+            planned_state_key_next = 'planned_state_next/{}'.format(state_key)
+            net_inputs[planned_state_key] = tf.convert_to_tensor(states_i[state_key], tf.float32)
+            net_inputs[planned_state_key_next] = tf.convert_to_tensor(states_i_plus_1[state_key], tf.float32)
+
+        return net_inputs
 
 
 model = RasterClassifierWrapper

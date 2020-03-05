@@ -1,12 +1,12 @@
 from time import perf_counter
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import tensorflow as tf
 from more_itertools import pairwise
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_planning.planning_scenario import PlanningScenario
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
@@ -16,7 +16,7 @@ class TrajectorySmoother:
                  verbose: int,
                  fwd_model: BaseDynamicsFunction,
                  classifier_model: BaseConstraintChecker,
-                 planning_scenario: PlanningScenario,
+                 experiment_scenario: ExperimentScenario,
                  params: Dict):
         self.verbose = verbose
         self.fwd_model = fwd_model
@@ -25,7 +25,7 @@ class TrajectorySmoother:
         self.goal_alpha = params["goal_alpha"]
         self.constraints_alpha = params["constraints_alpha"]
         self.action_alpha = params["action_alpha"]
-        self.planning_scenario = planning_scenario
+        self.experiment_scenario = experiment_scenario
         self.optimizer = tf.keras.optimizers.Adam(0.02)
 
     def smooth(self,
@@ -34,7 +34,7 @@ class TrajectorySmoother:
                res: float,
                goal,
                actions: np.ndarray,
-               planned_path: Dict,
+               planned_path: List[Dict],
                ):
         actions = tf.Variable(actions, dtype=tf.float32, name='controls', trainable=True)
 
@@ -65,16 +65,16 @@ class TrajectorySmoother:
                 constraint_prediction_t = self.classifier_model.check_constraint_differentiable(full_env=full_env,
                                                                                                 full_env_origin=full_env_origin,
                                                                                                 res=res,
-                                                                                                states_trajs=predictions_t,
+                                                                                                states_sequence=predictions_t,
                                                                                                 actions=actions)
                 # TODO: try setting this to be the max constraint_prediction_t only
                 constraint_loss += constraint_prediction_t
 
             # Compute various loss terms
             final_state = predictions[-1]
-            goal_loss = self.planning_scenario.distance_to_goal_differentiable(final_state, goal)
+            goal_loss = self.experiment_scenario.distance_to_goal_differentiable(final_state, goal)
 
-            distances = [self.planning_scenario.distance_differentiable(s1, s2) for (s1, s2) in pairwise(predictions)]
+            distances = [self.experiment_scenario.distance_differentiable(s1, s2) for (s1, s2) in pairwise(predictions)]
             length_loss = tf.reduce_sum(tf.square(distances))
 
             action_loss = tf.reduce_sum(tf.square(actions))
