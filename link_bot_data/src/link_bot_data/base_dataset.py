@@ -11,6 +11,25 @@ from colorama import Fore
 from link_bot_data.link_bot_dataset_utils import parse_and_deserialize
 
 
+def slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length: int):
+    t_start = 0
+    state_like_t_slice = slice(t_start, t_start + sequence_length)
+    action_like_t_slice = slice(t_start, t_start + sequence_length - 1)
+
+    state_like_seqs_sliced = {}
+    action_like_seqs_sliced = {}
+    for example_name, seq in state_like_seqs.items():
+        sliced_seq = seq[state_like_t_slice]
+        sliced_seq.set_shape([sequence_length] + seq.shape.as_list()[1:])
+        state_like_seqs_sliced[example_name] = sliced_seq
+    for example_name, seq in action_like_seqs.items():
+        sliced_seq = seq[action_like_t_slice]
+        sliced_seq.set_shape([(sequence_length - 1)] + seq.shape.as_list()[1:])
+        action_like_seqs_sliced[example_name] = sliced_seq
+
+    return constant_data, state_like_seqs_sliced, action_like_seqs_sliced
+
+
 class BaseDataset:
 
     def __init__(self, dataset_dirs: List[pathlib.Path]):
@@ -34,9 +53,12 @@ class BaseDataset:
                     print(Fore.RED + msg + Fore.RESET)
 
         self.max_sequence_length = None
-        self.state_like_names_and_shapes = {}
-        self.action_like_names_and_shapes = {}
-        self.trajectory_constant_names_and_shapes = {}
+        # state and action features are assumed to be time indexed, i.e. "%d/my_state"
+        # state and action are handled differently because there should always be one less action
+        # in the sequence than there are states
+        self.state_feature_names = {}
+        self.action_feature_names = {}
+        self.constant_feature_names = {}
 
     def get_datasets(self,
                      mode: str,
@@ -90,7 +112,10 @@ class BaseDataset:
 
         dataset = tf.data.TFRecordDataset(records, buffer_size=1 * 1024 * 1024, compression_type='ZLIB')
 
+        # Given the member lists of states, actions, and constants set in the constructor, create
+        # a dict for parsing a feature
         features_description = self.make_features_description()
+        # features_description = self.old_make_features_description()
 
         dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
 
@@ -98,7 +123,7 @@ class BaseDataset:
             dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)
 
             def _slice_sequences(constant_data, state_like_seqs, action_like_seqs):
-                return self.slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length)
+                return slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length)
 
             dataset = dataset.map(_slice_sequences, num_parallel_calls=n_parallel_calls)
 
@@ -106,34 +131,62 @@ class BaseDataset:
 
         return dataset
 
-    def slice_sequences(self, constant_data, state_like_seqs, action_like_seqs, sequence_length: int):
-        t_start = 0
-        state_like_t_slice = slice(t_start, t_start + sequence_length)
-        action_like_t_slice = slice(t_start, t_start + sequence_length - 1)
+    def old_make_features_description(self):
+        hacky_lookup = {
+            'action': 2,
+            'actual_local_env/env': [50,50],
+            'actual_local_env/extent': 4,
+            'actual_local_env/origin': 2,
+            'actual_local_env_next/env': [50,50],
+            'actual_local_env_next/extent': 4,
+            'actual_local_env_next/origin': 2,
+            'full_env/env': [200,200],
+            'label': 1,
+            'local_env_cols': 1,
+            'local_env_rows': 1,
+            'planned_local_env/env': [50,50],
+            'planned_local_env/extent': 4,
+            'planned_local_env/origin': 2,
+            'planned_local_env_next/env': [50,50],
+            'planned_local_env_next/extent': 4,
+            'planned_local_env_next/origin': 2,
+            'planned_state': 22,
+            'planned_state_next': 22,
+            'post_dist': 1,
+            'pre_close': 1,
+            'pre_dist': 1,
+            'resolution': 1,
+            'resolution_next': 1,
+            'state': 22,
+            'state_next': 22,
+        }
 
-        state_like_seqs_sliced = {}
-        action_like_seqs_sliced = {}
-        for example_name, seq in state_like_seqs.items():
-            sliced_seq = seq[state_like_t_slice]
-            sliced_seq.set_shape([sequence_length] + seq.shape.as_list()[1:])
-            state_like_seqs_sliced[example_name] = sliced_seq
-        for example_name, seq in action_like_seqs.items():
-            sliced_seq = seq[action_like_t_slice]
-            sliced_seq.set_shape([(sequence_length - 1)] + seq.shape.as_list()[1:])
-            action_like_seqs_sliced[example_name] = sliced_seq
+        features_description = {}
+        for feature_name in self.constant_feature_names:
+            shape = hacky_lookup[feature_name]
+            features_description[feature_name] = tf.io.FixedLenFeature(shape, tf.float32)
 
-        return constant_data, state_like_seqs_sliced, action_like_seqs_sliced
+        for i in range(self.max_sequence_length):
+            for feature_name in self.state_feature_names:
+                shape = hacky_lookup[feature_name]
+                features_description[feature_name % i] = tf.io.FixedLenFeature(shape, tf.float32)
+        for i in range(self.max_sequence_length - 1):
+            for feature_name in self.action_feature_names:
+                shape = hacky_lookup[feature_name]
+                features_description[feature_name % i] = tf.io.FixedLenFeature(shape, tf.float32)
+
+        return features_description
 
     def make_features_description(self):
         features_description = {}
-        for feature_name in self.trajectory_constant_names_and_shapes:
+        for feature_name in self.constant_feature_names:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
 
         for i in range(self.max_sequence_length):
-            for feature_name in self.state_like_names_and_shapes:
+            for feature_name in self.state_feature_names:
                 features_description[feature_name % i] = tf.io.FixedLenFeature([], tf.string)
         for i in range(self.max_sequence_length - 1):
-            for feature_name in self.action_like_names_and_shapes:
+            for feature_name in self.action_feature_names:
                 features_description[feature_name % i] = tf.io.FixedLenFeature([], tf.string)
 
         return features_description
@@ -143,19 +196,19 @@ class BaseDataset:
         action_like_seqs = {}
         constant_data = {}
 
-        for feature_name in self.state_like_names_and_shapes:
+        for feature_name in self.state_feature_names:
             state_like_seq = []
             for i in range(self.max_sequence_length):
                 state_like_seq.append(example_dict[feature_name % i])
             state_like_seqs[strip_time_format(feature_name)] = tf.stack(state_like_seq, axis=0)
 
-        for example_name in self.action_like_names_and_shapes:
+        for example_name in self.action_feature_names:
             action_like_seq = []
             for i in range(self.max_sequence_length - 1):
                 action_like_seq.append(example_dict[example_name % i])
             action_like_seqs[strip_time_format(example_name)] = tf.stack(action_like_seq, axis=0)
 
-        for example_name in self.trajectory_constant_names_and_shapes:
+        for example_name in self.constant_feature_names:
             constant_data[example_name] = example_dict[example_name]
 
         return constant_data, state_like_seqs, action_like_seqs

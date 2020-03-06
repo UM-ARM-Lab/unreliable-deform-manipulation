@@ -33,7 +33,7 @@ def main():
             if 'value' in feature_value.keys():
                 feature_value = feature_value['value']
                 if type_name == 'bytesList':
-                    to_print.append([feature_name])
+                    to_print.append([feature_name, '<BYTES>'])
                 elif type_name == 'floatList':
                     to_print.append([feature_name, len(feature_value)])
             else:
@@ -41,7 +41,7 @@ def main():
 
         to_print = sorted(to_print)
         for items in to_print:
-            print(items)
+            print("{}: {},".format(*items))
 
         key = input(Fore.CYAN + "press enter to see an example from the next record file... (q to quit) " + Fore.RESET)
         if key == 'q':

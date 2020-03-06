@@ -1,5 +1,5 @@
 import pathlib
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import tensorflow as tf
@@ -21,8 +21,8 @@ class RigidTranslationModel(BaseDynamicsFunction):
                                  full_env: np.ndarray,
                                  full_env_origin: np.ndarray,
                                  res: float,
-                                 start_states: Dict[str, np.ndarray],
-                                 actions: tf.Variable) -> Dict[str, tf.Tensor]:
+                                 start_states: Dict,
+                                 actions: tf.Variable) -> List[Dict]:
         """
         :param full_env:        (H, W)
         :param full_env_origin: (2)
@@ -31,19 +31,23 @@ class RigidTranslationModel(BaseDynamicsFunction):
         :param actions:        (T, 2)
         :return: states:       each value in the dictionary should be a of shape [batch, T+1, n_state)
         """
-        predictions = {}
+
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
-        for state_feature_name, start_state in start_states.items():
-            s_t = tf.convert_to_tensor(start_state, dtype=tf.float32)
-            n_points = n_state_to_n_points(s_t.shape[0])
-            pred_states = [s_t]
-            for t in range(actions.shape[0]):
-                action_t = actions[t]
+        s_t = {}
+        for k, s_0_k in  start_states.items():
+            s_t[k] = tf.convert_to_tensor(s_0_k, dtype=tf.float32)
+        predictions = [s_t]
+        for t in range(actions.shape[0]):
+            action_t = actions[t]
+
+            s_t_plus_1 = {}
+            for k, s_t_k in s_t.items():
+                n_points = n_state_to_n_points(s_t_k.shape[0])
                 delta_s_t = tf.tensordot(action_t, self.B, axes=1)
                 delta_s_t_flat = tf.tile(delta_s_t, [n_points])
-                s_t = s_t + delta_s_t_flat * self.dt
-                pred_states.append(s_t)
+                s_t_k = s_t_k + delta_s_t_flat * self.dt
+                s_t_plus_1[k] = s_t_k
 
-            pred_states = tf.stack(pred_states, axis=0)
-            predictions[state_feature_name] = pred_states
+            predictions.append(s_t_plus_1)
+            s_t = s_t_plus_1
         return predictions

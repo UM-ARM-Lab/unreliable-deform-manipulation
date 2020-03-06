@@ -10,7 +10,8 @@ import tensorflow as tf
 
 from link_bot_classifiers import visualization
 from link_bot_classifiers.visualization import plot_classifier_data
-from link_bot_data.classifier_dataset import ClassifierDataset
+# from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.old_classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance, add_traj_image, add_transition_image
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
@@ -144,8 +145,6 @@ def main():
                 actual_env_extent=full_env_extent,
                 label=label)
             ax = plt.gca()
-            circle = patches.Circle([0, 0], radius=2.4, edgecolor='g', facecolor='#ffffff00', linewidth=3, zorder=1)
-            ax.add_patch(circle)
             plt.legend()
             plt.show(block=True)
 

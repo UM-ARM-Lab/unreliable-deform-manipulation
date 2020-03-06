@@ -16,6 +16,7 @@ from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_planning import model_utils
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.link_bot_pycommon import vector_to_points_2d
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
@@ -42,7 +43,6 @@ def generate(args):
 
     dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
     tf_dataset = dataset.get_datasets(mode=args.mode, sequence_length=args.sequence_length)
-    tf_dataset = tf_dataset.batch(1)
 
     results = generate_results(base_folder, models, tf_dataset, args.sequence_length)
 
@@ -90,8 +90,8 @@ def generate_results(base_folder: pathlib.Path,
         pred_link_bot_states = output_states_dict['link_bot'].numpy()
         true_points = pred_link_bot_states.reshape([sequence_length, -1, 2])
 
-        full_env_extent = x['full_env/extent'][0].numpy()
-        full_env = x['full_env/env'][0].numpy()
+        full_env_extent = x['full_env/extent'].numpy()
+        full_env = x['full_env/env'].numpy()
 
         results['true']['points'].append(true_points)
         results['true']['runtimes'].append(np.inf)
@@ -107,11 +107,14 @@ def generate_results(base_folder: pathlib.Path,
         }
         print("generating results for {}".format(model_name))
         for x, y in tf_dataset:
-            states = x['state/link_bot'].numpy()
+            states = x['link_bot'].numpy()
             actions = x['action'].numpy()
 
-            first_state = states[:, 0]
-            res = x['res'].numpy()
+            first_state = states[0]
+            start_states = {
+                'link_bot': first_state
+            }
+            res = x['full_env/res'].numpy()
             if len(res.shape) == 3:
                 res = np.squeeze(res, axis=2)
             full_env_origin = x['full_env/origin'].numpy()
@@ -120,15 +123,15 @@ def generate_results(base_folder: pathlib.Path,
 
             t0 = time.time()
 
-            # take in a list of state arrays, according to whatever model hparams says
-            predicted_points = model.propagate(full_env=full_envs,
-                                               full_env_origin=full_env_origin,
-                                               res=res,
-                                               first_states=first_states,
-                                               actions=actions)[0]
+            predictions = model.propagate(full_env=full_envs,
+                                          full_env_origin=full_env_origin,
+                                          res=res,
+                                          start_states=start_states,
+                                          actions=actions)
+            points = np.array([np.reshape(state['link_bot'], [-1, 2]) for state in predictions])
             runtime = time.time() - t0
 
-            results[model_name]['points'].append(predicted_points)
+            results[model_name]['points'].append(points)
             results[model_name]['full_env/env'].append(full_envs)
             results[model_name]['full_env/extent'].append(full_env_extents)
             results[model_name]['runtimes'].append(runtime)

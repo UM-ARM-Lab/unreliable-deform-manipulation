@@ -14,18 +14,18 @@ class LinkBotStateSpaceDataset(BaseDataset):
         self.local_env_params = LocalEnvParams.from_json(self.hparams['local_env_params'])
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
 
-        self.action_like_names_and_shapes = ['%d/action']
+        self.action_feature_names = ['%d/action']
 
-        self.state_like_names_and_shapes = [
+        self.state_feature_names = [
             '%d/time_idx',
             '%d/traj_idx',
         ]
 
         self.states_description = self.hparams['states_description']
         for state_key in self.states_description.keys():
-            self.state_like_names_and_shapes.append('%d/{}'.format(state_key))
+            self.state_feature_names.append('%d/{}'.format(state_key))
 
-        self.trajectory_constant_names_and_shapes = [
+        self.constant_feature_names = [
             'full_env/env',
             'full_env/extent',
             'full_env/origin',

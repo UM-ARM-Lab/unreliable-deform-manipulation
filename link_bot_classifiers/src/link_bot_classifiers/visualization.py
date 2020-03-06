@@ -55,7 +55,7 @@ def plot_classifier_data(
     if planned_state is not None:
         ax.scatter(planned_state[-2], planned_state[-1], c='k')
 
-    if label is not None:
+    if label is not None and planned_env_extent is not None:
         label_color = 'g' if label else 'r'
         ax.plot(
             [planned_env_extent[0], planned_env_extent[0], planned_env_extent[1], planned_env_extent[1], planned_env_extent[0]],
