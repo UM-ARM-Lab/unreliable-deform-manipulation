@@ -114,8 +114,8 @@ class BaseDataset:
 
         # Given the member lists of states, actions, and constants set in the constructor, create
         # a dict for parsing a feature
-        features_description = self.make_features_description()
-        # features_description = self.old_make_features_description()
+        # features_description = self.make_features_description()
+        features_description = self.old_make_features_description()
 
         dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
 
@@ -133,21 +133,22 @@ class BaseDataset:
 
     def old_make_features_description(self):
         hacky_lookup = {
+            'image': [50, 50, 23],
             'action': 2,
-            'actual_local_env/env': [50,50],
+            'actual_local_env/env': [50, 50],
             'actual_local_env/extent': 4,
             'actual_local_env/origin': 2,
-            'actual_local_env_next/env': [50,50],
+            'actual_local_env_next/env': [50, 50],
             'actual_local_env_next/extent': 4,
             'actual_local_env_next/origin': 2,
-            'full_env/env': [200,200],
+            'full_env/env': [200, 200],
             'label': 1,
             'local_env_cols': 1,
             'local_env_rows': 1,
-            'planned_local_env/env': [50,50],
+            'planned_local_env/env': [50, 50],
             'planned_local_env/extent': 4,
             'planned_local_env/origin': 2,
-            'planned_local_env_next/env': [50,50],
+            'planned_local_env_next/env': [50, 50],
             'planned_local_env_next/extent': 4,
             'planned_local_env_next/origin': 2,
             'planned_state': 22,

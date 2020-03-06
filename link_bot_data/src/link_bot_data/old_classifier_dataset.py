@@ -23,15 +23,17 @@ class ClassifierDataset(BaseDataset):
         self.state_feature_names = []
 
         self.constant_feature_names = [
-            'action',
-            'full_env/env',
-            'full_env/extent',
-            'full_env/res',
+            'image',
             'label',
-            'link_bot',
-            'link_bot_next',
-            'planned_state/link_bot',
-            'planned_state/link_bot_next',
+            # 'action',
+            # 'full_env/env',
+            # 'full_env/extent',
+            # 'full_env/res',
+            # 'label',
+            # 'link_bot',
+            # 'link_bot_next',
+            # 'planned_state/link_bot',
+            # 'planned_state/link_bot_next',
         ]
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
@@ -40,12 +42,6 @@ class ClassifierDataset(BaseDataset):
         def _discard(const, action, state):
             return const
 
-        @tf.function
-        def _add_local_env(example):
-            example['']
-            return example
-
         dataset = dataset.map(_discard)
-        dataset = dataset.map(_add_local_env)
 
         return dataset

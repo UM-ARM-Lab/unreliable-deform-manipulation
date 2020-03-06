@@ -22,6 +22,7 @@ def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
 
     # the elements of parsed dataset are dictionaries with the serialized tensors as strings
     parsed_dataset = dataset.map(_parse, num_parallel_calls=n_parallel_calls)
+    return parsed_dataset
 
     # get shapes of everything
     element = next(iter(parsed_dataset))

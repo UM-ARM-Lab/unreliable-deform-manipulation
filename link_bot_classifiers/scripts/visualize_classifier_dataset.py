@@ -4,27 +4,26 @@ import json
 import pathlib
 
 import matplotlib.pyplot as plt
-from matplotlib import patches
 import numpy as np
 import tensorflow as tf
 
-from link_bot_classifiers import visualization
 from link_bot_classifiers.visualization import plot_classifier_data
+from link_bot_data.link_bot_dataset_utils import balance, add_traj_image, add_transition_image
 # from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.old_classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance, add_traj_image, add_transition_image
 from link_bot_data.visualization import plot_rope_configuration
-from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
 
 tf.compat.v1.enable_eager_execution()
 
 
 def main():
+    plt.style.use("paper")
     np.set_printoptions(suppress=True, linewidth=200)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('labeling_params', type=pathlib.Path)
-    parser.add_argument('display_type', choices=['transition_image', 'transition_plot', 'trajectory_image', 'trajectory_plot'])
+    parser.add_argument('display_type',
+                        choices=['just_image', 'transition_image', 'transition_plot', 'trajectory_image', 'trajectory_plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
@@ -68,7 +67,7 @@ def main():
         if done:
             break
 
-        label = example['label'].numpy().squeeze()
+        label = int(example['label'].numpy().squeeze())
 
         if args.only_negative and label != 0:
             continue
@@ -83,21 +82,27 @@ def main():
         if args.no_plot:
             continue
 
+        print(i)
+
         # FIXME: make this support arbitrary state keys
-        if args.display_type == 'transition_image':
+        if args.display_type == 'just_image':
+            image = example['image'].numpy()
+            fig, axes = plt.subplots(1, 3)
+            axes[0].imshow(np.flipud(image[:, :, 22]), cmap='Greys')
+            axes[0].set_title("Local Environment", fontsize=28)
+            axes[1].imshow(np.clip(np.flipud(np.sum(image[:, :, 0:11], axis=2)), 0, 1), cmap='Greys')
+            axes[1].set_title("$\hat{s}^t$")
+            axes[2].imshow(np.clip(np.flipud(np.sum(image[:, :, 11:22], axis=2)), 0, 1), cmap='Greys')
+            axes[2].set_title("$\hat{s}^{t+1}$")
+            for ax in axes:
+                ax.set_xticks([])
+                ax.set_yticks([])
+            plt.show(block=True)
+        elif args.display_type == 'transition_image':
             image = example['transition_image'].numpy()
-            next_state = example['planned_state/link_bot_next'].numpy()
-            n_points = n_state_to_n_points(classifier_dataset.hparams['n_state'])
-            interpretable_image = visualization.make_interpretable_image(image, n_points)
-            plt.imshow(np.flipud(interpretable_image))
-            planned_env_extent = [1, 49, 1, 49]
-            label_color = 'g' if label else 'r'
-            plt.plot([planned_env_extent[0], planned_env_extent[0], planned_env_extent[1], planned_env_extent[1],
-                      planned_env_extent[0]],
-                     [planned_env_extent[2], planned_env_extent[3], planned_env_extent[3], planned_env_extent[2],
-                      planned_env_extent[2]],
-                     c=label_color, linewidth=4)
-            plt.title(next_state)
+            plt.imshow(np.flipud(image))
+            title = "Label = {:d}".format(label),
+            plt.title(title)
             plt.show(block=True)
         elif args.display_type == 'trajectory_image':
             image = example['trajectory_image'].numpy()
@@ -143,9 +148,10 @@ def main():
                 state=state,
                 actual_env=full_env,
                 actual_env_extent=full_env_extent,
+                title="Label = {:d}".format(label),
                 label=label)
-            ax = plt.gca()
             plt.legend()
+            plt.tight_layout()
             plt.show(block=True)
 
     class_balance = positive_count / count * 100
