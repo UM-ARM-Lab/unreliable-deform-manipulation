@@ -114,8 +114,8 @@ class BaseDataset:
 
         # Given the member lists of states, actions, and constants set in the constructor, create
         # a dict for parsing a feature
-        # features_description = self.make_features_description()
-        features_description = self.old_make_features_description()
+        features_description = self.make_features_description()
+        # features_description = self.old_make_features_description()
 
         dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
 

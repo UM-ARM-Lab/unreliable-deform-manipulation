@@ -9,8 +9,8 @@ import tensorflow as tf
 
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.link_bot_dataset_utils import balance, add_traj_image, add_transition_image
-# from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.old_classifier_dataset import ClassifierDataset
+from link_bot_data.classifier_dataset import ClassifierDataset
+# from link_bot_data.old_classifier_dataset import ClassifierDataset
 from link_bot_data.visualization import plot_rope_configuration
 
 tf.compat.v1.enable_eager_execution()
@@ -46,13 +46,14 @@ def main():
 
     classifier_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
     dataset = classifier_dataset.get_datasets(mode=args.mode)
+
+    if not args.no_balance:
+        dataset = balance(dataset)
+
     if args.display_type == 'transition_image':
         dataset = add_transition_image(dataset, states_keys=states_keys, action_in_image=args.action_in_image)
     if args.display_type == 'trajectory_image':
         dataset = add_traj_image(dataset)
-
-    if not args.no_balance:
-        dataset = balance(dataset)
 
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=1024)
@@ -82,8 +83,6 @@ def main():
         if args.no_plot:
             continue
 
-        print(i)
-
         # FIXME: make this support arbitrary state keys
         if args.display_type == 'just_image':
             image = example['image'].numpy()
@@ -107,25 +106,23 @@ def main():
         elif args.display_type == 'trajectory_image':
             image = example['trajectory_image'].numpy()
             plt.imshow(np.flipud(image))
-            planned_env_extent = [1, 199, 1, 199]
-            label_color = 'g' if label else 'r'
-            plt.plot([planned_env_extent[0], planned_env_extent[0], planned_env_extent[1], planned_env_extent[1],
-                      planned_env_extent[0]],
-                     [planned_env_extent[2], planned_env_extent[3], planned_env_extent[3], planned_env_extent[2],
-                      planned_env_extent[2]],
-                     c=label_color, linewidth=4)
+            ax = plt.gca()
+            title = "Label = {:d}".format(label)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            plt.title(title)
             plt.show(block=True)
         elif args.display_type == 'trajectory_plot':
             full_env = example['full_env/env'].numpy()
             full_env_extent = example['full_env/extent'].numpy()
             link_bot_state_all = example['planned_state/link_bot_all'].numpy()
-            link_bot_state_stop_idx = example['planned_state/link_bot_all_stop'].numpy()
+            stop_idx = example['planned_state/stop_idx'].numpy()
             actual_link_bot_state_all = example['link_bot_all'].numpy()
 
             plt.figure()
             plt.imshow(np.flipud(full_env), extent=full_env_extent)
             ax = plt.gca()
-            for i in range(link_bot_state_stop_idx):
+            for i in range(stop_idx):
                 actual_state = actual_link_bot_state_all[i]
                 planned_state = link_bot_state_all[i]
                 plot_rope_configuration(ax, actual_state, c='white', s=8)

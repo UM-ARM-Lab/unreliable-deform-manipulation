@@ -42,9 +42,15 @@ def train_main(args, seed: int):
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     model = link_bot_classifiers.get_model(model_hparams['model_class'])
 
-    # More dataset preprocessing
+    # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train')
     val_tf_dataset = val_dataset.get_datasets(mode='val')
+
+    if labeling_params['balance']:
+        print(Fore.GREEN + "balancing..." + Fore.RESET)
+        train_tf_dataset = balance(train_tf_dataset)
+        val_tf_dataset = balance(val_tf_dataset)
+
     if 'image_key' in model_hparams:
         image_key = model_hparams['image_key']
         if image_key == 'transition_image':
@@ -53,11 +59,6 @@ def train_main(args, seed: int):
         elif image_key == 'trajectory_image':
             train_tf_dataset = add_traj_image(train_tf_dataset)
             val_tf_dataset = add_traj_image(val_tf_dataset)
-
-    if labeling_params['balance']:
-        print(Fore.GREEN + "balancing..." + Fore.RESET)
-        train_tf_dataset = balance(train_tf_dataset)
-        val_tf_dataset = balance(val_tf_dataset)
 
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)

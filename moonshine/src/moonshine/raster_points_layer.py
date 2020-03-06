@@ -1,5 +1,6 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
+import numpy as np
 import tensorflow as tf
 
 from moonshine.action_smear_layer import smear_action
@@ -7,6 +8,40 @@ from moonshine.action_smear_layer import smear_action
 
 def differentiable_get_local_env():
     pass
+
+
+def old_raster(state, res, origin, h, w):
+    """
+    state: [batch, n]
+    res: [batch] scalar float
+    origin: [batch, 2] index (so int, or technically float is fine too)
+    h: scalar int
+    w: scalar int
+    """
+    b = int(state.shape[0])
+    points = np.reshape(state, [b, -1, 2])
+    n_points = int(points.shape[1])
+
+    res = res[0]  # NOTE: assume constant resolution
+
+    # points[:,1] is y, origin[0] is row index, so yes this is correct
+    row_y_indices = (points[:, :, 1] / res + origin[:, 0:1]).astype(np.int64).flatten()
+    col_x_indices = (points[:, :, 0] / res + origin[:, 1:2]).astype(np.int64).flatten()
+    channel_indices = np.tile(np.arange(n_points), b)
+    batch_indices = np.repeat(np.arange(b), n_points)
+
+    # filter out invalid indices, which can happen during training
+    rope_images = np.zeros([b, h, w, n_points], dtype=np.float32)
+    valid_indices = np.where(np.all([row_y_indices >= 0,
+                                     row_y_indices < h,
+                                     col_x_indices >= 0,
+                                     col_x_indices < w], axis=0))
+
+    rope_images[batch_indices[valid_indices],
+                row_y_indices[valid_indices],
+                col_x_indices[valid_indices],
+                channel_indices[valid_indices]] = 1.0
+    return rope_images
 
 
 def raster_differentiable(state, res, origin, h, w):
@@ -21,11 +56,11 @@ def raster_differentiable(state, res, origin, h, w):
     """
     b = int(state.shape[0])
     points = tf.reshape(state, [b, -1, 2])
-    n_points = points.shape[1]
+    n_points = int(points.shape[1])
 
     res = res[0]
 
-    k = 50.0
+    k = 10000.0
 
     ## Below is a un-vectorized implementation, which is much easier to read and understand
     # rope_images = np.zeros([b, h, w, n_points], dtype=np.float32)
@@ -62,6 +97,9 @@ def raster_differentiable(state, res, origin, h, w):
     squared_distances = tf.reduce_sum(tf.square(pixel_centers - tiled_points), axis=4)
     pixel_values = tf.exp(-k * squared_distances)
     rope_images = tf.reshape(pixel_values, [b, h, w, n_points])
+    ##############################################################################
+    # FIXME: remove this and figure out whether to do clipping or normalization
+    ##############################################################################
     return rope_images
 
 
@@ -112,44 +150,42 @@ def make_transition_images(local_env,
     return image
 
 
-def raster_rope_images(planned_states: Dict,
+def raster_rope_images(planned_states: List[Dict],
                        res,
                        origin,
                        h: float,
                        w: float):
     """
     Raster all the state into one fixed-channel image representation using color gradient in the green channel
-    :param planned_states: each element is [batch, time, n_state]
+    :param planned_states: each element is [batch, n_state]
     :param res: [batch]
     :param origin: [batch, 2]
     :param h: scalar
     :param w: scalar
-    :return: [batch, time, h, w, 2 * n_points]
+    :return: [batch, h, w, 2 * n_points]
     """
-    state_shape = list(planned_states.values())[0].shape
-    b = int(state_shape[0])
-    n_time_steps = int(state_shape[1])
+    n_time_steps = len(planned_states)
     binary_rope_images = []
     time_colored_rope_images = []
     for t in range(n_time_steps):
-        for vector in planned_states.values():
-            planned_state_t = planned_states[:, t]
-            rope_img_t = raster_differentiable(state=planned_state_t, origin=origin, res=res, h=h, w=w)
-            rope_img_t = tf.reduce_sum(rope_img_t, axis=3)
+        planned_state_t = planned_states[t]
+        # iterate over the dict, each element of which is a component of our state
+        for s_t_k in planned_state_t.values():
+            rope_img_t = old_raster(state=s_t_k, origin=origin, res=res, h=h, w=w)
             time_color = float(t) / n_time_steps
             time_color_image_t = rope_img_t * time_color
             binary_rope_images.append(rope_img_t)
             time_colored_rope_images.append(time_color_image_t)
     binary_rope_images = tf.reduce_sum(binary_rope_images, axis=0)
     time_colored_rope_images = tf.reduce_sum(time_colored_rope_images, axis=0)
-    rope_images = tf.concat((binary_rope_images, time_colored_rope_images))
+    rope_images = tf.concat((binary_rope_images, time_colored_rope_images), axis=3)
     return rope_images
 
 
 def make_traj_images(full_env,
                      full_env_origin,
                      res,
-                     states: Dict):
+                     states: List[Dict]):
     """
     :param full_env: [batch, h, w]
     :param full_env_origin:  [batch, 2]
@@ -165,5 +201,5 @@ def make_traj_images(full_env,
 
     rope_imgs = raster_rope_images(states, res, full_env_origin, h, w)
 
-    image = tf.concatenate((full_env, rope_imgs), axis=3)
+    image = tf.concat((full_env, rope_imgs), axis=3)
     return image

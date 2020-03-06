@@ -24,7 +24,6 @@ class ClassifierDataset(BaseDataset):
         self.action_feature_names = ['%d/action']
 
         self.state_feature_names = [
-            '%d/res',
             '%d/time_idx',
             '%d/traj_idx',
         ]

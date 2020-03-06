@@ -17,34 +17,25 @@ from link_bot_data.base_dataset import BaseDataset
 class TmpDataset(BaseDataset):
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         super().__init__(dataset_dirs)
-        self.action_feature_names = []
+        self.action_feature_names = ["%d/action"]
 
-        self.state_feature_names = []
+        self.state_feature_names = [
+            "%d/res",
+            "%d/state/link_bot",
+            "%d/planned_state/link_bot",
+            "%d/planned_state/local_env",
+            "%d/planned_state/local_env_origin",
+            "%d/state/tether",
+            "%d/state/local_env",
+            "%d/state/local_env_origin",
+            "%d/traj_idx",
+            "%d/time_idx",
+        ]
 
         self.constant_feature_names = [
-            'action',
-            'actual_local_env/env',
-            'actual_local_env/extent',
-            'actual_local_env/origin',
-            'actual_local_env_next/env',
-            'actual_local_env_next/extent',
-            'actual_local_env_next/origin',
             'full_env/env',
-            'label',
-            'local_env_cols',
-            'local_env_rows',
-            'planned_local_env/env',
-            'planned_local_env/extent',
-            'planned_local_env/origin',
-            'planned_local_env_next/env',
-            'planned_local_env_next/extent',
-            'planned_local_env_next/origin',
-            'planned_state',
-            'planned_state_next',
-            'resolution',
-            'resolution_next',
-            'state',
-            'state_next',
+            'full_env/extent',
+            'full_env/origin',
         ]
 
 
@@ -60,7 +51,7 @@ def main():
 
     for mode in ['test', 'val', 'train']:
         dataset = TmpDataset(args.dataset_dir)
-        tf_dataset = dataset.get_datasets(mode=mode,  n_parallel_calls=1, do_not_process=True)
+        tf_dataset = dataset.get_datasets(mode=mode, n_parallel_calls=1, do_not_process=True)
 
         full_output_directory = args.out_dir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
@@ -69,24 +60,25 @@ def main():
         examples = np.ndarray([n_examples_per_record], dtype=np.object)
         for example_idx, example_dict in enumerate(tf_dataset):
 
-            full_env_extent = [-3, 3, -3, 3]
             features = {
-                'full_env/extent': float_tensor_to_bytes_feature(full_env_extent)
+                'full_env/res': float_tensor_to_bytes_feature(example_dict['0/res']),
+                'full_env/env': float_tensor_to_bytes_feature(example_dict['full_env/env']),
+                'full_env/extent': float_tensor_to_bytes_feature(example_dict['full_env/extent']),
+                'full_env/origin': float_tensor_to_bytes_feature(example_dict['full_env/origin']),
             }
             for k, v in example_dict.items():
-                if k in ['full_env/env', 'label', 'action']:
-                    features[k] = float_tensor_to_bytes_feature(v)
-                elif k == 'resolution':
-                    features['full_env/res'] = float_tensor_to_bytes_feature(v)
-                elif k == 'state':
-                    features['link_bot'] = float_tensor_to_bytes_feature(v)
-                elif k == 'planned_state':
-                    features['planned_state/link_bot'] = float_tensor_to_bytes_feature(v)
-                elif k == 'state_next':
-                    features['link_bot_next'] = float_tensor_to_bytes_feature(v)
-                elif k == 'planned_state_next':
-                    features['planned_state/link_bot_next'] = float_tensor_to_bytes_feature(v)
-
+                if 'res' in k:
+                    continue
+                elif 'local_env' in k:
+                    continue
+                elif 'planned_state' in k:
+                    new_k = k
+                elif 'state' in k:
+                    num, _, name = k.split("/")
+                    new_k = num + "/" + name
+                else:
+                    new_k = k
+                features[new_k] = float_tensor_to_bytes_feature(v)
 
             example_proto = tf.train.Example(features=tf.train.Features(feature=features))
             example = example_proto.SerializeToString()

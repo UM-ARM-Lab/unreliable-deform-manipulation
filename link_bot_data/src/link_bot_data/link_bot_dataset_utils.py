@@ -3,6 +3,7 @@ from __future__ import print_function, division
 
 import os
 import pathlib
+import re
 
 from typing import Optional, List
 
@@ -22,7 +23,6 @@ def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
 
     # the elements of parsed dataset are dictionaries with the serialized tensors as strings
     parsed_dataset = dataset.map(_parse, num_parallel_calls=n_parallel_calls)
-    return parsed_dataset
 
     # get shapes of everything
     element = next(iter(parsed_dataset))
@@ -129,19 +129,51 @@ def balance(dataset, label_key='label'):
 
 
 def add_traj_image(dataset):
-    def _add_traj_image(input_dict):
+    def _make_traj_images(full_env, full_env_origin, res, stop_index, *args):
+
+        n_args = len(args)
+        n_states = n_args // 2
+        planned_states = args[:n_states]
+        planned_states_keys = args[n_states:]
+
+        # convert from a dictionary where each element is [T, n_state] to
+        # a list where each element is a dictionary, and element element of that dictionary is [1 (batch), n_state]
+        planned_states_seq = []
+        for t in range(stop_index):
+            state_t = {}
+            for k, v in zip(planned_states_keys, planned_states):
+                state_t[k] = tf.expand_dims(v[t], axis=0)  # add batch here
+            planned_states_seq.append(state_t)
+
+        full_env, full_env_origin, res = add_batch(full_env, full_env_origin, res)
+        image = make_traj_images(full_env=full_env,
+                                 full_env_origin=full_env_origin,
+                                 res=res,
+                                 states=planned_states_seq)[0]
+        return image
+
+    def _add_traj_image_wrapper(input_dict):
         full_env = input_dict['full_env/env']
         full_env_origin = input_dict['full_env/origin']
-        res = input_dict['res']
-        stop_index = input_dict['planned_state/link_bot_all_stop']
-        planned_states = input_dict['planned_state/link_bot_all'][:stop_index]
-
-        image = make_traj_images(*add_batch(full_env, full_env_origin, res, planned_states))[0]
-
+        res = input_dict['full_env/res']
+        stop_index = input_dict['stop_idx']
+        planned_states = []
+        planned_state_keys = []
+        # NOTE: Here we lose the semantic meaning, because we can't pass a dict to a numpy_function :(
+        #  I hate TF
+        for k, v in input_dict.items():
+            m = re.fullmatch('planned_state/(.*)_all', k)
+            if m:
+                planned_state_key = 'planned_state/{}'.format(m.group(1))
+                v_t = v[:stop_index]
+                planned_states.append(v_t)
+                planned_state_keys.append(planned_state_key)
+        tensor_inputs = [full_env, full_env_origin, res, stop_index] + planned_states + planned_state_keys
+        image = tf.numpy_function(_make_traj_images, tensor_inputs, tf.float32)
         input_dict['trajectory_image'] = image
         return input_dict
 
-    return dataset.map(_add_traj_image)
+    return dataset.map(_add_traj_image_wrapper)
 
 
 def add_transition_image(dataset,
@@ -159,6 +191,7 @@ def add_transition_image(dataset,
             'resolution': 1
         """
         action = input_dict['action']
+        # TODO: if local_env and local_env_origin aren't part of the state, how/where do we compute them!?
         planned_local_env = input_dict['planned_state/local_env']
         res = input_dict['res']
         origin = input_dict['planned_state/local_env_origin']
@@ -217,7 +250,9 @@ def add_next(feature_name):
 def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: dict, action_like_sequences: dict):
     # Create a dict of lists, where keys are the features we want in each transition, and values are the data.
     # The first dimension of these values is what will be split up into different examples
-    transitions = {}
+    transitions = {
+        "stop_idx": []
+    }
     state_like_names = []
     next_state_like_names = []
     for feature_name in state_like_sequences.keys():
@@ -226,14 +261,12 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
         next_state_like_names.append((next_feature_name, feature_name))
         transitions[feature_name] = []
         transitions[feature_name + "_all"] = []
-        transitions[feature_name + "_all_stop"] = []
         transitions[next_feature_name] = []
 
     action_like_names = []
     for feature_name in action_like_sequences.keys():
         transitions[feature_name] = []
         transitions[feature_name + "_all"] = []
-        transitions[feature_name + "_all_stop"] = []
         action_like_names.append(feature_name)
 
     for feature_name in constant_data.keys():
@@ -247,13 +280,13 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
     # Fill the transitions dictionary with the data from the sequences
     sequence_length = action_like_sequences['action'].shape[0]
     for transition_idx in range(sequence_length):
+        transitions['stop_idx'].append(transition_idx + 1)
         for feature_name in state_like_names:
             transitions[feature_name].append(state_like_sequences[feature_name][transition_idx])
             # include all data up, zeroing out the future data
             zps = tf.numpy_function(_zero_pad_sequence, [state_like_sequences[feature_name], transition_idx], tf.float32)
             zps.set_shape(state_like_sequences[feature_name].shape)
             transitions[feature_name + '_all'].append(zps)
-            transitions[feature_name + '_all_stop'].append(transition_idx + 1)
         for next_feature_name, feature_name in next_state_like_names:
             transitions[next_feature_name].append(state_like_sequences[feature_name][transition_idx + 1])
 
@@ -263,7 +296,6 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
             zps = tf.numpy_function(_zero_pad_sequence, [action_like_sequences[feature_name], transition_idx], tf.float32)
             zps.set_shape(action_like_sequences[feature_name].shape)
             transitions[feature_name + '_all'].append(zps)
-            transitions[feature_name + '_all_stop'].append(transition_idx + 1)
 
         for feature_name in constant_data.keys():
             transitions[feature_name].append(constant_data[feature_name])
