@@ -17,7 +17,7 @@ tf.compat.v1.enable_eager_execution()
 
 
 def main():
-    plt.style.use("slides")
+    plt.style.use("./classifier.mplstyle")
     np.set_printoptions(suppress=True, linewidth=200)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
@@ -66,7 +66,7 @@ def main():
     count = 0
     for i, example in enumerate(dataset):
 
-        if i < 230:
+        if i < 234:
             continue
         print(i)
 

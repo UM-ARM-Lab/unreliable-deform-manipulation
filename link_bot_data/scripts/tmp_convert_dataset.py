@@ -20,17 +20,12 @@ class TmpDataset(BaseDataset):
 
         self.state_feature_names = [
             "%d/res",
-            "%d/actual_local_env/env",
-            "%d/actual_local_env/extent",
-            "%d/actual_local_env/origin",
-            "%d/planned_local_env/env",
-            "%d/planned_local_env/extent",
-            "%d/planned_local_env/origin",
-            "%d/planned_state",
-            "%d/res",
-            "%d/state",
+            "%d/state/link_bot",
+            "%d/state/local_env",
+            "%d/state/local_env_origin",
+            "%d/state/tether",
+            "%d/time_idx",
             "%d/traj_idx",
-            "%d/time_idx ",
         ]
 
         self.constant_feature_names = [
@@ -77,11 +72,8 @@ def main():
                 elif 'planned_state' in k:
                     new_k = k + '/link_bot'
                 elif 'state' in k:
-                    num, _ = k.split("/")
-                    new_k = num + "/link_bot"
-                elif 'time' in k:
-                    num, _ = k.split("/")
-                    new_k = num + '/time_idx'
+                    num, _, q = k.split("/")
+                    new_k = num + "/" + q
                 else:
                     new_k = k
                 features[new_k] = float_tensor_to_bytes_feature(v)
@@ -99,6 +91,9 @@ def main():
                 start_example_idx = end_example_idx - n_examples_per_record
                 record_filename = "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx - 1)
                 full_filename = full_output_directory / record_filename
+                if full_filename.exists():
+                    print(Fore.RED + "Error! Output file {} exists. Aborting.".format(full_filename) + Fore.RESET)
+                    return
                 writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=compression_type)
                 writer.write(serialized_dataset)
                 print("saved {}".format(full_filename))

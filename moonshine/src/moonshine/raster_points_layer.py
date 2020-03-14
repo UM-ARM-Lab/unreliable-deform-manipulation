@@ -17,6 +17,7 @@ def old_raster(state, res, origin, h, w):
     origin: [batch, 2] index (so int, or technically float is fine too)
     h: scalar int
     w: scalar int
+    return: [batch, h, w, n_points]
     """
     b = int(state.shape[0])
     points = np.reshape(state, [b, -1, 2])
@@ -31,17 +32,17 @@ def old_raster(state, res, origin, h, w):
     batch_indices = np.repeat(np.arange(b), n_points)
 
     # filter out invalid indices, which can happen during training
-    rope_images = np.zeros([b, h, w, n_points], dtype=np.float32)
+    state_images = np.zeros([b, h, w, n_points], dtype=np.float32)
     valid_indices = np.where(np.all([row_y_indices >= 0,
                                      row_y_indices < h,
                                      col_x_indices >= 0,
                                      col_x_indices < w], axis=0))
 
-    rope_images[batch_indices[valid_indices],
+    state_images[batch_indices[valid_indices],
                 row_y_indices[valid_indices],
                 col_x_indices[valid_indices],
                 channel_indices[valid_indices]] = 1.0
-    return rope_images
+    return state_images
 
 
 def raster_differentiable(state, res, origin, h, w):

@@ -2,6 +2,7 @@
 
 import argparse
 import pathlib
+import time
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -13,6 +14,9 @@ from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_pycommon.link_bot_pycommon import vector_to_points_2d
 from link_bot_pycommon.args import my_formatter
+
+from moonshine.raster_points_layer import old_raster
+from moonshine.numpy_utils import add_batch
 
 tf.compat.v1.enable_eager_execution()
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -72,7 +76,7 @@ def plot_individual(train_dataset, redraw, states_description):
 
 
 def plot_all(train_dataset, states_description):
-    """ Draws the first state from every trajectory in the dataset, assuming CONSTANT environment!!! """
+    """ Draws states from a dataset, assuming CONSTANT environment!!! """
     plt.figure()
     ax = plt.gca()
     ax.set_xlabel("X (m)")
@@ -90,11 +94,43 @@ def plot_all(train_dataset, states_description):
         c = jet(color_float_idx)
         for state_key in states_description.keys():
             states_sequence = input_data[state_key].numpy()
-            for t in range(0, states_sequence.shape[0], 4):
-                first_state = states_sequence[t]
-                plot_rope_configuration(ax, first_state, linewidth=4, alpha=0.7, c=c, scatt=False)
+            for t in range(0, states_sequence.shape[0], 1):
+                state = states_sequence[t]
+                plot_rope_configuration(ax, state, linewidth=4, alpha=0.7, c=c, scatt=False)
 
     plt.savefig('dataset_visualization.png', transparent=True, dpi=600)
+    plt.show()
+
+def plot_heatmap(train_dataset, states_description):
+    plt.figure()
+    ax = plt.gca()
+    ax.set_xlabel("X (m)")
+    ax.set_ylabel("Y (m)")
+    ax.set_title("Training Dataset")
+    ax.axis("equal")
+
+    states_image = None
+    for i, (input_data, output_data) in enumerate(train_dataset):
+        full_env = input_data['full_env/env'].numpy().squeeze()
+        full_env_extent = input_data['full_env/extent'].numpy().squeeze()
+        full_env_res = input_data['full_env/res'].numpy().squeeze()
+        full_env_origin = input_data['full_env/origin'].numpy().squeeze()
+        full_env_h, full_env_w = full_env.shape
+
+        states_sequence = input_data['link_bot'].numpy()
+        for state in states_sequence:
+            state_image_i = old_raster(*add_batch(state, full_env_res, full_env_origin), full_env_h, full_env_w)
+            if states_image is None:
+                states_image = state_image_i
+            else:
+                states_image += state_image_i
+    states_image = np.sqrt(states_image.squeeze() / np.max(states_image))
+    zeros = np.zeros((full_env_h, full_env_w))
+    combined_image = np.stack((full_env, zeros, states_image), axis=2)
+    plt.imshow(np.flipud(combined_image), extent=full_env_extent)
+    now = int(time.time())
+    plt.savefig('dataset_visualization_{}.png'.format(now), dpi=600)
+    plt.axis("equal")
     plt.show()
 
 
@@ -105,7 +141,7 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')
-    parser.add_argument('plot_type', choices=['individual', 'all'], default='individual')
+    parser.add_argument('plot_type', choices=['individual', 'all', 'heatmap'], default='individual')
     parser.add_argument('--take', type=int)
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train', help='train test or val')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
@@ -138,6 +174,8 @@ def main():
         plot_individual(train_dataset, args.redraw, dataset.states_description)
     elif args.plot_type == 'all':
         plot_all(train_dataset, dataset.states_description)
+    elif args.plot_type == 'heatmap':
+        plot_heatmap(train_dataset, dataset.states_description)
 
 
 if __name__ == '__main__':
