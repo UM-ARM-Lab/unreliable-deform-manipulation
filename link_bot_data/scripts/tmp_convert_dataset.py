@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-import re
 import argparse
-import numpy as np
 
+import numpy as np
 import tensorflow as tf
 
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
@@ -21,21 +20,25 @@ class TmpDataset(BaseDataset):
 
         self.state_feature_names = [
             "%d/res",
-            "%d/state/link_bot",
-            "%d/planned_state/link_bot",
-            "%d/planned_state/local_env",
-            "%d/planned_state/local_env_origin",
-            "%d/state/tether",
-            "%d/state/local_env",
-            "%d/state/local_env_origin",
+            "%d/actual_local_env/env",
+            "%d/actual_local_env/extent",
+            "%d/actual_local_env/origin",
+            "%d/planned_local_env/env",
+            "%d/planned_local_env/extent",
+            "%d/planned_local_env/origin",
+            "%d/planned_state",
+            "%d/res",
+            "%d/state",
             "%d/traj_idx",
-            "%d/time_idx",
+            "%d/time_idx ",
         ]
 
         self.constant_feature_names = [
             'full_env/env',
             'full_env/extent',
             'full_env/origin',
+            'local_env_rows',
+            'local_env_cols',
         ]
 
 
@@ -72,10 +75,13 @@ def main():
                 elif 'local_env' in k:
                     continue
                 elif 'planned_state' in k:
-                    new_k = k
+                    new_k = k + '/link_bot'
                 elif 'state' in k:
-                    num, _, name = k.split("/")
-                    new_k = num + "/" + name
+                    num, _ = k.split("/")
+                    new_k = num + "/link_bot"
+                elif 'time' in k:
+                    num, _ = k.split("/")
+                    new_k = num + '/time_idx'
                 else:
                     new_k = k
                 features[new_k] = float_tensor_to_bytes_feature(v)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import json
-from colorama import Fore
+from colorama import Fore, Style
 import pathlib
 
 import tensorflow as tf
@@ -40,7 +40,13 @@ def main():
                 print(Fore.RED + "Empty feature: {}, {}".format(feature_name, feature_value) + Fore.RESET)
 
         to_print = sorted(to_print)
-        for items in to_print:
+        print(Style.BRIGHT + filename + Style.NORMAL)
+        k = 12
+        for items in to_print[:k]:
+            print("{}: {},".format(*items))
+        if len(to_print) > 2*k:
+            print("...")
+        for items in to_print[-k:]:
             print("{}: {},".format(*items))
 
         key = input(Fore.CYAN + "press enter to see an example from the next record file... (q to quit) " + Fore.RESET)

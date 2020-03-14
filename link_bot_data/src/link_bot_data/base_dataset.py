@@ -8,7 +8,7 @@ from typing import List, Optional
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_data.link_bot_dataset_utils import parse_and_deserialize
+from link_bot_data.link_bot_dataset_utils import parse_and_deserialize, parse_dataset
 
 
 def slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length: int):
@@ -64,21 +64,21 @@ class BaseDataset:
                      mode: str,
                      sequence_length: Optional[int] = None,
                      n_parallel_calls: int = tf.data.experimental.AUTOTUNE,
-                     balance_key: Optional[str] = None,
                      do_not_process: bool = False,
+                     take: Optional[int] = None,
                      ) -> tf.data.Dataset:
         records = []
         for dataset_dir in self.dataset_dirs:
             records.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
         return self.get_datasets_from_records(records,
                                               sequence_length=sequence_length,
-                                              balance_key=balance_key,
                                               n_parallel_calls=n_parallel_calls,
-                                              do_not_process=do_not_process)
+                                              do_not_process=do_not_process,
+                                              take=take)
 
     def get_datasets_all_modes(self,
-                               balance_key: Optional[str] = None,
                                do_not_process: bool = False,
+                               take: Optional[int] = None,
                                ):
         train_filenames = []
         test_filenames = []
@@ -93,15 +93,15 @@ class BaseDataset:
         all_filenames.extend(val_filenames)
 
         return self.get_datasets_from_records(records=all_filenames,
-                                              balance_key=balance_key,
-                                              do_not_process=do_not_process)
+                                              do_not_process=do_not_process,
+                                              take=take)
 
     def get_datasets_from_records(self,
                                   records: List[str],
                                   sequence_length: Optional[int] = None,
-                                  balance_key: str = None,
-                                  n_parallel_calls: int = None,
-                                  do_not_process: bool = False,
+                                  n_parallel_calls: Optional[int] = None,
+                                  do_not_process: Optional[bool] = False,
+                                  take: Optional[int] = None,
                                   ) -> tf.data.Dataset:
         self.max_sequence_length = self.hparams['sequence_length']
         if sequence_length is None:
@@ -115,9 +115,10 @@ class BaseDataset:
         # Given the member lists of states, actions, and constants set in the constructor, create
         # a dict for parsing a feature
         features_description = self.make_features_description()
-        # features_description = self.old_make_features_description()
-
         dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
+        # Note: for converting old datasets, use these instead
+        # features_description = self.old_make_features_description()
+        # dataset = parse_dataset(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
 
         if not do_not_process:
             dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)
@@ -128,6 +129,9 @@ class BaseDataset:
             dataset = dataset.map(_slice_sequences, num_parallel_calls=n_parallel_calls)
 
             dataset = self.post_process(dataset, n_parallel_calls)
+
+        if take is not None:
+            dataset = dataset.take(take)
 
         return dataset
 
@@ -159,11 +163,26 @@ class BaseDataset:
             'resolution': 1,
             'resolution_next': 1,
             'state': 22,
-            'state_next': 22,
+            'full_env/extent': 4,
+            'full_env/origin': 2,
+            '%d/res': 1,
+            '%d/actual_local_env/env': 2500,
+            '%d/actual_local_env/extent': 4,
+            '%d/actual_local_env/origin': 2,
+            '%d/planned_local_env/env': 2500,
+            '%d/planned_local_env/extent': 4,
+            '%d/planned_local_env/origin': 2,
+            '%d/planned_state': 22,
+            '%d/state': 22,
+            '%d/traj_idx': 1,
+            '%d/time_idx': 1,
+            '%d/time_idx ': 1,
+            '%d/action': 2,
         }
 
         features_description = {}
         for feature_name in self.constant_feature_names:
+            print(feature_name)
             shape = hacky_lookup[feature_name]
             features_description[feature_name] = tf.io.FixedLenFeature(shape, tf.float32)
 

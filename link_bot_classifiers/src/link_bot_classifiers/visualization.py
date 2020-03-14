@@ -35,7 +35,7 @@ def plot_classifier_data(
     if next_state is not None:
         plot_rope_configuration(ax, next_state, c='orange', label='next state', zorder=4, linestyle='--', linewidth=3)
     if state is not None and action is not None:
-        ax.quiver(state[-2], state[-1], action[0], action[1], width=0.001, scale=6)
+        ax.quiver(state[-2], state[-1], action[0], action[1], width=0.004, scale=1)
     if planned_state is not None and action is not None:
         ax.quiver(planned_state[-2], planned_state[-1], action[0], action[1], width=0.001, scale=6)
 

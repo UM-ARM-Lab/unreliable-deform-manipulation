@@ -17,13 +17,22 @@ from moonshine.raster_points_layer import make_transition_images, make_traj_imag
 
 
 def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
+    parsed_dataset = parse_dataset(dataset, feature_description, n_parallel_calls=n_parallel_calls)
+    deserialized_dataset = deserialize(parsed_dataset, n_parallel_calls=n_parallel_calls)
+    return deserialized_dataset
+
+
+def parse_dataset(dataset, feature_description, n_parallel_calls=None):
     def _parse(example_proto):
         deserialized_dict = tf.io.parse_single_example(example_proto, feature_description)
         return deserialized_dict
 
     # the elements of parsed dataset are dictionaries with the serialized tensors as strings
     parsed_dataset = dataset.map(_parse, num_parallel_calls=n_parallel_calls)
+    return parsed_dataset
 
+
+def deserialize(parsed_dataset, n_parallel_calls=None):
     # get shapes of everything
     element = next(iter(parsed_dataset))
     inferred_shapes = {}

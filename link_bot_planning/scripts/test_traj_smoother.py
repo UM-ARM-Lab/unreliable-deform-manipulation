@@ -28,6 +28,7 @@ def main():
     parser.add_argument('classifier_model_dir', type=pathlib.Path)
     parser.add_argument('actions', type=str)
     parser.add_argument('--iters', type=int, default=500)
+    parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
 
     args = parser.parse_args()
 
@@ -38,7 +39,7 @@ def main():
     w = 200
     h = 200
     full_env = np.zeros([h, w], dtype=np.float32)
-    full_env[50:110, 116:135] = 1.0
+    #full_env[50:110, 116:135] = 1.0
     full_env_origin = np.array([h // 2, w // 2])
     full_env_extent = compute_extent(h, w, res, full_env_origin)
 
@@ -50,15 +51,15 @@ def main():
 
     T = actions.shape[0]
 
-    goal = np.array([1.5, 0.0])
+    goal = np.array([1.6, 0.0])
 
     params = {
         "iters": args.iters,
-        "length_alpha": 0,
-        "goal_alpha": 0,
+        "length_alpha": 1,
+        "goal_alpha": 100,
         "initial_learning_rate": 0.002,
-        "constraints_alpha": 1.0,
-        "action_alpha": 0
+        "constraints_alpha": 10.0,
+        "action_alpha": 1,
     }
 
     ###########################
@@ -92,12 +93,12 @@ def main():
                                   classifier_model=classifier_model,
                                   experiment_scenario=experiment_scenario,
                                   params=params,
-                                  verbose=2,
+                                  verbose=args.verbose,
                                   )
 
     actions = tf.Variable(actions, dtype=tf.float32, name='controls', trainable=True)
 
-    fig, axes = plt.subplots(1, 2)
+    fig, axes = plt.subplots(1, 2, figsize=(20,10))
     axes[0].set_title("Path")
     experiment_scenario.plot_goal(axes[0], goal, color='g', label='goal')
     experiment_scenario.plot_state_simple(axes[0], start_states, color='r')
@@ -135,6 +136,7 @@ def main():
 
     def update(iter):
         nonlocal actions
+        print(iter)
         t0 = perf_counter()
         actions, predictions, step_losses, length = smoother.step(full_env=full_env,
                                                                   full_env_origin=full_env_origin,
@@ -163,7 +165,7 @@ def main():
         constraints_losses.append(constraint_loss)
         action_losses.append(action_loss)
 
-        print(length.numpy())
+        # print(length.numpy())
         losses_line.set_data(iters, losses)
         length_losses_line.set_data(iters, length_losses)
         goal_losses_line.set_data(iters, goal_losses)
@@ -175,9 +177,10 @@ def main():
         axes[1].relim()
         axes[1].autoscale_view()
 
-    anim = FuncAnimation(fig, update, frames=args.iters, interval=1, repeat=False)
-    # anim.save("smoothing_animation.gif", writer='imagemagick')
-    plt.show()
+    plt.tight_layout()
+    anim = FuncAnimation(fig, update, frames=args.iters, interval=10, repeat=False)
+    anim.save("smoothing_animation.gif", writer='imagemagick', dpi=200)
+    # plt.show()
     print("Mean step time: {:8.5f}s, {:8.5f}".format(np.mean(step_times), np.std(step_times)))
 
 

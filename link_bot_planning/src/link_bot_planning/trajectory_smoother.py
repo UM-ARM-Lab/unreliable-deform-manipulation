@@ -73,9 +73,12 @@ class TrajectorySmoother:
                                                                                                 res=res,
                                                                                                 states_sequence=predictions_t,
                                                                                                 actions=actions)
-                print(constraint_prediction_t)
-                # NOTE: this math maps (0 -> inf, 1->0)
-                constraint_cost = tf.square(1.0 - constraint_prediction_t)
+                # print(constraint_prediction_t)
+                # NOTE: this math maps (0 -> 1, 1->0)
+                if constraint_prediction_t < 0.5:
+                    constraint_cost = tf.square(0.5 - constraint_prediction_t)
+                else:
+                    constraint_cost = 0
                 constraint_costs.append(constraint_cost)
             constraint_loss = tf.reduce_sum(constraint_costs)
             constraint_dt = perf_counter() - constraint_t0

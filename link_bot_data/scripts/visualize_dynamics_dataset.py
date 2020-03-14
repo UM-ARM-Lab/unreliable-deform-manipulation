@@ -83,12 +83,16 @@ def plot_all(train_dataset, states_description):
     jet = cm.get_cmap("jet", 12)
 
     for i, (input_data, output_data) in enumerate(train_dataset):
-        color_float_idx = (i % 100) / 100.0
+        full_env = input_data['full_env/env'].numpy().squeeze()
+        full_env_extent = input_data['full_env/extent'].numpy().squeeze()
+        plt.imshow(np.flipud(full_env), extent=full_env_extent, cmap='Greys')
+        color_float_idx = (i % 10) / 10.0
         c = jet(color_float_idx)
         for state_key in states_description.keys():
             states_sequence = input_data[state_key].numpy()
-            first_state = states_sequence[0]
-            plot_rope_configuration(ax, first_state, linewidth=1, alpha=0.3, c=c, scatt=False)
+            for t in range(0, states_sequence.shape[0], 4):
+                first_state = states_sequence[t]
+                plot_rope_configuration(ax, first_state, linewidth=4, alpha=0.7, c=c, scatt=False)
 
     plt.savefig('dataset_visualization.png', transparent=True, dpi=600)
     plt.show()
@@ -102,6 +106,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')
     parser.add_argument('plot_type', choices=['individual', 'all'], default='individual')
+    parser.add_argument('--take', type=int)
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train', help='train test or val')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
     parser.add_argument('--redraw', action='store_true', help='redraw')
@@ -115,7 +120,8 @@ def main():
     dataset = LinkBotStateSpaceDataset(args.dataset_dir)
     train_dataset = dataset.get_datasets(mode=args.mode,
                                          sequence_length=None,
-                                         n_parallel_calls=1)
+                                         n_parallel_calls=1,
+                                         take=args.take)
     if args.shuffle:
         train_dataset = train_dataset.shuffle(1024, seed=1)
 

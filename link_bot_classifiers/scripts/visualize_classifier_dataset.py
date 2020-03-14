@@ -17,7 +17,7 @@ tf.compat.v1.enable_eager_execution()
 
 
 def main():
-    plt.style.use("paper")
+    plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=200)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--post', type=int, default=0.21)
     parser.add_argument('--discard-pre-far', action='store_true')
     parser.add_argument('--action-in-image', action='store_true')
+    parser.add_argument('--take', type=int)
     parser.add_argument('--no-balance', action='store_true')
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
@@ -45,7 +46,7 @@ def main():
     states_keys = ['link_bot']
 
     classifier_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
-    dataset = classifier_dataset.get_datasets(mode=args.mode)
+    dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
 
     if not args.no_balance:
         dataset = balance(dataset)
@@ -64,6 +65,10 @@ def main():
     negative_count = 0
     count = 0
     for i, example in enumerate(dataset):
+
+        if i < 230:
+            continue
+        print(i)
 
         if done:
             break
