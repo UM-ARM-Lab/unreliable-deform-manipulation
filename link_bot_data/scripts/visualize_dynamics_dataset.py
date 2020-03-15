@@ -101,7 +101,48 @@ def plot_all(train_dataset, states_description):
     plt.savefig('dataset_visualization.png', transparent=True, dpi=600)
     plt.show()
 
-def plot_heatmap(train_dataset, states_description):
+
+def plot_heatmap(train_dataset):
+    # Get the environment stuff, which we assume is constant
+    input_data, _ = next(iter(train_dataset))
+    full_env = input_data['full_env/env'].numpy().squeeze()
+    full_env_extent = input_data['full_env/extent'].numpy().squeeze()
+    full_env_res = input_data['full_env/res'].numpy().squeeze()
+    full_env_origin = input_data['full_env/origin'].numpy().squeeze()
+    full_env_h, full_env_w = full_env.shape
+
+    states_image = None
+    states_image_mask = None
+    for i, (input_data, output_data) in enumerate(train_dataset):
+        states_sequence = input_data['link_bot'].numpy()
+        for state in states_sequence:
+            state_image_i = old_raster(*add_batch(state, full_env_res, full_env_origin), full_env_h, full_env_w)
+            state_image_i = state_image_i.astype(np.int32)
+            if states_image_mask is None:
+                states_image_mask = np.copy(state_image_i)
+                states_image = np.copy(state_image_i)
+            else:
+                states_image_mask |= state_image_i
+                states_image += state_image_i
+
+    states_image = states_image.squeeze()
+    states_image_mask = states_image_mask.squeeze()
+    nonzero_indeces = np.nonzero(states_image)
+    states_image_nonzero = states_image[nonzero_indeces]
+    states_image_normalized = states_image.squeeze() / np.max(states_image)
+
+    print('min', np.min(states_image_nonzero))
+    print('max', np.max(states_image_nonzero))
+    print('mean', np.mean(states_image_nonzero))
+    print('median', np.median(states_image_nonzero))
+    plt.figure()
+    ax = plt.gca()
+    ax.set_xlabel("Number of times occupied")
+    ax.set_ylabel("count")
+    ax.set_title("Training Dataset")
+    plt.hist(states_image_nonzero)
+
+    # do some color magic
     plt.figure()
     ax = plt.gca()
     ax.set_xlabel("X (m)")
@@ -109,28 +150,18 @@ def plot_heatmap(train_dataset, states_description):
     ax.set_title("Training Dataset")
     ax.axis("equal")
 
-    states_image = None
-    for i, (input_data, output_data) in enumerate(train_dataset):
-        full_env = input_data['full_env/env'].numpy().squeeze()
-        full_env_extent = input_data['full_env/extent'].numpy().squeeze()
-        full_env_res = input_data['full_env/res'].numpy().squeeze()
-        full_env_origin = input_data['full_env/origin'].numpy().squeeze()
-        full_env_h, full_env_w = full_env.shape
-
-        states_sequence = input_data['link_bot'].numpy()
-        for state in states_sequence:
-            state_image_i = old_raster(*add_batch(state, full_env_res, full_env_origin), full_env_h, full_env_w)
-            if states_image is None:
-                states_image = state_image_i
-            else:
-                states_image += state_image_i
-    states_image = np.sqrt(states_image.squeeze() / np.max(states_image))
-    zeros = np.zeros((full_env_h, full_env_w))
-    combined_image = np.stack((full_env, zeros, states_image), axis=2)
+    full_env_mask = np.expand_dims(1 - full_env, axis=2)
+    states_image_perceptually_uniform = cm.viridis(states_image_normalized)[:, :, :3]
+    state_no_env_mask = full_env_mask * np.expand_dims(states_image_mask, axis=2)
+    no_state_no_env_mask = full_env_mask * (1 - np.expand_dims(states_image_mask, axis=2))
+    states_image_masked = states_image_perceptually_uniform * state_no_env_mask
+    full_env_inv = np.tile(full_env_mask, [1, 1, 3]) * no_state_no_env_mask
+    combined_image = states_image_masked + full_env_inv
     plt.imshow(np.flipud(combined_image), extent=full_env_extent)
     now = int(time.time())
-    plt.savefig('dataset_visualization_{}.png'.format(now), dpi=600)
+    plt.savefig('dataset_visualization/{}.png'.format(now), dpi=600)
     plt.axis("equal")
+
     plt.show()
 
 
@@ -175,7 +206,7 @@ def main():
     elif args.plot_type == 'all':
         plot_all(train_dataset, dataset.states_description)
     elif args.plot_type == 'heatmap':
-        plot_heatmap(train_dataset, dataset.states_description)
+        plot_heatmap(train_dataset)
 
 
 if __name__ == '__main__':
