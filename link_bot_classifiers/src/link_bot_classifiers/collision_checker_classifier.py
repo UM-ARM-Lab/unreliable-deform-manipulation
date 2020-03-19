@@ -59,8 +59,8 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
                          states_sequence: List[Dict],
                          actions: np.ndarray) -> float:
         states_i = states_sequence[-2]
+        local_env_center = self.scenario.get_local_environment_center(states_i)
         # TODO: put h_rows/w_cols in hparams file?
-        local_env_center = self.get_local_environment_center(states_i)
         local_env, local_env_origin = get_local_env_and_origin(center_point=local_env_center,
                                                                full_env=full_env,
                                                                full_env_origin=full_env_origin,

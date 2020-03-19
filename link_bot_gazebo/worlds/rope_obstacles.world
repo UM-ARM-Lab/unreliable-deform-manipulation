@@ -38,34 +38,59 @@
         </include>
 
         <include>
-            <uri>model://moving_box</uri>
-            <pose>2.0 0 0 0 0 0</pose>
+            <uri>model://small_moving_box</uri>
+            <pose>1.0 0 0 0 0 0</pose>
             <name>moving_box1</name>
         </include>
         <include>
-            <uri>model://moving_box</uri>
-            <pose>-1.5 0 0 0 0 0</pose>
+            <uri>model://small_moving_box</uri>
+            <pose>-0.6 0 0 0 0 0</pose>
             <name>moving_box2</name>
         </include>
         <include>
-            <uri>model://moving_box</uri>
-            <pose>-0.5 1 0 0 0 0</pose>
+            <uri>model://small_moving_box</uri>
+            <pose>-0.4 1 0 0 0 0</pose>
             <name>moving_box3</name>
         </include>
         <include>
-            <uri>model://moving_box</uri>
+            <uri>model://small_moving_box</uri>
             <pose>1.5 -2 0 0 0 0</pose>
             <name>moving_box4</name>
         </include>
         <include>
-            <uri>model://moving_box</uri>
+            <uri>model://small_moving_box</uri>
             <pose>-1.5 -2.0 0 0 0 0</pose>
             <name>moving_box5</name>
         </include>
         <include>
-            <uri>model://moving_box</uri>
-            <pose>-0.5 2.0 0 0 0 0</pose>
+            <uri>model://small_moving_box</uri>
+            <pose>-0.5 0.5 0 0 0 0</pose>
             <name>moving_box6</name>
+        </include>
+        <include>
+            <uri>model://small_moving_box</uri>
+            <pose>0.2 -0.5 0 0 0 0</pose>
+            <name>moving_box7</name>
+        </include>
+        <include>
+            <uri>model://small_moving_box</uri>
+            <pose>-1.4 0.5 0 0 0 0</pose>
+            <name>moving_box8</name>
+        </include>
+        <include>
+            <uri>model://small_moving_box</uri>
+            <pose>1.5 1.5 0 0 0 0</pose>
+            <name>moving_box9</name>
+        </include>
+        <include>
+            <uri>model://small_moving_box</uri>
+            <pose>0 -1.7 0 0 0 0</pose>
+            <name>moving_box10</name>
+        </include>
+        <include>
+            <uri>model://small_moving_box</uri>
+            <pose>-1.2 1.6 0 0 0 0</pose>
+            <name>moving_box11</name>
         </include>
     </world>
 </sdf>

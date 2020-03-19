@@ -14,9 +14,8 @@ from tensorflow import keras
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import LocalEnvParams
-from link_bot_pycommon.link_bot_sdf_utils import get_local_env_and_origin_differentiable
 from moonshine.numpy_utils import add_batch
-from moonshine.raster_points_layer import make_transition_images, make_traj_images
+from moonshine.raster_points_layer import make_transition_image, make_traj_images
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 
@@ -113,6 +112,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         model_hparams_file = path / 'hparams.json'
         self.model_hparams = json.load(model_hparams_file.open('r'))
         self.net = RasterClassifier(hparams=self.model_hparams, batch_size=batch_size)
+        self.local_env_params = self.net.local_env_params
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
         if self.manager.latest_checkpoint:
@@ -120,25 +120,23 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         self.ckpt.restore(self.manager.latest_checkpoint)
 
     def check_transition(self,
-                         local_env: np.ndarray,
-                         local_env_origin: np.ndarray,
-                         res: float,
-                         states_i: Dict,
-                         states_i_plus_1: Dict,
-                         action_i: tf.Variable) -> tf.Tensor:
-        """
-        # FIXME: actually everything might be a tensor here...?
-        :param local_env: np.ndarray
-        :param local_env_origin: np.ndarray
-        :param res: float
-        :param states_i: each value has shape [n_state]
-        :param states_i_plus_1: each value has shape [n_state]
-        :param action_i: [n_action] float64
-        :return: [1] float64
-        """
+                         full_env,
+                         full_env_origin,
+                         res,
+                         states_sequence: List[Dict],
+                         actions,
+                         ) -> tf.Tensor:
+        states_i = states_sequence[-2]
+        action_i = actions[-1]
+        states_i_plus_1 = states_sequence[-1]
+
         action_in_image = self.model_hparams['action_in_image']
-        batched_inputs = add_batch(local_env, states_i, action_i, states_i_plus_1, res, local_env_origin)
-        image = make_transition_images(*batched_inputs, action_in_image)[0]
+        batched_inputs = add_batch(full_env, full_env_origin, res, states_i, action_i, states_i_plus_1)
+        image = make_transition_image(*batched_inputs,
+                                      scenario=self.scenario,
+                                      local_env_h=self.local_env_params.h_rows,
+                                      local_env_w=self.local_env_params.w_cols,
+                                      action_in_image=action_in_image)[0]
         image = tf.convert_to_tensor(image, dtype=tf.float32)
 
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
@@ -167,31 +165,6 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         accept_probability = self.net(add_batch(net_inputs))[0, 0]
         return accept_probability
 
-    def get_transition_inputs(self,
-                              full_env: np.ndarray,
-                              full_env_origin: np.ndarray,
-                              res: float,
-                              states_sequence: List[Dict],
-                              actions: tf.Variable):
-        action_i = actions[-1]
-        states_i = states_sequence[-2]
-        states_i_plus_1 = states_sequence[-1]
-
-        local_env_params = self.net.local_env_params
-
-        # add and then remove batch
-        local_env_center = self.scenario.local_environment_center(states_i)
-        batched_inputs = add_batch(local_env_center, full_env, full_env_origin)
-        local_env, local_env_origin = get_local_env_and_origin_differentiable(*batched_inputs,
-                                                                              local_h_rows=local_env_params.h_rows,
-                                                                              local_w_cols=local_env_params.w_cols,
-                                                                              res=res)
-        # remove batch dim
-        local_env = local_env[0]
-        local_env_origin = local_env_origin[0]
-
-        return local_env, local_env_origin, states_i, states_i_plus_1, action_i
-
     def check_constraint_differentiable(self,
                                         full_env: np.ndarray,
                                         full_env_origin: np.ndarray,
@@ -200,17 +173,11 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                                         actions: tf.Variable) -> tf.Tensor:
         image_key = self.model_hparams['image_key']
         if image_key == 'transition_image':
-            local_env, local_env_origin, states, states_next, action = self.get_transition_inputs(full_env,
-                                                                                                  full_env_origin,
-                                                                                                  res,
-                                                                                                  states_sequence,
-                                                                                                  actions)
-            return self.check_transition(local_env=local_env,
-                                         local_env_origin=local_env_origin,
+            return self.check_transition(full_env=full_env,
+                                         full_env_origin=full_env_origin,
                                          res=res,
-                                         states_i=states,
-                                         states_i_plus_1=states_next,
-                                         action_i=action)
+                                         states_sequence=states_sequence,
+                                         actions=actions)
         elif image_key == 'trajectory_image':
             return self.check_trajectory(full_env, full_env_origin, res, states_sequence, actions)
         else:

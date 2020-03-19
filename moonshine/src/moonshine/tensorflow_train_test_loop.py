@@ -61,7 +61,7 @@ def train(keras_model: MyKerasModel,
           ):
     """
 
-    :param keras_model: the class name you want to instantiate.
+    :param keras_model: the instantiated model
     :param model_hparams:
     :param train_tf_dataset:
     :param val_tf_dataset:
@@ -80,7 +80,6 @@ def train(keras_model: MyKerasModel,
     """
     optimizer = tf.train.AdamOptimizer()
 
-    net = keras_model(hparams=model_hparams, batch_size=batch_size)
     global_step = tf.train.get_or_create_global_step()
 
     # If we're resuming a checkpoint, there is no new log path
@@ -94,7 +93,7 @@ def train(keras_model: MyKerasModel,
         full_log_path = '/tmp'
         logging = False
 
-    ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=net)
+    ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=keras_model)
     manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=5)
     ckpt.restore(manager.latest_checkpoint)
     if checkpoint is not None:
@@ -136,10 +135,10 @@ def train(keras_model: MyKerasModel,
                 step = int(global_step.numpy())
 
                 with tf.GradientTape() as tape:
-                    train_predictions = net(train_element)
+                    train_predictions = keras_model(train_element)
                     train_batch_loss = loss_function(train_element, train_predictions)
 
-                variables = net.trainable_variables
+                variables = keras_model.trainable_variables
                 gradients = tape.gradient(train_batch_loss, variables)
                 optimizer.apply_gradients(zip(gradients, variables))
                 batch_losses.append(train_batch_loss.numpy())
@@ -166,7 +165,8 @@ def train(keras_model: MyKerasModel,
             # validation
             ################
             if epoch % validation_every == 0:
-                val_mean_loss, val_mean_metrics = compute_loss_and_metrics(val_tf_dataset, net, loss_function, metrics_function)
+                val_mean_loss, val_mean_metrics = compute_loss_and_metrics(val_tf_dataset, keras_model, loss_function,
+                                                                           metrics_function)
 
                 log_msg = "Epoch: {:5d}, Validation Loss: {:8.5f}"
                 print(Style.BRIGHT + log_msg.format(epoch, training_loss) + Style.NORMAL)
@@ -203,24 +203,26 @@ def train(keras_model: MyKerasModel,
 
 
 def evaluate(keras_model: MyKerasModel,
-             model_hparams: Dict,
              test_tf_dataset,
-             batch_size: int,
              loss_function: Callable,
-             checkpoint: pathlib.Path,
+             checkpoint_path: pathlib.Path,
              metrics_function: Optional[Callable],
              ):
-    net = keras_model(hparams=model_hparams, batch_size=batch_size)
-    ckpt = tf.train.Checkpoint(net=net)
-    manager = tf.train.CheckpointManager(ckpt, checkpoint, max_to_keep=1)  # doesn't matter here, we're not saving
+    ckpt = tf.train.Checkpoint(net=keras_model)
+    manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=1)  # doesn't matter here, we're not saving
     ckpt.restore(manager.latest_checkpoint)
     print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
 
     try:
-        test_mean_loss, test_mean_metrics = compute_loss_and_metrics(test_tf_dataset, net, loss_function, metrics_function)
+        test_mean_loss, test_mean_metrics = compute_loss_and_metrics(test_tf_dataset,
+                                                                     keras_model,
+                                                                     loss_function,
+                                                                     metrics_function)
         print("Test Loss:  {:8.5f}".format(test_mean_loss))
 
         for metric_name, metric_value in test_mean_metrics.items():
             print("{} {:8.4f}".format(metric_name, metric_value))
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
+
+    print(keras_model.summary(line_length=250))

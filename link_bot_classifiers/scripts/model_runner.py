@@ -10,6 +10,7 @@ from colorama import Fore
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance, add_transition_image, add_traj_image
+from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function
 from moonshine.tensorflow_train_test_loop import evaluate, train
@@ -41,6 +42,7 @@ def train_main(args, seed: int):
     model_hparams['labeling_params'] = labeling_params
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     model = link_bot_classifiers.get_model(model_hparams['model_class'])
+    net = model(hparams=model_hparams, batch_size=args.batch_size)
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train')
@@ -51,11 +53,23 @@ def train_main(args, seed: int):
         train_tf_dataset = balance(train_tf_dataset)
         val_tf_dataset = balance(val_tf_dataset)
 
+    scenario = get_scenario(model_hparams['scenario'])
+
     if 'image_key' in model_hparams:
         image_key = model_hparams['image_key']
         if image_key == 'transition_image':
-            train_tf_dataset = add_transition_image(train_tf_dataset, states_keys=model.states_keys)
-            val_tf_dataset = add_transition_image(train_tf_dataset, states_keys=model.states_keys)
+            train_tf_dataset = add_transition_image(train_tf_dataset,
+                                                    states_keys=model.states_keys,
+                                                    scenario=scenario,
+                                                    local_env_h=net.local_env_params.h_rows,
+                                                    local_env_w=net.local_env_params.w_cols,
+                                                    )
+            val_tf_dataset = add_transition_image(train_tf_dataset,
+                                                  states_keys=model.states_keys,
+                                                  scenario=scenario,
+                                                  local_env_h=net.local_env_params.h_rows,
+                                                  local_env_w=net.local_env_params.w_cols,
+                                                  )
         elif image_key == 'trajectory_image':
             train_tf_dataset = add_traj_image(train_tf_dataset)
             val_tf_dataset = add_traj_image(val_tf_dataset)
@@ -66,7 +80,7 @@ def train_main(args, seed: int):
     ###############
     # Train
     ###############
-    train(keras_model=model,
+    train(keras_model=net,
           model_hparams=model_hparams,
           train_tf_dataset=train_tf_dataset,
           val_tf_dataset=val_tf_dataset,
@@ -87,6 +101,7 @@ def eval_main(args, seed: int):
     ###############
     model_hparams = json.load((args.checkpoint / 'hparams.json').open('r'))
     model = link_bot_classifiers.get_model(model_hparams['model_class'])
+    net = model(hparams=model_hparams, batch_size=args.batch_size)
 
     ###############
     # Dataset
@@ -96,20 +111,30 @@ def eval_main(args, seed: int):
 
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
-    # More dataset crap
-    if model_hparams['image_key'] == 'transition_image':
-        test_tf_dataset = add_transition_image(test_tf_dataset, states_keys=model.states_keys)
-    elif model_hparams['image_key'] == 'trajectory_image':
-        test_tf_dataset = add_traj_image(test_tf_dataset)
+    scenario = get_scenario(model_hparams['scenario'])
 
-    if labeling_params['balance']:
-        print(Fore.GREEN + "balancing..." + Fore.RESET)
-        test_tf_dataset = balance(test_tf_dataset)
+    # if model_hparams['image_key'] == 'transition_image':
+    #     test_tf_dataset = add_transition_image(test_tf_dataset,
+    #                                            states_keys=net.states_keys,
+    #                                            scenario=scenario,
+    #                                            local_env_h=net.local_env_params.h_rows,
+    #                                            local_env_w=net.local_env_params.w_cols,
+    #                                            )
+    # elif model_hparams['image_key'] == 'trajectory_image':
+    #     test_tf_dataset = add_traj_image(test_tf_dataset)
+
+    # if labeling_params['balance']:
+    #     print(Fore.GREEN + "balancing..." + Fore.RESET)
+    #     test_tf_dataset = balance(test_tf_dataset)
     ###############
     # Evaluate
     ###############
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
-    evaluate(model_hparams, test_tf_dataset, args)
+    evaluate(keras_model=net,
+             test_tf_dataset=test_tf_dataset,
+             loss_function=binary_classification_loss_function,
+             metrics_function=binary_classification_metrics_function,
+             checkpoint_path=args.checkpoint)
 
 
 def main():

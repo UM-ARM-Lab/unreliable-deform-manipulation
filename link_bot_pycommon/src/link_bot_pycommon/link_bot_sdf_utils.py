@@ -209,15 +209,16 @@ def inflate(local_env: OccupancyData, radius_m: float):
     return inflated
 
 
-def get_local_env_and_origin_differentiable(center_point: np.ndarray,
-                                            full_env: np.ndarray,
-                                            full_env_origin: np.ndarray,
+@tf.function
+def get_local_env_and_origin_differentiable(center_point,
+                                            full_env,
+                                            full_env_origin,
                                             res: float,
                                             local_h_rows: int,
                                             local_w_cols: int):
     """
     :param center_point: [batch, 2]
-    :param full_env: [h, w]
+    :param full_env: [batch, h, w]
     :param full_env_origin: [batch, 2]
     :param res: [batch]
     :param local_h_rows: scalar
@@ -228,7 +229,9 @@ def get_local_env_and_origin_differentiable(center_point: np.ndarray,
     local_h_rows = tf.convert_to_tensor(local_h_rows, dtype=tf.float32)
     local_w_cols = tf.convert_to_tensor(local_w_cols, dtype=tf.float32)
     full_env_origin = tf.convert_to_tensor(full_env_origin, dtype=tf.float32)
-    b, full_h_rows, full_w_cols = full_env.shape
+    b = int(full_env.shape[0])
+    full_h_rows = int(full_env.shape[1])
+    full_w_cols = int(full_env.shape[2])
 
     k = 2.0
     # Unvectorized version numpy
@@ -259,24 +262,26 @@ def get_local_env_and_origin_differentiable(center_point: np.ndarray,
     local_env_pixel_coordinates_in_full_env_frame = local_env_pixel_coordinates + local_to_full_offset
     local_env_pixel_coordinates_in_full_env_frame = tf.expand_dims(local_env_pixel_coordinates_in_full_env_frame, axis=0)
     local_env_pixel_coordinates_matrix = tf.tile(local_env_pixel_coordinates_in_full_env_frame, [full_h_rows * full_w_cols, 1, 1])
-
-    full_env_pixel_row_indices = tf.range(0, full_h_rows, dtype=tf.float32)
-    full_env_pixel_col_indices = tf.range(0, full_w_cols, dtype=tf.float32)
-    full_env_pixel_coordinates = tf.stack(tf.meshgrid(full_env_pixel_row_indices, full_env_pixel_col_indices), axis=2)
-    full_env_pixel_coordinates = tf.reshape(tf.transpose(full_env_pixel_coordinates, [1, 0, 2]), [-1, 2])
-    full_env_pixel_coordinates = tf.expand_dims(full_env_pixel_coordinates, axis=1)
-    full_env_pixel_coordinates_matrix = tf.tile(full_env_pixel_coordinates, [1, local_h_rows * local_w_cols, 1])
-
-    # this will have shape [h*w, h'*w']
-    coordinate_difference_matrix = full_env_pixel_coordinates_matrix - local_env_pixel_coordinates_matrix
-    squared_distances = tf.reduce_sum(tf.square(coordinate_difference_matrix), axis=2)
-    weights = tf.exp(-k * squared_distances)
-
-    full_env_flat = tf.reshape(full_env, [b, full_h_rows * full_w_cols])
-    local_env_flat = tf.matmul(full_env_flat, weights)
-    local_env = tf.reshape(local_env_flat, [b, local_h_rows, local_w_cols])
-
-    return local_env, local_env_origin
+    # TODO: figure out why the fuck this is so slow
+    return local_env_pixel_coordinates_matrix, local_env_origin
+    #
+    # full_env_pixel_row_indices = tf.range(0, full_h_rows, dtype=tf.float32)
+    # full_env_pixel_col_indices = tf.range(0, full_w_cols, dtype=tf.float32)
+    # full_env_pixel_coordinates = tf.stack(tf.meshgrid(full_env_pixel_row_indices, full_env_pixel_col_indices), axis=2)
+    # full_env_pixel_coordinates = tf.reshape(tf.transpose(full_env_pixel_coordinates, [1, 0, 2]), [-1, 2])
+    # full_env_pixel_coordinates = tf.expand_dims(full_env_pixel_coordinates, axis=1)
+    # full_env_pixel_coordinates_matrix = tf.tile(full_env_pixel_coordinates, [1, local_h_rows * local_w_cols, 1])
+    #
+    # # this will have shape [h*w, h'*w']
+    # coordinate_difference_matrix = full_env_pixel_coordinates_matrix - local_env_pixel_coordinates_matrix
+    # squared_distances = tf.reduce_sum(tf.square(coordinate_difference_matrix), axis=2)
+    # weights = tf.exp(-k * squared_distances)
+    #
+    # full_env_flat = tf.reshape(full_env, [b, full_h_rows * full_w_cols])
+    # local_env_flat = tf.matmul(full_env_flat, weights)
+    # local_env = tf.reshape(local_env_flat, [b, local_h_rows, local_w_cols])
+    #
+    # return local_env, local_env_origin
 
 
 def get_local_env_and_origin(center_point: np.ndarray,

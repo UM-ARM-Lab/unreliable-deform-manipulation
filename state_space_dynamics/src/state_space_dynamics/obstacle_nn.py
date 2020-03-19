@@ -99,7 +99,7 @@ class ObstacleNN(MyKerasModel):
                 env_w_cols = tf.convert_to_tensor(self.full_env_params.w_cols, tf.int64)
             else:
                 state = self.state_vector_to_state_dict(s_t)
-                local_env_center = self.scenario.local_environment_center(state)
+                local_env_center = self.scenario.local_environment_center_differentiable(state)
                 # NOTE: we assume same resolution for local and full environment
                 env, env_origin, env_h_rows, env_w_cols = self.get_local_env(local_env_center, full_env_origin, full_env, res)
 

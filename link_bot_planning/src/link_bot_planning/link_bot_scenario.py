@@ -13,11 +13,12 @@ class LinkBotScenario(ExperimentScenario):
     @staticmethod
     def plot_state_simple(ax: plt.Axes,
                           state: Dict[str, np.ndarray],
-                          color):
+                          color,
+                          label):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         x = link_bot_points[0, 0]
         y = link_bot_points[0, 1]
-        ax.scatter(x, y, c=color, s=1)
+        ax.scatter(x, y, c=color, s=1, label=label)
 
     @staticmethod
     def plot_state(ax: plt.Axes,
@@ -112,6 +113,18 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def local_environment_center(state):
-        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+        link_bot_points = tf.reshape(state['link_bot'], [-1, 2])
         head_point_where_gripper_is = link_bot_points[-1]
+        return head_point_where_gripper_is
+
+    @staticmethod
+    @tf.function
+    def local_environment_center_differentiable(state):
+        """
+        :param state: Dict of batched states
+        :return:
+        """
+        b = int(state['link_bot'].shape[0])
+        link_bot_points = tf.reshape(state['link_bot'], [b, -1, 2])
+        head_point_where_gripper_is = link_bot_points[:, -1]
         return head_point_where_gripper_is

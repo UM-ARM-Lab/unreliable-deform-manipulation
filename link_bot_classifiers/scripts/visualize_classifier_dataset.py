@@ -12,6 +12,8 @@ from link_bot_data.link_bot_dataset_utils import balance, add_traj_image, add_tr
 from link_bot_data.classifier_dataset import ClassifierDataset
 # from link_bot_data.old_classifier_dataset import ClassifierDataset
 from link_bot_data.visualization import plot_rope_configuration
+from link_bot_planning.get_scenario import get_scenario
+from link_bot_planning.params import LocalEnvParams
 
 tf.compat.v1.enable_eager_execution()
 
@@ -25,6 +27,7 @@ def main():
     parser.add_argument('display_type',
                         choices=['just_image', 'transition_image', 'transition_plot', 'trajectory_image', 'trajectory_plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
+    parser.add_argument('--scenario', choices=['link_bot', 'tether'])
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--pre', type=int, default=0.15)
@@ -32,6 +35,7 @@ def main():
     parser.add_argument('--discard-pre-far', action='store_true')
     parser.add_argument('--action-in-image', action='store_true')
     parser.add_argument('--take', type=int)
+    parser.add_argument('--local-env-s', type=int, default=50)
     parser.add_argument('--no-balance', action='store_true')
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
@@ -40,6 +44,8 @@ def main():
 
     np.random.seed(args.seed)
     tf.compat.v1.random.set_random_seed(args.seed)
+
+    scenario = get_scenario(args.scenario)
 
     labeling_params = json.load(args.labeling_params.open("r"))
 
@@ -52,7 +58,12 @@ def main():
         dataset = balance(dataset)
 
     if args.display_type == 'transition_image':
-        dataset = add_transition_image(dataset, states_keys=states_keys, action_in_image=args.action_in_image)
+        dataset = add_transition_image(dataset,
+                                       states_keys=states_keys,
+                                       action_in_image=args.action_in_image,
+                                       scenario=scenario,
+                                       local_env_h=args.local_env_s,
+                                       local_env_w=args.local_env_s)
     if args.display_type == 'trajectory_image':
         dataset = add_traj_image(dataset)
 

@@ -8,6 +8,10 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
+    def local_environment_center_differentiable(state):
+        raise NotImplementedError()
+
+    @staticmethod
     def plot_state_simple(ax, state, color):
         raise NotImplementedError()
 

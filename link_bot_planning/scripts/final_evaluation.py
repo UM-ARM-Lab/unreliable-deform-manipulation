@@ -151,6 +151,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'plan_to_execution_error': plan_to_execution_error,
             'path_length': path_length,
             'num_nodes': num_nodes,
+            'goal': tail_goal_point,
         }
         self.metrics['metrics'].append(metrics_for_plan)
         metrics_file = self.metrics_filename.open('w')

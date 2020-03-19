@@ -142,7 +142,7 @@ def plot_heatmap(train_dataset):
     ax.set_title("Training Dataset")
     plt.hist(states_image_nonzero)
 
-    # do some color magic
+    plt.rcParams.update({'font.size': 22})
     plt.figure()
     ax = plt.gca()
     ax.set_xlabel("X (m)")
@@ -161,18 +161,20 @@ def plot_heatmap(train_dataset):
     now = int(time.time())
     plt.savefig('dataset_visualization/{}.png'.format(now), dpi=600)
     plt.axis("equal")
+    cb = plt.colorbar(ticks=[0, 1])
+    cb.ax.set_yticklabels(["Least Occupied", "Most Occupied"])
 
     plt.show()
 
 
 def main():
-    plt.style.use("paper")
+    # plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=250, precision=3)
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')
-    parser.add_argument('plot_type', choices=['individual', 'all', 'heatmap'], default='individual')
+    parser.add_argument('plot_type', choices=['individual', 'all', 'heatmap', 'just_count'], default='individual')
     parser.add_argument('--take', type=int)
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train', help='train test or val')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
@@ -185,15 +187,15 @@ def main():
 
     # load the dataset
     dataset = LinkBotStateSpaceDataset(args.dataset_dir)
-    train_dataset = dataset.get_datasets(mode=args.mode,
-                                         sequence_length=None,
-                                         n_parallel_calls=1,
-                                         take=args.take)
+    dataset = dataset.get_datasets(mode=args.mode,
+                                   sequence_length=None,
+                                   n_parallel_calls=1,
+                                   take=args.take)
     if args.shuffle:
-        train_dataset = train_dataset.shuffle(1024, seed=1)
+        dataset = dataset.shuffle(1024, seed=1)
 
     # print info about shapes
-    input_data, output_data = next(iter(train_dataset))
+    input_data, output_data = next(iter(dataset))
     print("INPUTS:")
     for k, v in input_data.items():
         print(k, v.shape)
@@ -202,11 +204,16 @@ def main():
         print(k, v.shape)
 
     if args.plot_type == 'individual':
-        plot_individual(train_dataset, args.redraw, dataset.states_description)
+        plot_individual(dataset, args.redraw, dataset.states_description)
     elif args.plot_type == 'all':
-        plot_all(train_dataset, dataset.states_description)
+        plot_all(dataset, dataset.states_description)
     elif args.plot_type == 'heatmap':
-        plot_heatmap(train_dataset)
+        plot_heatmap(dataset)
+    elif args.plot_type == 'just_count':
+        i = 0
+        for e in dataset:
+            i += 1
+        print(i)
 
 
 if __name__ == '__main__':

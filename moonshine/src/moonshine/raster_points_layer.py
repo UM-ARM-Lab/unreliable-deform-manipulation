@@ -3,6 +3,8 @@ from typing import Optional, Dict, List
 import numpy as np
 import tensorflow as tf
 
+from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.link_bot_sdf_utils import get_local_env_and_origin_differentiable
 from moonshine.action_smear_layer import smear_action
 
 
@@ -39,12 +41,13 @@ def old_raster(state, res, origin, h, w):
                                      col_x_indices < w], axis=0))
 
     state_images[batch_indices[valid_indices],
-                row_y_indices[valid_indices],
-                col_x_indices[valid_indices],
-                channel_indices[valid_indices]] = 1.0
+                 row_y_indices[valid_indices],
+                 col_x_indices[valid_indices],
+                 channel_indices[valid_indices]] = 1.0
     return state_images
 
 
+@tf.function
 def raster_differentiable(state, res, origin, h, w):
     """
     Even though this data is batched, we use singular and reserve plural for sequences in time
@@ -99,7 +102,7 @@ def raster_differentiable(state, res, origin, h, w):
     pixel_values = tf.exp(-k * squared_distances)
     rope_images = tf.reshape(pixel_values, [b, h, w, n_points])
     ##############################################################################
-    # FIXME: remove this and figure out whether to do clipping or normalization
+    # FIXME: figure out whether to do clipping or normalization
     ##############################################################################
     return rope_images
 
@@ -113,40 +116,57 @@ def raster(state, res, origin, h, w):
     return rope_image.numpy()
 
 
-def make_transition_images(local_env,
-                           planned_states,
-                           action,
-                           planned_next_states,
-                           res,
-                           origin,
-                           action_in_image: Optional[bool] = False):
+@tf.function
+def make_transition_image(full_env,
+                          full_env_origin,
+                          res,
+                          planned_states,
+                          action,
+                          planned_next_states,
+                          scenario: ExperimentScenario,
+                          local_env_h: int,
+                          local_env_w: int,
+                          action_in_image: Optional[bool] = False):
     """
-    :param local_env: [batch,h,w]
     :param planned_states: each element should be [batch,n_state]
     :param action: [batch,n_action]
     :param planned_next_states: each element should be [batch,n_state]
     :param res: [batch]
-    :param origin: [batch,2]
     :param action_in_image: include new channels for actions
     :return: [batch,n_points*2+n_action+1], aka  [batch,n_state+n_action+1]
     """
-    b = int(local_env.shape[0])
-    h = int(local_env.shape[1])
-    w = int(local_env.shape[2])
-    local_env = tf.expand_dims(local_env, axis=3)
+    local_env_center_point = scenario.local_environment_center_differentiable(planned_states)
+    # TODO: these functions are scattered all over the place, organize better
+    local_env, local_env_origin = get_local_env_and_origin_differentiable(center_point=local_env_center_point,
+                                                                          full_env=full_env,
+                                                                          full_env_origin=full_env_origin,
+                                                                          res=res,
+                                                                          local_h_rows=local_env_h,
+                                                                          local_w_cols=local_env_w)
+    local_env = local_env
+    local_env_origin = local_env_origin
+    tf.print(local_env[0,0,0], local_env_origin[0,0])
 
-    concat_args = [local_env]
-    for planned_state in planned_states.values():
-        planned_rope_image = raster_differentiable(state=planned_state, res=res, origin=origin, h=h, w=w)
-        concat_args.append(planned_rope_image)
-    for planned_next_state in planned_next_states.values():
-        planned_next_rope_image = raster_differentiable(state=planned_next_state, origin=origin, res=res, h=h, w=w)
-        concat_args.append(planned_next_rope_image)
-
-    if action_in_image:
-        # FIXME: use tf to make sure its differentiable
-        action_image = smear_action(action, h, w)
-        concat_args.append(action_image)
+    concat_args = [tf.zeros([1, local_env_h, local_env_w, 1])]
+    # for planned_state in planned_states.values():
+    #     planned_rope_image = raster_differentiable(state=planned_state,
+    #                                                res=res,
+    #                                                origin=local_env_origin,
+    #                                                h=local_env_h,
+    #                                                w=local_env_w)
+    #     concat_args.append(planned_rope_image)
+    # for planned_next_state in planned_next_states.values():
+    #     planned_next_rope_image = raster_differentiable(state=planned_next_state,
+    #                                                     origin=local_env_origin,
+    #                                                     res=res,
+    #                                                     h=local_env_h,
+    #                                                     w=local_env_w)
+    #     concat_args.append(planned_next_rope_image)
+    #
+    # if action_in_image:
+    #     # FIXME: use tf to make sure its differentiable
+    #     action_image = smear_action(action, local_env_h, local_env_w)
+    #     concat_args.append(action_image)
     image = tf.concat(concat_args, axis=3)
     return image
 

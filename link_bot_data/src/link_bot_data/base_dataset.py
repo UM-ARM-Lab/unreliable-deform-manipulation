@@ -114,11 +114,11 @@ class BaseDataset:
 
         # Given the member lists of states, actions, and constants set in the constructor, create
         # a dict for parsing a feature
-        features_description = self.make_features_description()
-        dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
+        # features_description = self.make_features_description()
+        # dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
         # Note: for converting old datasets, use these instead
-        # features_description = self.old_make_features_description()
-        # dataset = parse_dataset(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
+        features_description = self.old_make_features_description()
+        dataset = parse_dataset(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
 
         if not do_not_process:
             dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)
@@ -178,11 +178,16 @@ class BaseDataset:
             '%d/time_idx': 1,
             '%d/time_idx ': 1,
             '%d/action': 2,
+            '%d/1/force': 2,
+            '%d/1/velocity': 2,
+            '%d/1/post_action_velocity': 2,
+            '%d/endeffector_pos': 2,
+            '%d/constraint': 1,
+            '%d/rope_configuration': 22,
         }
 
         features_description = {}
         for feature_name in self.constant_feature_names:
-            print(feature_name)
             shape = hacky_lookup[feature_name]
             features_description[feature_name] = tf.io.FixedLenFeature(shape, tf.float32)
 

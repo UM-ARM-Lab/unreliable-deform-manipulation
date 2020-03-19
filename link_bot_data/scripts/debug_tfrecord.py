@@ -41,7 +41,7 @@ def main():
 
         to_print = sorted(to_print)
         print(Style.BRIGHT + filename + Style.NORMAL)
-        k = 12
+        k = 15
         for items in to_print[:k]:
             print("{}: {},".format(*items))
         if len(to_print) > 2*k:

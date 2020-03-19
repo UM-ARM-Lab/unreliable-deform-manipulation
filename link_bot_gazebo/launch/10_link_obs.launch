@@ -9,7 +9,7 @@
     <remap from="/gazebo/reset_simulation" to="/reset"/>
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/obstacles_5m.world"/>
+        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/rope_obstacles.world"/>
         <arg name="verbose" default="$(arg verbose)"/>
         <arg name="paused" default="false"/>
         <arg name="gui" value="$(arg gui)"/>

@@ -4,6 +4,7 @@ from __future__ import print_function, division
 import os
 import pathlib
 import re
+from time import perf_counter
 
 from typing import Optional, List
 
@@ -11,9 +12,12 @@ import git
 import tensorflow as tf
 from colorama import Fore
 
+from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.numpy_utils import add_batch
-from moonshine.raster_points_layer import make_transition_images, make_traj_images
+from moonshine.raster_points_layer import make_transition_image, make_traj_images
 
 
 def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
@@ -187,41 +191,44 @@ def add_traj_image(dataset):
 
 def add_transition_image(dataset,
                          states_keys: List[str],
+                         scenario: ExperimentScenario,
+                         local_env_w: int,
+                         local_env_h: int,
                          action_in_image: Optional[bool] = False):
     def _add_transition_image(input_dict):
-        """
-        Expected sizes:
-            'action': n_action
-            'planned_state': n_state
-            'planned_state_next': n_state
-            'planned_local_env/env': h, w
-            'planned_local_env/origin': 2
-            'planned_local_env/extent': 4
-            'resolution': 1
-        """
         action = input_dict['action']
-        # TODO: if local_env and local_env_origin aren't part of the state, how/where do we compute them!?
-        planned_local_env = input_dict['planned_state/local_env']
-        res = input_dict['res']
-        origin = input_dict['planned_state/local_env_origin']
-        n_action = action.shape[0]
-        h, w = planned_local_env.shape
 
         planned_states = {}
         planned_next_states = {}
         n_total_points = 0
         for state_key in states_keys:
             planned_state_feature_name = 'planned_state/{}'.format(state_key)
-            planned_state_next_feature_name = 'planned_state_next/{}'.format(state_key)
+            planned_state_next_feature_name = 'planned_state/{}_next'.format(state_key)
             planned_state = input_dict[planned_state_feature_name]
             planned_next_state = input_dict[planned_state_next_feature_name]
             n_total_points += link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
             planned_states[state_key] = planned_state
             planned_next_states[state_key] = planned_next_state
 
-        image = make_transition_images(planned_local_env, planned_states, action, planned_next_states, res, origin,
-                                       action_in_image)
-        image.set_shape([h, w, 1 + 2 * n_total_points + n_action])
+        full_env = input_dict['full_env/env']
+        full_env_res = tf.squeeze(input_dict['full_env/res'])
+        full_env_origin = input_dict['full_env/origin']
+        n_action = action.shape[0]
+
+        batched_inputs = add_batch(full_env, full_env_origin, full_env_res, planned_states, action, planned_next_states)
+        image = make_transition_image(*batched_inputs,
+                                      scenario=scenario,
+                                      local_env_h=local_env_h,
+                                      local_env_w=local_env_w,
+                                      action_in_image=action_in_image)
+        # remove batch dim
+        image = image[0]
+        n_channels = 1 + 2 * n_total_points
+        if action_in_image:
+            n_channels += n_action
+
+        # TODO: finish making this not insanely slow
+        # image.set_shape([local_env_h, local_env_w, n_channels])
 
         input_dict['transition_image'] = image
         return input_dict
@@ -231,7 +238,7 @@ def add_transition_image(dataset,
 
 def cachename(mode: Optional[str] = None):
     if mode is not None:
-        tmpname = "/tmp/tf_{}_{}".format(mode, link_bot_pycommon.rand_str())
+        tmpname = "/data/tf_{}_{}".format(mode, link_bot_pycommon.rand_str())
     else:
         tmpname = "/tmp/tf_{}".format(link_bot_pycommon.rand_str())
     return tmpname

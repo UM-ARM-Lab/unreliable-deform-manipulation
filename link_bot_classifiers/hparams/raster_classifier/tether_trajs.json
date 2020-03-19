@@ -1,6 +1,7 @@
 {
   "model_class": "raster",
   "mixed": true,
+  "scenario": "tether",
   "states_keys": [
     "link_bot"
   ],

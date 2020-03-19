@@ -19,11 +19,17 @@ class TmpDataset(BaseDataset):
         self.action_feature_names = ["%d/action"]
 
         self.state_feature_names = [
+            "%d/1/force",
+            "%d/1/post_action_velocity",
+            "%d/1/velocity",
+            "%d/actual_local_env/env",
+            "%d/actual_local_env/extent",
+            "%d/actual_local_env/origin",
+            "%d/constraint",
+            "%d/endeffector_pos",
             "%d/res",
-            "%d/state/link_bot",
-            "%d/state/local_env",
-            "%d/state/local_env_origin",
-            "%d/state/tether",
+            "%d/rope_configuration",
+            "%d/state",
             "%d/time_idx",
             "%d/traj_idx",
         ]
@@ -65,18 +71,15 @@ def main():
                 'full_env/origin': float_tensor_to_bytes_feature(example_dict['full_env/origin']),
             }
             for k, v in example_dict.items():
-                if 'res' in k:
-                    continue
-                elif 'local_env' in k:
-                    continue
-                elif 'planned_state' in k:
+                if 'rope_configuration' in k:
                     new_k = k + '/link_bot'
-                elif 'state' in k:
-                    num, _, q = k.split("/")
-                    new_k = num + "/" + q
-                else:
-                    new_k = k
-                features[new_k] = float_tensor_to_bytes_feature(v)
+                    features[new_k] = float_tensor_to_bytes_feature(v)
+                elif 'action' in k:
+                    features[k] = float_tensor_to_bytes_feature(v)
+                elif 'time' in k:
+                    features[k] = float_tensor_to_bytes_feature(v)
+                elif 'traj' in k:
+                    features[k] = float_tensor_to_bytes_feature(v)
 
             example_proto = tf.train.Example(features=tf.train.Features(feature=features))
             example = example_proto.SerializeToString()
