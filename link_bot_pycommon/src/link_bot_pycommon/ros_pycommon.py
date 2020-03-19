@@ -13,22 +13,6 @@ from ignition.markers import MarkerProvider
 from link_bot_pycommon import link_bot_sdf_utils, link_bot_pycommon
 
 
-def get_n_state():
-    return rospy.get_param("/link_bot/n_state")
-
-
-def get_n_tether_state():
-    return rospy.get_param("/tether/n_state", default=0)
-
-
-def get_rope_length():
-    return rospy.get_param("/link_bot/rope_length")
-
-
-def get_max_speed():
-    return rospy.get_param("/link_bot/max_speed")
-
-
 class Services:
 
     def __init__(self):
@@ -56,6 +40,14 @@ class Services:
             'gazebo/get_physics_properties',
             'gazebo/set_physics_properties',
         ]
+
+    @staticmethod
+    def get_max_speed():
+        return rospy.get_param("/link_bot/max_speed")
+
+    @staticmethod
+    def get_n_action():
+        return rospy.get_param("n_action")
 
     def get_states_description(self):
         request = StateSpaceDescriptionRequest()

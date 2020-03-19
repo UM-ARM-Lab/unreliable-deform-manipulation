@@ -15,23 +15,23 @@ from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import LocalEnvParams
 from moonshine.numpy_utils import add_batch
-from moonshine.raster_points_layer import make_transition_image, make_traj_images
+from moonshine.image_functions import make_transition_image, make_traj_images
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 
 class RasterClassifier(MyKerasModel):
 
-    def __init__(self, hparams: Dict, batch_size: int):
-        super().__init__(hparams, batch_size)
+    def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
+        super().__init__(hparams, batch_size, scenario=scenario)
 
-        self.dynamics_dataset_hparams = self.hparams['classifier_dataset_hparams']['fwd_model_hparams'][
-            'dynamics_dataset_hparams']
+        self.classifier_dataset_hparams = self.hparams['classifier_dataset_hparams']
+        self.dynamics_dataset_hparams = self.classifier_dataset_hparams['fwd_model_hparams']['dynamics_dataset_hparams']
         self.n_action = self.dynamics_dataset_hparams['n_action']
         self.batch_size = batch_size
 
         self.states_keys = self.hparams['states_keys']
 
-        self.local_env_params = LocalEnvParams.from_json(self.dynamics_dataset_hparams['local_env_params'])
+        self.local_env_params = LocalEnvParams.from_json(self.classifier_dataset_hparams['local_env_params'])
 
         self.conv_layers = []
         self.pool_layers = []

@@ -11,7 +11,6 @@ class LinkBotStateSpaceDataset(BaseDataset):
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         super(LinkBotStateSpaceDataset, self).__init__(dataset_dirs)
 
-        self.local_env_params = LocalEnvParams.from_json(self.hparams['local_env_params'])
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
 
         self.action_feature_names = ['%d/action']

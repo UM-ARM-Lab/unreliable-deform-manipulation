@@ -114,11 +114,11 @@ class BaseDataset:
 
         # Given the member lists of states, actions, and constants set in the constructor, create
         # a dict for parsing a feature
-        # features_description = self.make_features_description()
-        # dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
+        features_description = self.make_features_description()
+        dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
         # Note: for converting old datasets, use these instead
-        features_description = self.old_make_features_description()
-        dataset = parse_dataset(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
+        # features_description = self.old_make_features_description()
+        # dataset = parse_dataset(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
 
         if not do_not_process:
             dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)

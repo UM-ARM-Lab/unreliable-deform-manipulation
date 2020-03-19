@@ -121,17 +121,18 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
     def on_execution_complete(self,
                               planned_path: List[Dict[str, np.ndarray]],
                               planned_actions: np.ndarray,
-                              tail_goal_point: np.ndarray,
+                              goal,
                               actual_path: List[Dict[str, np.ndarray]],
                               full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
+        # FIXME: update to use scenario?
         link_bot_planned_path = planned_path['link_bot']
         link_bot_actual_path = actual_path['link_bot']
         del planned_path, actual_path
-        execution_to_goal_error = np.linalg.norm(link_bot_actual_path[-1, 0:2] - tail_goal_point)
-        plan_to_goal_error = np.linalg.norm(link_bot_planned_path[-1, 0:2] - tail_goal_point)
+        execution_to_goal_error = np.linalg.norm(link_bot_actual_path[-1, 0:2] - goal)
+        plan_to_goal_error = np.linalg.norm(link_bot_planned_path[-1, 0:2] - goal)
         plan_to_execution_error = np.linalg.norm(link_bot_actual_path[-1, 0:2] - link_bot_planned_path[-1, 0:2])
         lengths = [np.linalg.norm(link_bot_planned_path[i] - link_bot_planned_path[i - 1]) for i in
                    range(1, len(link_bot_planned_path))]
@@ -151,7 +152,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'plan_to_execution_error': plan_to_execution_error,
             'path_length': path_length,
             'num_nodes': num_nodes,
-            'goal': tail_goal_point,
+            'goal': goal,
         }
         self.metrics['metrics'].append(metrics_for_plan)
         metrics_file = self.metrics_filename.open('w')
@@ -164,7 +165,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                               self.planner.viz_object,
                               planner_data,
                               full_env_data.data,
-                              tail_goal_point,
+                              goal,
                               link_bot_planned_path,
                               planned_actions,
                               full_env_data.extent)

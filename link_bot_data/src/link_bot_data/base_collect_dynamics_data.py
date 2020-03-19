@@ -13,7 +13,9 @@ from colorama import Fore
 
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory
 from geometry_msgs.msg import Point
-from link_bot_planning.params import LocalEnvParams, FullEnvParams, SimParams
+
+from link_bot_planning.get_scenario import get_scenario
+from link_bot_planning.params import FullEnvParams, SimParams
 from link_bot_pycommon import ros_pycommon, link_bot_pycommon
 from peter_msgs.srv import ExecuteActionRequest
 
@@ -44,7 +46,7 @@ def sample_delta_pos(action_rng: np.random.RandomState,
 def generate_traj(args, service_provider, traj_idx, global_t_step, action_rng: np.random.RandomState):
     action_msg = ExecuteActionRequest()
 
-    max_delta_pos = ros_pycommon.get_max_speed() * args.dt
+    max_delta_pos = service_provider.get_max_speed() * args.dt
 
     # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
     # over the course of this function
@@ -97,24 +99,34 @@ def generate_traj(args, service_provider, traj_idx, global_t_step, action_rng: n
     return example, global_t_step
 
 
-def generate_trajs(service_provider, args, full_output_directory, env_rng: np.random.RandomState,
-                   action_rng: np.random.RandomState):
-    examples = np.ndarray([args.trajs_per_file], dtype=object)
-    global_t_step = 0
-    for i in range(args.trajs):
-        current_record_traj_idx = i % args.trajs_per_file
-
-        if not args.no_obstacles and i % args.move_objects_every_n == 0:
-            objects = ['moving_box{}'.format(i) for i in range(1, 7)]
+def rearrange_environment(service_provider, traj_idx, args, env_rng):
+    if args.movable_obstacles is not None:
+        movable_obstacles = args.movable_obstacles.split(",")
+        if len(movable_obstacles) > 0 and traj_idx % args.move_objects_every_n == 0:
             service_provider.move_objects(args.max_step_size,
-                                          objects,
+                                          movable_obstacles,
                                           args.env_w,
                                           args.env_h,
                                           padding=0.5,
                                           rng=env_rng)
 
+
+def generate_trajs(service_provider,
+                   scenario,
+                   args,
+                   full_output_directory,
+                   env_rng: np.random.RandomState,
+                   action_rng: np.random.RandomState):
+    examples = np.ndarray([args.trajs_per_file], dtype=object)
+    global_t_step = 0
+    for traj_idx in range(args.trajs):
+        current_record_traj_idx = traj_idx % args.trajs_per_file
+
+        # Might not do anything, depends on args
+        rearrange_environment(service_provider, traj_idx, args, env_rng)
+
         # Generate a new trajectory
-        example, global_t_step = generate_traj(args, service_provider, i, global_t_step, action_rng)
+        example, global_t_step = generate_traj(args, service_provider, traj_idx, global_t_step, action_rng)
         examples[current_record_traj_idx] = example
 
         # Save the data
@@ -123,7 +135,7 @@ def generate_trajs(service_provider, args, full_output_directory, env_rng: np.ra
             # since TFRecords don't really support hierarchical data structures
             serialized_dataset = tensorflow.data.Dataset.from_tensor_slices((examples))
 
-            end_traj_idx = i + args.start_idx_offset
+            end_traj_idx = traj_idx + args.start_idx_offset
             start_traj_idx = end_traj_idx - args.trajs_per_file + 1
             full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type='ZLIB')
@@ -138,6 +150,8 @@ def generate_trajs(service_provider, args, full_output_directory, env_rng: np.ra
 def generate(service_provider, args):
     rospy.init_node('collect_dynamics_data')
 
+    scenario = get_scenario(args.scenario)
+
     assert args.trajs % args.trajs_per_file == 0, "num trajs must be multiple of {}".format(args.trajs_per_file)
 
     full_output_directory = data_directory(args.outdir, args.trajs)
@@ -145,27 +159,26 @@ def generate(service_provider, args):
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)
 
-    local_env_params = LocalEnvParams(h_rows=args.local_env_rows, w_cols=args.local_env_cols, res=args.res)
     full_env_cols = int(args.env_w / args.res)
     full_env_rows = int(args.env_h / args.res)
     full_env_params = FullEnvParams(h_rows=full_env_rows, w_cols=full_env_cols, res=args.res)
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
-                           move_obstacles=not args.no_obstacles)
+                           movable_obstacles=args.movable_obstacles)
 
     states_description = service_provider.get_states_description()
+    n_action = service_provider.get_n_action()
 
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'dt': args.dt,
             'max_step_size': args.max_step_size,
-            'local_env_params': local_env_params.to_json(),
             'full_env_params': full_env_params.to_json(),
             'sim_params': sim_params.to_json(),
             'sequence_length': args.steps_per_traj,
             'states_description': states_description,
-            # FIXME: where does this really come from?
-            'n_action': 2,
+            'n_action': n_action,
+            'scenario': args.scenario,
         }
         json.dump(options, of, indent=1)
 
@@ -181,4 +194,4 @@ def generate(service_provider, args):
                                max_step_size=args.max_step_size,
                                reset_gripper_to=None)
 
-    generate_trajs(service_provider, args, full_output_directory, env_rng, action_rng)
+    generate_trajs(service_provider, scenario, args, full_output_directory, env_rng, action_rng)

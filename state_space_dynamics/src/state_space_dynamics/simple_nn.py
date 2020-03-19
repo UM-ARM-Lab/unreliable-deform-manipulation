@@ -14,8 +14,8 @@ from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 class SimpleNN(MyKerasModel):
 
-    def __init__(self, hparams: Dict, batch_size: int):
-        super().__init__(hparams=hparams, batch_size=batch_size)
+    def __init__(self, hparams: Dict, batch_size: int, scenario : ExperimentScenario):
+        super().__init__(hparams=hparams, batch_size=batch_size, scenario=scenario)
         self.initial_epoch = 0
 
         self.concat = layers.Concatenate()

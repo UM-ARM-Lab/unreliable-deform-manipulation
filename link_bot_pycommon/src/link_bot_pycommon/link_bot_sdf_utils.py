@@ -175,20 +175,6 @@ def load_sdf(filename):
     return sdf, grad, res, origin
 
 
-def make_rope_images(sdf_data, rope_configurations):
-    rope_configurations = np.atleast_2d(rope_configurations)
-    m, N = rope_configurations.shape
-    n_rope_points = int(N / 2)
-    rope_images = np.zeros([m, sdf_data.sdf.shape[0], sdf_data.sdf.shape[1], n_rope_points])
-    for i in range(m):
-        for j in range(n_rope_points):
-            px = rope_configurations[i, 2 * j]
-            py = rope_configurations[i, 2 * j + 1]
-            row, col = point_to_idx(px, py, sdf_data.resolution, sdf_data.origin)
-            rope_images[i, row, col, j] = 1
-    return rope_images
-
-
 def inflate(local_env: OccupancyData, radius_m: float):
     assert radius_m >= 0
     if radius_m == 0:
@@ -209,11 +195,11 @@ def inflate(local_env: OccupancyData, radius_m: float):
     return inflated
 
 
-@tf.function
+# @tf.function
 def get_local_env_and_origin_differentiable(center_point,
                                             full_env,
                                             full_env_origin,
-                                            res: float,
+                                            res,
                                             local_h_rows: int,
                                             local_w_cols: int):
     """
@@ -258,32 +244,35 @@ def get_local_env_and_origin_differentiable(center_point,
     local_env_pixel_col_indices = tf.range(0, local_w_cols, dtype=tf.float32)
     local_env_pixel_coordinates = tf.stack(tf.meshgrid(local_env_pixel_row_indices, local_env_pixel_col_indices), axis=2)
     local_env_pixel_coordinates = tf.reshape(tf.transpose(local_env_pixel_coordinates, [1, 0, 2]), [-1, 2])
+    batch_local_env_pixel_coordinates = tf.tile(tf.expand_dims(local_env_pixel_coordinates, axis=1), [1, b, 1])
     local_to_full_offset = full_center - local_env_origin
-    local_env_pixel_coordinates_in_full_env_frame = local_env_pixel_coordinates + local_to_full_offset
-    local_env_pixel_coordinates_in_full_env_frame = tf.expand_dims(local_env_pixel_coordinates_in_full_env_frame, axis=0)
-    local_env_pixel_coordinates_matrix = tf.tile(local_env_pixel_coordinates_in_full_env_frame, [full_h_rows * full_w_cols, 1, 1])
-    # TODO: figure out why the fuck this is so slow
-    return local_env_pixel_coordinates_matrix, local_env_origin
-    #
-    # full_env_pixel_row_indices = tf.range(0, full_h_rows, dtype=tf.float32)
-    # full_env_pixel_col_indices = tf.range(0, full_w_cols, dtype=tf.float32)
-    # full_env_pixel_coordinates = tf.stack(tf.meshgrid(full_env_pixel_row_indices, full_env_pixel_col_indices), axis=2)
-    # full_env_pixel_coordinates = tf.reshape(tf.transpose(full_env_pixel_coordinates, [1, 0, 2]), [-1, 2])
-    # full_env_pixel_coordinates = tf.expand_dims(full_env_pixel_coordinates, axis=1)
-    # full_env_pixel_coordinates_matrix = tf.tile(full_env_pixel_coordinates, [1, local_h_rows * local_w_cols, 1])
-    #
-    # # this will have shape [h*w, h'*w']
-    # coordinate_difference_matrix = full_env_pixel_coordinates_matrix - local_env_pixel_coordinates_matrix
-    # squared_distances = tf.reduce_sum(tf.square(coordinate_difference_matrix), axis=2)
-    # weights = tf.exp(-k * squared_distances)
-    #
-    # full_env_flat = tf.reshape(full_env, [b, full_h_rows * full_w_cols])
-    # local_env_flat = tf.matmul(full_env_flat, weights)
-    # local_env = tf.reshape(local_env_flat, [b, local_h_rows, local_w_cols])
-    #
-    # return local_env, local_env_origin
+    local_env_pixel_coordinates_in_full_env_frame = batch_local_env_pixel_coordinates + local_to_full_offset
+    local_env_pixel_coordinates_in_full_env_frame = tf.transpose(local_env_pixel_coordinates_in_full_env_frame, [1, 0, 2])
+    local_env_pixel_coordinates_in_full_env_frame = tf.expand_dims(local_env_pixel_coordinates_in_full_env_frame, axis=1)
+    local_env_pixel_coordinates_matrix = tf.tile(local_env_pixel_coordinates_in_full_env_frame,
+                                                 [1, full_h_rows * full_w_cols, 1, 1])
+
+    # TODO: figure out why this is so slow
+    full_env_pixel_row_indices = tf.range(0, full_h_rows, dtype=tf.float32)
+    full_env_pixel_col_indices = tf.range(0, full_w_cols, dtype=tf.float32)
+    full_env_pixel_coordinates = tf.stack(tf.meshgrid(full_env_pixel_row_indices, full_env_pixel_col_indices), axis=2)
+    full_env_pixel_coordinates = tf.reshape(tf.transpose(full_env_pixel_coordinates, [1, 0, 2]), [-1, 2])
+    full_env_pixel_coordinates = tf.expand_dims(full_env_pixel_coordinates, axis=1)
+    full_env_pixel_coordinates_matrix = tf.tile(full_env_pixel_coordinates, [1, local_h_rows * local_w_cols, 1])
+
+    # this will have shape [b, h*w, h'*w']
+    coordinate_difference_matrix = full_env_pixel_coordinates_matrix - local_env_pixel_coordinates_matrix
+    squared_distances = tf.reduce_sum(tf.square(coordinate_difference_matrix), axis=3)
+    weights = tf.exp(-k * squared_distances)
+
+    full_env_flat = tf.reshape(full_env, [b, full_h_rows * full_w_cols])
+    local_env_flat = tf.einsum("ij,ijk->ik", full_env_flat, weights)
+    local_env = tf.reshape(local_env_flat, [b, local_h_rows, local_w_cols])
+
+    return local_env, local_env_origin
 
 
+# @tf.function
 def get_local_env_and_origin(center_point: np.ndarray,
                              full_env: np.ndarray,
                              full_env_origin: np.ndarray,

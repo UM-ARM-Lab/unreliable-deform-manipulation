@@ -8,6 +8,7 @@ import tensorflow as tf
 
 import state_space_dynamics
 from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
+from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_metrics_function
 from moonshine.tensorflow_train_test_loop import evaluate, train
@@ -15,7 +16,7 @@ from moonshine.tensorflow_train_test_loop import evaluate, train
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.6)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
 
 def train_func(args, seed: int):
@@ -39,11 +40,13 @@ def train_func(args, seed: int):
     model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = args.batch_size
     model = state_space_dynamics.get_model(model_hparams['model_class'])
+    scenario = get_scenario(train_dataset.hparams['scenario'])
+    net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
 
     ###############
     # Train
     ###############
-    train(keras_model=model,
+    train(keras_model=net,
           model_hparams=model_hparams,
           train_tf_dataset=train_tf_dataset,
           val_tf_dataset=val_tf_dataset,
@@ -77,17 +80,17 @@ def eval_func(args, seed: int):
     model_hparams['dt'] = test_dataset.hparams['dt']
 
     model = state_space_dynamics.get_model(model_hparams['model_class'])
+    scenario = get_scenario(test_dataset.hparams['scenario'])
+    net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
 
     ###############
     # Evaluate
     ###############
-    evaluate(keras_model=model,
-             model_hparams=model_hparams,
+    evaluate(keras_model=net,
              test_tf_dataset=test_tf_dataset,
-             batch_size=args.batch_size,
              loss_function=dynamics_loss_function,
              metrics_function=dynamics_metrics_function,
-             checkpoint=args.checkpoint)
+             checkpoint_path=args.checkpoint)
 
 
 def main():

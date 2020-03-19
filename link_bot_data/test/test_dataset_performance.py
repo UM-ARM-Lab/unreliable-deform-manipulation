@@ -7,7 +7,8 @@ import progressbar
 import tensorflow as tf
 
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance, add_traj_image, add_transition_image
+from link_bot_data.link_bot_dataset_utils import balance
+from moonshine.image_functions import add_traj_image, add_transition_image
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 

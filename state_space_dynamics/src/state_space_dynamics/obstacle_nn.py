@@ -8,11 +8,11 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_planning.experiment_scenario import ExperimentScenario
-from link_bot_planning.params import LocalEnvParams, FullEnvParams
+from link_bot_planning.params import FullEnvParams
 from link_bot_pycommon.link_bot_sdf_utils import get_local_env_and_origin_differentiable
-from moonshine.action_smear_layer import smear_action
+from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.numpy_utils import add_batch, dict_of_sequences_to_sequence_of_dicts
-from moonshine.raster_points_layer import raster_differentiable
+from moonshine.image_functions import raster_differentiable
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -20,12 +20,13 @@ from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 class ObstacleNN(MyKerasModel):
 
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
-        super().__init__(hparams, batch_size)
+        super().__init__(hparams, batch_size, scenario)
         self.initial_epoch = 0
-        self.scenario = scenario
 
-        self.local_env_params = LocalEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['local_env_params'])
         self.full_env_params = FullEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['full_env_params'])
+        if not self.hparams['use_full_env']:
+            self.local_env_h_rows = self.hparams['local_env_h_rows']
+            self.local_env_w_cols = self.hparams['local_env_w_cols']
         self.batch_size = batch_size
         self.concat = layers.Concatenate()
         self.concat2 = layers.Concatenate()
@@ -63,11 +64,9 @@ class ObstacleNN(MyKerasModel):
                                                                               full_env=full_env,
                                                                               full_env_origin=full_env_origin,
                                                                               res=res,
-                                                                              local_h_rows=self.local_env_params.h_rows,
-                                                                              local_w_cols=self.local_env_params.w_cols)
-        env_h_rows = tf.convert_to_tensor(self.local_env_params.h_row, tf.int64)
-        env_w_cols = tf.convert_to_tensor(self.local_env_params.w_cols, tf.int64)
-        return local_env, local_env_origin, env_h_rows, env_w_cols
+                                                                              local_h_rows=self.local_env_h_rows,
+                                                                              local_w_cols=self.local_env_w_cols)
+        return local_env, local_env_origin
 
     def call(self, dataset_element, training=None, mask=None):
         input_dict, _ = dataset_element
@@ -92,21 +91,23 @@ class ObstacleNN(MyKerasModel):
 
             action_t = actions[:, t]
 
-            if 'use_full_env' in self.hparams and self.hparams['use_full_env']:
+            if self.hparams['use_full_env']:
                 env = full_env
                 env_origin = full_env_origin
-                env_h_rows = tf.convert_to_tensor(self.full_env_params.h_rows, tf.int64)
-                env_w_cols = tf.convert_to_tensor(self.full_env_params.w_cols, tf.int64)
+                env_h_rows = tf.convert_to_tensor(self.full_env_params.h_rows, tf.float32)
+                env_w_cols = tf.convert_to_tensor(self.full_env_params.w_cols, tf.float32)
             else:
                 state = self.state_vector_to_state_dict(s_t)
                 local_env_center = self.scenario.local_environment_center_differentiable(state)
                 # NOTE: we assume same resolution for local and full environment
-                env, env_origin, env_h_rows, env_w_cols = self.get_local_env(local_env_center, full_env_origin, full_env, res)
+                env, env_origin = self.get_local_env(local_env_center, full_env_origin, full_env, res)
+                env_h_rows = tf.convert_to_tensor(self.local_env_h_rows, tf.float32)
+                env_w_cols = tf.convert_to_tensor(self.local_env_w_cols, tf.float32)
 
             rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols)
 
             # FIXME: this is differentiable already, but we need to implement it in TensorFlow
-            action_image_t = tf.numpy_function(smear_action, [action_t, env_h_rows, env_w_cols], tf.float32)
+            action_image_t = smear_action_differentiable(action_t, env_h_rows, env_w_cols)
 
             env = tf.expand_dims(env, axis=3)
 

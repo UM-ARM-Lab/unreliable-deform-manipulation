@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 import ompl.base as ob
@@ -8,22 +8,21 @@ import rospy
 from colorama import Fore
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning.experiment_scenario import ExperimentScenario
-from link_bot_planning.get_scenario import get_scenario
 from link_bot_planning.link_bot_goal import MyGoalRegion
 from link_bot_planning.state_spaces import from_numpy, to_numpy_flat, ValidRopeConfigurationCompoundSampler, \
     compound_to_numpy, ompl_control_to_model_action
 from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_planning.viz_object import VizObject
-from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
+from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon.ros_pycommon import Services
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 @dataclass
 class PlannerResult:
-    path: Dict[str, np.ndarray]
-    actions: np.ndarray
+    path: Optional[List[Dict]]
+    actions: Optional[np.ndarray]
     planner_status: ob.PlannerStatus
 
 
@@ -33,7 +32,7 @@ class MyPlanner:
                  fwd_model: BaseDynamicsFunction,
                  classifier_model: BaseConstraintChecker,
                  params: Dict,
-                 services: GazeboServices,
+                 service_provider: Services,
                  scenario: ExperimentScenario,
                  viz_object: VizObject,
                  seed: int,
@@ -49,7 +48,7 @@ class MyPlanner:
         self.params = params
         # TODO: consider making full env params h/w come from elsewhere. res should match the model though.
         self.full_env_params = self.fwd_model.full_env_params
-        self.services = services
+        self.service_provider = service_provider
         self.viz_object = viz_object
         self.si = ob.SpaceInformation(ob.StateSpace())
         self.seed = seed
@@ -91,7 +90,7 @@ class MyPlanner:
         control_bounds.setLow(0, -np.pi)
         control_bounds.setHigh(0, np.pi)
         control_bounds.setLow(1, 0)
-        max_delta_pos = ros_pycommon.get_max_speed() * self.fwd_model.dt
+        max_delta_pos = service_provider.get_max_speed() * self.fwd_model.dt
         control_bounds.setHigh(1, max_delta_pos)
         self.control_space = oc.RealVectorControlSpace(self.state_space, self.n_action)
         self.control_space.setBounds(control_bounds)
@@ -115,12 +114,15 @@ class MyPlanner:
             raise NotImplementedError()
 
         smoothing_params = self.params['smoothing']
-        # FIXME actions or controls?
-        self.smoother = TrajectorySmoother(verbose=self.verbose,
-                                           fwd_model=fwd_model,
-                                           classifier_model=classifier_model,
-                                           params=smoothing_params,
-                                           experiment_scenario=self.experiment_scenario)
+        # FIXME: call it "action" instead of control everywhere
+        if smoothing_params is None:
+            self.smoother = None
+        else:
+            self.smoother = TrajectorySmoother(verbose=self.verbose,
+                                               fwd_model=fwd_model,
+                                               classifier_model=classifier_model,
+                                               params=smoothing_params,
+                                               experiment_scenario=self.experiment_scenario)
 
     def is_valid(self, state):
         return self.state_space.satisfiesBounds(state)
@@ -243,11 +245,14 @@ class MyPlanner:
         if planner_status:
             ompl_path = self.ss.getSolutionPath()
             controls_np, planned_path = self.convert_path(ompl_path)
-            controls_np, planned_path = self.smooth_path(goal, controls_np, planned_path)
+            if self.smoother is not None:
+                controls_np, planned_path = self.smooth_path(goal, controls_np, planned_path)
             return PlannerResult(planner_status=planner_status,
                                  path=planned_path,
                                  actions=controls_np)
-        return PlannerResult(planner_status)
+        return PlannerResult(planner_status=planner_status,
+                             path=None,
+                             actions=None)
 
     def state_sampler_allocator(self, state_space):
         # Note: I had issues using RealVectorStateSampler() here...

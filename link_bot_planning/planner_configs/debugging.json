@@ -1,5 +1,5 @@
 {
-  "fwd_model_dir": "ss_log_data/with_gripper/March_03_12-07-54_c9cc9e4aa0",
+  "fwd_model_dir": "ss_log_data/debugging_rope_no_obs/March_19_13-01-44_c28425e70b",
   "classifier_model_dir": "classifiers/none",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
@@ -11,18 +11,25 @@
   "h": 5.0,
   "random_goal_w": 4.5,
   "random_goal_h": 4.5,
-  "timeout": 30,
-	"move_obstacles": false,
+  "timeout": 5,
+	"movable_obstacles": [
+    "moving_box1",
+    "moving_box2",
+    "moving_box3",
+    "moving_box4",
+    "moving_box5",
+    "moving_box6",
+    "moving_box7",
+    "moving_box8",
+    "moving_box9",
+    "moving_box10",
+    "moving_box11"
+  ],
   "goal_threshold": 0.15,
   "fixed_goal": null,
   "reset_gripper_to": null,
-	"real_time_rate": 10.0,
+	"real_time_rate": 0.0,
 	"max_step_size": 0.01,
-  "smoothing": {
-      "iters": 200,
-      "goal_alpha": 1000,
-      "constraints_alpha": 1,
-      "action_alpha": 1
-  },
+  "smoothing": null,
   "scenario": "link_bot"
 }

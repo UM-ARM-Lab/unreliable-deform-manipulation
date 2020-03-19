@@ -19,9 +19,9 @@ from ompl import base as ob
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory
 from link_bot_gazebo import gazebo_services
 from link_bot_planning import ompl_viz
-from link_bot_planning.get_scenario import get_planner
+from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.params import SimParams
+from link_bot_planning.params import SimParams, LocalEnvParams
 from link_bot_planning.plan_and_execute import PlanAndExecute
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
@@ -45,6 +45,8 @@ class ClassifierDataCollector(PlanAndExecute):
                  seed: int,
                  planner_params: Dict,
                  sim_params: SimParams,
+                 local_env_h_rows: int,
+                 local_env_w_cols: int,
                  n_steps_per_example: int,
                  n_examples_per_record: int,
                  services: Services,
@@ -67,7 +69,8 @@ class ClassifierDataCollector(PlanAndExecute):
         self.n_examples_per_record = n_examples_per_record
         self.n_steps_per_example = n_steps_per_example
         self.outdir = outdir
-        self.local_env_params = self.planner.fwd_model.local_env_params
+        self.local_env_params = LocalEnvParams(h_rows=local_env_h_rows,
+                                               w_cols=local_env_w_cols)
         self.reset_gripper_to = reset_gripper_to
         self.fixed_goal = fixed_goal
         self.is_victor = is_victor
@@ -89,7 +92,7 @@ class ClassifierDataCollector(PlanAndExecute):
             'verbose': verbose,
             'planner_params': planner_params,
             'sim_params': sim_params.to_json(),
-            'local_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
+            'local_env_params': self.local_env_params,
             'full_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['full_env_params'],
             'sequence_length': self.n_steps_per_example,
             'fwd_model_dir': str(self.fwd_model_dir),
@@ -166,6 +169,8 @@ class ClassifierDataCollector(PlanAndExecute):
             'full_env/res': float_tensor_to_bytes_feature(full_env_data.resolution),
         }
 
+        print("steps in full plath: {}".format(planned_actions.shape[0]))
+
         for time_idx in range(self.n_steps_per_example):
             # we may have to truncate, or pad the trajectory, depending on the length of the plan
             if time_idx < planned_actions.shape[0]:
@@ -223,12 +228,10 @@ def main():
     parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument("n_total_plans", type=int, help='number of plans')
     parser.add_argument("--n-plans-per-env", type=int, help='number of plans per env', default=16)
-    parser.add_argument("--n-steps-per-example", type=int, help='number of steps per example', default=16)
+    parser.add_argument("--n-steps-per-example", type=int, help='number of steps per example', default=100)
     parser.add_argument("--n-examples-per-record", type=int, help='number of examples per tfrecord', default=128)
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("outdir", type=pathlib.Path)
-    # TODO: make full env size a parameter here, since it's independent of what "full env" meant for the model
-    #  current full env size for the classifier is indirectly defined by the full env size for the model used here to collect data
     parser.add_argument("--seed", '-s', type=int)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
 
@@ -240,7 +243,6 @@ def main():
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
 
-    # TODO: make this code agnostic, use ros params or a separate node for the service provider?
     # Start Services
     rospy.set_param('service_provider', args.env_type)
     if args.env_type == 'victor':
@@ -253,7 +255,7 @@ def main():
     params = json.load(args.params.open("r"))
     sim_params = SimParams(real_time_rate=params['real_time_rate'],
                            max_step_size=params['max_step_size'],
-                           move_obstacles=params['move_obstacles'])
+                           movable_obstacles=params['movable_obstacles'])
 
     rospy.init_node('collect_classifier_data')
 
@@ -263,8 +265,7 @@ def main():
                                max_step_size=sim_params.max_step_size)
     service_provider.pause(std_srvs.srv.EmptyRequest())
 
-    # NOTE: we could make the classifier take a different sized local environment than the dynamics, just a thought.
-    planner, fwd_model_info = get_planner(planner_params=params, services=service_provider, seed=args.seed)
+    planner, fwd_model_info = get_planner(planner_params=params, services=service_provider, seed=args.seed, verbose=args.verbose)
 
     data_collector = ClassifierDataCollector(
         planner=planner,
@@ -276,6 +277,8 @@ def main():
         seed=args.seed,
         planner_params=params,
         sim_params=sim_params,
+        local_env_h_rows=local_env_h_rows,
+        local_env_w_cols=local_env_w_cols,
         n_steps_per_example=args.n_steps_per_example,
         n_examples_per_record=args.n_examples_per_record,
         outdir=args.outdir,

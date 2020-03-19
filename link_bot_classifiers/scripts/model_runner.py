@@ -9,7 +9,8 @@ from colorama import Fore
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance, add_transition_image, add_traj_image
+from link_bot_data.link_bot_dataset_utils import balance
+from moonshine.image_functions import add_traj_image, add_transition_image
 from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function
@@ -113,19 +114,19 @@ def eval_main(args, seed: int):
 
     scenario = get_scenario(model_hparams['scenario'])
 
-    # if model_hparams['image_key'] == 'transition_image':
-    #     test_tf_dataset = add_transition_image(test_tf_dataset,
-    #                                            states_keys=net.states_keys,
-    #                                            scenario=scenario,
-    #                                            local_env_h=net.local_env_params.h_rows,
-    #                                            local_env_w=net.local_env_params.w_cols,
-    #                                            )
-    # elif model_hparams['image_key'] == 'trajectory_image':
-    #     test_tf_dataset = add_traj_image(test_tf_dataset)
+    if model_hparams['image_key'] == 'transition_image':
+        test_tf_dataset = add_transition_image(test_tf_dataset,
+                                               states_keys=net.states_keys,
+                                               scenario=scenario,
+                                               local_env_h=net.local_env_params.h_rows,
+                                               local_env_w=net.local_env_params.w_cols,
+                                               )
+    elif model_hparams['image_key'] == 'trajectory_image':
+        test_tf_dataset = add_traj_image(test_tf_dataset)
 
-    # if labeling_params['balance']:
-    #     print(Fore.GREEN + "balancing..." + Fore.RESET)
-    #     test_tf_dataset = balance(test_tf_dataset)
+    if labeling_params['balance']:
+        print(Fore.GREEN + "balancing..." + Fore.RESET)
+        test_tf_dataset = balance(test_tf_dataset)
     ###############
     # Evaluate
     ###############

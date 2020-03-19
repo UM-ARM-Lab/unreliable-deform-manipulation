@@ -3,21 +3,14 @@ from __future__ import print_function, division
 
 import os
 import pathlib
-import re
-from time import perf_counter
 
-from typing import Optional, List
+from typing import Optional
 
 import git
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_planning.experiment_scenario import ExperimentScenario
-from link_bot_planning.params import LocalEnvParams
 from link_bot_pycommon import link_bot_pycommon
-from link_bot_pycommon.link_bot_pycommon import print_dict
-from moonshine.numpy_utils import add_batch
-from moonshine.raster_points_layer import make_transition_image, make_traj_images
 
 
 def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
@@ -139,101 +132,6 @@ def balance(dataset, label_key='label'):
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
 
     return balanced_dataset
-
-
-def add_traj_image(dataset):
-    def _make_traj_images(full_env, full_env_origin, res, stop_index, *args):
-
-        n_args = len(args)
-        n_states = n_args // 2
-        planned_states = args[:n_states]
-        planned_states_keys = args[n_states:]
-
-        # convert from a dictionary where each element is [T, n_state] to
-        # a list where each element is a dictionary, and element element of that dictionary is [1 (batch), n_state]
-        planned_states_seq = []
-        for t in range(stop_index):
-            state_t = {}
-            for k, v in zip(planned_states_keys, planned_states):
-                state_t[k] = tf.expand_dims(v[t], axis=0)  # add batch here
-            planned_states_seq.append(state_t)
-
-        full_env, full_env_origin, res = add_batch(full_env, full_env_origin, res)
-        image = make_traj_images(full_env=full_env,
-                                 full_env_origin=full_env_origin,
-                                 res=res,
-                                 states=planned_states_seq)[0]
-        return image
-
-    def _add_traj_image_wrapper(input_dict):
-        full_env = input_dict['full_env/env']
-        full_env_origin = input_dict['full_env/origin']
-        res = input_dict['full_env/res']
-        stop_index = input_dict['stop_idx']
-        planned_states = []
-        planned_state_keys = []
-        # NOTE: Here we lose the semantic meaning, because we can't pass a dict to a numpy_function :(
-        #  I hate TF
-        for k, v in input_dict.items():
-            m = re.fullmatch('planned_state/(.*)_all', k)
-            if m:
-                planned_state_key = 'planned_state/{}'.format(m.group(1))
-                v_t = v[:stop_index]
-                planned_states.append(v_t)
-                planned_state_keys.append(planned_state_key)
-        tensor_inputs = [full_env, full_env_origin, res, stop_index] + planned_states + planned_state_keys
-        image = tf.numpy_function(_make_traj_images, tensor_inputs, tf.float32)
-        input_dict['trajectory_image'] = image
-        return input_dict
-
-    return dataset.map(_add_traj_image_wrapper)
-
-
-def add_transition_image(dataset,
-                         states_keys: List[str],
-                         scenario: ExperimentScenario,
-                         local_env_w: int,
-                         local_env_h: int,
-                         action_in_image: Optional[bool] = False):
-    def _add_transition_image(input_dict):
-        action = input_dict['action']
-
-        planned_states = {}
-        planned_next_states = {}
-        n_total_points = 0
-        for state_key in states_keys:
-            planned_state_feature_name = 'planned_state/{}'.format(state_key)
-            planned_state_next_feature_name = 'planned_state/{}_next'.format(state_key)
-            planned_state = input_dict[planned_state_feature_name]
-            planned_next_state = input_dict[planned_state_next_feature_name]
-            n_total_points += link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
-            planned_states[state_key] = planned_state
-            planned_next_states[state_key] = planned_next_state
-
-        full_env = input_dict['full_env/env']
-        full_env_res = tf.squeeze(input_dict['full_env/res'])
-        full_env_origin = input_dict['full_env/origin']
-        n_action = action.shape[0]
-
-        batched_inputs = add_batch(full_env, full_env_origin, full_env_res, planned_states, action, planned_next_states)
-        image = make_transition_image(*batched_inputs,
-                                      scenario=scenario,
-                                      local_env_h=local_env_h,
-                                      local_env_w=local_env_w,
-                                      action_in_image=action_in_image)
-        # remove batch dim
-        image = image[0]
-        n_channels = 1 + 2 * n_total_points
-        if action_in_image:
-            n_channels += n_action
-
-        # TODO: finish making this not insanely slow
-        # image.set_shape([local_env_h, local_env_w, n_channels])
-
-        input_dict['transition_image'] = image
-        return input_dict
-
-    return dataset.map(_add_transition_image)
 
 
 def cachename(mode: Optional[str] = None):

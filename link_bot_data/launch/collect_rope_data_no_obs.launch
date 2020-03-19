@@ -1,0 +1,10 @@
+<launch>
+    <arg name="port" default="$RANDOM"/>
+    <env name="GAZEBO_ROS_URI" value="http://localhost:$(arg port)"/>
+    <env name="ROS_MASTER_URI" value="http://localhost:$(eval 1 + arg('port'))"/>
+
+    <include file="$(find link_bot_gazebo)/launch/10_link_no_obs.launch">
+    </include>
+
+    <node name="collect_rope_data_no_obs" pkg="link_bot_data" type="collect_dynamics_data.py" args="-h"/>
+</launch>

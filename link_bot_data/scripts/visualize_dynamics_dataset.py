@@ -15,7 +15,7 @@ from link_bot_data.visualization import plot_rope_configuration
 from link_bot_pycommon.link_bot_pycommon import vector_to_points_2d
 from link_bot_pycommon.args import my_formatter
 
-from moonshine.raster_points_layer import old_raster
+from moonshine.image_functions import old_raster
 from moonshine.numpy_utils import add_batch
 
 tf.compat.v1.enable_eager_execution()

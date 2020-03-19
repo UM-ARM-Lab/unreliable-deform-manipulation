@@ -7,13 +7,14 @@
     "link_bot",
     "tether"
   ],
-  "n_control": 2,
-  "sequence_length": 20,
+  "sequence_length": 10,
   "conv_filters": [
     [8, [5, 5]],
     [8, [3, 3]],
     [8, [3, 3]]
   ],
+  "local_env_h_rows": 200,
+  "local_env_w_cols": 200,
   "fc_layer_sizes": [256],
   "residual": true,
   "mixed": true,

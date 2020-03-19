@@ -7,6 +7,7 @@ import progressbar
 import tensorflow as tf
 from colorama import Fore, Style
 
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from moonshine import experiments_util
 
 
@@ -15,10 +16,11 @@ class MyKerasModel(tf.keras.Model):
     the "call" method is expected to take and return a dictionary
     """
 
-    def __init__(self, hparams: Dict, batch_size: int):
+    def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__()
         self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
         self.batch_size = batch_size
+        self.scenario = scenario
 
 
 def compute_loss_and_metrics(tf_dataset, net, loss_function, metrics_function):

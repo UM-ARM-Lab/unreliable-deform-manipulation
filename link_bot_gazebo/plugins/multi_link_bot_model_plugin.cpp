@@ -164,7 +164,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   }
 
   // plus 1 because we want both end points inclusive
-  ros_node_.setParam("link_bot/n_state", static_cast<int>((num_links_ + 1) * 2));
+  ros_node_.setParam("n_action", 2);
   ros_node_.setParam("link_bot/rope_length", length_);
   ros_node_.setParam("link_bot/max_speed", max_speed_);
 
@@ -274,8 +274,7 @@ bool MultiLinkBotModelPlugin::ExecuteAbsoluteAction(peter_msgs::ExecuteActionReq
 {
   mode_ = "position";
 
-  ignition::math::Vector3d position{req.action.gripper1_delta_pos.x, req.action.gripper1_delta_pos.y,
-                                    req.action.gripper1_delta_pos.z};
+  ignition::math::Vector3d position{req.action.gripper1_delta_pos.x, req.action.gripper1_delta_pos.y, 0};
   gripper1_target_position_ = position;
 
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
@@ -297,8 +296,7 @@ bool MultiLinkBotModelPlugin::ExecuteAction(peter_msgs::ExecuteActionRequest &re
 {
   mode_ = "position";
 
-  ignition::math::Vector3d delta_position{req.action.gripper1_delta_pos.x, req.action.gripper1_delta_pos.y,
-                                          req.action.gripper1_delta_pos.z};
+  ignition::math::Vector3d delta_position{req.action.gripper1_delta_pos.x, req.action.gripper1_delta_pos.y, 0};
   gripper1_target_position_ += delta_position;
 
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
@@ -404,8 +402,7 @@ bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(peter_msgs::LinkBotTraje
   peter_msgs::GetObjectsResponse get_objects_res;
   for (auto const &action : req.gripper1_traj) {
     mode_ = "position";
-    ignition::math::Vector3d delta_position{action.gripper1_delta_pos.x, action.gripper1_delta_pos.y,
-                                            action.gripper1_delta_pos.z};
+    ignition::math::Vector3d delta_position{action.gripper1_delta_pos.x, action.gripper1_delta_pos.y, 0};
     gripper1_target_position_ += delta_position;
 
     auto control_result = UpdateControl();

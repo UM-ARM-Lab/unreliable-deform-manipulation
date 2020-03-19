@@ -8,7 +8,8 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_classifiers.visualization import plot_classifier_data
-from link_bot_data.link_bot_dataset_utils import balance, add_traj_image, add_transition_image
+from link_bot_data.link_bot_dataset_utils import balance
+from moonshine.image_functions import add_traj_image, add_transition_image
 from link_bot_data.classifier_dataset import ClassifierDataset
 # from link_bot_data.old_classifier_dataset import ClassifierDataset
 from link_bot_data.visualization import plot_rope_configuration

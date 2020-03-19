@@ -4,6 +4,10 @@ from ignition.markers import MarkerProvider
 class ExperimentScenario:
 
     @staticmethod
+    def movable_objects():
+        raise NotImplementedError()
+
+    @staticmethod
     def local_environment_center(state):
         raise NotImplementedError()
 

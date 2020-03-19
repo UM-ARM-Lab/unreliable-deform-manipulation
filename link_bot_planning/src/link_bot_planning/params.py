@@ -4,12 +4,9 @@ from typing import List
 from dataclasses_json import dataclass_json
 
 
-# TODO: make external method for turning on and off visualization options (ros param server?, RQT GUI?)
 @dataclass_json
 @dataclass
 class PlannerParams:
-    # should come from dynamics dataset, since we need this to match?
-    # OR ACTUALLY, this could be a thing the classifier could use...
     max_v: float
     goal_threshold: float
     random_epsilon: float
@@ -32,7 +29,7 @@ class PlannerParams:
 class SimParams:
     real_time_rate: float
     max_step_size: float
-    move_obstacles: bool
+    movable_obstacles: str
 
 
 @dataclass_json
@@ -40,7 +37,6 @@ class SimParams:
 class LocalEnvParams:
     h_rows: int
     w_cols: int
-    res: float
 
 
 @dataclass_json
