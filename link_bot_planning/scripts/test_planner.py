@@ -66,7 +66,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
             return super().get_goal(w, h, full_env_data)
 
     def on_plan_complete(self,
-                         planned_path: List[Dict[str, np.ndarray]],
+                         planned_path: List[Dict],
                          goal,
                          planned_actions: np.ndarray,
                          full_env_data: link_bot_sdf_utils.OccupancyData,
@@ -113,7 +113,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
     def on_execution_complete(self,
                               planned_path: List[Dict[str, np.ndarray]],
                               planned_actions: np.ndarray,
-                              goal: np.ndarray,
+                              goal,
                               actual_path: List[Dict[str, np.ndarray]],
                               full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,

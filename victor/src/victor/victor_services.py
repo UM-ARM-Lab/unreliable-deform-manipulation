@@ -23,9 +23,7 @@ class VictorServices(Services):
                   reset_gripper_to: Optional,
                   max_step_size: Optional[float] = None):
         self.wait(verbose)
-
-        if reset_gripper_to is not None:
-            self.reset_world(verbose, None)
+        self.reset_world(verbose, verbose, reset_gripper_to)
 
     def move_objects(self,
                      max_step_size: float,

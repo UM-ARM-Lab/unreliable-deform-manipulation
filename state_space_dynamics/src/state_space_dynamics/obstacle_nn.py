@@ -9,7 +9,7 @@ from tensorflow import keras
 
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import FullEnvParams
-from link_bot_pycommon.link_bot_sdf_utils import get_local_env_and_origin_differentiable
+from moonshine.get_local_environment import get_local_env_and_origin_differentiable
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.numpy_utils import add_batch, dict_of_sequences_to_sequence_of_dicts
 from moonshine.image_functions import raster_differentiable

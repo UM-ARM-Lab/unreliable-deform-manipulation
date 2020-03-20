@@ -8,13 +8,12 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_classifiers.visualization import plot_classifier_data
-from link_bot_data.link_bot_dataset_utils import balance
-from moonshine.image_functions import add_traj_image, add_transition_image
 from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.link_bot_dataset_utils import balance
 # from link_bot_data.old_classifier_dataset import ClassifierDataset
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_planning.get_scenario import get_scenario
-from link_bot_planning.params import LocalEnvParams
+from moonshine.image_functions import add_traj_image, add_transition_image
 
 tf.compat.v1.enable_eager_execution()
 
@@ -28,7 +27,6 @@ def main():
     parser.add_argument('display_type',
                         choices=['just_image', 'transition_image', 'transition_plot', 'trajectory_image', 'trajectory_plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
-    parser.add_argument('--scenario', choices=['link_bot', 'tether'])
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--pre', type=int, default=0.15)
@@ -46,14 +44,14 @@ def main():
     np.random.seed(args.seed)
     tf.compat.v1.random.set_random_seed(args.seed)
 
-    scenario = get_scenario(args.scenario)
-
     labeling_params = json.load(args.labeling_params.open("r"))
 
     states_keys = ['link_bot']
 
     classifier_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
+
+    scenario = get_scenario(classifier_dataset.hparams['scenario'])
 
     if not args.no_balance:
         dataset = balance(dataset)
@@ -77,10 +75,6 @@ def main():
     negative_count = 0
     count = 0
     for i, example in enumerate(dataset):
-
-        if i < 234:
-            continue
-        print(i)
 
         if done:
             break

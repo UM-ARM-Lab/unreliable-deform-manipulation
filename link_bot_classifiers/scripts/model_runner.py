@@ -43,7 +43,8 @@ def train_main(args, seed: int):
     model_hparams['labeling_params'] = labeling_params
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     model = link_bot_classifiers.get_model(model_hparams['model_class'])
-    net = model(hparams=model_hparams, batch_size=args.batch_size)
+    scenario = get_scenario(model_hparams['scenario'])
+    net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train')
@@ -54,22 +55,20 @@ def train_main(args, seed: int):
         train_tf_dataset = balance(train_tf_dataset)
         val_tf_dataset = balance(val_tf_dataset)
 
-    scenario = get_scenario(model_hparams['scenario'])
-
     if 'image_key' in model_hparams:
         image_key = model_hparams['image_key']
         if image_key == 'transition_image':
             train_tf_dataset = add_transition_image(train_tf_dataset,
-                                                    states_keys=model.states_keys,
+                                                    states_keys=net.states_keys,
                                                     scenario=scenario,
-                                                    local_env_h=net.local_env_params.h_rows,
-                                                    local_env_w=net.local_env_params.w_cols,
+                                                    local_env_h=net.hparams['local_env_h_rows'],
+                                                    local_env_w=net.hparams['local_env_w_cols'],
                                                     )
             val_tf_dataset = add_transition_image(train_tf_dataset,
-                                                  states_keys=model.states_keys,
+                                                  states_keys=net.states_keys,
                                                   scenario=scenario,
-                                                  local_env_h=net.local_env_params.h_rows,
-                                                  local_env_w=net.local_env_params.w_cols,
+                                                  local_env_h=net.hparams['local_env_h_rows'],
+                                                  local_env_w=net.hparams['local_env_w_cols'],
                                                   )
         elif image_key == 'trajectory_image':
             train_tf_dataset = add_traj_image(train_tf_dataset)
@@ -102,7 +101,8 @@ def eval_main(args, seed: int):
     ###############
     model_hparams = json.load((args.checkpoint / 'hparams.json').open('r'))
     model = link_bot_classifiers.get_model(model_hparams['model_class'])
-    net = model(hparams=model_hparams, batch_size=args.batch_size)
+    scenario = get_scenario(model_hparams['scenario'])
+    net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
 
     ###############
     # Dataset
@@ -112,14 +112,12 @@ def eval_main(args, seed: int):
 
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
-    scenario = get_scenario(model_hparams['scenario'])
-
     if model_hparams['image_key'] == 'transition_image':
         test_tf_dataset = add_transition_image(test_tf_dataset,
                                                states_keys=net.states_keys,
                                                scenario=scenario,
-                                               local_env_h=net.local_env_params.h_rows,
-                                               local_env_w=net.local_env_params.w_cols,
+                                               local_env_h=net.hparams['local_env_h_rows'],
+                                               local_env_w=net.hparams['local_env_w_cols'],
                                                )
     elif model_hparams['image_key'] == 'trajectory_image':
         test_tf_dataset = add_traj_image(test_tf_dataset)

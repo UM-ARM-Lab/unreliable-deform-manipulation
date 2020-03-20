@@ -1,10 +1,7 @@
 from typing import Optional, List, Tuple
 
-import tensorflow as tf
 import numpy as np
 from colorama import Fore
-
-from moonshine.numpy_utils import add_batch
 
 
 def indeces_to_point(rowcols, resolution, origin):
@@ -193,95 +190,3 @@ def inflate(local_env: OccupancyData, radius_m: float):
             pass
 
     return inflated
-
-
-# @tf.function
-def get_local_env_and_origin_differentiable(center_point,
-                                            full_env,
-                                            full_env_origin,
-                                            res,
-                                            local_h_rows: int,
-                                            local_w_cols: int):
-    """
-    :param center_point: [batch, 2]
-    :param full_env: [batch, h, w]
-    :param full_env_origin: [batch, 2]
-    :param res: [batch]
-    :param local_h_rows: scalar
-    :param local_w_cols: scalar
-    :return:
-    """
-    res = tf.convert_to_tensor(res, dtype=tf.float32)
-    local_h_rows = tf.convert_to_tensor(local_h_rows, dtype=tf.float32)
-    local_w_cols = tf.convert_to_tensor(local_w_cols, dtype=tf.float32)
-    full_env_origin = tf.convert_to_tensor(full_env_origin, dtype=tf.float32)
-    b = int(full_env.shape[0])
-    full_h_rows = int(full_env.shape[1])
-    full_w_cols = int(full_env.shape[2])
-
-    k = 2.0
-    # Unvectorized version numpy
-    # local_env = np.zeros([b, local_h_rows, local_w_cols], dtype=np.float32)
-    # for batch_idx in range(b):
-    #     for u, v in np.ndindex(local_h_rows, local_w_cols):
-    #         local_env_pixel_value = 0
-    #         for h, w in np.ndindex(full_h_rows, full_w_cols):
-    #             local_env_pixel_coordinates = np.array([u, v])
-    #             full_env_pixel_coordinates = np.array([h, w])
-    #             squared_distance = np.sum(np.square(full_env_pixel_coordinates - local_env_pixel_coordinates))
-    #             local_env_pixel_value += np.exp(-k * squared_distance)
-    #         local_env[u, v] = local_env_pixel_value
-
-    local_center = tf.stack([local_h_rows / 2, local_w_cols / 2], axis=0)
-    full_center = tf.stack([full_h_rows / 2, full_w_cols / 2], axis=0)
-
-    center_cols = center_point[:, 0] / res + full_env_origin[:, 1]
-    center_rows = center_point[:, 1] / res + full_env_origin[:, 0]
-    center_point_coordinates = tf.stack([center_rows, center_cols], axis=1)
-    local_env_origin = full_env_origin - center_point_coordinates + local_center
-
-    local_env_pixel_row_indices = tf.range(0, local_h_rows, dtype=tf.float32)
-    local_env_pixel_col_indices = tf.range(0, local_w_cols, dtype=tf.float32)
-    local_env_pixel_coordinates = tf.stack(tf.meshgrid(local_env_pixel_row_indices, local_env_pixel_col_indices), axis=2)
-    local_env_pixel_coordinates = tf.reshape(tf.transpose(local_env_pixel_coordinates, [1, 0, 2]), [-1, 2])
-    batch_local_env_pixel_coordinates = tf.tile(tf.expand_dims(local_env_pixel_coordinates, axis=1), [1, b, 1])
-    local_to_full_offset = full_center - local_env_origin
-    local_env_pixel_coordinates_in_full_env_frame = batch_local_env_pixel_coordinates + local_to_full_offset
-    local_env_pixel_coordinates_in_full_env_frame = tf.transpose(local_env_pixel_coordinates_in_full_env_frame, [1, 0, 2])
-    local_env_pixel_coordinates_in_full_env_frame = tf.expand_dims(local_env_pixel_coordinates_in_full_env_frame, axis=1)
-    local_env_pixel_coordinates_matrix = tf.tile(local_env_pixel_coordinates_in_full_env_frame,
-                                                 [1, full_h_rows * full_w_cols, 1, 1])
-
-    # TODO: figure out why this is so slow
-    full_env_pixel_row_indices = tf.range(0, full_h_rows, dtype=tf.float32)
-    full_env_pixel_col_indices = tf.range(0, full_w_cols, dtype=tf.float32)
-    full_env_pixel_coordinates = tf.stack(tf.meshgrid(full_env_pixel_row_indices, full_env_pixel_col_indices), axis=2)
-    full_env_pixel_coordinates = tf.reshape(tf.transpose(full_env_pixel_coordinates, [1, 0, 2]), [-1, 2])
-    full_env_pixel_coordinates = tf.expand_dims(full_env_pixel_coordinates, axis=1)
-    full_env_pixel_coordinates_matrix = tf.tile(full_env_pixel_coordinates, [1, local_h_rows * local_w_cols, 1])
-
-    # this will have shape [b, h*w, h'*w']
-    coordinate_difference_matrix = full_env_pixel_coordinates_matrix - local_env_pixel_coordinates_matrix
-    squared_distances = tf.reduce_sum(tf.square(coordinate_difference_matrix), axis=3)
-    weights = tf.exp(-k * squared_distances)
-
-    full_env_flat = tf.reshape(full_env, [b, full_h_rows * full_w_cols])
-    local_env_flat = tf.einsum("ij,ijk->ik", full_env_flat, weights)
-    local_env = tf.reshape(local_env_flat, [b, local_h_rows, local_w_cols])
-
-    return local_env, local_env_origin
-
-
-# @tf.function
-def get_local_env_and_origin(center_point: np.ndarray,
-                             full_env: np.ndarray,
-                             full_env_origin: np.ndarray,
-                             res: float,
-                             local_h_rows: int,
-                             local_w_cols: int):
-    batched_inputs = add_batch(center_point, full_env, full_env_origin, res)
-    local_env, local_env_origin = get_local_env_and_origin_differentiable(*batched_inputs,
-                                                                          local_h_rows=local_h_rows,
-                                                                          local_w_cols=local_w_cols)
-    # convert back from TF
-    return local_env.numpy(), local_env_origin.numpy()

@@ -5,7 +5,7 @@ import argparse
 import json
 import os
 import pathlib
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,7 +21,7 @@ from link_bot_gazebo import gazebo_services
 from link_bot_planning import ompl_viz
 from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.params import SimParams, LocalEnvParams
+from link_bot_planning.params import SimParams
 from link_bot_planning.plan_and_execute import PlanAndExecute
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
@@ -45,8 +45,6 @@ class ClassifierDataCollector(PlanAndExecute):
                  seed: int,
                  planner_params: Dict,
                  sim_params: SimParams,
-                 local_env_h_rows: int,
-                 local_env_w_cols: int,
                  n_steps_per_example: int,
                  n_examples_per_record: int,
                  services: Services,
@@ -69,11 +67,10 @@ class ClassifierDataCollector(PlanAndExecute):
         self.n_examples_per_record = n_examples_per_record
         self.n_steps_per_example = n_steps_per_example
         self.outdir = outdir
-        self.local_env_params = LocalEnvParams(h_rows=local_env_h_rows,
-                                               w_cols=local_env_w_cols)
         self.reset_gripper_to = reset_gripper_to
         self.fixed_goal = fixed_goal
         self.is_victor = is_victor
+        self.full_env_params = self.planner.full_env_params
 
         if outdir is not None:
             self.full_output_directory = data_directory(self.outdir, *self.fwd_model_info)
@@ -92,8 +89,8 @@ class ClassifierDataCollector(PlanAndExecute):
             'verbose': verbose,
             'planner_params': planner_params,
             'sim_params': sim_params.to_json(),
-            'local_env_params': self.local_env_params,
             'full_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['full_env_params'],
+            'scenario': self.planner_params['scenario'],
             'sequence_length': self.n_steps_per_example,
             'fwd_model_dir': str(self.fwd_model_dir),
             'fwd_model_hparams': self.planner.fwd_model.hparams,
@@ -109,7 +106,10 @@ class ClassifierDataCollector(PlanAndExecute):
         self.traj_idx = 0
 
     def on_before_plan(self):
-        self.services.reset_world(self.verbose, reset_gripper_to=self.reset_gripper_to)
+        print(Fore.RED + "REMOVE ME" + Fore.RESET)
+        self.services.reset_world(self.verbose, self.reset_gripper_to)
+        # if self.reset_gripper_to is not None:
+        #     self.services.reset_gripper(self.reset_gripper_to)
         super().on_before_plan()
 
     def get_goal(self, w, h, full_env_data):
@@ -119,8 +119,8 @@ class ClassifierDataCollector(PlanAndExecute):
             return super().get_goal(w, h, full_env_data)
 
     def on_plan_complete(self,
-                         planned_path: Dict[str, np.ndarray],
-                         tail_goal_point: np.ndarray,
+                         planned_path: List[Dict],
+                         goal,
                          planned_actions: np.ndarray,
                          full_env_data: link_bot_sdf_utils.OccupancyData,
                          planner_data: ob.PlannerData,
@@ -132,13 +132,17 @@ class ClassifierDataCollector(PlanAndExecute):
             plt.figure()
             ax = plt.gca()
             ompl_viz.plot_plan(ax,
+                               self.planner.state_space_description,
+                               self.planner.experiment_scenario,
                                self.planner.viz_object,
                                planner_data,
                                full_env_data.data,
-                               tail_goal_point,
-                               planned_path['link_bot'],
+                               goal,
+                               planned_path,
                                planned_actions,
-                               full_env_data.extent)
+                               full_env_data.extent,
+                               draw_tree=False,
+                               draw_rejected=False)
             plt.show()
 
         if self.verbose >= 1:
@@ -146,10 +150,10 @@ class ClassifierDataCollector(PlanAndExecute):
                 print("Planning Time: {:7.3f}s ({:6.3f}s)".format(np.mean(self.planning_times), np.std(self.planning_times)))
 
     def on_execution_complete(self,
-                              planned_path: Dict[str, np.ndarray],
+                              planned_path: List[Dict],
                               planned_actions: np.ndarray,
-                              tail_goal_point: np.ndarray,
-                              actual_path: Dict[str, np.ndarray],
+                              goal,
+                              actual_path: List[Dict],
                               full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,
@@ -157,8 +161,8 @@ class ClassifierDataCollector(PlanAndExecute):
         # write the hparams once we've figured out what objects we're going to have
         if not self.hparams_written:
             self.hparams_written = True
-            self.dataset_hparams['actual_state_keys'] = list(actual_path.keys())
-            self.dataset_hparams['planned_state_keys'] = list(planned_path.keys())
+            self.dataset_hparams['actual_state_keys'] = list(actual_path[0].keys())
+            self.dataset_hparams['planned_state_keys'] = list(planned_path[0].keys())
             with (self.full_output_directory / 'hparams.json').open('w') as of:
                 json.dump(self.dataset_hparams, of, indent=2)
 
@@ -171,6 +175,7 @@ class ClassifierDataCollector(PlanAndExecute):
 
         print("steps in full plath: {}".format(planned_actions.shape[0]))
 
+        n_steps = len(actual_path)
         for time_idx in range(self.n_steps_per_example):
             # we may have to truncate, or pad the trajectory, depending on the length of the plan
             if time_idx < planned_actions.shape[0]:
@@ -178,23 +183,22 @@ class ClassifierDataCollector(PlanAndExecute):
             else:
                 action = np.zeros(2)
 
-            n_steps = len(next(iter(actual_path.values())))
-            for name, object_path in actual_path.items():
-                if time_idx < n_steps:
-                    state = object_path[time_idx]
-                else:
-                    state = object_path[-1]
-                current_features['{}/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
+            if time_idx < n_steps:
+                for name, state in actual_path[time_idx].items():
+                    current_features['{}/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
+            else:
+                for name, state in actual_path[-1].items():
+                    current_features['{}/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
 
-            for name, object_path in planned_path.items():
-                if time_idx < n_steps:
-                    state = object_path[time_idx]
-                else:
-                    state = object_path[-1]
-                current_features['{}/planned_state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
+            if time_idx < n_steps:
+                for name, state in planned_path[time_idx].items():
+                    current_features['{}/planned_state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
+            else:
+                for name, state in planned_path[-1].items():
+                    current_features['{}/planned_state/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state)
 
             current_features['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature(action)
-            current_features['{}/res'.format(time_idx)] = float_tensor_to_bytes_feature(self.local_env_params.res)
+            current_features['{}/res'.format(time_idx)] = float_tensor_to_bytes_feature(self.full_env_params.res)
             current_features['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature(self.traj_idx)
             current_features['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature(time_idx)
 
@@ -277,8 +281,6 @@ def main():
         seed=args.seed,
         planner_params=params,
         sim_params=sim_params,
-        local_env_h_rows=local_env_h_rows,
-        local_env_w_cols=local_env_w_cols,
         n_steps_per_example=args.n_steps_per_example,
         n_examples_per_record=args.n_examples_per_record,
         outdir=args.outdir,

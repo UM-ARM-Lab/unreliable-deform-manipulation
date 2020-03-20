@@ -1,17 +1,20 @@
 {
   "model_class": "raster",
+  "scenario": "link_bot",
   "image_key": "transition_image",
-  "mixed": true,
   "states_keys": [
     "link_bot"
   ],
   "action_in_image": false,
-  "fc_layer_sizes": [16],
+  "fc_layer_sizes": [256],
   "conv_filters": [
     [8, [5, 5]],
     [8, [3, 3]],
     [8, [3, 3]]
   ],
+  "local_env_h_rows": 50,
+  "local_env_w_cols": 50,
+  "mixed": true,
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
   "activity_reg": 0.05,

@@ -162,9 +162,10 @@ def generate(service_provider, args):
     full_env_cols = int(args.env_w / args.res)
     full_env_rows = int(args.env_h / args.res)
     full_env_params = FullEnvParams(h_rows=full_env_rows, w_cols=full_env_cols, res=args.res)
+    movable_obstacles = args.movable_obstacles if args.movable_obstacles is not None else ""
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
-                           movable_obstacles=args.movable_obstacles)
+                           movable_obstacles=movable_obstacles)
 
     states_description = service_provider.get_states_description()
     n_action = service_provider.get_n_action()

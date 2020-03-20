@@ -13,9 +13,8 @@ from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_planning.experiment_scenario import ExperimentScenario
-from link_bot_planning.params import LocalEnvParams
-from moonshine.numpy_utils import add_batch
 from moonshine.image_functions import make_transition_image, make_traj_images
+from moonshine.numpy_utils import add_batch
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 
@@ -30,8 +29,6 @@ class RasterClassifier(MyKerasModel):
         self.batch_size = batch_size
 
         self.states_keys = self.hparams['states_keys']
-
-        self.local_env_params = LocalEnvParams.from_json(self.classifier_dataset_hparams['local_env_params'])
 
         self.conv_layers = []
         self.pool_layers = []
@@ -111,8 +108,9 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         super().__init__(scenario)
         model_hparams_file = path / 'hparams.json'
         self.model_hparams = json.load(model_hparams_file.open('r'))
-        self.net = RasterClassifier(hparams=self.model_hparams, batch_size=batch_size)
-        self.local_env_params = self.net.local_env_params
+        self.local_env_h_rows = self.model_hparams['local_env_h_rows']
+        self.local_env_w_cols = self.model_hparams['local_env_w_cols']
+        self.net = RasterClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
         if self.manager.latest_checkpoint:
@@ -134,8 +132,8 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         batched_inputs = add_batch(full_env, full_env_origin, res, states_i, action_i, states_i_plus_1)
         image = make_transition_image(*batched_inputs,
                                       scenario=self.scenario,
-                                      local_env_h=self.local_env_params.h_rows,
-                                      local_env_w=self.local_env_params.w_cols,
+                                      local_env_h=self.local_env_h_rows,
+                                      local_env_w=self.local_env_w_cols,
                                       action_in_image=action_in_image)[0]
         image = tf.convert_to_tensor(image, dtype=tf.float32)
 

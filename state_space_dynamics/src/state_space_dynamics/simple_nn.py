@@ -60,7 +60,7 @@ class SimpleNNWrapper(BaseDynamicsFunction):
 
     def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
         super().__init__(model_dir, batch_size, scenario)
-        self.net = SimpleNN(hparams=self.hparams, batch_size=batch_size)
+        self.net = SimpleNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)

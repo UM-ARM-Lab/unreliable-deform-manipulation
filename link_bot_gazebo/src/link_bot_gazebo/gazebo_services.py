@@ -1,19 +1,19 @@
-from typing import Optional, Dict, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import rospy
 import std_msgs
 from colorama import Fore
+from gazebo_msgs.srv import ApplyBodyWrench, SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
-from peter_msgs.srv import LinkBotStateRequest, WorldControlRequest, ExecuteActionRequest, GetObject, LinkBotReset, \
-    LinkBotResetRequest
-from peter_msgs.msg import ModelsPoses, ModelPose
 from std_msgs.msg import String
 from std_srvs.srv import EmptyRequest
 
-from gazebo_msgs.srv import ApplyBodyWrench, SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
-from link_bot_pycommon.link_bot_pycommon import flatten_points, quaternion_from_euler
+from link_bot_pycommon.link_bot_pycommon import quaternion_from_euler
 from link_bot_pycommon.ros_pycommon import Services
+from peter_msgs.msg import ModelsPoses, ModelPose
+from peter_msgs.srv import WorldControlRequest, ExecuteActionRequest, GetObject, LinkBotReset, \
+    LinkBotResetRequest
 
 
 class GazeboServices(Services):
@@ -77,14 +77,17 @@ class GazeboServices(Services):
         enable_link_bot.data = 'position'
         self.link_bot_mode.publish(enable_link_bot)
 
+        self.reset_gripper(reset_gripper_to)
+
+        if verbose >= 1:
+            print(Fore.YELLOW + "World is Reset" + Fore.RESET)
+
+    def reset_gripper(self, reset_gripper_to):
         if reset_gripper_to is not None:
             reset = LinkBotResetRequest()
             reset.point.x = reset_gripper_to[0]
             reset.point.y = reset_gripper_to[1]
             self.link_bot_reset(reset)
-
-        if verbose >= 1:
-            print(Fore.YELLOW + "World is Reset" + Fore.RESET)
 
     @staticmethod
     def random_object_move(model_name: str, w: float, h: float, padding: float, rng: np.random.RandomState):

@@ -12,7 +12,7 @@
   "random_goal_w": 4.5,
   "random_goal_h": 4.5,
   "timeout": 5,
-	"movable_obstacles": [
+  "movable_obstacles": [
     "moving_box1",
     "moving_box2",
     "moving_box3",
@@ -28,8 +28,8 @@
   "goal_threshold": 0.15,
   "fixed_goal": null,
   "reset_gripper_to": null,
-	"real_time_rate": 0.0,
-	"max_step_size": 0.01,
+  "real_time_rate": 0.0,
+  "max_step_size": 0.01,
   "smoothing": null,
   "scenario": "link_bot"
 }

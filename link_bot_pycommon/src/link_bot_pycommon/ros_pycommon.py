@@ -6,7 +6,7 @@ import std_srvs
 from colorama import Fore
 from peter_msgs.msg import LinkBotAction
 from peter_msgs.srv import ComputeOccupancyRequest, ComputeOccupancy, LinkBotTrajectoryRequest, LinkBotState, WorldControl, \
-    LinkBotTrajectory, ExecuteAction, GetObjects, StateSpaceDescription, StateSpaceDescriptionRequest
+    LinkBotTrajectory, ExecuteAction, GetObjects, StateSpaceDescription, StateSpaceDescriptionRequest, ExecuteActionRequest
 
 from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingRequest
 from ignition.markers import MarkerProvider
@@ -92,6 +92,12 @@ class Services:
                   reset_gripper_to: Optional,
                   max_step_size: Optional[float] = None):
         pass
+
+    def nudge(self):
+        nudge = ExecuteActionRequest()
+        nudge.action.gripper1_delta_pos.x = np.random.randn() * 0.1
+        nudge.action.gripper1_delta_pos.y = np.random.randn() * 0.1
+        self.execute_action(nudge)
 
 
 def get_occupancy(services,

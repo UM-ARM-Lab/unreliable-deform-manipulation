@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from dataclasses_json import dataclass_json
 
@@ -29,7 +29,8 @@ class PlannerParams:
 class SimParams:
     real_time_rate: float
     max_step_size: float
-    movable_obstacles: str
+    movable_obstacles: Optional[List[str]]
+    nudge: Optional[bool] = True
 
 
 @dataclass_json
