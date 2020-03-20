@@ -1,0 +1,20 @@
+{
+  "dt": 1.0,
+  "res": 0.01,
+  "full_env_w_m": 2,
+  "full_env_h_m": 2,
+  "goal_w_m": 1.9,
+  "goal_h_m": 1.9,
+  "max_step_size": 0.01,
+  "move_objects_every_n": 1,
+  "movable_obstacles": [
+    "moving_box1",
+    "moving_box2",
+    "moving_box3",
+    "moving_box6",
+    "moving_box7"
+  ],
+  "steps_per_traj": 10
+}
+
+

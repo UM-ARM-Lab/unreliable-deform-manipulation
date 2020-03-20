@@ -58,3 +58,20 @@ class FullEnvParams:
         self.w = 0 + self.w_cols * self.res
         self.h = 0 + self.h_rows * self.res
         self.extent = [-self.w / 2, self.w / 2, -self.h / 2, self.h / 2]
+
+
+@dataclass_json
+@dataclass
+class CollectDynamicsParams:
+    res: float
+    full_env_h_m: float
+    full_env_w_m: float
+    goal_h_m: float
+    goal_w_m: float
+    max_step_size: float
+    dt: float
+    steps_per_traj: int
+    movable_obstacles: List[str]
+    move_objects_every_n: int
+
+

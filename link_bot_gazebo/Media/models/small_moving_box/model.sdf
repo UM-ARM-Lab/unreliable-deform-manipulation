@@ -2,7 +2,7 @@
 <sdf version="1.4">
     <model name="moving_box">
         <link name="link_1">
-            <pose>0 0 0.25 0 0 0</pose>
+            <pose>0 0 0.125 0 0 0</pose>
             <gravity>true</gravity>
             <inertial>
                 <pose>0 0 0 0 0 0</pose>

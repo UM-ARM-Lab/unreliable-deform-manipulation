@@ -186,5 +186,5 @@ class PlanAndExecute:
                                        self.sim_params.movable_obstacles,
                                        self.planner.full_env_params.w,
                                        self.planner.full_env_params.h,
-                                       padding=0.1,
+                                       padding=0,
                                        rng=self.env_rng)
