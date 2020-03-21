@@ -10,6 +10,9 @@ from colorama import Fore
 
 from link_bot_data.link_bot_dataset_utils import parse_and_deserialize, parse_dataset
 
+DEFAULT_VAL_SPLIT = 0.125
+DEFAULT_TEST_SPLIT = 0.125
+
 
 def slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length: int):
     t_start = 0

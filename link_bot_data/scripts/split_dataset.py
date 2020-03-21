@@ -6,12 +6,16 @@ import pathlib
 import random
 import shutil
 
+from link_bot_data.base_dataset import DEFAULT_TEST_SPLIT, DEFAULT_VAL_SPLIT
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset_dir", type=pathlib.Path, help="directory of tfrecord files")
-    parser.add_argument("--fraction-validation", '-v', type=float, help="fraction of files to put in validation", default=0.15)
-    parser.add_argument("--fraction-testing", '-t', type=float, help="fraction of files to put in validation", default=0.15)
+    parser.add_argument("--fraction-validation", '-v', type=float, help="fraction of files to put in validation",
+                        default=DEFAULT_TEST_SPLIT)
+    parser.add_argument("--fraction-testing", '-t', type=float, help="fraction of files to put in validation",
+                        default=DEFAULT_VAL_SPLIT)
     args = parser.parse_args()
 
     os.makedirs(args.dataset_dir / 'train', exist_ok=True)

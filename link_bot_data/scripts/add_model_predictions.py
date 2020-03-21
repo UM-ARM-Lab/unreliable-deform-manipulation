@@ -9,6 +9,7 @@ import pathlib
 import tensorflow as tf
 from colorama import Fore
 
+from link_bot_data.base_dataset import DEFAULT_VAL_SPLIT, DEFAULT_TEST_SPLIT
 from link_bot_data.classifier_dataset import add_model_predictions
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
@@ -27,7 +28,8 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model')
-    parser.add_argument('out_dir', type=pathlib.Path)
+    parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
+    parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
 
     args = parser.parse_args()
 
@@ -41,14 +43,24 @@ def main():
     dataset = DynamicsDataset([args.dataset_dir])
 
     args.out_dir.mkdir(parents=False, exist_ok=False)
-    new_hparams_filename = args.outdir / 'hparams.json'
+    new_hparams_filename = args.out_dir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams
     classifier_dataset_hparams['actual_state_keys'] = dataset.state_feature_names
     classifier_dataset_hparams['planned_state_keys'] = fwd_model.state_keys
-    json.dump(classifier_dataset_hparams, new_hparams_filename)
+    json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=1)
+
+    val_split = int(args.total_take * DEFAULT_VAL_SPLIT) if args.total_take is not None else None
+    test_split = int(args.total_take * DEFAULT_TEST_SPLIT) if args.total_take is not None else None
+    train_split = args.total_take - val_split - test_split if args.total_take is not None else None
+    take_split = {
+        'test': test_split,
+        'val': val_split,
+        'train': train_split
+    }
+    print(take_split)
 
     for mode in ['test', 'val', 'train']:
-        tf_dataset = dataset.get_datasets(mode=mode)
+        tf_dataset = dataset.get_datasets(mode=mode, take=take_split[mode])
         new_tf_dataset = add_model_predictions(fwd_model, tf_dataset, dataset)
 
         full_output_directory = args.out_dir / mode
