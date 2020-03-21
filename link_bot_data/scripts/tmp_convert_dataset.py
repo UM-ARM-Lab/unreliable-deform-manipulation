@@ -3,6 +3,7 @@ import argparse
 
 import numpy as np
 import tensorflow as tf
+from colorama import Fore
 
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 

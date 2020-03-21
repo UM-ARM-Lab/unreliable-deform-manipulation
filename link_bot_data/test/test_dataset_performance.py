@@ -24,7 +24,7 @@ def main():
 
     args = parser.parse_args()
 
-    # dataset = LinkBotStateSpaceDataset(args.dataset_dir)
+    # dataset = DynamicsDataset(args.dataset_dir)
     params = {
         "pre_close_threshold": 0.1,
         "post_close_threshold": 0.1,

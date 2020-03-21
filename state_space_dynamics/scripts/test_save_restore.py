@@ -9,7 +9,7 @@ import tensorflow as tf
 from colorama import Fore
 
 import state_space_dynamics
-from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
+from link_bot_data.dynamics_dataset import DynamicsDataset
 
 tf.compat.v1.enable_eager_execution()
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -18,7 +18,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 def test_save_and_restore(args):
     model_hparams = json.load(open(args.model_hparams, 'r'))
 
-    dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
+    dataset = DynamicsDataset(args.dataset_dirs)
     tf_dataset = dataset.get_datasets(mode='train',
                                       shuffle=False,
                                       seed=args.seed,

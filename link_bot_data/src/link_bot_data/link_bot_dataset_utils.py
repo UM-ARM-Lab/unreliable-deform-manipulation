@@ -3,7 +3,6 @@ from __future__ import print_function, division
 
 import os
 import pathlib
-
 from typing import Optional
 
 import git
@@ -20,6 +19,7 @@ def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
 
 
 def parse_dataset(dataset, feature_description, n_parallel_calls=None):
+    @tf.function
     def _parse(example_proto):
         deserialized_dict = tf.io.parse_single_example(example_proto, feature_description)
         return deserialized_dict
@@ -37,6 +37,7 @@ def deserialize(parsed_dataset, n_parallel_calls=None):
         deserialized_tensor = tf.io.parse_tensor(serialized_tensor, tf.float32)
         inferred_shapes[key] = deserialized_tensor.shape
 
+    @tf.function
     def _deserialize(serialized_dict):
         deserialized_dict = {}
         for key, serialized_tensor in serialized_dict.items():
@@ -76,7 +77,9 @@ def flatten_concat_pairs(ex_pos, ex_neg):
 
 
 def balance(dataset, label_key='label'):
+    # @tf.function
     def _label_is(label_is):
+        # @tf.function
         def __filter(transition):
             result = tf.squeeze(tf.equal(transition[label_key], label_is))
             return result
@@ -186,6 +189,7 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
     for feature_name in constant_data.keys():
         transitions[feature_name] = []
 
+    # @tf.function
     def _zero_pad_sequence(sequence, transition_idx):
         if transition_idx + 1 < sequence.shape[0]:
             sequence[transition_idx + 1:] = -1

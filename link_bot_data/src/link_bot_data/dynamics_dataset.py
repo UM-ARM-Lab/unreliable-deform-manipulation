@@ -4,25 +4,25 @@ from typing import List
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
-from link_bot_planning.params import LocalEnvParams, FullEnvParams
+from link_bot_planning.params import FullEnvParams
 
 
-class LinkBotStateSpaceDataset(BaseDataset):
+class DynamicsDataset(BaseDataset):
     def __init__(self, dataset_dirs: List[pathlib.Path]):
-        super(LinkBotStateSpaceDataset, self).__init__(dataset_dirs)
+        super(DynamicsDataset, self).__init__(dataset_dirs)
 
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
 
-        self.action_feature_names = ['%d/action']
+        self.action_feature_names = ['action']
 
         self.state_feature_names = [
-            '%d/time_idx',
-            '%d/traj_idx',
+            'time_idx',
+            'traj_idx',
         ]
 
         self.states_description = self.hparams['states_description']
         for state_key in self.states_description.keys():
-            self.state_feature_names.append('%d/{}'.format(state_key))
+            self.state_feature_names.append('{}'.format(state_key))
 
         self.constant_feature_names = [
             'full_env/env',

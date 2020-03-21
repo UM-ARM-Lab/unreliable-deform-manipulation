@@ -8,7 +8,7 @@ import sys
 
 import numpy as np
 import rospy
-import tensorflow
+import tensorflow as tf
 from colorama import Fore
 
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory
@@ -99,7 +99,7 @@ def generate_traj(params, args, service_provider, traj_idx, global_t_step, actio
     if args.verbose:
         print(Fore.GREEN + "Trajectory {} Complete".format(traj_idx) + Fore.RESET)
 
-    example_proto = tensorflow.train.Example(features=tensorflow.train.Features(feature=feature))
+    example_proto = tf.train.Example(features=tf.train.Features(feature=feature))
     example = example_proto.SerializeToString()
     return example, global_t_step
 
@@ -138,12 +138,12 @@ def generate_trajs(service_provider,
         if current_record_traj_idx == args.trajs_per_file - 1:
             # Construct the dataset where each trajectory has been serialized into one big string
             # since TFRecords don't really support hierarchical data structures
-            serialized_dataset = tensorflow.data.Dataset.from_tensor_slices((examples))
+            serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
 
             end_traj_idx = traj_idx + args.start_idx_offset
             start_traj_idx = end_traj_idx - args.trajs_per_file + 1
             full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
-            writer = tensorflow.data.experimental.TFRecordWriter(full_filename, compression_type='ZLIB')
+            writer = tf.data.experimental.TFRecordWriter(full_filename, compression_type='ZLIB')
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))
 

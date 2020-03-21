@@ -12,7 +12,7 @@ import tensorflow as tf
 from colorama import Fore
 from matplotlib.animation import FuncAnimation
 
-from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
+from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_planning import model_utils
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
@@ -41,7 +41,7 @@ def generate(args):
         model, _ = model_utils.load_generic_model(model_dir, scenario)
         models[name] = model
 
-    dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
+    dataset = DynamicsDataset(args.dataset_dirs)
     tf_dataset = dataset.get_datasets(mode=args.mode, sequence_length=args.sequence_length)
 
     results = generate_results(base_folder, models, tf_dataset, args.sequence_length)

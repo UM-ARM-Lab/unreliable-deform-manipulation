@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 
 import state_space_dynamics
-from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
+from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_metrics_function
@@ -29,9 +29,9 @@ def train_func(args, seed: int):
     model_hparams = json.load(open(args.model_hparams, 'r'))
 
     # Datasets
-    train_dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
+    train_dataset = DynamicsDataset(args.dataset_dirs)
     train_tf_dataset = train_dataset.get_datasets(mode='train', sequence_length=model_hparams['sequence_length'])
-    val_dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
+    val_dataset = DynamicsDataset(args.dataset_dirs)
     val_tf_dataset = val_dataset.get_datasets(mode='val', sequence_length=model_hparams['sequence_length'])
     train_tf_dataset = train_tf_dataset.shuffle(seed=args.seed, buffer_size=1024).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
@@ -65,7 +65,7 @@ def eval_func(args, seed: int):
     ###############
     # Dataset
     ###############
-    test_dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
+    test_dataset = DynamicsDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode,
                                                 sequence_length=args.sequence_length,
                                                 )

@@ -1,7 +1,6 @@
 import pathlib
 from typing import Dict, List
 
-import numpy as np
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore
@@ -14,7 +13,7 @@ from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 class SimpleNN(MyKerasModel):
 
-    def __init__(self, hparams: Dict, batch_size: int, scenario : ExperimentScenario):
+    def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams=hparams, batch_size=batch_size, scenario=scenario)
         self.initial_epoch = 0
 
@@ -69,11 +68,11 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         self.state_keys = [self.net.state_key]
 
     def propagate_differentiable(self,
-                                 full_env: np.ndarray,
-                                 full_env_origin: np.ndarray,
-                                 res: float,
-                                 start_states: Dict[str, np.ndarray],
-                                 actions: tf.Variable) -> List[Dict]:
+                                 full_env,
+                                 full_env_origin,
+                                 res,
+                                 start_states: Dict,
+                                 actions) -> List[Dict]:
         """
         :param full_env:        (H, W)
         :param full_env_origin: (2)
@@ -86,7 +85,7 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         del full_env_origin  # unused
         del res  # unsed
         state = start_states[self.net.state_key]
-        state = np.expand_dims(state, axis=0)
+        state = tf.expand_dims(state, axis=0)
         state = tf.convert_to_tensor(state, dtype=tf.float32)
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         test_x = {

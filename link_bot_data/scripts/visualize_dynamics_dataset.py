@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 from matplotlib.animation import FuncAnimation
 
-from link_bot_data.link_bot_state_space_dataset import LinkBotStateSpaceDataset
+from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_pycommon.link_bot_pycommon import vector_to_points_2d
 from link_bot_pycommon.args import my_formatter
@@ -186,16 +186,16 @@ def main():
     tf.random.set_random_seed(1)
 
     # load the dataset
-    dataset = LinkBotStateSpaceDataset(args.dataset_dir)
-    dataset = dataset.get_datasets(mode=args.mode,
-                                   sequence_length=None,
-                                   n_parallel_calls=1,
-                                   take=args.take)
+    dataset = DynamicsDataset(args.dataset_dir)
+    tf_dataset = dataset.get_datasets(mode=args.mode,
+                                      sequence_length=None,
+                                      n_parallel_calls=1,
+                                      take=args.take)
     if args.shuffle:
-        dataset = dataset.shuffle(1024, seed=1)
+        tf_dataset = tf_dataset.shuffle(1024, seed=1)
 
     # print info about shapes
-    input_data, output_data = next(iter(dataset))
+    input_data, output_data = next(iter(tf_dataset))
     print("INPUTS:")
     for k, v in input_data.items():
         print(k, v.shape)
@@ -204,14 +204,14 @@ def main():
         print(k, v.shape)
 
     if args.plot_type == 'individual':
-        plot_individual(dataset, args.redraw, dataset.states_description)
+        plot_individual(tf_dataset, args.redraw, tf_dataset.states_description)
     elif args.plot_type == 'all':
-        plot_all(dataset, dataset.states_description)
+        plot_all(tf_dataset, tf_dataset.states_description)
     elif args.plot_type == 'heatmap':
-        plot_heatmap(dataset)
+        plot_heatmap(tf_dataset)
     elif args.plot_type == 'just_count':
         i = 0
-        for e in dataset:
+        for e in tf_dataset:
             i += 1
         print(i)
 

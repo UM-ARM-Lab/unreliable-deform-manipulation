@@ -4,8 +4,82 @@ from typing import List, Dict
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
+from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_next, convert_sequences_to_transitions
-from link_bot_planning.params import LocalEnvParams, FullEnvParams
+from link_bot_planning.params import FullEnvParams
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
+
+
+def add_model_predictions(fwd_model: BaseDynamicsFunction, tf_dataset, dataset: DynamicsDataset):
+    def _add_model_predictions(inputs, outputs):
+        full_env = inputs['full_env/env']
+        full_env_origin = inputs['full_env/origin']
+        res = inputs['full_env/res']
+        actions = inputs['action']
+        start_states = {}
+        for name in dataset.states_description.keys():
+            start_state = inputs[name][0]
+            start_states[name] = start_state
+
+        predictions = fwd_model.propagate_differentiable(full_env=full_env,
+                                                         full_env_origin=full_env_origin,
+                                                         res=res,
+                                                         start_states=start_states,
+                                                         actions=actions)
+        for name in fwd_model.state_keys:
+            predictions_for_name = []
+            for prediction_t in predictions:
+                predictions_for_name.append(prediction_t[name])
+            predictions_for_name = tf.stack(predictions_for_name, axis=0)
+            outputs["planned_state/" + name] = predictions_for_name
+        return inputs, outputs
+
+    def _split_sequences(inputs, outputs):
+        example = {}
+        for name in dataset.action_feature_names:
+            example[name] = inputs[name]
+
+        for name in dataset.state_feature_names:
+            # use outputs here so we get the final state
+            example[name] = outputs[name]
+
+        for name in fwd_model.state_keys:
+            name = "planned_state/" + name
+            example[name] = outputs[name]
+
+        # Split up into time-index features
+        split_example = {}
+        for name in dataset.action_feature_names:
+            actions = example[name]
+            for t in range(actions.shape[0]):
+                action = actions[t]
+                feature_name = ("%d/" + name) % t
+                split_example[feature_name] = action
+
+        for name in dataset.state_feature_names:
+            states = example[name]
+            for t in range(states.shape[0]):
+                state = states[t]
+                feature_name = ("%d/" + name) % t
+                split_example[feature_name] = state
+
+        for name in fwd_model.state_keys:
+            name = "planned_state/" + name
+            states = example[name]
+            for t in range(states.shape[0]):
+                state = states[t]
+                feature_name = ("%d/" + name) % t
+                split_example[feature_name] = state
+
+        for name in dataset.constant_feature_names:
+            split_example[name] = inputs[name]
+
+        split_example = dict([(k, split_example[k]) for k in sorted(list(split_example))])
+        return split_example
+
+    new_tf_dataset = tf_dataset.map(_add_model_predictions)
+    new_tf_dataset = new_tf_dataset.map(_split_sequences)
+    return new_tf_dataset
 
 
 class ClassifierDataset(BaseDataset):
@@ -20,18 +94,18 @@ class ClassifierDataset(BaseDataset):
         actual_state_keys = self.hparams['actual_state_keys']
         planned_state_keys = self.hparams['planned_state_keys']
 
-        self.action_feature_names = ['%d/action']
+        self.action_feature_names = ['action']
 
         self.state_feature_names = [
-            '%d/time_idx',
-            '%d/traj_idx',
+            'time_idx',
+            'traj_idx',
         ]
 
         for k in actual_state_keys:
-            self.state_feature_names.append('%d/{}'.format(k))
+            self.state_feature_names.append('{}'.format(k))
 
         for k in planned_state_keys:
-            self.state_feature_names.append('%d/planned_state/{}'.format(k))
+            self.state_feature_names.append('planned_state/{}'.format(k))
 
         self.constant_feature_names = [
             'full_env/origin',
@@ -73,6 +147,7 @@ class ClassifierDataset(BaseDataset):
                 new_transition['label'] = tf.convert_to_tensor([0], dtype=tf.float32)
             return new_transition
 
+        @tf.function
         def _filter_pre_far_transitions(transition):
             if self.labeling_params['discard_pre_far'] and not transition['pre_close']:
                 return False

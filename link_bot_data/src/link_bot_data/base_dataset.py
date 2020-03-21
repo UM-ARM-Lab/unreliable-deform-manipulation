@@ -193,10 +193,12 @@ class BaseDataset:
 
         for i in range(self.max_sequence_length):
             for feature_name in self.state_feature_names:
+                feature_name = "%d/" + feature_name
                 shape = hacky_lookup[feature_name]
                 features_description[feature_name % i] = tf.io.FixedLenFeature(shape, tf.float32)
         for i in range(self.max_sequence_length - 1):
             for feature_name in self.action_feature_names:
+                feature_name = "%d/" + feature_name
                 shape = hacky_lookup[feature_name]
                 features_description[feature_name % i] = tf.io.FixedLenFeature(shape, tf.float32)
 
@@ -209,9 +211,11 @@ class BaseDataset:
 
         for i in range(self.max_sequence_length):
             for feature_name in self.state_feature_names:
+                feature_name = "%d/" + feature_name
                 features_description[feature_name % i] = tf.io.FixedLenFeature([], tf.string)
         for i in range(self.max_sequence_length - 1):
             for feature_name in self.action_feature_names:
+                feature_name = "%d/" + feature_name
                 features_description[feature_name % i] = tf.io.FixedLenFeature([], tf.string)
 
         return features_description
@@ -222,12 +226,14 @@ class BaseDataset:
         constant_data = {}
 
         for feature_name in self.state_feature_names:
+            feature_name = "%d/" + feature_name
             state_like_seq = []
             for i in range(self.max_sequence_length):
                 state_like_seq.append(example_dict[feature_name % i])
             state_like_seqs[strip_time_format(feature_name)] = tf.stack(state_like_seq, axis=0)
 
         for example_name in self.action_feature_names:
+            example_name = "%d/" + example_name
             action_like_seq = []
             for i in range(self.max_sequence_length - 1):
                 action_like_seq.append(example_dict[example_name % i])
