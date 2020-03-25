@@ -119,10 +119,10 @@ def run_traj(args,
     else:
         actions = sample_const_action_sequence(args.n_actions_per_traj)
 
-    full_env_data = get_occupancy_data(env_w=fwd_model.full_env_params.w,
-                                       env_h=fwd_model.full_env_params.h,
+    full_env_data = get_occupancy_data(env_w_m=fwd_model.full_env_params.w,
+                                       env_h_m=fwd_model.full_env_params.h,
                                        res=fwd_model.full_env_params.res,
-                                       services=services)
+                                       service_provider=services)
     state_keys = fwd_model.hparams['states_keys']
     print("get")
     start_states, link_bot_start_state, head_point = get_start_states(services, state_keys)

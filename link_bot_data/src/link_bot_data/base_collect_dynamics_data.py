@@ -57,10 +57,10 @@ def generate_traj(params, args, service_provider, traj_idx, global_t_step, actio
 
     # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
     # over the course of this function
-    full_env_data = ros_pycommon.get_occupancy_data(env_w=params.full_env_w_m,
-                                                    env_h=params.full_env_h_m,
+    full_env_data = ros_pycommon.get_occupancy_data(env_w_m=params.full_env_w_m,
+                                                    env_h_m=params.full_env_h_m,
                                                     res=params.res,
-                                                    services=service_provider)
+                                                    service_provider=service_provider)
 
     feature = {
         'full_env/env': float_tensor_to_bytes_feature(full_env_data.data),

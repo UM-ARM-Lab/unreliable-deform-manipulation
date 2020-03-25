@@ -8,6 +8,7 @@ from ompl import base as ob
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.state_spaces import compound_to_numpy
 from link_bot_planning.viz_object import VizObject
+from moonshine.numpy_utils import states_are_equal
 
 
 def plot_plan(ax,
@@ -17,7 +18,7 @@ def plot_plan(ax,
               planner_data: ob.PlannerData,
               environment: np.ndarray,
               goal,
-              planned_path: Optional[List[Dict[str, np.ndarray]]],
+              planned_path: Optional[List[Dict]],
               planned_actions: Optional[np.ndarray],
               extent,
               draw_tree: Optional[bool] = None,
@@ -34,11 +35,16 @@ def plot_plan(ax,
 
     if planned_path is not None:
         start = planned_path[0]
-        experiment_scenario.plot_state(ax, start, color='b')
-        experiment_scenario.plot_goal(ax, goal, color='c')
+        end = planned_path[-1]
+        experiment_scenario.plot_state_simple(ax, start, color='b', s=50, zorder=5)
+        experiment_scenario.plot_state_simple(ax, end, color='pink', s=50, zorder=5, marker='*')
+        experiment_scenario.plot_goal(ax, goal, color='c', zorder=5, s=50)
         draw_every_n = 1
         for state in planned_path[::draw_every_n]:
-            experiment_scenario.plot_state(ax, state, color='g')
+            for randomly_accepted_sample in viz_object.randomly_accepted_samples:
+                if states_are_equal(state, randomly_accepted_sample):
+                    experiment_scenario.plot_state_simple(ax, state, color='white', s=10, zorder=4)
+            experiment_scenario.plot_state(ax, state, color='g', s=10, zorder=3)
 
     # Visualize Nearest Neighbor Selection (poorly...)
     # for sample in planner_data.getSamples():

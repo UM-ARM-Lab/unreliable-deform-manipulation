@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from link_bot_classifiers.visualization import plot_classifier_data
+from link_bot_classifiers.visualization import plot_classifier_data, make_interpretable_image
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance
 from link_bot_data.visualization import plot_rope_configuration
@@ -109,7 +109,8 @@ def main():
             plt.show(block=True)
         elif args.display_type == 'transition_image':
             image = example['transition_image'].numpy()
-            plt.imshow(np.flipud(image))
+            interpretable_iamge = make_interpretable_image(image, 11)
+            plt.imshow(np.flipud(interpretable_iamge))
             title = "Label = {:d}".format(label),
             plt.title(title)
             plt.show(block=True)

@@ -50,7 +50,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                          verbose=verbose,
                          planner_params=planner_params,
                          sim_params=sim_params,
-                         services=services,
+                         service_provider=services,
                          no_execution=no_execution,
                          seed=seed,
                          retry_on_failure=False)
@@ -78,7 +78,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         final_error = self.planner.experiment_scenario.distance_to_goal(final_state, goal)
 
         if self.verbose >= 1:
-            self.planner.experiment_scenario.publish_state_marker(self.services.marker_provider, final_state)
+            self.planner.experiment_scenario.publish_state_marker(self.service_provider.marker_provider, final_state)
 
         print("Final Error: {:0.4f}, # Actions {}".format(final_error, n_actions))
         print("Planning Time {:0.3f}".format(planning_time))

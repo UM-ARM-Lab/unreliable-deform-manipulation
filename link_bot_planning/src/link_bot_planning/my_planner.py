@@ -60,7 +60,7 @@ class MyPlanner:
         self.state_space = ob.CompoundStateSpace()
         self.subspaces = []
         self.subspace_bounds = []
-        for subspace_idx, state_key in enumerate(self.fwd_model.state_keys):
+        for subspace_idx, state_key in enumerate(self.fwd_model.states_keys):
             weight = self.experiment_scenario.get_subspace_weight(state_key)
             n_state = self.fwd_model.states_description[state_key]
             subspace_description = {
@@ -149,6 +149,10 @@ class MyPlanner:
         classifier_accept = accept_probability > self.params['accept_threshold']
         random_accept = self.classifier_rng.uniform(0, 1) <= self.params['random_epsilon']
         motions_is_valid = classifier_accept or random_accept
+
+        if random_accept and not classifier_accept:
+            final_link_bot_state = states_sequence[-1]
+            self.viz_object.randomly_accepted_samples.append(final_link_bot_state)
 
         if not motions_is_valid:
             final_link_bot_state = states_sequence[-1]

@@ -58,7 +58,7 @@ class ClassifierDataCollector(PlanAndExecute):
                          verbose,
                          planner_params,
                          sim_params,
-                         services=services,
+                         service_provider=services,
                          no_execution=False,
                          seed=seed)
         self.hparams_written = False
@@ -107,7 +107,7 @@ class ClassifierDataCollector(PlanAndExecute):
 
     def on_before_plan(self):
         if self.reset_gripper_to is not None:
-            self.services.reset_gripper(self.reset_gripper_to)
+            self.service_provider.reset_gripper(self.reset_gripper_to)
         super().on_before_plan()
 
     def get_goal(self, w, h, full_env_data):

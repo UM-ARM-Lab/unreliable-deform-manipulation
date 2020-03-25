@@ -55,12 +55,12 @@ def main():
     head_idx = link_bot_state.link_names.index("head")
     center_point = link_bot_state.points[head_idx]
     center_point = np.array([center_point.x, center_point.y])
-    local_env_data = get_local_occupancy_data(rows, cols, args.res, center_point=center_point, services=services)
+    local_env_data = get_local_occupancy_data(rows, cols, args.res, center_point=center_point, service_provider=services)
 
-    full_env_data = get_occupancy_data(env_w=full_env_params.w,
-                                       env_h=full_env_params.h,
+    full_env_data = get_occupancy_data(env_w_m=full_env_params.w,
+                                       env_h_m=full_env_params.h,
                                        res=full_env_params.res,
-                                       services=services)
+                                       service_provider=services)
 
     state = np.expand_dims(gazebo_services.flatten_points(link_bot_state.points), axis=0)
 

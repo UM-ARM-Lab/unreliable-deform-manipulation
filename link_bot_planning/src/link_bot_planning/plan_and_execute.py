@@ -27,7 +27,7 @@ class PlanAndExecute:
                  verbose: int,
                  planner_params: Dict,
                  sim_params: SimParams,
-                 services: Services,
+                 service_provider: Services,
                  no_execution: bool,
                  seed: int,
                  retry_on_failure: Optional[bool] = True,
@@ -40,13 +40,13 @@ class PlanAndExecute:
         self.sim_params = sim_params
         self.planner_params = planner_params
         self.verbose = verbose
-        self.services = services
+        self.service_provider = service_provider
         self.no_execution = no_execution
         self.env_rng = np.random.RandomState(seed)
         self.goal_rng = np.random.RandomState(seed)
 
         # remove all markers
-        self.services.marker_provider.remove_all()
+        self.service_provider.marker_provider.remove_all()
 
         self.plan_idx = 0
         self.total_plan_idx = 0
@@ -60,13 +60,13 @@ class PlanAndExecute:
             self.plan_idx = 0
             while True:
                 # get full env once
-                full_env_data = get_occupancy_data(env_w=self.planner.full_env_params.w,
-                                                   env_h=self.planner.full_env_params.h,
+                full_env_data = get_occupancy_data(env_w_m=self.planner.full_env_params.w,
+                                                   env_h_m=self.planner.full_env_params.h,
                                                    res=self.planner.full_env_params.res,
-                                                   services=self.services)
+                                                   service_provider=self.service_provider)
 
                 # get start states
-                start_states = get_start_states(self.services, self.planner.state_space_description.keys())
+                start_states = get_start_states(self.service_provider, self.planner.state_space_description.keys())
 
                 # generate a random target
                 goal = self.get_goal(self.planner_params['random_goal_w'],
@@ -75,7 +75,9 @@ class PlanAndExecute:
 
                 if self.verbose >= 1:
                     # publish goal marker
-                    self.planner.experiment_scenario.publish_goal_marker(self.services.marker_provider, goal)
+                    self.planner.experiment_scenario.publish_goal_marker(self.service_provider.marker_provider,
+                                                                         goal,
+                                                                         self.planner_params['goal_threshold'])
 
                 if self.verbose >= 1:
                     print(Fore.CYAN + "Planning from {} to {}".format(start_states, goal) + Fore.RESET)
@@ -112,8 +114,8 @@ class PlanAndExecute:
                         if self.verbose >= 2:
                             print(Fore.CYAN + "Executing Plan.".format(goal) + Fore.RESET)
 
-                        traj_exec_response = self.services.execute_trajectory(trajectory_execution_request)
-                        self.services.pause(std_srvs.srv.EmptyRequest())
+                        traj_exec_response = self.service_provider.execute_trajectory(trajectory_execution_request)
+                        self.service_provider.pause(std_srvs.srv.EmptyRequest())
 
                         actual_path = ros_pycommon.trajectory_execution_response_to_numpy(traj_exec_response)
                         self.on_execution_complete(planner_result.path,
@@ -177,14 +179,14 @@ class PlanAndExecute:
 
     def on_before_plan(self):
         if self.sim_params.nudge is not None:
-            self.services.nudge()
+            self.service_provider.nudge()
 
         if self.sim_params.movable_obstacles is not None:
             # FIXME: instead of hard coding obstacles names, use the /objects service
             # generate a new environment by rearranging the obstacles
-            self.services.move_objects(self.sim_params.max_step_size,
-                                       self.sim_params.movable_obstacles,
-                                       self.planner.full_env_params.w,
-                                       self.planner.full_env_params.h,
-                                       padding=0,
-                                       rng=self.env_rng)
+            self.service_provider.move_objects(self.sim_params.max_step_size,
+                                               self.sim_params.movable_obstacles,
+                                               self.planner.full_env_params.w,
+                                               self.planner.full_env_params.h,
+                                               padding=0,
+                                               rng=self.env_rng)

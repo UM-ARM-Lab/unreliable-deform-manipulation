@@ -1,3 +1,5 @@
+from typing import Dict
+
 from ignition.markers import MarkerProvider
 
 
@@ -16,19 +18,19 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def plot_state_simple(ax, state, color):
+    def plot_state_simple(ax, state, color, label=None, **kwargs):
         raise NotImplementedError()
 
     @staticmethod
-    def plot_state(ax, state, color):
+    def plot_state(ax, state: Dict, color, s: int, zorder: int):
         raise NotImplementedError()
 
     @staticmethod
-    def plot_goal(ax, goal, color, label=None):
+    def plot_goal(ax, goal, color, label=None, **kwargs):
         raise NotImplementedError()
 
     @staticmethod
-    def publish_goal_marker(marker_provider: MarkerProvider, goal):
+    def publish_goal_marker(marker_provider: MarkerProvider, goal, size: float):
         raise NotImplementedError()
 
     @staticmethod

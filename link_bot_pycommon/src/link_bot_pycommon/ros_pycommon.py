@@ -100,7 +100,7 @@ class Services:
         self.execute_action(nudge)
 
 
-def get_occupancy(services,
+def get_occupancy(service_provider,
                   env_w_cols,
                   env_h_rows,
                   res,
@@ -116,26 +116,26 @@ def get_occupancy(services,
     request.max_z = 2.00
     request.robot_name = 'link_bot'
     request.request_new = True
-    response = services.compute_occupancy(request)
+    response = service_provider.compute_occupancy(request)
     grid = np.array(response.grid).reshape([response.w_cols, response.h_rows])
     grid = grid.T
     return grid, response
 
 
-def get_occupancy_data(env_h,
-                       env_w,
+def get_occupancy_data(env_h_m,
+                       env_w_m,
                        res,
-                       services):
+                       service_provider):
     """
-    :param env_h:  meters
-    :param env_w: meters
+    :param env_h_m:  meters
+    :param env_w_m: meters
     :param res: meters
-    :param services: from gazebo_utils
+    :param service_provider: from gazebo_utils
     :return:
     """
-    env_h_rows = int(env_h / res)
-    env_w_cols = int(env_w / res)
-    grid, response = get_occupancy(services,
+    env_h_rows = int(env_h_m / res)
+    env_w_cols = int(env_w_m / res)
+    grid, response = get_occupancy(service_provider,
                                    env_w_cols=env_w_cols,
                                    env_h_rows=env_h_rows,
                                    res=res,
@@ -150,16 +150,16 @@ def get_local_occupancy_data(rows,
                              cols,
                              res,
                              center_point,
-                             services):
+                             service_provider):
     """
     :param rows: indices
     :param cols: indices
     :param res: meters
     :param center_point: (x,y) meters
-    :param services: from gazebo_utils
+    :param service_provider: from gazebo_utils
     :return: OccupancyData object for local sdf
     """
-    grid, response = get_occupancy(services,
+    grid, response = get_occupancy(service_provider,
                                    env_h_rows=rows,
                                    env_w_cols=cols,
                                    res=res,
@@ -194,9 +194,9 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result) -> List[
     return actual_path
 
 
-def get_start_states(services, state_keys):
+def get_start_states(service_provider, state_keys):
     start_states = {}
-    objects_response = services.get_objects()
+    objects_response = service_provider.get_objects()
     for state_key in state_keys:
         for object in objects_response.objects.objects:
             if object.name == state_key:

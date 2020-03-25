@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ompl.util as ou
 import rospy
-import std_srvs
 import tensorflow as tf
 from colorama import Fore
 from ompl import base as ob
@@ -20,15 +19,16 @@ import link_bot_data.link_bot_dataset_utils
 from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute, model_utils
-from link_bot_planning.get_scenario import get_scenario
+from link_bot_planning.get_planner import get_planner_with_model
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot_plan
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
+from moonshine.numpy_utils import listify
 from victor import victor_services
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.5)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
@@ -39,15 +39,13 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  planner: MyPlanner,
                  planner_config_name: str,
                  fwd_model_dir: pathlib.Path,
-                 fwd_model_type: str,
                  classifier_model_dir: pathlib.Path,
-                 classifier_model_type: str,
                  n_plans_per_env: int,
                  n_total_plans: int,
                  verbose: int,
                  planner_params: Dict,
                  sim_params: SimParams,
-                 services: GazeboServices,
+                 service_provider: GazeboServices,
                  comparison_item_idx: int,
                  seed: int,
                  goal,
@@ -56,33 +54,28 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  record: Optional[bool] = False,
                  pause_between_plans: Optional[bool] = False,
                  ):
-        super().__init__(
-            planner,
-            n_total_plans=n_total_plans,
-            n_plans_per_env=n_plans_per_env,
-            verbose=verbose,
-            planner_params=planner_params,
-            sim_params=sim_params,
-            services=services,
-            no_execution=False,
-            pause_between_plans=pause_between_plans,
-            seed=seed)
+        super().__init__(planner,
+                         n_total_plans=n_total_plans,
+                         n_plans_per_env=n_plans_per_env,
+                         verbose=verbose,
+                         planner_params=planner_params,
+                         sim_params=sim_params,
+                         service_provider=service_provider,
+                         no_execution=False,
+                         pause_between_plans=pause_between_plans,
+                         seed=seed)
         self.record = record
-        self.classifier_model_type = classifier_model_type
         self.planner_config_name = planner_config_name
         self.outdir = outdir
         self.seed = seed
 
         self.metrics = {
             "fwd_model_dir": str(fwd_model_dir),
-            "fwd_model_type": fwd_model_type,
             "classifier_model_dir": str(classifier_model_dir),
-            "classifier_model_type": classifier_model_type,
             "n_total_plans": n_total_plans,
             "n_targets": n_plans_per_env,
             "planner_params": planner_params,
-            "local_env_params": self.planner.fwd_model.hparams['dynamics_dataset_hparams']['local_env_params'],
-            "env_params": sim_params.to_json(),
+            "sim_params": sim_params.to_json(),
             "seed": self.seed,
             "metrics": [],
         }
@@ -99,14 +92,14 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
     def on_before_plan(self):
         if self.reset_gripper_to is not None:
-            self.services.reset_world(self.verbose, self.reset_gripper_to)
+            self.service_provider.reset_world(self.verbose, self.reset_gripper_to)
 
         super().on_before_plan()
 
     def on_after_plan(self):
         if self.record:
             filename = self.root.absolute() / 'plan-{}.avi'.format(self.total_plan_idx)
-            self.services.start_record_trial(str(filename))
+            self.service_provider.start_record_trial(str(filename))
 
         super().on_after_plan()
 
@@ -119,40 +112,40 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             return super().get_goal(w, h, full_env_data)
 
     def on_execution_complete(self,
-                              planned_path: List[Dict[str, np.ndarray]],
+                              planned_path: List[Dict],
                               planned_actions: np.ndarray,
                               goal,
-                              actual_path: List[Dict[str, np.ndarray]],
+                              actual_path: List[Dict],
                               full_env_data: link_bot_sdf_utils.OccupancyData,
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
-        # FIXME: update to use scenario?
-        link_bot_planned_path = planned_path['link_bot']
-        link_bot_actual_path = actual_path['link_bot']
-        del planned_path, actual_path
-        execution_to_goal_error = np.linalg.norm(link_bot_actual_path[-1, 0:2] - goal)
-        plan_to_goal_error = np.linalg.norm(link_bot_planned_path[-1, 0:2] - goal)
-        plan_to_execution_error = np.linalg.norm(link_bot_actual_path[-1, 0:2] - link_bot_planned_path[-1, 0:2])
-        lengths = [np.linalg.norm(link_bot_planned_path[i] - link_bot_planned_path[i - 1]) for i in
-                   range(1, len(link_bot_planned_path))]
-        path_length = np.sum(lengths)
         num_nodes = planner_data.numVertices()
 
+        final_planned_state = planned_path[-1]
+        plan_to_goal_error = self.planner.experiment_scenario.distance_to_goal(final_planned_state, goal)
+
+        final_state = actual_path[-1]
+        execution_to_goal_error = self.planner.experiment_scenario.distance_to_goal(final_state, goal)
+
+        plan_to_execution_error = self.planner.experiment_scenario.distance(final_state, final_planned_state)
+
         print("{}: {}".format(self.subfolder, self.successfully_completed_plan_idx))
+
+        planned_path_listified = listify(planned_path)
+        actual_path_listified = listify(actual_path)
 
         metrics_for_plan = {
             'planner_status': planner_status.asString(),
             'full_env': full_env_data.data.tolist(),
-            'planned_path': link_bot_planned_path.tolist(),
-            'actual_path': link_bot_actual_path.tolist(),
+            'planned_path': planned_path_listified,
+            'actual_path': actual_path_listified,
             'planning_time': planning_time,
-            'final_planning_error': plan_to_goal_error,
-            'final_execution_error': execution_to_goal_error,
+            'plan_to_goal_error': plan_to_goal_error,
+            'execution_to_goal_error': execution_to_goal_error,
             'plan_to_execution_error': plan_to_execution_error,
-            'path_length': path_length,
-            'num_nodes': num_nodes,
             'goal': goal,
+            'num_nodes': num_nodes
         }
         self.metrics['metrics'].append(metrics_for_plan)
         metrics_file = self.metrics_filename.open('w')
@@ -160,16 +153,20 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
         plt.figure()
         ax = plt.gca()
-        _, legend = plot_plan(ax,
-                              self.planner.n_state,
-                              self.planner.viz_object,
-                              planner_data,
-                              full_env_data.data,
-                              goal,
-                              link_bot_planned_path,
-                              planned_actions,
-                              full_env_data.extent)
-        ax.scatter(link_bot_actual_path[-1, 0], link_bot_actual_path[-1, 1], label='final actual tail position', zorder=5)
+        legend = plot_plan(ax=ax,
+                           state_space_description=self.planner.state_space_description,
+                           experiment_scenario=self.planner.experiment_scenario,
+                           viz_object=self.planner.viz_object,
+                           planner_data=planner_data,
+                           environment=full_env_data.data,
+                           goal=goal,
+                           planned_path=planned_path,
+                           planned_actions=None,
+                           extent=full_env_data.extent,
+                           draw_tree=False,
+                           draw_rejected=False)
+
+        self.planner.experiment_scenario.plot_state_simple(ax, final_state, color='pink', label='final actual keypoint position')
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
         plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
 
@@ -182,7 +179,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.successfully_completed_plan_idx += 1
 
         if self.record:
-            self.services.stop_record_trial()
+            self.service_provider.stop_record_trial()
 
     def on_complete(self, initial_poses_in_collision):
         self.metrics['initial_poses_in_collision'] = initial_poses_in_collision
@@ -197,9 +194,9 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         info_file = (folder / 'info.json').open('w')
         info = {
             'start_states': dict([(k, v.tolist()) for k, v in start_states.items()]),
-            'tail_goal_point': tail_goal_point.tolist(),
+            'tail_goal_point': tail_goal_point,
             'sdf': {
-                'res': full_env_data.resolution.tolist(),
+                'res': full_env_data.resolution,
                 'origin': full_env_data.origin.tolist(),
                 'extent': full_env_data.extent.tolist(),
                 'data': full_env_data.data.tolist(),
@@ -211,7 +208,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=250)
-    tf.logging.set_verbosity(tf.logging.FATAL)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
     ou.setLogLevel(ou.LOG_ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
@@ -238,16 +235,8 @@ def main():
         print(Fore.YELLOW + "Creating output directory: {}".format(common_output_directory) + Fore.RESET)
         common_output_directory.mkdir(parents=True)
 
-    rospy.init_node("compare_classifiers")
-
-    initial_object_dict = {
-        'moving_box1': [2.0, 0],
-        'moving_box2': [-1.5, 0],
-        'moving_box3': [-0.5, 1],
-        'moving_box4': [1.5, - 2],
-        'moving_box5': [-1.5, - 2.0],
-        'moving_box6': [-0.5, 2.0],
-    }
+    rospy.init_node("final_evaluation")
+    rospy.set_param('service_provider', args.env_type)
 
     planners_params = [(json.load(p_params_name.open("r")), p_params_name) for p_params_name in args.planners_params]
     for comparison_idx, (planner_params, p_params_name) in enumerate(planners_params):
@@ -258,40 +247,34 @@ def main():
 
         planner_config_name = p_params_name.stem
         fwd_model_dir = pathlib.Path(planner_params['fwd_model_dir'])
-        fwd_model_type = planner_params['fwd_model_type']
         classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])
-        classifier_model_type = planner_params['classifier_model_type']
         planner_type = planner_params['planner_type']
 
-        scenario = get_scenario(planner_params['scenario'])
-        fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, scenario)
+        fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir)
 
         # Start Services
         if args.env_type == 'victor':
-            service_provider = victor_services.VictorServices
+            service_provider = victor_services.VictorServices()
         else:
-            service_provider = gazebo_services.GazeboServices
+            service_provider = gazebo_services.GazeboServices()
 
-        services = service_provider.setup_env(verbose=args.verbose,
-                                              real_time_rate=planner_params['real_time_rate'],
-                                              reset_gripper_to=planner_params['reset_gripper_to'],
-                                              max_step_size=fwd_model.max_step_size)
-
-        services.pause(std_srvs.srv.EmptyRequest())
+        service_provider.setup_env(verbose=args.verbose,
+                                   real_time_rate=planner_params['real_time_rate'],
+                                   reset_gripper_to=planner_params['reset_gripper_to'],
+                                   max_step_size=fwd_model.max_step_size)
 
         # look up the planner params
         planner = get_planner_with_model(planner_class_str=planner_type,
                                          fwd_model=fwd_model,
                                          classifier_model_dir=classifier_model_dir,
-                                         classifier_model_type=classifier_model_type,
                                          planner_params=planner_params,
-                                         services=services,
-                                         seed=args.seed)
+                                         service_provider=service_provider,
+                                         seed=args.seed,
+                                         verbose=args.verbose)
 
         sim_params = SimParams(real_time_rate=planner_params['real_time_rate'],
                                max_step_size=planner.fwd_model.max_step_size,
-                               goal_padding=0.0,
-                               move_obstacles=planner_params['move_obstacles'],
+                               movable_obstacles=planner_params['movable_obstacles'],
                                nudge=False)
         print(Fore.GREEN + "Running {} Trials".format(args.n_total_plans) + Fore.RESET)
 
@@ -299,15 +282,13 @@ def main():
             planner=planner,
             planner_config_name=planner_config_name,
             fwd_model_dir=fwd_model_dir,
-            fwd_model_type=fwd_model_type,
             classifier_model_dir=classifier_model_dir,
-            classifier_model_type=classifier_model_type,
             n_plans_per_env=args.n_plans_per_env,
             n_total_plans=args.n_total_plans,
             verbose=args.verbose,
             planner_params=planner_params,
             sim_params=sim_params,
-            services=services,
+            service_provider=service_provider,
             seed=args.seed,
             outdir=common_output_directory,
             comparison_item_idx=comparison_idx,

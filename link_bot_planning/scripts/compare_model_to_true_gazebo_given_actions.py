@@ -113,10 +113,10 @@ def main():
                        max_step_size=fwd_model.max_step_size)
     services.pause(std_srvs.srv.EmptyRequest())
 
-    full_env_data = get_occupancy_data(env_w=params['full_env_w_meters'],
-                                       env_h=params['full_env_h_meters'],
+    full_env_data = get_occupancy_data(env_w_m=params['full_env_w_meters'],
+                                       env_h_m=params['full_env_h_meters'],
                                        res=fwd_model.local_env_params.res,
-                                       services=services)
+                                       service_provider=services)
     state_keys = fwd_model.hparams['states_keys']
     start_states = get_start_states(services, state_keys)
 

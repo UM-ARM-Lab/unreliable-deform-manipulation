@@ -13,14 +13,14 @@ rospy.init_node("testing")
 
 services = gazebo_services.GazeboServices()
 
-h_rows = 200
-w_cols = 200
+h_rows = 100
+w_cols = 100
 res = 0.01
 
 occupancy_data = get_local_occupancy_data(rows=h_rows,
                                           cols=w_cols,
                                           res=res,
-                                          center_point=np.array([0.0, 0]), services=services)
+                                          center_point=np.array([0.65, 0.11]), service_provider=services)
 
 plt.figure()
 plt.imshow(occupancy_data.image, extent=occupancy_data.extent)

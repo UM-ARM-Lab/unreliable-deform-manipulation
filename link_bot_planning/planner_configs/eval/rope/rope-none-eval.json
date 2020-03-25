@@ -1,0 +1,29 @@
+{
+  "fwd_model_dir": "ss_log_data/rope_no_obs/March_21_12-51-17_1510a3723b/",
+  "classifier_model_dir": "classifiers/none/",
+  "planner_type": "NearestRRT",
+  "sampler_type": "random",
+  "directed_control_sampler": "simple",
+  "accept_threshold": 0.5,
+  "max_angle_rad": 1.0,
+  "random_epsilon": 0.05,
+  "w": 1.0,
+  "h": 1.0,
+  "random_goal_w": 0.9,
+  "random_goal_h": 0.9,
+  "timeout": 120,
+  "movable_obstacles": [
+    "moving_box1",
+    "moving_box2",
+    "moving_box3",
+    "moving_box6",
+    "moving_box7"
+  ],
+  "goal_threshold": 0.05,
+  "fixed_goal": null,
+  "reset_gripper_to": null,
+  "real_time_rate": 0.0,
+  "max_step_size": 0.01,
+  "smoothing": null,
+  "scenario": "link_bot"
+}

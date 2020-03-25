@@ -1,12 +1,10 @@
 import tensorflow as tf
 
 
-@tf.function
 def bilinear_sampler(img, x, y):
     """
-    Performs bilinear sampling of the input images according to the
-    normalized coordinates provided by the sampling grid. Note that
-    the sampling is done identically for each channel of the input.
+    Performs bilinear sampling of the input images according to the normalized coordinates provided by the sampling grid.
+    sampling is done identically for each channel of the input.
 
     To test if the function works properly, output image should be
     identical to input image when theta is initialized to identity
@@ -30,8 +28,8 @@ def bilinear_sampler(img, x, y):
     # rescale x and y to [0, W-1/H-1]
     x = tf.cast(x, 'float32')
     y = tf.cast(y, 'float32')
-    x = 0.5 * ((x + 1.0) * tf.cast(max_x - 1, 'float32'))
-    y = 0.5 * ((y + 1.0) * tf.cast(max_y - 1, 'float32'))
+    # y = tf.cast(max_y, 'float32') - 1 - y
+    # x = tf.cast(max_x, 'float32') - 1 - x
 
     # grab 4 nearest corner points for each (x_i, y_i)
     x0 = tf.cast(tf.floor(x), 'int32')
@@ -71,6 +69,7 @@ def bilinear_sampler(img, x, y):
 
     # compute output
     out = tf.add_n([wa * Ia, wb * Ib, wc * Ic, wd * Id])
+    out = tf.transpose(out, [0, 2, 1, 3])
 
     return out
 

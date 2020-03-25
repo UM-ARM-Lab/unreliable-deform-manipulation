@@ -14,21 +14,24 @@ class LinkBotScenario(ExperimentScenario):
     def plot_state_simple(ax: plt.Axes,
                           state: Dict[str, np.ndarray],
                           color,
-                          label=None):
+                          label=None,
+                          **kwargs):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         x = link_bot_points[0, 0]
         y = link_bot_points[0, 1]
-        ax.scatter(x, y, c=color, s=1, label=label)
+        ax.scatter(x, y, c=color, label=label, **kwargs)
 
     @staticmethod
     def plot_state(ax: plt.Axes,
-                   state: Dict[str, np.ndarray],
-                   color):
+                   state: Dict,
+                   color,
+                   s: int,
+                   zorder: int):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         xs = link_bot_points[:, 0]
         ys = link_bot_points[:, 1]
-        scatt = ax.scatter(xs[0], ys[0], c=color, s=1)
-        line = ax.plot(xs, ys, linewidth=1, c=color)[0]
+        scatt = ax.scatter(xs[0], ys[0], c=color, s=s, zorder=zorder)
+        line = ax.plot(xs, ys, linewidth=1, c=color, zorder=zorder)[0]
         return line, scatt
 
     @staticmethod
@@ -88,8 +91,8 @@ class LinkBotScenario(ExperimentScenario):
         }
 
     @staticmethod
-    def plot_goal(ax, goal, color='g', label=None):
-        ax.scatter(goal[0], goal[1], s=50, c=color, label=label)
+    def plot_goal(ax, goal, color='g', label=None, **kwargs):
+        ax.scatter(goal[0], goal[1], c=color, label=label, **kwargs)
 
     @staticmethod
     def update_artist(artist, state):
@@ -108,8 +111,8 @@ class LinkBotScenario(ExperimentScenario):
         marker_provider.publish_marker(id=0, rgb=[1, 0, 0], scale=0.05, x=tail_point[0], y=tail_point[1])
 
     @staticmethod
-    def publish_goal_marker(marker_provider: MarkerProvider, goal):
-        marker_provider.publish_marker(id=0, rgb=[1, 0, 0], scale=0.05, x=goal[0], y=goal[1])
+    def publish_goal_marker(marker_provider: MarkerProvider, goal, size: float):
+        marker_provider.publish_marker(id=0, rgb=[1, 0, 0], scale=size, x=goal[0], y=goal[1])
 
     @staticmethod
     def local_environment_center(state):
