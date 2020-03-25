@@ -118,7 +118,6 @@ class ClassifierDataset(BaseDataset):
 
         @tf.function
         def _label_transitions(transition: dict):
-            # FIXME: don't hard code this
             state_key = self.labeling_params['state_key']
             state_key_next = add_next(state_key)
             planned_state_key = 'planned_state/{}'.format(state_key)

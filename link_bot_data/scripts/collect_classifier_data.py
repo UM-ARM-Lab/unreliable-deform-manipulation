@@ -90,7 +90,7 @@ class ClassifierDataCollector(PlanAndExecute):
             'planner_params': planner_params,
             'sim_params': sim_params.to_json(),
             'full_env_params': self.planner.fwd_model.hparams['dynamics_dataset_hparams']['full_env_params'],
-            'scenario': self.planner_params['scenario'],
+            'scenario': repr(self.planner.fwd_model.scenario),
             'sequence_length': self.n_steps_per_example,
             'fwd_model_dir': str(self.fwd_model_dir),
             'fwd_model_hparams': self.planner.fwd_model.hparams,
@@ -106,10 +106,8 @@ class ClassifierDataCollector(PlanAndExecute):
         self.traj_idx = 0
 
     def on_before_plan(self):
-        print(Fore.RED + "REMOVE ME" + Fore.RESET)
-        self.services.reset_world(self.verbose, self.reset_gripper_to)
-        # if self.reset_gripper_to is not None:
-        #     self.services.reset_gripper(self.reset_gripper_to)
+        if self.reset_gripper_to is not None:
+            self.services.reset_gripper(self.reset_gripper_to)
         super().on_before_plan()
 
     def get_goal(self, w, h, full_env_data):
@@ -173,8 +171,6 @@ class ClassifierDataCollector(PlanAndExecute):
             'full_env/res': float_tensor_to_bytes_feature(full_env_data.resolution),
         }
 
-        print("steps in full plath: {}".format(planned_actions.shape[0]))
-
         n_steps = len(actual_path)
         for time_idx in range(self.n_steps_per_example):
             # we may have to truncate, or pad the trajectory, depending on the length of the plan
@@ -232,7 +228,7 @@ def main():
     parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument("n_total_plans", type=int, help='number of plans')
     parser.add_argument("--n-plans-per-env", type=int, help='number of plans per env', default=16)
-    parser.add_argument("--n-steps-per-example", type=int, help='number of steps per example', default=100)
+    parser.add_argument("--n-steps-per-example", type=int, help='number of steps per example', default=50)
     parser.add_argument("--n-examples-per-record", type=int, help='number of examples per tfrecord', default=128)
     parser.add_argument("params", type=pathlib.Path, help='params json file')
     parser.add_argument("outdir", type=pathlib.Path)

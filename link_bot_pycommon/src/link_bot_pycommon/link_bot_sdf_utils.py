@@ -89,6 +89,12 @@ class OccupancyData:
         #  but rows correspond to y which increases going up
         self.image = np.flipud(self.data)
 
+    def copy(self):
+        copy = OccupancyData(data=np.copy(self.data),
+                             resolution=self.resolution,
+                             origin=np.copy(self.origin))
+        return copy
+
 
 def batch_occupancy_data(occupancy_data_s: List[OccupancyData]) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     data_s = []
@@ -172,21 +178,27 @@ def load_sdf(filename):
     return sdf, grad, res, origin
 
 
-def inflate(local_env: OccupancyData, radius_m: float):
+def inflate(env: OccupancyData, radius_m: float):
     assert radius_m >= 0
     if radius_m == 0:
-        return local_env
+        return env
 
-    inflated = local_env
-    radius = int(radius_m / local_env.resolution)
+    inflated_data = np.copy(env.data)
+    radius = int(radius_m / env.resolution)
 
-    for i, j in np.ndindex(local_env.data.shape):
+    for i, j in np.ndindex(env.data.shape):
         try:
-            if local_env.data[i, j] == 1:
+            if env.data[i, j] == 1:
                 for di in range(-radius, radius + 1):
                     for dj in range(-radius, radius + 1):
-                        inflated.data[i + di, j + dj] = 1
+                        r = i + di
+                        c = j + dj
+                        if 0 <= r < env.data.shape[0] and 0 <= c < env.data.shape[1]:
+                            inflated_data[i + di, j + dj] = 1
         except IndexError:
             pass
 
+    inflated = OccupancyData(data=inflated_data,
+                             origin=env.origin,
+                             resolution=env.resolution)
     return inflated

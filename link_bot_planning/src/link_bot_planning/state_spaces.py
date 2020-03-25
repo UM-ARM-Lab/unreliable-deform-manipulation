@@ -128,14 +128,14 @@ class TrainingSetCompoundSampler(ob.RealVectorStateSampler):
 
 
 def to_numpy_flat(state_or_control, dim: int):
-    np_state_or_control = np.ndarray(dim)
+    np_state_or_control = np.ndarray(dim, dtype=np.float32)
     for i in range(dim):
         np_state_or_control[i] = state_or_control[i]
     return np_state_or_control
 
 
 def to_numpy(state_or_control, dim: int):
-    np_state_or_control = np.ndarray((1, dim))
+    np_state_or_control = np.ndarray((1, dim), dtype=np.float32)
     for i in range(dim):
         np_state_or_control[0, i] = state_or_control[i]
     return np_state_or_control
@@ -154,10 +154,10 @@ def from_numpy(np_state_or_control: np.ndarray,
                dim: int):
     if np_state_or_control.ndim == 2:
         for i in range(dim):
-            out[i] = np_state_or_control[0, i]
+            out[i] = np.float64(np_state_or_control[0, i])
     else:
         for i in range(dim):
-            out[i] = np_state_or_control[i]
+            out[i] = np.float64(np_state_or_control[i])
 
 
 def compound_to_numpy(state_space_description, state):

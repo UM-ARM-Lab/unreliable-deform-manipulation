@@ -14,7 +14,7 @@ class LinkBotScenario(ExperimentScenario):
     def plot_state_simple(ax: plt.Axes,
                           state: Dict[str, np.ndarray],
                           color,
-                          label):
+                          label=None):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         x = link_bot_points[0, 0]
         y = link_bot_points[0, 1]
@@ -128,3 +128,6 @@ class LinkBotScenario(ExperimentScenario):
         link_bot_points = tf.reshape(state['link_bot'], [b, -1, 2])
         head_point_where_gripper_is = link_bot_points[:, -1]
         return head_point_where_gripper_is
+
+    def __repr__(self):
+        return "link_bot"

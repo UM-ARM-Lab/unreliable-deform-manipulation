@@ -10,11 +10,11 @@ from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 def get_planner(planner_params: Dict, services: GazeboServices, seed: int, verbose: int):
-    scenario = get_scenario(planner_params['scenario'])
     fwd_model_dir = pathlib.Path(planner_params['fwd_model_dir'])
     classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])
-    fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir, scenario)
-    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario)
+    fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir)
+    scenario = fwd_model.scenario
+    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)
     viz_object = link_bot_planning.viz_object.VizObject()
 
     planner_class_str = planner_params['planner_type']

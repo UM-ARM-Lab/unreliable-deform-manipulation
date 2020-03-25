@@ -36,7 +36,7 @@ def plot_plan(ax,
         start = planned_path[0]
         experiment_scenario.plot_state(ax, start, color='b')
         experiment_scenario.plot_goal(ax, goal, color='c')
-        draw_every_n = 6
+        draw_every_n = 1
         for state in planned_path[::draw_every_n]:
             experiment_scenario.plot_state(ax, state, color='g')
 

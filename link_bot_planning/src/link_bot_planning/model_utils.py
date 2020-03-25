@@ -3,13 +3,14 @@ import pathlib
 from typing import Tuple
 
 from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_planning.get_scenario import get_scenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from state_space_dynamics.obstacle_nn import ObstacleNNWrapper
 from state_space_dynamics.rigid_translation_model import RigidTranslationModel
 from state_space_dynamics.simple_nn import SimpleNNWrapper
 
 
-def load_generic_model(model_dir: pathlib.Path, scenario : ExperimentScenario) -> [BaseDynamicsFunction, Tuple[str]]:
+def load_generic_model(model_dir: pathlib.Path) -> [BaseDynamicsFunction, Tuple[str]]:
     """
     Loads a model which exposes a unified model API (predict, dt, n_state, etc...)
     :param model_dir: directory which specifies which model should loaded (TF assumes latest checkpoint)
@@ -17,6 +18,7 @@ def load_generic_model(model_dir: pathlib.Path, scenario : ExperimentScenario) -
     """
     model_hparams_file = model_dir / 'hparams.json'
     hparams = json.load(model_hparams_file.open('r'))
+    scenario = get_scenario(hparams['dynamics_dataset_hparams']['scenario'])
     model_type = hparams['model_class']
     if model_type == 'rigid':
         # FIXME: remove batch_size=1 here? can I put it in base model?

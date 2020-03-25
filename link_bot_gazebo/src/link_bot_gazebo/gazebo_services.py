@@ -7,7 +7,7 @@ from colorama import Fore
 from gazebo_msgs.srv import ApplyBodyWrench, SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from std_msgs.msg import String
-from std_srvs.srv import EmptyRequest
+from std_srvs.srv import Empty, EmptyRequest
 
 from link_bot_pycommon.link_bot_pycommon import quaternion_from_euler
 from link_bot_pycommon.ros_pycommon import Services
@@ -21,23 +21,24 @@ class GazeboServices(Services):
     def __init__(self):
         super().__init__()
         # we can't mock these
-        self.apply_body_wrench = rospy.ServiceProxy('/gazebo/apply_body_wrench', ApplyBodyWrench)
-        self.link_bot_reset = rospy.ServiceProxy("/link_bot_reset", LinkBotReset)
+        self.apply_body_wrench = rospy.ServiceProxy('gazebo/apply_body_wrench', ApplyBodyWrench)
+        self.link_bot_reset = rospy.ServiceProxy("link_bot_reset", LinkBotReset)
+        self.gazebo_reset = rospy.ServiceProxy("gazebo/reset_world", Empty)
 
         # don't want to mock these
         self.get_physics = rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('gazebo/set_physics_properties', SetPhysicsProperties)
 
         # not used in real robot experiments
-        self.get_tether_state = rospy.ServiceProxy("/tether", GetObject)
+        self.get_tether_state = rospy.ServiceProxy("tether", GetObject)
 
         # FIXME: Move this kind of interaction with the environment to a separate node, since we will probably
         #  never be able to do it on a real robot
-        self.link_bot_mode = rospy.Publisher('/link_bot_action_mode', String, queue_size=10)
-        self.position_2d_stop = rospy.Publisher('/position_2d_stop', std_msgs.msg.Empty, queue_size=10)
-        self.position_2d_action = rospy.Publisher('/position_2d_action', ModelsPoses, queue_size=10)
+        self.link_bot_mode = rospy.Publisher('link_bot_action_mode', String, queue_size=10)
+        self.position_2d_stop = rospy.Publisher('position_2d_stop', std_msgs.msg.Empty, queue_size=10)
+        self.position_2d_action = rospy.Publisher('position_2d_action', ModelsPoses, queue_size=10)
 
-        self.services_to_wait_for.append('/link_bot_reset')
+        self.services_to_wait_for.append('link_bot_reset')
 
     def setup_env(self,
                   verbose: int,
@@ -72,6 +73,7 @@ class GazeboServices(Services):
     def reset_world(self, verbose, reset_gripper_to: Optional[Tuple[float]] = None):
         empty = EmptyRequest()
         self.reset.call(empty)
+        self.gazebo_reset(empty)
 
         enable_link_bot = String()
         enable_link_bot.data = 'position'

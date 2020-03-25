@@ -226,5 +226,3 @@ def evaluate(keras_model: MyKerasModel,
             print("{} {:8.4f}".format(metric_name, metric_value))
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
-
-    print(keras_model.summary(line_length=250))

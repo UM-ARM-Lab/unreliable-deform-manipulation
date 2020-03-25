@@ -45,6 +45,7 @@ def main():
     args.out_dir.mkdir(parents=False, exist_ok=False)
     new_hparams_filename = args.out_dir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams
+    classifier_dataset_hparams['fwd_model_hparams'] = fwd_model.hparamsfwd_model.hparams
     classifier_dataset_hparams['actual_state_keys'] = dataset.state_feature_names
     classifier_dataset_hparams['planned_state_keys'] = fwd_model.state_keys
     json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=1)
@@ -57,7 +58,6 @@ def main():
         'val': val_split,
         'train': train_split
     }
-    print(take_split)
 
     for mode in ['test', 'val', 'train']:
         tf_dataset = dataset.get_datasets(mode=mode, take=take_split[mode])

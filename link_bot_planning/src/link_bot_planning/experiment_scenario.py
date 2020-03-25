@@ -24,7 +24,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def plot_goal(ax, goal, color, label):
+    def plot_goal(ax, goal, color, label=None):
         raise NotImplementedError()
 
     @staticmethod
@@ -62,3 +62,6 @@ class ExperimentScenario:
     @staticmethod
     def update_artist(artist, state):
         pass
+
+    def __repr__(self):
+        raise NotImplementedError()

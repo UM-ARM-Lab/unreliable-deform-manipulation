@@ -12,7 +12,9 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
+from link_bot_data.link_bot_dataset_utils import add_next
 from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.image_functions import make_transition_image, make_traj_images
 from moonshine.numpy_utils import add_batch
 from moonshine.tensorflow_train_test_loop import MyKerasModel
@@ -82,7 +84,7 @@ class RasterClassifier(MyKerasModel):
             concat_args = [conv_output, action]
             for state_key in self.states_keys:
                 planned_state_key = 'planned_state/{}'.format(state_key)
-                planned_state_key_next = 'planned_state_next/{}'.format(state_key)
+                planned_state_key_next = add_next('planned_state/{}'.format(state_key))
                 state = input_dict[planned_state_key]
                 next_state = input_dict[planned_state_key_next]
                 concat_args.append(state)
@@ -168,7 +170,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                                         full_env_origin: np.ndarray,
                                         res: float,
                                         states_sequence: List[Dict],
-                                        actions: tf.Variable) -> tf.Tensor:
+                                        actions) -> tf.Tensor:
         image_key = self.model_hparams['image_key']
         if image_key == 'transition_image':
             return self.check_transition(full_env=full_env,

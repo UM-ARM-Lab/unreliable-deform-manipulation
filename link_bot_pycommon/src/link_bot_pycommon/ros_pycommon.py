@@ -165,9 +165,8 @@ def get_local_occupancy_data(rows,
                                    res=res,
                                    center_x=center_point[0],
                                    center_y=center_point[1])
-    resolution = response.res
     origin = np.array(response.origin)
-    local_occupancy_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=resolution, origin=origin)
+    local_occupancy_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=res, origin=origin)
     return local_occupancy_data
 
 

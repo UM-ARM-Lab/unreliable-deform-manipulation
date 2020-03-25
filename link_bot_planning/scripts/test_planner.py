@@ -168,7 +168,8 @@ def main():
 
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=args.max_step_size,
-                           move_obstacles=planner_params['move_obstacles'])
+                           movable_obstacles=planner_params['movable_obstacles'],
+                           nudge=True)
 
     rospy.init_node('test_planner_with_classifier')
 

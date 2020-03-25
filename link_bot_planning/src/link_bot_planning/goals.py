@@ -13,7 +13,7 @@ def sample_collision_free_goal(w: float,
                                h: float,
                                full_env_data: link_bot_sdf_utils.OccupancyData,
                                rng: np.random.RandomState):
-    full_env_data = link_bot_sdf_utils.inflate(full_env_data, radius_m=0.01)
+    full_env_data = link_bot_sdf_utils.inflate(full_env_data, radius_m=0.05)
 
     while True:
         x, y = sample_goal(w, h, rng)

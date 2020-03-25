@@ -10,7 +10,7 @@ from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.numpy_utils import add_batch
 
 
-# @tf.function
+@tf.function
 def make_transition_image(full_env,
                           full_env_origin,
                           res,
@@ -30,16 +30,12 @@ def make_transition_image(full_env,
     :return: [batch,n_points*2+n_action+1], aka  [batch,n_state+n_action+1]
     """
     local_env_center_point = scenario.local_environment_center_differentiable(planned_states)
-    # TODO: these functions are scattered all over the place, organize better
     local_env, local_env_origin = get_local_env_and_origin_differentiable(center_point=local_env_center_point,
                                                                           full_env=full_env,
                                                                           full_env_origin=full_env_origin,
                                                                           res=res,
                                                                           local_h_rows=local_env_h,
                                                                           local_w_cols=local_env_w)
-    local_env = local_env
-    local_env_origin = local_env_origin
-    tf.print(local_env[0, 0, 0], local_env_origin[0, 0])
 
     concat_args = [tf.zeros([1, local_env_h, local_env_w, 1])]
     for planned_state in planned_states.values():
@@ -58,14 +54,13 @@ def make_transition_image(full_env,
         concat_args.append(planned_next_rope_image)
 
     if action_in_image:
-        # FIXME: use tf to make sure its differentiable
         action_image = smear_action_differentiable(action, local_env_h, local_env_w)
         concat_args.append(action_image)
     image = tf.concat(concat_args, axis=3)
     return image
 
 
-# @tf.function
+@tf.function
 def raster_rope_images(planned_states: List[Dict],
                        res,
                        origin,
@@ -98,7 +93,7 @@ def raster_rope_images(planned_states: List[Dict],
     return rope_images
 
 
-# @tf.function
+@tf.function
 def make_traj_images(full_env,
                      full_env_origin,
                      res,
@@ -122,21 +117,13 @@ def make_traj_images(full_env,
     return image
 
 
-# @tf.function
 def add_traj_image(dataset):
-    def _make_traj_images(full_env, full_env_origin, res, stop_index, *args):
+    def _make_traj_images(full_env, full_env_origin, res, stop_index, states: Dict):
 
-        n_args = len(args)
-        n_states = n_args // 2
-        planned_states = args[:n_states]
-        planned_states_keys = args[n_states:]
-
-        # convert from a dictionary where each element is [T, n_state] to
-        # a list where each element is a dictionary, and element element of that dictionary is [1 (batch), n_state]
         planned_states_seq = []
         for t in range(stop_index):
             state_t = {}
-            for k, v in zip(planned_states_keys, planned_states):
+            for k, v in states.items():
                 state_t[k] = tf.expand_dims(v[t], axis=0)  # add batch here
             planned_states_seq.append(state_t)
 
@@ -152,26 +139,17 @@ def add_traj_image(dataset):
         full_env_origin = input_dict['full_env/origin']
         res = input_dict['full_env/res']
         stop_index = input_dict['stop_idx']
-        planned_states = []
-        planned_state_keys = []
-        # NOTE: Here we lose the semantic meaning, because we can't pass a dict to a numpy_function :(
-        #  I hate TF
-        for k, v in input_dict.items():
-            m = re.fullmatch('planned_state/(.*)_all', k)
-            if m:
-                planned_state_key = 'planned_state/{}'.format(m.group(1))
-                v_t = v[:stop_index]
-                planned_states.append(v_t)
-                planned_state_keys.append(planned_state_key)
-        tensor_inputs = [full_env, full_env_origin, res, stop_index] + planned_states + planned_state_keys
-        image = tf.numpy_function(_make_traj_images, tensor_inputs, tf.float32)
+        image = _make_traj_images(full_env=full_env,
+                                  full_env_origin=full_env_origin,
+                                  res=res,
+                                  stop_index=stop_index,
+                                  states=states)
         input_dict['trajectory_image'] = image
         return input_dict
 
     return dataset.map(_add_traj_image_wrapper)
 
 
-# @tf.function
 def add_transition_image(dataset,
                          states_keys: List[str],
                          scenario: ExperimentScenario,
@@ -218,7 +196,7 @@ def add_transition_image(dataset,
     return dataset.map(_add_transition_image)
 
 
-# @tf.function
+@tf.function
 def raster_differentiable(state, res, origin, h, w):
     """
     Even though this data is batched, we use singular and reserve plural for sequences in time

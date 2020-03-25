@@ -139,7 +139,7 @@ class PlanAndExecute:
         self.on_complete(initial_poses_in_collision)
 
     def get_goal(self, w, h, full_env_data):
-        return sample_collision_free_goal(w, h, full_env_data, self.goal_rng)
+        return sample_collision_free_goal(w=w, h=h, full_env_data=full_env_data, rng=self.goal_rng)
 
     def on_plan_complete(self,
                          planned_path: List[Dict],

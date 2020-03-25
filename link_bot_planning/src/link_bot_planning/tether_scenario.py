@@ -38,3 +38,6 @@ class TetherScenario(ExperimentScenario):
             return 0.0
         else:
             raise NotImplementedError()
+
+    def __repr__(self):
+        return "tether"
