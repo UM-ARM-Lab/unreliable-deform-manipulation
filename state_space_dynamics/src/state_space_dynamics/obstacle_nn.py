@@ -106,7 +106,6 @@ class ObstacleNN(MyKerasModel):
 
             rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols)
 
-            # FIXME: this is differentiable already, but we need to implement it in TensorFlow
             action_image_t = smear_action_differentiable(action_t, env_h_rows, env_w_cols)
 
             env = tf.expand_dims(env, axis=3)
@@ -138,7 +137,7 @@ class ObstacleNN(MyKerasModel):
         pred_states = tf.stack(pred_states, axis=1)
 
         # Split the stack of state vectors up by state name/dim
-        output_states = self.state_vector_to_state_dict(pred_states)
+        output_states = self.state_vector_to_state_sequence_dict(pred_states)
 
         return output_states
 

@@ -102,7 +102,7 @@ def plot_all(train_dataset, states_description):
     plt.show()
 
 
-def plot_heatmap(train_dataset):
+def plot_heatmap(train_dataset, show_env=True):
     # Get the environment stuff, which we assume is constant
     input_data, _ = next(iter(train_dataset))
     full_env = input_data['full_env/env'].numpy().squeeze()
@@ -117,6 +117,8 @@ def plot_heatmap(train_dataset):
         states_sequence = input_data['link_bot'].numpy()
         for state in states_sequence:
             state_image_i = old_raster(*add_batch(state, full_env_res, full_env_origin), full_env_h, full_env_w)
+            # merge down to one channel
+            state_image_i = np.sum(state_image_i, axis=3, keepdims=True)
             state_image_i = state_image_i.astype(np.int32)
             if states_image_mask is None:
                 states_image_mask = np.copy(state_image_i)
@@ -151,12 +153,15 @@ def plot_heatmap(train_dataset):
     ax.axis("equal")
 
     full_env_mask = np.expand_dims(1 - full_env, axis=2)
-    states_image_perceptually_uniform = cm.viridis(states_image_normalized)[:, :, :3]
     state_no_env_mask = full_env_mask * np.expand_dims(states_image_mask, axis=2)
     no_state_no_env_mask = full_env_mask * (1 - np.expand_dims(states_image_mask, axis=2))
-    states_image_masked = states_image_perceptually_uniform * state_no_env_mask
-    full_env_inv = np.tile(full_env_mask, [1, 1, 3]) * no_state_no_env_mask
-    combined_image = states_image_masked + full_env_inv
+    states_image_perceptually_uniform = cm.viridis(states_image_normalized)[:, :, :3]
+    if show_env:
+        states_image_masked = states_image_perceptually_uniform * state_no_env_mask
+        full_env_inv = np.tile(full_env_mask, [1, 1, 3]) * no_state_no_env_mask
+        combined_image = states_image_masked + full_env_inv
+    else:
+        combined_image = states_image_perceptually_uniform
     plt.imshow(np.flipud(combined_image), extent=full_env_extent)
     now = int(time.time())
     plt.savefig('dataset_visualization/{}.png'.format(now), dpi=600)
@@ -179,6 +184,7 @@ def main():
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train', help='train test or val')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
     parser.add_argument('--redraw', action='store_true', help='redraw')
+    parser.add_argument('--show-env', action='store_true', help='show env, assumed to be constant')
 
     args = parser.parse_args()
 
@@ -204,11 +210,11 @@ def main():
         print(k, v.shape)
 
     if args.plot_type == 'individual':
-        plot_individual(tf_dataset, args.redraw, tf_dataset.states_description)
+        plot_individual(tf_dataset, args.redraw, dataset.states_description)
     elif args.plot_type == 'all':
-        plot_all(tf_dataset, tf_dataset.states_description)
+        plot_all(tf_dataset, dataset.states_description)
     elif args.plot_type == 'heatmap':
-        plot_heatmap(tf_dataset)
+        plot_heatmap(tf_dataset, show_env=args.show_env)
     elif args.plot_type == 'just_count':
         i = 0
         for e in tf_dataset:
