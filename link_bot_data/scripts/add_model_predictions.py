@@ -47,7 +47,7 @@ def main():
     classifier_dataset_hparams = dynamics_hparams
     classifier_dataset_hparams['fwd_model_hparams'] = fwd_model.hparamsfwd_model.hparams
     classifier_dataset_hparams['actual_state_keys'] = dataset.state_feature_names
-    classifier_dataset_hparams['planned_state_keys'] = fwd_model.state_keys
+    classifier_dataset_hparams['planned_state_keys'] = fwd_model.states_keys
     json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=1)
 
     val_split = int(args.total_take * DEFAULT_VAL_SPLIT) if args.total_take is not None else None

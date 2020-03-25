@@ -32,16 +32,21 @@ def sample_delta_pos(action_rng: np.random.RandomState,
             dx = last_dx
             dy = last_dy
         else:
-            delta_pos = action_rng.uniform(0, max_delta_pos)
-            direction = action_rng.uniform(-np.pi, np.pi)
-            dx = np.cos(direction) * delta_pos
-            dy = np.sin(direction) * delta_pos
+            dx, dy = random_delta_pos(action_rng, max_delta_pos)
 
         half_w = goal_env_w / 2
         half_h = goal_env_h / 2
         if -half_w <= gripper_point.x + dx <= half_w and -half_h <= gripper_point.y + dy <= half_h:
             break
 
+    return dx, dy
+
+
+def random_delta_pos(action_rng, max_delta_pos):
+    delta_pos = action_rng.uniform(0, max_delta_pos)
+    direction = action_rng.uniform(-np.pi, np.pi)
+    dx = np.cos(direction) * delta_pos
+    dy = np.sin(direction) * delta_pos
     return dx, dy
 
 
@@ -64,7 +69,7 @@ def generate_traj(params, args, service_provider, traj_idx, global_t_step, actio
         'full_env/res': float_tensor_to_bytes_feature(full_env_data.resolution),
     }
 
-    gripper1_dx = gripper1_dy = 0
+    gripper1_dx, gripper1_dy = random_delta_pos(action_rng, max_delta_pos)
     for time_idx in range(params.steps_per_traj):
         objects_response = service_provider.get_objects()
         states_dict = {}
@@ -142,7 +147,8 @@ def generate_trajs(service_provider,
 
             end_traj_idx = traj_idx + args.start_idx_offset
             start_traj_idx = end_traj_idx - args.trajs_per_file + 1
-            full_filename = os.path.join(full_output_directory, "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
+            full_filename = os.path.join(full_output_directory,
+                                         "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tf.data.experimental.TFRecordWriter(full_filename, compression_type='ZLIB')
             writer.write(serialized_dataset)
             print("saved {}".format(full_filename))

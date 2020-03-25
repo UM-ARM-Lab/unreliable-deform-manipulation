@@ -23,7 +23,7 @@ class BaseDynamicsFunction:
         self.dt = self.hparams['dynamics_dataset_hparams']['dt']
         self.max_step_size = self.sim_params.max_step_size
         self.states_description = self.hparams['dynamics_dataset_hparams']['states_description']
-        self.state_keys = None
+        self.states_keys = None
 
     def propagate(self,
                   full_env: np.ndarray,

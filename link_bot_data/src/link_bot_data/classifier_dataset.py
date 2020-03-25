@@ -26,7 +26,7 @@ def add_model_predictions(fwd_model: BaseDynamicsFunction, tf_dataset, dataset: 
                                                          res=res,
                                                          start_states=start_states,
                                                          actions=actions)
-        for name in fwd_model.state_keys:
+        for name in fwd_model.states_keys:
             predictions_for_name = []
             for prediction_t in predictions:
                 predictions_for_name.append(prediction_t[name])
@@ -43,7 +43,7 @@ def add_model_predictions(fwd_model: BaseDynamicsFunction, tf_dataset, dataset: 
             # use outputs here so we get the final state
             example[name] = outputs[name]
 
-        for name in fwd_model.state_keys:
+        for name in fwd_model.states_keys:
             name = "planned_state/" + name
             example[name] = outputs[name]
 
@@ -63,7 +63,7 @@ def add_model_predictions(fwd_model: BaseDynamicsFunction, tf_dataset, dataset: 
                 feature_name = ("%d/" + name) % t
                 split_example[feature_name] = state
 
-        for name in fwd_model.state_keys:
+        for name in fwd_model.states_keys:
             name = "planned_state/" + name
             states = example[name]
             for t in range(states.shape[0]):

@@ -65,7 +65,7 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         self.ckpt.restore(self.manager.latest_checkpoint)
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
-        self.state_keys = [self.net.state_key]
+        self.states_keys = [self.net.state_key]
 
     def propagate_differentiable(self,
                                  full_env,

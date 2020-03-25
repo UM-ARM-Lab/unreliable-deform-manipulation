@@ -4,8 +4,8 @@ from typing import Dict, List
 import numpy as np
 import tensorflow as tf
 
-from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
@@ -16,6 +16,7 @@ class RigidTranslationModel(BaseDynamicsFunction):
         self.beta = self.hparams['beta']
         self.batch_size = batch_size
         self.B = tf.constant([[1.0, 0.0], [0.0, 1.0]], dtype=tf.float32) * self.beta
+        self.states_keys = self.hparams['states_keys']
 
     def propagate_differentiable(self,
                                  full_env: np.ndarray,
@@ -34,7 +35,7 @@ class RigidTranslationModel(BaseDynamicsFunction):
 
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         s_t = {}
-        for k, s_0_k in  start_states.items():
+        for k, s_0_k in start_states.items():
             s_t[k] = tf.convert_to_tensor(s_0_k, dtype=tf.float32)
         predictions = [s_t]
         for t in range(actions.shape[0]):
