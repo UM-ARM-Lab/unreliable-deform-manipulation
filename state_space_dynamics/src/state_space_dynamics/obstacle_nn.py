@@ -9,6 +9,7 @@ from tensorflow import keras
 
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import FullEnvParams
+from link_bot_pycommon.link_bot_sdf_utils import compute_extent
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.numpy_utils import add_batch, dict_of_sequences_to_sequence_of_dicts
@@ -103,6 +104,7 @@ class ObstacleNN(MyKerasModel):
                 env, env_origin = self.get_local_env(local_env_center, full_env_origin, full_env, res)
                 env_h_rows = tf.convert_to_tensor(self.local_env_h_rows, tf.float32)
                 env_w_cols = tf.convert_to_tensor(self.local_env_w_cols, tf.float32)
+
 
             rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols)
 

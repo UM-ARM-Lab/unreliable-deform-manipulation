@@ -12,9 +12,12 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_planning.get_scenario import get_scenario
-from moonshine.image_functions import add_traj_image, add_transition_image, add_traj_image_wrapper
+from link_bot_pycommon.link_bot_sdf_utils import compute_extent
+from moonshine.image_functions import add_traj_image, add_transition_image, add_traj_image_wrapper, \
+    add_transition_image_to_example
 
 tf.compat.v1.enable_eager_execution()
+
 
 def main():
     plt.style.use("./classifier.mplstyle")
@@ -23,7 +26,8 @@ def main():
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('display_type',
-                        choices=['just_image', 'transition_image', 'transition_plot', 'trajectory_image', 'trajectory_plot'])
+                        choices=['just_image', 'transition_image', 'transition_plot', 'trajectory_image',
+                                 'trajectory_plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
@@ -32,7 +36,7 @@ def main():
     parser.add_argument('--discard-pre-far', action='store_true')
     parser.add_argument('--action-in-image', action='store_true')
     parser.add_argument('--take', type=int)
-    parser.add_argument('--local-env-s', type=int, default=100)
+    parser.add_argument('--local-env-s', type=int, default=50)
     parser.add_argument('--no-balance', action='store_true')
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
@@ -48,12 +52,28 @@ def main():
 
     classifier_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
+    scenario = get_scenario(classifier_dataset.hparams['scenario'])
 
     if not args.no_balance:
         dataset = balance(dataset)
 
+    input_dict = next(iter(dataset))
+    d = add_transition_image_to_example(input_dict,
+                                        states_keys=states_keys,
+                                        action_in_image=args.action_in_image,
+                                        scenario=scenario,
+                                        local_env_h=args.local_env_s,
+                                        local_env_w=args.local_env_s)
+    image = d['transition_image'].numpy()
+    res = 0.01
+    local_env_origin = np.array([-27, 10])
+    extent = compute_extent(args.local_env_s, args.local_env_s, res, local_env_origin)
+    interpretable_image = make_interpretable_image(image, 11)
+    plt.imshow(np.flipud(interpretable_image), extent=extent)
+    plt.show(block=True)
+    return
+
     if args.display_type == 'transition_image':
-        scenario = get_scenario(classifier_dataset.hparams['scenario'])
         dataset = add_transition_image(dataset,
                                        states_keys=states_keys,
                                        action_in_image=args.action_in_image,

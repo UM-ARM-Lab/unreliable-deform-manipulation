@@ -6,7 +6,6 @@ from link_bot_data.link_bot_dataset_utils import add_all
 
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_pycommon import link_bot_pycommon
-from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.numpy_utils import add_batch
@@ -31,6 +30,7 @@ def make_transition_image(full_env,
     :param action_in_image: include new channels for actions
     :return: [batch,n_points*2+n_action+1], aka  [batch,n_state+n_action+1]
     """
+    # somehow fix this, it's showing the rope not at the center of the local environment?!
     local_env_center_point = scenario.local_environment_center_differentiable(planned_states)
     local_env, local_env_origin = get_local_env_and_origin_differentiable(center_point=local_env_center_point,
                                                                           full_env=full_env,
@@ -179,6 +179,49 @@ def add_traj_image(dataset, states_keys: List[str]):
     return dataset.map(_add_traj_image_wrapper)
 
 
+def add_transition_image_to_example(input_dict,
+                                    states_keys: List[str],
+                                    scenario: ExperimentScenario,
+                                    local_env_w: int,
+                                    local_env_h: int,
+                                    action_in_image: Optional[bool] = False):
+    action = input_dict['action']
+
+    planned_states = {}
+    planned_next_states = {}
+    n_total_points = 0
+    for state_key in states_keys:
+        planned_state_feature_name = 'planned_state/{}'.format(state_key)
+        planned_state_next_feature_name = 'planned_state/{}_next'.format(state_key)
+        planned_state = input_dict[planned_state_feature_name]
+        planned_next_state = input_dict[planned_state_next_feature_name]
+        n_total_points += link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
+        planned_states[state_key] = planned_state
+        planned_next_states[state_key] = planned_next_state
+
+    full_env = input_dict['full_env/env']
+    full_env_res = tf.squeeze(input_dict['full_env/res'])
+    full_env_origin = input_dict['full_env/origin']
+    n_action = action.shape[0]
+
+    batched_inputs = add_batch(full_env, full_env_origin, full_env_res, planned_states, action, planned_next_states)
+    image = make_transition_image(*batched_inputs,
+                                  scenario=scenario,
+                                  local_env_h=local_env_h,
+                                  local_env_w=local_env_w,
+                                  action_in_image=action_in_image)
+    # remove batch dim
+    image = image[0]
+    n_channels = 1 + 2 * n_total_points
+    if action_in_image:
+        n_channels += n_action
+
+    image.set_shape([local_env_h, local_env_w, n_channels])
+
+    input_dict['transition_image'] = image
+    return input_dict
+
+
 def add_transition_image(dataset,
                          states_keys: List[str],
                          scenario: ExperimentScenario,
@@ -186,41 +229,12 @@ def add_transition_image(dataset,
                          local_env_h: int,
                          action_in_image: Optional[bool] = False):
     def _add_transition_image(input_dict):
-        action = input_dict['action']
-
-        planned_states = {}
-        planned_next_states = {}
-        n_total_points = 0
-        for state_key in states_keys:
-            planned_state_feature_name = 'planned_state/{}'.format(state_key)
-            planned_state_next_feature_name = 'planned_state/{}_next'.format(state_key)
-            planned_state = input_dict[planned_state_feature_name]
-            planned_next_state = input_dict[planned_state_next_feature_name]
-            n_total_points += link_bot_pycommon.n_state_to_n_points(planned_state.shape[0])
-            planned_states[state_key] = planned_state
-            planned_next_states[state_key] = planned_next_state
-
-        full_env = input_dict['full_env/env']
-        full_env_res = tf.squeeze(input_dict['full_env/res'])
-        full_env_origin = input_dict['full_env/origin']
-        n_action = action.shape[0]
-
-        batched_inputs = add_batch(full_env, full_env_origin, full_env_res, planned_states, action, planned_next_states)
-        image = make_transition_image(*batched_inputs,
-                                      scenario=scenario,
-                                      local_env_h=local_env_h,
-                                      local_env_w=local_env_w,
-                                      action_in_image=action_in_image)
-        # remove batch dim
-        image = image[0]
-        n_channels = 1 + 2 * n_total_points
-        if action_in_image:
-            n_channels += n_action
-
-        image.set_shape([local_env_h, local_env_w, n_channels])
-
-        input_dict['transition_image'] = image
-        return input_dict
+        add_transition_image_to_example(input_dict=input_dict,
+                                        states_keys=states_keys,
+                                        scenario=scenario,
+                                        local_env_w=local_env_w,
+                                        local_env_h=local_env_h,
+                                        action_in_image=action_in_image)
 
     return dataset.map(_add_transition_image)
 
@@ -260,28 +274,29 @@ def raster_differentiable(state, res, origin, h, w):
     # add h & w dimensions
     tiled_points = tf.expand_dims(tf.expand_dims(points, axis=1), axis=1)
     tiled_points = tf.tile(tiled_points, [1, h, w, 1, 1])
+    tiled_points_y_x = tf.reverse(tiled_points, axis=[4])
     pixel_row_indices = tf.range(0, h, dtype=tf.float32)
     pixel_col_indices = tf.range(0, w, dtype=tf.float32)
     # pixel_indices is b, n_points, 2
-    pixel_indices = tf.stack(tf.meshgrid(pixel_row_indices, pixel_col_indices), axis=2)
+    pixel_indices_row_col = tf.stack(tf.meshgrid(pixel_row_indices, pixel_col_indices), axis=2)
     # add batch dim
-    pixel_indices = tf.expand_dims(pixel_indices, axis=0)
-    pixel_indices = tf.tile(pixel_indices, [b, 1, 1, 1])
+    pixel_indices_row_col = tf.expand_dims(pixel_indices_row_col, axis=0)
+    pixel_indices_row_col = tf.tile(pixel_indices_row_col, [b, 1, 1, 1])
 
     # shape [b, h, w, 2]
     origin_expanded = tf.expand_dims(tf.expand_dims(origin, axis=1), axis=1)
-    pixel_centers = (pixel_indices - origin_expanded) * res
+    pixel_centers_y_x = (pixel_indices_row_col - origin_expanded) * res
 
     # add n_points dim
-    pixel_centers = tf.expand_dims(pixel_centers, axis=3)
-    pixel_centers = tf.tile(pixel_centers, [1, 1, 1, n_points, 1])
+    pixel_centers_y_x = tf.expand_dims(pixel_centers_y_x, axis=3)
+    pixel_centers_y_x = tf.tile(pixel_centers_y_x, [1, 1, 1, n_points, 1])
 
-    squared_distances = tf.reduce_sum(tf.square(pixel_centers - tiled_points), axis=4)
+    squared_distances = tf.reduce_sum(tf.square(pixel_centers_y_x - tiled_points_y_x), axis=4)
     pixel_values = tf.exp(-k * squared_distances)
-    rope_images = tf.reshape(pixel_values, [b, h, w, n_points])
-    ##############################################################################
-    # FIXME: figure out whether to do clipping or normalization
-    ##############################################################################
+    rope_images = tf.transpose(tf.reshape(pixel_values, [b, h, w, n_points]), [0, 2, 1, 3])
+    ########################################################################################
+    # TODO: figure out whether to do clipping or normalization, right now we don't do either
+    ########################################################################################
     return rope_images
 
 
