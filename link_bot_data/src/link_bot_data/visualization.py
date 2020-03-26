@@ -15,24 +15,27 @@ def my_arrow(xs, ys, us, vs):
     us = np.array(us)
     vs = np.array(vs)
 
+    thetas = np.arctan2(vs, us)
     scale = 0.1
-    ks = np.sqrt(np.square(us) + np.square(vs)) * scale
-    rs = vs / us
-    denominators = np.sqrt(np.square(rs) + 1)
-    v_primes = ks / denominators
-    u_primes = v_primes / rs
+    head_lengths = np.sqrt(np.square(us) + np.square(vs)) * scale
+    theta1s = 3 * np.pi / 4 + thetas
+    u1_primes = np.cos(theta1s) * head_lengths
+    v1_primes = np.sin(theta1s) * head_lengths
+    theta2s = thetas - 3 * np.pi / 4
+    u2_primes = np.cos(theta2s) * head_lengths
+    v2_primes = np.sin(theta2s) * head_lengths
 
     return ([xs, xs + us], [ys, ys + vs]), \
-           ([xs + us, xs + us - v_primes * np.sign(us)], [ys + vs, ys + vs - u_primes * np.sign(us)]), \
-           ([xs + us, xs + us + u_primes * np.sign(vs)], [ys + vs, ys + vs - v_primes * np.sign(vs)])
+           ([xs + us, xs + us + u1_primes], [ys + vs, ys + vs + v1_primes]), \
+           ([xs + us, xs + us + u2_primes], [ys + vs, ys + vs + v2_primes])
 
 
-def plot_arrow(ax, xs, ys, us, vs, **kwargs):
+def plot_arrow(ax, xs, ys, us, vs, color, **kwargs):
     xys1, xys2, xys3 = my_arrow(xs, ys, us, vs)
     lines = []
-    lines.append(ax.plot(xys1[0], xys1[1], **kwargs)[0])
-    lines.append(ax.plot(xys2[0], xys2[1], **kwargs)[0])
-    lines.append(ax.plot(xys3[0], xys3[1], **kwargs)[0])
+    lines.append(ax.plot(xys1[0], xys1[1], c=color, **kwargs)[0])
+    lines.append(ax.plot(xys2[0], xys2[1], c=color, **kwargs)[0])
+    lines.append(ax.plot(xys3[0], xys3[1], c=color, **kwargs)[0])
     return lines
 
 
@@ -48,9 +51,10 @@ if __name__ == '__main__':
 
     plt.figure()
     ax = plt.gca()
-    plot_arrow(ax, 0, 0, 4, 9)
-    plot_arrow(ax, 0, 0, -4, 9)
-    plot_arrow(ax, 0, 0, 4, -9)
-    plot_arrow(ax, 0, 0, -4, -9)
+    r = 4
+    for theta in np.linspace(-np.pi, np.pi, 36):
+        u = np.cos(theta) * r
+        v = np.sin(theta) * r
+        plot_arrow(ax, 2, 0, u, v, 'r')
     plt.axis("equal")
     plt.show()
