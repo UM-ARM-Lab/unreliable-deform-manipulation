@@ -26,6 +26,10 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
+    def plot_action(ax, state: Dict, action, color, s: int, zorder: int):
+        raise NotImplementedError()
+
+    @staticmethod
     def plot_goal(ax, goal, color, label=None, **kwargs):
         raise NotImplementedError()
 
@@ -59,6 +63,10 @@ class ExperimentScenario:
 
     @staticmethod
     def sample_goal(state, goal):
+        pass
+
+    @staticmethod
+    def update_action_artist(artist, state, action):
         pass
 
     @staticmethod

@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 from ignition.markers import MarkerProvider
+from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_planning.experiment_scenario import ExperimentScenario
 
 
@@ -12,7 +13,7 @@ class TetherScenario(ExperimentScenario):
 
     @staticmethod
     def plot_state_simple(ax: plt.Axes,
-                          state: Dict[str, np.ndarray],
+                          state: Dict,
                           color,
                           label=None,
                           **kwargs):
@@ -27,15 +28,35 @@ class TetherScenario(ExperimentScenario):
                    color,
                    s: int,
                    zorder: int):
-        point_robot = np.reshape(state['link_bot'], [2])
-        x = point_robot[0]
-        y = point_robot[1]
-        scatt = ax.scatter(x, y, c=color, s=s, zorder=zorder)
-        line = ax.plot(x, y, linewidth=1, c=color, zorder=zorder)[0]
-        return line, scatt
+        if 'tether' in state.keys():
+            tether = np.reshape(state['tether'], [-1, 2])
+            xs = tether[:, 0]
+            ys = tether[:, 1]
+            scatt = ax.scatter(xs, ys, c=color, s=s, zorder=zorder)
+            line = ax.plot(xs, ys, linewidth=1, c=color, zorder=zorder)[0]
+            return line, scatt
+        else:
+            point_robot = np.reshape(state['link_bot'], [2])
+            x = point_robot[0]
+            y = point_robot[1]
+            scatt = ax.scatter(x, y, c=color, s=s, zorder=zorder)
+            line = ax.plot(x, y, linewidth=1, c=color, zorder=zorder)[0]
+            return line, scatt
 
     @staticmethod
-    def distance_to_goal(state: Dict[str, np.ndarray],
+    def plot_action(ax: plt.Axes,
+                    state: Dict,
+                    action,
+                    color,
+                    s: int,
+                    zorder: int):
+        point_robot = np.reshape(state['link_bot'], [2])
+        # we draw our own arrows because quiver cannot be animated
+        artist = plot_arrow(ax, point_robot[0], point_robot[1], action[0], action[1], zorder=zorder, linewidth=2)
+        return artist
+
+    @staticmethod
+    def distance_to_goal(state: Dict,
                          goal: np.ndarray):
         """
         Uses the first point in the link_bot subspace as the thing which we want to move to goal
@@ -87,14 +108,29 @@ class TetherScenario(ExperimentScenario):
         ax.scatter(goal[0], goal[1], c=color, label=label, **kwargs)
 
     @staticmethod
+    def update_action_artist(artist, state, action):
+        """ artist: Whatever was returned by plot_state """
+        point_robot = np.reshape(state['link_bot'], [2])
+        update_arrow(artist, point_robot[0], point_robot[1], action[0], action[1])
+
+    @staticmethod
     def update_artist(artist, state):
         """ artist: Whatever was returned by plot_state """
-        line, scatt = artist
-        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
-        xs = link_bot_points[:, 0]
-        ys = link_bot_points[:, 1]
-        line.set_data(xs, ys)
-        scatt.set_offsets(link_bot_points[0])
+        if 'tether' in state.keys():
+            line, scatt = artist
+
+            tether = np.reshape(state['tether'], [-1, 2])
+            xs = tether[:, 0]
+            ys = tether[:, 1]
+            scatt.set_offsets(tether)
+            line.set_data(xs, ys)
+        else:
+            line, scatt = artist
+            link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+            xs = link_bot_points[:, 0]
+            ys = link_bot_points[:, 1]
+            line.set_data(xs, ys)
+            scatt.set_offsets(link_bot_points[0])
 
     @staticmethod
     def publish_state_marker(marker_provider: MarkerProvider, state):

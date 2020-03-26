@@ -5,70 +5,65 @@ import pathlib
 import time
 
 import matplotlib.pyplot as plt
-from matplotlib import cm
 import numpy as np
 import tensorflow as tf
+from matplotlib import cm
 from matplotlib.animation import FuncAnimation
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.visualization import plot_rope_configuration
-from link_bot_pycommon.link_bot_pycommon import vector_to_points_2d
+from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
-
 from moonshine.image_functions import old_raster
 from moonshine.numpy_utils import add_batch
 
-tf.compat.v1.enable_eager_execution()
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.3)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+tf.compat.v1.enable_eager_execution(config=config)
 
 
-def plot_individual(train_dataset, redraw, states_description):
+def plot_individual(train_dataset, scenario: ExperimentScenario, states_description):
     for i, (input_data, output_data) in enumerate(train_dataset):
         # TODO: draw all kinds of states, not just link bot
-        rope_configurations = input_data['link_bot'].numpy()
-        actions = input_data['action'].numpy()
 
+        fig, ax = plt.subplots()
+
+        actions = input_data['action'].numpy()
         full_env = input_data['full_env/env'].numpy()
         full_env_extents = input_data['full_env/extent'].numpy()
 
-        fig, ax = plt.subplots()
-        arrow_width = 0.1
-        arena_size = 0.5
-
         ax.set_xlabel("x (m)")
         ax.set_ylabel("y (m)")
-        ax.set_xlim([-arena_size, arena_size])
-        ax.set_ylim([-arena_size, arena_size])
+        ax.set_xlim(full_env_extents[0:2])
+        ax.set_ylim(full_env_extents[2:4])
         ax.axis("equal")
 
         full_env_handle = ax.imshow(np.flipud(full_env), extent=full_env_extents)
-        head_point = rope_configurations[0].reshape(-1, 2)[-1]
-        arrow = plt.Arrow(head_point[0], head_point[1], actions[0, 0], actions[0, 1], width=arrow_width, zorder=4)
-        patch = ax.add_patch(arrow)
-        link_bot_line = plot_rope_configuration(ax, rope_configurations[0], linewidth=1, zorder=3, c='r')[0]
+
+        first_state = {}
+        for state_key in states_description.keys():
+            state = input_data[state_key][0]
+            first_state[state_key] = state
+        action_artist = scenario.plot_action(ax, first_state, actions[0], color='m', s=20, zorder=3)
+
+        state_artist = scenario.plot_state(ax, first_state, color='b', s=10, zorder=2)
 
         def update(t):
-            nonlocal patch
-            link_bot_config = rope_configurations[t]
-            head_point = link_bot_config.reshape(-1, 2)[-1]
-            action = actions[t]
-
             full_env_handle.set_data(np.flipud(full_env))
             full_env_handle.set_extent(full_env_extents)
 
-            if redraw:
-                xs, ys = vector_to_points_2d(link_bot_config)
-                link_bot_line.set_xdata(xs)
-                link_bot_line.set_ydata(ys)
-            else:
-                plot_rope_configuration(ax, link_bot_config, linewidth=1, zorder=3, c='r')
-            patch.remove()
-            arrow = plt.Arrow(head_point[0], head_point[1], action[0], action[1], width=arrow_width, zorder=4)
-            patch = ax.add_patch(arrow)
+            action_t = actions[t]
+            state_t = {}
+            for state_key in states_description.keys():
+                state = input_data[state_key][t]
+                state_t[state_key] = state
+            scenario.update_action_artist(action_artist, state_t, action_t)
+            scenario.update_artist(state_artist, state_t)
 
             ax.set_title("{} {}".format(i, t))
 
-        interval = 50
+        interval = 1000
         _ = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
         plt.show()
 
@@ -183,7 +178,6 @@ def main():
     parser.add_argument('--take', type=int)
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train', help='train test or val')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
-    parser.add_argument('--redraw', action='store_true', help='redraw')
     parser.add_argument('--show-env', action='store_true', help='show env, assumed to be constant')
 
     args = parser.parse_args()
@@ -209,8 +203,10 @@ def main():
     for k, v in output_data.items():
         print(k, v.shape)
 
+    scenario = get_scenario(dataset.hparams['scenario'])
+
     if args.plot_type == 'individual':
-        plot_individual(tf_dataset, args.redraw, dataset.states_description)
+        plot_individual(tf_dataset, scenario, dataset.states_description)
     elif args.plot_type == 'all':
         plot_all(tf_dataset, dataset.states_description)
     elif args.plot_type == 'heatmap':
