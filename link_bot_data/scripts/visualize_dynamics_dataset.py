@@ -63,8 +63,9 @@ def plot_individual(train_dataset, scenario: ExperimentScenario, states_descript
 
             ax.set_title("{} {}".format(i, t))
 
-        interval = 1000
-        _ = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
+        interval = 20
+        anim = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
+        # anim.save("example.gif", writer='imagemagick', dpi=300)
         plt.show()
 
         i += 1
