@@ -67,7 +67,7 @@ def main():
                                        local_env_w=args.local_env_s,
                                        rope_image_k=args.rope_image_k)
     if args.display_type == 'trajectory_image':
-        dataset = add_traj_image(dataset, states_keys=states_keys)
+        dataset = add_traj_image(dataset, states_keys=states_keys, rope_image_k=args.rope_image_k)
 
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=1024)
@@ -130,6 +130,7 @@ def main():
             plt.title(title)
             plt.show(block=True)
         elif args.display_type == 'trajectory_plot':
+            # FIXME: check for null since stop_idx no longer exists
             full_env = example['full_env/env'].numpy()
             full_env_extent = example['full_env/extent'].numpy()
             link_bot_state_all = example['planned_state/link_bot_all'].numpy()

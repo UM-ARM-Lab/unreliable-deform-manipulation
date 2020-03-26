@@ -118,13 +118,15 @@ def raster_rope_images(planned_states: Dict,
 def make_traj_images(full_env,
                      full_env_origin,
                      res,
-                     states: List[Dict]):
+                     states: List[Dict],
+                     rope_image_k: float):
     """
     :param full_env: [batch, h, w]
     :param full_env_origin:  [batch, 2]
     :param res: [batch]
     :param states: each element is [batch, time, n]
     :return: [batch, h, w, 3]
+    :param rope_image_k: large constant controlling fuzzyness of rope drawing, like 1000
     """
     # Reformat the list of dicts of tensors into one dict of tensors
     T = len(states)
@@ -140,14 +142,16 @@ def make_traj_images(full_env,
     make_traj_images_with_dict(full_env=full_env,
                                full_env_origin=full_env_origin,
                                res=res,
-                               states_dict=states_dict)
+                               states_dict=states_dict,
+                               rope_image_k=rope_image_k)
 
 
 # @tf.function
 def make_traj_images_with_dict(full_env,
                                full_env_origin,
                                res,
-                               states_dict: Dict):
+                               states_dict: Dict,
+                               rope_image_k: float):
     """
     :param full_env: [batch, h, w]
     :param full_env_origin:  [batch, 2]
@@ -161,14 +165,14 @@ def make_traj_images_with_dict(full_env,
     # add channel index
     full_env = tf.expand_dims(full_env, axis=3)
 
-    rope_imgs = raster_rope_images(states_dict, res, full_env_origin, h, w)
+    rope_imgs = raster_rope_images(states_dict, res, full_env_origin, h, w, k=rope_image_k)
 
     image = tf.concat((full_env, rope_imgs), axis=3)
     return image
 
 
 # @tf.function
-def add_traj_image_wrapper(input_dict, states_keys: List[str]):
+def add_traj_image_wrapper(input_dict, states_keys: List[str], rope_image_k: float):
     full_env = input_dict['full_env/env']
     full_env_origin = input_dict['full_env/origin']
     res = input_dict['full_env/res']
@@ -183,16 +187,17 @@ def add_traj_image_wrapper(input_dict, states_keys: List[str]):
     image = make_traj_images_with_dict(full_env=full_env,
                                        full_env_origin=full_env_origin,
                                        res=res,
-                                       states_dict=planned_states_dict)[0]
+                                       states_dict=planned_states_dict,
+                                       rope_image_k=rope_image_k)[0]
 
     input_dict['trajectory_image'] = image
     return input_dict
 
 
-def add_traj_image(dataset, states_keys: List[str]):
+def add_traj_image(dataset, states_keys: List[str], rope_image_k: float):
     # @tf.function
     def _add_traj_image_wrapper(input_dict):
-        return add_traj_image_wrapper(input_dict, states_keys)
+        return add_traj_image_wrapper(input_dict, states_keys, rope_image_k=rope_image_k)
 
     return dataset.map(_add_traj_image_wrapper)
 

@@ -158,7 +158,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         states_i_plus_1 = states_sequence[1]
 
         batched_inputs = add_batch(full_env.data, full_env_origin, res, states_sequence)
-        image = make_traj_images(*batched_inputs)[0]
+        image = make_traj_images(*batched_inputs, rope_image_k=self.model_hparams['rope_image_k'])[0]
 
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
         net_inputs['trajectory_image'] = image
