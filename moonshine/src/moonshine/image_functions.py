@@ -2,15 +2,17 @@ import re
 from typing import Optional, Dict, List
 
 import tensorflow as tf
+from link_bot_data.link_bot_dataset_utils import add_all
 
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.numpy_utils import add_batch
 
 
-@tf.function
+# @tf.function
 def make_transition_image(full_env,
                           full_env_origin,
                           res,
@@ -60,40 +62,41 @@ def make_transition_image(full_env,
     return image
 
 
-@tf.function
-def raster_rope_images(planned_states: List[Dict],
+# @tf.function
+def raster_rope_images(planned_states: Dict,
                        res,
                        origin,
                        h: float,
                        w: float):
     """
-    Raster all the state into one fixed-channel image representation using color gradient in the green channel
-    :param planned_states: each element is [batch, n_state]
+    Raster all the states into one image representation using binary in the first set and gradient in the second set
+    :param planned_states: each element is [batch, time, n_state]
     :param res: [batch]
     :param origin: [batch, 2]
     :param h: scalar
     :param w: scalar
     :return: [batch, h, w, 2 * n_points]
     """
-    n_time_steps = len(planned_states)
     binary_rope_images = []
     time_colored_rope_images = []
-    for t in range(n_time_steps):
-        planned_state_t = planned_states[t]
-        # iterate over the dict, each element of which is a component of our state
-        for s_t_k in planned_state_t.values():
-            rope_img_t = raster_differentiable(state=s_t_k, origin=origin, res=res, h=h, w=w)
+
+    for planned_state_seq in planned_states.values():
+        n_time_steps = int(planned_state_seq.shape[1])
+        for t in range(n_time_steps):
+            planned_state_t = planned_state_seq[:, t]
+            # should have shape batch, h, w, n_points
+            rope_img_t = raster_differentiable(state=planned_state_t, origin=origin, res=res, h=h, w=w)
             time_color = float(t) / n_time_steps
             time_color_image_t = rope_img_t * time_color
             binary_rope_images.append(rope_img_t)
             time_colored_rope_images.append(time_color_image_t)
+
     binary_rope_images = tf.reduce_sum(binary_rope_images, axis=0)
     time_colored_rope_images = tf.reduce_sum(time_colored_rope_images, axis=0)
     rope_images = tf.concat((binary_rope_images, time_colored_rope_images), axis=3)
     return rope_images
 
 
-@tf.function
 def make_traj_images(full_env,
                      full_env_origin,
                      res,
@@ -105,47 +108,73 @@ def make_traj_images(full_env,
     :param states: each element is [batch, time, n]
     :return: [batch, h, w, 3]
     """
+    # Reformat the list of dicts of tensors into one dict of tensors
+    T = len(states)
+    states_dict = {}
+    keys = states[0].keys()
+    for key in keys:
+        state_with_time = []
+        for t in range(T):
+            state_with_time.append(states[t][key])
+        state_with_time = tf.stack(state_with_time, axis=1)
+        states_dict[key] = state_with_time
+
+    make_traj_images_with_dict(full_env=full_env,
+                               full_env_origin=full_env_origin,
+                               res=res,
+                               states_dict=states_dict)
+
+
+# @tf.function
+def make_traj_images_with_dict(full_env,
+                               full_env_origin,
+                               res,
+                               states_dict: Dict):
+    """
+    :param full_env: [batch, h, w]
+    :param full_env_origin:  [batch, 2]
+    :param res: [batch]
+    :param states_dict: each element is [batch, time, n]
+    :return: [batch, h, w, 3]
+    """
     h = int(full_env.shape[1])
     w = int(full_env.shape[2])
 
     # add channel index
     full_env = tf.expand_dims(full_env, axis=3)
 
-    rope_imgs = raster_rope_images(states, res, full_env_origin, h, w)
+    rope_imgs = raster_rope_images(states_dict, res, full_env_origin, h, w)
 
     image = tf.concat((full_env, rope_imgs), axis=3)
     return image
 
 
-def add_traj_image(dataset):
-    def _make_traj_images(full_env, full_env_origin, res, stop_index, states: Dict):
+# @tf.function
+def add_traj_image_wrapper(input_dict, states_keys: List[str]):
+    full_env = input_dict['full_env/env']
+    full_env_origin = input_dict['full_env/origin']
+    res = input_dict['full_env/res']
 
-        planned_states_seq = []
-        for t in range(stop_index):
-            state_t = {}
-            for k, v in states.items():
-                state_t[k] = tf.expand_dims(v[t], axis=0)  # add batch here
-            planned_states_seq.append(state_t)
+    planned_states_dict = {}
+    for state_key in states_keys:
+        states_all = input_dict[add_all(state_key)]
+        planned_states_dict[state_key] = tf.expand_dims(states_all, axis=0)
 
-        full_env, full_env_origin, res = add_batch(full_env, full_env_origin, res)
-        image = make_traj_images(full_env=full_env,
-                                 full_env_origin=full_env_origin,
-                                 res=res,
-                                 states=planned_states_seq)[0]
-        return image
+    full_env, full_env_origin, res = add_batch(full_env, full_env_origin, res)
 
+    image = make_traj_images_with_dict(full_env=full_env,
+                                       full_env_origin=full_env_origin,
+                                       res=res,
+                                       states_dict=planned_states_dict)[0]
+
+    input_dict['trajectory_image'] = image
+    return input_dict
+
+
+def add_traj_image(dataset, states_keys: List[str]):
+    # @tf.function
     def _add_traj_image_wrapper(input_dict):
-        full_env = input_dict['full_env/env']
-        full_env_origin = input_dict['full_env/origin']
-        res = input_dict['full_env/res']
-        stop_index = input_dict['stop_idx']
-        image = _make_traj_images(full_env=full_env,
-                                  full_env_origin=full_env_origin,
-                                  res=res,
-                                  stop_index=stop_index,
-                                  states=states)
-        input_dict['trajectory_image'] = image
-        return input_dict
+        return add_traj_image_wrapper(input_dict, states_keys)
 
     return dataset.map(_add_traj_image_wrapper)
 
@@ -196,7 +225,7 @@ def add_transition_image(dataset,
     return dataset.map(_add_transition_image)
 
 
-@tf.function
+# @tf.function
 def raster_differentiable(state, res, origin, h, w):
     """
     Even though this data is batched, we use singular and reserve plural for sequences in time
@@ -207,12 +236,12 @@ def raster_differentiable(state, res, origin, h, w):
     w: scalar int
     return: [batch, h, w, n_points]
     """
-    b = int(state.shape[0])
-    points = tf.reshape(state, [b, -1, 2])
-    n_points = int(points.shape[1])
-    res = res[0]
 
     k = 10000.0
+    b = int(state.shape[0])
+    res = res[0]
+    points = tf.reshape(state, [b, -1, 2])
+    n_points = int(points.shape[1])
 
     ## Below is a un-vectorized implementation, which is much easier to read and understand
     # rope_images = np.zeros([b, h, w, n_points], dtype=np.float32)

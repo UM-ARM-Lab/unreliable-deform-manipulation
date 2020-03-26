@@ -19,7 +19,7 @@ def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
 
 
 def parse_dataset(dataset, feature_description, n_parallel_calls=None):
-    @tf.function
+    # @tf.function
     def _parse(example_proto):
         deserialized_dict = tf.io.parse_single_example(example_proto, feature_description)
         return deserialized_dict
@@ -37,7 +37,7 @@ def deserialize(parsed_dataset, n_parallel_calls=None):
         deserialized_tensor = tf.io.parse_tensor(serialized_tensor, tf.float32)
         inferred_shapes[key] = deserialized_tensor.shape
 
-    @tf.function
+    # @tf.function
     def _deserialize(serialized_dict):
         deserialized_dict = {}
         for key, serialized_tensor in serialized_dict.items():
@@ -163,7 +163,11 @@ def add_next(feature_name):
     return feature_name + '_next'
 
 
-@tf.function
+def add_all(feature_name):
+    return feature_name + '_all'
+
+
+# @tf.function
 def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: dict, action_like_sequences: dict):
     # Create a dict of lists, where keys are the features we want in each transition, and values are the data.
     # The first dimension of these values is what will be split up into different examples
@@ -177,22 +181,25 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
         state_like_names.append(feature_name)
         next_state_like_names.append((next_feature_name, feature_name))
         transitions[feature_name] = []
-        transitions[feature_name + "_all"] = []
+        transitions[add_all(feature_name)] = []
         transitions[next_feature_name] = []
 
     action_like_names = []
     for feature_name in action_like_sequences.keys():
         transitions[feature_name] = []
-        transitions[feature_name + "_all"] = []
+        transitions[add_all(feature_name)] = []
         action_like_names.append(feature_name)
 
     for feature_name in constant_data.keys():
         transitions[feature_name] = []
 
     # @tf.function
-    def _zero_pad_sequence(sequence, transition_idx):
-        if transition_idx + 1 < sequence.shape[0]:
-            sequence[transition_idx + 1:] = -1
+    def _null_pad_sequence(sequence, idx):
+        # this should be some number that will be very far from being inside any actual
+        # because we're gonna try to draw it anyways
+        null = -10000
+        if idx + 1 < sequence.shape[0]:
+            sequence[idx + 1:] = null
         return sequence
 
     # Fill the transitions dictionary with the data from the sequences
@@ -201,19 +208,20 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
         transitions['stop_idx'].append(transition_idx + 1)
         for feature_name in state_like_names:
             transitions[feature_name].append(state_like_sequences[feature_name][transition_idx])
-            # include all data up, zeroing out the future data
-            zps = tf.numpy_function(_zero_pad_sequence, [state_like_sequences[feature_name], transition_idx], tf.float32)
+            # include all data up, nulling out the future data to some constant (i.e. -1)
+            zps = tf.numpy_function(_null_pad_sequence, [state_like_sequences[feature_name], transition_idx], tf.float32)
             zps.set_shape(state_like_sequences[feature_name].shape)
-            transitions[feature_name + '_all'].append(zps)
+            transitions[add_all(feature_name)].append(zps)
         for next_feature_name, feature_name in next_state_like_names:
             transitions[next_feature_name].append(state_like_sequences[feature_name][transition_idx + 1])
 
         for feature_name in action_like_names:
             transitions[feature_name].append(action_like_sequences[feature_name][transition_idx])
             # include all data up, zeroing out the future data
-            zps = tf.numpy_function(_zero_pad_sequence, [action_like_sequences[feature_name], transition_idx], tf.float32)
+            zps = tf.numpy_function(_null_pad_sequence, [action_like_sequences[feature_name], transition_idx],
+                                    tf.float32)
             zps.set_shape(action_like_sequences[feature_name].shape)
-            transitions[feature_name + '_all'].append(zps)
+            transitions[add_all(feature_name)].append(zps)
 
         for feature_name in constant_data.keys():
             transitions[feature_name].append(constant_data[feature_name])

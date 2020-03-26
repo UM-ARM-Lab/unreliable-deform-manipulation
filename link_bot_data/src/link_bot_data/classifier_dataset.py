@@ -116,7 +116,7 @@ class ClassifierDataset(BaseDataset):
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
 
-        @tf.function
+        # @tf.function
         def _label_transitions(transition: dict):
             state_key = self.labeling_params['state_key']
             state_key_next = add_next(state_key)
@@ -146,7 +146,7 @@ class ClassifierDataset(BaseDataset):
                 new_transition['label'] = tf.convert_to_tensor([0], dtype=tf.float32)
             return new_transition
 
-        @tf.function
+        # @tf.function
         def _filter_pre_far_transitions(transition):
             if self.labeling_params['discard_pre_far'] and not transition['pre_close']:
                 return False

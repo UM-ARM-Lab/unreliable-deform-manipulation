@@ -1,19 +1,16 @@
 #!/usr/bin/env python
 import argparse
 import json
-import shutil
-
-import numpy as np
 import pathlib
 
+import numpy as np
 import tensorflow as tf
 from colorama import Fore
-
 from link_bot_data.base_dataset import DEFAULT_VAL_SPLIT, DEFAULT_TEST_SPLIT
 from link_bot_data.classifier_dataset import add_model_predictions
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
-from link_bot_planning.get_scenario import get_scenario
+
 from link_bot_planning.model_utils import load_generic_model
 from link_bot_pycommon.args import my_formatter
 
@@ -34,8 +31,7 @@ def main():
     args = parser.parse_args()
 
     dynamics_hparams = json.load((args.dataset_dir / 'hparams.json').open('r'))
-    scenario = get_scenario(dynamics_hparams['scenario'])
-    fwd_model, _ = load_generic_model(args.fwd_model_dir, scenario)
+    fwd_model, _ = load_generic_model(args.fwd_model_dir)
 
     n_examples_per_record = 128
     compression_type = "ZLIB"
@@ -45,7 +41,7 @@ def main():
     args.out_dir.mkdir(parents=False, exist_ok=False)
     new_hparams_filename = args.out_dir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams
-    classifier_dataset_hparams['fwd_model_hparams'] = fwd_model.hparamsfwd_model.hparams
+    classifier_dataset_hparams['fwd_model_hparams'] = fwd_model.hparams
     classifier_dataset_hparams['actual_state_keys'] = dataset.state_feature_names
     classifier_dataset_hparams['planned_state_keys'] = fwd_model.states_keys
     json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=1)

@@ -125,7 +125,7 @@ class LinkBotScenario(ExperimentScenario):
         return head_point_where_gripper_is
 
     @staticmethod
-    @tf.function
+    # @tf.function
     def local_environment_center_differentiable(state):
         """
         :param state: Dict of batched states
