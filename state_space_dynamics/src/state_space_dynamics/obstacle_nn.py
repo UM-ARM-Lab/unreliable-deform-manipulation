@@ -25,6 +25,7 @@ class ObstacleNN(MyKerasModel):
         self.initial_epoch = 0
 
         self.full_env_params = FullEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['full_env_params'])
+        self.rope_image_k = self.hparams['rope_image_k']
         if not self.hparams['use_full_env']:
             self.local_env_h_rows = self.hparams['local_env_h_rows']
             self.local_env_w_cols = self.hparams['local_env_w_cols']
@@ -105,8 +106,7 @@ class ObstacleNN(MyKerasModel):
                 env_h_rows = tf.convert_to_tensor(self.local_env_h_rows, tf.float32)
                 env_w_cols = tf.convert_to_tensor(self.local_env_w_cols, tf.float32)
 
-
-            rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols)
+            rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols, k=self.rope_image_k)
 
             env = tf.expand_dims(env, axis=3)
 
@@ -114,15 +114,16 @@ class ObstacleNN(MyKerasModel):
             z_t = self.concat([rope_image_t, env])
 
             # DEBGUGING
-            # viz_rope_image_t = tf.reduce_sum(rope_image_t, axis=3, keep_dims=True)
-            # zeros = tf.zeros([self.batch_size, env_h_rows, env_w_cols, 1])
-            # viz_z_t = self.concat([viz_rope_image_t, env, zeros])
-            # import matplotlib.pyplot as plt
-            # extent = compute_extent(self.local_env_h_rows, self.local_env_w_cols, res[0], env_origin[0].numpy())
-            # plt.imshow(np.flipud(viz_z_t[0]), extent=extent)
-            # points = tf.reshape(s_t, [self.batch_size, -1, 2])
-            # plt.scatter(points[0, :, 0], points[0, :, 1])
-            # plt.show(block=True)
+            print(rope_image_t.shape)
+            viz_rope_image_t = tf.reduce_sum(rope_image_t, axis=3, keep_dims=True)
+            zeros = tf.zeros([self.batch_size, env_h_rows, env_w_cols, 1])
+            viz_z_t = self.concat([viz_rope_image_t, env, zeros])
+            import matplotlib.pyplot as plt
+            extent = compute_extent(env_h_rows, env_w_cols, res[0], env_origin[0].numpy())
+            plt.imshow(np.flipud(tf.squeeze(viz_rope_image_t[0])), extent=extent)
+            points = tf.reshape(s_t, [self.batch_size, -1, 2])
+            plt.scatter(points[0, :, 0], points[0, :, 1], s=1)
+            plt.show(block=True)
 
             for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
                 z_t = conv_layer(z_t)

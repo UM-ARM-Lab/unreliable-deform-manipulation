@@ -9,6 +9,7 @@
   ],
   "sequence_length": 10,
   "fc_layer_sizes": [256],
+  "rope_image_k": 10000,
   "conv_filters": [
     [8, [5, 5]],
     [8, [3, 3]],

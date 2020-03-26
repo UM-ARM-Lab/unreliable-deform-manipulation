@@ -1,5 +1,0 @@
-{
-  "model_class": "LocallyLinearNN",
-  "sequence_length": 100,
-  "fc_layer_sizes": [16, 16]
-}

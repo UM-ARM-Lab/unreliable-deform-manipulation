@@ -33,7 +33,7 @@ local_env, local_env_origin = get_local_env_and_origin_differentiable(center_poi
                                                                       local_h_rows,
                                                                       local_w_cols)
 
-rope_images = raster_differentiable(planned_state, res, local_env_origin, local_h_rows, local_w_cols)
+rope_images = raster_differentiable(planned_state, res, local_env_origin, local_h_rows, local_w_cols, k=1000)
 
 for j in range(2):
     local_extent = compute_extent(rows=local_h_rows, cols=local_w_cols, resolution=res[j], origin=local_env_origin[j])

@@ -1,9 +1,0 @@
-{
-  "model_class": "LocallyLinearNN",
-  "instability_penalty": 1.0,
-  "sequence_length": 10,
-  "conv_filters": [
-    [6, [5, 5]]
-  ],
-  "fc_layer_sizes": [16]
-}

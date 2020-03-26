@@ -21,14 +21,24 @@ def make_transition_image(full_env,
                           scenario: ExperimentScenario,
                           local_env_h: int,
                           local_env_w: int,
+                          k: float,
                           action_in_image: Optional[bool] = False):
     """
-    :param planned_states: each element should be [batch,n_state]
-    :param action: [batch,n_action]
-    :param planned_next_states: each element should be [batch,n_state]
-    :param res: [batch]
-    :param action_in_image: include new channels for actions
-    :return: [batch,n_points*2+n_action+1], aka  [batch,n_state+n_action+1]
+    Args:
+        full_env:
+        full_env_origin:
+        res: [batch]
+        planned_states: each element should be [batch,n_state]
+        action: [batch,n_action]
+        planned_next_states: each element should be [batch,n_state]
+        scenario:
+        local_env_h:
+        local_env_w:
+        k: constant controlling fuzzyness of how the rope is drawn in the image, should be like 1000
+        action_in_image: include new channels for actions
+
+    Return:
+        [batch,n_points*2+n_action+1], aka  [batch,n_state+n_action+1]
     """
     # somehow fix this, it's showing the rope not at the center of the local environment?!
     local_env_center_point = scenario.local_environment_center_differentiable(planned_states)
@@ -45,14 +55,16 @@ def make_transition_image(full_env,
                                                    res=res,
                                                    origin=local_env_origin,
                                                    h=local_env_h,
-                                                   w=local_env_w)
+                                                   w=local_env_w,
+                                                   k=k)
         concat_args.append(planned_rope_image)
     for planned_next_state in planned_next_states.values():
         planned_next_rope_image = raster_differentiable(state=planned_next_state,
                                                         origin=local_env_origin,
                                                         res=res,
                                                         h=local_env_h,
-                                                        w=local_env_w)
+                                                        w=local_env_w,
+                                                        k=k)
         concat_args.append(planned_next_rope_image)
 
     if action_in_image:
@@ -69,15 +81,19 @@ def raster_rope_images(planned_states: Dict,
                        res,
                        origin,
                        h: float,
-                       w: float):
+                       w: float,
+                       k: float):
     """
     Raster all the states into one image representation using binary in the first set and gradient in the second set
-    :param planned_states: each element is [batch, time, n_state]
-    :param res: [batch]
-    :param origin: [batch, 2]
-    :param h: scalar
-    :param w: scalar
-    :return: [batch, h, w, 2 * n_points]
+        planned_states: each element is [batch, time, n_state]
+    Args:
+        res: [batch]
+        origin: [batch, 2]
+        h: scalar
+        w: scalar
+        k: scalar float, should be very large, like 1000
+    Return:
+        [batch, h, w, 2 * n_points]
     """
     binary_rope_images = []
     time_colored_rope_images = []
@@ -87,7 +103,7 @@ def raster_rope_images(planned_states: Dict,
         for t in range(n_time_steps):
             planned_state_t = planned_state_seq[:, t]
             # should have shape batch, h, w, n_points
-            rope_img_t = raster_differentiable(state=planned_state_t, origin=origin, res=res, h=h, w=w)
+            rope_img_t = raster_differentiable(state=planned_state_t, origin=origin, res=res, h=h, w=w, k=k)
             time_color = float(t) / n_time_steps
             time_color_image_t = rope_img_t * time_color
             binary_rope_images.append(rope_img_t)
@@ -242,18 +258,21 @@ def add_transition_image(dataset,
 
 
 # @tf.function
-def raster_differentiable(state, res, origin, h, w):
+def raster_differentiable(state, res, origin, h, w, k):
     """
     Even though this data is batched, we use singular and reserve plural for sequences in time
-    state: [batch, n]
-    res: [batch] scalar float
-    origins: [batch, 2] index (so int, or technically float is fine too)
-    h: scalar int
-    w: scalar int
-    return: [batch, h, w, n_points]
+    Args:
+        state: [batch, n]
+        res: [batch] scalar float
+        origin: [batch, 2] index (so int, or technically float is fine too)
+        h: scalar int
+        w: scalar int
+        k: scalar float, should be very large, like 1000
+
+    Returns:
+     [batch, h, w, n_points]
     """
 
-    k = 10000.0
     b = int(state.shape[0])
     res = res[0]
     points = tf.reshape(state, [b, -1, 2])

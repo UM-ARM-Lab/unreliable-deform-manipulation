@@ -9,13 +9,12 @@
   ],
   "sequence_length": 10,
   "fc_layer_sizes": [256],
+  "rope_image_k": 1000,
   "conv_filters": [
     [8, [5, 5]],
     [8, [3, 3]],
     [8, [3, 3]]
   ],
-  "local_env_h_rows": 200,
-  "local_env_w_cols": 200,
   "residual": true,
   "mixed": true,
   "kernel_reg": 0.05,
