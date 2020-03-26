@@ -190,9 +190,10 @@ def train(keras_model: MyKerasModel,
                         save_path = manager.save()
                         print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(step, save_path) + Fore.RESET)
 
-        # Unconditionally save the last model just in case
+        # save the last model, which will be saved in tmp, just in case we did want it
         save_path = manager.save()
-        print(Fore.CYAN + "Step {:6d}: Saved final checkpoint {}".format(step, save_path) + Fore.RESET)
+        if not logging:
+            print(Fore.CYAN + "Step {:6d}: Saved final checkpoint {}".format(step, save_path) + Fore.RESET)
 
     try:
         if logging:

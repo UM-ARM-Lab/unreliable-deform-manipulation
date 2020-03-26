@@ -16,7 +16,6 @@ from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_planning import model_utils
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.link_bot_pycommon import vector_to_points_2d
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
@@ -32,13 +31,11 @@ def generate(args):
     base_folder = args.outdir / 'compare_models-{}-{}'.format(args.mode, int(time.time()))
     base_folder.mkdir()
 
-    scenario = get_scenario(args.scenario)
-
     comparison_info = json.load(args.comparison.open("r"))
     models = {}
     for name, model_info in comparison_info.items():
         model_dir = pathlib.Path(model_info['model_dir'])
-        model, _ = model_utils.load_generic_model(model_dir, scenario)
+        model, _ = model_utils.load_generic_model(model_dir)
         models[name] = model
 
     dataset = DynamicsDataset(args.dataset_dirs)
@@ -202,12 +199,16 @@ def evaluate_metrics(results):
 
         # loop over trajectories
         total_errors = []
+        final_tail_errors = []
         errors_by_point = [[] for _ in range(n_points)]
         for i, predicted_points in enumerate(result['points']):
             true_points = results['true']['points'][i]
             error = np.linalg.norm(predicted_points - true_points, axis=2)
+            final_error = error[-1]
             total_error = np.sum(error, axis=1)
+            final_tail_error = final_error[0]
             total_errors.append(total_error)
+            final_tail_errors.append(final_tail_error)
             for j in range(n_points):
                 error_j = error[:, j]
                 errors_by_point[j].extend(error_j)
@@ -220,6 +221,7 @@ def evaluate_metrics(results):
         for i in range(n_points):
             print("point {} error:  {:8.4f}m {:6.4f}".format(i, np.mean(errors_by_point[i]), np.std(errors_by_point[i])))
         print("total error: {:8.4f}m {:6.4f}".format(np.mean(total_errors), np.std(total_errors)))
+        print("final_tail error: {:8.4f}m {:6.4f}".format(np.mean(final_tail_errors), np.std(final_tail_errors)))
         print("runtime: {:8.4f}ms".format(np.mean(runtimes) * 1e3))
 
 
@@ -229,14 +231,13 @@ def main():
     subparsers = parser.add_subparsers()
 
     generate_parser = subparsers.add_parser('generate')
-    generate_parser.add_argument('scenario', choices=['link_bot', 'tether'])
-    generate_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
+    generate_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+', help='dataset dirs')
     generate_parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
-    generate_parser.add_argument('outdir', type=pathlib.Path)
-    generate_parser.add_argument('--sequence-length', type=int, default=50)
-    generate_parser.add_argument('--no-plot', action='store_true')
-    generate_parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test')
-    generate_parser.add_argument('--n-examples', type=int, default=10)
+    generate_parser.add_argument('outdir', type=pathlib.Path, help='outdir')
+    generate_parser.add_argument('--sequence-length', type=int, default=10, help='seq length')
+    generate_parser.add_argument('--no-plot', action='store_true', help='no plot')
+    generate_parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
+    generate_parser.add_argument('--n-examples', type=int, default=10, help='number of examples to visualize')
     generate_parser.set_defaults(func=generate)
 
     evaluate_parser = subparsers.add_parser('evaluate')

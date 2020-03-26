@@ -160,7 +160,6 @@ def generate_trajs(service_provider,
 
 def generate(service_provider, params: CollectDynamicsParams, args):
     rospy.init_node('collect_dynamics_data')
-
     scenario = get_scenario(args.scenario)
 
     assert args.trajs % args.trajs_per_file == 0, "num trajs must be multiple of {}".format(args.trajs_per_file)

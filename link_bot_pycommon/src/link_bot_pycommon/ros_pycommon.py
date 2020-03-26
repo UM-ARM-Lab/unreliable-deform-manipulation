@@ -31,6 +31,7 @@ class Services:
 
         self.services_to_wait_for = [
             'reset',
+            'states_description',
             'world_control',
             'link_bot_state',
             'link_bot_execute_trajectory',
@@ -43,7 +44,7 @@ class Services:
 
     @staticmethod
     def get_max_speed():
-        return rospy.get_param("/link_bot/max_speed")
+        return rospy.get_param("link_bot/max_speed")
 
     @staticmethod
     def get_n_action():

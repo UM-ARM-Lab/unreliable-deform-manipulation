@@ -1,0 +1,8 @@
+{
+  "rigid": {
+    "model_dir": "log_data/rope_rigid_translation"
+  },
+  "Simple Res NN": {
+    "model_dir": "log_data/rope_no_obs2/March_25_17-46-11_61e55c4b8c/"
+  }
+}

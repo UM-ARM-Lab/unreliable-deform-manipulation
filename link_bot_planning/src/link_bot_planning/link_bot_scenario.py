@@ -58,12 +58,16 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def distance(s1, s2):
-        return np.linalg.norm(s1['link_bot'] - s2['link_bot'])
+        # NOTE: using R^22 distance mangles the rope shape more, so we don't use it.
+        link_bot_points1 = np.reshape(s1['link_bot'], [-1, 2])
+        tail_point1 = link_bot_points1[0]
+        link_bot_points2 = np.reshape(s2['link_bot'], [-1, 2])
+        tail_point2 = link_bot_points2[0]
+        return np.linalg.norm(tail_point1 - tail_point2)
 
     @staticmethod
     def distance_differentiable(s1, s2):
         # NOTE: using R^22 distance mangles the rope shape more, so we don't use it.
-        # return tf.linalg.norm(s1['link_bot'] - s2['link_bot'])
         link_bot_points1 = tf.reshape(s1['link_bot'], [-1, 2])
         tail_point1 = link_bot_points1[0]
         link_bot_points2 = tf.reshape(s2['link_bot'], [-1, 2])

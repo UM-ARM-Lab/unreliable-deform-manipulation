@@ -3,8 +3,8 @@
   "res": 0.01,
   "full_env_w_m": 2,
   "full_env_h_m": 2,
-  "goal_w_m": 1.9,
-  "goal_h_m": 1.9,
+  "goal_w_m": 2.0,
+  "goal_h_m": 2.0,
   "max_step_size": 0.01,
   "move_objects_every_n": 64,
   "movable_obstacles": [
