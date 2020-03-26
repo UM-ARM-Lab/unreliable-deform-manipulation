@@ -9,14 +9,13 @@ def plot_rope_configuration(ax, rope_configuration, linewidth=None, linestyle=No
     return ax.plot(xs, ys, linewidth=linewidth, label=label, linestyle=linestyle, **kwargs)
 
 
-def my_arrow(xs, ys, us, vs):
+def my_arrow(xs, ys, us, vs, scale=0.2):
     xs = np.array(xs)
     ys = np.array(ys)
     us = np.array(us)
     vs = np.array(vs)
 
     thetas = np.arctan2(vs, us)
-    scale = 0.1
     head_lengths = np.sqrt(np.square(us) + np.square(vs)) * scale
     theta1s = 3 * np.pi / 4 + thetas
     u1_primes = np.cos(theta1s) * head_lengths
@@ -40,10 +39,10 @@ def plot_arrow(ax, xs, ys, us, vs, color, **kwargs):
 
 
 def update_arrow(lines, xs, ys, us, vs):
-    v_primes, u_primes = my_arrow(xs, ys, us, vs)
-    lines[0].set_data([xs, xs + us], [ys, ys + vs])
-    lines[1].set_data([xs + us, xs + us - v_primes], [ys + vs, ys + vs - u_primes])
-    lines[2].set_data([xs + us, xs + us - u_primes], [ys + vs, ys + vs + v_primes])
+    xys1, xys2, xys3 = my_arrow(xs, ys, us, vs)
+    lines[0].set_data(xys1[0], xys1[1])
+    lines[1].set_data(xys2[0], xys2[1])
+    lines[2].set_data(xys3[0], xys3[1])
 
 
 if __name__ == '__main__':

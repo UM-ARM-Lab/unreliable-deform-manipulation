@@ -52,7 +52,7 @@ class TetherScenario(ExperimentScenario):
                     zorder: int):
         point_robot = np.reshape(state['link_bot'], [2])
         # we draw our own arrows because quiver cannot be animated
-        artist = plot_arrow(ax, point_robot[0], point_robot[1], action[0], action[1], zorder=zorder, linewidth=2)
+        artist = plot_arrow(ax, point_robot[0], point_robot[1], action[0], action[1], zorder=zorder, linewidth=2, color=color)
         return artist
 
     @staticmethod
