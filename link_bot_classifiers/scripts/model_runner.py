@@ -63,16 +63,18 @@ def train_main(args, seed: int):
                                                     scenario=scenario,
                                                     local_env_h=net.hparams['local_env_h_rows'],
                                                     local_env_w=net.hparams['local_env_w_cols'],
+                                                    rope_image_k=net.hparams['rope_image_k'],
                                                     )
             val_tf_dataset = add_transition_image(train_tf_dataset,
                                                   states_keys=net.states_keys,
                                                   scenario=scenario,
                                                   local_env_h=net.hparams['local_env_h_rows'],
                                                   local_env_w=net.hparams['local_env_w_cols'],
+                                                  rope_image_k=net.hparams['rope_image_k'],
                                                   )
         elif image_key == 'trajectory_image':
-            train_tf_dataset = add_traj_image(train_tf_dataset)
-            val_tf_dataset = add_traj_image(val_tf_dataset)
+            train_tf_dataset = add_traj_image(train_tf_dataset, states_keys=net.states_keys)
+            val_tf_dataset = add_traj_image(val_tf_dataset, states_keys=net.states_keys)
 
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
@@ -118,9 +120,10 @@ def eval_main(args, seed: int):
                                                scenario=scenario,
                                                local_env_h=net.hparams['local_env_h_rows'],
                                                local_env_w=net.hparams['local_env_w_cols'],
+                                               rope_image_k=net.hparams['rope_image_k'],
                                                )
     elif model_hparams['image_key'] == 'trajectory_image':
-        test_tf_dataset = add_traj_image(test_tf_dataset)
+        test_tf_dataset = add_traj_image(test_tf_dataset, states_keys=net.states_keys)
 
     if labeling_params['balance']:
         print(Fore.GREEN + "balancing..." + Fore.RESET)

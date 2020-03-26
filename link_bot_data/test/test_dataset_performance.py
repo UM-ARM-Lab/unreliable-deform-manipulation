@@ -44,7 +44,8 @@ def main():
                                       states_keys=["link_bot"],
                                       scenario=get_scenario("link_bot"),
                                       local_env_h=50,
-                                      local_env_w=50)
+                                      local_env_w=50,
+                                      rope_image_k=1000)
     # tf_dataset = balance(tf_dataset, label_key='label')
     # tf_dataset = tf_dataset.shuffle(1024)
     tf_dataset = tf_dataset.batch(batch_size)

@@ -37,6 +37,7 @@ def main():
     parser.add_argument('--action-in-image', action='store_true')
     parser.add_argument('--take', type=int)
     parser.add_argument('--local-env-s', type=int, default=100)
+    parser.add_argument('--rope-image-k', type=float, default=1000.0)
     parser.add_argument('--no-balance', action='store_true')
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
@@ -63,7 +64,8 @@ def main():
                                        action_in_image=args.action_in_image,
                                        scenario=scenario,
                                        local_env_h=args.local_env_s,
-                                       local_env_w=args.local_env_s)
+                                       local_env_w=args.local_env_s,
+                                       rope_image_k=args.rope_image_k)
     if args.display_type == 'trajectory_image':
         dataset = add_traj_image(dataset, states_keys=states_keys)
 

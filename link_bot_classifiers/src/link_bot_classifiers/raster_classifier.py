@@ -136,7 +136,8 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                                       scenario=self.scenario,
                                       local_env_h=self.local_env_h_rows,
                                       local_env_w=self.local_env_w_cols,
-                                      action_in_image=action_in_image)[0]
+                                      action_in_image=action_in_image,
+                                      k=self.model_hparams['rope_image_k'])[0]
         image = tf.convert_to_tensor(image, dtype=tf.float32)
 
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
