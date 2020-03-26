@@ -58,12 +58,12 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         self.draw_tree = draw_tree
         self.draw_rejected = draw_rejected
 
-    def get_goal(self, w, h, full_env_data):
+    def get_goal(self, w_meters, h, full_env_data):
         if self.goal is not None:
             print("Using Goal {}".format(self.goal))
             return np.array(self.goal)
         else:
-            return super().get_goal(w, h, full_env_data)
+            return super().get_goal(w_meters, h, full_env_data)
 
     def on_plan_complete(self,
                          planned_path: List[Dict],

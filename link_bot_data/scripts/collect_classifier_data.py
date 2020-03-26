@@ -110,11 +110,11 @@ class ClassifierDataCollector(PlanAndExecute):
             self.service_provider.reset_gripper(self.reset_gripper_to)
         super().on_before_plan()
 
-    def get_goal(self, w, h, full_env_data):
+    def get_goal(self, w_meters, h, full_env_data):
         if self.fixed_goal is not None:
             return self.fixed_goal
         else:
-            return super().get_goal(w, h, full_env_data)
+            return super().get_goal(w_meters, h, full_env_data)
 
     def on_plan_complete(self,
                          planned_path: List[Dict],

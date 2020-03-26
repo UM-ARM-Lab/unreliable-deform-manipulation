@@ -23,8 +23,8 @@ from peter_msgs.srv import ExecuteActionRequest
 def sample_delta_pos(action_rng: np.random.RandomState,
                      max_delta_pos: float,
                      gripper_point: Point,
-                     goal_env_w: float,
-                     goal_env_h: float,
+                     goal_w_m: float,
+                     goal_h_m: float,
                      last_dx: float,
                      last_dy: float):
     while True:
@@ -34,8 +34,8 @@ def sample_delta_pos(action_rng: np.random.RandomState,
         else:
             dx, dy = random_delta_pos(action_rng, max_delta_pos)
 
-        half_w = goal_env_w / 2
-        half_h = goal_env_h / 2
+        half_w = goal_w_m / 2
+        half_h = goal_h_m / 2
         if -half_w <= gripper_point.x + dx <= half_w and -half_h <= gripper_point.y + dy <= half_h:
             break
 
@@ -83,8 +83,8 @@ def generate_traj(params, args, service_provider, traj_idx, global_t_step, actio
         gripper1_dx, gripper1_dy = sample_delta_pos(action_rng=action_rng,
                                                     max_delta_pos=max_delta_pos,
                                                     gripper_point=gripper_point,
-                                                    goal_env_w=params.goal_w_m,
-                                                    goal_env_h=params.goal_h_m,
+                                                    goal_w_m=params.goal_w_m,
+                                                    goal_h_m=params.goal_h_m,
                                                     last_dx=gripper1_dx,
                                                     last_dy=gripper1_dy)
 

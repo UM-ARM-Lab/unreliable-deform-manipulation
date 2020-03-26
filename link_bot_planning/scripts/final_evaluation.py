@@ -103,13 +103,13 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
         super().on_after_plan()
 
-    def get_goal(self, w, h, full_env_data):
+    def get_goal(self, w_meters, h, full_env_data):
         if self.goal is not None:
             if self.verbose >= 1:
                 print("Using Goal {}".format(self.goal))
             return np.array(self.goal)
         else:
-            return super().get_goal(w, h, full_env_data)
+            return super().get_goal(w_meters, h, full_env_data)
 
     def on_execution_complete(self,
                               planned_path: List[Dict],

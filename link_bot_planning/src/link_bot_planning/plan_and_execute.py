@@ -69,8 +69,8 @@ class PlanAndExecute:
                 start_states = get_start_states(self.service_provider, self.planner.state_space_description.keys())
 
                 # generate a random target
-                goal = self.get_goal(self.planner_params['random_goal_w'],
-                                     self.planner_params['random_goal_h'],
+                goal = self.get_goal(self.planner_params['goal_w_m'],
+                                     self.planner_params['goal_h_m'],
                                      full_env_data=full_env_data)
 
                 if self.verbose >= 1:
@@ -140,8 +140,8 @@ class PlanAndExecute:
 
         self.on_complete(initial_poses_in_collision)
 
-    def get_goal(self, w, h, full_env_data):
-        return sample_collision_free_goal(w=w, h=h, full_env_data=full_env_data, rng=self.goal_rng)
+    def get_goal(self, w_meters, h_meters, full_env_data):
+        return sample_collision_free_goal(goal_w_m=w_meters, goal_h_m=h_meters, full_env_data=full_env_data, rng=self.goal_rng)
 
     def on_plan_complete(self,
                          planned_path: List[Dict],

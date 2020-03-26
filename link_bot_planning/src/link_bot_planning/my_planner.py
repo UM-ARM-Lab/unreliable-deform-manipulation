@@ -74,11 +74,11 @@ class MyPlanner:
             bounds = ob.RealVectorBounds(n_state)
             for i in range(n_state):
                 if i % 2 == 0:
-                    bounds.setLow(i, -self.params['w'] / 2)
-                    bounds.setHigh(i, self.params['w'] / 2)
+                    bounds.setLow(i, -self.params['full_env_w'] / 2)
+                    bounds.setHigh(i, self.params['full_env_w'] / 2)
                 else:
-                    bounds.setLow(i, -self.params['h'] / 2)
-                    bounds.setHigh(i, self.params['h'] / 2)
+                    bounds.setLow(i, -self.params['full_env_h'] / 2)
+                    bounds.setHigh(i, self.params['full_env_h'] / 2)
             subspace.setBounds(bounds)
             self.subspaces.append(subspace_idx)
             self.subspace_bounds.append(bounds)
