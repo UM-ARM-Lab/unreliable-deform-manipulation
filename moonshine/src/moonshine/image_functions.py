@@ -39,7 +39,7 @@ def make_transition_image(full_env,
                                                                           local_h_rows=local_env_h,
                                                                           local_w_cols=local_env_w)
 
-    concat_args = [tf.zeros([1, local_env_h, local_env_w, 1])]
+    concat_args = []
     for planned_state in planned_states.values():
         planned_rope_image = raster_differentiable(state=planned_state,
                                                    res=res,
@@ -58,6 +58,8 @@ def make_transition_image(full_env,
     if action_in_image:
         action_image = smear_action_differentiable(action, local_env_h, local_env_w)
         concat_args.append(action_image)
+
+    concat_args.append(tf.expand_dims(local_env, axis=3))
     image = tf.concat(concat_args, axis=3)
     return image
 
@@ -229,12 +231,12 @@ def add_transition_image(dataset,
                          local_env_h: int,
                          action_in_image: Optional[bool] = False):
     def _add_transition_image(input_dict):
-        add_transition_image_to_example(input_dict=input_dict,
-                                        states_keys=states_keys,
-                                        scenario=scenario,
-                                        local_env_w=local_env_w,
-                                        local_env_h=local_env_h,
-                                        action_in_image=action_in_image)
+        return add_transition_image_to_example(input_dict=input_dict,
+                                               states_keys=states_keys,
+                                               scenario=scenario,
+                                               local_env_w=local_env_w,
+                                               local_env_h=local_env_h,
+                                               action_in_image=action_in_image)
 
     return dataset.map(_add_transition_image)
 

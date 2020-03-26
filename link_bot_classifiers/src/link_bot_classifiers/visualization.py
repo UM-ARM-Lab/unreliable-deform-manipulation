@@ -67,9 +67,9 @@ def plot_classifier_data(
 
 
 def make_interpretable_image(image: np.ndarray, n_points: int):
-    image_25d = image.squeeze()
-    pre_rope = np.sum(image_25d[:, :, 0:n_points], axis=2)
-    post_rope = np.sum(image_25d[:, :, n_points:2 * n_points], axis=2)
-    local_env = image_25d[:, :, 2 * n_points]
+    image_23d = image.squeeze()
+    pre_rope = np.sum(image_23d[:, :, 0:n_points], axis=2)
+    post_rope = np.sum(image_23d[:, :, n_points:2 * n_points], axis=2)
+    local_env = image_23d[:, :, 2 * n_points]
     interpretable_image = np.stack([pre_rope, post_rope, local_env], axis=2)
     return interpretable_image

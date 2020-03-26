@@ -36,7 +36,7 @@ def main():
     parser.add_argument('--discard-pre-far', action='store_true')
     parser.add_argument('--action-in-image', action='store_true')
     parser.add_argument('--take', type=int)
-    parser.add_argument('--local-env-s', type=int, default=50)
+    parser.add_argument('--local-env-s', type=int, default=100)
     parser.add_argument('--no-balance', action='store_true')
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
@@ -56,22 +56,6 @@ def main():
 
     if not args.no_balance:
         dataset = balance(dataset)
-
-    input_dict = next(iter(dataset))
-    d = add_transition_image_to_example(input_dict,
-                                        states_keys=states_keys,
-                                        action_in_image=args.action_in_image,
-                                        scenario=scenario,
-                                        local_env_h=args.local_env_s,
-                                        local_env_w=args.local_env_s)
-    image = d['transition_image'].numpy()
-    res = 0.01
-    local_env_origin = np.array([-27, 10])
-    extent = compute_extent(args.local_env_s, args.local_env_s, res, local_env_origin)
-    interpretable_image = make_interpretable_image(image, 11)
-    plt.imshow(np.flipud(interpretable_image), extent=extent)
-    plt.show(block=True)
-    return
 
     if args.display_type == 'transition_image':
         dataset = add_transition_image(dataset,
@@ -127,9 +111,10 @@ def main():
             plt.show(block=True)
         elif args.display_type == 'transition_image':
             image = example['transition_image'].numpy()
+            print(image.shape)
             interpretable_iamge = make_interpretable_image(image, 11)
             plt.imshow(np.flipud(interpretable_iamge))
-            title = "Label = {:d}".format(label),
+            title = "Label = {:d}".format(label)
             plt.title(title)
             plt.show(block=True)
         elif args.display_type == 'trajectory_image':
