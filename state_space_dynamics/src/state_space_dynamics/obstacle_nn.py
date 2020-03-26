@@ -108,12 +108,22 @@ class ObstacleNN(MyKerasModel):
 
             rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols)
 
-            action_image_t = smear_action_differentiable(action_t, env_h_rows, env_w_cols)
-
             env = tf.expand_dims(env, axis=3)
 
             # CNN
-            z_t = self.concat([rope_image_t, env, action_image_t])
+            z_t = self.concat([rope_image_t, env])
+
+            # DEBGUGING
+            # viz_rope_image_t = tf.reduce_sum(rope_image_t, axis=3, keep_dims=True)
+            # zeros = tf.zeros([self.batch_size, env_h_rows, env_w_cols, 1])
+            # viz_z_t = self.concat([viz_rope_image_t, env, zeros])
+            # import matplotlib.pyplot as plt
+            # extent = compute_extent(self.local_env_h_rows, self.local_env_w_cols, res[0], env_origin[0].numpy())
+            # plt.imshow(np.flipud(viz_z_t[0]), extent=extent)
+            # points = tf.reshape(s_t, [self.batch_size, -1, 2])
+            # plt.scatter(points[0, :, 0], points[0, :, 1])
+            # plt.show(block=True)
+
             for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
                 z_t = conv_layer(z_t)
                 z_t = pool_layer(z_t)

@@ -14,8 +14,8 @@
     [8, [3, 3]],
     [8, [3, 3]]
   ],
-  "local_env_h_rows": 50,
-  "local_env_w_cols": 50,
+  "local_env_h_rows": 100,
+  "local_env_w_cols": 100,
   "residual": true,
   "mixed": true,
   "kernel_reg": 0.05,
