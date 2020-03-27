@@ -2,7 +2,7 @@ import re
 from typing import Optional, Dict, List
 
 import tensorflow as tf
-from link_bot_data.link_bot_dataset_utils import add_all
+from link_bot_data.link_bot_dataset_utils import add_all, add_planned
 
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_pycommon import link_bot_pycommon
@@ -179,7 +179,7 @@ def add_traj_image_wrapper(input_dict, states_keys: List[str], rope_image_k: flo
 
     planned_states_dict = {}
     for state_key in states_keys:
-        states_all = input_dict[add_all(state_key)]
+        states_all = input_dict[add_all(add_planned(state_key))]
         planned_states_dict[state_key] = tf.expand_dims(states_all, axis=0)
 
     full_env, full_env_origin, res = add_batch(full_env, full_env_origin, res)

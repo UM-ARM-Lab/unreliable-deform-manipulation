@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import add_next, convert_sequences_to_transitions
+from link_bot_data.link_bot_dataset_utils import add_next, convert_sequences_to_transitions, add_planned
 from link_bot_planning.params import FullEnvParams
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -31,7 +31,7 @@ def add_model_predictions(fwd_model: BaseDynamicsFunction, tf_dataset, dataset: 
             for prediction_t in predictions:
                 predictions_for_name.append(prediction_t[name])
             predictions_for_name = tf.stack(predictions_for_name, axis=0)
-            outputs["planned_state/" + name] = predictions_for_name
+            outputs[add_planned(name)] = predictions_for_name
         return inputs, outputs
 
     def _split_sequences(inputs, outputs):
@@ -44,7 +44,7 @@ def add_model_predictions(fwd_model: BaseDynamicsFunction, tf_dataset, dataset: 
             example[name] = outputs[name]
 
         for name in fwd_model.states_keys:
-            name = "planned_state/" + name
+            name = add_planned(name)
             example[name] = outputs[name]
 
         # Split up into time-index features
@@ -64,7 +64,7 @@ def add_model_predictions(fwd_model: BaseDynamicsFunction, tf_dataset, dataset: 
                 split_example[feature_name] = state
 
         for name in fwd_model.states_keys:
-            name = "planned_state/" + name
+            name = add_planned(name)
             states = example[name]
             for t in range(states.shape[0]):
                 state = states[t]
@@ -91,8 +91,8 @@ class ClassifierDataset(BaseDataset):
 
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
 
-        actual_state_keys = self.hparams['actual_state_keys']
-        planned_state_keys = self.hparams['planned_state_keys']
+        self.actual_state_keys = self.hparams['actual_state_keys']
+        self.planned_state_keys = self.hparams['planned_state_keys']
 
         self.action_feature_names = ['action']
 
@@ -101,11 +101,11 @@ class ClassifierDataset(BaseDataset):
             'traj_idx',
         ]
 
-        for k in actual_state_keys:
+        for k in self.actual_state_keys:
             self.state_feature_names.append('{}'.format(k))
 
-        for k in planned_state_keys:
-            self.state_feature_names.append('planned_state/{}'.format(k))
+        for k in self.planned_state_keys:
+            self.state_feature_names.append(add_planned(k))
 
         self.constant_feature_names = [
             'full_env/origin',
@@ -120,7 +120,7 @@ class ClassifierDataset(BaseDataset):
         def _label_transitions(transition: dict):
             state_key = self.labeling_params['state_key']
             state_key_next = add_next(state_key)
-            planned_state_key = 'planned_state/{}'.format(state_key)
+            planned_state_key = add_planned(state_key)
             planned_state_key_next = add_next(planned_state_key)
             pre_transition_distance = tf.norm(transition[state_key] - transition[planned_state_key])
             post_transition_distance = tf.norm(transition[state_key_next] - transition[planned_state_key_next])
@@ -152,8 +152,14 @@ class ClassifierDataset(BaseDataset):
                 return False
             return True
 
+        def _convert_sequences_to_transitions(constant_data, state_like_sequences, action_like_sequences):
+            return convert_sequences_to_transitions(constant_data=constant_data,
+                                                    state_like_sequences=state_like_sequences,
+                                                    action_like_sequences=action_like_sequences,
+                                                    planned_state_keys=self.planned_state_keys)
+
         # At this point, the dataset consists of tuples (const_data, state_data, action_data)
-        dataset = dataset.flat_map(convert_sequences_to_transitions)
+        dataset = dataset.flat_map(_convert_sequences_to_transitions)
         dataset = dataset.map(_label_transitions)
         dataset = dataset.filter(_filter_pre_far_transitions)
 

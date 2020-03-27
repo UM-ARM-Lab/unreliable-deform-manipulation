@@ -3,7 +3,7 @@ from __future__ import print_function, division
 
 import os
 import pathlib
-from typing import Optional
+from typing import Optional, Dict, List
 
 import git
 import tensorflow as tf
@@ -167,27 +167,31 @@ def add_all(feature_name):
     return feature_name + '_all'
 
 
+def add_planned(feature_name):
+    return "planned_state/" + feature_name
+
+
 # @tf.function
-def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: dict, action_like_sequences: dict):
+def convert_sequences_to_transitions(constant_data: Dict,
+                                     state_like_sequences: Dict,
+                                     action_like_sequences: Dict,
+                                     planned_state_keys: List[str]):
     # Create a dict of lists, where keys are the features we want in each transition, and values are the data.
     # The first dimension of these values is what will be split up into different examples
     transitions = {
     }
-    state_like_names = []
-    next_state_like_names = []
+
     for feature_name in state_like_sequences.keys():
         next_feature_name = add_next(feature_name)
-        state_like_names.append(feature_name)
-        next_state_like_names.append((next_feature_name, feature_name))
         transitions[feature_name] = []
-        transitions[add_all(feature_name)] = []
         transitions[next_feature_name] = []
 
-    action_like_names = []
+    for feature_name in planned_state_keys:
+        transitions[add_all(add_planned(feature_name))] = []
+
     for feature_name in action_like_sequences.keys():
         transitions[feature_name] = []
         transitions[add_all(feature_name)] = []
-        action_like_names.append(feature_name)
 
     for feature_name in constant_data.keys():
         transitions[feature_name] = []
@@ -204,22 +208,28 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
     # Fill the transitions dictionary with the data from the sequences
     sequence_length = action_like_sequences['action'].shape[0]
     for transition_idx in range(sequence_length):
-        for feature_name in state_like_names:
+        for feature_name in state_like_sequences.keys():
             transitions[feature_name].append(state_like_sequences[feature_name][transition_idx])
-            # include all data up, nulling out the future data to some constant (i.e. -1)
-            zps = tf.numpy_function(_null_pad_sequence, [state_like_sequences[feature_name], transition_idx], tf.float32)
-            zps.set_shape(state_like_sequences[feature_name].shape)
-            transitions[add_all(feature_name)].append(zps)
-        for next_feature_name, feature_name in next_state_like_names:
+
+            next_feature_name = add_next(feature_name)
             transitions[next_feature_name].append(state_like_sequences[feature_name][transition_idx + 1])
 
-        for feature_name in action_like_names:
+        for feature_name in planned_state_keys:
+            planned_feature_name = add_planned(feature_name)
+            planned_state_sequence = state_like_sequences[planned_feature_name]
+            null_pad_args = [planned_state_sequence, transition_idx]
+            null_padded_planned_state_sequence = tf.numpy_function(_null_pad_sequence, null_pad_args, tf.float32)
+            null_padded_planned_state_sequence.set_shape(state_like_sequences[planned_feature_name].shape)
+            transitions[add_all(planned_feature_name)].append(null_padded_planned_state_sequence)
+
+        for feature_name in action_like_sequences.keys():
             transitions[feature_name].append(action_like_sequences[feature_name][transition_idx])
-            # include all data up, zeroing out the future data
-            zps = tf.numpy_function(_null_pad_sequence, [action_like_sequences[feature_name], transition_idx],
-                                    tf.float32)
-            zps.set_shape(action_like_sequences[feature_name].shape)
-            transitions[add_all(feature_name)].append(zps)
+
+            action_sequence = action_like_sequences[feature_name]
+            null_pad_args = [action_sequence, transition_idx]
+            null_padded_planned_state_sequence = tf.numpy_function(_null_pad_sequence, null_pad_args, tf.float32)
+            null_padded_planned_state_sequence.set_shape(action_like_sequences[feature_name].shape)
+            transitions[add_all(feature_name)].append(null_padded_planned_state_sequence)
 
         for feature_name in constant_data.keys():
             transitions[feature_name].append(constant_data[feature_name])

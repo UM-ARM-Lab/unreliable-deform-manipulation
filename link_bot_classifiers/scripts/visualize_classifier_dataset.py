@@ -12,9 +12,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_planning.get_scenario import get_scenario
-from link_bot_pycommon.link_bot_sdf_utils import compute_extent
-from moonshine.image_functions import add_traj_image, add_transition_image, add_traj_image_wrapper, \
-    add_transition_image_to_example
+from moonshine.image_functions import add_traj_image, add_transition_image
 
 tf.compat.v1.enable_eager_execution()
 
@@ -113,9 +111,9 @@ def main():
             plt.show(block=True)
         elif args.display_type == 'transition_image':
             image = example['transition_image'].numpy()
-            print(image.shape)
-            interpretable_iamge = make_interpretable_image(image, 11)
-            plt.imshow(np.flipud(interpretable_iamge))
+            if scenario == 'link_bot':
+                image = make_interpretable_image(image, 11)
+            plt.imshow(np.flipud(image))
             title = "Label = {:d}".format(label)
             plt.title(title)
             plt.show(block=True)
