@@ -9,10 +9,9 @@ from tensorflow import keras
 
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import FullEnvParams
-from link_bot_pycommon.link_bot_sdf_utils import compute_extent
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
-from moonshine.numpy_utils import add_batch, dict_of_sequences_to_sequence_of_dicts
 from moonshine.image_functions import raster_differentiable
+from moonshine.numpy_utils import add_batch, dict_of_sequences_to_sequence_of_dicts, remove_batch
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -113,16 +112,17 @@ class ObstacleNN(MyKerasModel):
             z_t = self.concat([rope_image_t, env])
 
             # DEBGUGING
-            print(rope_image_t.shape)
-            viz_rope_image_t = tf.reduce_sum(rope_image_t, axis=3, keep_dims=True)
-            zeros = tf.zeros([self.batch_size, env_h_rows, env_w_cols, 1])
-            viz_z_t = self.concat([viz_rope_image_t, env, zeros])
-            import matplotlib.pyplot as plt
-            extent = compute_extent(env_h_rows, env_w_cols, res[0], env_origin[0].numpy())
-            plt.imshow(np.flipud(tf.squeeze(viz_rope_image_t[0])), extent=extent)
-            points = tf.reshape(s_t, [self.batch_size, -1, 2])
-            plt.scatter(points[0, :, 0], points[0, :, 1], s=1)
-            plt.show(block=True)
+            # from link_bot_pycommon.link_bot_sdf_utils import compute_extent
+            # print(rope_image_t.shape)
+            # viz_rope_image_t = tf.reduce_sum(rope_image_t, axis=3, keep_dims=True)
+            # zeros = tf.zeros([self.batch_size, env_h_rows, env_w_cols, 1])
+            # viz_z_t = self.concat([viz_rope_image_t, env, zeros])
+            # import matplotlib.pyplot as plt
+            # extent = compute_extent(env_h_rows, env_w_cols, res[0], env_origin[0].numpy())
+            # plt.imshow(np.flipud(tf.squeeze(viz_rope_image_t[0])), extent=extent)
+            # points = tf.reshape(s_t, [self.batch_size, -1, 2])
+            # plt.scatter(points[0, :, 0], points[0, :, 1], s=1)
+            # plt.show(block=True)
 
             for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
                 z_t = conv_layer(z_t)
@@ -177,6 +177,7 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
     def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
         super().__init__(model_dir, batch_size, scenario)
         self.net = ObstacleNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
+        self.states_keys = self.net.states_keys
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint)
@@ -206,16 +207,19 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
             'full_env/env': tf.convert_to_tensor(full_env, dtype=tf.float32),
             # shape: 2
             'full_env/origin': tf.convert_to_tensor(full_env_origin, dtype=tf.float32),
+            # scalar
+            'full_env/res': tf.convert_to_tensor(res, dtype=tf.float32),
         }
 
         for state_key, v in start_states.items():
             # handles conversion from double -> float
-            state = tf.convert_to_tensor(v, dtype=tf.float32)
-            first_state = tf.reshape(state, state.shape[0])
-            test_x[state_key] = first_state
+            start_state = tf.convert_to_tensor(v, dtype=tf.float32)
+            start_state_with_time_dim = tf.expand_dims(start_state, axis=0)
+            test_x[state_key] = start_state_with_time_dim
 
         test_x = add_batch(test_x)
         predictions = self.net((test_x, None))
+        predictions = remove_batch(predictions)
         predictions = dict_of_sequences_to_sequence_of_dicts(predictions)
 
         return predictions

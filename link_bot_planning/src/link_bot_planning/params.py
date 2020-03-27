@@ -73,5 +73,6 @@ class CollectDynamicsParams:
     steps_per_traj: int
     movable_obstacles: List[str]
     move_objects_every_n: int
+    reset_gripper_to: List[float]
 
 

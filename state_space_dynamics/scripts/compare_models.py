@@ -95,6 +95,7 @@ def generate_results(base_folder: pathlib.Path,
         results['true']['full_env/env'].append(full_env)
         results['true']['full_env/extent'].append(full_env_extent)
 
+    # run predictions
     for model_name, model in models.items():
         results[model_name] = {
             'points': [],
@@ -145,23 +146,19 @@ def visualize_predictions(results, n_examples, base_folder=None):
     n_examples = min(len(results['true']['points']), n_examples)
     sequence_length = results['true']['points'][0].shape[0]
     for example_idx in range(n_examples):
-        xmin = np.min(results['true']['points'][example_idx][:, :, 0]) - 1
-        ymin = np.min(results['true']['points'][example_idx][:, :, 1]) - 1
-        xmax = np.max(results['true']['points'][example_idx][:, :, 0]) + 1
-        ymax = np.max(results['true']['points'][example_idx][:, :, 1]) + 1
-
         fig, _ = plt.subplots()
         plt.xlabel("x (m)")
         plt.ylabel("y (m)")
         plt.axis("equal")
-        plt.xlim(xmin, xmax)
-        plt.ylim(ymin, ymax)
         plt.title(example_idx)
 
         time_text_handle = plt.text(5, 8, 't=0', fontdict={'color': 'white', 'size': 5}, bbox=dict(facecolor='black', alpha=0.5))
         full_env = results['true']['full_env/env'][example_idx]
         extent = results['true']['full_env/extent'][example_idx]
         plt.imshow(np.flipud(full_env), extent=extent)
+
+        plt.xlim(extent[0:2])
+        plt.ylim(extent[2:4])
 
         # create all the necessary plotting handles
         handles = {}
@@ -183,7 +180,7 @@ def visualize_predictions(results, n_examples, base_folder=None):
 
         plt.legend()
 
-        anim = FuncAnimation(fig, update, frames=sequence_length, interval=100)
+        anim = FuncAnimation(fig, update, frames=sequence_length, interval=500)
         anim_path = base_folder / 'anim-{}.gif'.format(example_idx)
         anim.save(anim_path, writer='imagemagick', fps=4)
         plt.show()

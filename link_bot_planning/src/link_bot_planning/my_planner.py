@@ -261,10 +261,10 @@ class MyPlanner:
     def state_sampler_allocator(self, state_space):
         # Note: I had issues using RealVectorStateSampler() here...
         if self.params['sampler_type'] == 'random':
-            extent = [-self.params['w'] / 2,
-                      self.params['w'] / 2,
-                      -self.params['h'] / 2,
-                      self.params['h'] / 2]
+            extent = [-self.params['full_env_w'] / 2,
+                      self.params['full_env_w'] / 2,
+                      -self.params['full_env_h'] / 2,
+                      self.params['full_env_h'] / 2]
             # FIXME: need to handle arbitrary state space dictionary/description
             #  this is such a hack
             sampler = ValidRopeConfigurationCompoundSampler(state_space,

@@ -35,8 +35,15 @@ class TetherScenario(ExperimentScenario):
             scatt = ax.scatter(xs, ys, c=color, s=s, zorder=zorder)
             line = ax.plot(xs, ys, linewidth=1, c=color, zorder=zorder)[0]
             return line, scatt
-        else:
+        elif 'link_bot' in state.keys():
             point_robot = np.reshape(state['link_bot'], [2])
+            x = point_robot[0]
+            y = point_robot[1]
+            scatt = ax.scatter(x, y, c=color, s=s, zorder=zorder)
+            line = ax.plot(x, y, linewidth=1, c=color, zorder=zorder)[0]
+            return line, scatt
+        elif 'gripper' in state.keys():
+            point_robot = np.reshape(state['gripper'], [2])
             x = point_robot[0]
             y = point_robot[1]
             scatt = ax.scatter(x, y, c=color, s=s, zorder=zorder)
@@ -50,10 +57,16 @@ class TetherScenario(ExperimentScenario):
                     color,
                     s: int,
                     zorder: int):
-        point_robot = np.reshape(state['link_bot'], [2])
-        # we draw our own arrows because quiver cannot be animated
-        artist = plot_arrow(ax, point_robot[0], point_robot[1], action[0], action[1], zorder=zorder, linewidth=1, color=color)
-        return artist
+        if 'link_bot' in state.keys():
+            point_robot = np.reshape(state['link_bot'], [2])
+            # we draw our own arrows because quiver cannot be animated
+            artist = plot_arrow(ax, point_robot[0], point_robot[1], action[0], action[1], zorder=zorder, linewidth=1, color=color)
+            return artist
+        elif 'gripper' in state.keys():
+            point_robot = np.reshape(state['link_bot'], [2])
+            # we draw our own arrows because quiver cannot be animated
+            artist = plot_arrow(ax, point_robot[0], point_robot[1], action[0], action[1], zorder=zorder, linewidth=1, color=color)
+            return artist
 
     @staticmethod
     def distance_to_goal(state: Dict,

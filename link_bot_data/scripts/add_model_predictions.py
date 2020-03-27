@@ -25,6 +25,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model')
+    parser.add_argument('--n-examples-per-record', type=int, default=128, help="examples per file")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
 
@@ -33,7 +34,6 @@ def main():
     dynamics_hparams = json.load((args.dataset_dir / 'hparams.json').open('r'))
     fwd_model, _ = load_generic_model(args.fwd_model_dir)
 
-    n_examples_per_record = 128
     compression_type = "ZLIB"
 
     dataset = DynamicsDataset([args.dataset_dir])
@@ -63,7 +63,7 @@ def main():
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
         current_record_idx = 0
-        examples = np.ndarray([n_examples_per_record], dtype=np.object)
+        examples = np.ndarray([args.n_examples_per_record], dtype=np.object)
         for example_idx, example_dict in enumerate(new_tf_dataset):
 
             features = {}
@@ -75,12 +75,12 @@ def main():
             examples[current_record_idx] = example
             current_record_idx += 1
 
-            if current_record_idx == n_examples_per_record:
+            if current_record_idx == args.n_examples_per_record:
                 # save to a TF record
                 serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
 
                 end_example_idx = example_idx + 1
-                start_example_idx = end_example_idx - n_examples_per_record
+                start_example_idx = end_example_idx - args.n_examples_per_record
                 record_filename = "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx - 1)
                 full_filename = full_output_directory / record_filename
                 if full_filename.exists():

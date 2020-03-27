@@ -130,6 +130,9 @@ def generate_trajs(service_provider,
     examples = np.ndarray([args.trajs_per_file], dtype=object)
     global_t_step = 0
     for traj_idx in range(args.trajs):
+        if params.reset_gripper_to is not None:
+            service_provider.reset_world(args.verbose, reset_gripper_to=params.reset_gripper_to)
+
         current_record_traj_idx = traj_idx % args.trajs_per_file
 
         # Might not do anything, depends on args
@@ -202,6 +205,6 @@ def generate(service_provider, params: CollectDynamicsParams, args):
     service_provider.setup_env(verbose=args.verbose,
                                real_time_rate=args.real_time_rate,
                                max_step_size=params.max_step_size,
-                               reset_gripper_to=None)
+                               reset_gripper_to=params.reset_gripper_to)
 
     generate_trajs(service_provider, scenario, params, args, full_output_directory, env_rng, action_rng)

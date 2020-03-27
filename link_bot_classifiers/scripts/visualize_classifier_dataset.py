@@ -121,7 +121,8 @@ def main():
             plt.show(block=True)
         elif args.display_type == 'trajectory_image':
             image = example['trajectory_image'].numpy()
-            image = make_interpretable_image(image, 11)
+            if scenario == 'link_bot':
+                image = make_interpretable_image(image, 11)
             plt.imshow(np.flipud(image))
             ax = plt.gca()
             title = "Label = {:d}".format(label)

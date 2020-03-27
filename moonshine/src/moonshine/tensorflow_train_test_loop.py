@@ -131,37 +131,37 @@ def train(keras_model: MyKerasModel,
             # train
             ################
             # metrics are averaged across batches in the epoch
-            batch_losses = []
-
-            for train_element in progressbar.progressbar(train_tf_dataset):
-                step = int(global_step.numpy())
-
-                with tf.GradientTape() as tape:
-                    train_predictions = keras_model(train_element)
-                    train_batch_loss = loss_function(train_element, train_predictions)
-
-                variables = keras_model.trainable_variables
-                gradients = tape.gradient(train_batch_loss, variables)
-                optimizer.apply_gradients(zip(gradients, variables))
-                batch_losses.append(train_batch_loss.numpy())
-
-                if logging:
-                    if step % log_scalars_every == 0:
-                        tf.contrib.summary.scalar("batch_loss", train_batch_loss, step=step)
-
-                        if metrics_function:
-                            train_batch_metrics = metrics_function(train_element, train_predictions)
-                            for metric_name, metric_value in train_batch_metrics.items():
-                                tf.contrib.summary.scalar('train_' + metric_name, metric_value, step=step)
-
-                ####################
-                # Update global step
-                ####################
-                global_step.assign_add(1)
-
-            training_loss = np.mean(batch_losses)
-            log_msg = "Epoch: {:5d}, Training Loss: {:8.5f}"
-            print(log_msg.format(epoch, training_loss))
+            # batch_losses = []
+            #
+            # for train_element in progressbar.progressbar(train_tf_dataset):
+            #     step = int(global_step.numpy())
+            #
+            #     with tf.GradientTape() as tape:
+            #         train_predictions = keras_model(train_element)
+            #         train_batch_loss = loss_function(train_element, train_predictions)
+            #
+            #     variables = keras_model.trainable_variables
+            #     gradients = tape.gradient(train_batch_loss, variables)
+            #     optimizer.apply_gradients(zip(gradients, variables))
+            #     batch_losses.append(train_batch_loss.numpy())
+            #
+            #     if logging:
+            #         if step % log_scalars_every == 0:
+            #             tf.contrib.summary.scalar("batch_loss", train_batch_loss, step=step)
+            #
+            #             if metrics_function:
+            #                 train_batch_metrics = metrics_function(train_element, train_predictions)
+            #                 for metric_name, metric_value in train_batch_metrics.items():
+            #                     tf.contrib.summary.scalar('train_' + metric_name, metric_value, step=step)
+            #
+            #     ####################
+            #     # Update global step
+            #     ####################
+            #     global_step.assign_add(1)
+            #
+            # training_loss = np.mean(batch_losses)
+            # log_msg = "Epoch: {:5d}, Training Loss: {:8.5f}"
+            # print(log_msg.format(epoch, training_loss))
 
             ################
             # validation
@@ -171,11 +171,12 @@ def train(keras_model: MyKerasModel,
                                                                            metrics_function)
 
                 log_msg = "Epoch: {:5d}, Validation Loss: {:8.5f}"
-                print(Style.BRIGHT + log_msg.format(epoch, training_loss) + Style.NORMAL)
+                print(Style.BRIGHT + log_msg.format(epoch, val_mean_loss) + Style.NORMAL)
 
                 if logging:
                     tf.contrib.summary.scalar('validation_loss', val_mean_loss, step=step)
                     for metric_name, mean_metric_value in val_mean_metrics.items():
+                        print(metric_name, mean_metric_value)
                         tf.contrib.summary.scalar('validation_' + metric_name, mean_metric_value, step=step)
 
                 # check new best based on the desired metric (or loss)

@@ -114,6 +114,10 @@ def eval_main(args, seed: int):
 
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
+    if labeling_params['balance']:
+        print(Fore.GREEN + "balancing..." + Fore.RESET)
+        test_tf_dataset = balance(test_tf_dataset)
+
     if model_hparams['image_key'] == 'transition_image':
         test_tf_dataset = add_transition_image(test_tf_dataset,
                                                states_keys=net.states_keys,
@@ -125,9 +129,6 @@ def eval_main(args, seed: int):
     elif model_hparams['image_key'] == 'trajectory_image':
         test_tf_dataset = add_traj_image(test_tf_dataset, states_keys=net.states_keys, rope_image_k=net.hparams['rope_image_k'])
 
-    if labeling_params['balance']:
-        print(Fore.GREEN + "balancing..." + Fore.RESET)
-        test_tf_dataset = balance(test_tf_dataset)
     ###############
     # Evaluate
     ###############

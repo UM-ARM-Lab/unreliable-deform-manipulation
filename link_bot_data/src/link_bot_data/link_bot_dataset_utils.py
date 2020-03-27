@@ -172,7 +172,6 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
     # Create a dict of lists, where keys are the features we want in each transition, and values are the data.
     # The first dimension of these values is what will be split up into different examples
     transitions = {
-        "stop_idx": []
     }
     state_like_names = []
     next_state_like_names = []
@@ -198,14 +197,13 @@ def convert_sequences_to_transitions(constant_data: dict, state_like_sequences: 
         # this should be some number that will be very far from being inside any actual
         # because we're gonna try to draw it anyways
         null = -10000
-        if idx + 1 < sequence.shape[0]:
-            sequence[idx + 1:] = null
+        if idx + 2 < sequence.shape[0]:
+            sequence[idx + 2:] = null
         return sequence
 
     # Fill the transitions dictionary with the data from the sequences
     sequence_length = action_like_sequences['action'].shape[0]
     for transition_idx in range(sequence_length):
-        transitions['stop_idx'].append(transition_idx + 1)
         for feature_name in state_like_names:
             transitions[feature_name].append(state_like_sequences[feature_name][transition_idx])
             # include all data up, nulling out the future data to some constant (i.e. -1)

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import argparse
-import json
 import pathlib
 
 import matplotlib.pyplot as plt
@@ -8,43 +7,41 @@ import numpy as np
 import rospy
 import tensorflow as tf
 
-from link_bot_gazebo import gazebo_services
-from link_bot_gazebo.gazebo_services import GazeboServices
-from link_bot_gazebo.srv import LinkBotStateRequest
-from link_bot_planning import model_utils, classifier_utils
 from link_bot_classifiers.visualization import plot_classifier_data
-from link_bot_planning.get_scenario import get_scenario
+from link_bot_gazebo.gazebo_services import GazeboServices
+from link_bot_planning import model_utils, classifier_utils
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.link_bot_pycommon import flatten_points
 from link_bot_pycommon.ros_pycommon import get_local_occupancy_data, get_occupancy_data
+from peter_msgs.srv import LinkBotStateRequest
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
-config = tf.ConfigProto(gpu_options=gpu_options)
-tf.enable_eager_execution(config=config)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+tf.compat.v1.enable_eager_execution(config=config)
+
+
+def make_float32(d):
+    for k, s_k in d.items():
+        d[k] = s_k.astype(np.float32)
+    return d
 
 
 def main():
-    np.set_printoptions(precision=6, suppress=True, linewidth=250)
-    tf.logging.set_verbosity(tf.logging.FATAL)
+    np.set_printoptions(precision=6, suppress=True, linewidth=200)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("scenario", choices=['link_bot', 'tether'], default='link_bot', help='scneario name')
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
     parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
-    parser.add_argument('--res', '-r', type=float, default=0.03, help='size of cells in meters')
     parser.add_argument('--no-plot', action='store_true', help="don't show plots, useful for debugging")
     parser.add_argument('-v', type=float, default=0.3, help='speed of test actions')
 
     args = parser.parse_args()
 
-    scenario = get_scenario(args.scenario)
-
     # use forward model to predict given the input action
-    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir, scenario)
-    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, scenario)
-    local_env_params = fwd_model.local_env_params
+    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir)
+    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, fwd_model.scenario)
     full_env_params = fwd_model.full_env_params
-    cols = local_env_params.w_cols
-    rows = local_env_params.h_rows
 
     rospy.init_node('test_classifier_from_gazebo')
 
@@ -52,17 +49,15 @@ def main():
 
     state_req = LinkBotStateRequest()
     link_bot_state = services.get_state(state_req)
-    head_idx = link_bot_state.link_names.index("head")
-    center_point = link_bot_state.points[head_idx]
-    center_point = np.array([center_point.x, center_point.y])
-    local_env_data = get_local_occupancy_data(rows, cols, args.res, center_point=center_point, service_provider=services)
 
     full_env_data = get_occupancy_data(env_w_m=full_env_params.w,
                                        env_h_m=full_env_params.h,
                                        res=full_env_params.res,
                                        service_provider=services)
 
-    state = np.expand_dims(gazebo_services.flatten_points(link_bot_state.points), axis=0)
+    state = {
+        'link_bot': flatten_points(link_bot_state.points)
+    }
 
     v = args.v
     test_inputs = [
@@ -82,17 +77,25 @@ def main():
         theta_rad = np.deg2rad(theta_deg)
         vx = np.cos(theta_rad) * v
         vy = np.sin(theta_rad) * v
-        action = np.array([[[vx, vy]]])
+        actions = np.array([[vx, vy]])
 
-        next_state = fwd_model.propagate(full_env=[full_env_data.data],
-                                         full_env_origin=[full_env_data.origin],
-                                         res=[full_env_data.resolution],
-                                         state=state,
-                                         actions=action)
-        next_state = np.reshape(next_state, [2, 1, -1])[1]
+        pred_states = fwd_model.propagate(full_env=full_env_data.data,
+                                          full_env_origin=full_env_data.origin,
+                                          res=full_env_data.resolution,
+                                          start_states=state,
+                                          actions=actions)
+        next_state = pred_states[1]
 
-        # FIXME: give classifier model access to something that lets it's get the environment information
-        accept_probability = classifier_model.check_constraint(local_env_data, state.flatten(), next_state.flatten(), action.flatten())
+        state = make_float32(state)
+        next_state = make_float32(next_state)
+        states_sequence = [state, next_state]
+
+        accept_probability = classifier_model.check_constraint(full_env=full_env_data.data,
+                                                               full_env_origin=full_env_data.origin,
+                                                               res=full_env_data.resolution,
+                                                               states_sequence=states_sequence,
+                                                               actions=actions)
+        accept_probability = float(accept_probability)
         prediction = 1 if accept_probability > 0.5 else 0
         title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)
 
@@ -100,17 +103,11 @@ def main():
         if not args.no_plot:
             i, j = np.unravel_index(k, [3, 3])
             plot_classifier_data(ax=axes[i, j],
-                                 planned_env=local_env_data.data,
-                                 planned_env_extent=local_env_data.extent,
-                                 planned_state=state[0],
-                                 planned_next_state=next_state[0],
-                                 planned_env_origin=local_env_data.origin,
-                                 res=local_env_data.resolution,
-                                 state=None,
-                                 next_state=None,
+                                 actual_env=full_env_data.data,
+                                 actual_env_extent=full_env_data.extent,
+                                 planned_state=state['link_bot'],
+                                 planned_next_state=next_state['link_bot'],
                                  title=title,
-                                 actual_env=None,
-                                 actual_env_extent=None,
                                  label=prediction)
 
     if not args.no_plot:

@@ -188,13 +188,13 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                          full_env: np.ndarray,
                          full_env_origin: np.ndarray,
                          res: float,
-                         states: List[Dict],
+                         states_sequence: List[Dict],
                          actions: np.ndarray) -> float:
         actions = tf.Variable(actions, dtype=tf.float32, name="actions")
         prediction = self.check_constraint_differentiable(full_env,
                                                           full_env_origin,
                                                           res,
-                                                          states,
+                                                          states_sequence,
                                                           actions)
         return prediction.numpy()
 
@@ -205,7 +205,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
 
         for state_key in self.net.states_keys:
             planned_state_key = 'planned_state/{}'.format(state_key)
-            planned_state_key_next = 'planned_state_next/{}'.format(state_key)
+            planned_state_key_next = add_next('planned_state/{}'.format(state_key))
             net_inputs[planned_state_key] = tf.convert_to_tensor(states_i[state_key], tf.float32)
             net_inputs[planned_state_key_next] = tf.convert_to_tensor(states_i_plus_1[state_key], tf.float32)
 
