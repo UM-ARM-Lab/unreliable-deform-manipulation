@@ -10,6 +10,7 @@ from colorama import Style
 from scipy import stats
 from tabulate import tabulate
 
+from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_pycommon import transpose_2d_lists
 from link_bot_pycommon.metric_utils import row_stats
@@ -53,12 +54,10 @@ def main():
     headers = ['']
     aggregate_metrics = {
         'planning_time': [['min', 'max', 'mean', 'median', 'std']],
-        'execution_to_goal_errors': [['min', 'max', 'mean', 'median', 'std']],
-        'plan_to_goal_errors': [['min', 'max', 'mean', 'median', 'std']],
-        'mean_plan_to_execution_errors': [['min', 'max', 'mean', 'median', 'std']],
-        'final_plan_to_execution_errors': [['min', 'max', 'mean', 'median', 'std']],
+        'final_execution_to_goal_error': [['min', 'max', 'mean', 'median', 'std']],
+        'final_plan_to_goal_error': [['min', 'max', 'mean', 'median', 'std']],
+        'final_plan_to_execution_error': [['min', 'max', 'mean', 'median', 'std']],
         'num_nodes': [['min', 'max', 'mean', 'median', 'std']],
-        'path_length': [['min', 'max', 'mean', 'median', 'std']],
     }
 
     execution_to_goal_errors_comparisons = {}
@@ -89,58 +88,64 @@ def main():
                 continue
             metrics_filename = subfolder / 'metrics.json'
             metrics = json.load(metrics_filename.open("r"))
-            timeout = metrics['planner_params']['timeout']
+            planner_params = metrics['planner_params']
+            scenario = get_scenario(planner_params['scenario'])
+            timeout = planner_params['timeout']
             data = metrics.pop('metrics')
             N = len(data)
             print("{} has {} examples".format(subfolder, N))
 
-            data = invert_dict(data)
-            planning_times = np.array(data['planning_time'])
-            path_length = np.array(data['planning_time'])
-            mean_plan_to_execution_errors = []
-            for planned, actual in zip(data['planned_path'], data['actual_path']):
-                planned_path = np.array(planned)
-                actual_path = np.array(actual)
-                # FIXME: old results included an extra state, we should rerun experiments
-                error = np.linalg.norm(planned_path[:-1, 0:2] - actual_path[:-1, 0:2], axis=1)
-                mean_plan_to_execution_errors.append(np.mean(error))
-            # TODO: rename these keys
-            execution_to_goal_errors = data['final_execution_error']
-            plan_to_goal_errors = data['final_planning_error']
-            has_plan_to_execution_error = ('plan_to_execution_error' in data)
-            if has_plan_to_execution_error:
-                final_plan_to_execution_errors = data['plan_to_execution_error']
-            num_nodes = data['num_nodes']
-            timeouts = np.sum((planning_times > timeout).astype(np.int))
-            timeout_percentage = timeouts / planning_times.shape[0] * 100
+            final_plan_to_execution_errors = []
+            final_plan_to_goal_errors = []
+            final_execution_to_goal_errors = []
+            timeouts = 0
+            planning_times = []
+            nums_nodes = []
+            for datum in data:
+                planned_path = datum['planned_path']
+                actual_path = datum['actual_path']
+                final_planned_state = planned_path[-1]
+                final_actual_state = actual_path[-1]
+                final_plan_to_goal_error = scenario.distance_to_goal(final_planned_state, datum['goal'])
+                final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, datum['goal'])
+                final_plan_to_execution_error = scenario.distance(final_planned_state, final_actual_state)
+                final_plan_to_execution_errors.append(final_plan_to_execution_error)
+                final_plan_to_goal_errors.append(final_plan_to_goal_error)
+                final_execution_to_goal_errors.append(final_execution_to_goal_error)
+
+                num_nodes = datum['num_nodes']
+                nums_nodes.append(num_nodes)
+
+                planning_times.append(datum['planning_time'])
+
+                if datum['planning_time'] > timeout:
+                    timeouts += 1
+
+            timeout_percentage = timeouts / N * 100
+
             name = str(subfolder.name).replace('_', ' ')
             if not args.no_plot:
                 execution_successes = []
                 for threshold in errors_thresholds:
-                    success_percentage = np.count_nonzero(execution_to_goal_errors < threshold) / N * 100
+                    success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / N * 100
                     execution_successes.append(success_percentage)
                 execution_ax.plot(errors_thresholds, execution_successes, label=name, linewidth=5)
 
-                if has_plan_to_execution_error:
-                    planning_successes = []
-                    for threshold in errors_thresholds:
-                        success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / N * 100
-                        planning_successes.append(success_percentage)
-                    planning_ax.plot(errors_thresholds, planning_successes, label=name, linewidth=5)
+                planning_successes = []
+                for threshold in errors_thresholds:
+                    success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / N * 100
+                    planning_successes.append(success_percentage)
+                planning_ax.plot(errors_thresholds, planning_successes, label=name, linewidth=5)
 
-            execution_to_goal_errors_comparisons[str(subfolder.name)] = execution_to_goal_errors
-            if has_plan_to_execution_error:
-                plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
+            execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
+            plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
             headers.append(str(subfolder.name))
 
             aggregate_metrics['planning_time'].append(row_stats(planning_times))
-            aggregate_metrics['path_length'].append(row_stats(path_length))
-            aggregate_metrics['mean_plan_to_execution_errors'].append(row_stats(mean_plan_to_execution_errors))
-            aggregate_metrics['execution_to_goal_errors'].append(row_stats(execution_to_goal_errors))
-            if has_plan_to_execution_error:
-                aggregate_metrics['final_plan_to_execution_errors'].append(row_stats(final_plan_to_execution_errors))
-            aggregate_metrics['plan_to_goal_errors'].append(row_stats(plan_to_goal_errors))
-            aggregate_metrics['num_nodes'].append(row_stats(num_nodes))
+            aggregate_metrics['final_plan_to_execution_error'].append(row_stats(final_plan_to_execution_errors))
+            aggregate_metrics['final_plan_to_goal_error'].append(row_stats(final_plan_to_goal_errors))
+            aggregate_metrics['final_execution_to_goal_error'].append(row_stats(final_execution_to_goal_errors))
+            aggregate_metrics['num_nodes'].append(row_stats(nums_nodes))
 
             print("{:50s}: {:3.2f}% timeout ".format(str(subfolder), timeout_percentage))
 
@@ -161,7 +166,6 @@ def main():
     print(Style.BRIGHT + "p-value matrix (plan vs execution)" + Style.NORMAL)
     print(dict_to_pvale_table(plan_to_execution_errors_comparisons, table_format='github'))
 
-    plt.savefig('results/final_tail_error_hist.png')
     if not args.no_plot:
         plt.show()
 

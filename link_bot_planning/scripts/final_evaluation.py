@@ -166,7 +166,11 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                            draw_tree=False,
                            draw_rejected=False)
 
-        self.planner.experiment_scenario.plot_state_simple(ax, final_state, color='pink', label='final actual keypoint position')
+        self.planner.experiment_scenario.plot_state_simple(ax,
+                                                           final_state,
+                                                           color='pink',
+                                                           label='final actual keypoint position',
+                                                           zorder=5)
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
         plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
 
