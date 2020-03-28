@@ -24,7 +24,7 @@ def main():
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('display_type',
-                        choices=['just_image', 'transition_image', 'transition_plot', 'trajectory_image',
+                        choices=['just_count', 'transition_image', 'transition_plot', 'trajectory_image',
                                  'trajectory_plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
     parser.add_argument('--shuffle', action='store_true')
@@ -95,20 +95,8 @@ def main():
         if args.no_plot:
             continue
 
-        # FIXME: make this support arbitrary state keys
-        if args.display_type == 'just_image':
-            image = example['image'].numpy()
-            fig, axes = plt.subplots(1, 3)
-            axes[0].imshow(np.flipud(image[:, :, 22]), cmap='Greys')
-            axes[0].set_title("Local Environment", fontsize=28)
-            axes[1].imshow(np.clip(np.flipud(np.sum(image[:, :, 0:11], axis=2)), 0, 1), cmap='Greys')
-            axes[1].set_title("$\hat{s}^t$")
-            axes[2].imshow(np.clip(np.flipud(np.sum(image[:, :, 11:22], axis=2)), 0, 1), cmap='Greys')
-            axes[2].set_title("$\hat{s}^{t+1}$")
-            for ax in axes:
-                ax.set_xticks([])
-                ax.set_yticks([])
-            plt.show(block=True)
+        if args.display_type == 'just_count':
+            pass
         elif args.display_type == 'transition_image':
             image = example['transition_image'].numpy()
             if scenario == 'link_bot':

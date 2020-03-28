@@ -92,8 +92,9 @@ class BaseDataset:
         records = []
         for dataset_dir in self.dataset_dirs:
             records.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
+        desired_sequence_length = sequence_length if sequence_length is not None else self.max_sequence_length
         return self.get_datasets_from_records(records,
-                                              desired_sequence_length=sequence_length,
+                                              desired_sequence_length=desired_sequence_length,
                                               n_parallel_calls=n_parallel_calls,
                                               do_not_process=do_not_process,
                                               take=take)
