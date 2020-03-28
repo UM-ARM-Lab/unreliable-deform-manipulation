@@ -182,8 +182,13 @@ def generate(service_provider, params: CollectDynamicsParams, args):
     states_description = service_provider.get_states_description()
     n_action = service_provider.get_n_action()
 
+    if args.seed is None:
+        args.seed = np.random.randint(0, 10000)
+    print(Fore.CYAN + "Using seed: {}".format(args.seed) + Fore.RESET)
+
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
+            'seed': args.seed,
             'dt': params.dt,
             'max_step_size': params.max_step_size,
             'full_env_params': full_env_params.to_json(),
@@ -195,9 +200,6 @@ def generate(service_provider, params: CollectDynamicsParams, args):
         }
         json.dump(options, of, indent=1)
 
-    if args.seed is None:
-        args.seed = np.random.randint(0, 10000)
-    print(Fore.CYAN + "Using seed: {}".format(args.seed) + Fore.RESET)
     np.random.seed(args.seed)
     env_rng = np.random.RandomState(args.seed)
     action_rng = np.random.RandomState(args.seed)
