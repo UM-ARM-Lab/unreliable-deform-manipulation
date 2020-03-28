@@ -152,7 +152,7 @@ def train(keras_model: MyKerasModel,
                         if metrics_function:
                             train_batch_metrics = metrics_function(train_element, train_predictions)
                             for metric_name, metric_value in train_batch_metrics.items():
-                                tf.contrib.summary.scalar('train_' + metric_name, metric_value, step=step)
+                                tf.contrib.summary.scalar('train_' + metric_name.replace(" ", "_"), metric_value, step=step)
 
                 ####################
                 # Update global step
@@ -177,7 +177,7 @@ def train(keras_model: MyKerasModel,
                     tf.contrib.summary.scalar('validation_loss', val_mean_loss, step=step)
                     for metric_name, mean_metric_value in val_mean_metrics.items():
                         print(metric_name, mean_metric_value)
-                        tf.contrib.summary.scalar('validation_' + metric_name, mean_metric_value, step=step)
+                        tf.contrib.summary.scalar('validation_' + metric_name.replace(" ", "_"), mean_metric_value, step=step)
 
                 # check new best based on the desired metric (or loss)
                 if key_metric == 'loss':

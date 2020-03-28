@@ -14,23 +14,41 @@ DEFAULT_VAL_SPLIT = 0.125
 DEFAULT_TEST_SPLIT = 0.125
 
 
-def slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length: int):
-    t_start = 0
-    state_like_t_slice = slice(t_start, t_start + sequence_length)
-    action_like_t_slice = slice(t_start, t_start + sequence_length - 1)
+def slice_sequences(constant_data, state_like_seqs, action_like_seqs, desired_sequence_length: int):
+    sequence_length = int(next(iter((state_like_seqs.values()))).shape[0])
 
     state_like_seqs_sliced = {}
     action_like_seqs_sliced = {}
-    for example_name, seq in state_like_seqs.items():
-        sliced_seq = seq[state_like_t_slice]
-        sliced_seq.set_shape([sequence_length] + seq.shape.as_list()[1:])
-        state_like_seqs_sliced[example_name] = sliced_seq
-    for example_name, seq in action_like_seqs.items():
-        sliced_seq = seq[action_like_t_slice]
-        sliced_seq.set_shape([(sequence_length - 1)] + seq.shape.as_list()[1:])
-        action_like_seqs_sliced[example_name] = sliced_seq
+    constant_data_sliced = {}
 
-    return constant_data, state_like_seqs_sliced, action_like_seqs_sliced
+    # pre-create the lists
+    for example_name, seq in state_like_seqs.items():
+        state_like_seqs_sliced[example_name] = []
+    for example_name, seq in action_like_seqs.items():
+        action_like_seqs_sliced[example_name] = []
+    for example_name, constant_datum in constant_data.items():
+        constant_data_sliced[example_name] = []
+
+    # add elements to the lists
+    for t_start in range(0, sequence_length, desired_sequence_length):
+        if t_start + desired_sequence_length > sequence_length:
+            break
+        state_like_t_slice = slice(t_start, t_start + desired_sequence_length)
+        action_like_t_slice = slice(t_start, t_start + desired_sequence_length - 1)
+
+        for example_name, seq in state_like_seqs.items():
+            sliced_seq = seq[state_like_t_slice]
+            state_like_seqs_sliced[example_name].append(sliced_seq)
+
+        for example_name, seq in action_like_seqs.items():
+            sliced_seq = seq[action_like_t_slice]
+            action_like_seqs_sliced[example_name].append(sliced_seq)
+
+        for example_name, constant_datum in constant_data.items():
+            constant_data_sliced[example_name].append(constant_datum)
+
+    # we need to return a 3-tuple dictionary where every key has the same first dimension
+    return tf.data.Dataset.from_tensor_slices((constant_data_sliced, state_like_seqs_sliced, action_like_seqs_sliced))
 
 
 class BaseDataset:
@@ -55,7 +73,8 @@ class BaseDataset:
                     msg = "Datasets have differing values for the hparam {}, using value {}".format(k, self.hparams[k])
                     print(Fore.RED + msg + Fore.RESET)
 
-        self.max_sequence_length = None
+        self.max_sequence_length = self.hparams['sequence_length']
+
         # state and action features are assumed to be time indexed, i.e. "%d/my_state"
         # state and action are handled differently because there should always be one less action
         # in the sequence than there are states
@@ -74,7 +93,7 @@ class BaseDataset:
         for dataset_dir in self.dataset_dirs:
             records.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
         return self.get_datasets_from_records(records,
-                                              sequence_length=sequence_length,
+                                              desired_sequence_length=sequence_length,
                                               n_parallel_calls=n_parallel_calls,
                                               do_not_process=do_not_process,
                                               take=take)
@@ -101,18 +120,11 @@ class BaseDataset:
 
     def get_datasets_from_records(self,
                                   records: List[str],
-                                  sequence_length: Optional[int] = None,
+                                  desired_sequence_length: Optional[int] = None,
                                   n_parallel_calls: Optional[int] = None,
                                   do_not_process: Optional[bool] = False,
                                   take: Optional[int] = None,
                                   ) -> tf.data.Dataset:
-        self.max_sequence_length = self.hparams['sequence_length']
-        if sequence_length is None:
-            # set sequence_length to the longest possible if it is not specified
-            sequence_length = self.max_sequence_length
-            msg = "sequence length not specified, assuming hparams sequence length: {}".format(sequence_length)
-            print(Fore.YELLOW + msg + Fore.RESET)
-
         dataset = tf.data.TFRecordDataset(records, buffer_size=1 * 1024 * 1024, compression_type='ZLIB')
 
         # Given the member lists of states, actions, and constants set in the constructor, create
@@ -127,9 +139,9 @@ class BaseDataset:
             dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)
 
             def _slice_sequences(constant_data, state_like_seqs, action_like_seqs):
-                return slice_sequences(constant_data, state_like_seqs, action_like_seqs, sequence_length)
+                return slice_sequences(constant_data, state_like_seqs, action_like_seqs, desired_sequence_length)
 
-            dataset = dataset.map(_slice_sequences, num_parallel_calls=n_parallel_calls)
+            dataset = dataset.flat_map(_slice_sequences)
 
             dataset = self.post_process(dataset, n_parallel_calls)
 

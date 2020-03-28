@@ -18,7 +18,7 @@ from link_bot_pycommon.args import my_formatter
 from moonshine.image_functions import old_raster
 from moonshine.numpy_utils import add_batch
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.3)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
@@ -39,31 +39,28 @@ def plot_individual(train_dataset, scenario: ExperimentScenario, states_descript
         ax.set_ylim(full_env_extents[2:4])
         ax.axis("equal")
 
-        full_env_handle = ax.imshow(np.flipud(full_env), extent=full_env_extents)
+        ax.imshow(np.flipud(full_env), extent=full_env_extents)
 
         first_state = {}
         for state_key in states_description.keys():
-            state = input_data[state_key][0]
-            first_state[state_key] = state
+            states = input_data[state_key].numpy()
+            first_state[state_key] = states[0]
         action_artist = scenario.plot_action(ax, first_state, actions[0], color='m', s=20, zorder=3)
 
         state_artist = scenario.plot_state(ax, first_state, color='b', s=10, zorder=2)
 
         def update(t):
-            full_env_handle.set_data(np.flipud(full_env))
-            full_env_handle.set_extent(full_env_extents)
-
             action_t = actions[t]
             state_t = {}
             for state_key in states_description.keys():
-                state = input_data[state_key][t]
+                state = input_data[state_key].numpy()[t]
                 state_t[state_key] = state
             scenario.update_action_artist(action_artist, state_t, action_t)
             scenario.update_artist(state_artist, state_t)
 
             ax.set_title("{} {}".format(i, t))
 
-        interval = 20
+        interval = 10
         anim = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
         # anim.save("example.gif", writer='imagemagick', dpi=300)
         plt.show()
@@ -182,6 +179,7 @@ def main():
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')
     parser.add_argument('plot_type', choices=['individual', 'all', 'heatmap', 'just_count'], default='individual')
     parser.add_argument('--take', type=int)
+    parser.add_argument('--sequence-length', type=int, help='number of time steps per example')
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train', help='train test or val')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
     parser.add_argument('--show-env', action='store_true', help='show env, assumed to be constant')
@@ -194,9 +192,10 @@ def main():
     # load the dataset
     dataset = DynamicsDataset(args.dataset_dir)
     tf_dataset = dataset.get_datasets(mode=args.mode,
-                                      sequence_length=None,
+                                      sequence_length=args.sequence_length,
                                       n_parallel_calls=1,
                                       take=args.take)
+
     if args.shuffle:
         tf_dataset = tf_dataset.shuffle(1024, seed=1)
 
@@ -219,7 +218,7 @@ def main():
         plot_heatmap(tf_dataset, show_env=args.show_env)
     elif args.plot_type == 'just_count':
         i = 0
-        for e in tf_dataset:
+        for _ in tf_dataset:
             i += 1
         print(i)
 

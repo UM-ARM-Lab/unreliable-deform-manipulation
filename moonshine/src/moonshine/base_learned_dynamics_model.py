@@ -24,5 +24,5 @@ def dynamics_metrics_function(dataset_element, predictions):
         metrics['{} final error'.format(state_key)] = final_position_error
         for point_idx in range(all_distances.shape[2]):
             final_position_error_pt = tf.reduce_mean(all_distances[:, -1, point_idx])
-            metrics['{} final error, point #{}'.format(state_key, point_idx)] = final_position_error_pt
+            metrics['{} final error point #{}'.format(state_key, point_idx)] = final_position_error_pt
     return metrics
