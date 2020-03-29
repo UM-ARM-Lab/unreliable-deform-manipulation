@@ -146,7 +146,7 @@ class ClassifierDataset(BaseDataset):
             new_transition['already_diverged'] = already_diverged
 
             post_close = post_transition_distance < post_threshold
-            new_transition['label'] = post_close
+            new_transition['label'] = tf.cast(post_close, dtype=tf.float32)
             return new_transition
 
         @tf.function
