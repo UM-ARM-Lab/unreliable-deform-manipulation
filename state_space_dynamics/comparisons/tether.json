@@ -1,0 +1,8 @@
+{
+  "full dynamics": {
+    "model_dir": "log_data/tether_full_dynamics4/March_28_18-20-08_a2076ad4c7"
+  },
+  "rigid": {
+    "model_dir": "log_data/tether_rigid_translation"
+  }
+}

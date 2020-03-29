@@ -9,7 +9,7 @@ from colorama import Fore
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance
+from link_bot_data.link_bot_dataset_utils import balance, cachename
 from moonshine.image_functions import add_traj_image, add_transition_image
 from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
@@ -78,6 +78,8 @@ def train_main(args, seed: int):
 
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    train_tf_dataset = train_tf_dataset.cache(cachename())
+    val_tf_dataset = val_tf_dataset.cache(cachename())
 
     ###############
     # Train

@@ -105,13 +105,12 @@ def generate_results(base_folder: pathlib.Path,
         }
         print("generating results for {}".format(model_name))
         for x, y in tf_dataset:
-            states = x['link_bot'].numpy()
             actions = x['action'].numpy()
 
-            first_state = states[0]
-            start_states = {
-                'link_bot': first_state
-            }
+            start_states = {}
+            for state_key in model.hparams['states_keys']:
+                first_state = x[state_key][0].numpy()
+                start_states[state_key] = first_state
             res = x['full_env/res'].numpy()
             if len(res.shape) == 3:
                 res = np.squeeze(res, axis=2)

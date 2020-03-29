@@ -5,7 +5,8 @@ import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import add_next, convert_sequences_to_transitions, add_planned, add_all, NULL_PAD_VALUE
+from link_bot_data.link_bot_dataset_utils import add_next, convert_sequences_to_transitions, add_planned, add_all, \
+    NULL_PAD_VALUE, cachename
 from link_bot_planning.params import FullEnvParams
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 

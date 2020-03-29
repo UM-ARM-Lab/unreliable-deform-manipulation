@@ -7,7 +7,7 @@ import progressbar
 import tensorflow as tf
 
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance
+from link_bot_data.link_bot_dataset_utils import balance, cachename
 from moonshine.image_functions import add_traj_image, add_transition_image, add_transition_image_to_example
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
@@ -20,7 +20,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='val')
-    parser.add_argument('--n-repetitions', type=int, default=1)
+    parser.add_argument('--n-repetitions', type=int, default=3)
 
     args = parser.parse_args()
 
@@ -34,7 +34,7 @@ def main():
     }
     dataset = ClassifierDataset(args.dataset_dir, params)
 
-    batch_size = 64
+    batch_size = 32
 
     t0 = time.perf_counter()
     tf_dataset = dataset.get_datasets(mode=args.mode)
@@ -46,16 +46,21 @@ def main():
                                       local_env_h=50,
                                       local_env_w=50,
                                       rope_image_k=1000)
-    # tf_dataset = balance(tf_dataset, label_key='label')
+    tf_dataset = balance(tf_dataset, label_key='label')
     # tf_dataset = tf_dataset.shuffle(1024)
-    # tf_dataset = tf_dataset.batch(batch_size)
+    tf_dataset = tf_dataset.batch(batch_size)
 
     time_to_load = time.perf_counter() - t0
     print("Time to Load (s): {:5.3f}".format(time_to_load))
 
+    tf_dataset = tf_dataset.cache(cachename())
+    n_positive = 0
     try:
         for _ in range(args.n_repetitions):
             for e in progressbar.progressbar(tf_dataset):
+                label = e['label'][0].numpy()
+                if label:
+                    n_positive += 1
                 # e = add_transition_image_to_example(input_dict=e,
                 #                                     states_keys=['link_bot'],
                 #                                     scenario=get_scenario('link_bot'),
@@ -63,6 +68,7 @@ def main():
                 #                                     local_env_h=50,
                 #                                     rope_image_k=1000)
                 pass
+            print(n_positive)
     except KeyboardInterrupt:
         pass
 
