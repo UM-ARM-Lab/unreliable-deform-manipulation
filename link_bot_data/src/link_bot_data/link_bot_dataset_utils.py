@@ -11,6 +11,8 @@ from colorama import Fore
 
 from link_bot_pycommon import link_bot_pycommon
 
+NULL_PAD_VALUE = -10000
+
 
 def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
     parsed_dataset = parse_dataset(dataset, feature_description, n_parallel_calls=n_parallel_calls)
@@ -175,7 +177,8 @@ def add_planned(feature_name):
 def convert_sequences_to_transitions(constant_data: Dict,
                                      state_like_sequences: Dict,
                                      action_like_sequences: Dict,
-                                     planned_state_keys: List[str]):
+                                     planned_state_keys: List[str],
+                                     actual_state_keys: List[str]):
     # Create a dict of lists, where keys are the features we want in each transition, and values are the data.
     # The first dimension of these values is what will be split up into different examples
     transitions = {
@@ -189,6 +192,9 @@ def convert_sequences_to_transitions(constant_data: Dict,
     for feature_name in planned_state_keys:
         transitions[add_all(add_planned(feature_name))] = []
 
+    for feature_name in actual_state_keys:
+        transitions[add_all(feature_name)] = []
+
     for feature_name in action_like_sequences.keys():
         transitions[feature_name] = []
         transitions[add_all(feature_name)] = []
@@ -200,9 +206,8 @@ def convert_sequences_to_transitions(constant_data: Dict,
     def _null_pad_sequence(sequence, idx):
         # this should be some number that will be very far from being inside any actual
         # because we're gonna try to draw it anyways
-        null = -10000
         if idx + 2 < sequence.shape[0]:
-            sequence[idx + 2:] = null
+            sequence[idx + 2:] = NULL_PAD_VALUE
         return sequence
 
     # Fill the transitions dictionary with the data from the sequences
@@ -213,6 +218,13 @@ def convert_sequences_to_transitions(constant_data: Dict,
 
             next_feature_name = add_next(feature_name)
             transitions[next_feature_name].append(state_like_sequences[feature_name][transition_idx + 1])
+
+        for feature_name in actual_state_keys:
+            state_sequence = state_like_sequences[feature_name]
+            null_pad_args = [state_sequence, transition_idx]
+            null_padded_state_sequence = tf.numpy_function(_null_pad_sequence, null_pad_args, tf.float32)
+            null_padded_state_sequence.set_shape(state_like_sequences[feature_name].shape)
+            transitions[add_all(feature_name)].append(null_padded_state_sequence)
 
         for feature_name in planned_state_keys:
             planned_feature_name = add_planned(feature_name)

@@ -139,11 +139,7 @@ class ClassifierDataset(BaseDataset):
             new_transition['post_dist'] = post_transition_distance
             new_transition['pre_close'] = pre_close
 
-            new_transition['label'] = None  # yes this is necessary. You can't add a key to a dict inside a py_func conditionally
-            if post_close:
-                new_transition['label'] = tf.convert_to_tensor([1], dtype=tf.float32)
-            else:
-                new_transition['label'] = tf.convert_to_tensor([0], dtype=tf.float32)
+            new_transition['label'] = post_close
             return new_transition
 
         # @tf.function
@@ -156,6 +152,7 @@ class ClassifierDataset(BaseDataset):
             return convert_sequences_to_transitions(constant_data=constant_data,
                                                     state_like_sequences=state_like_sequences,
                                                     action_like_sequences=action_like_sequences,
+                                                    actual_state_keys=self.actual_state_keys,
                                                     planned_state_keys=self.planned_state_keys)
 
         # At this point, the dataset consists of tuples (const_data, state_data, action_data)
