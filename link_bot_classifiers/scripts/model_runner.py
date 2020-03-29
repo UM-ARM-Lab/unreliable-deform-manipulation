@@ -76,10 +76,12 @@ def train_main(args, seed: int):
             train_tf_dataset = add_traj_image(train_tf_dataset, states_keys=net.states_keys, rope_image_k=net.hparams['rope_image_k'])
             val_tf_dataset = add_traj_image(val_tf_dataset, states_keys=net.states_keys, rope_image_k=net.hparams['rope_image_k'])
 
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
-    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
     train_tf_dataset = train_tf_dataset.cache(cachename())
     val_tf_dataset = val_tf_dataset.cache(cachename())
+
+    # train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
+    train_tf_dataset = train_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
     ###############
     # Train
