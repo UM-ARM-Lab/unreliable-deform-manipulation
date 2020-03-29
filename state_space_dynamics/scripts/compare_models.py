@@ -179,7 +179,7 @@ def visualize_predictions(results, n_examples, base_folder=None):
 
         plt.legend()
 
-        anim = FuncAnimation(fig, update, frames=sequence_length, interval=500)
+        anim = FuncAnimation(fig, update, frames=sequence_length, interval=20)
         anim_path = base_folder / 'anim-{}.gif'.format(example_idx)
         anim.save(anim_path, writer='imagemagick', fps=4)
         plt.show()
