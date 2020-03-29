@@ -47,13 +47,8 @@ def train_main(args, seed: int):
     net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
 
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train').take(128)
+    train_tf_dataset = train_dataset.get_datasets(mode='train')
     val_tf_dataset = val_dataset.get_datasets(mode='val')
-
-    if labeling_params['balance']:
-        print(Fore.GREEN + "balancing..." + Fore.RESET)
-        train_tf_dataset = balance(train_tf_dataset)
-        val_tf_dataset = balance(val_tf_dataset)
 
     if 'image_key' in model_hparams:
         image_key = model_hparams['image_key']
@@ -76,11 +71,7 @@ def train_main(args, seed: int):
             train_tf_dataset = add_traj_image(train_tf_dataset, states_keys=net.states_keys, rope_image_k=net.hparams['rope_image_k'])
             val_tf_dataset = add_traj_image(val_tf_dataset, states_keys=net.states_keys, rope_image_k=net.hparams['rope_image_k'])
 
-    train_tf_dataset = train_tf_dataset.cache(cachename())
-    val_tf_dataset = val_tf_dataset.cache(cachename())
-
-    # train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
-    train_tf_dataset = train_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
     ###############

@@ -7,10 +7,10 @@ from time import perf_counter
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-
 from link_bot_classifiers.visualization import plot_classifier_data, make_interpretable_image
+
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance, NULL_PAD_VALUE, add_all, add_planned
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned
 from link_bot_planning.get_scenario import get_scenario
 from moonshine.image_functions import add_traj_image, add_transition_image
 
@@ -37,6 +37,7 @@ def main():
     parser.add_argument('--local-env-s', type=int, default=100)
     parser.add_argument('--rope-image-k', type=float, default=1000.0)
     parser.add_argument('--only-negative', action='store_true')
+    parser.add_argument('--perf', action='store_true', help='print time per iteration')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
 
     args = parser.parse_args()
@@ -66,30 +67,38 @@ def main():
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=1024)
 
+    dataset = dataset.batch(32)
+
     done = False
 
     positive_count = 0
     negative_count = 0
     count = 0
     iterator = iter(dataset)
+    t0 = perf_counter()
     while True:
-        t0 = perf_counter()
-        example = next(iterator)
-        dt = perf_counter() - t0
-        print(dt)
+        iter_t0 = perf_counter()
+        try:
+            example = next(iterator)
+        except StopIteration:
+            break
+        iter_dt = perf_counter() - iter_t0
 
         if done:
             break
 
-        label = int(example['label'].numpy().squeeze())
+        label = example['label'].numpy().squeeze()
 
-        if args.only_negative and label != 0:
-            continue
+        if args.perf:
+            print("{:6.4f}".format(iter_dt))
 
-        if label:
-            positive_count += 1
-        else:
-            negative_count += 1
+        # if args.only_negative and label != 0:
+        #     continue
+        #
+        # if label:
+        #     positive_count += 1
+        # else:
+        #     negative_count += 1
 
         count += 1
 
@@ -163,6 +172,9 @@ def main():
             plt.legend()
             plt.tight_layout()
             plt.show(block=True)
+    total_dt = perf_counter() - t0
+    if args.perf:
+        print("Total iteration time = {:.4f}".format(total_dt))
 
     class_balance = positive_count / count * 100
     print("Number of examples: {}".format(count))
