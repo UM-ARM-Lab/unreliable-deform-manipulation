@@ -8,7 +8,7 @@ import tensorflow as tf
 
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance
-from moonshine.image_functions import add_traj_image, add_transition_image
+from moonshine.image_functions import add_traj_image, add_transition_image, add_transition_image_to_example
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 
@@ -48,7 +48,7 @@ def main():
                                       rope_image_k=1000)
     # tf_dataset = balance(tf_dataset, label_key='label')
     # tf_dataset = tf_dataset.shuffle(1024)
-    tf_dataset = tf_dataset.batch(batch_size)
+    # tf_dataset = tf_dataset.batch(batch_size)
 
     time_to_load = time.perf_counter() - t0
     print("Time to Load (s): {:5.3f}".format(time_to_load))
@@ -56,6 +56,12 @@ def main():
     try:
         for _ in range(args.n_repetitions):
             for e in progressbar.progressbar(tf_dataset):
+                # e = add_transition_image_to_example(input_dict=e,
+                #                                     states_keys=['link_bot'],
+                #                                     scenario=get_scenario('link_bot'),
+                #                                     local_env_w=50,
+                #                                     local_env_h=50,
+                #                                     rope_image_k=1000)
                 pass
     except KeyboardInterrupt:
         pass

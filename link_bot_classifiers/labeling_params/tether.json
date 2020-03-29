@@ -1,7 +1,7 @@
 {
   "balance": true,
-  "pre_close_threshold": 0.1,
-  "post_close_threshold": 0.1,
+  "pre_close_threshold": 0.05,
+  "post_close_threshold": 0.05,
   "discard_pre_far": true,
   "state_key": "link_bot"
 }

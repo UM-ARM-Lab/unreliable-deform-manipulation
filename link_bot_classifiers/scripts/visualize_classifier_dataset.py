@@ -10,7 +10,6 @@ import tensorflow as tf
 from link_bot_classifiers.visualization import plot_classifier_data, make_interpretable_image
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import balance, NULL_PAD_VALUE, add_all, add_planned
-from link_bot_data.visualization import plot_rope_configuration
 from link_bot_planning.get_scenario import get_scenario
 from moonshine.image_functions import add_traj_image, add_transition_image
 
@@ -119,7 +118,6 @@ def main():
         elif args.display_type == 'trajectory_plot':
             traj_idx = example['traj_idx'].numpy()
             time_idx = example['time_idx'].numpy()
-            pre_close = example['pre_close'].numpy()
             full_env = example['full_env/env'].numpy()
             full_env_extent = example['full_env/extent'].numpy()
             actual_state_all = example[add_all(labeling_params['state_key'])].numpy()
@@ -139,7 +137,7 @@ def main():
                     }
                     scenario.plot_state(ax, actual_state, color='red', s=20, zorder=2)
                     scenario.plot_state(ax, planned_state, color='blue', s=5, zorder=3)
-            plt.title("Traj {}, Step{}, Label = {:d} Pre Close? {}".format(traj_idx, time_idx, label, pre_close))
+            plt.title("Traj {}, Step{}, Label = {:d}".format(traj_idx, time_idx, label))
             plt.show()
         elif args.display_type == 'transition_plot':
             full_env = example['full_env/env'].numpy()
