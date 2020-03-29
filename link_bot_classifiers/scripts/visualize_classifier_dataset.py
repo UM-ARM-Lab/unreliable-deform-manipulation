@@ -2,6 +2,7 @@
 import argparse
 import json
 import pathlib
+from time import perf_counter
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -35,7 +36,6 @@ def main():
     parser.add_argument('--take', type=int)
     parser.add_argument('--local-env-s', type=int, default=100)
     parser.add_argument('--rope-image-k', type=float, default=1000.0)
-    parser.add_argument('--no-balance', action='store_true')
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
 
@@ -51,9 +51,6 @@ def main():
     classifier_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
     scenario = get_scenario(classifier_dataset.hparams['scenario'])
-
-    if not args.no_balance:
-        dataset = balance(dataset)
 
     if args.display_type == 'transition_image':
         dataset = add_transition_image(dataset,
@@ -74,7 +71,12 @@ def main():
     positive_count = 0
     negative_count = 0
     count = 0
-    for i, example in enumerate(dataset):
+    iterator = iter(dataset)
+    while True:
+        t0 = perf_counter()
+        example = next(iterator)
+        dt = perf_counter() - t0
+        print(dt)
 
         if done:
             break

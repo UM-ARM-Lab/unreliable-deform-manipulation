@@ -3,5 +3,6 @@
   "pre_close_threshold": 0.15,
   "post_close_threshold": 0.15,
   "discard_pre_far": true,
-  "state_key": "link_bot"
+  "state_key": "link_bot",
+  "label_key": "label"
 }

@@ -6,7 +6,7 @@ import tensorflow as tf
 from link_bot_data.base_dataset import BaseDataset
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_next, convert_sequences_to_transitions, add_planned, add_all, \
-    NULL_PAD_VALUE, cachename
+    NULL_PAD_VALUE, cachename, balance
 from link_bot_planning.params import FullEnvParams
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -117,44 +117,23 @@ class ClassifierDataset(BaseDataset):
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
 
-        @tf.function
         def _label_transitions(transition: dict):
             state_key = self.labeling_params['state_key']
+
             state_key_next = add_next(state_key)
-            planned_state_key = add_planned(state_key)
-            planned_state_key_next = add_next(planned_state_key)
+            planned_state_key_next = add_next(add_planned(state_key))
+
             post_transition_distance = tf.norm(transition[state_key_next] - transition[planned_state_key_next])
-
-            pre_threshold = self.labeling_params['pre_close_threshold']
             post_threshold = self.labeling_params['post_close_threshold']
-
-            already_diverged = False
-            planned_state_all = transition[add_all(add_planned(state_key))]
-            actual_state_all = transition[add_all(state_key)]
-            for t in range(planned_state_all.shape[0] - 1):
-                planned_state_t = planned_state_all[t]
-                actual_state_t = actual_state_all[t]
-                pre_transition_distance_t = tf.norm(planned_state_t - actual_state_t)
-                next_is_not_null = tf.logical_not(tf.reduce_all(tf.equal(planned_state_all[t + 1], NULL_PAD_VALUE)))
-                pre_far = pre_transition_distance_t > pre_threshold
-                diverged_t = tf.logical_and(pre_far, next_is_not_null)
-                already_diverged = tf.logical_or(already_diverged, diverged_t)
 
             # You're not allowed to modify input arguments, so we create a new dict and copy everything
             new_transition = {}
             for k, v in transition.items():
                 new_transition[k] = v
-            new_transition['already_diverged'] = already_diverged
 
             post_close = post_transition_distance < post_threshold
             new_transition['label'] = tf.cast(post_close, dtype=tf.float32)
             return new_transition
-
-        @tf.function
-        def _filter_already_diverged_transitions(transition):
-            if self.labeling_params['discard_pre_far'] and transition['already_diverged']:
-                return False
-            return True
 
         def _convert_sequences_to_transitions(constant_data, state_like_sequences, action_like_sequences):
             return convert_sequences_to_transitions(constant_data=constant_data,
@@ -166,6 +145,6 @@ class ClassifierDataset(BaseDataset):
         # At this point, the dataset consists of tuples (const_data, state_data, action_data)
         dataset = dataset.flat_map(_convert_sequences_to_transitions)
         dataset = dataset.map(_label_transitions)
-        dataset = dataset.filter(_filter_already_diverged_transitions)
+        dataset = balance(dataset, labeling_params=self.labeling_params)
 
         return dataset

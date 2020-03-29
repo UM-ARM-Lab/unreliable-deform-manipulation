@@ -78,7 +78,29 @@ def flatten_concat_pairs(ex_pos, ex_neg):
     return flat_pair
 
 
-def balance(dataset, label_key='label'):
+def has_already_diverged(transition: Dict, labeling_params):
+    state_key = labeling_params['state_key']
+
+    pre_threshold = labeling_params['pre_close_threshold']
+
+    already_diverged = False
+    planned_state_all = transition[add_all(add_planned(state_key))]
+    actual_state_all = transition[add_all(state_key)]
+    for t in range(planned_state_all.shape[0] - 1):
+        planned_state_t = planned_state_all[t]
+        actual_state_t = actual_state_all[t]
+        pre_transition_distance_t = tf.norm(planned_state_t - actual_state_t)
+        next_is_not_null = tf.logical_not(tf.reduce_all(tf.equal(planned_state_all[t + 1], NULL_PAD_VALUE)))
+        pre_far = pre_transition_distance_t > pre_threshold
+        diverged_t = tf.logical_and(pre_far, next_is_not_null)
+        already_diverged = tf.logical_or(already_diverged, diverged_t)
+
+    return already_diverged
+
+
+def balance(dataset, labeling_params: Dict):
+    label_key = labeling_params['label_key']
+
     # @tf.function
     def _label_is(label_is):
         # @tf.function
@@ -122,17 +144,20 @@ def balance(dataset, label_key='label'):
 
         negative_examples = dataset.filter(_label_is(0))
         negative_examples = negative_examples.cache(cachename())
-        negative_examples = negative_examples.repeat()
+
+        # now split filter out examples where the prediction diverged previously in the trajectory
+        def _filter_out_already_diverged(transition):
+            return tf.logical_not(has_already_diverged(transition, labeling_params))
+
+        if labeling_params['discard_pre_far']:
+            negative_examples = negative_examples.filter(_filter_out_already_diverged)
+            # cache again for efficiency, since filter is slow when most elements are filtered out (which they are here)
+            # negative_examples = negative_examples.cache(cachename())
+            negative_examples = negative_examples.repeat()
 
         balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
     else:
-        negative_examples = dataset.filter(_label_is(0))
-
-        positive_examples = dataset.filter(_label_is(1))
-        positive_examples = positive_examples.cache(cachename())
-        positive_examples = positive_examples.repeat()
-
-        balanced_dataset = tf.data.Dataset.zip((negative_examples, positive_examples))
+        raise NotImplementedError("not sure how to implement this efficiently")
 
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
 
