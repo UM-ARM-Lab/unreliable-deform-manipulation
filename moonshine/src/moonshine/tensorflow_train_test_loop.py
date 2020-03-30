@@ -189,7 +189,6 @@ def train(keras_model: MyKerasModel,
                     best_key_metric_value = key_metric_value
                     if logging:
                         save_path = manager.save()
-                        import ipdb; ipdb.set_trace()
                         print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(step, save_path) + Fore.RESET)
 
         if not logging:
