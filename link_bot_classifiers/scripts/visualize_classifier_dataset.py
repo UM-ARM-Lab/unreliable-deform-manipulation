@@ -10,7 +10,7 @@ import tensorflow as tf
 from link_bot_classifiers.visualization import plot_classifier_data, make_interpretable_image
 
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned, has_already_diverged
 from link_bot_planning.get_scenario import get_scenario
 from moonshine.image_functions import add_traj_image, add_transition_image
 
@@ -67,8 +67,6 @@ def main():
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=1024)
 
-    dataset = dataset.batch(32)
-
     done = False
 
     positive_count = 0
@@ -92,13 +90,13 @@ def main():
         if args.perf:
             print("{:6.4f}".format(iter_dt))
 
-        # if args.only_negative and label != 0:
-        #     continue
-        #
-        # if label:
-        #     positive_count += 1
-        # else:
-        #     negative_count += 1
+        if args.only_negative and label != 0:
+            continue
+
+        if label:
+            positive_count += 1
+        else:
+            negative_count += 1
 
         count += 1
 
@@ -112,7 +110,7 @@ def main():
             if scenario == 'link_bot':
                 image = make_interpretable_image(image, 11)
             plt.imshow(np.flipud(image))
-            title = "Label = {:d}".format(label)
+            title = "Label = {}".format(label)
             plt.title(title)
             plt.show(block=True)
         elif args.display_type == 'trajectory_image':
@@ -121,7 +119,7 @@ def main():
                 image = make_interpretable_image(image, 11)
             plt.imshow(np.flipud(image))
             ax = plt.gca()
-            title = "Label = {:d}".format(label)
+            title = "Label = {}".format(label)
             ax.set_xticks([])
             ax.set_yticks([])
             plt.title(title)
@@ -148,7 +146,7 @@ def main():
                     }
                     scenario.plot_state(ax, actual_state, color='red', s=20, zorder=2)
                     scenario.plot_state(ax, planned_state, color='blue', s=5, zorder=3)
-            plt.title("Traj {}, Step{}, Label = {:d}".format(traj_idx, time_idx, label))
+            plt.title("Traj {}, Step{}, Label = {}".format(traj_idx, time_idx, label))
             plt.show()
         elif args.display_type == 'transition_plot':
             full_env = example['full_env/env'].numpy()
@@ -167,7 +165,7 @@ def main():
                 state=state,
                 actual_env=full_env,
                 actual_env_extent=full_env_extent,
-                title="Label = {:d}".format(label),
+                title="Label = {}".format(label),
                 label=label)
             plt.legend()
             plt.tight_layout()

@@ -132,7 +132,9 @@ class ClassifierDataset(BaseDataset):
                 new_transition[k] = v
 
             post_close = post_transition_distance < post_threshold
-            new_transition['label'] = tf.cast(post_close, dtype=tf.float32)
+            # NOTE: this expand dims is ESSENTIAL
+            # I didn't bother figuring out why, but something about what BCE expects labels shape to be requires this
+            new_transition['label'] = tf.expand_dims(tf.cast(post_close, dtype=tf.float32), axis=0)
             return new_transition
 
         def _convert_sequences_to_transitions(constant_data, state_like_sequences, action_like_sequences):

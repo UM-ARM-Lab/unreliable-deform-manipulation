@@ -81,19 +81,13 @@ def flatten_concat_pairs(ex_pos, ex_neg):
 def has_already_diverged(transition: Dict, labeling_params):
     state_key = labeling_params['state_key']
 
-    pre_threshold = labeling_params['pre_close_threshold']
-
-    already_diverged = False
     planned_state_all = transition[add_all(add_planned(state_key))]
     actual_state_all = transition[add_all(state_key)]
-    for t in range(planned_state_all.shape[0] - 1):
-        planned_state_t = planned_state_all[t]
-        actual_state_t = actual_state_all[t]
-        pre_transition_distance_t = tf.norm(planned_state_t - actual_state_t)
-        next_is_not_null = tf.logical_not(tf.reduce_all(tf.equal(planned_state_all[t + 1], NULL_PAD_VALUE)))
-        pre_far = pre_transition_distance_t > pre_threshold
-        diverged_t = tf.logical_and(pre_far, next_is_not_null)
-        already_diverged = tf.logical_or(already_diverged, diverged_t)
+
+    pre_threshold = labeling_params['pre_close_threshold']
+    pre_close = tf.norm(planned_state_all - actual_state_all, axis=1)[:-1] < pre_threshold
+    next_is_null = tf.reduce_all(tf.equal(planned_state_all, NULL_PAD_VALUE), axis=1)[1:]
+    already_diverged = tf.reduce_any(tf.logical_not(tf.logical_or(pre_close, next_is_null)))
 
     return already_diverged
 
@@ -110,55 +104,24 @@ def balance(dataset, labeling_params: Dict):
 
         return __filter
 
-    # In order to figure out whether the are fewer negative or positive examples,
-    # we iterate over the first `min_test_examples` elements. If after this many
-    # we see a clear imbalance in one direction, make the decision then.
-    # Otherwise, we keep iterating up until `max_test_examples`, checking until we 
-    # see a clear imabalance. This is nessecary because iterating over the whole thing (even once)
-    # is very slow (can take minutes), and most imbalanced datasets are obviously imbalanced
-    # so we need not check every example
-    positive_examples = 0
-    negative_examples = 0
-    examples_considered = 0
-    min_test_examples = 10
-    max_test_examples = 100
-    margin = 2
-    for examples_considered, example in enumerate(dataset):
-        if examples_considered > max_test_examples:
-            break
-        if examples_considered > min_test_examples:
-            if positive_examples > negative_examples + margin:
-                break
-            elif negative_examples > positive_examples + margin:
-                break
-        if tf.equal(tf.squeeze(example[label_key]), 1):
-            positive_examples += 1
-        else:
-            negative_examples += 1
-    fewer_negative = negative_examples < positive_examples
-    print("considered {} elements. found {} positive, {} negative".format(examples_considered, positive_examples,
-                                                                          negative_examples))
+    positive_examples = dataset.filter(_label_is(1))
+    negative_examples = dataset.filter(_label_is(0))
+    negative_examples = negative_examples.cache(cachename())
 
-    if fewer_negative:
-        positive_examples = dataset.filter(_label_is(1))
+    # now split filter out examples where the prediction diverged previously in the trajectory
+    def _filter_out_already_diverged(transition):
+        return tf.logical_not(has_already_diverged(transition, labeling_params))
 
-        negative_examples = dataset.filter(_label_is(0))
+    if labeling_params['discard_pre_far']:
+        negative_examples = negative_examples.filter(_filter_out_already_diverged)
+        # cache again for efficiency, since filter is slow when most elements are filtered out (which they are here)
         negative_examples = negative_examples.cache(cachename())
 
-        # now split filter out examples where the prediction diverged previously in the trajectory
-        def _filter_out_already_diverged(transition):
-            return tf.logical_not(has_already_diverged(transition, labeling_params))
+    # TODO: check which dataset is smaller, and repeat that one
+    negative_examples = negative_examples.repeat()
 
-        if labeling_params['discard_pre_far']:
-            negative_examples = negative_examples.filter(_filter_out_already_diverged)
-            # cache again for efficiency, since filter is slow when most elements are filtered out (which they are here)
-            # negative_examples = negative_examples.cache(cachename())
-            negative_examples = negative_examples.repeat()
-
-        balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
-    else:
-        raise NotImplementedError("not sure how to implement this efficiently")
-
+    # Combine and flatten
+    balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
 
     return balanced_dataset
@@ -245,11 +208,9 @@ def convert_sequences_to_transitions(constant_data: Dict,
             transitions[next_feature_name].append(state_like_sequences[feature_name][transition_idx + 1])
 
         for feature_name in actual_state_keys:
+            # no need to null-pad the actual state sequence
             state_sequence = state_like_sequences[feature_name]
-            null_pad_args = [state_sequence, transition_idx]
-            null_padded_state_sequence = tf.numpy_function(_null_pad_sequence, null_pad_args, tf.float32)
-            null_padded_state_sequence.set_shape(state_like_sequences[feature_name].shape)
-            transitions[add_all(feature_name)].append(null_padded_state_sequence)
+            transitions[add_all(feature_name)].append(state_sequence)
 
         for feature_name in planned_state_keys:
             planned_feature_name = add_planned(feature_name)

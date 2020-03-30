@@ -152,7 +152,6 @@ def train(keras_model: MyKerasModel,
                         if metrics_function:
                             train_batch_metrics = metrics_function(train_element, train_predictions)
                             for metric_name, metric_value in train_batch_metrics.items():
-                                print(metric_name, metric_value)
                                 tf.contrib.summary.scalar('train_' + metric_name.replace(" ", "_"), metric_value, step=step)
 
                 ####################
@@ -167,30 +166,31 @@ def train(keras_model: MyKerasModel,
             ################
             # validation
             ################
-            # if epoch % validation_every == 0:
-            #     val_mean_loss, val_mean_metrics = compute_loss_and_metrics(val_tf_dataset, keras_model, loss_function,
-            #                                                                metrics_function)
-            #
-            #     log_msg = "Epoch: {:5d}, Validation Loss: {:8.5f}"
-            #     print(Style.BRIGHT + log_msg.format(epoch, val_mean_loss) + Style.NORMAL)
-            #
-            #     if logging:
-            #         tf.contrib.summary.scalar('validation_loss', val_mean_loss, step=step)
-            #         for metric_name, mean_metric_value in val_mean_metrics.items():
-            #             print(metric_name, mean_metric_value)
-            #             tf.contrib.summary.scalar('validation_' + metric_name.replace(" ", "_"), mean_metric_value, step=step)
-            #
-            #     # check new best based on the desired metric (or loss)
-            #     if key_metric == 'loss':
-            #         key_metric_value = val_mean_loss
-            #     else:
-            #         key_metric_value = val_mean_metrics[key_metric]
-            #
-            #     if best_key_metric_value is None or key_metric_value < best_key_metric_value:
-            #         best_key_metric_value = key_metric_value
-            #         if logging:
-            #             save_path = manager.save()
-            #             print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(step, save_path) + Fore.RESET)
+            if epoch % validation_every == 0:
+                val_mean_loss, val_mean_metrics = compute_loss_and_metrics(val_tf_dataset, keras_model, loss_function,
+                                                                           metrics_function)
+
+                log_msg = "Epoch: {:5d}, Validation Loss: {:8.5f}"
+                print(Style.BRIGHT + log_msg.format(epoch, val_mean_loss) + Style.NORMAL)
+
+                if logging:
+                    tf.contrib.summary.scalar('validation_loss', val_mean_loss, step=step)
+                    for metric_name, mean_metric_value in val_mean_metrics.items():
+                        print(metric_name, mean_metric_value)
+                        tf.contrib.summary.scalar('validation_' + metric_name.replace(" ", "_"), mean_metric_value, step=step)
+
+                # check new best based on the desired metric (or loss)
+                if key_metric == 'loss':
+                    key_metric_value = val_mean_loss
+                else:
+                    key_metric_value = val_mean_metrics[key_metric]
+
+                if best_key_metric_value is None or key_metric_value < best_key_metric_value:
+                    best_key_metric_value = key_metric_value
+                    if logging:
+                        save_path = manager.save()
+                        import ipdb; ipdb.set_trace()
+                        print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(step, save_path) + Fore.RESET)
 
         if not logging:
             # save the last model, which will be saved in tmp, just in case we did want it

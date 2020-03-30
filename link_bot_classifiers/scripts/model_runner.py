@@ -68,8 +68,10 @@ def train_main(args, seed: int):
                                                   rope_image_k=net.hparams['rope_image_k'],
                                                   )
         elif image_key == 'trajectory_image':
-            train_tf_dataset = add_traj_image(train_tf_dataset, states_keys=net.states_keys, rope_image_k=net.hparams['rope_image_k'])
-            val_tf_dataset = add_traj_image(val_tf_dataset, states_keys=net.states_keys, rope_image_k=net.hparams['rope_image_k'])
+            train_tf_dataset = add_traj_image(train_tf_dataset, states_keys=net.states_keys,
+                                              rope_image_k=net.hparams['rope_image_k'])
+            val_tf_dataset = add_traj_image(val_tf_dataset, states_keys=net.states_keys,
+                                            rope_image_k=net.hparams['rope_image_k'])
 
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
@@ -122,7 +124,8 @@ def eval_main(args, seed: int):
                                                rope_image_k=net.hparams['rope_image_k'],
                                                )
     elif model_hparams['image_key'] == 'trajectory_image':
-        test_tf_dataset = add_traj_image(test_tf_dataset, states_keys=net.states_keys, rope_image_k=net.hparams['rope_image_k'])
+        test_tf_dataset = add_traj_image(test_tf_dataset, states_keys=net.states_keys,
+                                         rope_image_k=net.hparams['rope_image_k'])
 
     ###############
     # Evaluate
@@ -152,8 +155,10 @@ def main():
     train_parser.add_argument('--epochs', type=int, default=500)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
-    train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=10)
-    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=1)
+    train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches',
+                              default=100)
+    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs',
+                              default=1)
     train_parser.set_defaults(func=train_main)
     train_parser.add_argument('--seed', type=int, default=None)
 
