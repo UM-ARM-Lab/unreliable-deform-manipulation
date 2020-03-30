@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import json
 import os
 import pathlib
 import re
@@ -20,8 +21,11 @@ def main():
     if not args.dry_run:
         path = args.indirs[0] / 'hparams.json'
         new_path = args.outdir / 'hparams.json'
+        # log this operation in the params!
+        hparams = json.load(path.open('r'))
+        hparams['created_by_merging'] = [str(indir) for indir in args.indirs]
+        json.dump(hparams, new_path.open('w'), indent=2)
         print(path, '-->', new_path)
-        shutil.copyfile(path, new_path)
 
     for mode in ['train', 'test', 'val']:
         files = []

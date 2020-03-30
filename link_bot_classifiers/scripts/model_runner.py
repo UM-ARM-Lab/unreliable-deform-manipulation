@@ -150,8 +150,6 @@ def main():
     train_parser.add_argument('labeling_params', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
-    train_parser.add_argument('--summary-freq', type=int, default=1)
-    train_parser.add_argument('--save-freq', type=int, default=1)
     train_parser.add_argument('--epochs', type=int, default=500)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
