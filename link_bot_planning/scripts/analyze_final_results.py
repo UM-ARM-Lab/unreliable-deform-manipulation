@@ -63,7 +63,7 @@ def main():
     execution_to_goal_errors_comparisons = {}
     plan_to_execution_errors_comparisons = {}
     max_error = 1.5
-    errors_thresholds = np.linspace(0.05, max_error, 49)
+    errors_thresholds = np.linspace(0.01, max_error, 49)
     print('-' * 90)
     if not args.no_plot:
         plt.figure()
