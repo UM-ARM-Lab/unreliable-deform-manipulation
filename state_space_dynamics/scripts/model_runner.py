@@ -13,7 +13,7 @@ from moonshine import experiments_util
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_metrics_function
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.9)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
