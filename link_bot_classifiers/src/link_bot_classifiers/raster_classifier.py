@@ -110,8 +110,8 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         super().__init__(scenario)
         model_hparams_file = path / 'hparams.json'
         self.model_hparams = json.load(model_hparams_file.open('r'))
-        self.local_env_h_rows = self.model_hparams['local_env_h_rows']
-        self.local_env_w_cols = self.model_hparams['local_env_w_cols']
+        self.input_h_rows = self.model_hparams['input_h_rows']
+        self.input_w_cols = self.model_hparams['input_w_cols']
         self.net = RasterClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
@@ -134,8 +134,8 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         batched_inputs = add_batch(full_env, full_env_origin, res, states_i, action_i, states_i_plus_1)
         image = make_transition_image(*batched_inputs,
                                       scenario=self.scenario,
-                                      local_env_h=self.local_env_h_rows,
-                                      local_env_w=self.local_env_w_cols,
+                                      local_env_h=self.input_h_rows,
+                                      local_env_w=self.input_w_cols,
                                       action_in_image=action_in_image,
                                       k=self.model_hparams['rope_image_k'])[0]
         image = tf.convert_to_tensor(image, dtype=tf.float32)
@@ -157,7 +157,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         states_i = states_sequence[-2]
         states_i_plus_1 = states_sequence[1]
 
-        batched_inputs = add_batch(full_env.data, full_env_origin, res, states_sequence)
+        batched_inputs = add_batch(full_env, full_env_origin, res, states_sequence)
         image = make_traj_images(*batched_inputs, rope_image_k=self.model_hparams['rope_image_k'])[0]
 
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)

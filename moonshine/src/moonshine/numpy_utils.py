@@ -5,7 +5,7 @@ import tensorflow as tf
 def listify(x):
     if isinstance(x, np.ndarray):
         return x.tolist()
-    if isinstance(x, list):
+    elif isinstance(x, list):
         return [listify(x_i) for x_i in x]
     elif isinstance(x, tf.Tensor):
         x_np = x.numpy()
@@ -66,6 +66,8 @@ def remove_batch_single(x):
 def add_batch_single(x):
     if isinstance(x, np.ndarray):
         return np.expand_dims(x, axis=0)
+    elif isinstance(x, list) and isinstance(x[0], dict):
+        return [(add_batch_single(v)) for v in x]
     elif isinstance(x, tf.Tensor):
         return tf.expand_dims(x, axis=0)
     elif isinstance(x, dict):

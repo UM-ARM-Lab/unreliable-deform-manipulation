@@ -67,11 +67,15 @@ def train_main(args, seed: int):
                                                   local_env_w=net.hparams['local_env_w_cols'],
                                                   rope_image_k=net.hparams['rope_image_k'],
                                                   )
+            net.hparams['input_h_rows'] = net.hparams['local_env_h_rows']
+            net.hparams['input_w_cols'] = net.hparams['local_env_w_cols']
         elif image_key == 'trajectory_image':
             train_tf_dataset = add_traj_image(train_tf_dataset, states_keys=net.states_keys,
                                               rope_image_k=net.hparams['rope_image_k'])
             val_tf_dataset = add_traj_image(val_tf_dataset, states_keys=net.states_keys,
                                             rope_image_k=net.hparams['rope_image_k'])
+            net.hparams['input_h_rows'] = train_dataset.full_env_params.h_rows
+            net.hparams['input_w_cols'] = train_dataset.full_env_params.w_cols
 
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)

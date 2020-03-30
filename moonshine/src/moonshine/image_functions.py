@@ -139,11 +139,11 @@ def make_traj_images(full_env,
         state_with_time = tf.stack(state_with_time, axis=1)
         states_dict[key] = state_with_time
 
-    make_traj_images_with_dict(full_env=full_env,
-                               full_env_origin=full_env_origin,
-                               res=res,
-                               states_dict=states_dict,
-                               rope_image_k=rope_image_k)
+    return make_traj_images_with_dict(full_env=full_env,
+                                      full_env_origin=full_env_origin,
+                                      res=res,
+                                      states_dict=states_dict,
+                                      rope_image_k=rope_image_k)
 
 
 # @tf.function
