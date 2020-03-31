@@ -31,7 +31,7 @@ def plot_plan(ax,
 
     if draw_rejected:
         for rejected_state in viz_object.rejected_samples:
-            experiment_scenario.plot_state(ax, rejected_state, color='o')
+            experiment_scenario.plot_state(ax, rejected_state, color='orange', zorder=2, s=10)
 
     if planned_path is not None:
         start = planned_path[0]
@@ -109,13 +109,13 @@ def plan_vs_execution(environment: np.ndarray,
     ax.set_ylim([extent[2], extent[3]])
 
     start = planned_path[0]
-    experiment_scenario.plot_state(ax, start, 'b')
-    experiment_scenario.plot_goal(ax, goal, 'c')
+    experiment_scenario.plot_state(ax, start, color='b', zorder=2, s=20)
+    experiment_scenario.plot_goal(ax, goal, color='c', zorder=2, s=20)
 
     if planned_path is not None:
-        planned_path_artist = experiment_scenario.plot_state(ax, planned_path[0], 'g')
+        planned_path_artist = experiment_scenario.plot_state(ax, planned_path[0], 'g', zorder=3, s=20)
     if actual_path is not None:
-        actual_path_artist = experiment_scenario.plot_state(ax, actual_path[0], '#00ff00')
+        actual_path_artist = experiment_scenario.plot_state(ax, actual_path[0], '#00ff00', zorder=3, s=20)
     plt.legend()
 
     def update(t):

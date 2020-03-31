@@ -1,8 +1,7 @@
 import json
 import pathlib
-from typing import Tuple
+from typing import Tuple, List
 
-from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.get_scenario import get_scenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from state_space_dynamics.obstacle_nn import ObstacleNNWrapper

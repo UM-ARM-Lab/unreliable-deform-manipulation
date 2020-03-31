@@ -62,6 +62,7 @@ class RasterClassifier(MyKerasModel):
 
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
+    # @tf.function
     def _conv(self, image):
         # feed into a CNN
         conv_z = image
@@ -72,6 +73,7 @@ class RasterClassifier(MyKerasModel):
 
         return out_conv_z
 
+    # @tf.function
     def call(self, input_dict: Dict, training=None, mask=None):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         image = input_dict[self.hparams['image_key']]
@@ -120,6 +122,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.ckpt.restore(self.manager.latest_checkpoint)
 
+    # @tf.function
     def check_transition(self,
                          full_env,
                          full_env_origin,
@@ -128,11 +131,13 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                          actions,
                          ) -> tf.Tensor:
         states_i = states_sequence[-2]
+        states_i_to_draw = {k: states_i[k] for k in states_i if k != 'stdev'}
         action_i = actions[-1]
         states_i_plus_1 = states_sequence[-1]
+        states_i_plus_1_to_draw = {k: states_i_plus_1[k] for k in states_i_plus_1 if k != 'stdev'}
 
         action_in_image = self.model_hparams['action_in_image']
-        batched_inputs = add_batch(full_env, full_env_origin, res, states_i, action_i, states_i_plus_1)
+        batched_inputs = add_batch(full_env, full_env_origin, res, states_i_to_draw, action_i, states_i_plus_1_to_draw)
         image = make_transition_image(*batched_inputs,
                                       scenario=self.scenario,
                                       local_env_h=self.input_h_rows,
@@ -147,6 +152,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         accept_probability = self.net(add_batch(net_inputs))[0, 0]
         return accept_probability
 
+    # @tf.function
     def check_trajectory(self,
                          full_env: np.ndarray,
                          full_env_origin: np.ndarray,
@@ -167,6 +173,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         accept_probability = self.net(add_batch(net_inputs))[0, 0]
         return accept_probability
 
+    # @tf.function
     def check_constraint_differentiable(self,
                                         full_env: np.ndarray,
                                         full_env_origin: np.ndarray,
@@ -199,6 +206,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                                                           actions)
         return prediction.numpy()
 
+    # @tf.function
     def net_inputs(self, action_i, states_i, states_i_plus_1):
         net_inputs = {
             'action': tf.convert_to_tensor(action_i, tf.float32),

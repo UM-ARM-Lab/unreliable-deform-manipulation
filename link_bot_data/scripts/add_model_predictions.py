@@ -6,13 +6,13 @@ import pathlib
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
+
 from link_bot_data.base_dataset import DEFAULT_VAL_SPLIT, DEFAULT_TEST_SPLIT
 from link_bot_data.classifier_dataset import add_model_predictions
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
-
-from link_bot_planning.model_utils import load_generic_model
 from link_bot_pycommon.args import my_formatter
+from state_space_dynamics.ensemble_dynamics_function import load_ensemble
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -32,11 +32,7 @@ def main():
     args = parser.parse_args()
 
     dynamics_hparams = json.load((args.dataset_dir / 'hparams.json').open('r'))
-    fwd_models = []
-    for fwd_model_dir in args.fwd_model_dir:
-        fwd_model, _ = load_generic_model(fwd_model_dir)
-        fwd_models.append(fwd_model)
-
+    fwd_models, _ = load_ensemble(args.fwd_model_dir)
     compression_type = "ZLIB"
 
     dataset = DynamicsDataset([args.dataset_dir])

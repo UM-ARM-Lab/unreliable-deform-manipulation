@@ -9,11 +9,11 @@ from colorama import Fore
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance, cachename
-from moonshine.image_functions import add_traj_image, add_transition_image
+from link_bot_data.link_bot_dataset_utils import balance
 from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function
+from moonshine.image_functions import add_traj_image, add_transition_image
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
@@ -44,7 +44,6 @@ def train_main(args, seed: int):
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     model = link_bot_classifiers.get_model(model_hparams['model_class'])
     scenario = get_scenario(model_hparams['scenario'])
-    net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train')
@@ -54,29 +53,30 @@ def train_main(args, seed: int):
         image_key = model_hparams['image_key']
         if image_key == 'transition_image':
             train_tf_dataset = add_transition_image(train_tf_dataset,
-                                                    states_keys=net.states_keys,
+                                                    states_keys=model_hparams['states_keys'],
                                                     scenario=scenario,
-                                                    local_env_h=net.hparams['local_env_h_rows'],
-                                                    local_env_w=net.hparams['local_env_w_cols'],
-                                                    rope_image_k=net.hparams['rope_image_k'],
+                                                    local_env_h=model_hparams['local_env_h_rows'],
+                                                    local_env_w=model_hparams['local_env_w_cols'],
+                                                    rope_image_k=model_hparams['rope_image_k'],
                                                     )
             val_tf_dataset = add_transition_image(train_tf_dataset,
-                                                  states_keys=net.states_keys,
+                                                  states_keys=model_hparams['states_keys'],
                                                   scenario=scenario,
-                                                  local_env_h=net.hparams['local_env_h_rows'],
-                                                  local_env_w=net.hparams['local_env_w_cols'],
-                                                  rope_image_k=net.hparams['rope_image_k'],
+                                                  local_env_h=model_hparams['local_env_h_rows'],
+                                                  local_env_w=model_hparams['local_env_w_cols'],
+                                                  rope_image_k=model_hparams['rope_image_k'],
                                                   )
-            net.hparams['input_h_rows'] = net.hparams['local_env_h_rows']
-            net.hparams['input_w_cols'] = net.hparams['local_env_w_cols']
+            model_hparams['input_h_rows'] = model_hparams['local_env_h_rows']
+            model_hparams['input_w_cols'] = model_hparams['local_env_w_cols']
         elif image_key == 'trajectory_image':
-            train_tf_dataset = add_traj_image(train_tf_dataset, states_keys=net.states_keys,
-                                              rope_image_k=net.hparams['rope_image_k'])
-            val_tf_dataset = add_traj_image(val_tf_dataset, states_keys=net.states_keys,
-                                            rope_image_k=net.hparams['rope_image_k'])
-            net.hparams['input_h_rows'] = train_dataset.full_env_params.h_rows
-            net.hparams['input_w_cols'] = train_dataset.full_env_params.w_cols
+            train_tf_dataset = add_traj_image(train_tf_dataset, states_keys=model_hparams['states_keys'],
+                                              rope_image_k=model_hparams['rope_image_k'])
+            val_tf_dataset = add_traj_image(val_tf_dataset, states_keys=model_hparams['states_keys'],
+                                            rope_image_k=model_hparams['rope_image_k'])
+            model_hparams['input_h_rows'] = train_dataset.full_env_params.h_rows
+            model_hparams['input_w_cols'] = train_dataset.full_env_params.w_cols
 
+    net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
 

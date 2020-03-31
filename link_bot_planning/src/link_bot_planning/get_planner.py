@@ -7,13 +7,22 @@ from link_bot_planning import model_utils, classifier_utils
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_planning.nearest_rrt import NearestRRT
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
+from state_space_dynamics.ensemble_dynamics_function import EnsembleDynamicsFunction
 
 
 def get_planner(planner_params: Dict, services: GazeboServices, seed: int, verbose: int):
-    fwd_model_dir = pathlib.Path(planner_params['fwd_model_dir'])
+    fwd_model_dirs = planner_params['fwd_model_dir']
+    if isinstance(fwd_model_dirs, list):
+        fwd_model_dirs = [pathlib.Path(d) for d in fwd_model_dirs]
+        fwd_model = EnsembleDynamicsFunction(fwd_model_dirs, batch_size=1)
+        scenario = fwd_model.scenario
+        model_path_info = list(fwd_model_dirs[0].parts[1:])
+        model_path_info[-1] = model_path_info[-1][:-2]  # remove the "-$n" so it's "dir/ensemble" instead of "dir/ensemble-$n"
+    else:
+        fwd_model, model_path_info = model_utils.load_generic_model(pathlib.Path(fwd_model_dirs))
+        scenario = fwd_model.scenario
+
     classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])
-    fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir)
-    scenario = fwd_model.scenario
     classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)
     viz_object = link_bot_planning.viz_object.VizObject()
 

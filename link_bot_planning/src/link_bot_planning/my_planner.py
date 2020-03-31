@@ -10,7 +10,7 @@ from colorama import Fore
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.link_bot_goal import MyGoalRegion
-from link_bot_planning.state_spaces import from_numpy, to_numpy_flat, ValidRopeConfigurationCompoundSampler, \
+from link_bot_planning.state_spaces import from_numpy, ValidRopeConfigurationCompoundSampler, \
     compound_to_numpy, ompl_control_to_model_action
 from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_planning.viz_object import VizObject
@@ -58,8 +58,10 @@ class MyPlanner:
 
         self.state_space_description = {}
         self.state_space = ob.CompoundStateSpace()
+        # are these two lists necessary?!
         self.subspaces = []
         self.subspace_bounds = []
+        subspace_idx = None
         for subspace_idx, state_key in enumerate(self.fwd_model.states_keys):
             weight = self.experiment_scenario.get_subspace_weight(state_key)
             n_state = self.fwd_model.states_description[state_key]
@@ -85,7 +87,13 @@ class MyPlanner:
             self.state_space.addSubspace(subspace, weight=weight)
 
         # extra subspace component for the variance, which is necessary to pass information from propagate to constraint checker
+        self.stdev_subspace_idx = subspace_idx + 1
         stdev_subspace = ob.RealVectorStateSpace(1)
+        stdev_bounds = ob.RealVectorBounds(1)
+        stdev_bounds.setLow(-1000)
+        stdev_bounds.setHigh(1000)
+        stdev_subspace.setBounds(stdev_bounds)
+        self.subspace_bounds.append(stdev_bounds)
         self.state_space.addSubspace(stdev_subspace, weight=0)
 
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
@@ -138,6 +146,8 @@ class MyPlanner:
             # motions is a vector of oc.Motion, which has a state, parent, and control
             state = motion.getState()
             state_t = compound_to_numpy(self.state_space_description, state)
+            # FIXME: feels hacky
+            state_t['stdev'] = state[self.stdev_subspace_idx][0]
             states_sequence.append(state_t)
             if t > 0:  # skip the first (null) action, because that would represent the action that brings us to the first state
                 actions.append(self.control_to_numpy(motion.getControl()))
@@ -179,18 +189,20 @@ class MyPlanner:
         final_states = mean_next_states[-1]
         return final_states
 
-    def compound_from_numpy(self, np_final_states: Dict, state_out):
+    def compound_from_numpy(self, np_states: Dict, state_out):
         for subspace_name, subspace_description in self.state_space_description.items():
             idx = subspace_description['idx']
             n_state = subspace_description['n_state']
-            from_numpy(np_final_states[subspace_name], state_out[idx], n_state)
-        state_out[-1][0] = np_final_states['stdev']
+            from_numpy(np_states[subspace_name], state_out[idx], n_state)
+        state_out[self.stdev_subspace_idx][0] = np_states['stdev']
 
     def propagate(self, start, control, duration, state_out):
         del duration  # unused, multi-step propagation is handled inside propagateMotionsWhileValid
 
         # Convert from OMPL -> Numpy
         np_states = compound_to_numpy(self.state_space_description, start)
+        # FIXME: feels hacky
+        np_states['stdev'] = start[self.stdev_subspace_idx][0]
         np_action = self.control_to_numpy(control)
         np_actions = np.expand_dims(np_action, axis=0)
 
@@ -296,6 +308,8 @@ class MyPlanner:
         planned_path = []
         for time_idx, state in enumerate(ompl_path.getStates()):
             np_state = compound_to_numpy(self.state_space_description, state)
+            # FIXME: feels hacky
+            np_state['stdev'] = state[self.stdev_subspace_idx][0]
             planned_path.append(np_state)
 
         np_controls = np.ndarray((ompl_path.getControlCount(), self.n_action))
