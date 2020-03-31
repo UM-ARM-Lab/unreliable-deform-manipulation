@@ -14,7 +14,6 @@ from tensorflow import keras
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import add_next
 from link_bot_planning.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.image_functions import make_transition_image, make_traj_images
 from moonshine.numpy_utils import add_batch
 from moonshine.tensorflow_train_test_loop import MyKerasModel
@@ -77,11 +76,12 @@ class RasterClassifier(MyKerasModel):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         image = input_dict[self.hparams['image_key']]
         action = input_dict['action']
+        stdev = input_dict['stdev']
         out_conv_z = self._conv(image)
         conv_output = self.conv_flatten(out_conv_z)
 
         if self.hparams['mixed']:
-            concat_args = [conv_output, action]
+            concat_args = [conv_output, action, stdev]
             for state_key in self.states_keys:
                 planned_state_key = 'planned_state/{}'.format(state_key)
                 planned_state_key_next = add_next('planned_state/{}'.format(state_key))
@@ -201,6 +201,8 @@ class RasterClassifierWrapper(BaseConstraintChecker):
     def net_inputs(self, action_i, states_i, states_i_plus_1):
         net_inputs = {
             'action': tf.convert_to_tensor(action_i, tf.float32),
+            'stdev': tf.convert_to_tensor(states_i['stdev'], tf.float32),
+            add_next('stdev'): tf.convert_to_tensor(states_i_plus_1['stdev'], tf.float32),
         }
 
         for state_key in self.net.states_keys:

@@ -59,7 +59,7 @@ def train(keras_model: MyKerasModel,
           log_path: Optional[pathlib.Path] = None,
           log_scalars_every: int = 500,
           validation_every: int = 1,
-          key_metric: str = 'loss'
+          key_metric: str = 'loss',
           ):
     """
 
@@ -78,6 +78,7 @@ def train(keras_model: MyKerasModel,
     :param log_scalars_every:
     :param validation_every:
     :param key_metric: Used to determine what the "best" model is for saving
+    :param ensemble: number of times to copy the model
     :return:
     """
     optimizer = tf.train.AdamOptimizer()

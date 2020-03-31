@@ -167,6 +167,9 @@ def compound_to_numpy(state_space_description, state):
         n_state = subspace_description['n_state']
         np_s = to_numpy_flat(state[idx], n_state)
         np_states[name] = np_s
+
+    # FIXME: feels hacky
+    np_states['stdev'] = state[-1][0]
     return np_states
 
 

@@ -24,7 +24,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
-    parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model')
+    parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
     parser.add_argument('--n-examples-per-record', type=int, default=128, help="examples per file")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
@@ -32,7 +32,10 @@ def main():
     args = parser.parse_args()
 
     dynamics_hparams = json.load((args.dataset_dir / 'hparams.json').open('r'))
-    fwd_model, _ = load_generic_model(args.fwd_model_dir)
+    fwd_models = []
+    for fwd_model_dir in args.fwd_model_dir:
+        fwd_model, _ = load_generic_model(fwd_model_dir)
+        fwd_models.append(fwd_model)
 
     compression_type = "ZLIB"
 
@@ -41,9 +44,9 @@ def main():
     args.out_dir.mkdir(parents=False, exist_ok=False)
     new_hparams_filename = args.out_dir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams
-    classifier_dataset_hparams['fwd_model_hparams'] = fwd_model.hparams
+    classifier_dataset_hparams['fwd_model_hparams'] = fwd_models[0].hparams
     classifier_dataset_hparams['actual_state_keys'] = dataset.state_feature_names
-    classifier_dataset_hparams['planned_state_keys'] = fwd_model.states_keys
+    classifier_dataset_hparams['planned_state_keys'] = fwd_models[0].states_keys
     json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=1)
 
     val_split = int(args.total_take * DEFAULT_VAL_SPLIT) if args.total_take is not None else None
@@ -57,7 +60,7 @@ def main():
 
     for mode in ['test', 'val', 'train']:
         tf_dataset = dataset.get_datasets(mode=mode, take=take_split[mode])
-        new_tf_dataset = add_model_predictions(fwd_model, tf_dataset, dataset)
+        new_tf_dataset = add_model_predictions(fwd_models, tf_dataset, dataset)
 
         full_output_directory = args.out_dir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)

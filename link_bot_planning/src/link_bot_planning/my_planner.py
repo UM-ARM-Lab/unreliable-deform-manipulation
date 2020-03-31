@@ -84,6 +84,10 @@ class MyPlanner:
             self.subspace_bounds.append(bounds)
             self.state_space.addSubspace(subspace, weight=weight)
 
+        # extra subspace component for the variance, which is necessary to pass information from propagate to constraint checker
+        stdev_subspace = ob.RealVectorStateSpace(1)
+        self.state_space.addSubspace(stdev_subspace, weight=0)
+
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
 
         control_bounds = ob.RealVectorBounds(2)
@@ -166,22 +170,21 @@ class MyPlanner:
 
     def predict(self, np_states, np_actions):
         # use the forward model to predict the next configuration
-        # NOTE full env here could be different than the full env the classifier gets? Maybe classifier should sub-select from
-        #  the actual full env?
-        next_states = self.fwd_model.propagate(full_env=self.full_env_data.data,
-                                               full_env_origin=self.full_env_data.origin,
-                                               res=self.fwd_model.full_env_params.res,
-                                               start_states=np_states,
-                                               actions=np_actions)
+        mean_next_states = self.fwd_model.propagate(full_env=self.full_env_data.data,
+                                                    full_env_origin=self.full_env_data.origin,
+                                                    res=self.fwd_model.full_env_params.res,
+                                                    start_states=np_states,
+                                                    actions=np_actions)
         # get only the final state predicted
-        final_states = next_states[-1]
+        final_states = mean_next_states[-1]
         return final_states
 
-    def compound_from_numpy(self, np_final_states: Dict[str, np.ndarray], state_out):
+    def compound_from_numpy(self, np_final_states: Dict, state_out):
         for subspace_name, subspace_description in self.state_space_description.items():
             idx = subspace_description['idx']
             n_state = subspace_description['n_state']
             from_numpy(np_final_states[subspace_name], state_out[idx], n_state)
+        state_out[-1][0] = np_final_states['stdev']
 
     def propagate(self, start, control, duration, state_out):
         del duration  # unused, multi-step propagation is handled inside propagateMotionsWhileValid
@@ -216,7 +219,7 @@ class MyPlanner:
         return smoothed_actions_tf.numpy(), smoothed_path
 
     def plan(self,
-             start_states: Dict[str, np.ndarray],
+             start_states: Dict,
              goal,
              full_env_data: link_bot_sdf_utils.OccupancyData) -> PlannerResult:
         """
@@ -229,6 +232,7 @@ class MyPlanner:
 
         # create start and goal states
         ompl_start = ob.CompoundState(self.state_space)
+        start_states['stdev'] = 0.0
         self.compound_from_numpy(start_states, ompl_start())
 
         start = ob.State(ompl_start)
@@ -290,14 +294,9 @@ class MyPlanner:
 
     def convert_path(self, ompl_path: oc.PathControl):
         planned_path = []
-        for time_idx, compound_state in enumerate(ompl_path.getStates()):
-            state = {}
-            for name, subspace_description in self.state_space_description.items():
-                idx = subspace_description['idx']
-                n_state = subspace_description['n_state']
-                subspace_state = compound_state[idx]
-                state[name] = to_numpy_flat(subspace_state, n_state)
-            planned_path.append(state)
+        for time_idx, state in enumerate(ompl_path.getStates()):
+            np_state = compound_to_numpy(self.state_space_description, state)
+            planned_path.append(np_state)
 
         np_controls = np.ndarray((ompl_path.getControlCount(), self.n_action))
         for time_idx, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):

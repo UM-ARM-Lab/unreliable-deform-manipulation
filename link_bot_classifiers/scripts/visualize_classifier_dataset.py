@@ -7,10 +7,10 @@ from time import perf_counter
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from link_bot_classifiers.visualization import plot_classifier_data, make_interpretable_image
 
+from link_bot_classifiers.visualization import plot_classifier_data, make_interpretable_image
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned, has_already_diverged
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned
 from link_bot_planning.get_scenario import get_scenario
 from moonshine.image_functions import add_traj_image, add_transition_image
 
@@ -107,10 +107,11 @@ def main():
             pass
         elif args.display_type == 'transition_image':
             image = example['transition_image'].numpy()
+            std = example['std'].numpy()
             if scenario == 'link_bot':
                 image = make_interpretable_image(image, 11)
             plt.imshow(np.flipud(image))
-            title = "Label = {}".format(label)
+            title = "Label = {}, std={}".format(label, std)
             plt.title(title)
             plt.show(block=True)
         elif args.display_type == 'trajectory_image':
@@ -156,6 +157,7 @@ def main():
             action = example['action'].numpy()
             next_state = example['link_bot_next'].numpy()
             planned_next_state = example['planned_state/link_bot_next'].numpy()
+            stdev_next = example['stdev_next'].numpy()
 
             plot_classifier_data(
                 next_state=next_state,
@@ -165,7 +167,7 @@ def main():
                 state=state,
                 actual_env=full_env,
                 actual_env_extent=full_env_extent,
-                title="Label = {}".format(label),
+                title="Label = {}, stdev (next)={}".format(label, stdev_next),
                 label=label)
             plt.legend()
             plt.tight_layout()
