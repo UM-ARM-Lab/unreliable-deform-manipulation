@@ -107,11 +107,11 @@ def main():
             pass
         elif args.display_type == 'transition_image':
             image = example['transition_image'].numpy()
-            std = example['std'].numpy()
+            stdev = example['stdev'].numpy()
             if scenario == 'link_bot':
                 image = make_interpretable_image(image, 11)
             plt.imshow(np.flipud(image))
-            title = "Label = {}, std={}".format(label, std)
+            title = "Label = {}, stdev={}".format(label, stdev)
             plt.title(title)
             plt.show(block=True)
         elif args.display_type == 'trajectory_image':

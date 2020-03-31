@@ -76,12 +76,13 @@ class RasterClassifier(MyKerasModel):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         image = input_dict[self.hparams['image_key']]
         action = input_dict['action']
-        stdev = input_dict['stdev']
+        stdev = tf.expand_dims(input_dict['stdev'], axis=1)
+        stdev_next = tf.expand_dims(input_dict['stdev_next'], axis=1)
         out_conv_z = self._conv(image)
         conv_output = self.conv_flatten(out_conv_z)
 
         if self.hparams['mixed']:
-            concat_args = [conv_output, action, stdev]
+            concat_args = [conv_output, action, stdev, stdev_next]
             for state_key in self.states_keys:
                 planned_state_key = 'planned_state/{}'.format(state_key)
                 planned_state_key_next = add_next('planned_state/{}'.format(state_key))
