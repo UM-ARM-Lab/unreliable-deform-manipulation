@@ -2,6 +2,7 @@ from typing import Optional, List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import cm
 from matplotlib.animation import FuncAnimation
 from ompl import base as ob
 
@@ -40,11 +41,14 @@ def plot_plan(ax,
         experiment_scenario.plot_state_simple(ax, end, color='pink', s=50, zorder=5, marker='*')
         experiment_scenario.plot_goal(ax, goal, color='c', zorder=5, s=50)
         draw_every_n = 1
-        for state in planned_path[::draw_every_n]:
+        T = len(planned_path)
+        colomap = cm.YlGn
+        for t, state in range(0, T, draw_every_n):
+            state = planned_path[t]
             for randomly_accepted_sample in viz_object.randomly_accepted_samples:
                 if states_are_equal(state, randomly_accepted_sample):
                     experiment_scenario.plot_state_simple(ax, state, color='white', s=10, zorder=4)
-            experiment_scenario.plot_state(ax, state, color='g', s=10, zorder=3)
+            experiment_scenario.plot_state(ax, state, color=colormap(t / T), s=10, zorder=3)
 
     # Visualize Nearest Neighbor Selection (poorly...)
     # for sample in planner_data.getSamples():

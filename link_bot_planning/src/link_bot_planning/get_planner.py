@@ -2,15 +2,15 @@ import pathlib
 from typing import Dict
 
 import link_bot_planning.viz_object
-from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import model_utils, classifier_utils
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_planning.nearest_rrt import NearestRRT
+from link_bot_pycommon.ros_pycommon import Services
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from state_space_dynamics.ensemble_dynamics_function import EnsembleDynamicsFunction
 
 
-def get_planner(planner_params: Dict, services: GazeboServices, seed: int, verbose: int):
+def get_planner(planner_params: Dict, service_provider: Services, seed: int, verbose: int):
     fwd_model_dirs = planner_params['fwd_model_dir']
     if isinstance(fwd_model_dirs, list):
         fwd_model_dirs = [pathlib.Path(d) for d in fwd_model_dirs]
@@ -36,7 +36,7 @@ def get_planner(planner_params: Dict, services: GazeboServices, seed: int, verbo
                             classifier_model=classifier_model,
                             planner_params=planner_params,
                             viz_object=viz_object,
-                            service_provider=services,
+                            service_provider=service_provider,
                             scenario=scenario,
                             seed=seed,
                             verbose=verbose,
@@ -48,7 +48,7 @@ def get_planner_with_model(planner_class_str: str,
                            fwd_model: BaseDynamicsFunction,
                            classifier_model_dir: pathlib.Path,
                            planner_params: Dict,
-                           service_provider: GazeboServices,
+                           service_provider: Services,
                            seed: int,
                            verbose: int):
     scenario = get_scenario(planner_params['scenario'])

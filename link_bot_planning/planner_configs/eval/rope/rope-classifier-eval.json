@@ -1,6 +1,17 @@
 {
-  "fwd_model_dir": "ss_log_data/rope_no_obs/March_21_12-51-17_1510a3723b/",
-  "classifier_model_dir": "classifiers/rope-classifier3/March_26_18-54-49_477c0b550e/",
+  "fwd_model_dir": [
+    "ss_log_data/rope_no_obs2-0",
+    "ss_log_data/rope_no_obs2-1",
+    "ss_log_data/rope_no_obs2-2",
+    "ss_log_data/rope_no_obs2-3",
+    "ss_log_data/rope_no_obs2-4",
+    "ss_log_data/rope_no_obs2-5",
+    "ss_log_data/rope_no_obs2-6",
+    "ss_log_data/rope_no_obs2-7",
+    "ss_log_data/rope_no_obs2-8",
+    "ss_log_data/rope_no_obs2-9"
+  ],
+  "classifier_model_dir": "classifiers/rope-with-stdev/March_30_23-33-50_daf5256d2a",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",

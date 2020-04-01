@@ -19,7 +19,7 @@ import link_bot_data.link_bot_dataset_utils
 from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute, model_utils
-from link_bot_planning.get_planner import get_planner_with_model
+from link_bot_planning.get_planner import get_planner_with_model, get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot_plan
 from link_bot_planning.params import SimParams
@@ -38,8 +38,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
     def __init__(self,
                  planner: MyPlanner,
                  planner_config_name: str,
-                 fwd_model_dir: pathlib.Path,
-                 classifier_model_dir: pathlib.Path,
                  n_plans_per_env: int,
                  n_total_plans: int,
                  verbose: int,
@@ -70,8 +68,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.seed = seed
 
         self.metrics = {
-            "fwd_model_dir": str(fwd_model_dir),
-            "classifier_model_dir": str(classifier_model_dir),
             "n_total_plans": n_total_plans,
             "n_targets": n_plans_per_env,
             "planner_params": planner_params,
@@ -250,11 +246,6 @@ def main():
         tf.random.set_random_seed(args.seed)  # not sure if this has any effect
 
         planner_config_name = p_params_name.stem
-        fwd_model_dir = pathlib.Path(planner_params['fwd_model_dir'])
-        classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])
-        planner_type = planner_params['planner_type']
-
-        fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dir)
 
         # Start Services
         if args.env_type == 'victor':
@@ -262,19 +253,16 @@ def main():
         else:
             service_provider = gazebo_services.GazeboServices()
 
+        # look up the planner params
+        planner, _ = get_planner(planner_params=planner_params,
+                              service_provider=service_provider,
+                              seed=args.seed,
+                              verbose=args.verbose)
+
         service_provider.setup_env(verbose=args.verbose,
                                    real_time_rate=planner_params['real_time_rate'],
                                    reset_gripper_to=planner_params['reset_gripper_to'],
-                                   max_step_size=fwd_model.max_step_size)
-
-        # look up the planner params
-        planner = get_planner_with_model(planner_class_str=planner_type,
-                                         fwd_model=fwd_model,
-                                         classifier_model_dir=classifier_model_dir,
-                                         planner_params=planner_params,
-                                         service_provider=service_provider,
-                                         seed=args.seed,
-                                         verbose=args.verbose)
+                                   max_step_size=planner.fwd_model.max_step_size)
 
         sim_params = SimParams(real_time_rate=planner_params['real_time_rate'],
                                max_step_size=planner.fwd_model.max_step_size,
@@ -285,8 +273,6 @@ def main():
         runner = EvalPlannerConfigs(
             planner=planner,
             planner_config_name=planner_config_name,
-            fwd_model_dir=fwd_model_dir,
-            classifier_model_dir=classifier_model_dir,
             n_plans_per_env=args.n_plans_per_env,
             n_total_plans=args.n_total_plans,
             verbose=args.verbose,

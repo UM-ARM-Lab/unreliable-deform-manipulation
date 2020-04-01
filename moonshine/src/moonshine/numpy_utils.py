@@ -12,12 +12,14 @@ def listify(x):
         return listify(x_np)
     elif isinstance(x, dict):
         return dict([(k, listify(v)) for k, v in x.items()])
+    elif isinstance(x, float):
+        return [x]
     else:
         raise NotImplementedError(type(x))
 
 
 def states_are_equal(state_dict1, state_dict2):
-    if (state_dict1.keys() != state_dict2.keys()):
+    if state_dict1.keys() != state_dict2.keys():
         return False
 
     for key in state_dict1.keys():

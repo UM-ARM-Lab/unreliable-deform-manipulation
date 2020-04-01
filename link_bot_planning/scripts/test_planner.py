@@ -190,7 +190,7 @@ def main():
                                max_step_size=sim_params.max_step_size)
     service_provider.pause(std_srvs.srv.EmptyRequest())
 
-    planner, _ = get_planner(planner_params=planner_params, services=service_provider, seed=args.seed, verbose=args.verbose)
+    planner, _ = get_planner(planner_params=planner_params, service_provider=service_provider, seed=args.seed, verbose=args.verbose)
 
     tester = TestWithClassifier(
         planner=planner,

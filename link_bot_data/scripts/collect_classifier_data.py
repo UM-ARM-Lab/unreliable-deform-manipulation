@@ -265,7 +265,7 @@ def main():
                                max_step_size=sim_params.max_step_size)
     service_provider.pause(std_srvs.srv.EmptyRequest())
 
-    planner, fwd_model_info = get_planner(planner_params=params, services=service_provider, seed=args.seed, verbose=args.verbose)
+    planner, fwd_model_info = get_planner(planner_params=params, service_provider=service_provider, seed=args.seed, verbose=args.verbose)
 
     data_collector = ClassifierDataCollector(
         planner=planner,
