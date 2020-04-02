@@ -2,6 +2,7 @@
 
 #include <std_srvs/EmptyRequest.h>
 
+#include <Eigen/Eigen>
 #include <cstdio>
 #include <gazebo/common/Time.hh>
 #include <gazebo/common/Timer.hh>
@@ -289,8 +290,23 @@ bool MultiLinkBotModelPlugin::ExecuteAction(peter_msgs::ExecuteActionRequest &re
 {
   mode_ = "position";
 
-  ignition::math::Vector3d delta_position{req.action.action[0], req.action.action[1], 0};
-  gripper1_target_position_ += delta_position;
+  Eigen::Matrix2d A;
+  A << 1, 0, 0, 1;
+
+  Eigen::Matrix2d B;
+  B << 1.0, 0.0, 0.1, 1.1;
+
+  Eigen::Vector2d s;
+  s(0) = gripper1_target_position_.X();
+  s(1) = gripper1_target_position_.Y();
+
+  Eigen::Vector2d u;
+  u(0) = req.action.action[0];
+  u(1) = req.action.action[1];
+
+  Eigen::Vector2d const s_ = A * s + B * u;
+  gripper1_target_position_.X(s_(0));
+  gripper1_target_position_.Y(s_(1));
 
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
   auto const steps = static_cast<unsigned int>(req.action.max_time_per_step / seconds_per_step);
@@ -349,15 +365,15 @@ bool MultiLinkBotModelPlugin::GetObjectGripperCallback(peter_msgs::GetObjectRequ
                                                        peter_msgs::GetObjectResponse &res)
 {
   auto const link = model_->GetLink("head");
-  auto const x = link->WorldPose().Pos().X();
-  auto const y = link->WorldPose().Pos().Y();
+  float const x = link->WorldPose().Pos().X();
+  float const y = link->WorldPose().Pos().Y();
   peter_msgs::NamedPoint head_point;
   geometry_msgs::Point pt;
   head_point.point.x = x;
   head_point.point.y = y;
   head_point.name = "gripper";
   res.object.points.emplace_back(head_point);
-  res.object.state_vector = std::vector<float>{x, y};
+  res.object.state_vector = std::vector<float>{static_cast<float>(x), y};
   res.object.name = "gripper";
 
   return true;
@@ -374,8 +390,8 @@ bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequ
     auto link_name = ss.str();
     auto const link = model_->GetLink(link_name);
     peter_msgs::NamedPoint named_point;
-    auto const x = link->WorldPose().Pos().X();
-    auto const y = link->WorldPose().Pos().Y();
+    float const x = link->WorldPose().Pos().X();
+    float const y = link->WorldPose().Pos().Y();
     state_vector.push_back(x);
     state_vector.push_back(y);
     named_point.point.x = x;
@@ -387,8 +403,8 @@ bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequ
   auto const link = model_->GetLink("head");
   peter_msgs::NamedPoint head_point;
   geometry_msgs::Point pt;
-  auto const x = link->WorldPose().Pos().X();
-  auto const y = link->WorldPose().Pos().Y();
+  float const x = link->WorldPose().Pos().X();
+  float const y = link->WorldPose().Pos().Y();
   state_vector.push_back(x);
   state_vector.push_back(y);
   head_point.point.x = x;

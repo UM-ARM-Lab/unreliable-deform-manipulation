@@ -20,7 +20,10 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
 def train_func(args, seed: int):
     if args.log:
-        log_path = experiments_util.experiment_name(args.log)
+        if args.ensemble_idx:
+            log_path = pathlib.Path(args.log) / str(args.ensemble_idx)
+        else:
+            log_path = experiments_util.experiment_name(args.log)
     else:
         log_path = None
 
@@ -105,6 +108,7 @@ def main():
     train_parser.add_argument('--batch-size', type=int, default=32)
     train_parser.add_argument('--epochs', type=int, default=500)
     train_parser.add_argument('--log', '-l')
+    train_parser.add_argument('--ensemble-idx', type=int)
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=4)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=119)
