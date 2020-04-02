@@ -42,7 +42,7 @@ def plot_plan(ax,
         experiment_scenario.plot_goal(ax, goal, color='c', zorder=5, s=50)
         draw_every_n = 1
         T = len(planned_path)
-        colomap = cm.YlGn
+        colormap = cm.YlGn
         for t, state in range(0, T, draw_every_n):
             state = planned_path[t]
             for randomly_accepted_sample in viz_object.randomly_accepted_samples:
