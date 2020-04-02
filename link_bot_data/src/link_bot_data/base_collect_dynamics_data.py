@@ -3,6 +3,7 @@ import json
 import os
 import pathlib
 import sys
+from time import perf_counter
 
 import numpy as np
 import rospy
@@ -14,6 +15,7 @@ from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_planning.params import FullEnvParams, SimParams, CollectDynamicsParams
 from link_bot_pycommon import ros_pycommon
+from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
 from link_bot_pycommon.ros_pycommon import get_states_dict
 
 
@@ -26,11 +28,18 @@ def generate_traj(scenario: ExperimentScenario,
                   verbose: int):
     # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
     # over the course of this function
-    full_env_data = ros_pycommon.get_occupancy_data(env_w_m=params.full_env_w_m,
-                                                    env_h_m=params.full_env_h_m,
-                                                    res=params.res,
-                                                    service_provider=service_provider,
-                                                    robot_name=scenario.robot_name())
+    if params.movable_obstacles is not None and len(params.movable_obstacles) > 0:
+        full_env_data = ros_pycommon.get_occupancy_data(env_w_m=params.full_env_w_m,
+                                                        env_h_m=params.full_env_h_m,
+                                                        res=params.res,
+                                                        service_provider=service_provider,
+                                                        robot_name=scenario.robot_name())
+    else:
+        rows = int(params.full_env_h_m // params.res)
+        cols = int(params.full_env_w_m // params.res)
+        full_env_origin = np.array([rows // 2, cols // 2], dtype=np.int32)
+        data = np.zeros([rows, cols], dtype=np.float32)
+        full_env_data = OccupancyData(data, params.res, full_env_origin)
 
     feature = {
         'full_env/env': float_tensor_to_bytes_feature(full_env_data.data),
@@ -44,12 +53,12 @@ def generate_traj(scenario: ExperimentScenario,
         state_dict = get_states_dict(service_provider)
 
         action_msg = scenario.sample_action(service_provider=service_provider,
-                                                           state=state_dict,
-                                                           last_action=action_msg,
-                                                           params=params,
-                                                           goal_w_m=params.goal_w_m,
-                                                           goal_h_m=params.goal_h_m,
-                                                           action_rng=action_rng)
+                                            state=state_dict,
+                                            last_action=action_msg,
+                                            params=params,
+                                            goal_w_m=params.goal_w_m,
+                                            goal_h_m=params.goal_h_m,
+                                            action_rng=action_rng)
 
         service_provider.execute_action(action_msg)
 
@@ -89,8 +98,9 @@ def generate_trajs(service_provider,
                    action_rng: np.random.RandomState):
     examples = np.ndarray([args.trajs_per_file], dtype=object)
     global_t_step = 0
+    last_record_t = perf_counter()
     for traj_idx in range(args.trajs):
-        if params.reset_robot is not None or params.reset_world is not None:
+        if params.reset_robot is not None or params.reset_world:
             service_provider.reset_world(args.verbose, reset_robot=params.reset_robot)
 
         current_record_traj_idx = traj_idx % args.trajs_per_file
@@ -121,7 +131,10 @@ def generate_trajs(service_provider,
                                          "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tf.data.experimental.TFRecordWriter(full_filename, compression_type='ZLIB')
             writer.write(serialized_dataset)
-            print("saved {}".format(full_filename))
+            now = perf_counter()
+            dt_record = now - last_record_t
+            print("saved {} ({:5.1f}s)".format(full_filename, dt_record))
+            last_record_t = now
 
         if not args.verbose:
             print(".", end='')

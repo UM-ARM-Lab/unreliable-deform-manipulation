@@ -30,7 +30,7 @@ def state_space_handler(req):
         object_res = service.call(object_req)
         subspace = SubspaceDescription()
         subspace.name = object_res.object.name
-        subspace.dimensions = object_res.object.state_dim
+        subspace.dimensions = len(object_res.object.state_vector)
         res.subspaces.append(subspace)
 
     return res

@@ -33,15 +33,16 @@ void TetherPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   model_ = parent;
 
   auto state_bind = boost::bind(&TetherPlugin::GetObjectServiceCallback, this, _1, _2);
-  auto state_service_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>("/tether", state_bind,
-                                                                                       ros::VoidPtr(), &queue_);
+  auto state_service_so =
+      ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>("/tether", state_bind, ros::VoidPtr(), &queue_);
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   state_service_ = ros_node_->advertiseService(state_service_so);
   register_tether_pub_ = ros_node_->advertise<std_msgs::String>("/register_object", 10, true);
 
   ros_queue_thread_ = std::thread(std::bind(&TetherPlugin::QueueThread, this));
 
-  while (register_tether_pub_.getNumSubscribers() < 1);
+  while (register_tether_pub_.getNumSubscribers() < 1)
+    ;
 
   std_msgs::String register_object;
   register_object.data = "tether";
@@ -51,29 +52,36 @@ void TetherPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   ros_node_->setParam("/tether/n_state", static_cast<int>((num_links_ + 1) * 2));
 }
 
-bool TetherPlugin::GetObjectServiceCallback(peter_msgs::GetObjectRequest &req,
-                                        peter_msgs::GetObjectResponse &res)
+bool TetherPlugin::GetObjectServiceCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
 {
   res.object.name = "tether";
+  std::vector<float> state_vector;
   for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx) {
     std::stringstream ss;
     ss << "link_" << link_idx;
     auto link_name = ss.str();
     auto const link = model_->GetLink(link_name);
     peter_msgs::NamedPoint named_point;
-    named_point.point.x = link->WorldPose().Pos().X();
-    named_point.point.y = link->WorldPose().Pos().Y();
+    auto const x = link->WorldPose().Pos().X();
+    auto const y = link->WorldPose().Pos().Y();
+    state_vector.push_back(x);
+    state_vector.push_back(y);
+    named_point.point.x = x;
+    named_point.point.y = y;
     named_point.name = link_name;
     res.object.points.emplace_back(named_point);
   }
 
   auto const link = model_->GetLink("head");
   peter_msgs::NamedPoint head_point;
-  head_point.point.x = link->WorldPose().Pos().X();
-  head_point.point.y = link->WorldPose().Pos().Y();
+  auto const x = link->WorldPose().Pos().X();
+  auto const y = link->WorldPose().Pos().Y();
+  state_vector.push_back(x);
+  state_vector.push_back(y);
+  head_point.point.x = x;
+  head_point.point.y = y;
   head_point.name = "head";
   res.object.points.emplace_back(head_point);
-
 
   return true;
 }

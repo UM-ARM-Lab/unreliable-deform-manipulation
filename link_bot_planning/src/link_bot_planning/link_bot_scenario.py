@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from ignition.markers import MarkerProvider
 from link_bot_planning.experiment_scenario import ExperimentScenario
+from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 
 
 class LinkBotScenario(ExperimentScenario):
@@ -141,4 +142,16 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def robot_name():
-        return "link_bo"
+        return "link_bot"
+
+    @staticmethod
+    def dynamics_loss_function(dataset_element, predictions):
+        return dynamics_loss_function(dataset_element, predictions)
+
+    @staticmethod
+    def dynamics_metrics_function(dataset_element, predictions):
+        return dynamics_points_metrics_function(dataset_element, predictions)
+
+    @staticmethod
+    def integrate_dynamics(s_t, ds_t):
+        return s_t + ds_t

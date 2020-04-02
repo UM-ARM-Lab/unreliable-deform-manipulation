@@ -111,8 +111,10 @@ def plot_heatmap(train_dataset, show_env=True):
             states_sequence = input_data['link_bot'].numpy()
         elif 'gripper' in input_data.keys():
             states_sequence = input_data['gripper'].numpy()
+        elif 'car' in input_data.keys():
+            states_sequence = input_data['car'].numpy()
         else:
-            raise ValueError('neither gripper nor link_bot was in the dataset. not good.')
+            raise ValueError('no supported state key was in the dataset.')
         for state in states_sequence:
             state_image_i = old_raster(*add_batch(state, full_env_res, full_env_origin), full_env_h, full_env_w)
             # merge down to one channel

@@ -80,3 +80,15 @@ class ExperimentScenario:
     @staticmethod
     def robot_name():
         raise NotImplementedError()
+
+    @staticmethod
+    def dynamics_loss_function(dataset_element, predictions):
+        raise NotImplementedError()
+
+    @staticmethod
+    def dynamics_metrics_function(dataset_element, predictions):
+        raise NotImplementedError()
+
+    @staticmethod
+    def integrate_dynamics(s_t, ds_t):
+        raise NotImplementedError()

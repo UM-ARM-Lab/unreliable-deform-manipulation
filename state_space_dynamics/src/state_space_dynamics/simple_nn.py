@@ -26,6 +26,7 @@ class SimpleNN(MyKerasModel):
         self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
 
+    # @tf.function
     def call(self, dataset_element, training=None, mask=None):
         input_dict, _ = dataset_element
         states = input_dict[self.state_key]
@@ -45,9 +46,10 @@ class SimpleNN(MyKerasModel):
 
             if self.hparams['residual']:
                 ds_t = z_t
-                s_t_plus_1_flat = s_t + ds_t
+                s_t_plus_1_flat = self.scenario.integrate_dynamics(s_t, ds_t)
             else:
                 s_t_plus_1_flat = z_t
+
 
             pred_states.append(s_t_plus_1_flat)
 

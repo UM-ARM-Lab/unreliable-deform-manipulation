@@ -31,6 +31,7 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
   }
 
   auto get_occupancy = [&](peter_msgs::ComputeOccupancyRequest &req, peter_msgs::ComputeOccupancyResponse &res) {
+    // TODO: make this faster
     if (req.request_new) {
       compute_sdf(req.h_rows, req.w_cols, req.center, req.resolution, req.robot_name, req.min_z, req.max_z);
     }

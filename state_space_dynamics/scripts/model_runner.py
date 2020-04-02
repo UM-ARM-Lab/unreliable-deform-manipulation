@@ -10,10 +10,9 @@ import state_space_dynamics
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
-from moonshine.base_learned_dynamics_model import ensemble_dynamics_metrics_function, ensemble_dynamics_loss_function
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.9)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
@@ -54,8 +53,8 @@ def train_func(args, seed: int):
           seed=seed,
           batch_size=args.batch_size,
           epochs=args.epochs,
-          loss_function=ensemble_dynamics_loss_function,
-          metrics_function=ensemble_dynamics_metrics_function,
+          loss_function=scenario.dynamics_loss_function,
+          metrics_function=scenario.dynamics_metrics_function,
           checkpoint=args.checkpoint,
           log_path=log_path,
           log_scalars_every=args.log_scalars_every)
@@ -88,8 +87,8 @@ def eval_func(args, seed: int):
     ###############
     evaluate(keras_model=net,
              test_tf_dataset=test_tf_dataset,
-             loss_function=ensemble_dynamics_loss_function,
-             metrics_function=ensemble_dynamics_metrics_function,
+             loss_function=scenario.dynamics_loss_function,
+             metrics_function=scenario.dynamics_metrics_function,
              checkpoint_path=args.checkpoint)
 
 

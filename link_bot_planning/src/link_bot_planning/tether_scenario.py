@@ -9,7 +9,8 @@ from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import CollectDynamicsParams
 from link_bot_pycommon.base_services import Services
-from peter_msgs.msg import LinkBotAction
+from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
+from peter_msgs.msg import Action
 
 
 class TetherScenario(ExperimentScenario):
@@ -25,13 +26,13 @@ class TetherScenario(ExperimentScenario):
     @staticmethod
     def sample_action(service_provider: Services,
                       state,
-                      last_action: LinkBotAction,
+                      last_action: Action,
                       params: CollectDynamicsParams,
                       goal_w_m,
                       goal_h_m,
                       action_rng):
         max_delta_pos = service_provider.get_max_speed() * params.dt
-        new_action = LinkBotAction()
+        new_action = Action()
         while True:
             # sample the previous action with 80% probability
             if last_action is not None and action_rng.uniform(0, 1) < 0.80:
@@ -214,3 +215,15 @@ class TetherScenario(ExperimentScenario):
     @staticmethod
     def robot_name():
         return "link_bot"
+
+    @staticmethod
+    def dynamics_loss_function(dataset_element, predictions):
+        return dynamics_loss_function(dataset_element, predictions)
+
+    @staticmethod
+    def dynamics_metrics_function(dataset_element, predictions):
+        return dynamics_points_metrics_function(dataset_element, predictions)
+
+    @staticmethod
+    def integrate_dynamics(s_t, ds_t):
+        return s_t + ds_t

@@ -1,0 +1,17 @@
+{
+  "dt": 1.0,
+  "res": 0.03,
+  "full_env_w_m": 6,
+  "full_env_h_m": 6,
+  "reset_robot": null,
+  "reset_world": false,
+  "goal_w_m": 6.0,
+  "goal_h_m": 6.0,
+  "max_step_size": 0.01,
+  "move_objects_every_n": 0,
+  "movable_obstacles": [
+  ],
+  "steps_per_traj": 10
+}
+
+

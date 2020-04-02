@@ -1,11 +1,14 @@
 from typing import Dict
 
 import numpy as np
+import tensorflow as tf
 
 from ignition.markers import MarkerProvider
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.base_services import Services
+from link_bot_pycommon.link_bot_pycommon import wrap_angle
+from moonshine.base_learned_dynamics_model import dynamics_loss_function
 from peter_msgs.msg import Action
 
 speed_arrow_scale = 0.05
@@ -142,3 +145,39 @@ class TetheredCarScenario(ExperimentScenario):
     @staticmethod
     def robot_name():
         return "car"
+
+    @staticmethod
+    @tf.function
+    def dynamics_loss_function(dataset_element, predictions):
+        return dynamics_loss_function(dataset_element, predictions)
+
+    @staticmethod
+    @tf.function
+    def dynamics_metrics_function(dataset_element, predictions):
+        input_data, output_data = dataset_element
+        metrics = {}
+        for state_key, pred_state in predictions.items():
+            true_state = output_data[state_key]
+            true_pos = tf.reshape(true_state[:, :, 0:2], [true_state.shape[0], true_state.shape[1], 2])
+            pred_pos = tf.reshape(pred_state[:, :, 0:2], [pred_state.shape[0], pred_state.shape[1], 2])
+            position_errors = tf.linalg.norm(pred_pos - true_pos, axis=2)
+            mean_position_error = tf.reduce_mean(position_errors)
+            final_position_error = tf.reduce_mean(position_errors[:, -1])
+            angle_errors = tf.math.abs(true_state[:, :, 2] - pred_state[:, :, 2])
+            mean_angle_error = tf.reduce_mean(angle_errors)
+            final_angle_error = tf.reduce_mean(angle_errors[:, -1])
+
+            metrics['{} mean position error'.format(state_key)] = mean_position_error
+            metrics['{} final position error'.format(state_key)] = final_position_error
+            metrics['{} mean angle error'.format(state_key)] = mean_angle_error
+            metrics['{} final angle error'.format(state_key)] = final_angle_error
+        return metrics
+
+    @staticmethod
+    # @tf.function
+    def integrate_dynamics(s_t, ds_t):
+        s_t_plus_1 = s_t + ds_t
+        mask = tf.constant([0, 0, 1, 0, 0, 0], dtype=tf.float32)
+        inv_mask = 1.0 - mask
+        s_t_plus_1 = s_t_plus_1 * inv_mask + ((s_t_plus_1 + np.pi) % (2 * np.pi) - np.pi) * mask
+        return s_t_plus_1

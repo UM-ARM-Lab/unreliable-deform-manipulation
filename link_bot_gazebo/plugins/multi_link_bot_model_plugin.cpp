@@ -349,12 +349,15 @@ bool MultiLinkBotModelPlugin::GetObjectGripperCallback(peter_msgs::GetObjectRequ
                                                        peter_msgs::GetObjectResponse &res)
 {
   auto const link = model_->GetLink("head");
+  auto const x = link->WorldPose().Pos().X();
+  auto const y = link->WorldPose().Pos().Y();
   peter_msgs::NamedPoint head_point;
   geometry_msgs::Point pt;
-  head_point.point.x = link->WorldPose().Pos().X();
-  head_point.point.y = link->WorldPose().Pos().Y();
+  head_point.point.x = x;
+  head_point.point.y = y;
   head_point.name = "gripper";
   res.object.points.emplace_back(head_point);
+  res.object.state_vector = std::vector<float>{x, y};
   res.object.name = "gripper";
 
   return true;
@@ -364,14 +367,19 @@ bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequ
                                                        peter_msgs::GetObjectResponse &res)
 {
   res.object.name = "link_bot";
+  std::vector<float> state_vector;
   for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx) {
     std::stringstream ss;
     ss << "link_" << link_idx;
     auto link_name = ss.str();
     auto const link = model_->GetLink(link_name);
     peter_msgs::NamedPoint named_point;
-    named_point.point.x = link->WorldPose().Pos().X();
-    named_point.point.y = link->WorldPose().Pos().Y();
+    auto const x = link->WorldPose().Pos().X();
+    auto const y = link->WorldPose().Pos().Y();
+    state_vector.push_back(x);
+    state_vector.push_back(y);
+    named_point.point.x = x;
+    named_point.point.y = y;
     named_point.name = link_name;
     res.object.points.emplace_back(named_point);
   }
@@ -379,8 +387,13 @@ bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequ
   auto const link = model_->GetLink("head");
   peter_msgs::NamedPoint head_point;
   geometry_msgs::Point pt;
-  head_point.point.x = link->WorldPose().Pos().X();
-  head_point.point.y = link->WorldPose().Pos().Y();
+  auto const x = link->WorldPose().Pos().X();
+  auto const y = link->WorldPose().Pos().Y();
+  state_vector.push_back(x);
+  state_vector.push_back(y);
+  head_point.point.x = x;
+  head_point.point.y = y;
+  res.object.state_vector = state_vector;
   head_point.name = "head";
   res.object.points.emplace_back(head_point);
 

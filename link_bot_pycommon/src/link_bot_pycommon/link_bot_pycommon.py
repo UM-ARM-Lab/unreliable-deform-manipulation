@@ -28,11 +28,6 @@ def wrap_angle(angles):
     return (angles + np.pi) % (2 * np.pi) - np.pi
 
 
-def unit_vector(vector):
-    """ Returns the unit vector of the vector.  """
-    return vector / np.linalg.norm(vector)
-
-
 def angle_from_configuration(state):
     warnings.warn("invalid for multi link ropes", DeprecationWarning)
     v1 = np.array([state[4] - state[2], state[5] - state[3]])
