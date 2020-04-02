@@ -3,6 +3,7 @@
     <world name="default">
         <gui>
             <camera name='user_camera'>
+                <projection_type>orthographic</projection_type>
                 <pose frame=''>0 0 1.02 0 1.5707 1.5707</pose>
             </camera>
         </gui>

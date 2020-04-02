@@ -1,10 +1,11 @@
 <launch>
-    <arg name="verbose" default="true"/>
+    <arg name="verbose" default="false"/>
     <arg name="gui" default="true"/>
 
     <remap from="/gazebo/reset_simulation" to="/reset"/>
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/car.world"/>
         <arg name="verbose" default="$(arg verbose)"/>
         <arg name="paused" default="true"/>
         <arg name="gui" value="$(arg gui)"/>
@@ -12,7 +13,7 @@
 
     <!-- Spawn a robot into Gazebo -->
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
-          args="-file $(find link_bot_description)/sdf/car.sdf -sdf -z 0.02 -model car"/>
+          args="-file $(find link_bot_description)/sdf/car.sdf -sdf -z 0.003 -model car"/>
 
     <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
 </launch>

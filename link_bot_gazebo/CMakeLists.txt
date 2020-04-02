@@ -1,5 +1,5 @@
-project(link_bot_gazebo)
 cmake_minimum_required(VERSION 3.5)
+project(link_bot_gazebo)
 
 find_package(catkin REQUIRED COMPONENTS roscpp sdf_tools peter_msgs)
 find_package(cnpy REQUIRED)

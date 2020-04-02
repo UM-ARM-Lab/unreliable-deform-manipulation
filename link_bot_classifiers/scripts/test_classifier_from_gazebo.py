@@ -12,7 +12,7 @@ from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import model_utils, classifier_utils
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_pycommon import flatten_points
-from link_bot_pycommon.ros_pycommon import get_local_occupancy_data, get_occupancy_data
+from link_bot_pycommon.ros_pycommon import get_local_occupancy_data, get_occupancy_data, get_states_dict
 from peter_msgs.srv import LinkBotStateRequest
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
@@ -45,19 +45,15 @@ def main():
 
     rospy.init_node('test_classifier_from_gazebo')
 
-    services = GazeboServices()
-
-    state_req = LinkBotStateRequest()
-    link_bot_state = services.get_state(state_req)
+    service_provider = GazeboServices()
 
     full_env_data = get_occupancy_data(env_w_m=full_env_params.w,
                                        env_h_m=full_env_params.h,
                                        res=full_env_params.res,
-                                       service_provider=services)
+                                       service_provider=service_provider,
+                                       robot_name=fwd_model.scenario.robot_name())
 
-    state = {
-        'link_bot': flatten_points(link_bot_state.points)
-    }
+    state = get_states_dict(service_provider, ['link_bot'])
 
     v = args.v
     test_inputs = [

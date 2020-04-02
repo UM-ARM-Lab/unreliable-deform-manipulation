@@ -20,7 +20,9 @@ res = 0.01
 occupancy_data = get_local_occupancy_data(rows=h_rows,
                                           cols=w_cols,
                                           res=res,
-                                          center_point=np.array([0.65, 0.11]), service_provider=services)
+                                          center_point=np.array([0.65, 0.11]),
+                                          service_provider=services,
+                                          robot_name='car')
 
 plt.figure()
 plt.imshow(occupancy_data.image, extent=occupancy_data.extent)

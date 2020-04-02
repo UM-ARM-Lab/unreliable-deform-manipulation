@@ -7,9 +7,47 @@ import tensorflow as tf
 from ignition.markers import MarkerProvider
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_planning.params import CollectDynamicsParams
+from link_bot_pycommon.base_services import Services
+from peter_msgs.msg import LinkBotAction
 
 
 class TetherScenario(ExperimentScenario):
+
+    @staticmethod
+    def random_delta_pos(action_rng, max_delta_pos):
+        delta_pos = action_rng.uniform(0, max_delta_pos)
+        direction = action_rng.uniform(-np.pi, np.pi)
+        dx = np.cos(direction) * delta_pos
+        dy = np.sin(direction) * delta_pos
+        return dx, dy
+
+    @staticmethod
+    def sample_action(service_provider: Services,
+                      state,
+                      last_action: LinkBotAction,
+                      params: CollectDynamicsParams,
+                      goal_w_m,
+                      goal_h_m,
+                      action_rng):
+        max_delta_pos = service_provider.get_max_speed() * params.dt
+        new_action = LinkBotAction()
+        while True:
+            # sample the previous action with 80% probability
+            if last_action is not None and action_rng.uniform(0, 1) < 0.80:
+                dx = last_action.action[0]
+                dy = last_action.action[1]
+            else:
+                dx, dy = TetherScenario.random_delta_pos(action_rng, max_delta_pos)
+
+            half_w = goal_w_m / 2
+            half_h = goal_h_m / 2
+            if -half_w <= state['gripper'][0] + dx <= half_w and -half_h <= state['gripper'][1] + dy <= half_h:
+                break
+
+        new_action.action = [dx, dy]
+        new_action.max_time_per_step = params.dt
+        return new_action
 
     @staticmethod
     def plot_state_simple(ax: plt.Axes,
@@ -172,3 +210,7 @@ class TetherScenario(ExperimentScenario):
 
     def __repr__(self):
         return "tether"
+
+    @staticmethod
+    def robot_name():
+        return "link_bot"

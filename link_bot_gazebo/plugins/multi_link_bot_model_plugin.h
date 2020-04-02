@@ -3,10 +3,8 @@
 #include <peter_msgs/ExecuteAction.h>
 #include <peter_msgs/GetObject.h>
 #include <peter_msgs/GetObjects.h>
-#include <peter_msgs/LinkBotAction.h>
 #include <peter_msgs/LinkBotReset.h>
 #include <peter_msgs/LinkBotState.h>
-#include <peter_msgs/LinkBotTrajectory.h>
 #include <peter_msgs/NamedPoints.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
@@ -61,8 +59,6 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   bool GetObjectGripperCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
 
   bool GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
-
-  bool ExecuteTrajectoryCallback(peter_msgs::LinkBotTrajectoryRequest &req, peter_msgs::LinkBotTrajectoryResponse &res);
 
   bool LinkBotReset(peter_msgs::LinkBotResetRequest &req, peter_msgs::LinkBotResetResponse &res);
 

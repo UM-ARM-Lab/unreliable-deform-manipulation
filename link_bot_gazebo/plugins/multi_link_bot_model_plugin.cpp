@@ -6,14 +6,12 @@
 #include <gazebo/common/Time.hh>
 #include <gazebo/common/Timer.hh>
 #include <ignition/math/Vector3.hh>
-#include <iterator>
 #include <memory>
 #include <sstream>
 
 namespace gazebo {
 
 constexpr auto close_enough{0.001};
-constexpr auto stopped_threshold{0.01};
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "cppcoreguidelines-pro-type-vararg"
@@ -28,9 +26,6 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
 
   auto joy_bind = boost::bind(&MultiLinkBotModelPlugin::OnJoy, this, _1);
   auto joy_so = ros::SubscribeOptions::create<sensor_msgs::Joy>("joy", 1, joy_bind, ros::VoidPtr(), &queue_);
-  auto execute_trajectory_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteTrajectoryCallback, this, _1, _2);
-  auto execute_trajectory_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotTrajectory>(
-      "link_bot_execute_trajectory", execute_trajectory_bind, ros::VoidPtr(), &execute_trajs_queue_);
   auto execute_abs_action_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteAbsoluteAction, this, _1, _2);
   auto execute_abs_action_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExecuteAction>(
       "execute_absolute_action", execute_abs_action_bind, ros::VoidPtr(), &queue_);
@@ -52,7 +47,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto get_object_link_bot_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>(
       link_bot_service_name, get_object_link_bot_bind, ros::VoidPtr(), &queue_);
   auto reset_bind = boost::bind(&MultiLinkBotModelPlugin::LinkBotReset, this, _1, _2);
-  auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("link_bot_reset", reset_bind,
+  auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("robot_reset", reset_bind,
                                                                                  ros::VoidPtr(), &queue_);
 
   joy_sub_ = ros_node_.subscribe(joy_so);
@@ -64,7 +59,6 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   state_service_ = ros_node_.advertiseService(service_so);
   get_object_gripper_service_ = ros_node_.advertiseService(get_object_gripper_so);
   get_object_link_bot_service_ = ros_node_.advertiseService(get_object_link_bot_so);
-  execute_traj_service_ = ros_node_.advertiseService(execute_trajectory_so);
   objects_service_ = ros_node_.serviceClient<peter_msgs::GetObjects>("objects");
 
   ros_queue_thread_ = std::thread(std::bind(&MultiLinkBotModelPlugin::QueueThread, this));
@@ -273,7 +267,7 @@ bool MultiLinkBotModelPlugin::ExecuteAbsoluteAction(peter_msgs::ExecuteActionReq
 {
   mode_ = "position";
 
-  ignition::math::Vector3d position{req.action.gripper1_delta_pos.x, req.action.gripper1_delta_pos.y, 0};
+  ignition::math::Vector3d position{req.action.action[0], req.action.action[1], 0};
   gripper1_target_position_ = position;
 
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
@@ -295,7 +289,7 @@ bool MultiLinkBotModelPlugin::ExecuteAction(peter_msgs::ExecuteActionRequest &re
 {
   mode_ = "position";
 
-  ignition::math::Vector3d delta_position{req.action.gripper1_delta_pos.x, req.action.gripper1_delta_pos.y, 0};
+  ignition::math::Vector3d delta_position{req.action.action[0], req.action.action[1], 0};
   gripper1_target_position_ += delta_position;
 
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
@@ -389,45 +383,6 @@ bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequ
   head_point.point.y = link->WorldPose().Pos().Y();
   head_point.name = "head";
   res.object.points.emplace_back(head_point);
-
-  return true;
-}
-
-bool MultiLinkBotModelPlugin::ExecuteTrajectoryCallback(peter_msgs::LinkBotTrajectoryRequest &req,
-                                                        peter_msgs::LinkBotTrajectoryResponse &res)
-{
-  // TODO: Implement gripper2 path in parallel
-  peter_msgs::GetObjectsRequest get_objects_req;
-  peter_msgs::GetObjectsResponse get_objects_res;
-  for (auto const &action : req.gripper1_traj) {
-    mode_ = "position";
-    ignition::math::Vector3d delta_position{action.gripper1_delta_pos.x, action.gripper1_delta_pos.y, 0};
-    gripper1_target_position_ += delta_position;
-
-    auto control_result = UpdateControl();
-
-    // get tether all object configurations
-    objects_service_.call(get_objects_req, get_objects_res);
-    res.actual_path.emplace_back(get_objects_res.objects);
-
-    // step world so action takes place
-    auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
-    auto const steps = static_cast<unsigned int>(action.max_time_per_step / seconds_per_step);
-    for (auto i{0}; i < steps; ++i) {
-      model_->GetWorld()->Step(1);
-      // check if setpoint is reached
-      if (gripper1_pos_error_.Length() < close_enough and gripper1_vel_.Length() < stopped_threshold) {
-        break;
-      }
-    }
-
-    // stop by setting the current position as the target
-    gripper1_target_position_ = GetGripper1Pos();
-  }
-
-  // get all object configurations
-  objects_service_.call(get_objects_req, get_objects_res);
-  res.actual_path.emplace_back(get_objects_res.objects);
 
   return true;
 }

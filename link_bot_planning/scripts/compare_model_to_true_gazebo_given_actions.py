@@ -19,7 +19,7 @@ from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
 from link_bot_pycommon.ros_pycommon import make_trajectory_execution_request, trajectory_execution_response_to_numpy, \
-    get_occupancy_data, get_start_states
+    get_occupancy_data, get_states_dict
 from victor import victor_services
 
 tf.compat.v1.enable_eager_execution()
@@ -116,9 +116,10 @@ def main():
     full_env_data = get_occupancy_data(env_w_m=params['full_env_w_meters'],
                                        env_h_m=params['full_env_h_meters'],
                                        res=fwd_model.local_env_params.res,
-                                       service_provider=services)
+                                       service_provider=services,
+                                       robot_name=scenario.robot_name())
     state_keys = fwd_model.hparams['states_keys']
-    start_states = get_start_states(services, state_keys)
+    start_states = get_states_dict(services, state_keys)
 
     actions = np.genfromtxt(args.actions, delimiter=',')
     actions = actions.reshape([-1, fwd_model.n_action])

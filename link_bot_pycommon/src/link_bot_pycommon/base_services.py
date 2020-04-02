@@ -15,7 +15,6 @@ class Services:
 
     def __init__(self):
         self.compute_occupancy = rospy.ServiceProxy('occupancy', ComputeOccupancy)
-        self.get_state = rospy.ServiceProxy('link_bot_state', LinkBotState)
         self.execute_action = rospy.ServiceProxy("execute_action", ExecuteAction)
         self.world_control = rospy.ServiceProxy('world_control', WorldControl)
         self.pause = rospy.ServiceProxy('gazebo/pause_physics', std_srvs.srv.Empty)
@@ -31,8 +30,6 @@ class Services:
             'reset',
             'states_description',
             'world_control',
-            'link_bot_state',
-            'link_bot_execute_trajectory',
             'occupancy',
             'gazebo/pause_physics',
             'gazebo/unpause_physics',
@@ -42,7 +39,7 @@ class Services:
 
     @staticmethod
     def get_max_speed():
-        return rospy.get_param("link_bot/max_speed")
+        return rospy.get_param("max_speed")
 
     @staticmethod
     def get_n_action():
@@ -72,6 +69,8 @@ class Services:
         if verbose >= 1:
             print(Fore.CYAN + "Waiting for services..." + Fore.RESET)
         for s in self.services_to_wait_for:
+            if verbose >= 3:
+                print("Waiting for {}".format(s))
             rospy.wait_for_service(s)
         if verbose >= 1:
             print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
@@ -88,12 +87,11 @@ class Services:
     def setup_env(self,
                   verbose: int,
                   real_time_rate: float,
-                  reset_gripper_to: Optional,
+                  reset_to: Optional,
                   max_step_size: Optional[float] = None):
         pass
 
-    def nudge(self):
+    def nudge(self, action_dim):
         nudge = ExecuteActionRequest()
-        nudge.action.gripper1_delta_pos.x = np.random.randn() * 0.1
-        nudge.action.gripper1_delta_pos.y = np.random.randn() * 0.1
+        nudge.action.action = np.random.randn(action_dim)
         self.execute_action(nudge)

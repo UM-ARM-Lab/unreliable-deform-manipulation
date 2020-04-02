@@ -66,13 +66,14 @@ class CollectDynamicsParams:
     res: float
     full_env_h_m: float
     full_env_w_m: float
-    goal_h_m: float
-    goal_w_m: float
     max_step_size: float
     dt: float
     steps_per_traj: int
     movable_obstacles: List[str]
     move_objects_every_n: int
-    reset_gripper_to: List[float]
+    goal_h_m: Optional[float]
+    goal_w_m: Optional[float]
+    reset_robot: Optional[List[float]]
+    reset_world: Optional[bool]
 
 

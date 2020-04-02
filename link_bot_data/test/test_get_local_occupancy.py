@@ -23,7 +23,8 @@ res = 0.01
 full_env_data = get_occupancy_data(env_w_m=w,
                                    env_h_m=h,
                                    res=res,
-                                   service_provider=service_provider)
+                                   service_provider=service_provider,
+                                   robot_name='car')
 
 local_env_center = np.array([0.45, 0.0])
 local_h_rows = 100

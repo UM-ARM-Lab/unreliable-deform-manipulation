@@ -1,5 +1,10 @@
 #include "car_plugin.h"
 
+#include <peter_msgs/GetObject.h>
+#include <peter_msgs/GetObjects.h>
+#include <peter_msgs/WheelSpeeds.h>
+#include <std_msgs/String.h>
+
 #include <gazebo/common/Events.hh>
 #include <gazebo/gazebo_core.hh>
 #include <gazebo/physics/PhysicsTypes.hh>
@@ -10,104 +15,43 @@ void CarPlugin::Load(physics::ModelPtr model, sdf::ElementPtr sdf)
   if (!ros::isInitialized()) {
     auto argc = 0;
     char **argv = nullptr;
-    ros::init(argc, argv, "multi_link_bot_model_plugin", ros::init_options::NoSigintHandler);
+    ros::init(argc, argv, "car_plugin", ros::init_options::NoSigintHandler);
   }
 
   model_ = model;
 
-  body_ = model_->GetLink(sdf->Get<std::string>("base"));
-  right_wheel_ = model_->GetJoint("right_wheel_joint");
-  left_wheel_ = model_->GetJoint("left_wheel_joint");
+  body_ = model_->GetLink("base");
+  right_wheel_ = model_->GetJoint("right_wheel");
+  left_wheel_ = model_->GetJoint("left_wheel");
 
   auto action_bind = boost::bind(&CarPlugin::ExecuteAction, this, _1, _2);
   auto action_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExecuteAction>("execute_action", action_bind,
                                                                                    ros::VoidPtr(), &queue_);
-  auto action_mode_bind = boost::bind(&CarPlugin::OnActionMode, this, _1);
-  auto action_mode_so = ros::SubscribeOptions::create<std_msgs::String>("link_bot_action_mode", 1, action_mode_bind,
-                                                                        ros::VoidPtr(), &queue_);
-  auto state_bind = boost::bind(&CarPlugin::StateServiceCallback, this, _1, _2);
-  auto service_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotState>("link_bot_state", state_bind,
-                                                                                   ros::VoidPtr(), &queue_);
-  constexpr auto gripper_service_name{"gripper"};
-  auto get_object_gripper_bind = boost::bind(&CarPlugin::GetObjectGripperCallback, this, _1, _2);
-  auto get_object_gripper_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>(
-      gripper_service_name, get_object_gripper_bind, ros::VoidPtr(), &queue_);
-  constexpr auto link_bot_service_name{"link_bot"};
-  auto get_object_link_bot_bind = boost::bind(&CarPlugin::GetObjectLinkBotCallback, this, _1, _2);
-  auto get_object_link_bot_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>(
-      link_bot_service_name, get_object_link_bot_bind, ros::VoidPtr(), &queue_);
-  auto reset_bind = boost::bind(&CarPlugin::LinkBotReset, this, _1, _2);
-  auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("link_bot_reset", reset_bind,
+  constexpr auto car_object_service_name{"car"};
+  auto get_object_car_bind = boost::bind(&CarPlugin::GetObjectCarCallback, this, _1, _2);
+  auto get_object_car_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>(
+      car_object_service_name, get_object_car_bind, ros::VoidPtr(), &queue_);
+  auto reset_bind = boost::bind(&CarPlugin::ResetRobot, this, _1, _2);
+  auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("reset_robot", reset_bind,
                                                                                  ros::VoidPtr(), &queue_);
 
-  joy_sub_ = ros_node_.subscribe(joy_so);
   execute_action_service_ = ros_node_.advertiseService(action_so);
-  execute_absolute_action_service_ = ros_node_.advertiseService(execute_abs_action_so);
-  register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
-  reset_service_ = ros_node_.advertiseService(reset_so);
-  action_mode_sub_ = ros_node_.subscribe(action_mode_so);
-  state_service_ = ros_node_.advertiseService(service_so);
-  get_object_gripper_service_ = ros_node_.advertiseService(get_object_gripper_so);
-  get_object_link_bot_service_ = ros_node_.advertiseService(get_object_link_bot_so);
-  execute_traj_service_ = ros_node_.advertiseService(execute_trajectory_so);
+  register_car_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
+  wheel_seed_pub_ = ros_node_.advertise<peter_msgs::WheelSpeeds>("wheel_speeds", 10, true);
+  get_object_car_service_ = ros_node_.advertiseService(get_object_car_so);
   objects_service_ = ros_node_.serviceClient<peter_msgs::GetObjects>("objects");
+  reset_service_ = ros_node_.advertiseService(reset_so);
 
   ros_queue_thread_ = std::thread(std::bind(&CarPlugin::QueueThread, this));
-  execute_trajs_ros_queue_thread_ = std::thread(std::bind(&CarPlugin::QueueThread, this));
 
-  while (register_object_pub_.getNumSubscribers() < 1) {
+  while (register_car_pub_.getNumSubscribers() < 1) {
   }
 
-  {
-    std_msgs::String register_object;
-    register_object.data = link_bot_service_name;
-    register_object_pub_.publish(register_object);
-  }
+  std_msgs::String register_object;
+  register_object.data = car_object_service_name;
+  register_car_pub_.publish(register_object);
 
   {
-    std_msgs::String register_object;
-    register_object.data = gripper_service_name;
-    register_object_pub_.publish(register_object);
-  }
-
-  model_ = parent;
-
-  {
-    if (!sdf->HasElement("rope_length")) {
-      printf("using default rope length=%f\n", length_);
-    }
-    else {
-      length_ = sdf->GetElement("rope_length")->Get<double>();
-    }
-
-    if (!sdf->HasElement("num_links")) {
-      printf("using default num_links=%u\n", num_links_);
-    }
-    else {
-      num_links_ = sdf->GetElement("num_links")->Get<unsigned int>();
-    }
-
-    if (!sdf->HasElement("kP_pos")) {
-      printf("using default kP_pos=%f\n", kP_pos_);
-    }
-    else {
-      kP_pos_ = sdf->GetElement("kP_pos")->Get<double>();
-    }
-
-    if (!sdf->HasElement("kI_pos")) {
-      printf("using default kI_pos=%f\n", kI_pos_);
-    }
-    else {
-      kI_pos_ = sdf->GetElement("kI_pos")->Get<double>();
-    }
-
-    if (!sdf->HasElement("kD_pos")) {
-      printf("using default kD_pos=%f\n", kD_pos_);
-    }
-    else {
-      kD_pos_ = sdf->GetElement("kD_pos")->Get<double>();
-    }
-
     if (!sdf->HasElement("kP_vel")) {
       printf("using default kP_vel=%f\n", kP_vel_);
     }
@@ -129,8 +73,11 @@ void CarPlugin::Load(physics::ModelPtr model, sdf::ElementPtr sdf)
       kD_vel_ = sdf->GetElement("kD_vel")->Get<double>();
     }
 
-    if (!sdf->HasElement("gripper1_link")) {
-      throw std::invalid_argument("no gripper1_link tag provided");
+    if (!sdf->HasElement("kFF_vel")) {
+      printf("using default kFF_vel=%f\n", kFF_vel_);
+    }
+    else {
+      kFF_vel_ = sdf->GetElement("kFF_vel")->Get<double>();
     }
 
     if (!sdf->HasElement("max_force")) {
@@ -139,21 +86,13 @@ void CarPlugin::Load(physics::ModelPtr model, sdf::ElementPtr sdf)
     else {
       max_force_ = sdf->GetElement("max_force")->Get<double>();
     }
-
-    if (!sdf->HasElement("max_vel")) {
-      printf("using default max_vel=%f\n", max_vel_);
-    }
-    else {
-      max_vel_ = sdf->GetElement("max_vel")->Get<double>();
-    }
   }
 
   ros_node_.setParam("n_action", 2);
-  ros_node_.setParam("link_bot/rope_length", length_);
   ros_node_.setParam("max_speed", max_speed_);
-
-  left_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel_, -max_vel_);
-  right_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel_, -max_vel_);
+  constexpr auto max_integral{1};
+  left_wheel_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_integral, -max_integral, max_force_, -max_force_);
+  right_wheel_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_integral, -max_integral, max_force_, -max_force_);
 
   // Connect to the world update event.
   // This will trigger the Update function every Gazebo iteration
@@ -162,35 +101,88 @@ void CarPlugin::Load(physics::ModelPtr model, sdf::ElementPtr sdf)
 
 void CarPlugin::Update(const common::UpdateInfo &info)
 {
-  ControlResult control = UpdateControl();
+  UpdateControl();
+  left_wheel_->SetForce(0, left_force_);
+  right_wheel_->SetForce(0, right_force_);
+}
 
-  left_wheel_vel_pid_->s
+void CarPlugin::UpdateControl()
+{
+  std::lock_guard<std::mutex> guard(control_mutex_);
+  auto const dt = model_->GetWorld()->Physics()->GetMaxStepSize();
 
-  ignition::math::Pose3d relativePose = body_->WorldCoGPose();
+  auto const current_left_wheel_velocity = left_wheel_->GetVelocity(0);
+  auto const left_error = current_left_wheel_velocity - left_wheel_target_velocity_;
+  auto const delta_left_force = left_wheel_vel_pid_.Update(left_error, dt);
 
-  msgs::Vector3d *pos = new msgs::Vector3d();
-  pos->set_x(relativePose.Pos()[0]);
-  pos->set_y(relativePose.Pos()[1]);
-  pos->set_z(relativePose.Pos()[2]);
+  auto const current_right_wheel_velocity = right_wheel_->GetVelocity(0);
+  auto const right_error = current_right_wheel_velocity - right_wheel_target_velocity_;
+  auto const delta_right_force = right_wheel_vel_pid_.Update(right_error, dt);
 
-  msgs::Quaternion *rot = new msgs::Quaternion();
-  rot->set_x(relativePose.Rot().X());
-  rot->set_y(relativePose.Rot().Y());
-  rot->set_z(relativePose.Rot().Z());
-  rot->set_w(relativePose.Rot().W());
+  left_force_ = kFF_vel_ * left_wheel_target_velocity_ + delta_left_force;
+  right_force_ = kFF_vel_ * right_wheel_target_velocity_ + delta_right_force;
 
-  msgs::Pose *pose = new msgs::Pose();
-  pose->set_allocated_position(pos);
-  pose->set_allocated_orientation(rot);
+  peter_msgs::WheelSpeeds wheel_speeds;
+  wheel_speeds.left_speed = current_left_wheel_velocity;
+  wheel_speeds.right_speed = current_right_wheel_velocity;
+  wheel_speeds.left_force = left_force_;
+  wheel_speeds.right_force = right_force_;
+  wheel_seed_pub_.publish(wheel_speeds);
+}
 
-  float left_vel_rps = 0;
-  float right_vel_rps = 0;
-  float left_angle = 0;
-  float right_angle = 0;
-  left_vel_rps = left_wheel_->GetVelocity(0);
-  right_vel_rps = right_wheel_->GetVelocity(0);
-  left_angle = left_wheel_->Position();
-  right_angle = right_wheel_->Position();
+bool CarPlugin::GetObjectCarCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
+{
+  auto const pose = body_->WorldCoGPose();
+  float const x = pose.Pos()[0];
+  float const y = pose.Pos()[1];
+  float const yaw = pose.Rot().Euler().Z();
+
+  auto const linear_velocity = body_->WorldCoGLinearVel();
+  float const xdot = linear_velocity.X();
+  float const ydot = linear_velocity.Y();
+  float const yawdot = body_->WorldAngularVel().Z();
+
+  std::vector<float> state{x, y, yaw, xdot, ydot, yawdot};
+  res.object.state_dim = state.size();
+  res.object.state_vector = state;
+  res.object.name = "car";
+
+  return true;
+}
+
+bool CarPlugin::ExecuteAction(peter_msgs::ExecuteActionRequest &req, peter_msgs::ExecuteActionResponse &res)
+{
+  left_wheel_target_velocity_ = req.action.action[0];
+  right_wheel_target_velocity_ = req.action.action[1];
+
+  auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
+  auto const steps = static_cast<unsigned int>(req.action.max_time_per_step / seconds_per_step);
+  // Wait until the setpoint is reached
+  model_->GetWorld()->Step(steps);
+
+  // set setpoint to zero after
+  left_wheel_target_velocity_ = 0;
+  right_wheel_target_velocity_ = 0;
+
+  return true;
+}
+
+bool CarPlugin::ResetRobot(peter_msgs::LinkBotResetRequest &req, peter_msgs::LinkBotResetResponse &res) {}
+
+void CarPlugin::QueueThread()
+{
+  double constexpr timeout = 0.01;
+  while (ros_node_.ok()) {
+    queue_.callAvailable(ros::WallDuration(timeout));
+  }
+}
+
+CarPlugin::~CarPlugin()
+{
+  queue_.clear();
+  queue_.disable();
+  ros_node_.shutdown();
+  ros_queue_thread_.join();
 }
 
 GZ_REGISTER_MODEL_PLUGIN(CarPlugin)

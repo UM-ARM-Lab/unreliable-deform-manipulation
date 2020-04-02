@@ -1,198 +1,193 @@
 <?xml version='1.0'?>
 <sdf version='1.6'>
     <model name='car'>
-        <link name='base'>
-            <pose>0 0 0.025 0 0 0</pose>
+
+        <link name="base">
             <inertial>
-                <pose frame=''>0 0 0 0 0 0</pose>
-                <mass>0.5</mass>
+                <pose>0.001453 -0.000453 0.029787 0 0 0</pose>
                 <inertia>
-                    <ixx>0.00020833</ixx>
+                    <ixx>0.003005</ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <izz>0.00020833</izz>
+                    <iyy>0.03005</iyy>
                     <iyz>0</iyz>
-                    <iyy>0.00020833</iyy>
+                    <izz>0.05476</izz>
                 </inertia>
+                <mass>2.0</mass>
             </inertial>
-            <visual name='base_visual'>
-                <pose>0 0 0 0 0 0</pose>
+            <collision name="base_collision">
+                <pose>0 0 0.047800 0 0 0</pose>
                 <geometry>
-                    <box>
-                        <size>0.05 0.05 0.05</size>
-                    </box>
-                </geometry>
-                <material>
-                    <script>
-                        <name>Gazebo/Yellow</name>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                    </script>
-                </material>
-            </visual>
-            <collision name='base_visual'>
-                <pose>0 0 0 0 0 0</pose>
-                <geometry>
-                    <box>
-                        <size>0.05 0.05 0.05</size>
-                    </box>
+                    <cylinder>
+                        <radius>0.075</radius>
+                        <length>0.04</length>
+                    </cylinder>
                 </geometry>
             </collision>
-            <collision name='caster_collision'>
-                <pose>0.019 0 -0.017 0 0 0</pose>
+            <visual name="base_visual">
+                <pose>0 0 0.03 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.075</radius>
+                        <length>0.04</length>
+                    </cylinder>
+                </geometry>
+            </visual>
+            <collision name="front_wheel_collision">
+                <pose>0.05 0 0.017000 0 1.570700 1.570700</pose>
                 <geometry>
                     <sphere>
-                        <radius>0.01</radius>
+                        <radius>0.018000</radius>
                     </sphere>
                 </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0</mu>
+                        </ode>
+                    </friction>
+                </surface>
             </collision>
-            <visual name='caster_visual'>
-                <pose>0.019 0 -0.017 0 0 0</pose>
+            <visual name="front_wheel_visual">
+                <pose>0.05 0 0.017000 0 1.570700 1.570700</pose>
                 <geometry>
                     <sphere>
-                        <radius>0.01</radius>
+                        <radius>0.018</radius>
+                    </sphere>
+                </geometry>
+            </visual>
+            <collision name="rear_wheel_collision">
+                <pose>-0.05 0 0.017 0 1.5707 1.5707</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.015000</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0</mu>
+                        </ode>
+                    </friction>
+                </surface>
+            </collision>
+            <visual name="rear_wheel_visual">
+                <pose>-0.05 0 0.017000 0 1.570700 1.570700</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.018</radius>
                     </sphere>
                 </geometry>
             </visual>
         </link>
-        <link name='right_wheel'>
-            <pose>-0.02 -0.025 0.008 0 1.57079 1.57079</pose>
+        <link name="left_wheel">
+            <pose>0 0.05 0.032000 0 0 0</pose>
             <inertial>
-                <mass>0.01</mass>
                 <inertia>
-                    <ixx>0.00000037</ixx>
+                    <!-- having these inertias is what makes the model not spin all over the place -->
+                    <ixx>0.001000</ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>0.00000037</iyy>
+                    <iyy>0.001000</iyy>
                     <iyz>0</iyz>
-                    <izz>0.00000050</izz>
+                    <izz>0.001000</izz>
                 </inertia>
-                <pose>0 0 0 0 0 0</pose>
+                <mass>0.010000</mass>
             </inertial>
-            <visual name='right_wheel_visual'>
-                <pose>0 0 0 0 0 0</pose>
+            <collision name="collision">
+                <pose>0 0 0 0 1.570700 1.570700</pose>
                 <geometry>
                     <cylinder>
-                        <radius>0.01</radius>
-                        <length>0.012</length>
+                        <radius>0.033000</radius>
+                        <length>0.023000</length>
                     </cylinder>
                 </geometry>
-                <material>
-                    <script>
-                        <name>Gazebo/DarkGray</name>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                    </script>
-                </material>
-            </visual>
-            <collision name='right_wheel_collision'>
-                <pose>0 0 0 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.01</radius>
-                        <length>0.012</length>
-                    </cylinder>
-                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>10</mu>
+                        </ode>
+                    </friction>
+                </surface>
             </collision>
+            <visual name="visual">
+                <pose>0 0 0 0 1.570700 1.570700</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.033000</radius>
+                        <length>0.023000</length>
+                    </cylinder>
+                </geometry>
+            </visual>
         </link>
-        <link name='left_wheel'>
-            <pose>-0.02 0.025 0.008 0 1.57079 1.57079</pose>
+        <link name="right_wheel">
+            <pose>0 -0.05 0.032000 0 0 0</pose>
             <inertial>
-                <mass>0.01</mass>
                 <inertia>
-                    <ixx>0.00000037</ixx>
+                    <ixx>0.001000</ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>0.00000037</iyy>
+                    <iyy>0.001000</iyy>
                     <iyz>0</iyz>
-                    <izz>0.00000050</izz>
+                    <izz>0.001000</izz>
                 </inertia>
+                <mass>0.010000</mass>
             </inertial>
-            <visual name='left_wheel_visual'>
-                <pose>0 0 0 0 0 0</pose>
+            <collision name="collision">
+                <pose>0 0 0 0 1.570700 1.570700</pose>
                 <geometry>
                     <cylinder>
-                        <radius>0.01</radius>
-                        <length>0.012</length>
+                        <radius>0.033000</radius>
+                        <length>0.023000</length>
                     </cylinder>
                 </geometry>
-                <material>
-                    <script>
-                        <name>Gazebo/DarkGray</name>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                    </script>
-                </material>
-            </visual>
-            <collision name='left_wheel_collision'>
-                <pose>0 0 0 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.01</radius>
-                        <length>0.012</length>
-                    </cylinder>
-                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>10</mu>
+                        </ode>
+                    </friction>
+                </surface>
             </collision>
+            <visual name="visual">
+                <pose>0 0 0 0 1.570700 1.570700</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.033000</radius>
+                        <length>0.023000</length>
+                    </cylinder>
+                </geometry>
+            </visual>
         </link>
-        <joint name='left_wheel_joint' type='revolute'>
+        <joint name="left_wheel" type="revolute">
             <parent>base</parent>
             <child>left_wheel</child>
-            <pose>0 0 0 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
-                <limit>
-                    <effort>0.016</effort> <!-- 16 kg-cm -->
-                    <velocity>41.88</velocity> <!-- ~400 rpm -->
-                </limit>
+                <xyz>0 1 0</xyz>
+                <use_parent_model_frame>true</use_parent_model_frame>
                 <dynamics>
-                    <damping>0.0058</damping>
-                    <friction>0.0040</friction>
+                    <friction>0.001</friction>
+                    <damping>0.0002</damping>
                 </dynamics>
             </axis>
-            <physics>
-                <ode>
-                    <implicit_spring_damper>true</implicit_spring_damper>
-                    <limit>
-                        <cfm>0.0</cfm>
-                        <erp>0.0</erp>
-                    </limit>
-                    <suspension>
-                        <cfm>0.0</cfm>
-                        <erp>0.0</erp>
-                    </suspension>
-                </ode>
-            </physics>
         </joint>
-        <joint name='right_wheel_joint' type='revolute'>
+        <joint name="right_wheel" type="revolute">
             <parent>base</parent>
             <child>right_wheel</child>
-            <pose>0 0 0 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
-                <use_parent_model_frame>0</use_parent_model_frame>
-                <limit>
-                    <effort>0.016</effort> <!-- 16 kg-cm -->
-                    <velocity>41.88</velocity> <!-- ~400 rpm -->
-                </limit>
+                <xyz>0 1 0</xyz>
+                <use_parent_model_frame>true</use_parent_model_frame>
                 <dynamics>
-                    <damping>0.0058</damping>
-                    <friction>0.0040</friction>
+                    <friction>0.001</friction>
+                    <damping>0.0002</damping>
                 </dynamics>
             </axis>
-            <physics>
-                <ode>
-                    <implicit_spring_damper>true</implicit_spring_damper>
-                    <limit>
-                        <cfm>0</cfm>
-                        <erp>0.0</erp>
-                    </limit>
-                    <suspension>
-                        <cfm>0</cfm>
-                        <erp>0.0</erp>
-                    </suspension>
-                </ode>
-            </physics>
         </joint>
+
         <plugin name="car_plugin" filename="libcar_plugin.so">
-            <left_wheel_joint>left_wheel_joint</left_wheel_joint>
-            <right_wheel_joint>right_wheel_joint</right_wheel_joint>
+            <kP_vel>0.01</kP_vel>
+            <kFF_vel>0.004</kFF_vel>
+            <max_force>0.05</max_force>
         </plugin>
     </model>
 </sdf>

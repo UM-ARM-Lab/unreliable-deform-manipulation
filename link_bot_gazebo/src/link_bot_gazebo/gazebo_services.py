@@ -22,7 +22,7 @@ class GazeboServices(Services):
         super().__init__()
         # we can't mock these
         self.apply_body_wrench = rospy.ServiceProxy('gazebo/apply_body_wrench', ApplyBodyWrench)
-        self.link_bot_reset = rospy.ServiceProxy("link_bot_reset", LinkBotReset)
+        self.link_bot_reset = rospy.ServiceProxy("reset_robot", LinkBotReset)
         self.gazebo_reset = rospy.ServiceProxy("gazebo/reset_world", Empty)
 
         # don't want to mock these
@@ -38,13 +38,12 @@ class GazeboServices(Services):
         self.position_2d_stop = rospy.Publisher('position_2d_stop', std_msgs.msg.Empty, queue_size=10)
         self.position_2d_action = rospy.Publisher('position_2d_action', ModelsPoses, queue_size=10)
 
-        self.services_to_wait_for.append('link_bot_reset')
-
     def setup_env(self,
                   verbose: int,
                   real_time_rate: float,
-                  reset_gripper_to: Optional,
-                  max_step_size: Optional[float] = None):
+                  reset_robot: Optional,
+                  max_step_size: Optional[float] = None,
+                  ):
         self.wait(verbose)
 
         # set up physics
@@ -59,18 +58,18 @@ class GazeboServices(Services):
         set.time_step = max_step_size
         self.set_physics.call(set)
 
-        self.reset_world(verbose, reset_gripper_to)
+        self.reset_world(verbose, reset_robot)
 
         # first the controller
+        n_action = self.get_n_action()
         stop = ExecuteActionRequest()
-        stop.action.gripper1_delta_pos.x = 0
-        stop.action.gripper1_delta_pos.y = 0
+        stop.action.action = [0] * n_action
         stop.action.max_time_per_step = 1.0
         self.execute_action(stop)
 
         self.position_2d_stop.publish(std_msgs.msg.Empty())
 
-    def reset_world(self, verbose, reset_gripper_to: Optional[Tuple[float]] = None):
+    def reset_world(self, verbose, reset_robot: Optional[Tuple[float]] = None):
         empty = EmptyRequest()
         self.reset.call(empty)
         self.gazebo_reset(empty)
@@ -79,17 +78,19 @@ class GazeboServices(Services):
         enable_link_bot.data = 'position'
         self.link_bot_mode.publish(enable_link_bot)
 
-        self.reset_gripper(reset_gripper_to)
+        self.reset_robot(reset_robot, verbose)
 
         if verbose >= 1:
             print(Fore.YELLOW + "World is Reset" + Fore.RESET)
 
-    def reset_gripper(self, reset_gripper_to):
-        if reset_gripper_to is not None:
+    def reset_robot(self, reset_robot, verbose):
+        if reset_robot is not None:
             reset = LinkBotResetRequest()
-            reset.point.x = reset_gripper_to[0]
-            reset.point.y = reset_gripper_to[1]
+            reset.point.x = reset_robot[0]
+            reset.point.y = reset_robot[1]
             self.link_bot_reset(reset)
+            if verbose >= 1:
+                print(Fore.YELLOW + "World is Reset" + Fore.RESET)
 
     @staticmethod
     def random_object_move(model_name: str, w: float, h: float, padding: float, rng: np.random.RandomState):

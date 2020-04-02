@@ -4,6 +4,7 @@
         <gui>
             <camera name='user_camera'>
                 <pose frame=''>0 0 1.02 0 1.5707 1.5707</pose>
+                <projection_type>orthographic</projection_type>
             </camera>
         </gui>
         <include>
@@ -26,10 +27,5 @@
                 </constraints>
             </ode>
         </physics>
-        <include>
-            <uri>model://arena_5</uri>
-            <pose>0 0 0 0 0 0</pose>
-            <name>arena</name>
-        </include>
     </world>
 </sdf>

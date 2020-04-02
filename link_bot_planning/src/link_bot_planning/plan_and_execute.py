@@ -14,7 +14,7 @@ from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
-from link_bot_pycommon.ros_pycommon import get_start_states
+from link_bot_pycommon.ros_pycommon import get_states_dict
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 
@@ -64,10 +64,11 @@ class PlanAndExecute:
                 full_env_data = get_occupancy_data(env_w_m=self.planner.full_env_params.w,
                                                    env_h_m=self.planner.full_env_params.h,
                                                    res=self.planner.full_env_params.res,
-                                                   service_provider=self.service_provider)
+                                                   service_provider=self.service_provider,
+                                                   robot_name=self.planner.experiment_scenario.robot_name())
 
                 # get start states
-                start_states = get_start_states(self.service_provider, self.planner.state_space_description.keys())
+                start_states = get_states_dict(self.service_provider, self.planner.state_space_description.keys())
 
                 # generate a random target
                 goal = self.get_goal(self.planner_params['goal_w_m'],
@@ -107,18 +108,12 @@ class PlanAndExecute:
                     self.on_plan_complete(planner_result.path, goal, planner_result.actions, full_env_data, planner_data,
                                           planning_time, planner_result.planner_status)
 
-                    trajectory_execution_request = ros_pycommon.make_trajectory_execution_request(self.planner.fwd_model.dt,
-                                                                                                  planner_result.actions)
-
                     # execute the plan, collecting the states that actually occurred
                     if not self.no_execution:
                         if self.verbose >= 2:
                             print(Fore.CYAN + "Executing Plan.".format(goal) + Fore.RESET)
 
-                        traj_exec_response = self.service_provider.execute_trajectory(trajectory_execution_request)
-                        self.service_provider.pause(std_srvs.srv.EmptyRequest())
-
-                        actual_path = ros_pycommon.trajectory_execution_response_to_numpy(traj_exec_response)
+                        actual_path = self.execute_plan(planner_result.actions)
                         self.on_execution_complete(planner_result.path,
                                                    planner_result.actions,
                                                    goal,
@@ -180,7 +175,7 @@ class PlanAndExecute:
 
     def on_before_plan(self):
         if self.sim_params.nudge is not None:
-            self.service_provider.nudge()
+            self.service_provider.nudge(self.planner.n_action)
 
         if self.sim_params.movable_obstacles is not None:
             # FIXME: instead of hard coding obstacles names, use the /objects service
@@ -191,3 +186,11 @@ class PlanAndExecute:
                                                self.planner.full_env_params.h,
                                                padding=0,
                                                rng=self.env_rng)
+
+    def execute_plan(self, actions):
+        # call the execute action service with all the actions
+        raise NotImplementedError()
+        # self.planner.fwd_model.dt
+        # # should be a list of dictionaries of the state. What states are returned are dependant on what the simulator returns
+        # actual_path
+        # return actual_path

@@ -107,7 +107,7 @@ class ClassifierDataCollector(PlanAndExecute):
 
     def on_before_plan(self):
         if self.reset_gripper_to is not None:
-            self.service_provider.reset_gripper(self.reset_gripper_to)
+            self.service_provider.reset_robot(self.reset_gripper_to, self.verbose)
         super().on_before_plan()
 
     def get_goal(self, w_meters, h, full_env_data):
@@ -156,6 +156,7 @@ class ClassifierDataCollector(PlanAndExecute):
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
+        # FIXME: this is kinda of hacky, we should be a service that gets this information at the beginning
         # write the hparams once we've figured out what objects we're going to have
         if not self.hparams_written:
             self.hparams_written = True

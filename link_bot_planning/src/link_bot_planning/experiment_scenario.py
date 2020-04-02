@@ -1,12 +1,13 @@
 from typing import Dict
 
 from ignition.markers import MarkerProvider
+from link_bot_pycommon.base_services import Services
 
 
 class ExperimentScenario:
 
     @staticmethod
-    def movable_objects():
+    def sample_action(service_provider: Services, state, last_action, params, goal_w_m, goal_h_m, action_rng):
         raise NotImplementedError()
 
     @staticmethod
@@ -63,15 +64,19 @@ class ExperimentScenario:
 
     @staticmethod
     def sample_goal(state, goal):
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def update_action_artist(artist, state, action):
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def update_artist(artist, state):
-        pass
+        raise NotImplementedError()
 
     def __repr__(self):
+        raise NotImplementedError()
+
+    @staticmethod
+    def robot_name():
         raise NotImplementedError()

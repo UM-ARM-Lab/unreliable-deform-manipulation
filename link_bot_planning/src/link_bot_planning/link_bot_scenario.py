@@ -138,3 +138,7 @@ class LinkBotScenario(ExperimentScenario):
 
     def __repr__(self):
         return "link_bot"
+
+    @staticmethod
+    def robot_name():
+        return "link_bo"
