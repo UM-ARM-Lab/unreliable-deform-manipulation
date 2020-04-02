@@ -15,7 +15,7 @@ from link_bot_planning.state_spaces import from_numpy, ValidRopeConfigurationCom
 from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon import link_bot_sdf_utils
-from link_bot_pycommon.ros_pycommon import Services
+from link_bot_pycommon.base_services import Services
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 

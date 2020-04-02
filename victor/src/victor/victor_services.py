@@ -3,7 +3,7 @@ from typing import Tuple, Optional, Dict
 import numpy as np
 from std_srvs.srv import EmptyRequest
 
-from link_bot_pycommon.ros_pycommon import Services
+from link_bot_pycommon.base_services import Services
 
 
 class VictorServices(Services):

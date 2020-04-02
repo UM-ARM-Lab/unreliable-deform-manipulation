@@ -14,7 +14,8 @@ from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
-from link_bot_pycommon.ros_pycommon import Services, get_start_states
+from link_bot_pycommon.ros_pycommon import get_start_states
+from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 
 

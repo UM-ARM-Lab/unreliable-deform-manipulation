@@ -25,7 +25,7 @@ from link_bot_planning.params import SimParams
 from link_bot_planning.plan_and_execute import PlanAndExecute
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.ros_pycommon import Services
+from link_bot_pycommon.base_services import Services
 from victor import victor_services
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)

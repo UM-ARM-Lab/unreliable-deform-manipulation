@@ -163,10 +163,9 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
     }
   }
 
-  // plus 1 because we want both end points inclusive
   ros_node_.setParam("n_action", 2);
   ros_node_.setParam("link_bot/rope_length", length_);
-  ros_node_.setParam("link_bot/max_speed", max_speed_);
+  ros_node_.setParam("max_speed", max_speed_);
 
   auto const &gripper1_link_name = sdf->GetElement("gripper1_link")->Get<std::string>();
   gripper1_link_ = model_->GetLink(gripper1_link_name);

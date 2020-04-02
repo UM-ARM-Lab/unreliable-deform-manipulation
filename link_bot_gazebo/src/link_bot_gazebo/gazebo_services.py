@@ -10,7 +10,7 @@ from std_msgs.msg import String
 from std_srvs.srv import Empty, EmptyRequest
 
 from link_bot_pycommon.link_bot_pycommon import quaternion_from_euler
-from link_bot_pycommon.ros_pycommon import Services
+from link_bot_pycommon.base_services import Services
 from peter_msgs.msg import ModelsPoses, ModelPose
 from peter_msgs.srv import WorldControlRequest, ExecuteActionRequest, GetObject, LinkBotReset, \
     LinkBotResetRequest

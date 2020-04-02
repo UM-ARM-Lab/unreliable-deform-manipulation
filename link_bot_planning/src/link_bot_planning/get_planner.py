@@ -5,7 +5,7 @@ import link_bot_planning.viz_object
 from link_bot_planning import model_utils, classifier_utils
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_planning.nearest_rrt import NearestRRT
-from link_bot_pycommon.ros_pycommon import Services
+from link_bot_pycommon.base_services import Services
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from state_space_dynamics.ensemble_dynamics_function import EnsembleDynamicsFunction
 
