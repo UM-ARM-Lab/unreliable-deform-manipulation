@@ -96,14 +96,14 @@ def generate_trajs(service_provider,
                    full_output_directory,
                    env_rng: np.random.RandomState,
                    action_rng: np.random.RandomState):
-    examples = np.ndarray([args.trajs_per_file], dtype=object)
+    examples = np.ndarray([params.trajs_per_file], dtype=object)
     global_t_step = 0
     last_record_t = perf_counter()
     for traj_idx in range(args.trajs):
         if params.reset_robot is not None or params.reset_world:
             service_provider.reset_world(args.verbose, reset_robot=params.reset_robot)
 
-        current_record_traj_idx = traj_idx % args.trajs_per_file
+        current_record_traj_idx = traj_idx % params.trajs_per_file
 
         # Might not do anything, depends on args
         rearrange_environment(service_provider, params, traj_idx, env_rng)
@@ -120,13 +120,13 @@ def generate_trajs(service_provider,
         examples[current_record_traj_idx] = example
 
         # Save the data
-        if current_record_traj_idx == args.trajs_per_file - 1:
+        if current_record_traj_idx == params.trajs_per_file - 1:
             # Construct the dataset where each trajectory has been serialized into one big string
             # since TFRecords don't really support hierarchical data structures
             serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
 
             end_traj_idx = traj_idx + args.start_idx_offset
-            start_traj_idx = end_traj_idx - args.trajs_per_file + 1
+            start_traj_idx = end_traj_idx - params.trajs_per_file + 1
             full_filename = os.path.join(full_output_directory,
                                          "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tf.data.experimental.TFRecordWriter(full_filename, compression_type='ZLIB')
@@ -145,7 +145,7 @@ def generate(service_provider, params: CollectDynamicsParams, args):
     rospy.init_node('collect_dynamics_data')
     scenario = get_scenario(args.scenario)
 
-    assert args.trajs % args.trajs_per_file == 0, "num trajs must be multiple of {}".format(args.trajs_per_file)
+    assert args.trajs % params.trajs_per_file == 0, "num trajs must be multiple of {}".format(params.trajs_per_file)
 
     full_output_directory = data_directory(args.outdir, args.trajs)
     if not os.path.isdir(full_output_directory) and args.verbose:

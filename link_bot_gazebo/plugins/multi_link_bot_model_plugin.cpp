@@ -47,7 +47,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto get_object_link_bot_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>(
       link_bot_service_name, get_object_link_bot_bind, ros::VoidPtr(), &queue_);
   auto reset_bind = boost::bind(&MultiLinkBotModelPlugin::LinkBotReset, this, _1, _2);
-  auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("robot_reset", reset_bind,
+  auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("reset_robot", reset_bind,
                                                                                  ros::VoidPtr(), &queue_);
 
   joy_sub_ = ros_node_.subscribe(joy_so);

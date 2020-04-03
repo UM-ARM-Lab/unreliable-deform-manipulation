@@ -71,9 +71,8 @@ class CollectDynamicsParams:
     steps_per_traj: int
     movable_obstacles: List[str]
     move_objects_every_n: int
+    trajs_per_file: int
     goal_h_m: Optional[float]
     goal_w_m: Optional[float]
     reset_robot: Optional[List[float]]
     reset_world: Optional[bool]
-
-

@@ -11,7 +11,8 @@
   "move_objects_every_n": 0,
   "movable_obstacles": [
   ],
-  "steps_per_traj": 10
+  "steps_per_traj": 10,
+  "trajs_per_file": 128
 }
 
 
