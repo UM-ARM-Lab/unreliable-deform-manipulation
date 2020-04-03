@@ -9,6 +9,7 @@
   "goal_h_m": 4.0,
   "max_step_size": 0.01,
   "move_objects_every_n": 0,
+  "no_obstacles": false,
   "movable_obstacles": [
   ],
   "steps_per_traj": 128,

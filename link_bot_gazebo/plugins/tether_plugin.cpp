@@ -81,6 +81,7 @@ bool TetherPlugin::GetObjectServiceCallback(peter_msgs::GetObjectRequest &req, p
   head_point.point.x = x;
   head_point.point.y = y;
   head_point.name = "head";
+  res.object.state_vector = state_vector;
   res.object.points.emplace_back(head_point);
 
   return true;

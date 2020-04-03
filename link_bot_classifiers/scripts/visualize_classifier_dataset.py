@@ -138,7 +138,7 @@ def main():
             ax = plt.gca()
             for i in range(planned_state_all.shape[0]):
                 # don't plot NULL states
-                if not np.any(actual_state_all[i, 0] == NULL_PAD_VALUE):
+                if not np.any(planned_state_all[i, 0] == NULL_PAD_VALUE):
                     actual_state = {
                         labeling_params['state_key']: actual_state_all[i]
                     }

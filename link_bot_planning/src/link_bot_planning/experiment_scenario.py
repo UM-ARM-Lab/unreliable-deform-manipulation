@@ -23,7 +23,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def plot_state(ax, state: Dict, color, s: int, zorder: int):
+    def plot_state(ax, state: Dict, color, s: int, zorder: int, label: str):
         raise NotImplementedError()
 
     @staticmethod

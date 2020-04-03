@@ -46,7 +46,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto get_object_link_bot_bind = boost::bind(&MultiLinkBotModelPlugin::GetObjectLinkBotCallback, this, _1, _2);
   auto get_object_link_bot_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>(
       link_bot_service_name, get_object_link_bot_bind, ros::VoidPtr(), &queue_);
-  auto reset_bind = boost::bind(&MultiLinkBotModelPlugin::LinkBotReset, this, _1, _2);
+  auto reset_bind = boost::bind(&MultiLinkBotModelPlugin::ResetRobot, this, _1, _2);
   auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("reset_robot", reset_bind,
                                                                                  ros::VoidPtr(), &queue_);
 
@@ -430,7 +430,7 @@ bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequ
   return true;
 }
 
-bool MultiLinkBotModelPlugin::LinkBotReset(peter_msgs::LinkBotResetRequest &req, peter_msgs::LinkBotResetResponse &res)
+bool MultiLinkBotModelPlugin::ResetRobot(peter_msgs::LinkBotResetRequest &req, peter_msgs::LinkBotResetResponse &res)
 {
   gripper1_target_position_.X(req.point.x);
   gripper1_target_position_.Y(req.point.y);

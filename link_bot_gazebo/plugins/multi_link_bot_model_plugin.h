@@ -57,7 +57,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   bool GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
 
-  bool LinkBotReset(peter_msgs::LinkBotResetRequest &req, peter_msgs::LinkBotResetResponse &res);
+  bool ResetRobot(peter_msgs::LinkBotResetRequest &req, peter_msgs::LinkBotResetResponse &res);
 
  private:
   auto GetGripper1Pos() -> ignition::math::Vector3d const;

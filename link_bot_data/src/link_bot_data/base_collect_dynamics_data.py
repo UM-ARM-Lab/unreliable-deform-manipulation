@@ -26,20 +26,20 @@ def generate_traj(scenario: ExperimentScenario,
                   global_t_step: int,
                   action_rng: np.random.RandomState,
                   verbose: int):
-    # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
-    # over the course of this function
-    if params.movable_obstacles is not None and len(params.movable_obstacles) > 0:
-        full_env_data = ros_pycommon.get_occupancy_data(env_w_m=params.full_env_w_m,
-                                                        env_h_m=params.full_env_h_m,
-                                                        res=params.res,
-                                                        service_provider=service_provider,
-                                                        robot_name=scenario.robot_name())
-    else:
+    if params.no_obstacles:
         rows = int(params.full_env_h_m // params.res)
         cols = int(params.full_env_w_m // params.res)
         full_env_origin = np.array([rows // 2, cols // 2], dtype=np.int32)
         data = np.zeros([rows, cols], dtype=np.float32)
         full_env_data = OccupancyData(data, params.res, full_env_origin)
+    else:
+        # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
+        # over the course of this function
+        full_env_data = ros_pycommon.get_occupancy_data(env_w_m=params.full_env_w_m,
+                                                        env_h_m=params.full_env_h_m,
+                                                        res=params.res,
+                                                        service_provider=service_provider,
+                                                        robot_name=scenario.robot_name())
 
     feature = {
         'full_env/env': float_tensor_to_bytes_feature(full_env_data.data),

@@ -12,7 +12,8 @@
   "movable_obstacles": [
   ],
   "steps_per_traj": 10,
-  "trajs_per_file": 128
+  "trajs_per_file": 128,
+  "no_obstacles": false
 }
 
 

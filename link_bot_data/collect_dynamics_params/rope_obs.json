@@ -16,6 +16,7 @@
     "moving_box6",
     "moving_box7"
   ],
+  "no_obstacles": false,
   "steps_per_traj": 10,
   "trajs_per_file": 128
 }
