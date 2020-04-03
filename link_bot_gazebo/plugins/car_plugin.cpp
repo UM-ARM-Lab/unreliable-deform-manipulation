@@ -143,7 +143,6 @@ bool CarPlugin::GetObjectCarCallback(peter_msgs::GetObjectRequest &req, peter_ms
   float const yawdot = body_->WorldAngularVel().Z();
 
   std::vector<float> state{x, y, yaw, xdot, ydot, yawdot};
-  res.object.state_dim = state.size();
   res.object.state_vector = state;
   res.object.name = "car";
 
