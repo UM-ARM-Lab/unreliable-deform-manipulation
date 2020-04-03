@@ -13,6 +13,7 @@
 #include <std_msgs/String.h>
 #include <std_srvs/Empty.h>
 
+#include <Eigen/Eigen>
 #include <gazebo/common/common.hh>
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
@@ -25,11 +26,7 @@
 
 namespace gazebo {
 
-constexpr auto HEAD_Z{0.01};
-
 struct ControlResult {
-  peter_msgs::NamedPoints link_bot_config{};
-  ignition::math::Vector3d gripper1_vel{ignition::math::Vector3d::Zero};
   ignition::math::Vector3d gripper1_force{ignition::math::Vector3d::Zero};
 };
 
@@ -106,5 +103,9 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   ros::CallbackQueue execute_trajs_queue_;
   std::thread execute_trajs_ros_queue_thread_;
   std::string mode_{"disabled"};
+
+  // these allow one to make the gripper have some arbitrary linear dynamics
+  Eigen::Matrix2d A_{Eigen::Matrix2d::Identity()};
+  Eigen::Matrix2d B_{Eigen::Matrix2d::Identity()};
 };
 }  // namespace gazebo

@@ -68,6 +68,8 @@
             <gripper1_link>head</gripper1_link>
             <num_links>0</num_links>
             <rope_length>0</rope_length>
+
+            <B>1.0 0.1 0.0 1.1</B>
         </plugin>
     </model>
 </sdf>

@@ -2,7 +2,6 @@
 
 #include <std_srvs/EmptyRequest.h>
 
-#include <Eigen/Eigen>
 #include <cstdio>
 #include <gazebo/common/Time.hh>
 #include <gazebo/common/Timer.hh>
@@ -156,6 +155,30 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
     else {
       max_vel_ = sdf->GetElement("max_vel")->Get<double>();
     }
+
+    if (!sdf->HasElement("A")) {
+      printf("identity A matrix");
+    }
+    else {
+      auto const a_vec = sdf->GetElement("A")->Get<ignition::math::Vector4d>();
+      A_(0, 0) = a_vec[0];
+      A_(0, 1) = a_vec[1];
+      A_(1, 0) = a_vec[2];
+      A_(1, 1) = a_vec[3];
+      gzlog << "Using A Matrix: " << A_ << '\n';
+    }
+
+    if (!sdf->HasElement("B")) {
+      printf("identity B matrix");
+    }
+    else {
+      auto const b_vec = sdf->GetElement("B")->Get<ignition::math::Vector4d>();
+      B_(0, 0) = b_vec[0];
+      B_(0, 1) = b_vec[1];
+      B_(1, 0) = b_vec[2];
+      B_(1, 1) = b_vec[3];
+      gzlog << "Using B Matrix: " << B_ << '\n';
+    }
   }
 
   ros_node_.setParam("n_action", 2);
@@ -224,8 +247,6 @@ ControlResult MultiLinkBotModelPlugin::UpdateControl()
   auto const dt = model_->GetWorld()->Physics()->GetMaxStepSize();
   ControlResult control_result{};
 
-  control_result.link_bot_config = GetConfiguration();
-
   auto const gripper1_pos = GetGripper1Pos();
   auto const gripper1_vel_ = GetGripper1Vel();
 
@@ -235,7 +256,6 @@ ControlResult MultiLinkBotModelPlugin::UpdateControl()
       gripper1_pos_error_ = gripper1_pos - gripper1_target_position_;
       auto const target_vel = gripper1_pos_pid_.Update(gripper1_pos_error_.Length(), dt);
       auto const gripper1_target_velocity = gripper1_pos_error_.Normalized() * target_vel;
-      control_result.gripper1_vel = gripper1_target_velocity;
 
       auto const gripper1_vel_error = gripper1_vel_ - gripper1_target_velocity;
       auto const force_mag = gripper1_vel_pid_.Update(gripper1_vel_error.Length(), dt);
@@ -290,12 +310,6 @@ bool MultiLinkBotModelPlugin::ExecuteAction(peter_msgs::ExecuteActionRequest &re
 {
   mode_ = "position";
 
-  Eigen::Matrix2d A;
-  A << 1, 0, 0, 1;
-
-  Eigen::Matrix2d B;
-  B << 1.0, 0.0, 0.1, 1.1;
-
   Eigen::Vector2d s;
   s(0) = gripper1_target_position_.X();
   s(1) = gripper1_target_position_.Y();
@@ -304,7 +318,7 @@ bool MultiLinkBotModelPlugin::ExecuteAction(peter_msgs::ExecuteActionRequest &re
   u(0) = req.action.action[0];
   u(1) = req.action.action[1];
 
-  Eigen::Vector2d const s_ = A * s + B * u;
+  Eigen::Vector2d const s_ = A_ * s + B_ * u;
   gripper1_target_position_.X(s_(0));
   gripper1_target_position_.Y(s_(1));
 
