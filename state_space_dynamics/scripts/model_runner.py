@@ -20,7 +20,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
 def train_func(args, seed: int):
     if args.log:
-        if args.ensemble_idx:
+        if args.ensemble_idx is not None:
             log_path = pathlib.Path(args.log) / str(args.ensemble_idx)
         else:
             log_path = experiments_util.experiment_name(args.log)
