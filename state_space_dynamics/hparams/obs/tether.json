@@ -19,5 +19,6 @@
   "mixed": true,
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
-  "activity_reg": 0.05
+  "activity_reg": 0.05,
+  "epochs": 500
 }
