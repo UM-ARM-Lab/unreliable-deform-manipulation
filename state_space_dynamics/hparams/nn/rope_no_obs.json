@@ -2,6 +2,10 @@
   "model_class": "SimpleNN",
   "sequence_length": 10,
   "state_key": "link_bot",
-  "fc_layer_sizes": [1024, 1024],
-  "residual": true
+  "fc_layer_sizes": [
+    1024,
+    1024
+  ],
+  "residual": true,
+  "epochs": 500,
 }

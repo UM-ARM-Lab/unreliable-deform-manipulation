@@ -55,7 +55,7 @@ def train_func(args, seed: int):
           dataset_dirs=args.dataset_dirs,
           seed=seed,
           batch_size=args.batch_size,
-          epochs=args.epochs,
+          epochs=model_hparams['epochs'],
           loss_function=scenario.dynamics_loss_function,
           metrics_function=scenario.dynamics_metrics_function,
           checkpoint=args.checkpoint,
@@ -106,11 +106,9 @@ def main():
     train_parser.add_argument('model_hparams', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=32)
-    train_parser.add_argument('--epochs', type=int, default=500)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--ensemble-idx', type=int)
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
-    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=4)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=119)
     train_parser.set_defaults(func=train_func)
 
