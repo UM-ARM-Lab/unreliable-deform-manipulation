@@ -18,8 +18,8 @@ from ompl import base as ob
 import link_bot_data.link_bot_dataset_utils
 from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
-from link_bot_planning import plan_and_execute, model_utils
-from link_bot_planning.get_planner import get_planner_with_model, get_planner
+from link_bot_planning import plan_and_execute
+from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot_plan
 from link_bot_planning.params import SimParams
@@ -255,9 +255,9 @@ def main():
 
         # look up the planner params
         planner, _ = get_planner(planner_params=planner_params,
-                              service_provider=service_provider,
-                              seed=args.seed,
-                              verbose=args.verbose)
+                                 service_provider=service_provider,
+                                 seed=args.seed,
+                                 verbose=args.verbose)
 
         service_provider.setup_env(verbose=args.verbose,
                                    real_time_rate=planner_params['real_time_rate'],

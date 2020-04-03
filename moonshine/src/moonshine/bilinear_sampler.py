@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 
+@tf.function
 def bilinear_sampler(img, x, y):
     """
     Performs bilinear sampling of the input images according to the normalized coordinates provided by the sampling grid.

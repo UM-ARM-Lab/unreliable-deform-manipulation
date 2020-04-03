@@ -1,0 +1,38 @@
+{
+  "fwd_model_dir": [
+    "ss_log_data/point2/0",
+    "ss_log_data/point2/1",
+    "ss_log_data/point2/2",
+    "ss_log_data/point2/3",
+    "ss_log_data/point2/4",
+    "ss_log_data/point2/5",
+    "ss_log_data/point2/6",
+    "ss_log_data/point2/7",
+    "ss_log_data/point2/8",
+    "ss_log_data/point2/9"
+  ],
+  "classifier_model_dir": "classifiers/derp-tether-classifier-0.05",
+  "planner_type": "NearestRRT",
+  "sampler_type": "random",
+  "directed_control_sampler": "simple",
+  "accept_threshold": 0.5,
+  "max_angle_rad": 1.0,
+  "random_epsilon": 0.05,
+  "full_env_w": 5.0,
+  "full_env_h": 5.0,
+  "goal_w_m": 3.5,
+  "goal_h_m": 3.5,
+  "timeout": 180,
+  "movable_obstacles": [
+  ],
+  "goal_threshold": 0.15,
+  "fixed_goal": null,
+  "reset_gripper_to": [
+    0.0,
+    0.0
+  ],
+  "real_time_rate": 0.0,
+  "max_step_size": 0.01,
+  "smoothing": null,
+  "scenario": "tether"
+}
