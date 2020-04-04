@@ -33,21 +33,19 @@ class TetherScenario(ExperimentScenario):
                       action_rng):
         max_delta_pos = service_provider.get_max_speed() * params.dt
         new_action = Action()
-        dx = 0
-        dy = np.random.uniform(-0.1, 0.1)
-        # while True:
-        #     # sample the previous action with 80% probability
-        #     # we implicit use a dynamics model for the gripper here, which in this case is identity linear dynamics
-        #     if last_action is not None and action_rng.uniform(0, 1) < 0.80:
-        #         dx = last_action.action[0]
-        #         dy = last_action.action[1]
-        #     else:
-        #         dx, dy = TetherScenario.random_delta_pos(action_rng, max_delta_pos)
-        #
-        #     half_w = goal_w_m / 2
-        #     half_h = goal_h_m / 2
-        #     if -half_w <= state['gripper'][0] + dx <= half_w and -half_h <= state['gripper'][1] + dy <= half_h:
-        #         break
+        while True:
+            # sample the previous action with 80% probability
+            # we implicit use a dynamics model for the gripper here, which in this case is identity linear dynamics
+            if last_action is not None and action_rng.uniform(0, 1) < 0.80:
+                dx = last_action.action[0]
+                dy = last_action.action[1]
+            else:
+                dx, dy = TetherScenario.random_delta_pos(action_rng, max_delta_pos)
+
+            half_w = goal_w_m / 2
+            half_h = goal_h_m / 2
+            if -half_w <= state['gripper'][0] + dx <= half_w and -half_h <= state['gripper'][1] + dy <= half_h:
+                break
 
         new_action.action = [dx, dy]
         new_action.max_time_per_step = params.dt
