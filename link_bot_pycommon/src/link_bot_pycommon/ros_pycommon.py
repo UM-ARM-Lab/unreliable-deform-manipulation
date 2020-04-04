@@ -114,14 +114,13 @@ def get_states_dict(service_provider, state_keys=None):
     objects_response = service_provider.get_objects()
     if state_keys is not None:
         for state_key in state_keys:
-            for object in objects_response.objects.objects:
-                if object.name == state_key:
-                    state = np.array(object.state_vector)
+            for named_object in objects_response.objects.objects:
+                if named_object.name == state_key:
+                    state = np.array(named_object.state_vector)
                     start_states[state_key] = state
     else:
         # just take all of them
-        for object in objects_response.objects.objects:
-            state = np.array(object.state_vector)
-            start_states[object.name] = state
+        for named_object in objects_response.objects.objects:
+            start_states[named_object.name] = np.array(named_object.state_vector)
 
     return start_states

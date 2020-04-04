@@ -115,9 +115,10 @@ def raster_rope_images(planned_states: Dict,
     return rope_images
 
 
+# @tf.function
 def make_traj_images(full_env,
                      full_env_origin,
-                     res,
+                     res: float,
                      states: List[Dict],
                      rope_image_k: float):
     """

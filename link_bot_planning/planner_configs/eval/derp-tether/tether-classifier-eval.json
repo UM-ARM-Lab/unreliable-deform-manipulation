@@ -11,7 +11,7 @@
     "ss_log_data/point2/8",
     "ss_log_data/point2/9"
   ],
-  "classifier_model_dir": "classifiers/derp-tether-classifier-0.05",
+  "classifier_model_dir": "classifiers/derp-tether-classifier-0.15",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",

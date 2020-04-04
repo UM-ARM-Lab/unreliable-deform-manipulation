@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,18 +33,21 @@ class TetherScenario(ExperimentScenario):
                       action_rng):
         max_delta_pos = service_provider.get_max_speed() * params.dt
         new_action = Action()
-        while True:
-            # sample the previous action with 80% probability
-            if last_action is not None and action_rng.uniform(0, 1) < 0.80:
-                dx = last_action.action[0]
-                dy = last_action.action[1]
-            else:
-                dx, dy = TetherScenario.random_delta_pos(action_rng, max_delta_pos)
-
-            half_w = goal_w_m / 2
-            half_h = goal_h_m / 2
-            if -half_w <= state['gripper'][0] + dx <= half_w and -half_h <= state['gripper'][1] + dy <= half_h:
-                break
+        dx = 0
+        dy = np.random.uniform(-0.1, 0.1)
+        # while True:
+        #     # sample the previous action with 80% probability
+        #     # we implicit use a dynamics model for the gripper here, which in this case is identity linear dynamics
+        #     if last_action is not None and action_rng.uniform(0, 1) < 0.80:
+        #         dx = last_action.action[0]
+        #         dy = last_action.action[1]
+        #     else:
+        #         dx, dy = TetherScenario.random_delta_pos(action_rng, max_delta_pos)
+        #
+        #     half_w = goal_w_m / 2
+        #     half_h = goal_h_m / 2
+        #     if -half_w <= state['gripper'][0] + dx <= half_w and -half_h <= state['gripper'][1] + dy <= half_h:
+        #         break
 
         new_action.action = [dx, dy]
         new_action.max_time_per_step = params.dt
@@ -66,26 +69,27 @@ class TetherScenario(ExperimentScenario):
                    state: Dict,
                    color,
                    s: int,
-                   zorder: int):
+                   zorder: int,
+                   label: Optional[str] = None):
         if 'tether' in state.keys():
             tether = np.reshape(state['tether'], [-1, 2])
             xs = tether[:, 0]
             ys = tether[:, 1]
-            scatt = ax.scatter(xs, ys, c=color, s=s, zorder=zorder)
+            scatt = ax.scatter(xs, ys, c=color, s=s, zorder=zorder, label=label)
             line = ax.plot(xs, ys, linewidth=1, c=color, zorder=zorder)[0]
             return line, scatt
         elif 'link_bot' in state.keys():
             point_robot = np.reshape(state['link_bot'], [2])
             x = point_robot[0]
             y = point_robot[1]
-            scatt = ax.scatter(x, y, c=color, s=s, zorder=zorder)
+            scatt = ax.scatter(x, y, c=color, s=s, zorder=zorder, label=label)
             line = ax.plot(x, y, linewidth=1, c=color, zorder=zorder)[0]
             return line, scatt
         elif 'gripper' in state.keys():
             point_robot = np.reshape(state['gripper'], [2])
             x = point_robot[0]
             y = point_robot[1]
-            scatt = ax.scatter(x, y, c=color, s=s, zorder=zorder)
+            scatt = ax.scatter(x, y, c=color, s=s, zorder=zorder, label=label)
             line = ax.plot(x, y, linewidth=1, c=color, zorder=zorder)[0]
             return line, scatt
 
@@ -199,7 +203,7 @@ class TetherScenario(ExperimentScenario):
         return point_robot
 
     @staticmethod
-    @tf.function
+    # @tf.function
     def local_environment_center_differentiable(state):
         """
         :param state: Dict of batched states

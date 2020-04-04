@@ -46,7 +46,6 @@ class BaseDynamicsFunction:
 
         return predictions_np
 
-    @tf.function
     def propagate_differentiable(self,
                                  full_env: np.ndarray,
                                  full_env_origin: np.ndarray,

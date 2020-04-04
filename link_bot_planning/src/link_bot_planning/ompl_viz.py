@@ -32,14 +32,14 @@ def plot_plan(ax,
 
     if draw_rejected:
         for rejected_state in viz_object.rejected_samples:
-            experiment_scenario.plot_state(ax, rejected_state, color='orange', zorder=2, s=10)
+            experiment_scenario.plot_state(ax, rejected_state, color='orange', zorder=2, s=10, label='rejected')
 
     if planned_path is not None:
         start = planned_path[0]
         end = planned_path[-1]
-        experiment_scenario.plot_state_simple(ax, start, color='b', s=50, zorder=5)
-        experiment_scenario.plot_state_simple(ax, end, color='pink', s=50, zorder=5, marker='*')
-        experiment_scenario.plot_goal(ax, goal, color='c', zorder=5, s=50)
+        experiment_scenario.plot_state_simple(ax, start, color='b', s=50, zorder=5, label='start')
+        experiment_scenario.plot_state_simple(ax, end, color='pink', s=50, zorder=5, marker='*', label='end')
+        experiment_scenario.plot_goal(ax, goal, color='c', zorder=5, s=50, label='goal')
         draw_every_n = 1
         T = len(planned_path)
         colormap = cm.YlGn
@@ -47,8 +47,8 @@ def plot_plan(ax,
             state = planned_path[t]
             for randomly_accepted_sample in viz_object.randomly_accepted_samples:
                 if states_are_equal(state, randomly_accepted_sample):
-                    experiment_scenario.plot_state_simple(ax, state, color='white', s=10, zorder=4)
-            experiment_scenario.plot_state(ax, state, color=colormap(t / T), s=10, zorder=3)
+                    experiment_scenario.plot_state_simple(ax, state, color='white', s=10, zorder=4, label='random accept')
+            experiment_scenario.plot_state(ax, state, color=colormap(t / T), s=10, zorder=3, label='final path')
 
     # Visualize Nearest Neighbor Selection (poorly...)
     # for sample in planner_data.getSamples():

@@ -31,7 +31,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
         self.n_models = len(self.models)
         self.states_keys = self.models[0].states_keys
 
-    # @tf.function
+     # @tf.function
     def propagate_differentiable(self,
                                  full_env: np.ndarray,
                                  full_env_origin: np.ndarray,

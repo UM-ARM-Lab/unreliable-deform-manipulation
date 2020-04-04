@@ -14,7 +14,6 @@ from matplotlib.animation import FuncAnimation
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_planning import model_utils
-from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -28,8 +27,8 @@ def generate(args):
     ###############
     # Datasets
     ###############
-    base_folder = args.outdir / 'compare_models-{}-{}'.format(args.mode, int(time.time()))
-    base_folder.mkdir()
+    base_folder = pathlib.Path('results') / 'compare_models-{}-{}'.format(args.mode, int(time.time()))
+    base_folder.mkdir(parents=True)
 
     comparison_info = json.load(args.comparison.open("r"))
     models = {}
@@ -39,7 +38,7 @@ def generate(args):
         models[name] = model
 
     dataset = DynamicsDataset(args.dataset_dirs)
-    tf_dataset = dataset.get_datasets(mode=args.mode, sequence_length=args.sequence_length)
+    tf_dataset = dataset.get_datasets(mode=args.mode, sequence_length=args.sequence_length, take=args.take)
 
     results = generate_results(base_folder, models, tf_dataset, args.sequence_length)
 
@@ -108,7 +107,12 @@ def generate_results(base_folder: pathlib.Path,
             actions = x['action'].numpy()
 
             start_states = {}
-            for state_key in model.hparams['states_keys']:
+            if 'states_keys' in model.hparams:
+                states_keys = model.hparams['states_keys']
+            else:
+                states_keys = [model.hparams['state_key']]
+
+            for state_key in states_keys:
                 first_state = x[state_key][0].numpy()
                 start_states[state_key] = first_state
             res = x['full_env/res'].numpy()
@@ -164,7 +168,7 @@ def visualize_predictions(results, n_examples, base_folder=None):
         for model_name, _ in results.items():
             handles[model_name] = {}
             handles[model_name]['line'] = plt.plot([], [], alpha=0.5, label=model_name)[0]
-            handles[model_name]['scatt'] = plt.scatter([], [], s=10)
+            handles[model_name]['scatt'] = plt.scatter([], [], s=50)
 
         def update(t):
             for _model_name, points_trajectories in results.items():
@@ -179,7 +183,7 @@ def visualize_predictions(results, n_examples, base_folder=None):
 
         plt.legend()
 
-        anim = FuncAnimation(fig, update, frames=sequence_length, interval=20)
+        anim = FuncAnimation(fig, update, frames=sequence_length, interval=200)
         anim_path = base_folder / 'anim-{}.gif'.format(example_idx)
         anim.save(anim_path, writer='imagemagick', fps=4)
         plt.show()
@@ -229,11 +233,11 @@ def main():
     generate_parser = subparsers.add_parser('generate')
     generate_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+', help='dataset dirs')
     generate_parser.add_argument('comparison', type=pathlib.Path, help='json file describing what should be compared')
-    generate_parser.add_argument('outdir', type=pathlib.Path, help='outdir')
     generate_parser.add_argument('--sequence-length', type=int, default=10, help='seq length')
     generate_parser.add_argument('--no-plot', action='store_true', help='no plot')
     generate_parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
     generate_parser.add_argument('--n-examples', type=int, default=10, help='number of examples to visualize')
+    generate_parser.add_argument('--take', type=int, help='take only a subsect of the data')
     generate_parser.set_defaults(func=generate)
 
     evaluate_parser = subparsers.add_parser('evaluate')

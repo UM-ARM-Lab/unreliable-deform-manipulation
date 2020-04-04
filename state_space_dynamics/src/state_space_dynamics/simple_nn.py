@@ -26,7 +26,7 @@ class SimpleNN(MyKerasModel):
         self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
 
-    @tf.function
+    # @tf.function
     def call(self, dataset_element, training=None, mask=None):
         input_dict, _ = dataset_element
         states = input_dict[self.state_key]
@@ -69,7 +69,7 @@ class SimpleNNWrapper(BaseDynamicsFunction):
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.states_keys = [self.net.state_key]
 
-    @tf.function
+    # @tf.function
     def propagate_differentiable(self,
                                  full_env,
                                  full_env_origin,

@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-@tf.function
+# @tf.function
 def bilinear_sampler(img, x, y):
     """
     Performs bilinear sampling of the input images according to the normalized coordinates provided by the sampling grid.
@@ -75,7 +75,7 @@ def bilinear_sampler(img, x, y):
     return out
 
 
-@tf.function
+# @tf.function
 def get_pixel_value(img, x, y):
     """
     Utility function to get pixel value for coordinate

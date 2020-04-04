@@ -119,6 +119,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
+        print(planned_actions)
         final_planned_state = planned_path[-1]
         plan_to_goal_error = self.planner.experiment_scenario.distance_to_goal(final_planned_state, goal)
         print("Execution to Plan Error: {:.4f}".format(plan_to_goal_error))
@@ -151,7 +152,6 @@ def main():
     parser.add_argument("--planner-timeout", help="time in seconds", type=float)
     parser.add_argument("--real-time-rate", type=float, default=0.0, help='real time rate')
     parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
-    parser.add_argument("--reset-gripper-to", type=point_arg, help='x,y in meters')
     parser.add_argument("--goal", type=point_arg, help='x,y in meters')
     parser.add_argument("--debug", action='store_true', help='wait to attach debugger')
 
@@ -167,7 +167,7 @@ def main():
         planner_params['timeout'] = args.planner_timeout
 
     sim_params = SimParams(real_time_rate=args.real_time_rate,
-                           max_step_size=args.max_step_size,
+                           max_step_size=planner_params['max_step_size'],
                            movable_obstacles=planner_params['movable_obstacles'],
                            nudge=True)
 
@@ -186,11 +186,12 @@ def main():
 
     service_provider.setup_env(verbose=args.verbose,
                                real_time_rate=sim_params.real_time_rate,
-                               reset_gripper_to=args.reset_gripper_to,
+                               reset_robot=planner_params['reset_robot'],
                                max_step_size=sim_params.max_step_size)
     service_provider.pause(std_srvs.srv.EmptyRequest())
 
-    planner, _ = get_planner(planner_params=planner_params, service_provider=service_provider, seed=args.seed, verbose=args.verbose)
+    planner, _ = get_planner(planner_params=planner_params, service_provider=service_provider, seed=args.seed,
+                             verbose=args.verbose)
 
     tester = TestWithClassifier(
         planner=planner,
@@ -202,8 +203,8 @@ def main():
         no_execution=args.no_execution,
         goal=args.goal,
         seed=args.seed,
-        draw_tree=(args.service_provider != 'victor'),
-        draw_rejected=(args.service_provider != 'victor')
+        draw_tree=(args.verbose >= 1),
+        draw_rejected=(args.verbose >= 1)
     )
     tester.run()
 

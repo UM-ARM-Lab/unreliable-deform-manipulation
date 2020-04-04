@@ -193,7 +193,8 @@ class PlanAndExecute:
         :param actions: currently a numpy array, [time, n_action]
         :return: the states, a list of Dicts
         """
-        actual_path = []
+        start_states = get_states_dict(self.service_provider)
+        actual_path = [start_states]
         for t in range(actions.shape[0]):
             action_request = Action()
             action_request.max_time_per_step = self.planner.fwd_model.dt

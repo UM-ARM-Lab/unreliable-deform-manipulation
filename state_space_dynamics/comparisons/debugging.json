@@ -1,6 +1,11 @@
 {
-  "tether obs-nn": {
-    "model_dir": "log_data/tether_1obs/February_23_11-51-28_b22b1faf28",
-    "model_type": "obs"
+  "rigid wrong": {
+    "model_dir": "log_data/tether_rigid_translation"
+  },
+  "rigid true": {
+    "model_dir": "log_data/derp_point_true"
+  },
+  "point2/0": {
+    "model_dir": "log_data/point2/0"
   }
 }

@@ -13,9 +13,9 @@ class RigidTranslationModel(BaseDynamicsFunction):
 
     def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
         super().__init__(model_dir, batch_size, scenario)
-        self.beta = self.hparams['beta']
         self.batch_size = batch_size
-        self.B = tf.constant([[1.0, 0.0], [0.0, 1.0]], dtype=tf.float32) * self.beta
+        b = self.hparams['B']
+        self.B = tf.constant(np.array(b), dtype=tf.float32)
         self.states_keys = self.hparams['states_keys']
 
     def propagate_differentiable(self,
@@ -44,7 +44,7 @@ class RigidTranslationModel(BaseDynamicsFunction):
             s_t_plus_1 = {}
             for k, s_t_k in s_t.items():
                 n_points = n_state_to_n_points(s_t_k.shape[0])
-                delta_s_t = tf.tensordot(action_t, self.B, axes=1)
+                delta_s_t = tf.tensordot(action_t, tf.transpose(self.B), axes=1)
                 delta_s_t_flat = tf.tile(delta_s_t, [n_points])
                 s_t_k = s_t_k + delta_s_t_flat * self.dt
                 s_t_plus_1[k] = s_t_k
