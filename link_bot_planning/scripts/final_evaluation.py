@@ -47,7 +47,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  comparison_item_idx: int,
                  seed: int,
                  goal,
-                 reset_gripper_to,
+                 reset_robot,
                  outdir: pathlib.Path,
                  record: Optional[bool] = False,
                  pause_between_plans: Optional[bool] = False,
@@ -84,11 +84,11 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.n_failures = 0
         self.successfully_completed_plan_idx = 0
         self.goal = goal
-        self.reset_gripper_to = reset_gripper_to
+        self.reset_robot = reset_robot
 
     def on_before_plan(self):
-        if self.reset_gripper_to is not None:
-            self.service_provider.reset_world(self.verbose, self.reset_gripper_to)
+        if self.reset_robot is not None:
+            self.service_provider.reset_world(self.verbose, self.reset_robot)
 
         super().on_before_plan()
 
@@ -261,7 +261,7 @@ def main():
 
         service_provider.setup_env(verbose=args.verbose,
                                    real_time_rate=planner_params['real_time_rate'],
-                                   reset_gripper_to=planner_params['reset_gripper_to'],
+                                   reset_robot=planner_params['reset_robot'],
                                    max_step_size=planner.fwd_model.max_step_size)
 
         sim_params = SimParams(real_time_rate=planner_params['real_time_rate'],
@@ -282,7 +282,7 @@ def main():
             seed=args.seed,
             outdir=common_output_directory,
             comparison_item_idx=comparison_idx,
-            reset_gripper_to=planner_params['reset_gripper_to'],
+            reset_robot=planner_params['reset_robot'],
             goal=planner_params['fixed_goal'],
             record=args.record,
             pause_between_plans=args.pause_between_plans

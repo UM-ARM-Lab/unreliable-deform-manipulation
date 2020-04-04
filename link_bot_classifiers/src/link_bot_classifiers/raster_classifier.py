@@ -131,6 +131,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                          actions,
                          ) -> tf.Tensor:
         states_i = states_sequence[-2]
+        # remove stdev from state we draw
         states_i_to_draw = {k: states_i[k] for k in states_i if k != 'stdev'}
         action_i = actions[-1]
         states_i_plus_1 = states_sequence[-1]
@@ -164,7 +165,12 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         states_i = states_sequence[-2]
         states_i_plus_1 = states_sequence[1]
 
-        batched_inputs = add_batch(full_env, full_env_origin, res, states_sequence)
+        # remove stdev from state we draw
+        states_sequence_to_draw = []
+        for state in states_sequence:
+            states_sequence_to_draw.append({k: state[k] for k in state if k != 'stdev'})
+
+        batched_inputs = add_batch(full_env, full_env_origin, res, states_sequence_to_draw)
         image = make_traj_images(*batched_inputs, rope_image_k=self.model_hparams['rope_image_k'])[0]
 
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)

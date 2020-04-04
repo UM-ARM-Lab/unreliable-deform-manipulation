@@ -43,7 +43,7 @@ def plot_plan(ax,
         draw_every_n = 1
         T = len(planned_path)
         colormap = cm.YlGn
-        for t, state in range(0, T, draw_every_n):
+        for t in range(0, T, draw_every_n):
             state = planned_path[t]
             for randomly_accepted_sample in viz_object.randomly_accepted_samples:
                 if states_are_equal(state, randomly_accepted_sample):

@@ -16,7 +16,7 @@
   ],
   "goal_threshold": 0.15,
   "fixed_goal": null,
-  "reset_gripper_to": [
+  "reset_robot": [
     0.0,
     0.0
   ],

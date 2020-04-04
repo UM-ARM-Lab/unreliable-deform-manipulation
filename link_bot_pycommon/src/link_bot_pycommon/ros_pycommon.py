@@ -116,12 +116,12 @@ def get_states_dict(service_provider, state_keys=None):
         for state_key in state_keys:
             for object in objects_response.objects.objects:
                 if object.name == state_key:
-                    state = object.state_vector
+                    state = np.array(object.state_vector)
                     start_states[state_key] = state
     else:
         # just take all of them
         for object in objects_response.objects.objects:
-            state = object.state_vector
+            state = np.array(object.state_vector)
             start_states[object.name] = state
 
     return start_states

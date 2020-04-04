@@ -17,6 +17,7 @@ from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
 from link_bot_pycommon.ros_pycommon import get_states_dict
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
+from peter_msgs.msg import Action
 
 
 class PlanAndExecute:
@@ -188,9 +189,18 @@ class PlanAndExecute:
                                                rng=self.env_rng)
 
     def execute_plan(self, actions):
-        # call the execute action service with all the actions
-        raise NotImplementedError()
-        # self.planner.fwd_model.dt
-        # # should be a list of dictionaries of the state. What states are returned are dependant on what the simulator returns
-        # actual_path
-        # return actual_path
+        """
+        :param actions: currently a numpy array, [time, n_action]
+        :return: the states, a list of Dicts
+        """
+        actual_path = []
+        for t in range(actions.shape[0]):
+            action_request = Action()
+            action_request.max_time_per_step = self.planner.fwd_model.dt
+            action_request.action = actions[t]
+            action_response = self.service_provider.execute_action(action_request)
+            state_t = {}
+            for named_object in action_response.objects.objects:
+                state_t[named_object.name] = np.array(named_object.state_vector)
+            actual_path.append(state_t)
+        return actual_path

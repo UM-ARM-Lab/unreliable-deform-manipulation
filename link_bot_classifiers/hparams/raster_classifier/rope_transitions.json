@@ -1,10 +1,10 @@
 {
   "model_class": "raster",
   "scenario": "link_bot",
-  "image_key": "transition_image",
   "states_keys": [
     "link_bot"
   ],
+  "image_key": "transition_image",
   "action_in_image": false,
   "rope_image_k": 10000,
   "fc_layer_sizes": [256],
@@ -13,12 +13,12 @@
     [8, [3, 3]],
     [8, [3, 3]]
   ],
-  "local_env_h_rows": 100,
-  "local_env_w_cols": 100,
   "mixed": true,
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
   "activity_reg": 0.05,
   "dropout_rate": 0.0,
-  "batch_norm": false
+  "batch_norm": false,
+  "local_env_h_rows": 100,
+  "local_env_w_cols": 100,
 }

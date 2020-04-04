@@ -194,7 +194,10 @@ class MyPlanner:
             idx = subspace_description['idx']
             n_state = subspace_description['n_state']
             from_numpy(np_states[subspace_name], state_out[idx], n_state)
-        state_out[self.stdev_subspace_idx][0] = np_states['stdev']
+            if 'stdev' in np_states:
+                state_out[self.stdev_subspace_idx][0] = np_states['stdev']
+            else:
+                state_out[self.stdev_subspace_idx][0] = 0
 
     def propagate(self, start, control, duration, state_out):
         del duration  # unused, multi-step propagation is handled inside propagateMotionsWhileValid

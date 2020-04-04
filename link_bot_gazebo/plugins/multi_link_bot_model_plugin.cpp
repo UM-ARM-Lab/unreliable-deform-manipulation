@@ -327,7 +327,10 @@ bool MultiLinkBotModelPlugin::ExecuteAction(peter_msgs::ExecuteActionRequest &re
   // Wait until the setpoint is reached
   model_->GetWorld()->Step(steps);
 
-  // TODO: fill out state here
+  peter_msgs::GetObjectsRequest get_objects;
+  peter_msgs::GetObjectsResponse objects_response;
+  objects_service_.call(get_objects, objects_response);
+  res.objects = objects_response.objects;
   res.needs_reset = false;
 
   // stop by setting the current position as the target
