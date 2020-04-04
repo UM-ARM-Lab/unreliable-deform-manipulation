@@ -62,7 +62,7 @@ class RasterClassifier(MyKerasModel):
 
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
-    # @tf.function
+    @tf.function
     def _conv(self, image):
         # feed into a CNN
         conv_z = image
@@ -73,7 +73,7 @@ class RasterClassifier(MyKerasModel):
 
         return out_conv_z
 
-    # @tf.function
+    @tf.function
     def call(self, input_dict: Dict, training=None, mask=None):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         image = input_dict[self.hparams['image_key']]
