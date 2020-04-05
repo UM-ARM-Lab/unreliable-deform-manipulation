@@ -1,11 +1,22 @@
 {
+  "new-derp-point": {
+    "model_dir": [
+      "log_data/new-derp-point/0",
+      "log_data/new-derp-point/1",
+      "log_data/new-derp-point/2",
+      "log_data/new-derp-point/3",
+      "log_data/new-derp-point/4",
+      "log_data/new-derp-point/5",
+      "log_data/new-derp-point/6",
+      "log_data/new-derp-point/7",
+      "log_data/new-derp-point/8",
+      "log_data/new-derp-point/9"
+    ]
+  },
   "rigid wrong": {
     "model_dir": "log_data/tether_rigid_translation"
   },
   "rigid true": {
     "model_dir": "log_data/derp_point_true"
-  },
-  "point2/0": {
-    "model_dir": "log_data/point2/0"
   }
 }

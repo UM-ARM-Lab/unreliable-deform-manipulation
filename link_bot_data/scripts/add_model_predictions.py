@@ -12,7 +12,7 @@ from link_bot_data.classifier_dataset import add_model_predictions
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_pycommon.args import my_formatter
-from state_space_dynamics.ensemble_dynamics_function import load_ensemble
+from link_bot_planning.model_utils import load_ensemble
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)

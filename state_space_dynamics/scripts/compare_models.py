@@ -33,7 +33,7 @@ def generate(args):
     comparison_info = json.load(args.comparison.open("r"))
     models = {}
     for name, model_info in comparison_info.items():
-        model_dir = pathlib.Path(model_info['model_dir'])
+        model_dir = model_info['model_dir']
         model, _ = model_utils.load_generic_model(model_dir)
         models[name] = model
 
@@ -155,9 +155,12 @@ def visualize_predictions(results, n_examples, base_folder=None):
         plt.axis("equal")
         plt.title(example_idx)
 
-        time_text_handle = plt.text(5, 8, 't=0', fontdict={'color': 'white', 'size': 5}, bbox=dict(facecolor='black', alpha=0.5))
         full_env = results['true']['full_env/env'][example_idx]
         extent = results['true']['full_env/extent'][example_idx]
+        min_x = extent[0] * 0.9
+        max_y = extent[3] * 0.9
+        time_text_handle = plt.text(min_x, max_y, 't=0', fontdict={'color': 'white', 'size': 5},
+                                    bbox=dict(facecolor='black', alpha=0.5))
         plt.imshow(np.flipud(full_env), extent=extent)
 
         plt.xlim(extent[0:2])
@@ -183,7 +186,7 @@ def visualize_predictions(results, n_examples, base_folder=None):
 
         plt.legend()
 
-        anim = FuncAnimation(fig, update, frames=sequence_length, interval=200)
+        anim = FuncAnimation(fig, update, frames=sequence_length, interval=500)
         anim_path = base_folder / 'anim-{}.gif'.format(example_idx)
         anim.save(anim_path, writer='imagemagick', fps=4)
         plt.show()
@@ -214,7 +217,7 @@ def evaluate_metrics(results):
                 errors_by_point[j].extend(error_j)
 
             # The first time step is copied from ground truth, so it should always have zero error
-            assert np.all(error[0] == 0)
+            assert np.allclose(error[0], 0, atol=1e-5)
 
         print()
         print("Model: {}".format(model_name))
