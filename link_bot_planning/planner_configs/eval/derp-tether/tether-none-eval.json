@@ -1,16 +1,5 @@
 {
-  "fwd_model_dir": [
-    "ss_log_data/new-derp-point/0",
-    "ss_log_data/new-derp-point/1",
-    "ss_log_data/new-derp-point/2",
-    "ss_log_data/new-derp-point/3",
-    "ss_log_data/new-derp-point/4",
-    "ss_log_data/new-derp-point/5",
-    "ss_log_data/new-derp-point/6",
-    "ss_log_data/new-derp-point/7",
-    "ss_log_data/new-derp-point/8",
-    "ss_log_data/new-derp-point/9"
-  ],
+  "fwd_model_dir": "ss_log_data/new-derp-point/0",
   "classifier_model_dir": "classifiers/none",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
@@ -22,7 +11,7 @@
   "full_env_h": 5.0,
   "goal_w_m": 3.5,
   "goal_h_m": 3.5,
-  "timeout": 180,
+  "timeout": 240,
   "movable_obstacles": [
   ],
   "goal_threshold": 0.15,

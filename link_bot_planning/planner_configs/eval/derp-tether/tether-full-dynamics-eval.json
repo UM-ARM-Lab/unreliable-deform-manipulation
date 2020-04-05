@@ -1,5 +1,5 @@
 {
-  "fwd_model_dir": "ss_log_data/derp-tether-full/April_03_12-21-45_6dbad80095",
+  "fwd_model_dir": "ss_log_data/derp_tether_all/April_05_01-25-15_40e3795142",
   "classifier_model_dir": "classifiers/none/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
@@ -11,7 +11,7 @@
   "full_env_h": 5.0,
   "goal_w_m": 3.5,
   "goal_h_m": 3.5,
-  "timeout": 180,
+  "timeout": 240,
   "movable_obstacles": [
   ],
   "goal_threshold": 0.15,

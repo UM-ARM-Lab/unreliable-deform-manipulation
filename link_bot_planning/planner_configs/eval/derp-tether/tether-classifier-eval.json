@@ -1,17 +1,17 @@
 {
   "fwd_model_dir": [
-    "ss_log_data/point2/0",
-    "ss_log_data/point2/1",
-    "ss_log_data/point2/2",
-    "ss_log_data/point2/3",
-    "ss_log_data/point2/4",
-    "ss_log_data/point2/5",
-    "ss_log_data/point2/6",
-    "ss_log_data/point2/7",
-    "ss_log_data/point2/8",
-    "ss_log_data/point2/9"
+    "ss_log_data/new-derp-point/0",
+    "ss_log_data/new-derp-point/1",
+    "ss_log_data/new-derp-point/2",
+    "ss_log_data/new-derp-point/3",
+    "ss_log_data/new-derp-point/4",
+    "ss_log_data/new-derp-point/5",
+    "ss_log_data/new-derp-point/6",
+    "ss_log_data/new-derp-point/7",
+    "ss_log_data/new-derp-point/8",
+    "ss_log_data/new-derp-point/9"
   ],
-  "classifier_model_dir": "classifiers/derp-tether-classifier-0.15",
+  "classifier_model_dir": "classifiers/derp_tether_all/April_05_01-12-12_40e3795142/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
@@ -22,7 +22,7 @@
   "full_env_h": 5.0,
   "goal_w_m": 3.5,
   "goal_h_m": 3.5,
-  "timeout": 180,
+  "timeout": 240,
   "movable_obstacles": [
   ],
   "goal_threshold": 0.15,

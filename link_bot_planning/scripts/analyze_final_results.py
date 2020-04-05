@@ -4,9 +4,10 @@ import argparse
 import json
 import pathlib
 from typing import List, Dict
+
 import matplotlib.pyplot as plt
 import numpy as np
-from colorama import Style
+from colorama import Style, Fore
 from scipy import stats
 from tabulate import tabulate
 
@@ -48,16 +49,17 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('results_dirs', help='folders containing folders containing metrics.json', type=pathlib.Path, nargs='+')
     parser.add_argument('--no-plot', action='store_true')
+    parser.add_argument('--final', action='store_true')
 
     args = parser.parse_args()
 
     headers = ['']
     aggregate_metrics = {
-        'planning_time': [['min', 'max', 'mean', 'median', 'std']],
-        'final_execution_to_goal_error': [['min', 'max', 'mean', 'median', 'std']],
-        'final_plan_to_goal_error': [['min', 'max', 'mean', 'median', 'std']],
-        'final_plan_to_execution_error': [['min', 'max', 'mean', 'median', 'std']],
-        'num_nodes': [['min', 'max', 'mean', 'median', 'std']],
+        'Planning Time': [['min', 'max', 'mean', 'median', 'std']],
+        'Final Execution To Goal Error': [['min', 'max', 'mean', 'median', 'std']],
+        'Final Plan To Goal Error': [['min', 'max', 'mean', 'median', 'std']],
+        'Final Plan To Execution Error': [['min', 'max', 'mean', 'median', 'std']],
+        'Num Nodes': [['min', 'max', 'mean', 'median', 'std']],
     }
 
     execution_to_goal_errors_comparisons = {}
@@ -68,86 +70,98 @@ def main():
     if not args.no_plot:
         plt.figure()
         execution_ax = plt.gca()
-        execution_ax.set_xlabel("Success Threshold, Final Tail Error")
+        execution_ax.set_xlabel("Success Threshold, Final Key-Point Error")
         execution_ax.set_ylabel("Success Rate")
         execution_ax.set_ylim([-0.1, 100.1])
         execution_ax.set_title("Success In Execution")
 
         plt.figure()
         planning_ax = plt.gca()
-        planning_ax.set_xlabel("Success Threshold, Final Tail Error")
+        planning_ax.set_xlabel("Success Threshold, Final Key-Point Error")
         planning_ax.set_ylabel("Success Rate")
         planning_ax.set_ylim([-0.1, 100.1])
         planning_ax.set_title("Success In Planning")
 
+    all_subfolders = []
     for results_dir in args.results_dirs:
         subfolders = results_dir.iterdir()
-
         for subfolder in subfolders:
-            if not subfolder.is_dir():
-                continue
-            metrics_filename = subfolder / 'metrics.json'
-            metrics = json.load(metrics_filename.open("r"))
-            planner_params = metrics['planner_params']
-            scenario = get_scenario(planner_params['scenario'])
-            timeout = planner_params['timeout']
-            data = metrics.pop('metrics')
-            N = len(data)
-            print("{} has {} examples".format(subfolder, N))
+            if subfolder.is_dir():
+                all_subfolders.append(subfolder)
 
-            final_plan_to_execution_errors = []
-            final_plan_to_goal_errors = []
-            final_execution_to_goal_errors = []
-            timeouts = 0
-            planning_times = []
-            nums_nodes = []
-            for datum in data:
-                planned_path = datum['planned_path']
-                actual_path = datum['actual_path']
-                final_planned_state = planned_path[-1]
-                final_actual_state = actual_path[-1]
-                final_plan_to_goal_error = scenario.distance_to_goal(final_planned_state, datum['goal'])
-                final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, datum['goal'])
-                final_plan_to_execution_error = scenario.distance(final_planned_state, final_actual_state)
-                final_plan_to_execution_errors.append(final_plan_to_execution_error)
-                final_plan_to_goal_errors.append(final_plan_to_goal_error)
-                final_execution_to_goal_errors.append(final_execution_to_goal_error)
+    if args.final:
+        table_format = 'latex'
+        for subfolder_idx, subfolder in enumerate(all_subfolders):
+            print("{}) {}".format(subfolder_idx, subfolder))
+        sort_order = input(Fore.CYAN + "Enter the desired table order:\n" + Fore.RESET)
+        all_subfolders = [all_subfolders[int(i)] for i in sort_order.split(' ')]
+    else:
+        table_format = 'github'
 
-                num_nodes = datum['num_nodes']
-                nums_nodes.append(num_nodes)
+    for subfolder in all_subfolders:
 
-                planning_times.append(datum['planning_time'])
+        metrics_filename = subfolder / 'metrics.json'
+        metrics = json.load(metrics_filename.open("r"))
+        planner_params = metrics['planner_params']
+        scenario = get_scenario(planner_params['scenario'])
+        timeout = planner_params['timeout']
+        data = metrics.pop('metrics')
+        N = len(data)
+        print("{} has {} examples".format(subfolder, N))
 
-                if datum['planning_time'] > timeout:
-                    timeouts += 1
+        final_plan_to_execution_errors = []
+        final_plan_to_goal_errors = []
+        final_execution_to_goal_errors = []
+        timeouts = 0
+        planning_times = []
+        nums_nodes = []
+        for datum in data:
+            planned_path = datum['planned_path']
+            actual_path = datum['actual_path']
+            final_planned_state = planned_path[-1]
+            final_actual_state = actual_path[-1]
+            final_plan_to_goal_error = scenario.distance_to_goal(final_planned_state, datum['goal'])
+            final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, datum['goal'])
+            final_plan_to_execution_error = scenario.distance(final_planned_state, final_actual_state)
+            final_plan_to_execution_errors.append(final_plan_to_execution_error)
+            final_plan_to_goal_errors.append(final_plan_to_goal_error)
+            final_execution_to_goal_errors.append(final_execution_to_goal_error)
 
-            timeout_percentage = timeouts / N * 100
+            num_nodes = datum['num_nodes']
+            nums_nodes.append(num_nodes)
 
-            name = str(subfolder.name).replace('_', ' ')
-            if not args.no_plot:
-                execution_successes = []
-                for threshold in errors_thresholds:
-                    success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / N * 100
-                    execution_successes.append(success_percentage)
-                execution_ax.plot(errors_thresholds, execution_successes, label=name, linewidth=5)
+            planning_times.append(datum['planning_time'])
 
-                planning_successes = []
-                for threshold in errors_thresholds:
-                    success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / N * 100
-                    planning_successes.append(success_percentage)
-                planning_ax.plot(errors_thresholds, planning_successes, label=name, linewidth=5)
+            if datum['planning_time'] > timeout:
+                timeouts += 1
 
-            execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
-            plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
-            headers.append(str(subfolder.name))
+        timeout_percentage = timeouts / N * 100
 
-            aggregate_metrics['planning_time'].append(row_stats(planning_times))
-            aggregate_metrics['final_plan_to_execution_error'].append(row_stats(final_plan_to_execution_errors))
-            aggregate_metrics['final_plan_to_goal_error'].append(row_stats(final_plan_to_goal_errors))
-            aggregate_metrics['final_execution_to_goal_error'].append(row_stats(final_execution_to_goal_errors))
-            aggregate_metrics['num_nodes'].append(row_stats(nums_nodes))
+        name = str(subfolder.name).replace('_', ' ')
+        if not args.no_plot:
+            execution_successes = []
+            for threshold in errors_thresholds:
+                success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / N * 100
+                execution_successes.append(success_percentage)
+            execution_ax.plot(errors_thresholds, execution_successes, label=name, linewidth=5)
 
-            print("{:50s}: {:3.2f}% timeout ".format(str(subfolder), timeout_percentage))
+            planning_successes = []
+            for threshold in errors_thresholds:
+                success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / N * 100
+                planning_successes.append(success_percentage)
+            planning_ax.plot(errors_thresholds, planning_successes, label=name, linewidth=5)
+
+        execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
+        plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
+        headers.append(str(subfolder.name))
+
+        aggregate_metrics['Planning Time'].append(row_stats(planning_times))
+        aggregate_metrics['Final Plan To Execution Error'].append(row_stats(final_plan_to_execution_errors))
+        aggregate_metrics['Final Plan To Goal Error'].append(row_stats(final_plan_to_goal_errors))
+        aggregate_metrics['Final Execution To Goal Error'].append(row_stats(final_execution_to_goal_errors))
+        aggregate_metrics['Num Nodes'].append(row_stats(nums_nodes))
+
+        print("{:50s}: {:3.2f}% timeout ".format(str(subfolder), timeout_percentage))
 
     execution_ax.legend()
     planning_ax.legend()
@@ -157,14 +171,14 @@ def main():
     for metric_name, table_data in aggregate_metrics.items():
         print(Style.BRIGHT + metric_name + Style.NORMAL)
         table_data_flipped = transpose_2d_lists(table_data)
-        table = tabulate(table_data_flipped, headers=headers, tablefmt='github', floatfmt='6.4f')
+        table = tabulate(table_data_flipped, headers=headers, tablefmt=table_format, floatfmt='6.4f')
         print(table)
         print()
 
     print(Style.BRIGHT + "p-value matrix (goal vs execution)" + Style.NORMAL)
-    print(dict_to_pvale_table(execution_to_goal_errors_comparisons, table_format='github'))
+    print(dict_to_pvale_table(execution_to_goal_errors_comparisons, table_format=table_format))
     print(Style.BRIGHT + "p-value matrix (plan vs execution)" + Style.NORMAL)
-    print(dict_to_pvale_table(plan_to_execution_errors_comparisons, table_format='github'))
+    print(dict_to_pvale_table(plan_to_execution_errors_comparisons, table_format=table_format))
 
     if not args.no_plot:
         plt.show()
