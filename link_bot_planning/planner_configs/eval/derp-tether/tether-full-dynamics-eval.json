@@ -9,8 +9,8 @@
   "random_epsilon": 0.05,
   "full_env_w": 5.0,
   "full_env_h": 5.0,
-  "goal_w_m": 3.5,
-  "goal_h_m": 3.5,
+  "goal_w_m": 2.75,
+  "goal_h_m": 2.75,
   "timeout": 240,
   "movable_obstacles": [
   ],
