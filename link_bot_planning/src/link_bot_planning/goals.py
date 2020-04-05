@@ -23,7 +23,7 @@ def sample_collision_free_goal(goal_w_m: float,
         x, y tuple, meters
 
     """
-    full_env_data = link_bot_sdf_utils.inflate(full_env_data, radius_m=0.05)
+    full_env_data = link_bot_sdf_utils.inflate(full_env_data, radius_m=0.025)
 
     while True:
         x, y = sample_goal(goal_w_m, goal_h_m, rng)

@@ -25,7 +25,7 @@
   "timeout": 240,
   "movable_obstacles": [
   ],
-  "goal_threshold": 0.15,
+  "goal_threshold": 0.05,
   "fixed_goal": null,
   "reset_robot": [
     0.0,

@@ -139,7 +139,7 @@ class LinkBotScenario(ExperimentScenario):
         return head_point_where_gripper_is
 
     def __repr__(self):
-        return "link_bot"
+        return "Rope Manipulation"
 
     @staticmethod
     def robot_name():

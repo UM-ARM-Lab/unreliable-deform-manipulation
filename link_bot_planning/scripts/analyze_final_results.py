@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+from scipy import stats
 import json
 import pathlib
 from typing import List, Dict
@@ -69,18 +70,21 @@ def main():
     print('-' * 90)
     if not args.no_plot:
         plt.figure()
-        execution_ax = plt.gca()
-        execution_ax.set_xlabel("Success Threshold, Final Key-Point Error")
-        execution_ax.set_ylabel("Success Rate")
-        execution_ax.set_ylim([-0.1, 100.1])
-        execution_ax.set_title("Success In Execution")
+        execution_success_ax = plt.gca()
+        execution_success_ax.set_xlabel("Success Threshold, Task Error")
+        execution_success_ax.set_ylabel("Success Rate")
+        execution_success_ax.set_ylim([-0.1, 100.1])
 
         plt.figure()
-        planning_ax = plt.gca()
-        planning_ax.set_xlabel("Success Threshold, Final Key-Point Error")
-        planning_ax.set_ylabel("Success Rate")
-        planning_ax.set_ylim([-0.1, 100.1])
-        planning_ax.set_title("Success In Planning")
+        planning_success_ax = plt.gca()
+        planning_success_ax.set_xlabel("Success Threshold, Task Error")
+        planning_success_ax.set_ylabel("Success Rate")
+        planning_success_ax.set_ylim([-0.1, 100.1])
+
+        plt.figure()
+        execution_error_ax = plt.gca()
+        execution_error_ax.set_xlabel("Task Error")
+        execution_error_ax.set_ylabel("Density")
 
     all_subfolders = []
     for results_dir in args.results_dirs:
@@ -98,11 +102,14 @@ def main():
     else:
         table_format = 'github'
 
-    for subfolder in all_subfolders:
-
+    max_density = 0
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+    for color, subfolder in zip(colors, all_subfolders):
         metrics_filename = subfolder / 'metrics.json'
         metrics = json.load(metrics_filename.open("r"))
         planner_params = metrics['planner_params']
+        goal_threshold = planner_params['goal_threshold']
         scenario = get_scenario(planner_params['scenario'])
         timeout = planner_params['timeout']
         data = metrics.pop('metrics')
@@ -139,17 +146,25 @@ def main():
 
         name = str(subfolder.name).replace('_', ' ')
         if not args.no_plot:
+            # Execution Success Plot
             execution_successes = []
             for threshold in errors_thresholds:
                 success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / N * 100
                 execution_successes.append(success_percentage)
-            execution_ax.plot(errors_thresholds, execution_successes, label=name, linewidth=5)
+            execution_success_ax.plot(errors_thresholds, execution_successes, label=name, linewidth=5, color=color)
 
+            # Execution Error Plot
+            final_execution_to_goal_pdf = stats.gaussian_kde(final_execution_to_goal_errors)
+            final_execution_to_goal_densities_at_thresholds = final_execution_to_goal_pdf(errors_thresholds)
+            execution_error_ax.plot(errors_thresholds, final_execution_to_goal_densities_at_thresholds, label=name, linewidth=5, c=color)
+            max_density = max(np.max(final_execution_to_goal_densities_at_thresholds), max_density)
+
+            # Planning SuccessPlot
             planning_successes = []
             for threshold in errors_thresholds:
                 success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / N * 100
                 planning_successes.append(success_percentage)
-            planning_ax.plot(errors_thresholds, planning_successes, label=name, linewidth=5)
+            planning_success_ax.plot(errors_thresholds, planning_successes, label=name, linewidth=5, c=color)
 
         execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
         plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
@@ -163,8 +178,16 @@ def main():
 
         print("{:50s}: {:3.2f}% timeout ".format(str(subfolder), timeout_percentage))
 
-    execution_ax.legend()
-    planning_ax.legend()
+    execution_success_ax.plot([goal_threshold, goal_threshold], [0, 100], color='k', linestyle='--')
+    execution_error_ax.plot([goal_threshold, goal_threshold], [0, max_density], color='k', linestyle='--')
+    planning_success_ax.plot([goal_threshold, goal_threshold], [0, 100], color='k', linestyle='--')
+
+    execution_success_ax.set_title("Success In Execution, {}".format(scenario))
+    planning_success_ax.set_title("Success In Planning, {}".format(scenario))
+    execution_error_ax.set_title("Task Error, {}".format(scenario))
+    execution_success_ax.legend()
+    execution_error_ax.legend()
+    planning_success_ax.legend()
 
     print('-' * 90)
 

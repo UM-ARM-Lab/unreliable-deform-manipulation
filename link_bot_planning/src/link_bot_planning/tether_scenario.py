@@ -212,7 +212,7 @@ class TetherScenario(ExperimentScenario):
         return batched_point_robot
 
     def __repr__(self):
-        return "tether"
+        return "Tethered Point Robot"
 
     @staticmethod
     def robot_name():
