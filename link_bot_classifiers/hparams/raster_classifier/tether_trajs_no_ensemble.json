@@ -1,12 +1,12 @@
 {
   "model_class": "raster",
-  "scenario": "link_bot",
+  "scenario": "tether",
   "states_keys": [
     "link_bot"
   ],
-  "image_key": "transition_image",
+  "image_key": "trajectory_image",
   "action_in_image": false,
-  "rope_image_k": 10000,
+  "rope_image_k": 1000,
   "fc_layer_sizes": [256],
   "conv_filters": [
     [8, [5, 5]],
@@ -19,7 +19,5 @@
   "activity_reg": 0.05,
   "dropout_rate": 0.0,
   "batch_norm": false,
-  "local_env_h_rows": 100,
-  "local_env_w_cols": 100,
-  "stdev": true
+  "stdev": false
 }

@@ -18,5 +18,6 @@
   "bias_reg": 0.05,
   "activity_reg": 0.05,
   "dropout_rate": 0.0,
-  "batch_norm": false
+  "batch_norm": false,
+  "stdev": true
 }

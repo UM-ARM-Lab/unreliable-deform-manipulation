@@ -103,15 +103,20 @@ def main():
         if args.no_plot:
             continue
 
+        if 'stdev' in example:
+            stdev = example['stdev'].numpy()
+            stdev_next = example['stdev_next'].numpy()
+            title = "Label = {}, stdev={:.3f},{:.3f}".format(label, stdev, stdev_next)
+        else:
+            title = "Label = {}, no stdev".format(label)
+
         if args.display_type == 'just_count':
             pass
         elif args.display_type == 'transition_image':
             image = example['transition_image'].numpy()
-            stdev = example['stdev'].numpy()
             if scenario == 'link_bot':
                 image = make_interpretable_image(image, 11)
             plt.imshow(np.flipud(image))
-            title = "Label = {}, stdev={}".format(label, stdev)
             plt.title(title)
             plt.show(block=True)
         elif args.display_type == 'trajectory_image':
@@ -120,7 +125,6 @@ def main():
                 image = make_interpretable_image(image, 11)
             plt.imshow(np.flipud(image))
             ax = plt.gca()
-            title = "Label = {}".format(label)
             ax.set_xticks([])
             ax.set_yticks([])
             plt.title(title)
@@ -147,7 +151,7 @@ def main():
                     }
                     scenario.plot_state(ax, actual_state, color='red', s=20, zorder=2)
                     scenario.plot_state(ax, planned_state, color='blue', s=5, zorder=3)
-            plt.title("Traj {}, Step{}, Label = {}".format(traj_idx, time_idx, label))
+            plt.title(title)
             plt.show()
         elif args.display_type == 'transition_plot':
             full_env = example['full_env/env'].numpy()
@@ -157,7 +161,6 @@ def main():
             action = example['action'].numpy()
             next_state = example['link_bot_next'].numpy()
             planned_next_state = example['planned_state/link_bot_next'].numpy()
-            stdev_next = example['stdev_next'].numpy()
 
             plot_classifier_data(
                 next_state=next_state,
@@ -167,7 +170,7 @@ def main():
                 state=state,
                 actual_env=full_env,
                 actual_env_extent=full_env_extent,
-                title="Label = {}, stdev (next)={}".format(label, stdev_next),
+                title=title,
                 label=label)
             plt.legend()
             plt.tight_layout()

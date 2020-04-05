@@ -11,8 +11,8 @@ from link_bot_data.base_dataset import DEFAULT_VAL_SPLIT, DEFAULT_TEST_SPLIT
 from link_bot_data.classifier_dataset import add_model_predictions
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
+from link_bot_planning import model_utils
 from link_bot_pycommon.args import my_formatter
-from link_bot_planning.model_utils import load_ensemble
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
@@ -32,7 +32,7 @@ def main():
     args = parser.parse_args()
 
     dynamics_hparams = json.load((args.dataset_dir / 'hparams.json').open('r'))
-    fwd_models, _ = load_ensemble(args.fwd_model_dir)
+    fwd_models, _ = model_utils.load_generic_model(args.fwd_model_dir)
     compression_type = "ZLIB"
 
     dataset = DynamicsDataset([args.dataset_dir])
@@ -40,14 +40,17 @@ def main():
     args.out_dir.mkdir(parents=False, exist_ok=False)
     new_hparams_filename = args.out_dir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams
-    if isinstance(args.fwd_model_dir, list):
+    if len(args.fwd_model_dir) > 1:
+        using_ensemble = True
         fwd_model_dir = [str(d) for d in args.fwd_model_dir]
     else:
-        fwd_model_dir = str(args.fwd_model_dir
+        using_ensemble = False
+        fwd_model_dir = str(args.fwd_model_dir[0])
     classifier_dataset_hparams['fwd_model_dir'] = fwd_model_dir
-    classifier_dataset_hparams['fwd_model_hparams'] = fwd_models[0].hparams
+    classifier_dataset_hparams['fwd_model_hparams'] = fwd_models.hparams
+    classifier_dataset_hparams['using_ensemble'] = using_ensemble
     classifier_dataset_hparams['actual_state_keys'] = dataset.state_feature_names
-    classifier_dataset_hparams['planned_state_keys'] = fwd_models[0].states_keys
+    classifier_dataset_hparams['planned_state_keys'] = fwd_models.states_keys
     json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=1)
 
     val_split = int(args.total_take * DEFAULT_VAL_SPLIT) if args.total_take is not None else None

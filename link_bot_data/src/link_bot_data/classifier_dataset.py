@@ -10,7 +10,7 @@ from link_bot_planning.params import FullEnvParams
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
-def add_model_predictions(fwd_models: List[BaseDynamicsFunction], tf_dataset, dataset: DynamicsDataset):
+def add_model_predictions(fwd_model: BaseDynamicsFunction, tf_dataset, dataset: DynamicsDataset):
     def _add_model_predictions(inputs, outputs):
         full_env = inputs['full_env/env']
         full_env_origin = inputs['full_env/origin']
@@ -21,29 +21,17 @@ def add_model_predictions(fwd_models: List[BaseDynamicsFunction], tf_dataset, da
             start_state = inputs[name][0]
             start_states[name] = start_state
 
-        all_outputs = {}
-        for fwd_model in fwd_models:
-            predictions = fwd_model.propagate_differentiable(full_env=full_env,
-                                                             full_env_origin=full_env_origin,
-                                                             res=res,
-                                                             start_states=start_states,
-                                                             actions=actions)
-            for name in fwd_model.states_keys:
-                predictions_for_name = []
-                for prediction_t in predictions:
-                    predictions_for_name.append(prediction_t[name])
-                predictions_for_name = tf.stack(predictions_for_name, axis=0)
-                if add_planned(name) not in all_outputs:
-                    all_outputs[add_planned(name)] = []
-                all_outputs[add_planned(name)].append(predictions_for_name)
-
-        stdevs = []
-        for k, predictions in all_outputs.items():
-            predictions = tf.stack(predictions, axis=1)
-            outputs[k] = tf.math.reduce_mean(predictions, axis=1)
-            stdevs.append(tf.math.reduce_sum(tf.math.reduce_std(predictions, axis=1), axis=1))
-        total_stdev = tf.reduce_sum(tf.stack(stdevs, axis=1), axis=1)
-        outputs['stdev'] = total_stdev
+        predictions = fwd_model.propagate_differentiable(full_env=full_env,
+                                                         full_env_origin=full_env_origin,
+                                                         res=res,
+                                                         start_states=start_states,
+                                                         actions=actions)
+        for name in fwd_model.states_keys:
+            predictions_for_name = []
+            for prediction_t in predictions:
+                predictions_for_name.append(prediction_t[name])
+            predictions_for_name = tf.stack(predictions_for_name, axis=0)
+            outputs[add_planned(name)] = predictions_for_name
         return inputs, outputs
 
     def _split_sequences(inputs, outputs):
@@ -55,7 +43,7 @@ def add_model_predictions(fwd_models: List[BaseDynamicsFunction], tf_dataset, da
             # use outputs here so we get the final state
             example[name] = outputs[name]
 
-        for name in fwd_models[0].states_keys:
+        for name in fwd_model.states_keys:
             name = add_planned(name)
             example[name] = outputs[name]
 
@@ -75,7 +63,7 @@ def add_model_predictions(fwd_models: List[BaseDynamicsFunction], tf_dataset, da
                 feature_name = ("%d/" + name) % t
                 split_example[feature_name] = state
 
-        for name in fwd_models[0].states_keys:
+        for name in fwd_model.states_keys:
             name = add_planned(name)
             states = example[name]
             for t in range(states.shape[0]):
@@ -83,11 +71,12 @@ def add_model_predictions(fwd_models: List[BaseDynamicsFunction], tf_dataset, da
                 feature_name = ("%d/" + name) % t
                 split_example[feature_name] = state
 
-        stdevs = outputs['stdev']
-        for t in range(stdevs.shape[0]):
-            stdev = stdevs[t]
-            feature_name = "%d/stdev" % t
-            split_example[feature_name] = stdev
+        if 'stdev' in outputs:
+            stdevs = outputs['stdev']
+            for t in range(stdevs.shape[0]):
+                stdev = stdevs[t]
+                feature_name = "%d/stdev" % t
+                split_example[feature_name] = stdev
 
         for name in dataset.constant_feature_names:
             split_example[name] = inputs[name]
@@ -117,8 +106,10 @@ class ClassifierDataset(BaseDataset):
         self.state_feature_names = [
             'time_idx',
             'traj_idx',
-            'stdev',
         ]
+
+        if self.hparams['using_ensemble']:
+            self.state_feature_names.append('stdev')
 
         for k in self.actual_state_keys:
             self.state_feature_names.append('{}'.format(k))

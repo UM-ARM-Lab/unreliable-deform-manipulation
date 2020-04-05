@@ -78,13 +78,15 @@ class RasterClassifier(MyKerasModel):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         image = input_dict[self.hparams['image_key']]
         action = input_dict['action']
-        stdev = tf.expand_dims(input_dict['stdev'], axis=1)
-        stdev_next = tf.expand_dims(input_dict['stdev_next'], axis=1)
         out_conv_z = self._conv(image)
         conv_output = self.conv_flatten(out_conv_z)
 
         if self.hparams['mixed']:
-            concat_args = [conv_output, action, stdev, stdev_next]
+            concat_args = [conv_output, action]
+            if self.hparams['stdev']:
+                stdev = tf.expand_dims(input_dict['stdev'], axis=1)
+                stdev_next = tf.expand_dims(input_dict['stdev_next'], axis=1)
+                concat_args.extend([stdev, stdev_next])
             for state_key in self.states_keys:
                 planned_state_key = 'planned_state/{}'.format(state_key)
                 planned_state_key_next = add_next('planned_state/{}'.format(state_key))
@@ -131,7 +133,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                          actions,
                          ) -> tf.Tensor:
         states_i = states_sequence[-2]
-        # remove stdev from state we draw
+        # remove stdev from state we draw. if stdev doesn't exist this will still work
         states_i_to_draw = {k: states_i[k] for k in states_i if k != 'stdev'}
         action_i = actions[-1]
         states_i_plus_1 = states_sequence[-1]
@@ -218,9 +220,11 @@ class RasterClassifierWrapper(BaseConstraintChecker):
     def net_inputs(self, action_i, states_i, states_i_plus_1):
         net_inputs = {
             'action': tf.convert_to_tensor(action_i, tf.float32),
-            'stdev': tf.convert_to_tensor(states_i['stdev'], tf.float32),
-            add_next('stdev'): tf.convert_to_tensor(states_i_plus_1['stdev'], tf.float32),
         }
+
+        if self.net.hparams['stdev']:
+            net_inputs['stdev'] = tf.convert_to_tensor(states_i['stdev'], tf.float32)
+            net_inputs[add_next('stdev')] = tf.convert_to_tensor(states_i_plus_1['stdev'], tf.float32)
 
         for state_key in self.net.states_keys:
             planned_state_key = 'planned_state/{}'.format(state_key)

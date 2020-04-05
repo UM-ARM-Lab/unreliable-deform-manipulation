@@ -18,6 +18,8 @@ def main():
 
     args = parser.parse_args()
 
+    args.outdir.mkdir()
+
     if not args.dry_run:
         path = args.indirs[0] / 'hparams.json'
         new_path = args.outdir / 'hparams.json'
