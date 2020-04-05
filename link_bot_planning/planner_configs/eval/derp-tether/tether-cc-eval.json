@@ -1,5 +1,16 @@
 {
-  "fwd_model_dir": "ss_log_data/point2/0",
+  "fwd_model_dir": [
+    "ss_log_data/new-derp-point/0",
+    "ss_log_data/new-derp-point/1",
+    "ss_log_data/new-derp-point/2",
+    "ss_log_data/new-derp-point/3",
+    "ss_log_data/new-derp-point/4",
+    "ss_log_data/new-derp-point/5",
+    "ss_log_data/new-derp-point/6",
+    "ss_log_data/new-derp-point/7",
+    "ss_log_data/new-derp-point/8",
+    "ss_log_data/new-derp-point/9"
+  ],
   "classifier_model_dir": "classifiers/collision/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
