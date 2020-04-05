@@ -5,11 +5,9 @@ import pathlib
 
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance
 from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function
@@ -114,10 +112,6 @@ def eval_main(args, seed: int):
     test_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
 
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
-
-    if labeling_params['balance']:
-        print(Fore.GREEN + "balancing..." + Fore.RESET)
-        test_tf_dataset = balance(test_tf_dataset)
 
     if model_hparams['image_key'] == 'transition_image':
         test_tf_dataset = add_transition_image(test_tf_dataset,
