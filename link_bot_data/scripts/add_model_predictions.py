@@ -40,6 +40,11 @@ def main():
     args.out_dir.mkdir(parents=False, exist_ok=False)
     new_hparams_filename = args.out_dir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams
+    if isinstance(args.fwd_model_dir, list):
+        fwd_model_dir = [str(d) for d in args.fwd_model_dir]
+    else:
+        fwd_model_dir = str(args.fwd_model_dir
+    classifier_dataset_hparams['fwd_model_dir'] = fwd_model_dir
     classifier_dataset_hparams['fwd_model_hparams'] = fwd_models[0].hparams
     classifier_dataset_hparams['actual_state_keys'] = dataset.state_feature_names
     classifier_dataset_hparams['planned_state_keys'] = fwd_models[0].states_keys
