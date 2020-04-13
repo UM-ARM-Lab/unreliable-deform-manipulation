@@ -89,33 +89,27 @@ class BaseDataset:
                      do_not_process: bool = False,
                      take: Optional[int] = None,
                      ) -> tf.data.Dataset:
-        records = []
-        for dataset_dir in self.dataset_dirs:
-            records.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
+        if mode == 'all':
+            train_filenames = []
+            test_filenames = []
+            val_filenames = []
+            for dataset_dir in self.dataset_dirs:
+                train_filenames.extend(str(filename) for filename in dataset_dir.glob("{}/*.tfrecords".format('train')))
+                test_filenames.extend(str(filename) for filename in dataset_dir.glob("{}/*.tfrecords".format('test')))
+                val_filenames.extend(str(filename) for filename in dataset_dir.glob("{}/*.tfrecords".format('val')))
+
+            all_filenames = train_filenames
+            all_filenames.extend(test_filenames)
+            all_filenames.extend(val_filenames)
+        else:
+            all_filenames = []
+            for dataset_dir in self.dataset_dirs:
+                all_filenames.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
+
         desired_sequence_length = sequence_length if sequence_length is not None else self.max_sequence_length
-        return self.get_datasets_from_records(records,
+        return self.get_datasets_from_records(all_filenames,
                                               desired_sequence_length=desired_sequence_length,
                                               n_parallel_calls=n_parallel_calls,
-                                              do_not_process=do_not_process,
-                                              take=take)
-
-    def get_datasets_all_modes(self,
-                               do_not_process: bool = False,
-                               take: Optional[int] = None,
-                               ):
-        train_filenames = []
-        test_filenames = []
-        val_filenames = []
-        for dataset_dir in self.dataset_dirs:
-            train_filenames.extend(str(filename) for filename in dataset_dir.glob("{}/*.tfrecords".format('train')))
-            test_filenames.extend(str(filename) for filename in dataset_dir.glob("{}/*.tfrecords".format('test')))
-            val_filenames.extend(str(filename) for filename in dataset_dir.glob("{}/*.tfrecords".format('val')))
-
-        all_filenames = train_filenames
-        all_filenames.extend(test_filenames)
-        all_filenames.extend(val_filenames)
-
-        return self.get_datasets_from_records(records=all_filenames,
                                               do_not_process=do_not_process,
                                               take=take)
 
@@ -128,13 +122,12 @@ class BaseDataset:
                                   ) -> tf.data.Dataset:
         dataset = tf.data.TFRecordDataset(records, buffer_size=1 * 1024 * 1024, compression_type='ZLIB')
 
-        # Given the member lists of states, actions, and constants set in the constructor, create
-        # a dict for parsing a feature
+        # Given the member lists of states, actions, and constants set in the constructor, create a dict for parsing a feature
         features_description = self.make_features_description()
         dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
-        # Note: for converting old datasets, use these instead
-        # features_description = self.old_make_features_description()
-        # dataset = parse_dataset(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
+
+        if take is not None:
+            dataset = dataset.take(take)
 
         if not do_not_process:
             dataset = dataset.map(self.split_into_sequences, num_parallel_calls=n_parallel_calls)
@@ -145,9 +138,6 @@ class BaseDataset:
             dataset = dataset.flat_map(_slice_sequences)
 
             dataset = self.post_process(dataset, n_parallel_calls)
-
-        if take is not None:
-            dataset = dataset.take(take)
 
         return dataset
 

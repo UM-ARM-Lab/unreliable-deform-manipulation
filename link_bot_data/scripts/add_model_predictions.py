@@ -2,8 +2,8 @@
 import argparse
 import json
 import pathlib
+from multiprocessing import Pool
 
-import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
@@ -21,11 +21,53 @@ tf.compat.v1.enable_eager_execution(config=config)
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
+def generate_mode(worker_args):
+    mode, dataset, fwd_models, take_split, args = worker_args
+    compression_type = "ZLIB"
+    tf_dataset = dataset.get_datasets(mode=mode, take=take_split[mode])
+
+    full_output_directory = args.out_dir / mode
+    full_output_directory.mkdir(parents=True, exist_ok=True)
+
+    current_example_count = 0
+    examples = []
+    total_count = 0
+    for example_idx, out_example in enumerate(add_model_predictions(fwd_models, tf_dataset, dataset)):
+        features = {}
+        for k, v in out_example.items():
+            features[k] = float_tensor_to_bytes_feature(v)
+
+        example_proto = tf.train.Example(features=tf.train.Features(feature=features))
+        example = example_proto.SerializeToString()
+        examples.append(example)
+        current_example_count += 1
+        total_count += 1
+
+        if current_example_count == args.max_examples_per_record:
+            # save to a TF record
+            serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
+
+            start_example_idx = total_count
+            end_example_idx = start_example_idx + len(examples)
+            record_filename = "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx - 1)
+            full_filename = full_output_directory / record_filename
+            if full_filename.exists():
+                print(Fore.RED + "Error! Output file {} exists. Aborting.".format(full_filename) + Fore.RESET)
+                return
+            writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=compression_type)
+            writer.write(serialized_dataset)
+            print("saved {}".format(full_filename))
+
+            # empty and reset counter
+            current_example_count = 0
+            examples = []
+
+
 def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
-    parser.add_argument('--n-examples-per-record', type=int, default=128, help="examples per file")
+    parser.add_argument('--max-examples-per-record', type=int, default=1024, help="examples per file")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
 
@@ -33,7 +75,6 @@ def main():
 
     dynamics_hparams = json.load((args.dataset_dir / 'hparams.json').open('r'))
     fwd_models, _ = model_utils.load_generic_model(args.fwd_model_dir)
-    compression_type = "ZLIB"
 
     dataset = DynamicsDataset([args.dataset_dir])
 
@@ -46,6 +87,7 @@ def main():
     else:
         using_ensemble = False
         fwd_model_dir = str(args.fwd_model_dir[0])
+    classifier_dataset_hparams['dataset_dir'] = str(args.dataset_dir)
     classifier_dataset_hparams['fwd_model_dir'] = fwd_model_dir
     classifier_dataset_hparams['fwd_model_hparams'] = fwd_models.hparams
     classifier_dataset_hparams['using_ensemble'] = using_ensemble
@@ -62,42 +104,9 @@ def main():
         'train': train_split
     }
 
-    for mode in ['test', 'val', 'train']:
-        tf_dataset = dataset.get_datasets(mode=mode, take=take_split[mode])
-        new_tf_dataset = add_model_predictions(fwd_models, tf_dataset, dataset)
-
-        full_output_directory = args.out_dir / mode
-        full_output_directory.mkdir(parents=True, exist_ok=True)
-
-        current_record_idx = 0
-        examples = np.ndarray([args.n_examples_per_record], dtype=np.object)
-        for example_idx, example_dict in enumerate(new_tf_dataset):
-
-            features = {}
-            for k, v in example_dict.items():
-                features[k] = float_tensor_to_bytes_feature(v)
-
-            example_proto = tf.train.Example(features=tf.train.Features(feature=features))
-            example = example_proto.SerializeToString()
-            examples[current_record_idx] = example
-            current_record_idx += 1
-
-            if current_record_idx == args.n_examples_per_record:
-                # save to a TF record
-                serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
-
-                end_example_idx = example_idx + 1
-                start_example_idx = end_example_idx - args.n_examples_per_record
-                record_filename = "example_{}_to_{}.tfrecords".format(start_example_idx, end_example_idx - 1)
-                full_filename = full_output_directory / record_filename
-                if full_filename.exists():
-                    print(Fore.RED + "Error! Output file {} exists. Aborting.".format(full_filename) + Fore.RESET)
-                    return
-                writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=compression_type)
-                writer.write(serialized_dataset)
-                print("saved {}".format(full_filename))
-
-                current_record_idx = 0
+    pool_args = [(mode, dataset, fwd_models, take_split, args) for mode in ['test', 'val', 'train']]
+    with Pool(processes=3) as pool:
+        pool.map(generate_mode, pool_args)
 
 
 if __name__ == '__main__':

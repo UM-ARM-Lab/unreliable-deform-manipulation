@@ -100,6 +100,10 @@ def main():
 
         count += 1
 
+        # if count < 8128:
+        #     print(count)
+        continue
+
         if args.no_plot:
             continue
 
@@ -109,8 +113,6 @@ def main():
             title = "Label = {}, stdev={:.3f},{:.3f}".format(label, stdev, stdev_next)
         else:
             title = "Label = {}, no stdev".format(label)
-
-        title = "Label = {:d}".format(int(label))
 
         if args.display_type == 'just_count':
             pass
@@ -138,6 +140,7 @@ def main():
             full_env_extent = example['full_env/extent'].numpy()
             actual_state_all = example[add_all(labeling_params['state_key'])].numpy()
             planned_state_all = example[add_all(add_planned(labeling_params['state_key']))].numpy()
+            print(traj_idx, time_idx)
 
             plt.figure()
             plt.imshow(np.flipud(full_env), extent=full_env_extent)

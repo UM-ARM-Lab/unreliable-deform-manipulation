@@ -79,7 +79,7 @@ def flatten_concat_pairs(ex_pos, ex_neg):
 def has_already_diverged(transition: Dict, labeling_params):
     state_key = labeling_params['state_key']
 
-    planned_state_all = transition[add_all(add_planned(state_key))]
+    planned_state_all = transition[add_all_and_planned(state_key)]
     actual_state_all = transition[add_all(state_key)]
 
     pre_threshold = labeling_params['pre_close_threshold']
@@ -91,23 +91,22 @@ def has_already_diverged(transition: Dict, labeling_params):
 
 
 def balance(dataset, labeling_params: Dict):
-    label_key = labeling_params['label_key']
-
     def _label_is(label_is):
         def __filter(transition):
+            label_key = labeling_params['label_key']
             result = tf.squeeze(tf.equal(transition[label_key], label_is))
             return result
 
         return __filter
+
+    def _filter_out_already_diverged(transition):
+        return tf.logical_not(has_already_diverged(transition, labeling_params))
 
     positive_examples = dataset.filter(_label_is(1))
     negative_examples = dataset.filter(_label_is(0))
     negative_examples = negative_examples.cache(cachename())
 
     # now split filter out examples where the prediction diverged previously in the trajectory
-    def _filter_out_already_diverged(transition):
-        return tf.logical_not(has_already_diverged(transition, labeling_params))
-
     if labeling_params['discard_pre_far']:
         negative_examples = negative_examples.filter(_filter_out_already_diverged)
         # cache again for efficiency, since filter is slow when most elements are filtered out (which they are here)
@@ -157,74 +156,18 @@ def add_planned(feature_name):
     return "planned_state/" + feature_name
 
 
-def convert_sequences_to_transitions(constant_data: Dict,
-                                     state_like_sequences: Dict,
-                                     action_like_sequences: Dict,
-                                     planned_state_keys: List[str],
-                                     actual_state_keys: List[str]):
-    # Create a dict of lists, where keys are the features we want in each transition, and values are the data.
-    # The first dimension of these values is what will be split up into different examples
-    transitions = {
-    }
+def add_next_and_planned(feature_name):
+    return add_next(add_planned(feature_name))
 
-    for feature_name in state_like_sequences.keys():
-        next_feature_name = add_next(feature_name)
-        transitions[feature_name] = []
-        transitions[next_feature_name] = []
 
-    for feature_name in planned_state_keys:
-        transitions[add_all(add_planned(feature_name))] = []
+def add_all_and_planned(feature_name):
+    return add_all(add_planned(feature_name))
 
-    for feature_name in actual_state_keys:
-        transitions[add_all(feature_name)] = []
 
-    for feature_name in action_like_sequences.keys():
-        transitions[feature_name] = []
-        transitions[add_all(feature_name)] = []
-
-    for feature_name in constant_data.keys():
-        transitions[feature_name] = []
-
-    def _null_pad_sequence(sequence, idx):
-        # this should be some number that will be very far from being inside any actual
-        # because we're gonna try to draw it anyways
-        if idx + 2 < sequence.shape[0]:
-            sequence[idx + 2:] = NULL_PAD_VALUE
-        return sequence
-
-    # Fill the transitions dictionary with the data from the sequences
-    sequence_length = action_like_sequences['action'].shape[0]
-    for transition_idx in range(sequence_length):
-        for feature_name in state_like_sequences.keys():
-            transitions[feature_name].append(state_like_sequences[feature_name][transition_idx])
-
-            next_feature_name = add_next(feature_name)
-            transitions[next_feature_name].append(state_like_sequences[feature_name][transition_idx + 1])
-
-        for feature_name in actual_state_keys:
-            # no need to null-pad the actual state sequence
-            state_sequence = state_like_sequences[feature_name]
-            transitions[add_all(feature_name)].append(state_sequence)
-
-        for feature_name in planned_state_keys:
-            planned_feature_name = add_planned(feature_name)
-            planned_state_sequence = state_like_sequences[planned_feature_name]
-            null_pad_args = [planned_state_sequence, transition_idx]
-            null_padded_planned_state_sequence = tf.numpy_function(_null_pad_sequence, null_pad_args, tf.float32)
-            null_padded_planned_state_sequence.set_shape(state_like_sequences[planned_feature_name].shape)
-            transitions[add_all(planned_feature_name)].append(null_padded_planned_state_sequence)
-
-        for feature_name in action_like_sequences.keys():
-            transitions[feature_name].append(action_like_sequences[feature_name][transition_idx])
-
-            action_sequence = action_like_sequences[feature_name]
-            null_pad_args = [action_sequence, transition_idx]
-            null_padded_planned_state_sequence = tf.numpy_function(_null_pad_sequence, null_pad_args, tf.float32)
-            null_padded_planned_state_sequence.set_shape(action_like_sequences[feature_name].shape)
-            transitions[add_all(feature_name)].append(null_padded_planned_state_sequence)
-
-        for feature_name in constant_data.keys():
-            transitions[feature_name].append(constant_data[feature_name])
-
-    transition_dataset = tf.data.Dataset.from_tensor_slices(transitions)
-    return transition_dataset
+def null_pad_sequence(sequence, start_idx, end_idx):
+    # this should be some number that will be very far from being inside any actual
+    # because we're gonna try to draw it anyways
+    if end_idx + 1 < sequence.shape[0]:
+        sequence[end_idx + 1:] = NULL_PAD_VALUE
+    sequence[:start_idx] = NULL_PAD_VALUE
+    return sequence

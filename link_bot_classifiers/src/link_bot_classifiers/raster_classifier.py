@@ -12,7 +12,7 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_data.link_bot_dataset_utils import add_next
+from link_bot_data.link_bot_dataset_utils import add_next, add_next_and_planned, add_planned
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import FullEnvParams
 from link_bot_pycommon.link_bot_pycommon import make_dict_float32
@@ -87,11 +87,11 @@ class RasterClassifier(MyKerasModel):
             concat_args = [conv_output, action]
             if self.hparams['stdev']:
                 stdev = tf.expand_dims(input_dict['stdev'], axis=1)
-                stdev_next = tf.expand_dims(input_dict['stdev_next'], axis=1)
+                stdev_next = tf.expand_dims(input_dict[add_next('stdev')], axis=1)
                 concat_args.extend([stdev, stdev_next])
             for state_key in self.states_keys:
-                planned_state_key = 'planned_state/{}'.format(state_key)
-                planned_state_key_next = add_next('planned_state/{}'.format(state_key))
+                planned_state_key = add_planned(state_key)
+                planned_state_key_next = add_next_and_planned(state_key)
                 state = input_dict[planned_state_key]
                 next_state = input_dict[planned_state_key_next]
                 concat_args.append(state)
@@ -231,8 +231,8 @@ class RasterClassifierWrapper(BaseConstraintChecker):
             net_inputs[add_next('stdev')] = tf.convert_to_tensor(states_i_plus_1['stdev'], tf.float32)
 
         for state_key in self.net.states_keys:
-            planned_state_key = 'planned_state/{}'.format(state_key)
-            planned_state_key_next = add_next('planned_state/{}'.format(state_key))
+            planned_state_key = add_planned(state_key)
+            planned_state_key_next = add_next_and_planned(state_key)
             net_inputs[planned_state_key] = tf.convert_to_tensor(states_i[state_key], tf.float32)
             net_inputs[planned_state_key_next] = tf.convert_to_tensor(states_i_plus_1[state_key], tf.float32)
 

@@ -170,6 +170,7 @@ def generate(service_provider, params: CollectDynamicsParams, args):
         options = {
             'seed': args.seed,
             'dt': params.dt,
+            'n_trajs': args.trajs,
             'max_step_size': params.max_step_size,
             'full_env_params': full_env_params.to_json(),
             'sim_params': sim_params.to_json(),
