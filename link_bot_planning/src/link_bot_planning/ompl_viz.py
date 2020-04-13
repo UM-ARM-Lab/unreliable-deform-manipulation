@@ -126,7 +126,7 @@ def plan_vs_execution(environment: np.ndarray,
         actual_path_artist = experiment_scenario.plot_state(ax, actual_path[0], '#00ff00', zorder=3, s=20, label='actual')
 
     classifier_line_artist = plt.plot([extent[0], extent[1], extent[1], extent[0], extent[0]],
-                                      [extent[2], extent[2], extent[3], extent[3], extent[2]], c='green', linewidth=4)[0]
+                                      [extent[2], extent[2], extent[3], extent[3], extent[2]], c='green', linewidth=8)[0]
     ax.set_xlim([extent[0], extent[1]])
     ax.set_ylim([extent[2], extent[3]])
 
@@ -136,7 +136,7 @@ def plan_vs_execution(environment: np.ndarray,
         if accept_probabilities is not None:
             if 0 < t < len(accept_probabilities):
                 accept_probability = accept_probabilities[t - 1]
-                ax.set_title("P(accept) = {}".format(accept_probability))
+                ax.set_title("P(accept) = {:.3f}".format(accept_probability))
                 color = 'g' if accept_probability > 0.5 else 'r'
                 classifier_line_artist.set_color(color)
         if planned_path is not None:

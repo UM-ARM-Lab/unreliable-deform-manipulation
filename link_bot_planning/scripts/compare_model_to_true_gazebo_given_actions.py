@@ -89,6 +89,8 @@ def main():
     parser.add_argument('--no-plot', action='store_true')
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
 
+    plt.style.use("paper")
+
     args = parser.parse_args()
 
     tf.set_random_seed(args.seed)
@@ -138,7 +140,7 @@ def main():
         accept_probability = classifier_model.check_constraint(full_env=full_env_data.data,
                                                                full_env_origin=full_env_data.origin,
                                                                res=full_env_data.resolution,
-                                                               states_sequence=predicted_path[:t+1],
+                                                               states_sequence=predicted_path[:t + 1],
                                                                actions=actions)
         accept_probabilities.append(accept_probability)
 
@@ -151,6 +153,9 @@ def main():
                                       accept_probabilities=accept_probabilities,
                                       planned_path=predicted_path,
                                       actual_path=actual_path)
+    if args.outdir:
+        outfilename = args.outdir / 'compare_model_to_gazebo_with_classifier' / 'actions_{}.gif'.format(args.actions.stem)
+        anim.save(outfilename, writer='imagemagick', dpi=100)
     plt.show()
 
 
