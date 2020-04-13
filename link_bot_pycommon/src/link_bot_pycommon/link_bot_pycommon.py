@@ -238,3 +238,9 @@ def vector_to_points_2d(x):
     xs = x_points[:, 0]
     ys = x_points[:, 1]
     return xs, ys
+
+
+def make_dict_float32(d):
+    for k, s_k in d.items():
+        d[k] = s_k.astype(np.float32)
+    return d

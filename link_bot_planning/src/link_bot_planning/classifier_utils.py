@@ -15,6 +15,8 @@ def load_generic_model(model_dir: pathlib.Path, scenario: ExperimentScenario) ->
     :param scenario:
     :return:
     """
+    if isinstance(model_dir, str):
+        model_dir = pathlib.Path(model_dir)
     model_hparams_file = model_dir / 'hparams.json'
     hparams = json.load(model_hparams_file.open('r'))
     model_type = hparams['model_class']

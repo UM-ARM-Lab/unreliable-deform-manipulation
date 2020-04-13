@@ -14,6 +14,8 @@ from tensorflow import keras
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import add_next
 from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_planning.params import FullEnvParams
+from link_bot_pycommon.link_bot_pycommon import make_dict_float32
 from moonshine.image_functions import make_transition_image, make_traj_images
 from moonshine.numpy_utils import add_batch
 from moonshine.tensorflow_train_test_loop import MyKerasModel
@@ -115,6 +117,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         super().__init__(scenario)
         model_hparams_file = path / 'hparams.json'
         self.model_hparams = json.load(model_hparams_file.open('r'))
+        self.full_env_params = FullEnvParams.from_json(self.model_hparams['classifier_dataset_hparams']['full_env_params'])
         self.input_h_rows = self.model_hparams['input_h_rows']
         self.input_w_cols = self.model_hparams['input_w_cols']
         self.net = RasterClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
@@ -209,6 +212,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                          states_sequence: List[Dict],
                          actions: np.ndarray) -> float:
         actions = tf.Variable(actions, dtype=tf.float32, name="actions")
+        states_sequence = [make_dict_float32(s) for s in states_sequence]
         prediction = self.check_constraint_differentiable(full_env,
                                                           full_env_origin,
                                                           res,

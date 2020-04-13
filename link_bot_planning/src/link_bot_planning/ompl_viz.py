@@ -25,7 +25,7 @@ def plot_plan(ax,
               draw_tree: Optional[bool] = None,
               draw_rejected: Optional[bool] = None,
               ):
-    ax.imshow(np.flipud(environment), extent=extent)
+    ax.imshow(np.flipud(environment), extent=extent, cmap='Greys')
 
     # for state_sampled_at in viz_object.states_sampled_at:
     #     plot_rope_configuration(ax, state_sampled_at, label='sampled states', linewidth=1.0, c='b', zorder=1)
@@ -38,11 +38,11 @@ def plot_plan(ax,
         start = planned_path[0]
         end = planned_path[-1]
         experiment_scenario.plot_state_simple(ax, start, color='b', s=50, zorder=5, label='start')
-        experiment_scenario.plot_state_simple(ax, end, color='pink', s=50, zorder=5, marker='*', label='end')
+        # experiment_scenario.plot_state_simple(ax, end, color='pink', s=50, zorder=5, marker='*', label='end')
         experiment_scenario.plot_goal(ax, goal, color='c', zorder=5, s=50, label='goal')
         draw_every_n = 1
         T = len(planned_path)
-        colormap = cm.YlGn
+        colormap = cm.winter
         for t in range(0, T, draw_every_n):
             state = planned_path[t]
             for randomly_accepted_sample in viz_object.randomly_accepted_samples:
@@ -81,6 +81,9 @@ def plot_plan(ax,
                 v2 = planner_data.getVertex(vertex_index2)
                 s2 = v2.getState()
                 np_s2 = compound_to_numpy(state_space_description, s2)
+                # FIXME: have a "plot edge" function in the experiment scenario?
+                ax.plot([np_s['link_bot'][0], np_s2['link_bot'][0]], [np_s['link_bot'][1], np_s2['link_bot'][1]], linewidth=1,
+                        c='grey')
                 experiment_scenario.plot_state_simple(ax, np_s2, color='k')
 
     ax.set_xlabel("x")
@@ -99,32 +102,43 @@ def plot_plan(ax,
 def plan_vs_execution(environment: np.ndarray,
                       extent,
                       experiment_scenario: ExperimentScenario,
-                      goal,
+                      goal: Optional = None,
                       planned_path: Optional[List[Dict]] = None,
-                      actual_path: Optional[List[Dict]] = None):
+                      actual_path: Optional[List[Dict]] = None,
+                      accept_probabilities: Optional[List[float]] = None):
     fig = plt.figure(figsize=(20, 20))
     ax = plt.gca()
-    ax.imshow(np.flipud(environment), extent=extent)
+    ax.imshow(np.flipud(environment), extent=extent, cmap='Greys')
 
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.axis("equal")
-    ax.set_xlim([extent[0], extent[1]])
-    ax.set_ylim([extent[2], extent[3]])
 
     start = planned_path[0]
     experiment_scenario.plot_state(ax, start, color='b', zorder=2, s=20, label='start')
-    experiment_scenario.plot_goal(ax, goal, color='c', zorder=2, s=20, label='goal')
-    experiment_scenario.plot_state(ax, actual_path[-1], color='m', zorder=2, s=20, label='final actual')
+    if goal is not None:
+        experiment_scenario.plot_goal(ax, goal, color='c', zorder=2, s=20, label='goal')
+        experiment_scenario.plot_state(ax, actual_path[-1], color='m', zorder=2, s=20, label='final actual')
 
     if planned_path is not None:
         planned_path_artist = experiment_scenario.plot_state(ax, planned_path[0], 'g', zorder=3, s=20, label='planned')
     if actual_path is not None:
         actual_path_artist = experiment_scenario.plot_state(ax, actual_path[0], '#00ff00', zorder=3, s=20, label='actual')
 
+    classifier_line_artist = plt.plot([extent[0], extent[1], extent[1], extent[0], extent[0]],
+                                      [extent[2], extent[2], extent[3], extent[3], extent[2]], c='green', linewidth=4)[0]
+    ax.set_xlim([extent[0], extent[1]])
+    ax.set_ylim([extent[2], extent[3]])
+
     plt.legend()
 
     def update(t):
+        if accept_probabilities is not None:
+            if 0 < t < len(accept_probabilities):
+                accept_probability = accept_probabilities[t - 1]
+                ax.set_title("P(accept) = {}".format(accept_probability))
+                color = 'g' if accept_probability > 0.5 else 'r'
+                classifier_line_artist.set_color(color)
         if planned_path is not None:
             experiment_scenario.update_artist(planned_path_artist, planned_path[t])
         if actual_path is not None:

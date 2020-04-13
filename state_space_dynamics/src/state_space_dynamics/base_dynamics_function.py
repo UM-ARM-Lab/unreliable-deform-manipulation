@@ -31,6 +31,10 @@ class BaseDynamicsFunction:
                   res: float,
                   start_states: Dict[str, np.ndarray],
                   actions: np.ndarray) -> List[Dict]:
+        for k in start_states.keys():
+            start_states[k] = start_states[k].astype(np.float32)
+        actions = actions.astype(np.float32)
+
         actions = tf.Variable(actions, dtype=tf.float32, name='actions')
         predictions = self.propagate_differentiable(full_env,
                                                     full_env_origin,

@@ -21,7 +21,7 @@
   ],
   "goal_threshold": 0.05,
   "fixed_goal": null,
-  "reset_gripper_to": null,
+  "reset_robot": null,
   "real_time_rate": 0.0,
   "max_step_size": 0.01,
   "smoothing": null,

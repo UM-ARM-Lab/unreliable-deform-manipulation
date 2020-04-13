@@ -56,11 +56,11 @@ def main():
 
     headers = ['']
     aggregate_metrics = {
-        'Planning Time': [['min', 'max', 'mean', 'median', 'std']],
-        'Final Execution To Goal Error': [['min', 'max', 'mean', 'median', 'std']],
-        'Final Plan To Goal Error': [['min', 'max', 'mean', 'median', 'std']],
-        'Final Plan To Execution Error': [['min', 'max', 'mean', 'median', 'std']],
-        'Num Nodes': [['min', 'max', 'mean', 'median', 'std']],
+        'Planning Time': [],
+        'Final Execution To Goal Error': [],
+        'Final Plan To Goal Error': [],
+        'Final Plan To Execution Error': [],
+        'Num Nodes': [],
     }
 
     execution_to_goal_errors_comparisons = {}
@@ -193,15 +193,15 @@ def main():
 
     for metric_name, table_data in aggregate_metrics.items():
         print(Style.BRIGHT + metric_name + Style.NORMAL)
-        table_data_flipped = transpose_2d_lists(table_data)
-        table = tabulate(table_data_flipped, headers=headers, tablefmt=table_format, floatfmt='6.4f')
+        # table_data_flipped = transpose_2d_lists(table_data)
+        table = tabulate(table_data, tablefmt=table_format, floatfmt='6.4f')
         print(table)
         print()
 
     print(Style.BRIGHT + "p-value matrix (goal vs execution)" + Style.NORMAL)
     print(dict_to_pvale_table(execution_to_goal_errors_comparisons, table_format=table_format))
-    print(Style.BRIGHT + "p-value matrix (plan vs execution)" + Style.NORMAL)
-    print(dict_to_pvale_table(plan_to_execution_errors_comparisons, table_format=table_format))
+    # print(Style.BRIGHT + "p-value matrix (plan vs execution)" + Style.NORMAL)
+    # print(dict_to_pvale_table(plan_to_execution_errors_comparisons, table_format=table_format))
 
     if not args.no_plot:
         plt.show()

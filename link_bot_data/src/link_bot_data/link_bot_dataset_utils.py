@@ -21,7 +21,6 @@ def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
 
 
 def parse_dataset(dataset, feature_description, n_parallel_calls=None):
-    # @tf.function
     def _parse(example_proto):
         deserialized_dict = tf.io.parse_single_example(example_proto, feature_description)
         return deserialized_dict
@@ -39,7 +38,6 @@ def deserialize(parsed_dataset, n_parallel_calls=None):
         deserialized_tensor = tf.io.parse_tensor(serialized_tensor, tf.float32)
         inferred_shapes[key] = deserialized_tensor.shape
 
-    # @tf.function
     def _deserialize(serialized_dict):
         deserialized_dict = {}
         for key, serialized_tensor in serialized_dict.items():
@@ -95,9 +93,7 @@ def has_already_diverged(transition: Dict, labeling_params):
 def balance(dataset, labeling_params: Dict):
     label_key = labeling_params['label_key']
 
-    # @tf.function
     def _label_is(label_is):
-        # @tf.function
         def __filter(transition):
             result = tf.squeeze(tf.equal(transition[label_key], label_is))
             return result
@@ -161,7 +157,6 @@ def add_planned(feature_name):
     return "planned_state/" + feature_name
 
 
-# @tf.function
 def convert_sequences_to_transitions(constant_data: Dict,
                                      state_like_sequences: Dict,
                                      action_like_sequences: Dict,
@@ -190,7 +185,6 @@ def convert_sequences_to_transitions(constant_data: Dict,
     for feature_name in constant_data.keys():
         transitions[feature_name] = []
 
-    # @tf.function
     def _null_pad_sequence(sequence, idx):
         # this should be some number that will be very far from being inside any actual
         # because we're gonna try to draw it anyways

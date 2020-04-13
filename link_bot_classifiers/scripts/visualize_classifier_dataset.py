@@ -18,7 +18,7 @@ tf.compat.v1.enable_eager_execution()
 
 
 def main():
-    # plt.style.use("./classifier.mplstyle")
+    plt.style.use("./classifier.mplstyle")
     np.set_printoptions(suppress=True, linewidth=200)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
@@ -109,6 +109,8 @@ def main():
             title = "Label = {}, stdev={:.3f},{:.3f}".format(label, stdev, stdev_next)
         else:
             title = "Label = {}, no stdev".format(label)
+
+        title = "Label = {:d}".format(int(label))
 
         if args.display_type == 'just_count':
             pass

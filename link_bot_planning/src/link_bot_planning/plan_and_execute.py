@@ -5,7 +5,6 @@ import time
 from typing import Dict, Optional, List
 
 import numpy as np
-import std_srvs
 from colorama import Fore
 from ompl import base as ob
 
@@ -13,11 +12,26 @@ from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
-from link_bot_pycommon import link_bot_sdf_utils, ros_pycommon
-from link_bot_pycommon.ros_pycommon import get_states_dict
+from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
+from link_bot_pycommon.ros_pycommon import get_states_dict
 from peter_msgs.msg import Action
+
+
+def execute_plan(service_provider, dt, actions):
+    start_states = get_states_dict(service_provider)
+    actual_path = [start_states]
+    for t in range(actions.shape[0]):
+        action_request = Action()
+        action_request.max_time_per_step = dt
+        action_request.action = actions[t]
+        action_response = service_provider.execute_action(action_request)
+        state_t = {}
+        for named_object in action_response.objects.objects:
+            state_t[named_object.name] = np.array(named_object.state_vector)
+        actual_path.append(state_t)
+    return actual_path
 
 
 class PlanAndExecute:
@@ -193,15 +207,4 @@ class PlanAndExecute:
         :param actions: currently a numpy array, [time, n_action]
         :return: the states, a list of Dicts
         """
-        start_states = get_states_dict(self.service_provider)
-        actual_path = [start_states]
-        for t in range(actions.shape[0]):
-            action_request = Action()
-            action_request.max_time_per_step = self.planner.fwd_model.dt
-            action_request.action = actions[t]
-            action_response = self.service_provider.execute_action(action_request)
-            state_t = {}
-            for named_object in action_response.objects.objects:
-                state_t[named_object.name] = np.array(named_object.state_vector)
-            actual_path.append(state_t)
-        return actual_path
+        return execute_plan(self.service_provider, self.planner.fwd_model.dt, actions)

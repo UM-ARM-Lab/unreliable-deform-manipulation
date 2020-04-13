@@ -10,20 +10,13 @@ import tensorflow as tf
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import model_utils, classifier_utils
-from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.link_bot_pycommon import flatten_points
-from link_bot_pycommon.ros_pycommon import get_local_occupancy_data, get_occupancy_data, get_states_dict
-from peter_msgs.srv import LinkBotStateRequest
+from link_bot_pycommon.args import my_formatter, point_arg
+from link_bot_pycommon.link_bot_pycommon import make_dict_float32
+from link_bot_pycommon.ros_pycommon import get_occupancy_data, get_states_dict
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.5)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
-
-
-def make_float32(d):
-    for k, s_k in d.items():
-        d[k] = s_k.astype(np.float32)
-    return d
 
 
 def main():
@@ -31,10 +24,14 @@ def main():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path)
+    parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')
     parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
+    parser.add_argument("--actions", help="file listing a series of actions", type=pathlib.Path)
     parser.add_argument('--no-plot', action='store_true', help="don't show plots, useful for debugging")
-    parser.add_argument('-v', type=float, default=0.3, help='speed of test actions')
+    parser.add_argument('--speed', type=float, default=0.3, help='speed of test actions')
+    parser.add_argument("--real-time-rate", type=float, default=0.0, help='real time rate')
+    parser.add_argument("--reset-robot", type=point_arg, help='reset robot')
+    parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
 
     args = parser.parse_args()
 
@@ -43,9 +40,12 @@ def main():
     classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, fwd_model.scenario)
     full_env_params = fwd_model.full_env_params
 
+    max_step_size = fwd_model.hparams['dynamics_dataset_hparams']['max_step_size']
+
     rospy.init_node('test_classifier_from_gazebo')
 
     service_provider = GazeboServices()
+    service_provider.setup_env(args.verbose, args.real_time_rate, args.reset_robot, max_step_size)
 
     full_env_data = get_occupancy_data(env_w_m=full_env_params.w,
                                        env_h_m=full_env_params.h,
@@ -53,37 +53,50 @@ def main():
                                        service_provider=service_provider,
                                        robot_name=fwd_model.scenario.robot_name())
 
-    state = get_states_dict(service_provider, ['link_bot'])
+    state = get_states_dict(service_provider, fwd_model.states_keys)
+    if classifier_model.model_hparams['stdev']:
+        state['stdev'] = np.float32(0.0)
 
-    v = args.v
-    test_inputs = [
-        (v, 135),
-        (v, 90),
-        (v, 45),
-        (v, 180),
-        (0, 0),
-        (v, 0),
-        (v, 225),
-        (v, 270),
-        (v, 315),
-    ]
+    if args.actions:
+        actions = np.genfromtxt(args.actions, delimiter=',')
+        actions_info = []
+        for action in actions:
+            speed = np.linalg.norm(action)
+            theta_deg = np.rad2deg(np.arctan2(action[1], action[0]))
+            actions_info.append((speed, theta_deg, np.expand_dims(action, axis=0)))
+    else:
+        speed = args.speed
+        test_inputs = [
+            (speed, 135),
+            (speed, 90),
+            (speed, 45),
+            (speed, 180),
+            (0, 0),
+            (speed, 0),
+            (speed, 225),
+            (speed, 270),
+            (speed, 315),
+        ]
+
+        actions_info = []
+        for k, (speed, theta_deg) in enumerate(test_inputs):
+            theta_rad = np.deg2rad(theta_deg)
+            vx = np.cos(theta_rad) * speed
+            vy = np.sin(theta_rad) * speed
+            action = np.array([[vx, vy]])
+            actions_info.append((speed, theta_deg, action))
 
     fig, axes = plt.subplots(3, 3)
-    for k, (v, theta_deg) in enumerate(test_inputs):
-        theta_rad = np.deg2rad(theta_deg)
-        vx = np.cos(theta_rad) * v
-        vy = np.sin(theta_rad) * v
-        actions = np.array([[vx, vy]])
-
+    for k, (speed, theta_deg, action) in enumerate(actions_info):
         pred_states = fwd_model.propagate(full_env=full_env_data.data,
                                           full_env_origin=full_env_data.origin,
                                           res=full_env_data.resolution,
                                           start_states=state,
-                                          actions=actions)
+                                          actions=action)
         next_state = pred_states[1]
 
-        state = make_float32(state)
-        next_state = make_float32(next_state)
+        state = make_dict_float32(state)
+        next_state = make_dict_float32(next_state)
         states_sequence = [state, next_state]
 
         accept_probability = classifier_model.check_constraint(full_env=full_env_data.data,
@@ -95,7 +108,7 @@ def main():
         prediction = 1 if accept_probability > 0.5 else 0
         title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)
 
-        print("v={:04.3f}m/s theta={:04.3f}deg    p(accept)={:04.3f}".format(v, theta_deg, accept_probability))
+        print("v={:04.3f}m/s theta={:04.3f}deg    p(accept)={:04.3f}".format(speed, theta_deg, accept_probability))
         if not args.no_plot:
             i, j = np.unravel_index(k, [3, 3])
             plot_classifier_data(ax=axes[i, j],

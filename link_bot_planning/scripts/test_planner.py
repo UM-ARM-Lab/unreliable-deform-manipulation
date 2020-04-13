@@ -107,7 +107,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                                         draw_tree=self.draw_tree,
                                         draw_rejected=self.draw_rejected)
 
-            plt.savefig("/tmp/.latest-plan.png", dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
+            plt.savefig("/tmp/.latest-plan.png", dpi=200, bbox_extra_artists=(legend,), bbox_inches='tight')
         plt.show(block=True)
 
     def on_execution_complete(self,
@@ -134,7 +134,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                                           goal,
                                           planned_path,
                                           actual_path)
-        anim.save("/tmp/.latest-plan-vs-execution.gif", dpi=300, writer='imagemagick')
+        anim.save("/tmp/.latest-plan-vs-execution.gif", dpi=200, writer='imagemagick')
         plt.show(block=True)
 
 
@@ -203,8 +203,8 @@ def main():
         no_execution=args.no_execution,
         goal=args.goal,
         seed=args.seed,
-        draw_tree=(args.verbose >= 1),
-        draw_rejected=(args.verbose >= 1)
+        draw_tree=(args.verbose > 1),
+        draw_rejected=(args.verbose > 1)
     )
     tester.run()
 

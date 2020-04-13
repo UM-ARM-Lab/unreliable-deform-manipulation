@@ -22,7 +22,7 @@ class GazeboServices(Services):
         super().__init__()
         # we can't mock these
         self.apply_body_wrench = rospy.ServiceProxy('gazebo/apply_body_wrench', ApplyBodyWrench)
-        self.link_bot_reset = rospy.ServiceProxy("reset_robot", LinkBotReset)
+        self.reset_robot_service = rospy.ServiceProxy("reset_robot", LinkBotReset)
         self.gazebo_reset = rospy.ServiceProxy("gazebo/reset_world", Empty)
 
         # don't want to mock these
@@ -69,7 +69,7 @@ class GazeboServices(Services):
 
         self.position_2d_stop.publish(std_msgs.msg.Empty())
 
-    def reset_world(self, verbose, reset_robot: Optional[Tuple[float]] = None):
+    def reset_world(self, verbose, reset_robot: Optional = None):
         empty = EmptyRequest()
         self.reset.call(empty)
         self.gazebo_reset(empty)
@@ -88,7 +88,7 @@ class GazeboServices(Services):
             reset = LinkBotResetRequest()
             reset.point.x = reset_robot[0]
             reset.point.y = reset_robot[1]
-            self.link_bot_reset(reset)
+            self.reset_robot_service(reset)
             if verbose >= 1:
                 print(Fore.YELLOW + "World is Reset" + Fore.RESET)
 

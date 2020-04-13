@@ -14,8 +14,9 @@ import tensorflow as tf
 from matplotlib import animation
 
 from link_bot_gazebo import gazebo_services
-from link_bot_planning import model_utils
+from link_bot_planning import model_utils, classifier_utils, ompl_viz
 from link_bot_planning.get_scenario import get_scenario
+from link_bot_planning.plan_and_execute import execute_plan
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
 from link_bot_pycommon.ros_pycommon import make_trajectory_execution_request, trajectory_execution_response_to_numpy, \
@@ -98,56 +99,59 @@ def main():
 
     # Start Services
     if args.env_type == 'victor':
-        services = victor_services.VictorServices()
+        service_provider = victor_services.VictorServices()
     else:
-        services = gazebo_services.GazeboServices()
+        service_provider = gazebo_services.GazeboServices()
 
     params = json.load(args.params.open('r'))
 
     scenario = get_scenario(params['scenario'])
-    fwd_model, _ = model_utils.load_generic_model(pathlib.Path(params['fwd_model_dir']), scenario)
+    fwd_model, _ = model_utils.load_generic_model(params['fwd_model_dir'])
+    classifier_model = classifier_utils.load_generic_model(params['classifier_model_dir'], fwd_model.scenario)
 
-    services.setup_env(verbose=args.verbose,
-                       real_time_rate=args.real_time_rate,
-                       reset_gripper_to=None,
-                       max_step_size=fwd_model.max_step_size)
-    services.pause(std_srvs.srv.EmptyRequest())
+    service_provider.setup_env(verbose=args.verbose,
+                               real_time_rate=args.real_time_rate,
+                               reset_robot=params['reset_robot'],
+                               max_step_size=fwd_model.max_step_size)
+    service_provider.pause(std_srvs.srv.EmptyRequest())
 
-    full_env_data = get_occupancy_data(env_w_m=params['full_env_w_meters'],
-                                       env_h_m=params['full_env_h_meters'],
-                                       res=fwd_model.local_env_params.res,
-                                       service_provider=services,
+    full_env_data = get_occupancy_data(env_w_m=classifier_model.full_env_params.w,
+                                       env_h_m=classifier_model.full_env_params.h,
+                                       res=fwd_model.full_env_params.res,
+                                       service_provider=service_provider,
                                        robot_name=scenario.robot_name())
-    state_keys = fwd_model.hparams['states_keys']
-    start_states = get_states_dict(services, state_keys)
+
+    start_states = get_states_dict(service_provider, fwd_model.states_keys)
 
     actions = np.genfromtxt(args.actions, delimiter=',')
+    T = actions.shape[0]
     actions = actions.reshape([-1, fwd_model.n_action])
 
-    predicted_paths = fwd_model.propagate(full_env=full_env_data.data,
-                                          full_env_origin=full_env_data.origin,
-                                          res=full_env_data.resolution[0],
-                                          start_states=start_states,
-                                          actions=actions)
+    predicted_path = fwd_model.propagate(full_env=full_env_data.data,
+                                         full_env_origin=full_env_data.origin,
+                                         res=full_env_data.resolution,
+                                         start_states=start_states,
+                                         actions=actions)
+    # Check classifier
+    accept_probabilities = []
+    for t in range(1, T):
+        accept_probability = classifier_model.check_constraint(full_env=full_env_data.data,
+                                                               full_env_origin=full_env_data.origin,
+                                                               res=full_env_data.resolution,
+                                                               states_sequence=predicted_path[:t+1],
+                                                               actions=actions)
+        accept_probabilities.append(accept_probability)
 
-    trajectory_execution_request = make_trajectory_execution_request(fwd_model.dt, actions)
-    traj_res = services.execute_trajectory(trajectory_execution_request)
-    actual_paths = trajectory_execution_response_to_numpy(traj_res)
+    actual_path = execute_plan(service_provider, fwd_model.dt, actions)
 
-    # Reshape into points for drawing
-    for state_name, predicted_path in predicted_paths.items():
-        actual_path = actual_paths[state_name]
-        actual_paths[state_name] = actual_path.reshape([actual_path.shape[0], -1, 2])
-        predicted_paths[state_name] = predicted_path.reshape([predicted_path.shape[0], -1, 2])
-
-    # Compute some error metrics
-    for state_name, predicted_path in predicted_paths.items():
-        actual_path = actual_paths[state_name]
-        errors = np.linalg.norm(predicted_path - actual_path, axis=2)
-        print("mean error for state {}: {:5.3f}".format(state_name, np.mean(errors)))
-
-    # animate prediction versus actual
-    visualize(args, full_env_data, predicted_paths, actual_paths, 0)
+    anim = ompl_viz.plan_vs_execution(full_env_data.data,
+                                      full_env_data.extent,
+                                      scenario,
+                                      goal=None,
+                                      accept_probabilities=accept_probabilities,
+                                      planned_path=predicted_path,
+                                      actual_path=actual_path)
+    plt.show()
 
 
 if __name__ == '__main__':
