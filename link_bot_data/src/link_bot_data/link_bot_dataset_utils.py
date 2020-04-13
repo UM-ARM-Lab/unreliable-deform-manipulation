@@ -9,6 +9,7 @@ import git
 import tensorflow as tf
 from colorama import Fore
 
+from link_bot_data.base_dataset import strip_time_format
 from link_bot_pycommon import link_bot_pycommon
 
 NULL_PAD_VALUE = -10000
@@ -171,3 +172,65 @@ def null_pad_sequence(sequence, start_idx, end_idx):
         sequence[end_idx + 1:] = NULL_PAD_VALUE
     sequence[:start_idx] = NULL_PAD_VALUE
     return sequence
+
+
+def split_into_sequences(state_feature_names, action_feature_names, constant_feature_names, max_sequence_length, example_dict):
+    state_like_seqs = {}
+    action_like_seqs = {}
+    constant_data = {}
+
+    for feature_name in state_feature_names:
+        feature_name = "%d/" + feature_name
+        state_like_seq = []
+        for i in range(max_sequence_length):
+            state_like_seq.append(example_dict[feature_name % i])
+        state_like_seqs[strip_time_format(feature_name)] = tf.stack(state_like_seq, axis=0)
+
+    for example_name in action_feature_names:
+        example_name = "%d/" + example_name
+        action_like_seq = []
+        for i in range(max_sequence_length - 1):
+            action_like_seq.append(example_dict[example_name % i])
+        action_like_seqs[strip_time_format(example_name)] = tf.stack(action_like_seq, axis=0)
+
+    for example_name in constant_feature_names:
+        constant_data[example_name] = example_dict[example_name]
+
+    return constant_data, state_like_seqs, action_like_seqs
+
+
+def slice_sequences(constant_data, state_like_seqs, action_like_seqs, desired_sequence_length: int):
+    sequence_length = int(next(iter((state_like_seqs.values()))).shape[0])
+
+    state_like_seqs_sliced = {}
+    action_like_seqs_sliced = {}
+    constant_data_sliced = {}
+
+    # pre-create the lists
+    for example_name, seq in state_like_seqs.items():
+        state_like_seqs_sliced[example_name] = []
+    for example_name, seq in action_like_seqs.items():
+        action_like_seqs_sliced[example_name] = []
+    for example_name, constant_datum in constant_data.items():
+        constant_data_sliced[example_name] = []
+
+    # add elements to the lists
+    for t_start in range(0, sequence_length, desired_sequence_length):
+        if t_start + desired_sequence_length > sequence_length:
+            break
+        state_like_t_slice = slice(t_start, t_start + desired_sequence_length)
+        action_like_t_slice = slice(t_start, t_start + desired_sequence_length - 1)
+
+        for example_name, seq in state_like_seqs.items():
+            sliced_seq = seq[state_like_t_slice]
+            state_like_seqs_sliced[example_name].append(sliced_seq)
+
+        for example_name, seq in action_like_seqs.items():
+            sliced_seq = seq[action_like_t_slice]
+            action_like_seqs_sliced[example_name].append(sliced_seq)
+
+        for example_name, constant_datum in constant_data.items():
+            constant_data_sliced[example_name].append(constant_datum)
+
+    # we need to return a 3-tuple dictionary where every key has the same first dimension
+    return tf.data.Dataset.from_tensor_slices((constant_data_sliced, state_like_seqs_sliced, action_like_seqs_sliced))

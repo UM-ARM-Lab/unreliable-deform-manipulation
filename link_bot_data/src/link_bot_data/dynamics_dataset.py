@@ -4,6 +4,7 @@ from typing import List
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
+from link_bot_data.link_bot_dataset_utils import split_into_sequences, slice_sequences
 from link_bot_planning.params import FullEnvParams
 
 
@@ -31,7 +32,30 @@ class DynamicsDataset(BaseDataset):
             'full_env/res',
         ]
 
+    def make_features_description(self):
+        features_description = {}
+        for feature_name in self.constant_feature_names:
+            features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
+
+        for i in range(self.max_sequence_length):
+            for feature_name in self.state_feature_names:
+                feature_name = "%d/" + feature_name
+                features_description[feature_name % i] = tf.io.FixedLenFeature([], tf.string)
+        for i in range(self.max_sequence_length - 1):
+            for feature_name in self.action_feature_names:
+                feature_name = "%d/" + feature_name
+                features_description[feature_name % i] = tf.io.FixedLenFeature([], tf.string)
+
+        return features_description
+
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
+
+        def _split_into_sequences(constant_data, state_like_seqs, action_like_seqs):
+            return split_into_sequences(constant_data, state_like_seqs, action_like_seqs, desired_sequence_length)
+
+        def _slice_sequences(constant_data, state_like_seqs, action_like_seqs):
+            return slice_sequences(constant_data, state_like_seqs, action_like_seqs, desired_sequence_length)
+
         # FIXME: don't separate const/state/action to begin with?
         def _combine_data(const_data, state_like_sequences, action_like_sequences):
             input_dict = {}
@@ -44,5 +68,7 @@ class DynamicsDataset(BaseDataset):
             output_dict.update(state_like_sequences)
             return input_dict, output_dict
 
+        dataset = dataset.map(_split_into_sequences, num_parallel_calls=n_parallel_calls)
+        dataset = dataset.flat_map(_slice_sequences)
         dataset = dataset.map(_combine_data, num_parallel_calls=n_parallel_calls)
         return dataset
