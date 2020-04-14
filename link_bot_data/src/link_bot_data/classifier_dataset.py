@@ -50,7 +50,7 @@ def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, datas
                     out_example['start_t'] = start_t
                     out_example['end_t'] = end_t
 
-                    for name in fwd_model.states_keys:
+                    for name in outputs.keys():
                         # true state, $s^t$
                         out_example[name] = outputs[name][batch_idx, end_t - 1]
                         # true next state $s^{t+1}$
@@ -105,10 +105,12 @@ class ClassifierDataset(BaseDataset):
             'label',
         ]
 
-        for k in self.state_keys:
+        for k in self.hparams['states_description'].keys():
             self.feature_names.append(k)
             self.feature_names.append(add_next(k))
             self.feature_names.append(add_all(k))
+
+        for k in self.state_keys:
             self.feature_names.append(add_planned(k))
             self.feature_names.append(add_all_and_planned(k))
             self.feature_names.append(add_next_and_planned(k))
