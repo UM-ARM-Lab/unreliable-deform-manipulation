@@ -10,7 +10,7 @@ import tensorflow as tf
 
 from link_bot_classifiers.visualization import plot_classifier_data, make_interpretable_image
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned, add_all_and_planned
 from link_bot_planning.get_scenario import get_scenario
 from moonshine.image_functions import add_traj_image, add_transition_image
 
@@ -100,10 +100,6 @@ def main():
 
         count += 1
 
-        # if count < 8128:
-        #     print(count)
-        continue
-
         if args.no_plot:
             continue
 
@@ -135,24 +131,25 @@ def main():
             plt.show(block=True)
         elif args.display_type == 'trajectory_plot':
             traj_idx = example['traj_idx'].numpy()
-            time_idx = example['time_idx'].numpy()
+            start_t = example['start_t'].numpy()
+            end_t = example['end_t'].numpy()
             full_env = example['full_env/env'].numpy()
             full_env_extent = example['full_env/extent'].numpy()
             actual_state_all = example[add_all(labeling_params['state_key'])].numpy()
-            planned_state_all = example[add_all(add_planned(labeling_params['state_key']))].numpy()
-            print(traj_idx, time_idx)
+            planned_state_all = example[add_all_and_planned(labeling_params['state_key'])].numpy()
+            print(traj_idx, start_t, end_t)
 
             plt.figure()
             plt.imshow(np.flipud(full_env), extent=full_env_extent)
             ax = plt.gca()
-            for i in range(planned_state_all.shape[0]):
+            for time_idx in range(planned_state_all.shape[0]):
                 # don't plot NULL states
-                if not np.any(planned_state_all[i, 0] == NULL_PAD_VALUE):
+                if not np.any(planned_state_all[time_idx, 0] == NULL_PAD_VALUE):
                     actual_state = {
-                        labeling_params['state_key']: actual_state_all[i]
+                        labeling_params['state_key']: actual_state_all[time_idx]
                     }
                     planned_state = {
-                        labeling_params['state_key']: planned_state_all[i]
+                        labeling_params['state_key']: planned_state_all[time_idx]
                     }
                     scenario.plot_state(ax, actual_state, color='red', s=20, zorder=2)
                     scenario.plot_state(ax, planned_state, color='blue', s=5, zorder=3)

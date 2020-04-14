@@ -83,7 +83,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
         self.n_models = len(self.models)
         self.states_keys = self.models[0].states_keys
 
-    # @tf.function
+    @tf.function
     def propagate_differentiable(self,
                                  full_env,
                                  full_env_origin,
@@ -98,12 +98,10 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
                                                              start_states=start_states,
                                                              actions=actions)
             all_predictions.append(predictions)
-        del predictions
 
         # restructure data to be one List of dicts, where each dict has all the states/keys of the original dicts, but averaged
         # and with an additional state/key for stdev
         T = int(actions.shape[0]) + 1
-
         ensemble_predictions = []
         for t in range(T):
             merged_predictions = {}
@@ -120,5 +118,50 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
             total_stdev = tf.reduce_sum(tf.stack(all_stdevs, axis=0), axis=0)
             merged_predictions['stdev'] = total_stdev
             ensemble_predictions.append(merged_predictions)
+
+        return ensemble_predictions
+
+    @tf.function
+    def propagate_differentiable_batched(self,
+                                         start_states: Dict,
+                                         actions: tf.Variable) -> Dict:
+        all_predictions = []
+        for fwd_model in self.models:
+            net_input = {
+                # must be batch, T, n_state
+                fwd_model.net.state_key: start_states[fwd_model.net.state_key],
+                # must be batch, T, 2
+                'action': actions,
+            }
+            predictions = fwd_model.net((net_input, None))
+            all_predictions.append(predictions)
+
+        # restructure data to be one List of dicts, where each dict has all the states/keys of the original dicts, but averaged
+        # and with an additional state/key for stdev
+        ensemble_predictions = dict([(state_key, []) for state_key in self.states_keys])
+        ensemble_predictions['stdev'] = []
+
+        T = int(actions.shape[1]) + 1
+        for t in range(T):
+            all_stdevs_t = []
+            for state_key in self.states_keys:
+                predictions_t_key = []
+                for model_idx in range(self.n_models):
+                    # [batch, N]
+                    prediction = all_predictions[model_idx][state_key][:, t]
+                    predictions_t_key.append(prediction)
+                predictions_t_key = tf.stack(predictions_t_key, axis=1)
+                mean_for_t_key = tf.math.reduce_mean(predictions_t_key, axis=1)
+                stdev_for_t_key = tf.math.reduce_std(predictions_t_key, axis=1)
+                stdev_for_t_key = tf.math.reduce_sum(stdev_for_t_key, axis=1)
+                all_stdevs_t.append(stdev_for_t_key)
+
+                ensemble_predictions[state_key].append(mean_for_t_key)
+
+            all_stdevs_t = tf.stack(all_stdevs_t, axis=1)
+            ensemble_predictions['stdev'].append(tf.math.reduce_sum(all_stdevs_t, axis=1))
+
+        for state_key in ensemble_predictions.keys():
+            ensemble_predictions[state_key] = tf.stack(ensemble_predictions[state_key], axis=1)
 
         return ensemble_predictions

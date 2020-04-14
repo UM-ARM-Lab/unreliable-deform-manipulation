@@ -50,11 +50,15 @@ class DynamicsDataset(BaseDataset):
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
 
-        def _split_into_sequences(constant_data, state_like_seqs, action_like_seqs):
-            return split_into_sequences(constant_data, state_like_seqs, action_like_seqs, desired_sequence_length)
+        def _split_into_sequences(example):
+            return split_into_sequences(self.state_feature_names,
+                                        self.action_feature_names,
+                                        self.constant_feature_names,
+                                        max_sequence_length=self.desired_sequence_length,
+                                        example_dict=example)
 
         def _slice_sequences(constant_data, state_like_seqs, action_like_seqs):
-            return slice_sequences(constant_data, state_like_seqs, action_like_seqs, desired_sequence_length)
+            return slice_sequences(constant_data, state_like_seqs, action_like_seqs, self.desired_sequence_length)
 
         # FIXME: don't separate const/state/action to begin with?
         def _combine_data(const_data, state_like_sequences, action_like_sequences):

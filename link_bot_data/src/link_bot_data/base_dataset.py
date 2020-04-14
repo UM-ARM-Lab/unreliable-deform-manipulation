@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-from __future__ import division, print_function
-
 import json
 import pathlib
 from typing import List, Optional
@@ -64,6 +62,7 @@ class BaseDataset:
                 all_filenames.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
 
         self.desired_sequence_length = sequence_length if sequence_length is not None else self.max_sequence_length
+        all_filenames = sorted(all_filenames)
         return self.get_datasets_from_records(all_filenames,
                                               n_parallel_calls=n_parallel_calls,
                                               do_not_process=do_not_process,
@@ -95,11 +94,6 @@ class BaseDataset:
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
         # No-Op
         return dataset
-
-
-def strip_time_format(feature_name):
-    if feature_name.startswith('%d/'):
-        return feature_name[3:]
 
 
 def make_name_singular(feature_name):

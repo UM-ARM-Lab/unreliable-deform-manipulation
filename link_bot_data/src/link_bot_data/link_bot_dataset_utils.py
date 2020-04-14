@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-from __future__ import print_function, division
-
 import os
 import pathlib
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 
 import git
+import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_data.base_dataset import strip_time_format
 from link_bot_pycommon import link_bot_pycommon
 
 NULL_PAD_VALUE = -10000
@@ -165,13 +163,26 @@ def add_all_and_planned(feature_name):
     return add_all(add_planned(feature_name))
 
 
-def null_pad_sequence(sequence, start_idx, end_idx):
-    # this should be some number that will be very far from being inside any actual
-    # because we're gonna try to draw it anyways
-    if end_idx + 1 < sequence.shape[0]:
-        sequence[end_idx + 1:] = NULL_PAD_VALUE
-    sequence[:start_idx] = NULL_PAD_VALUE
-    return sequence
+def null_future_states(sequence, end_idx):
+    if isinstance(sequence, tf.Tensor):
+        sequence = sequence.numpy()
+    new_sequence = sequence.copy()
+    if end_idx + 1 < len(sequence):
+        new_sequence[end_idx + 1:] = NULL_PAD_VALUE
+    return new_sequence
+
+
+def null_previous_states(example, max_sequence_length):
+    padded_example = {}
+    for k, v in example.items():
+        v = v.numpy()
+        new_shape = [v.shape[0], max_sequence_length - v.shape[1]]
+        if len(v.shape) > 2:
+            new_shape.extend(v.shape[2:])
+        nulls = np.ones(new_shape) * NULL_PAD_VALUE
+        padded_example[k] = np.concatenate((nulls, v), axis=1)
+
+    return padded_example
 
 
 def split_into_sequences(state_feature_names, action_feature_names, constant_feature_names, max_sequence_length, example_dict):
@@ -234,3 +245,8 @@ def slice_sequences(constant_data, state_like_seqs, action_like_seqs, desired_se
 
     # we need to return a 3-tuple dictionary where every key has the same first dimension
     return tf.data.Dataset.from_tensor_slices((constant_data_sliced, state_like_seqs_sliced, action_like_seqs_sliced))
+
+
+def strip_time_format(feature_name):
+    if feature_name.startswith('%d/'):
+        return feature_name[3:]
