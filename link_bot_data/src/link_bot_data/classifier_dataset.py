@@ -1,7 +1,7 @@
 import pathlib
 from typing import List, Dict
-import numpy as np
 
+import numpy as np
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
@@ -13,7 +13,7 @@ from link_bot_planning.params import FullEnvParams
 
 
 def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, dataset: DynamicsDataset, labeling_params: Dict):
-    batch_size = 2
+    batch_size = 128
     for in_example in tf_dataset.batch(batch_size):
         inputs, outputs = in_example
         full_env = inputs['full_env/env']
@@ -45,7 +45,6 @@ def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, datas
                 }
                 end_t_stepped = np.linspace(start_t + 1, last_valid_ts[batch_idx], num=5).astype(np.int32)
                 for end_t in end_t_stepped:
-                    print(start_t + 1, end_t)
                     # take the true states and the predicted states and add them to the output dictionary
                     out_example['start_t'] = start_t
                     out_example['end_t'] = end_t
@@ -123,5 +122,5 @@ class ClassifierDataset(BaseDataset):
         return features_description
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
-        # dataset = balance(dataset, labeling_params=self.labeling_params)
+        dataset = balance(dataset, self.labeling_params)
         return dataset

@@ -102,18 +102,9 @@ def balance(dataset, labeling_params: Dict):
 
         return __filter
 
-    def _filter_out_already_diverged(transition):
-        return tf.logical_not(has_already_diverged(transition, labeling_params))
-
     positive_examples = dataset.filter(_label_is(1))
     negative_examples = dataset.filter(_label_is(0))
     negative_examples = negative_examples.cache(cachename())
-
-    # now split filter out examples where the prediction diverged previously in the trajectory
-    if labeling_params['discard_pre_far']:
-        negative_examples = negative_examples.filter(_filter_out_already_diverged)
-        # cache again for efficiency, since filter is slow when most elements are filtered out (which they are here)
-        negative_examples = negative_examples.cache(cachename())
 
     # TODO: check which dataset is smaller, and repeat that one
     negative_examples = negative_examples.repeat()

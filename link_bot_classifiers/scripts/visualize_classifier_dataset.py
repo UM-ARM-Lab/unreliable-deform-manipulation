@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import argparse
-import json
 import pathlib
 from time import perf_counter
 
@@ -10,9 +9,8 @@ import tensorflow as tf
 
 from link_bot_classifiers.visualization import plot_classifier_data, make_interpretable_image
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned, add_all_and_planned, has_already_diverged
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_all_and_planned
 from link_bot_planning.get_scenario import get_scenario
-from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.image_functions import add_traj_image, add_transition_image
 
 tf.compat.v1.enable_eager_execution()
@@ -24,8 +22,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('display_type',
-                        choices=['just_count', 'transition_image', 'transition_plot', 'trajectory_image',
-                                 'trajectory_plot'])
+                        choices=['just_count', 'transition_image', 'transition_plot', 'trajectory_image', 'trajectory_plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
@@ -110,11 +107,6 @@ def main():
         else:
             title = "Label = {}, no stdev".format(label)
 
-        traj_idx = int(example['traj_idx'].numpy())
-        start_t = int(example['start_t'].numpy())
-        if traj_idx != 496:
-            continue
-
         if args.display_type == 'just_count':
             pass
         elif args.display_type == 'transition_image':
@@ -161,7 +153,7 @@ def main():
             tether_start_state = {
                 'tether': tether_start
             }
-            tether_scenario.plot_state(ax, tether_start_state, color='green', s=5, zorder=1)
+            # tether_scenario.plot_state(ax, tether_start_state, color='green', s=5, zorder=1)
             plt.title(title)
             plt.show()
         elif args.display_type == 'transition_plot':
