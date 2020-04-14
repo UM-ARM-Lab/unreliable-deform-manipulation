@@ -1,4 +1,5 @@
 import pathlib
+from time import perf_counter
 from typing import List, Dict
 
 import tensorflow as tf
@@ -12,33 +13,37 @@ from link_bot_planning.params import FullEnvParams
 
 
 def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, dataset: DynamicsDataset):
-    batch_size = 128
+    batch_size = 64
     for in_example in tf_dataset.batch(batch_size):
         inputs, outputs = in_example
         full_env = inputs['full_env/env']
         full_env_origin = inputs['full_env/origin']
         full_env_extent = inputs['full_env/extent']
         full_env_res = inputs['full_env/res']
-        traj_idx = inputs['traj_idx'][0]
+        traj_idx = inputs['traj_idx']
         actions = inputs['action']
 
-        for start_t in range(0, dataset.max_sequence_length - 1):
+        for start_t in range(0, dataset.max_sequence_length - 1, 10):
             start_states_t = {}
             for name in dataset.states_description.keys():
                 start_state_t = tf.expand_dims(inputs[name][:, start_t], axis=1)
                 start_states_t[name] = start_state_t
 
+            pred_t0 = perf_counter()
             predictions_from_t_onward_batch = fwd_model.propagate_differentiable_batched(start_states_t, actions[:, start_t:])
             # when start_t > 0, this output will need to be padded so that all outputs are the same size
             predictions_from_t_onward_batch = null_previous_states(predictions_from_t_onward_batch, dataset.max_sequence_length)
+            pred_dt = perf_counter() - pred_t0
+            print("prediction {:.3f}".format(pred_dt))
 
+            readout_t0 = perf_counter()
             for batch_idx in range(full_env.shape[0]):
                 out_example = {
                     'full_env/env': full_env[batch_idx],
                     'full_env/origin': full_env_origin[batch_idx],
                     'full_env/extent': full_env_extent[batch_idx],
                     'full_env/res': full_env_res[batch_idx],
-                    'traj_idx': traj_idx[batch_idx],
+                    'traj_idx': traj_idx[batch_idx, 0],
                 }
                 for end_t in range(start_t + 1, dataset.max_sequence_length, 10):
                     # take the true states and the predicted states and add them to the output dictionary
@@ -67,6 +72,9 @@ def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, datas
                     out_example['action'] = inputs['action'][batch_idx, start_t]
 
                     yield out_example
+
+            readout_dt = perf_counter() - readout_t0
+            print("readout {:.3f}".format(readout_dt))
 
 
 class ClassifierDataset(BaseDataset):

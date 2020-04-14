@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import argparse
 import json
-from time import perf_counter
 import pathlib
+from time import perf_counter
 
 import tensorflow as tf
 from colorama import Fore
@@ -10,9 +10,8 @@ from colorama import Fore
 from link_bot_data.base_dataset import DEFAULT_VAL_SPLIT, DEFAULT_TEST_SPLIT
 from link_bot_data.classifier_dataset import add_model_predictions
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, add_all, add_all_and_planned, NULL_PAD_VALUE
+from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_planning import model_utils
-from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.8)
@@ -26,7 +25,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
-    parser.add_argument('--max-examples-per-record', type=int, default=8192, help="examples per file")
+    parser.add_argument('--max-examples-per-record', type=int, default=2048, help="examples per file")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
 
@@ -88,16 +87,19 @@ def main():
                 # save to a TF record
                 serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
 
-                start_example_idx = total_count
-                end_example_idx = start_example_idx + len(examples)
+                end_example_idx = total_count
+                start_example_idx = end_example_idx - len(examples)
                 record_filename = "example_{:09d}_to_{:09d}.tfrecords".format(start_example_idx, end_example_idx - 1)
                 full_filename = full_output_directory / record_filename
                 if full_filename.exists():
                     print(Fore.RED + "Error! Output file {} exists. Aborting.".format(full_filename) + Fore.RESET)
                     return
                 writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=compression_type)
+                write_t0 = perf_counter()
                 writer.write(serialized_dataset)
                 now = perf_counter()
+                write_dt = now - write_t0
+                print("write {:.3f}".format(write_dt))
                 dt_record = now - last_record
                 print("saved {} ({:.3f}s)".format(full_filename, dt_record))
                 last_record = now
