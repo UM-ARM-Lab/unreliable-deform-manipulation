@@ -10,7 +10,7 @@ import tensorflow as tf
 
 from link_bot_classifiers.visualization import plot_classifier_data, make_interpretable_image
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned, add_all_and_planned
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned, add_all_and_planned, has_already_diverged
 from link_bot_planning.get_scenario import get_scenario
 from moonshine.image_functions import add_traj_image, add_transition_image
 
@@ -22,7 +22,6 @@ def main():
     np.set_printoptions(suppress=True, linewidth=200)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
-    parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('display_type',
                         choices=['just_count', 'transition_image', 'transition_plot', 'trajectory_image',
                                  'trajectory_plot'])
@@ -45,11 +44,9 @@ def main():
     np.random.seed(args.seed)
     tf.compat.v1.random.set_random_seed(args.seed)
 
-    labeling_params = json.load(args.labeling_params.open("r"))
-
     states_keys = ['link_bot']
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
+    classifier_dataset = ClassifierDataset(args.dataset_dirs)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
     scenario = get_scenario(classifier_dataset.hparams['scenario'])
 
@@ -110,6 +107,12 @@ def main():
         else:
             title = "Label = {}, no stdev".format(label)
 
+        traj_idx = int(example['traj_idx'].numpy())
+        start_t = int(example['start_t'].numpy())
+        if traj_idx != 496:
+            continue
+        end_t = int(example['end_t'].numpy())
+
         if args.display_type == 'just_count':
             pass
         elif args.display_type == 'transition_image':
@@ -133,11 +136,11 @@ def main():
             traj_idx = example['traj_idx'].numpy()
             start_t = example['start_t'].numpy()
             end_t = example['end_t'].numpy()
+            print(traj_idx, start_t, end_t, label)
             full_env = example['full_env/env'].numpy()
             full_env_extent = example['full_env/extent'].numpy()
-            actual_state_all = example[add_all(labeling_params['state_key'])].numpy()
-            planned_state_all = example[add_all_and_planned(labeling_params['state_key'])].numpy()
-            print(traj_idx, start_t, end_t)
+            actual_state_all = example[add_all(classifier_dataset.label_state_key)].numpy()
+            planned_state_all = example[add_all_and_planned(classifier_dataset.label_state_key)].numpy()
 
             plt.figure()
             plt.imshow(np.flipud(full_env), extent=full_env_extent)
@@ -146,10 +149,10 @@ def main():
                 # don't plot NULL states
                 if not np.any(planned_state_all[time_idx, 0] == NULL_PAD_VALUE):
                     actual_state = {
-                        labeling_params['state_key']: actual_state_all[time_idx]
+                        classifier_dataset.label_state_key: actual_state_all[time_idx]
                     }
                     planned_state = {
-                        labeling_params['state_key']: planned_state_all[time_idx]
+                        classifier_dataset.label_state_key: planned_state_all[time_idx]
                     }
                     scenario.plot_state(ax, actual_state, color='red', s=20, zorder=2)
                     scenario.plot_state(ax, planned_state, color='blue', s=5, zorder=3)

@@ -83,7 +83,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
         self.n_models = len(self.models)
         self.states_keys = self.models[0].states_keys
 
-    @tf.function
+    # @tf.function
     def propagate_differentiable(self,
                                  full_env,
                                  full_env_origin,
@@ -159,7 +159,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
                 ensemble_predictions[state_key].append(mean_for_t_key)
 
             all_stdevs_t = tf.stack(all_stdevs_t, axis=1)
-            ensemble_predictions['stdev'].append(tf.math.reduce_sum(all_stdevs_t, axis=1))
+            ensemble_predictions['stdev'].append(tf.math.reduce_sum(all_stdevs_t, axis=1, keepdims=True))
 
         for state_key in ensemble_predictions.keys():
             ensemble_predictions[state_key] = tf.stack(ensemble_predictions[state_key], axis=1)

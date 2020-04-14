@@ -77,14 +77,18 @@ def flatten_concat_pairs(ex_pos, ex_neg):
 
 def has_already_diverged(transition: Dict, labeling_params):
     state_key = labeling_params['state_key']
+    start_t = tf.cast(transition['start_t'], tf.int64)
+    end_t = tf.cast(transition['end_t'], tf.int64)
 
     planned_state_all = transition[add_all_and_planned(state_key)]
     actual_state_all = transition[add_all(state_key)]
 
     pre_threshold = labeling_params['pre_close_threshold']
-    pre_close = tf.norm(planned_state_all - actual_state_all, axis=1)[:-1] < pre_threshold
-    next_is_null = tf.reduce_all(tf.equal(planned_state_all, NULL_PAD_VALUE), axis=1)[1:]
-    already_diverged = tf.reduce_any(tf.logical_not(tf.logical_or(pre_close, next_is_null)))
+    pre_far = tf.norm(planned_state_all - actual_state_all, axis=1) > pre_threshold
+    # this will not include $\hat{s}^{t+1}$, aka planned_state/next... which is what we want
+    # since here we only require that all states BEFORE the final state are accurate.
+    # if it is inaccurate/diverges at the last state pair that's fine, that's what a 0 label is.
+    already_diverged = tf.reduce_any(pre_far[start_t:end_t])
 
     return already_diverged
 
@@ -165,8 +169,9 @@ def add_all_and_planned(feature_name):
 
 def null_future_states(sequence, end_idx):
     if isinstance(sequence, tf.Tensor):
-        sequence = sequence.numpy()
-    new_sequence = sequence.copy()
+        new_sequence = sequence.numpy().copy()
+    else:
+        new_sequence = sequence.copy()
     if end_idx + 1 < len(sequence):
         new_sequence[end_idx + 1:] = NULL_PAD_VALUE
     return new_sequence
@@ -183,6 +188,33 @@ def null_previous_states(example, max_sequence_length):
         padded_example[k] = np.concatenate((nulls, v), axis=1)
 
     return padded_example
+
+
+def null_diverged(true_sequences, pred_sequences, start_t: int, labeling_params: Dict):
+    threshold = labeling_params['post_close_threshold']
+    state_key = labeling_params['state_key']
+    pred_sequence_for_state_key = pred_sequences[state_key]
+    sequence_for_state_key = true_sequences[state_key][:, start_t:]
+    # stop the trajectory at the first divergence. i.e the first time d(s^{t+1},\hat{s}^{t+1}) > delta
+    model_error = tf.linalg.norm(sequence_for_state_key - pred_sequence_for_state_key, axis=2)
+    close = tf.cast(model_error < threshold, dtype=tf.int32)
+    expected_cumsum = tf.math.cumsum(tf.ones_like(close, dtype=tf.int32), axis=1)
+    close_cumsum = tf.math.cumsum(close, axis=1)
+    not_diverged_yet_mask = tf.expand_dims(tf.cast(tf.equal(expected_cumsum - close_cumsum, 0), tf.float32), axis=2)
+    # shift all columns to the right, add a column of ones to the front. This allows us to include the first diverged state
+    # which we need for label=0 examples
+    not_diverged_yet_mask = tf.concat((tf.ones([not_diverged_yet_mask.shape[0], 1, 1]), not_diverged_yet_mask[:, :-1]), axis=1)
+    has_diverged_mask = 1.0 - not_diverged_yet_mask
+
+    last_valid_ts = tf.squeeze(tf.reduce_sum(not_diverged_yet_mask, axis=1), axis=1) - 1 + start_t
+
+    # using :first_diverged_t will now get what we want, where the final transition is either the end of the sequence of the first
+    # diverged transition
+    all_pred_sequence_masked = {}
+    for key, v in pred_sequences.items():
+        all_pred_sequence_masked[key] = (not_diverged_yet_mask * v) + (has_diverged_mask * NULL_PAD_VALUE)
+
+    return all_pred_sequence_masked, last_valid_ts
 
 
 def split_into_sequences(state_feature_names, action_feature_names, constant_feature_names, max_sequence_length, example_dict):

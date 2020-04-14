@@ -24,6 +24,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
+    parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
     parser.add_argument('--max-examples-per-record', type=int, default=2048, help="examples per file")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
@@ -31,6 +32,7 @@ def main():
 
     args = parser.parse_args()
 
+    labeling_params = json.load(args.labeling_params.open("r"))
     dynamics_hparams = json.load((args.dataset_dir / 'hparams.json').open('r'))
     fwd_models, _ = model_utils.load_generic_model(args.fwd_model_dir)
     compression_type = 'ZLIB'
@@ -50,6 +52,7 @@ def main():
     classifier_dataset_hparams['fwd_model_dir'] = fwd_model_dir
     classifier_dataset_hparams['fwd_model_hparams'] = fwd_models.hparams
     classifier_dataset_hparams['using_ensemble'] = using_ensemble
+    classifier_dataset_hparams['labeling_params'] = labeling_params
     classifier_dataset_hparams['state_keys'] = fwd_models.states_keys
     json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=1)
 
@@ -72,7 +75,7 @@ def main():
         current_example_count = 0
         examples = []
         total_count = 0
-        for example_idx, out_example in enumerate(add_model_predictions(fwd_models, tf_dataset, dataset)):
+        for example_idx, out_example in enumerate(add_model_predictions(fwd_models, tf_dataset, dataset, labeling_params)):
             features = {}
             for k, v in out_example.items():
                 features[k] = float_tensor_to_bytes_feature(v)
@@ -95,11 +98,8 @@ def main():
                     print(Fore.RED + "Error! Output file {} exists. Aborting.".format(full_filename) + Fore.RESET)
                     return
                 writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=compression_type)
-                write_t0 = perf_counter()
                 writer.write(serialized_dataset)
                 now = perf_counter()
-                write_dt = now - write_t0
-                print("write {:.3f}".format(write_dt))
                 dt_record = now - last_record
                 print("saved {} ({:.3f}s)".format(full_filename, dt_record))
                 last_record = now
