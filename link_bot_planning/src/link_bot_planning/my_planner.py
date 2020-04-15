@@ -180,15 +180,11 @@ class MyPlanner:
 
     def predict(self, np_states, np_actions):
         # use the forward model to predict the next configuration
-        from time import perf_counter
-        t0 = perf_counter()
         mean_next_states = self.fwd_model.propagate(full_env=self.full_env_data.data,
                                                     full_env_origin=self.full_env_data.origin,
                                                     res=self.fwd_model.full_env_params.res,
                                                     start_states=np_states,
                                                     actions=np_actions)
-        dt_normalized = (perf_counter() - t0)
-        print('{:.4f}'.format(dt_normalized))
         # get only the final state predicted
         final_states = mean_next_states[-1]
         return final_states
