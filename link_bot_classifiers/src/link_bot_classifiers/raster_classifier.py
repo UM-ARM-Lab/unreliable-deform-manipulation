@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
-
 import json
 import pathlib
 from typing import Dict, List

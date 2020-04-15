@@ -68,7 +68,6 @@ class SimpleNNWrapper(BaseDynamicsFunction):
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.states_keys = [self.net.state_key]
 
-    @tf.function
     def propagate_differentiable(self,
                                  full_env,
                                  full_env_origin,

@@ -11,7 +11,7 @@
     "ss_log_data/new-derp-point/8",
     "ss_log_data/new-derp-point/9"
   ],
-  "classifier_model_dir": "classifiers/derp_tether_all/April_05_01-12-12_40e3795142/",
+  "classifier_model_dir": "classifiers/tether_subsequences5/April_14_23-25-21_7cfde20c41",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",

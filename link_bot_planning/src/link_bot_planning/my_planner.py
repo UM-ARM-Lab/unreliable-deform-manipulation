@@ -147,7 +147,7 @@ class MyPlanner:
             state = motion.getState()
             state_t = compound_to_numpy(self.state_space_description, state)
             # FIXME: feels hacky
-            state_t['stdev'] = state[self.stdev_subspace_idx][0]
+            state_t['stdev'] = np.array([state[self.stdev_subspace_idx][0]])
             states_sequence.append(state_t)
             if t > 0:  # skip the first (null) action, because that would represent the action that brings us to the first state
                 actions.append(self.control_to_numpy(motion.getControl()))
@@ -180,11 +180,15 @@ class MyPlanner:
 
     def predict(self, np_states, np_actions):
         # use the forward model to predict the next configuration
+        from time import perf_counter
+        t0 = perf_counter()
         mean_next_states = self.fwd_model.propagate(full_env=self.full_env_data.data,
                                                     full_env_origin=self.full_env_data.origin,
                                                     res=self.fwd_model.full_env_params.res,
                                                     start_states=np_states,
                                                     actions=np_actions)
+        dt_normalized = (perf_counter() - t0)
+        print('{:.4f}'.format(dt_normalized))
         # get only the final state predicted
         final_states = mean_next_states[-1]
         return final_states
@@ -195,7 +199,8 @@ class MyPlanner:
             n_state = subspace_description['n_state']
             from_numpy(np_states[subspace_name], state_out[idx], n_state)
             if 'stdev' in np_states:
-                state_out[self.stdev_subspace_idx][0] = np_states['stdev']
+                # remove extra dim / undo expand dim
+                state_out[self.stdev_subspace_idx][0] = np_states['stdev'][0]
             else:
                 state_out[self.stdev_subspace_idx][0] = 0
 
@@ -205,7 +210,8 @@ class MyPlanner:
         # Convert from OMPL -> Numpy
         np_states = compound_to_numpy(self.state_space_description, start)
         # FIXME: feels hacky
-        np_states['stdev'] = start[self.stdev_subspace_idx][0]
+        # add extra dim / expand dim
+        np_states['stdev'] = np.array([start[self.stdev_subspace_idx][0]])
         np_action = self.control_to_numpy(control)
         np_actions = np.expand_dims(np_action, axis=0)
 
@@ -247,7 +253,7 @@ class MyPlanner:
 
         # create start and goal states
         ompl_start = ob.CompoundState(self.state_space)
-        start_states['stdev'] = 0.0
+        start_states['stdev'] = np.array([0.0])
         self.compound_from_numpy(start_states, ompl_start())
 
         start = ob.State(ompl_start)

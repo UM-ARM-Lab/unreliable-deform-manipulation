@@ -28,7 +28,7 @@ from link_bot_pycommon.args import my_formatter
 from moonshine.numpy_utils import listify
 from victor import victor_services
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.8)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 
