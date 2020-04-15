@@ -73,7 +73,8 @@ class CollectDynamicsParams:
     move_objects_every_n: int
     trajs_per_file: int
     no_obstacles: bool
-    goal_h_m: Optional[float]
-    goal_w_m: Optional[float]
-    reset_robot: Optional[List[float]]
-    reset_world: Optional[bool]
+    goal_radius_m: Optional[float] = None
+    goal_h_m: Optional[float] = None
+    goal_w_m: Optional[float] = None
+    reset_robot: Optional[List[float]] = None
+    reset_world: Optional[bool] = None

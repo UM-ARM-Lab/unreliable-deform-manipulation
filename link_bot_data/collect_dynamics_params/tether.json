@@ -3,17 +3,34 @@
   "res": 0.03,
   "full_env_w_m": 6,
   "full_env_h_m": 6,
-  "reset_robot": [0.0,0.0],
-  "reset_world": true,
-  "goal_w_m": 5.0,
-  "goal_h_m": 5.0,
+  "reset_robot": null,
+  "reset_world": false,
+  "goal_radius_m": 2.5,
   "max_step_size": 0.01,
-  "move_objects_every_n": 0,
-  "no_obstacles": false,
+  "move_objects_every_n": 4,
   "movable_obstacles": [
+    "box1",
+    "box2",
+    "box3",
+    "box4",
+    "box5",
+    "box6",
+    "box7",
+    "box8",
+    "box9",
+    "box10",
+    "box11",
+    "box12",
+    "box13",
+    "box14",
+    "box15",
+    "box16",
+    "box17",
+    "box18"
   ],
   "steps_per_traj": 128,
-  "trajs_per_file": 16
+  "trajs_per_file": 16,
+  "no_obstacles": false
 }
 
 

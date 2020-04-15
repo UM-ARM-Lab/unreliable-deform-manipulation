@@ -56,8 +56,6 @@ def generate_traj(scenario: ExperimentScenario,
                                             state=state_dict,
                                             last_action=action_msg,
                                             params=params,
-                                            goal_w_m=params.goal_w_m,
-                                            goal_h_m=params.goal_h_m,
                                             action_rng=action_rng)
 
         service_provider.execute_action(action_msg)
@@ -188,6 +186,6 @@ def generate(service_provider, params: CollectDynamicsParams, args):
     service_provider.setup_env(verbose=args.verbose,
                                real_time_rate=args.real_time_rate,
                                max_step_size=params.max_step_size,
-                               reset_robot=params.reset_robot)
+                               reset_robot=[0, 0])
 
     generate_trajs(service_provider, scenario, params, args, full_output_directory, env_rng, action_rng)

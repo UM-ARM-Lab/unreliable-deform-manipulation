@@ -27,8 +27,6 @@ class LinkBotScenario(ExperimentScenario):
                       state,
                       last_action: Action,
                       params: CollectDynamicsParams,
-                      goal_w_m,
-                      goal_h_m,
                       action_rng):
         max_delta_pos = service_provider.get_max_speed() * params.dt
         new_action = Action()
@@ -41,8 +39,8 @@ class LinkBotScenario(ExperimentScenario):
             else:
                 dx, dy = LinkBotScenario.random_delta_pos(action_rng, max_delta_pos)
 
-            half_w = goal_w_m / 2
-            half_h = goal_h_m / 2
+            half_w = params.goal_w_m / 2
+            half_h = params.goal_h_m / 2
             if -half_w <= state['gripper'][0] + dx <= half_w and -half_h <= state['gripper'][1] + dy <= half_h:
                 break
 

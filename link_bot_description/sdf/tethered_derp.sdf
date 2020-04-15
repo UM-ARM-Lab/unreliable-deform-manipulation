@@ -1,7 +1,7 @@
 
 <sdf version="1.6">
     <model name="link_bot">
-        <pose frame="">0 0 0.01 0 0 0</pose>
+        <pose frame="">0 0 0.002 0 0 0</pose>
 
         
         <link name="link_1">
@@ -28,8 +28,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.001</mu>
-                            <mu2>0.001</mu2>
+                            <mu>0.01</mu>
+                            <mu2>0.01</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -76,8 +76,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.001</mu>
-                            <mu2>0.001</mu2>
+                            <mu>0.01</mu>
+                            <mu2>0.01</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -124,8 +124,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.001</mu>
-                            <mu2>0.001</mu2>
+                            <mu>0.01</mu>
+                            <mu2>0.01</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -172,8 +172,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.001</mu>
-                            <mu2>0.001</mu2>
+                            <mu>0.01</mu>
+                            <mu2>0.01</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -220,8 +220,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.001</mu>
-                            <mu2>0.001</mu2>
+                            <mu>0.01</mu>
+                            <mu2>0.01</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -268,8 +268,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.001</mu>
-                            <mu2>0.001</mu2>
+                            <mu>0.01</mu>
+                            <mu2>0.01</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -316,8 +316,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.001</mu>
-                            <mu2>0.001</mu2>
+                            <mu>0.01</mu>
+                            <mu2>0.01</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -364,8 +364,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.001</mu>
-                            <mu2>0.001</mu2>
+                            <mu>0.01</mu>
+                            <mu2>0.01</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -412,8 +412,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.001</mu>
-                            <mu2>0.001</mu2>
+                            <mu>0.01</mu>
+                            <mu2>0.01</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -460,8 +460,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.001</mu>
-                            <mu2>0.001</mu2>
+                            <mu>0.01</mu>
+                            <mu2>0.01</mu2>
                         </ode>
                     </friction>
                 </surface>
@@ -728,8 +728,6 @@
             <gripper1_link>head</gripper1_link>
             <num_links>0</num_links>
             <rope_length>2.0</rope_length>
-
-            <B>1.0 0.1 0.0 1.1</B>
         </plugin>
 
         <joint type='revolute' name='world_joint'>

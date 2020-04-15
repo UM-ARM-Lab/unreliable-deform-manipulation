@@ -27,11 +27,6 @@
                 </constraints>
             </ode>
         </physics>
-        <include>
-            <uri>model://arena_5</uri>
-            <pose>0 0 0 0 0 0</pose>
-            <name>arena</name>
-        </include>
 
         <include>
             <uri>model://small_box</uri>
@@ -41,91 +36,91 @@
         <include>
             <uri>model://small_box</uri>
             <pose>0.47 0.87 0 0 0 0</pose>
-            <name>box3</name>
+            <name>box2</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>0.68 0.16 0 0 0 0</pose>
-            <name>box5</name>
+            <name>box3</name>
         </include>
 
         <include>
             <uri>model://small_box</uri>
             <pose>-1.1 1.0 0 0 0 0</pose>
-            <name>box7</name>
+            <name>box4</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>0.16 0.87 0 0 0 0</pose>
-            <name>box8</name>
+            <name>box5</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>1.35 0.15 0 0 0 0</pose>
-            <name>box10</name>
+            <name>box6</name>
         </include>
 
         <include>
             <uri>model://small_box</uri>
             <pose>-0.97 -0.12 0 0 0 0</pose>
-            <name>box12</name>
+            <name>box7</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>1.03 0.15 0 0 0 0</pose>
-            <name>box14</name>
+            <name>box8</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>-0.1 -0.31 0 0 0 0</pose>
-            <name>box15</name>
+            <name>box9</name>
         </include>
 
         <include>
             <uri>model://small_box</uri>
             <pose>-1.0 -0.9 0 0 0 0</pose>
-            <name>box16</name>
+            <name>box10</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>0.37 -1.19 0 0 0 0</pose>
-            <name>box18</name>
+            <name>box11</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>1.0 -1.0 0 0 0 0</pose>
-            <name>box19</name>
+            <name>box12</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>0.6 -1.0 0 0 0 0</pose>
-            <name>box20</name>
+            <name>box13</name>
         </include>
 
         <include>
             <uri>model://small_box</uri>
             <pose>-1.14 0.25 0 0 0 0</pose>
-            <name>box21</name>
+            <name>box14</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>-0.9 -1.4 0 0 0 0</pose>
-            <name>box22</name>
+            <name>box15</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>-.28 -0.84 0 0 0 0</pose>
-            <name>box23</name>
+            <name>box16</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>0.82 -0.41 0 0 0 0</pose>
-            <name>box24</name>
+            <name>box17</name>
         </include>
         <include>
             <uri>model://small_box</uri>
             <pose>0.6 -1.5 0 0 0 0</pose>
-            <name>box25</name>
+            <name>box18</name>
         </include>
     </world>
 </sdf>

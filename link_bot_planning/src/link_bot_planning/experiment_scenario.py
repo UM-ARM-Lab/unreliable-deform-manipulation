@@ -7,7 +7,7 @@ from link_bot_pycommon.base_services import Services
 class ExperimentScenario:
 
     @staticmethod
-    def sample_action(service_provider: Services, state, last_action, params, goal_w_m, goal_h_m, action_rng):
+    def sample_action(service_provider: Services, state, last_action, params, action_rng):
         raise NotImplementedError()
 
     @staticmethod
