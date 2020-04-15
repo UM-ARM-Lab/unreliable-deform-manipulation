@@ -12,7 +12,7 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_data.link_bot_dataset_utils import add_next, add_next_and_planned, add_planned
+from link_bot_data.link_bot_dataset_utils import add_next_and_planned, add_planned
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import FullEnvParams
 from link_bot_pycommon.link_bot_pycommon import make_dict_float32
@@ -64,7 +64,7 @@ class RasterClassifier(MyKerasModel):
 
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
-    # @tf.function
+    @tf.function
     def _conv(self, image):
         # feed into a CNN
         conv_z = image
@@ -75,7 +75,7 @@ class RasterClassifier(MyKerasModel):
 
         return out_conv_z
 
-    # @tf.function
+    @tf.function
     def call(self, input_dict: Dict, training=None, mask=None):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         image = input_dict[self.hparams['image_key']]
@@ -86,8 +86,8 @@ class RasterClassifier(MyKerasModel):
         if self.hparams['mixed']:
             concat_args = [conv_output, action]
             if self.hparams['stdev']:
-                stdev = tf.expand_dims(input_dict['stdev'], axis=1)
-                stdev_next = tf.expand_dims(input_dict[add_next('stdev')], axis=1)
+                stdev = input_dict[add_planned('stdev')]
+                stdev_next = input_dict[add_next_and_planned('stdev')]
                 concat_args.extend([stdev, stdev_next])
             for state_key in self.states_keys:
                 planned_state_key = add_planned(state_key)
@@ -127,7 +127,6 @@ class RasterClassifierWrapper(BaseConstraintChecker):
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.ckpt.restore(self.manager.latest_checkpoint)
 
-    # @tf.function
     def check_transition(self,
                          full_env,
                          full_env_origin,
@@ -137,6 +136,8 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                          ) -> tf.Tensor:
         states_i = states_sequence[-2]
         # remove stdev from state we draw. if stdev doesn't exist this will still work
+        import ipdb;
+        ipdb.set_trace()
         states_i_to_draw = {k: states_i[k] for k in states_i if k != 'stdev'}
         action_i = actions[-1]
         states_i_plus_1 = states_sequence[-1]
@@ -158,7 +159,6 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         accept_probability = self.net(add_batch(net_inputs))[0, 0]
         return accept_probability
 
-    # @tf.function
     def check_trajectory(self,
                          full_env: np.ndarray,
                          full_env_origin: np.ndarray,
@@ -184,7 +184,6 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         accept_probability = self.net(add_batch(net_inputs))[0, 0]
         return accept_probability
 
-    # @tf.function
     def check_constraint_differentiable(self,
                                         full_env: np.ndarray,
                                         full_env_origin: np.ndarray,
@@ -220,15 +219,14 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                                                           actions)
         return prediction.numpy()
 
-    # @tf.function
     def net_inputs(self, action_i, states_i, states_i_plus_1):
         net_inputs = {
             'action': tf.convert_to_tensor(action_i, tf.float32),
         }
 
         if self.net.hparams['stdev']:
-            net_inputs['stdev'] = tf.convert_to_tensor(states_i['stdev'], tf.float32)
-            net_inputs[add_next('stdev')] = tf.convert_to_tensor(states_i_plus_1['stdev'], tf.float32)
+            net_inputs[add_planned('stdev')] = tf.convert_to_tensor(states_i['stdev'], tf.float32)
+            net_inputs[add_next_and_planned('stdev')] = tf.convert_to_tensor(states_i_plus_1['stdev'], tf.float32)
 
         for state_key in self.net.states_keys:
             planned_state_key = add_planned(state_key)

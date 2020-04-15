@@ -8,10 +8,11 @@ import tensorflow as tf
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.link_bot_dataset_utils import cachename
 from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function
-from moonshine.image_functions import add_traj_image, add_transition_image
+from moonshine.image_functions import add_traj_image, add_transition_image, add_traj_image_wrapper, partial_add_traj_image
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
@@ -30,53 +31,51 @@ def train_main(args, seed: int):
     ###############
     # Datasets
     ###############
-    labeling_params = json.load(args.labeling_params.open('r'))
-    train_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
-    val_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
+    train_dataset = ClassifierDataset(args.dataset_dirs)
+    val_dataset = ClassifierDataset(args.dataset_dirs)
 
     ###############
     # Model
     ###############
     model_hparams = json.load((args.model_hparams).open('r'))
-    model_hparams['labeling_params'] = labeling_params
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     model = link_bot_classifiers.get_model(model_hparams['model_class'])
     scenario = get_scenario(model_hparams['scenario'])
 
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train')
-    val_tf_dataset = val_dataset.get_datasets(mode='val')
+    train_tf_dataset = train_dataset.get_datasets(mode='train').batch(args.batch_size)
+    val_tf_dataset = val_dataset.get_datasets(mode='val').batch(args.batch_size)
 
-    if 'image_key' in model_hparams:
-        image_key = model_hparams['image_key']
-        if image_key == 'transition_image':
-            train_tf_dataset = add_transition_image(train_tf_dataset,
-                                                    states_keys=model_hparams['states_keys'],
-                                                    scenario=scenario,
-                                                    local_env_h=model_hparams['local_env_h_rows'],
-                                                    local_env_w=model_hparams['local_env_w_cols'],
-                                                    rope_image_k=model_hparams['rope_image_k'],
-                                                    )
-            val_tf_dataset = add_transition_image(train_tf_dataset,
-                                                  states_keys=model_hparams['states_keys'],
-                                                  scenario=scenario,
-                                                  local_env_h=model_hparams['local_env_h_rows'],
-                                                  local_env_w=model_hparams['local_env_w_cols'],
-                                                  rope_image_k=model_hparams['rope_image_k'],
-                                                  )
-            model_hparams['input_h_rows'] = model_hparams['local_env_h_rows']
-            model_hparams['input_w_cols'] = model_hparams['local_env_w_cols']
-        elif image_key == 'trajectory_image':
-            train_tf_dataset = add_traj_image(train_tf_dataset, states_keys=model_hparams['states_keys'],
-                                              rope_image_k=model_hparams['rope_image_k'])
-            val_tf_dataset = add_traj_image(val_tf_dataset, states_keys=model_hparams['states_keys'],
-                                            rope_image_k=model_hparams['rope_image_k'])
-            model_hparams['input_h_rows'] = train_dataset.full_env_params.h_rows
-            model_hparams['input_w_cols'] = train_dataset.full_env_params.w_cols
+    postprocess = None
+    image_key = model_hparams['image_key']
+    if image_key == 'transition_image':
+        train_tf_dataset = add_transition_image(train_tf_dataset,
+                                                states_keys=model_hparams['states_keys'],
+                                                scenario=scenario,
+                                                local_env_h=model_hparams['local_env_h_rows'],
+                                                local_env_w=model_hparams['local_env_w_cols'],
+                                                rope_image_k=model_hparams['rope_image_k'],
+                                                )
+        val_tf_dataset = add_transition_image(train_tf_dataset,
+                                              states_keys=model_hparams['states_keys'],
+                                              scenario=scenario,
+                                              local_env_h=model_hparams['local_env_h_rows'],
+                                              local_env_w=model_hparams['local_env_w_cols'],
+                                              rope_image_k=model_hparams['rope_image_k'],
+                                              )
+        model_hparams['input_h_rows'] = model_hparams['local_env_h_rows']
+        model_hparams['input_w_cols'] = model_hparams['local_env_w_cols']
+    elif image_key == 'trajectory_image':
+        postprocess = partial_add_traj_image(states_keys=model_hparams['states_keys'],
+                                             batch_size=args.batch_size,
+                                             rope_image_k=model_hparams['rope_image_k'])
+        model_hparams['input_h_rows'] = train_dataset.full_env_params.h_rows
+        model_hparams['input_w_cols'] = train_dataset.full_env_params.w_cols
 
     net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed).batch(args.batch_size, drop_remainder=True)
-    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    # train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed)
+    # train_tf_dataset = train_tf_dataset.prefetch(args.batch_size)
+    # val_tf_dataset = val_tf_dataset.prefetch(args.batch_size)
 
     ###############
     # Train
@@ -91,6 +90,7 @@ def train_main(args, seed: int):
           epochs=args.epochs,
           loss_function=binary_classification_loss_function,
           metrics_function=binary_classification_metrics_function,
+          postprocess=postprocess,
           checkpoint=args.checkpoint,
           log_path=log_path,
           log_scalars_every=args.log_scalars_every)
@@ -108,8 +108,7 @@ def eval_main(args, seed: int):
     ###############
     # Dataset
     ###############
-    labeling_params = model_hparams['labeling_params']
-    test_dataset = ClassifierDataset(args.dataset_dirs, labeling_params)
+    test_dataset = ClassifierDataset(args.dataset_dirs)
 
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
@@ -122,8 +121,10 @@ def eval_main(args, seed: int):
                                                rope_image_k=net.hparams['rope_image_k'],
                                                )
     elif model_hparams['image_key'] == 'trajectory_image':
-        test_tf_dataset = add_traj_image(test_tf_dataset, states_keys=net.states_keys,
-                                         rope_image_k=net.hparams['rope_image_k'])
+        test_tf_dataset = add_traj_image(test_tf_dataset,
+                                         states_keys=net.states_keys,
+                                         rope_image_k=net.hparams['rope_image_k'],
+                                         batch_size=args.batch_size)
 
     ###############
     # Evaluate
@@ -145,10 +146,9 @@ def main():
     train_parser = subparsers.add_parser('train')
     train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
-    train_parser.add_argument('labeling_params', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
-    train_parser.add_argument('--epochs', type=int, default=25)
+    train_parser.add_argument('--epochs', type=int, default=15)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches',

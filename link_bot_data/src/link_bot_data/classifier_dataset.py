@@ -114,6 +114,10 @@ class ClassifierDataset(BaseDataset):
             self.feature_names.append(add_all_and_planned(k))
             self.feature_names.append(add_next_and_planned(k))
 
+        self.feature_names.append(add_planned('stdev'))
+        self.feature_names.append(add_all_and_planned('stdev'))
+        self.feature_names.append(add_next_and_planned('stdev'))
+
     def make_features_description(self):
         features_description = {}
         for feature_name in self.feature_names:

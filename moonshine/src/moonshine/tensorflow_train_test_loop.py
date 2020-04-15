@@ -8,6 +8,7 @@ import tensorflow as tf
 from colorama import Fore, Style
 
 from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine import experiments_util
 
 
@@ -23,11 +24,13 @@ class MyKerasModel(tf.keras.Model):
         self.scenario = scenario
 
 
-def compute_loss_and_metrics(tf_dataset, net, loss_function, metrics_function):
+def compute_loss_and_metrics(tf_dataset, keras_model, loss_function, metrics_function, postprocess):
     losses = []
     metrics = {}
     for dataset_element in progressbar.progressbar(tf_dataset):
-        predictions = net(dataset_element)
+        if postprocess is not None:
+            dataset_element = postprocess(dataset_element)
+        predictions = keras_model(dataset_element)
         batch_loss = loss_function(dataset_element, predictions)
         losses.append(batch_loss)
 
@@ -54,7 +57,8 @@ def train(keras_model: MyKerasModel,
           batch_size: int,
           epochs: int,
           loss_function: Callable,
-          metrics_function: Optional[Callable],
+          metrics_function: Callable,
+          postprocess: Optional[Callable] = None,
           checkpoint: Optional[pathlib.Path] = None,
           log_path: Optional[pathlib.Path] = None,
           log_scalars_every: int = 500,
@@ -73,6 +77,7 @@ def train(keras_model: MyKerasModel,
     :param epochs:
     :param loss_function: Takes an element of the dataset and the predictions on that element and returns the loss
     :param metrics_function: Takes an element of the dataset and the predictions on that element and returns a dict of metrics
+    :param postprocess: function
     :param checkpoint:
     :param log_path:
     :param log_scalars_every:
@@ -136,6 +141,8 @@ def train(keras_model: MyKerasModel,
 
             for train_element in progressbar.progressbar(train_tf_dataset):
                 step = int(global_step.numpy())
+                if postprocess is not None:
+                    train_element = postprocess(train_element)
 
                 with tf.GradientTape() as tape:
                     train_predictions = keras_model(train_element)
@@ -150,10 +157,9 @@ def train(keras_model: MyKerasModel,
                     if step % log_scalars_every == 0:
                         tf.contrib.summary.scalar("batch_loss", train_batch_loss, step=step)
 
-                        if metrics_function:
-                            train_batch_metrics = metrics_function(train_element, train_predictions)
-                            for metric_name, metric_value in train_batch_metrics.items():
-                                tf.contrib.summary.scalar('train_' + metric_name.replace(" ", "_"), metric_value, step=step)
+                        train_batch_metrics = metrics_function(train_element, train_predictions)
+                        for metric_name, metric_value in train_batch_metrics.items():
+                            tf.contrib.summary.scalar('train_' + metric_name.replace(" ", "_"), metric_value, step=step)
 
                 ####################
                 # Update global step
@@ -168,8 +174,11 @@ def train(keras_model: MyKerasModel,
             # validation
             ################
             if epoch % validation_every == 0:
-                val_mean_loss, val_mean_metrics = compute_loss_and_metrics(val_tf_dataset, keras_model, loss_function,
-                                                                           metrics_function)
+                val_mean_loss, val_mean_metrics = compute_loss_and_metrics(val_tf_dataset,
+                                                                           keras_model,
+                                                                           loss_function,
+                                                                           metrics_function,
+                                                                           postprocess)
 
                 log_msg = "Epoch: {:5d}, Validation Loss: {:8.5f}"
                 print(Style.BRIGHT + log_msg.format(epoch, val_mean_loss) + Style.NORMAL)
@@ -211,7 +220,8 @@ def evaluate(keras_model: MyKerasModel,
              test_tf_dataset,
              loss_function: Callable,
              checkpoint_path: pathlib.Path,
-             metrics_function: Optional[Callable],
+             metrics_function: Callable,
+             postprocess: Optional[Callable] = None,
              ):
     ckpt = tf.train.Checkpoint(net=keras_model)
     manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=1)  # doesn't matter here, we're not saving
@@ -222,7 +232,8 @@ def evaluate(keras_model: MyKerasModel,
         test_mean_loss, test_mean_metrics = compute_loss_and_metrics(test_tf_dataset,
                                                                      keras_model,
                                                                      loss_function,
-                                                                     metrics_function)
+                                                                     metrics_function,
+                                                                     postprocess)
         print("Test Loss:  {:8.5f}".format(test_mean_loss))
 
         for metric_name, metric_value in test_mean_metrics.items():
