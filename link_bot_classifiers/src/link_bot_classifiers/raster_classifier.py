@@ -136,8 +136,6 @@ class RasterClassifierWrapper(BaseConstraintChecker):
                          ) -> tf.Tensor:
         states_i = states_sequence[-2]
         # remove stdev from state we draw. if stdev doesn't exist this will still work
-        import ipdb;
-        ipdb.set_trace()
         states_i_to_draw = {k: states_i[k] for k in states_i if k != 'stdev'}
         action_i = actions[-1]
         states_i_plus_1 = states_sequence[-1]

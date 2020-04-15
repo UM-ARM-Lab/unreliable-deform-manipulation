@@ -9,9 +9,10 @@ import tensorflow as tf
 
 from link_bot_classifiers.visualization import plot_classifier_data, make_interpretable_image
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_all_and_planned
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_all_and_planned, add_planned, add_next_and_planned
 from link_bot_planning.get_scenario import get_scenario
-from moonshine.image_functions import add_traj_image, add_transition_image
+from moonshine.image_functions import add_traj_image, add_transition_image, partial_add_traj_image
+from moonshine.numpy_utils import remove_batch
 
 tf.compat.v1.enable_eager_execution()
 
@@ -48,19 +49,22 @@ def main():
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
     scenario = get_scenario(classifier_dataset.hparams['scenario'])
 
-    if args.display_type == 'transition_image':
-        dataset = add_transition_image(dataset,
-                                       states_keys=states_keys,
-                                       action_in_image=args.action_in_image,
-                                       scenario=scenario,
-                                       local_env_h=args.local_env_s,
-                                       local_env_w=args.local_env_s,
-                                       rope_image_k=args.rope_image_k)
-    if args.display_type == 'trajectory_image':
-        dataset = add_traj_image(dataset, states_keys=states_keys, rope_image_k=args.rope_image_k)
+    # if args.display_type == 'transition_image':
+    #     dataset = add_transition_image(dataset,
+    #                                    states_keys=states_keys,
+    #                                    action_in_image=args.action_in_image,
+    #                                    scenario=scenario,
+    #                                    local_env_h=args.local_env_s,
+    #                                    local_env_w=args.local_env_s,
+    #                                    rope_image_k=args.rope_image_k)
+    # if args.display_type == 'trajectory_image':
+    #     dataset = add_traj_image(dataset, states_keys=states_keys, rope_image_k=args.rope_image_k)
+    postprocess = partial_add_traj_image(states_keys=states_keys, batch_size=1, rope_image_k=args.rope_image_k)
 
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=1024)
+
+    dataset = dataset.batch(1)
 
     done = False
 
@@ -82,6 +86,11 @@ def main():
         if done:
             break
 
+        if args.display_type == 'trajectory_image':
+            example = postprocess(example)
+
+        example = remove_batch(example)
+
         label = example['label'].numpy().squeeze()
 
         if args.perf:
@@ -100,9 +109,9 @@ def main():
         if args.no_plot:
             continue
 
-        if 'stdev' in example:
-            stdev = example['stdev'].numpy()
-            stdev_next = example['stdev_next'].numpy()
+        if add_planned('stdev') in example:
+            stdev = example[add_planned('stdev')].numpy().squeeze()
+            stdev_next = example[add_next_and_planned('stdev')].numpy().squeeze()
             title = "Label = {}, stdev={:.3f},{:.3f}".format(label, stdev, stdev_next)
         else:
             title = "Label = {}, no stdev".format(label)

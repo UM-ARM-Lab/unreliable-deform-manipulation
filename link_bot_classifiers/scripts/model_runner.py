@@ -73,9 +73,9 @@ def train_main(args, seed: int):
         model_hparams['input_w_cols'] = train_dataset.full_env_params.w_cols
 
     net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
-    # train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed)
-    # train_tf_dataset = train_tf_dataset.prefetch(args.batch_size)
-    # val_tf_dataset = val_tf_dataset.prefetch(args.batch_size)
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed)
+    train_tf_dataset = train_tf_dataset.prefetch(args.batch_size)
+    val_tf_dataset = val_tf_dataset.prefetch(args.batch_size)
 
     ###############
     # Train
