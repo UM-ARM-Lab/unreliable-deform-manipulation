@@ -43,8 +43,8 @@ def train_main(args, seed: int):
     scenario = get_scenario(model_hparams['scenario'])
 
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train').batch(args.batch_size)
-    val_tf_dataset = val_dataset.get_datasets(mode='val').batch(args.batch_size)
+    train_tf_dataset = train_dataset.get_datasets(mode='train').batch(args.batch_size, drop_remainder=True)
+    val_tf_dataset = val_dataset.get_datasets(mode='val').batch(args.batch_size, drop_remainder=True)
 
     postprocess = None
     image_key = model_hparams['image_key']

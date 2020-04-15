@@ -4,75 +4,22 @@ import argparse
 import json
 import pathlib
 import random
-import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 import rospy
 import std_srvs
 import tensorflow as tf
-from matplotlib import animation
 
 from link_bot_gazebo import gazebo_services
 from link_bot_planning import model_utils, classifier_utils, ompl_viz
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_planning.plan_and_execute import execute_plan
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
-from link_bot_pycommon.ros_pycommon import make_trajectory_execution_request, trajectory_execution_response_to_numpy, \
-    get_occupancy_data, get_states_dict
+from link_bot_pycommon.ros_pycommon import get_occupancy_data, get_states_dict
 from victor import victor_services
 
 tf.compat.v1.enable_eager_execution()
-
-
-def visualize(args, env_data: OccupancyData, predicted_paths, actual_paths, p_accept_s):
-    fig, ax = plt.subplots(nrows=1, ncols=1)
-
-    predicted_rope_handles = {}
-    predicted_scatts = {}
-    actual_rope_handles = {}
-    actual_scatts = {}
-    for state_name in predicted_paths.keys():
-        predicted_rope_handle, = ax.plot([], [], color='r', label='predicted {}'.format(state_name))
-        predicted_rope_handles[state_name] = predicted_rope_handle
-        predicted_scatt = ax.scatter([], [], color='k', s=10)
-        predicted_scatts[state_name] = predicted_scatt
-        actual_rope_handle, = ax.plot([], [], color='b', label='actual {}'.format(state_name))
-        actual_rope_handles[state_name] = actual_rope_handle
-        actual_scatt = ax.scatter([], [], color='k', s=10)
-        actual_scatts[state_name] = actual_scatt
-
-    ax.axis('equal')
-    ax.set_xlim([env_data.extent[0], env_data.extent[1]])
-    ax.set_ylim([env_data.extent[2], env_data.extent[3]])
-    ax.imshow(np.flipud(env_data.data), extent=env_data.extent)
-
-    def update(t):
-        for state_name, predicted_path in predicted_paths.items():
-            actual_path = actual_paths[state_name]
-            predicted_xs = predicted_path[t, :, 0]
-            predicted_ys = predicted_path[t, :, 1]
-            predicted_rope_handles[state_name].set_data(predicted_xs, predicted_ys)
-            predicted_scatts[state_name].set_offsets([predicted_xs[-1], predicted_ys[-1]])
-
-            actual_xs = actual_path[t, :, 0]
-            actual_ys = actual_path[t, :, 1]
-            actual_rope_handles[state_name].set_data(actual_xs, actual_ys)
-            actual_scatts[state_name].set_offsets([actual_xs[-1], actual_ys[-1]])
-
-    T = predicted_paths['link_bot'].shape[0]
-    anim = animation.FuncAnimation(fig, update, interval=250, frames=T)
-
-    plt.legend()
-    plt.tight_layout()
-
-    if args.outdir is not None:
-        outname = "model_vs_true_{}.gif".format(int(time.time()))
-        outname = args.outdir / outname
-        anim.save(str(outname), writer='imagemagick', fps=4)
-
-    plt.show()
 
 
 def main():
@@ -92,6 +39,8 @@ def main():
     plt.style.use("paper")
 
     args = parser.parse_args()
+
+    args.outdir.mkdir(exist_ok=True)
 
     tf.set_random_seed(args.seed)
     np.random.seed(args.seed)
@@ -154,7 +103,7 @@ def main():
                                       planned_path=predicted_path,
                                       actual_path=actual_path)
     if args.outdir:
-        outfilename = args.outdir / 'compare_model_to_gazebo_with_classifier' / 'actions_{}.gif'.format(args.actions.stem)
+        outfilename = args.outdir / 'actions_{}.gif'.format(args.actions.stem)
         anim.save(outfilename, writer='imagemagick', dpi=100)
     plt.show()
 

@@ -115,7 +115,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
                 merged_predictions[state_key] = mean_for_key
                 stdev_for_key = tf.math.reduce_sum(tf.math.reduce_std(predictions_for_state_key, axis=1), axis=0)
                 all_stdevs.append(stdev_for_key)
-            total_stdev = tf.reduce_sum(tf.stack(all_stdevs, axis=0), axis=0)
+            total_stdev = tf.reduce_sum(tf.stack(all_stdevs, axis=0), axis=0, keepdims=True)
             merged_predictions['stdev'] = total_stdev
             ensemble_predictions.append(merged_predictions)
 

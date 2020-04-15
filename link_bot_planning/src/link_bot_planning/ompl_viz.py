@@ -134,8 +134,8 @@ def plan_vs_execution(environment: np.ndarray,
 
     def update(t):
         if accept_probabilities is not None:
-            if 0 < t < len(accept_probabilities):
-                accept_probability = accept_probabilities[t - 1]
+            if t < len(accept_probabilities):
+                accept_probability = accept_probabilities[t]
                 ax.set_title("P(accept) = {:.3f}".format(accept_probability))
                 color = 'g' if accept_probability > 0.5 else 'r'
                 classifier_line_artist.set_color(color)
