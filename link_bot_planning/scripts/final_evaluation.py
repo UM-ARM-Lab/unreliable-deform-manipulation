@@ -145,7 +145,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         }
         self.metrics['metrics'].append(metrics_for_plan)
         metrics_file = self.metrics_filename.open('w')
-        json.dump(self.metrics, metrics_file, indent=1)
+        json.dump(self.metrics, metrics_file, indent=2)
 
         plt.figure()
         ax = plt.gca()
@@ -184,7 +184,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
     def on_complete(self, initial_poses_in_collision):
         self.metrics['initial_poses_in_collision'] = initial_poses_in_collision
         metrics_file = self.metrics_filename.open('w')
-        json.dump(self.metrics, metrics_file, indent=1)
+        json.dump(self.metrics, metrics_file, indent=2)
 
     def on_planner_failure(self, start_states, tail_goal_point, environment: link_bot_sdf_utils.OccupancyData, planner_data):
         self.n_failures += 1
@@ -202,7 +202,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                 'data': environment.data.tolist(),
             },
         }
-        json.dump(info, info_file, indent=1)
+        json.dump(info, info_file, indent=2)
         plt.imsave(image_file, environment.image > 0)
 
 

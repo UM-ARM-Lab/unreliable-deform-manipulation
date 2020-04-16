@@ -54,7 +54,7 @@ def main():
     classifier_dataset_hparams['using_ensemble'] = using_ensemble
     classifier_dataset_hparams['labeling_params'] = labeling_params
     classifier_dataset_hparams['state_keys'] = fwd_models.states_keys
-    json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=1)
+    json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
     val_split = int(args.total_take * DEFAULT_VAL_SPLIT) if args.total_take is not None else None
     test_split = int(args.total_take * DEFAULT_TEST_SPLIT) if args.total_take is not None else None

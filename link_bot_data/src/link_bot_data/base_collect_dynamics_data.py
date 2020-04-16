@@ -177,7 +177,7 @@ def generate(service_provider, params: CollectDynamicsParams, args):
             'n_action': n_action,
             'scenario': args.scenario,
         }
-        json.dump(options, of, indent=1)
+        json.dump(options, of, indent=2)
 
     np.random.seed(args.seed)
     env_rng = np.random.RandomState(args.seed)

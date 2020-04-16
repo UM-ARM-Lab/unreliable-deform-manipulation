@@ -52,8 +52,11 @@ def main():
                 # copy the plan image files, renaming if necessary
                 out_idx = len(new_metrics_list) - 1
                 in_img = args.subdir / 'plan_{:d}.png'.format(in_idx)
-                out_img = args.out_subdir / 'plan_{:d}.png'.format(out_idx)
-                shutil.copy2(in_img, out_img)
+                if in_img.exists():
+                    out_img = args.out_subdir / 'plan_{:d}.png'.format(out_idx)
+                    shutil.copy2(in_img, out_img)
+                else:
+                    print(Fore.YELLOW + "Missing plan image {}".format(in_img))
             new_out_metrics['n_total_plans'] = len(new_metrics_list)
             new_out_metrics['metrics'] = new_metrics_list
             tmp_out_json = pathlib.Path('/tmp/tmp_metrics.json')
@@ -66,8 +69,11 @@ def main():
             json.dump(out_metrics, out_json_f, indent=2)
 
         for in_img in args.subdir.glob("plan_*.png"):
-            out_img = args.out_subdir / in_img.name
-            shutil.copy2(in_img, out_img)
+            if in_img.exists():
+                out_img = args.out_subdir / in_img.name
+                shutil.copy2(in_img, out_img)
+            else:
+                print(Fore.YELLOW + "Missing plan image {}".format(in_img))
 
 
 if __name__ == '__main__':
