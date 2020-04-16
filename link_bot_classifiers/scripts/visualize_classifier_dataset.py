@@ -190,6 +190,7 @@ def show_image(example, model_hparams, title):
             plt.imshow(np.flipud(image[:, :, c]))
     else:
         plt.imshow(np.flipud(image))
+
     ax = plt.gca()
     ax.set_xticks([])
     ax.set_yticks([])
