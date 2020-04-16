@@ -36,10 +36,6 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def points_for_compare_models(state: Dict):
-        raise NotImplementedError()
-
-    @staticmethod
     def plot_goal(ax, goal, color, label=None, **kwargs):
         raise NotImplementedError()
 
@@ -100,4 +96,12 @@ class ExperimentScenario:
 
     @staticmethod
     def integrate_dynamics(s_t, ds_t):
+        raise NotImplementedError()
+
+    @staticmethod
+    def get_environment_from_example(example: Dict):
+        raise NotImplementedError()
+
+    @staticmethod
+    def get_environment_from_start_states_dict(start_states: Dict):
         raise NotImplementedError()

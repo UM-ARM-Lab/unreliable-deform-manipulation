@@ -1,3 +1,5 @@
+from typing import Dict
+
 import numpy as np
 
 from link_bot_pycommon import link_bot_sdf_utils
@@ -11,23 +13,23 @@ def sample_goal(goal_w_m: float, goal_h_m: float, rng: np.random.RandomState):
 
 def sample_collision_free_goal(goal_w_m: float,
                                goal_h_m: float,
-                               full_env_data: link_bot_sdf_utils.OccupancyData,
+                               environment: Dict,
                                rng: np.random.RandomState):
     """
-    Args:
-        goal_w_m: full width meters
-        goal_h_m: full height meters
-        full_env_data: occupancy data
-        rng:  np rng
-    Returns:
-        x, y tuple, meters
-
+    :param goal_w_m: full width meters
+    :param goal_h_m: full height meters
+    :param environment:
+    :param rng:  np rng
+    :return x, y tuple, meters
     """
-    full_env_data = link_bot_sdf_utils.inflate(full_env_data, radius_m=0.025)
+    occupancy_data = link_bot_sdf_utils.OccupancyData(data=environment['full_env/env'],
+                                                      resolution=environment['full_env/res'],
+                                                      origin=environment['full_env/origin'])
+    occupancy_data = link_bot_sdf_utils.inflate(occupancy_data, radius_m=0.025)
 
     while True:
         x, y = sample_goal(goal_w_m, goal_h_m, rng)
-        r, c = link_bot_sdf_utils.point_to_idx(x, y, full_env_data.resolution, full_env_data.origin)
-        collision = full_env_data.data[r, c]
+        r, c = link_bot_sdf_utils.point_to_idx(x, y, resolution=occupancy_data.resolution, origin=occupancy_data.origin)
+        collision = occupancy_data.data[r, c]
         if not collision:
             return x, y

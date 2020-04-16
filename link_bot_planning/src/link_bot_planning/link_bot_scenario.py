@@ -9,6 +9,7 @@ from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import CollectDynamicsParams
 from link_bot_pycommon.base_services import Services
+from link_bot_pycommon.ros_pycommon import get_occupancy_data
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from peter_msgs.msg import Action
 
@@ -73,11 +74,6 @@ class LinkBotScenario(ExperimentScenario):
         scatt = ax.scatter(xs[0], ys[0], c=color, s=s, zorder=zorder)
         line = ax.plot(xs, ys, linewidth=6, c=color, zorder=zorder, label=label)[0]
         return line, scatt
-
-    @staticmethod
-    def points_for_compare_models(state: Dict):
-        points = np.reshape(state['link_bot'], [-1, 2])
-        return points
 
     @staticmethod
     def distance_to_goal(
@@ -176,7 +172,7 @@ class LinkBotScenario(ExperimentScenario):
         :param state: Dict of batched states
         :return:
         """
-        state_key = add_planned('link_bot')
+        state_key = 'link_bot'
         b = int(state[state_key].shape[0])
         link_bot_points = tf.reshape(state[state_key], [b, -1, 2])
         head_point_where_gripper_is = link_bot_points[:, -1]
@@ -200,3 +196,11 @@ class LinkBotScenario(ExperimentScenario):
     @staticmethod
     def integrate_dynamics(s_t, ds_t):
         return s_t + ds_t
+
+    @staticmethod
+    def get_environment_from_start_states_dict(start_states: Dict):
+        return {}
+
+    @staticmethod
+    def get_environment_from_example(example: Dict):
+        raise {}

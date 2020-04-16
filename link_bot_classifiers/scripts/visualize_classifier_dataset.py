@@ -7,6 +7,7 @@ from time import perf_counter
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from grid_strategy import strategies
 
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.classifier_dataset import ClassifierDataset
@@ -21,7 +22,7 @@ tf.compat.v1.enable_eager_execution(config=config)
 
 
 def main():
-    plt.style.use("./classifier.mplstyle")
+    plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=200)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
@@ -29,6 +30,7 @@ def main():
     parser.add_argument('display_type', choices=['just_count', 'image', 'plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
     parser.add_argument('--shuffle', action='store_true')
+    parser.add_argument('--no-balance', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--take', type=int)
     parser.add_argument('--only-negative', action='store_true')
@@ -41,7 +43,7 @@ def main():
     np.random.seed(args.seed)
     tf.compat.v1.random.set_random_seed(args.seed)
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs)
+    classifier_dataset = ClassifierDataset(args.dataset_dirs, no_balance=args.no_balance)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
     scenario = get_scenario(classifier_dataset.hparams['scenario'])
     model_hparams = json.load(args.model_hparams.open("r"))
@@ -178,11 +180,13 @@ def show_image(example, model_hparams, title):
     image_key = model_hparams['image_key']
     image = example[image_key].numpy()
     n_channels = image.shape[2]
-    plt.figure()
-    plt.title(title)
+
+    specs = strategies.SquareStrategy("center").get_grid(n_channels)
+
     if n_channels != 3:
-        for c in range(n_channels):
-            plt.subplot()
+        for c, subplot_args in enumerate(specs):
+            ax = plt.subplot(subplot_args)
+            ax.set_title(title)
             plt.imshow(np.flipud(image[:, :, c]))
     else:
         plt.imshow(np.flipud(image))

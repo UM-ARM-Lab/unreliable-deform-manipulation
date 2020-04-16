@@ -85,8 +85,9 @@ def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, datas
 
 class ClassifierDataset(BaseDataset):
 
-    def __init__(self, dataset_dirs: List[pathlib.Path]):
+    def __init__(self, dataset_dirs: List[pathlib.Path], no_balance=False):
         super(ClassifierDataset, self).__init__(dataset_dirs)
+        self.no_balance = no_balance
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
         self.labeling_params = self.hparams['labeling_params']
         self.label_state_key = self.hparams['labeling_params']['state_key']
@@ -127,5 +128,6 @@ class ClassifierDataset(BaseDataset):
         return features_description
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
-        dataset = balance(dataset, self.labeling_params)
+        if not self.no_balance:
+            dataset = balance(dataset, self.labeling_params)
         return dataset

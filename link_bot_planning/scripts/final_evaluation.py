@@ -99,32 +99,32 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
         super().on_after_plan()
 
-    def get_goal(self, w_meters, h, full_env_data):
+    def get_goal(self, w_meters, h, environment):
         if self.goal is not None:
             if self.verbose >= 1:
                 print("Using Goal {}".format(self.goal))
             return np.array(self.goal)
         else:
-            return super().get_goal(w_meters, h, full_env_data)
+            return super().get_goal(w_meters, h, environment)
 
     def on_execution_complete(self,
                               planned_path: List[Dict],
                               planned_actions: np.ndarray,
                               goal,
                               actual_path: List[Dict],
-                              full_env_data: link_bot_sdf_utils.OccupancyData,
+                              environment: Dict,
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
         num_nodes = planner_data.numVertices()
 
         final_planned_state = planned_path[-1]
-        plan_to_goal_error = self.planner.experiment_scenario.distance_to_goal(final_planned_state, goal)
+        plan_to_goal_error = self.planner.scenario.distance_to_goal(final_planned_state, goal)
 
         final_state = actual_path[-1]
-        execution_to_goal_error = self.planner.experiment_scenario.distance_to_goal(final_state, goal)
+        execution_to_goal_error = self.planner.scenario.distance_to_goal(final_state, goal)
 
-        plan_to_execution_error = self.planner.experiment_scenario.distance(final_state, final_planned_state)
+        plan_to_execution_error = self.planner.scenario.distance(final_state, final_planned_state)
 
         print("{}: {}".format(self.subfolder, self.successfully_completed_plan_idx))
 
@@ -133,7 +133,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
         metrics_for_plan = {
             'planner_status': planner_status.asString(),
-            'full_env': full_env_data.data.tolist(),
+            'full_env': environment['full_env/env'].tolist(),
             'planned_path': planned_path_listified,
             'actual_path': actual_path_listified,
             'planning_time': planning_time,
@@ -151,22 +151,22 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         ax = plt.gca()
         legend = plot_plan(ax=ax,
                            state_space_description=self.planner.state_space_description,
-                           experiment_scenario=self.planner.experiment_scenario,
+                           experiment_scenario=self.planner.scenario,
                            viz_object=self.planner.viz_object,
                            planner_data=planner_data,
-                           environment=full_env_data.data,
+                           environment=environment['full_env/env'],
                            goal=goal,
                            planned_path=planned_path,
                            planned_actions=None,
-                           extent=full_env_data.extent,
+                           extent=environment['full_env/extent'],
                            draw_tree=False,
                            draw_rejected=False)
 
-        self.planner.experiment_scenario.plot_state_simple(ax,
-                                                           final_state,
-                                                           color='pink',
-                                                           label='final actual keypoint position',
-                                                           zorder=5)
+        self.planner.scenario.plot_state_simple(ax,
+                                                final_state,
+                                                color='pink',
+                                                label='final actual keypoint position',
+                                                zorder=5)
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
         plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
 
@@ -186,7 +186,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         metrics_file = self.metrics_filename.open('w')
         json.dump(self.metrics, metrics_file, indent=1)
 
-    def on_planner_failure(self, start_states, tail_goal_point, full_env_data: link_bot_sdf_utils.OccupancyData, planner_data):
+    def on_planner_failure(self, start_states, tail_goal_point, environment: link_bot_sdf_utils.OccupancyData, planner_data):
         self.n_failures += 1
         folder = self.failures_root / str(self.n_failures)
         folder.mkdir(parents=True)
@@ -196,14 +196,14 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'start_states': dict([(k, v.tolist()) for k, v in start_states.items()]),
             'tail_goal_point': tail_goal_point,
             'sdf': {
-                'res': full_env_data.resolution,
-                'origin': full_env_data.origin.tolist(),
-                'extent': full_env_data.extent.tolist(),
-                'data': full_env_data.data.tolist(),
+                'res': environment.resolution,
+                'origin': environment.origin.tolist(),
+                'extent': environment.extent.tolist(),
+                'data': environment.data.tolist(),
             },
         }
         json.dump(info, info_file, indent=1)
-        plt.imsave(image_file, full_env_data.image > 0)
+        plt.imsave(image_file, environment.image > 0)
 
 
 def main():

@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 from ignition.markers import MarkerProvider
+from link_bot_data.link_bot_dataset_utils import add_all_and_planned, add_all
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import CollectDynamicsParams
@@ -87,11 +88,6 @@ class TetherScenario(ExperimentScenario):
             scatt = ax.scatter(x, y, c=color, s=s, zorder=zorder, label=label)
             line = ax.plot(x, y, linewidth=1, c=color, zorder=zorder)[0]
             return line, scatt
-
-    @staticmethod
-    def points_for_compare_models(state: Dict):
-        points = np.reshape(state['tether'], [-1, 2])
-        return points
 
     @staticmethod
     def plot_action(ax: plt.Axes,
@@ -231,3 +227,20 @@ class TetherScenario(ExperimentScenario):
     @staticmethod
     def integrate_dynamics(s_t, ds_t):
         return s_t + ds_t
+
+    @staticmethod
+    def get_environment_from_start_states_dict(start_states: Dict):
+        return {
+            'initial_tether': start_states['tether']
+        }
+
+    @staticmethod
+    def get_environment_from_example(example: Dict):
+        start_t = tf.cast(example['start_t'], tf.int64)
+        batch_indices = tf.range(example['start_t'].shape[0], dtype=tf.int64)
+        indices = tf.stack([batch_indices, start_t], axis=1)
+        tether_all = example[add_all('tether')]
+        tether_start = tf.gather_nd(tether_all, indices)
+        return {
+            'initial_tether': tether_start
+        }

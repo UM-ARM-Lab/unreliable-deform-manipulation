@@ -12,7 +12,6 @@ from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
-from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 from link_bot_pycommon.ros_pycommon import get_states_dict
@@ -75,32 +74,29 @@ class PlanAndExecute:
 
             self.plan_idx = 0
             while True:
-                # get full env once
-                full_env_data = get_occupancy_data(env_w_m=self.planner.full_env_params.w,
-                                                   env_h_m=self.planner.full_env_params.h,
-                                                   res=self.planner.full_env_params.res,
-                                                   service_provider=self.service_provider,
-                                                   robot_name=self.planner.experiment_scenario.robot_name())
-
                 # get start states
-                start_states = get_states_dict(self.service_provider, self.planner.state_space_description.keys())
+                start_states = get_states_dict(self.service_provider)
+
+                # get the environment, which here means anything which is assumed constant during planning
+                # This includes the occupancy map but can also include things like the initial state of the tether
+
+                environment = self.get_environment_common()
+                environment.update(self.planner.scenario.get_environment_from_start_states_dict(start_states))
 
                 # generate a random target
-                goal = self.get_goal(self.planner_params['goal_w_m'],
-                                     self.planner_params['goal_h_m'],
-                                     full_env_data=full_env_data)
+                goal = self.get_goal(self.planner_params['goal_w_m'], self.planner_params['goal_h_m'], environment)
 
                 if self.verbose >= 1:
                     # publish goal marker
-                    self.planner.experiment_scenario.publish_goal_marker(self.service_provider.marker_provider,
-                                                                         goal,
-                                                                         self.planner_params['goal_threshold'])
+                    self.planner.scenario.publish_goal_marker(self.service_provider.marker_provider,
+                                                              goal,
+                                                              self.planner_params['goal_threshold'])
 
                 if self.verbose >= 1:
                     print(Fore.CYAN + "Planning from {} to {}".format(start_states, goal) + Fore.RESET)
 
                 t0 = time.time()
-                planner_result = self.planner.plan(start_states, goal, full_env_data)
+                planner_result = self.planner.plan(start_states, environment, goal)
                 my_planner.interpret_planner_status(planner_result.planner_status, self.verbose)
                 planner_data = ob.PlannerData(self.planner.si)
                 self.planner.planner.getPlannerData(planner_data)
@@ -112,7 +108,7 @@ class PlanAndExecute:
 
                 if not planner_result.planner_status:
                     print("fail!")
-                    self.on_planner_failure(start_states, goal, full_env_data, planner_data)
+                    self.on_planner_failure(start_states, goal, environment, planner_data)
                     if self.retry_on_failure:
                         break
                 else:  # Approximate or Exact solution found!
@@ -120,7 +116,7 @@ class PlanAndExecute:
                     if self.verbose >= 1:
                         print("Planning time: {:5.3f}s".format(planning_time))
 
-                    self.on_plan_complete(planner_result.path, goal, planner_result.actions, full_env_data, planner_data,
+                    self.on_plan_complete(planner_result.path, goal, planner_result.actions, environment, planner_data,
                                           planning_time, planner_result.planner_status)
 
                     # execute the plan, collecting the states that actually occurred
@@ -133,7 +129,7 @@ class PlanAndExecute:
                                                    planner_result.actions,
                                                    goal,
                                                    actual_path,
-                                                   full_env_data,
+                                                   environment,
                                                    planner_data,
                                                    planning_time,
                                                    planner_result.planner_status)
@@ -151,14 +147,28 @@ class PlanAndExecute:
 
         self.on_complete(initial_poses_in_collision)
 
-    def get_goal(self, w_meters, h_meters, full_env_data):
-        return sample_collision_free_goal(goal_w_m=w_meters, goal_h_m=h_meters, full_env_data=full_env_data, rng=self.goal_rng)
+    def get_environment_common(self):
+        full_env_data = get_occupancy_data(env_w_m=self.planner.full_env_params.w,
+                                           env_h_m=self.planner.full_env_params.h,
+                                           res=self.planner.full_env_params.res,
+                                           service_provider=self.service_provider,
+                                           robot_name=self.planner.scenario.robot_name())
+        environment = {
+            'full_env/env': full_env_data.data,
+            'full_env/origin': full_env_data.origin,
+            'full_env/res': full_env_data.resolution,
+            'full_env/extent': full_env_data.extent,
+        }
+        return environment
+
+    def get_goal(self, w_meters, h_meters, environment):
+        return sample_collision_free_goal(goal_w_m=w_meters, goal_h_m=h_meters, environment=environment, rng=self.goal_rng)
 
     def on_plan_complete(self,
                          planned_path: List[Dict],
                          goal,
                          planned_actions: np.ndarray,
-                         full_env_data: link_bot_sdf_utils.OccupancyData,
+                         environment: Dict,
                          planner_data: ob.PlannerData,
                          planning_time: float,
                          planner_status: ob.PlannerStatus):
@@ -169,7 +179,7 @@ class PlanAndExecute:
                               planned_actions: np.ndarray,
                               goal,
                               actual_path: List[Dict],
-                              full_env_data: link_bot_sdf_utils.OccupancyData,
+                              environment: Dict,
                               planner_data: ob.PlannerData,
                               planning_time: float,
                               planner_status: ob.PlannerStatus):
@@ -181,7 +191,7 @@ class PlanAndExecute:
     def on_planner_failure(self,
                            start_states: Dict[str, np.ndarray],
                            goal,
-                           full_env_data: link_bot_sdf_utils.OccupancyData,
+                           environment: Dict,
                            planner_data: ob.PlannerData):
         pass
 

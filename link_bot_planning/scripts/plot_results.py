@@ -20,6 +20,7 @@ def main():
     parser.add_argument("results_dir", type=pathlib.Path, help='directory containing metrics.json')
     parser.add_argument("plan_idx", type=int, help='which plan to show')
     parser.add_argument("plot_type", choices=['plot', 'animate'], help='how to display')
+    parser.add_argument("--save", action='store_true')
 
     args = parser.parse_args()
 
@@ -45,9 +46,11 @@ def main():
         plt.imshow(np.flipud(full_env), extent=full_env_extent, cmap='Greys')
         ax = plt.gca()
         for state in planned_path:
-            scenario.plot_state(ax, state, color='c')
+            scenario.plot_state(ax, state, color='c', s=20, zorder=2)
+        for state in actual_path:
+            scenario.plot_state(ax, state, color='r', s=20, zorder=2)
         scenario.plot_goal(ax, goal, label='goal', color='g')
-        plt.scatter(planned_path[0, 0], planned_path[0, 1], label='start', color='r')
+        scenario.plot_state_simple(ax, planned_path[0], color='c', label='start', zorder=2)
         plt.legend()
         plt.axis("equal")
         plt.xlim(full_env_extent[0:2])
@@ -62,9 +65,10 @@ def main():
                                  goal,
                                  planned_path,
                                  actual_path)
-        out_filename = args.results_dir / 'plan_vs_execution_{}.gif'.format(args.plan_idx)
-        anim.save(out_filename, writer='imagemagick', dpi=100)
-        # plt.show()
+        if args.save:
+            out_filename = args.results_dir / 'plan_vs_execution_{}.gif'.format(args.plan_idx)
+            anim.save(out_filename, writer='imagemagick', dpi=100)
+        plt.show()
 
 
 if __name__ == '__main__':

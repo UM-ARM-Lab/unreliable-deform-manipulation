@@ -140,12 +140,18 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         states_i_plus_1_to_draw = {k: states_i_plus_1[k] for k in states_i_plus_1 if k != 'stdev'}
 
         action_in_image = self.model_hparams['action_in_image']
-        batched_inputs = add_batch(full_env, full_env_origin, res, states_i_to_draw, action_i, states_i_plus_1_to_draw)
+        environment = {
+            'full_env/env': full_env,
+            'full_env/origin': full_env_origin,
+            'full_env/res': res,
+        }
+        batched_inputs = add_batch(environment, states_i_to_draw, action_i, states_i_plus_1_to_draw)
         image = make_transition_images(*batched_inputs,
                                        scenario=self.scenario,
                                        local_env_h=self.input_h_rows,
                                        local_env_w=self.input_w_cols,
                                        action_in_image=action_in_image,
+                                       batch_size=1,
                                        k=self.model_hparams['rope_image_k'])[0]
         image = tf.convert_to_tensor(image, dtype=tf.float32)
 

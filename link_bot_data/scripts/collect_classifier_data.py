@@ -110,17 +110,17 @@ class ClassifierDataCollector(PlanAndExecute):
             self.service_provider.reset_robot(self.reset_gripper_to, self.verbose)
         super().on_before_plan()
 
-    def get_goal(self, w_meters, h, full_env_data):
+    def get_goal(self, w_meters, h, environment):
         if self.fixed_goal is not None:
             return self.fixed_goal
         else:
-            return super().get_goal(w_meters, h, full_env_data)
+            return super().get_goal(w_meters, h, environment)
 
     def on_plan_complete(self,
                          planned_path: List[Dict],
                          goal,
                          planned_actions: np.ndarray,
-                         full_env_data: link_bot_sdf_utils.OccupancyData,
+                         environment: link_bot_sdf_utils.OccupancyData,
                          planner_data: ob.PlannerData,
                          planning_time: float,
                          planner_status: ob.PlannerStatus):
@@ -131,14 +131,14 @@ class ClassifierDataCollector(PlanAndExecute):
             ax = plt.gca()
             ompl_viz.plot_plan(ax,
                                self.planner.state_space_description,
-                               self.planner.experiment_scenario,
+                               self.planner.scenario,
                                self.planner.viz_object,
                                planner_data,
-                               full_env_data.data,
+                               environment.data,
                                goal,
                                planned_path,
                                planned_actions,
-                               full_env_data.extent,
+                               environment.extent,
                                draw_tree=False,
                                draw_rejected=False)
             plt.show()

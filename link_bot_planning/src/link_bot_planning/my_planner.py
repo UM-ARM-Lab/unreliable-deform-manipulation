@@ -14,7 +14,6 @@ from link_bot_planning.state_spaces import from_numpy, ValidRopeConfigurationCom
     compound_to_numpy, ompl_control_to_model_action
 from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_planning.viz_object import VizObject
-from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_services import Services
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -54,7 +53,7 @@ class MyPlanner:
         self.seed = seed
         self.classifier_rng = np.random.RandomState(seed)
         self.state_sampler_rng = np.random.RandomState(seed)
-        self.experiment_scenario = scenario
+        self.scenario = scenario
 
         self.state_space_description = {}
         self.state_space = ob.CompoundStateSpace()
@@ -63,7 +62,7 @@ class MyPlanner:
         self.subspace_bounds = []
         subspace_idx = None
         for subspace_idx, state_key in enumerate(self.fwd_model.states_keys):
-            weight = self.experiment_scenario.get_subspace_weight(state_key)
+            weight = self.scenario.get_subspace_weight(state_key)
             n_state = self.fwd_model.states_description[state_key]
             subspace_description = {
                 "idx": subspace_idx,
@@ -120,7 +119,8 @@ class MyPlanner:
         else:
             raise NotImplementedError()
 
-        self.full_env_data = None
+        # a Dictionary containing the parts of state which are not predicted/planned for, i.e. the environment
+        self.environment = None
 
         if params['sampler_type'] == 'sample_train':
             raise NotImplementedError()
@@ -134,7 +134,7 @@ class MyPlanner:
                                                fwd_model=fwd_model,
                                                classifier_model=classifier_model,
                                                params=smoothing_params,
-                                               experiment_scenario=self.experiment_scenario)
+                                               experiment_scenario=self.scenario)
 
     def is_valid(self, state):
         return self.state_space.satisfiesBounds(state)
@@ -154,9 +154,9 @@ class MyPlanner:
 
         actions = np.array(actions)
 
-        accept_probability = self.classifier_model.check_constraint(full_env=self.full_env_data.data,
-                                                                    full_env_origin=self.full_env_data.origin,
-                                                                    res=self.full_env_data.resolution,
+        accept_probability = self.classifier_model.check_constraint(full_env=self.environment['full_env/env'],
+                                                                    full_env_origin=self.environment['full_env/origin'],
+                                                                    res=self.environment['full_env/res'],
                                                                     states_sequence=states_sequence,
                                                                     actions=actions)
 
@@ -180,8 +180,8 @@ class MyPlanner:
 
     def predict(self, np_states, np_actions):
         # use the forward model to predict the next configuration
-        mean_next_states = self.fwd_model.propagate(full_env=self.full_env_data.data,
-                                                    full_env_origin=self.full_env_data.origin,
+        mean_next_states = self.fwd_model.propagate(full_env=self.environment['full_env/env'],
+                                                    full_env_origin=self.environment['full_env/env'],
                                                     res=self.fwd_model.full_env_params.res,
                                                     start_states=np_states,
                                                     actions=np_actions)
@@ -220,9 +220,9 @@ class MyPlanner:
                     goal,
                     controls: np.ndarray,
                     planned_path: List[Dict]):
-        smoothed_actions_tf, smoothed_path_tf = self.smoother.smooth(full_env=self.full_env_data.data,
-                                                                     full_env_origin=self.full_env_data.origin,
-                                                                     res=self.full_env_data.resolution,
+        smoothed_actions_tf, smoothed_path_tf = self.smoother.smooth(full_env=self.environment['full_env/env'],
+                                                                     full_env_origin=self.environment['full_env/origin'],
+                                                                     res=self.environment['full_env/res'],
                                                                      goal=goal,
                                                                      actions=controls,
                                                                      planned_path=planned_path)
@@ -237,15 +237,16 @@ class MyPlanner:
 
     def plan(self,
              start_states: Dict,
+             environment: Dict,
              goal,
-             full_env_data: link_bot_sdf_utils.OccupancyData) -> PlannerResult:
+             ) -> PlannerResult:
         """
-        :param full_env_data:
         :param start_states: each element is a vector
+        :type environment: each element is a vector of state which we don't predict
         :param goal:
         :return: controls, states
         """
-        self.full_env_data = full_env_data
+        self.environment = environment
 
         # create start and goal states
         ompl_start = ob.CompoundState(self.state_space)
@@ -257,7 +258,7 @@ class MyPlanner:
                                  self.params['goal_threshold'],
                                  goal,
                                  self.viz_object,
-                                 self.experiment_scenario,
+                                 self.scenario,
                                  self.state_space_description)
 
         self.ss.clear()
