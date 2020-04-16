@@ -6,7 +6,7 @@
   "reset_robot": null,
   "reset_world": false,
   "goal_radius_m": 2.5,
-  "max_step_size": 0.01,
+  "max_step_size": 0.005,
   "move_objects_every_n": 4,
   "movable_obstacles": [
     "box1",
@@ -21,15 +21,10 @@
     "box10",
     "box11",
     "box12",
-    "box13",
-    "box14",
-    "box15",
-    "box16",
-    "box17",
-    "box18"
+    "box13"
   ],
-  "steps_per_traj": 128,
-  "trajs_per_file": 16,
+  "steps_per_traj": 64,
+  "trajs_per_file": 32,
   "no_obstacles": false
 }
 

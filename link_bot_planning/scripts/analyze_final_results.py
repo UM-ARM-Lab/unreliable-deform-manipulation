@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-from scipy import stats
 import json
 import pathlib
 from typing import List, Dict
@@ -14,8 +13,7 @@ from tabulate import tabulate
 
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.link_bot_pycommon import transpose_2d_lists
-from link_bot_pycommon.metric_utils import row_stats
+from link_bot_pycommon.metric_utils import breif_row_stats
 
 
 def dict_to_pvale_table(data_dict: Dict, table_format: str, fmt: str = '{:5.3f}'):
@@ -42,6 +40,27 @@ def invert_dict(data: List) -> Dict:
                 d[k] = []
             d[k].append(v)
     return d
+
+
+def make_cell(text, tablefmt):
+    if isinstance(text, list):
+        if tablefmt == 'latex_raw':
+            return "\\makecell{" + "\\\\".join(text) + "}"
+        else:
+            return "\n".join(text)
+    else:
+        return text
+
+
+def make_row(planner_params, metric_data, tablefmt):
+    table_config = planner_params['table_config']
+    row = [
+        make_cell(table_config["nickname"], tablefmt),
+        make_cell(table_config["dynamics"], tablefmt),
+        make_cell(table_config["classifier"], tablefmt),
+    ]
+    row.extend(breif_row_stats(metric_data))
+    return row
 
 
 def main():
@@ -94,13 +113,13 @@ def main():
                 all_subfolders.append(subfolder)
 
     if args.final:
-        table_format = 'latex'
+        table_format = 'latex_raw'
         for subfolder_idx, subfolder in enumerate(all_subfolders):
             print("{}) {}".format(subfolder_idx, subfolder))
         sort_order = input(Fore.CYAN + "Enter the desired table order:\n" + Fore.RESET)
         all_subfolders = [all_subfolders[int(i)] for i in sort_order.split(' ')]
     else:
-        table_format = 'github'
+        table_format = 'fancy_grid'
 
     max_density = 0
     prop_cycle = plt.rcParams['axes.prop_cycle']
@@ -156,7 +175,8 @@ def main():
             # Execution Error Plot
             final_execution_to_goal_pdf = stats.gaussian_kde(final_execution_to_goal_errors)
             final_execution_to_goal_densities_at_thresholds = final_execution_to_goal_pdf(errors_thresholds)
-            execution_error_ax.plot(errors_thresholds, final_execution_to_goal_densities_at_thresholds, label=name, linewidth=5, c=color)
+            execution_error_ax.plot(errors_thresholds, final_execution_to_goal_densities_at_thresholds, label=name, linewidth=5,
+                                    c=color)
             max_density = max(np.max(final_execution_to_goal_densities_at_thresholds), max_density)
 
             # Planning SuccessPlot
@@ -170,38 +190,38 @@ def main():
         plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
         headers.append(str(subfolder.name))
 
-        aggregate_metrics['Planning Time'].append(row_stats(planning_times))
-        aggregate_metrics['Final Plan To Execution Error'].append(row_stats(final_plan_to_execution_errors))
-        aggregate_metrics['Final Plan To Goal Error'].append(row_stats(final_plan_to_goal_errors))
-        aggregate_metrics['Final Execution To Goal Error'].append(row_stats(final_execution_to_goal_errors))
-        aggregate_metrics['Num Nodes'].append(row_stats(nums_nodes))
+        aggregate_metrics['Planning Time'].append(make_row(planner_params, planning_times, table_format))
+        aggregate_metrics['Final Plan To Execution Error'].append(
+            make_row(planner_params, final_plan_to_execution_errors, table_format))
+        aggregate_metrics['Final Plan To Goal Error'].append(make_row(planner_params, final_plan_to_goal_errors, table_format))
+        aggregate_metrics['Final Execution To Goal Error'].append(
+            make_row(planner_params, final_execution_to_goal_errors, table_format))
+        aggregate_metrics['Num Nodes'].append(make_row(planner_params, nums_nodes, table_format))
 
         print("{:50s}: {:3.2f}% timeout ".format(str(subfolder), timeout_percentage))
 
-    execution_success_ax.plot([goal_threshold, goal_threshold], [0, 100], color='k', linestyle='--')
-    execution_error_ax.plot([goal_threshold, goal_threshold], [0, max_density], color='k', linestyle='--')
-    planning_success_ax.plot([goal_threshold, goal_threshold], [0, 100], color='k', linestyle='--')
+    if not args.no_plot:
+        execution_success_ax.plot([goal_threshold, goal_threshold], [0, 100], color='k', linestyle='--')
+        execution_error_ax.plot([goal_threshold, goal_threshold], [0, max_density], color='k', linestyle='--')
+        planning_success_ax.plot([goal_threshold, goal_threshold], [0, 100], color='k', linestyle='--')
 
-    execution_success_ax.set_title("Success In Execution, {}".format(scenario))
-    planning_success_ax.set_title("Success In Planning, {}".format(scenario))
-    execution_error_ax.set_title("Task Error, {}".format(scenario))
-    execution_success_ax.legend()
-    execution_error_ax.legend()
-    planning_success_ax.legend()
+        execution_success_ax.set_title("Success In Execution, {}".format(scenario))
+        planning_success_ax.set_title("Success In Planning, {}".format(scenario))
+        execution_error_ax.set_title("Task Error, {}".format(scenario))
+        execution_success_ax.legend()
+        execution_error_ax.legend()
+        planning_success_ax.legend()
 
     print('-' * 90)
 
     for metric_name, table_data in aggregate_metrics.items():
         print(Style.BRIGHT + metric_name + Style.NORMAL)
-        # table_data_flipped = transpose_2d_lists(table_data)
-        table = tabulate(table_data, tablefmt=table_format, floatfmt='6.4f')
+        table = tabulate(table_data, tablefmt=table_format, floatfmt='6.4f', numalign='center', stralign='left')
         print(table)
         print()
 
     print(Style.BRIGHT + "p-value matrix (goal vs execution)" + Style.NORMAL)
     print(dict_to_pvale_table(execution_to_goal_errors_comparisons, table_format=table_format))
-    # print(Style.BRIGHT + "p-value matrix (plan vs execution)" + Style.NORMAL)
-    # print(dict_to_pvale_table(plan_to_execution_errors_comparisons, table_format=table_format))
 
     if not args.no_plot:
         plt.show()

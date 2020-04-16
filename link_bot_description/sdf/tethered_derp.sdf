@@ -1,7 +1,7 @@
 
 <sdf version="1.6">
     <model name="link_bot">
-        <pose frame="">0 0 0.002 0 0 0</pose>
+        <pose frame="">0 0 0.004 0 0 0</pose>
 
         
         <link name="link_1">
