@@ -89,6 +89,11 @@ class TetherScenario(ExperimentScenario):
             return line, scatt
 
     @staticmethod
+    def points_for_compare_models(state: Dict):
+        points = np.reshape(state['tether'], [-1, 2])
+        return points
+
+    @staticmethod
     def plot_action(ax: plt.Axes,
                     state: Dict,
                     action,

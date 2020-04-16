@@ -6,5 +6,5 @@
   "state_key": "link_bot",
   "label_key": "label",
   "examples_per_sub_traj": 5,
-  "start_step": 5
+  "start_step": 4
 }

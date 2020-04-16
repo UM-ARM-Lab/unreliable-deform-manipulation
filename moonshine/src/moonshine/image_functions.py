@@ -133,7 +133,6 @@ def make_traj_images(full_env,
     # add channel index
     full_env = tf.expand_dims(full_env, axis=3)
 
-    # rope_imgs = raster_rope_images(states_dict, res, full_env_origin, h, w, k=rope_image_k, batch_size=batch_size)
     binary_rope_images = tf.zeros([batch_size, h, w, 1])
     time_colored_rope_images = tf.zeros([batch_size, h, w, 1])
 
@@ -331,3 +330,24 @@ def old_raster(state, res, origin, h, w):
                  col_x_indices[valid_indices],
                  channel_indices[valid_indices]] = 1.0
     return state_images
+
+
+def setup_image_inputs(args, scenario, classifier_dataset, model_hparams):
+    postprocess = None
+    image_key = model_hparams['image_key']
+    if image_key == 'transition_image':
+        postprocess = partial_add_transition_image(states_keys=model_hparams['states_keys'],
+                                                   scenario=scenario,
+                                                   local_env_h=model_hparams['local_env_h_rows'],
+                                                   local_env_w=model_hparams['local_env_w_cols'],
+                                                   batch_size=args.batch_size,
+                                                   rope_image_k=model_hparams['rope_image_k'])
+        model_hparams['input_h_rows'] = model_hparams['local_env_h_rows']
+        model_hparams['input_w_cols'] = model_hparams['local_env_w_cols']
+    elif image_key == 'trajectory_image':
+        postprocess = partial_add_traj_image(states_keys=model_hparams['states_keys'],
+                                             batch_size=args.batch_size,
+                                             rope_image_k=model_hparams['rope_image_k'])
+        model_hparams['input_h_rows'] = classifier_dataset.full_env_params.h_rows
+        model_hparams['input_w_cols'] = classifier_dataset.full_env_params.w_cols
+    return postprocess, model_hparams

@@ -36,6 +36,10 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
+    def points_for_compare_models(state: Dict):
+        raise NotImplementedError()
+
+    @staticmethod
     def plot_goal(ax, goal, color, label=None, **kwargs):
         raise NotImplementedError()
 

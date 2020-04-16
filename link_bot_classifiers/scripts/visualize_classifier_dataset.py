@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import json
 import pathlib
 from time import perf_counter
 
@@ -11,10 +12,12 @@ from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_all_and_planned, add_planned, add_next_and_planned
 from link_bot_planning.get_scenario import get_scenario
-from moonshine.image_functions import partial_add_traj_image
+from moonshine.image_functions import setup_image_inputs
 from moonshine.numpy_utils import remove_batch
 
-tf.compat.v1.enable_eager_execution()
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+tf.compat.v1.enable_eager_execution(config=config)
 
 
 def main():
@@ -22,42 +25,28 @@ def main():
     np.set_printoptions(suppress=True, linewidth=200)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
-    parser.add_argument('display_type',
-                        choices=['just_count', 'transition_image', 'transition_plot', 'trajectory_image', 'trajectory_plot'])
-    parser.add_argument('--mode', choices=['train', 'val', 'test'], default='train')
+    parser.add_argument('model_hparams', type=pathlib.Path, help='classifier model hparams')
+    parser.add_argument('display_type', choices=['just_count', 'image', 'plot'])
+    parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
-    parser.add_argument('--pre', type=int, default=0.15)
-    parser.add_argument('--post', type=int, default=0.21)
-    parser.add_argument('--discard-pre-far', action='store_true')
-    parser.add_argument('--action-in-image', action='store_true')
     parser.add_argument('--take', type=int)
-    parser.add_argument('--local-env-s', type=int, default=100)
-    parser.add_argument('--rope-image-k', type=float, default=1000.0)
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--perf', action='store_true', help='print time per iteration')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
 
     args = parser.parse_args()
+    args.batch_size = 1
 
     np.random.seed(args.seed)
     tf.compat.v1.random.set_random_seed(args.seed)
 
-    states_keys = ['link_bot']
-
     classifier_dataset = ClassifierDataset(args.dataset_dirs)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
     scenario = get_scenario(classifier_dataset.hparams['scenario'])
+    model_hparams = json.load(args.model_hparams.open("r"))
 
-    # if args.display_type == 'transition_image':
-    #     dataset = add_transition_image(dataset,
-    #                                    states_keys=states_keys,
-    #                                    action_in_image=args.action_in_image,
-    #                                    scenario=scenario,
-    #                                    local_env_h=args.local_env_s,
-    #                                    local_env_w=args.local_env_s,
-    #                                    rope_image_k=args.rope_image_k)
-    postprocess = partial_add_traj_image(states_keys=states_keys, batch_size=1, rope_image_k=args.rope_image_k)
+    postprocess, _ = setup_image_inputs(args, scenario, classifier_dataset, model_hparams)
 
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=1024)
@@ -81,7 +70,8 @@ def main():
         if args.perf:
             print("{:6.4f}".format(iter_dt))
 
-        example = postprocess(example)
+        if postprocess is not None:
+            example = postprocess(example)
         example = remove_batch(example)
 
         label = example['label'].numpy().squeeze()
@@ -104,7 +94,7 @@ def main():
         #############################
         # Show Visualization
         #############################
-        show_visualization(args, classifier_dataset, example, label, scenario, title)
+        show_visualization(args, model_hparams, classifier_dataset, example, label, scenario, title)
 
     total_dt = perf_counter() - t0
 
@@ -121,16 +111,14 @@ def print_stats_and_timing(args, count, negative_count, positive_count, total_dt
     print("Class balance: {:4.1f}% positive".format(class_balance))
 
 
-def show_visualization(args, classifier_dataset, example, label, scenario, title):
+def show_visualization(args, model_hparams, classifier_dataset, example, label, scenario, title):
     if args.display_type == 'just_count':
         pass
-    elif args.display_type == 'transition_image':
-        show_transition_image(example, scenario, title)
-    elif args.display_type == 'trajectory_image':
-        show_trajectory_image(example, title)
-    elif args.display_type == 'trajectory_plot':
+    elif args.display_type == 'image':
+        show_image(example, model_hparams, title)
+    elif args.display_type == 'plot':
         show_trajectory_plot(classifier_dataset, example, scenario, title)
-    elif args.display_type == 'transition_plot':
+    elif args.display_type == 'plot':
         show_transition_plot(example, label, title)
 
 
@@ -186,28 +174,18 @@ def show_trajectory_plot(classifier_dataset, example, scenario, title):
     plt.show()
 
 
-def show_trajectory_image(example, title):
-    image = example['trajectory_image'].numpy()
+def show_image(example, model_hparams, title):
+    image_key = model_hparams['image_key']
+    image = example[image_key].numpy()
     n_channels = image.shape[2]
     plt.figure()
     plt.title(title)
-    for c in range(n_channels):
-        plt.subplot()
-        plt.imshow(np.flipud(image[:, :, c]))
-    ax = plt.gca()
-    ax.set_xticks([])
-    ax.set_yticks([])
-    plt.show(block=True)
-
-
-def show_transition_image(example, scenario, title):
-    image = example['transition_image'].numpy()
-    n_channels = image.shape[2]
-    plt.figure()
-    plt.title(title)
-    for c in range(n_channels):
-        plt.subplot()
-        plt.imshow(np.flipud(image[:, :, c]))
+    if n_channels != 3:
+        for c in range(n_channels):
+            plt.subplot()
+            plt.imshow(np.flipud(image[:, :, c]))
+    else:
+        plt.imshow(np.flipud(image))
     ax = plt.gca()
     ax.set_xticks([])
     ax.set_yticks([])

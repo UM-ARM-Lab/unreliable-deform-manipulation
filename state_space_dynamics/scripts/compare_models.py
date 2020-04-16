@@ -129,7 +129,7 @@ def generate_results(base_folder: pathlib.Path,
                                           res=res,
                                           start_states=start_states,
                                           actions=actions)
-            points = np.array([np.reshape(state['link_bot'], [-1, 2]) for state in predictions])
+            points = np.array([model.scenario.points_for_compare_models(state) for state in predictions])
             runtime = time.time() - t0
 
             results[model_name]['points'].append(points)
@@ -149,7 +149,7 @@ def visualize_predictions(results, n_examples, base_folder=None):
     n_examples = min(len(results['true']['points']), n_examples)
     sequence_length = results['true']['points'][0].shape[0]
     for example_idx in range(n_examples):
-        fig, _ = plt.subplots()
+        fig, _ = plt.subplots(constrained_layout=True)
         plt.xlabel("x (m)")
         plt.ylabel("y (m)")
         plt.axis("equal")
