@@ -1,3 +1,4 @@
+figure.constrained_layout.use : True
 axes.formatter.useoffset : False
 figure.facecolor : white
 figure.titlesize : 30

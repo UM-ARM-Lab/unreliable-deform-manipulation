@@ -14,7 +14,7 @@ from link_bot_data.link_bot_dataset_utils import add_next_and_planned, add_plann
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import FullEnvParams
 from link_bot_pycommon.link_bot_pycommon import make_dict_float32
-from moonshine.image_functions import make_transition_image, make_traj_images
+from moonshine.image_functions import make_transition_images, make_traj_images_from_states_list
 from moonshine.numpy_utils import add_batch
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
@@ -141,12 +141,12 @@ class RasterClassifierWrapper(BaseConstraintChecker):
 
         action_in_image = self.model_hparams['action_in_image']
         batched_inputs = add_batch(full_env, full_env_origin, res, states_i_to_draw, action_i, states_i_plus_1_to_draw)
-        image = make_transition_image(*batched_inputs,
-                                      scenario=self.scenario,
-                                      local_env_h=self.input_h_rows,
-                                      local_env_w=self.input_w_cols,
-                                      action_in_image=action_in_image,
-                                      k=self.model_hparams['rope_image_k'])[0]
+        image = make_transition_images(*batched_inputs,
+                                       scenario=self.scenario,
+                                       local_env_h=self.input_h_rows,
+                                       local_env_w=self.input_w_cols,
+                                       action_in_image=action_in_image,
+                                       k=self.model_hparams['rope_image_k'])[0]
         image = tf.convert_to_tensor(image, dtype=tf.float32)
 
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
@@ -172,7 +172,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
             states_sequence_to_draw.append({k: state[k] for k in state if k != 'stdev'})
 
         batched_inputs = add_batch(full_env, full_env_origin, res, states_sequence_to_draw)
-        image = make_traj_images(*batched_inputs, rope_image_k=self.model_hparams['rope_image_k'])[0]
+        image = make_traj_images_from_states_list(*batched_inputs, rope_image_k=self.model_hparams['rope_image_k'])[0]
 
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
         net_inputs['trajectory_image'] = image

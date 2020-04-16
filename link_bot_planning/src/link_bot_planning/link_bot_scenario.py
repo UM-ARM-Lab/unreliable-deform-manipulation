@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -65,7 +65,7 @@ class LinkBotScenario(ExperimentScenario):
                    color,
                    s: int,
                    zorder: int,
-                   label: str):
+                   label: Optional[str] = None):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         xs = link_bot_points[:, 0]
         ys = link_bot_points[:, 1]

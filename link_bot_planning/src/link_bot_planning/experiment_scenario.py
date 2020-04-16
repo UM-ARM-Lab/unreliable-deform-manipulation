@@ -6,6 +6,11 @@ from link_bot_pycommon.base_services import Services
 
 class ExperimentScenario:
 
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return str(other) == str(self)
+        raise NotImplementedError()
+
     @staticmethod
     def sample_action(service_provider: Services, state, last_action, params, action_rng):
         raise NotImplementedError()

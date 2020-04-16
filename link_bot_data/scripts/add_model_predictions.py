@@ -14,7 +14,7 @@ from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_planning import model_utils
 from link_bot_pycommon.args import my_formatter
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.8)
+gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
 config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 tf.compat.v1.enable_eager_execution(config=config)
 

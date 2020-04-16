@@ -23,7 +23,7 @@ def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, datas
         traj_idx = inputs['traj_idx']
         actions = inputs['action']
 
-        for start_t in range(0, dataset.max_sequence_length - 1, 5):
+        for start_t in range(0, dataset.max_sequence_length - 1, labeling_params['start_step']):
             start_states_t = {}
             for name in dataset.states_description.keys():
                 start_state_t = tf.expand_dims(inputs[name][:, start_t], axis=1)
@@ -43,7 +43,8 @@ def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, datas
                     'full_env/res': full_env_res[batch_idx],
                     'traj_idx': traj_idx[batch_idx, 0],
                 }
-                end_t_stepped = np.linspace(start_t + 1, last_valid_ts[batch_idx], num=5).astype(np.int32)
+                end_t_stepped = np.linspace(start_t + 1, last_valid_ts[batch_idx], num=labeling_params['examples_per_sub_traj'])
+                end_t_stepped = end_t_stepped.astype(np.int32)
                 for end_t in end_t_stepped:
                     # take the true states and the predicted states and add them to the output dictionary
                     out_example['start_t'] = start_t
@@ -68,7 +69,7 @@ def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, datas
                         out_example[add_all_and_planned(name)] = predictions_nulled_future
 
                     # action
-                    out_example['action'] = inputs['action'][batch_idx, start_t]
+                    out_example['action'] = inputs['action'][batch_idx, end_t - 1]
 
                     # compute label
                     state_key = labeling_params['state_key']
