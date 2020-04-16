@@ -1,6 +1,17 @@
 {
-  "fwd_model_dir": "ss_log_data/rope_full_dynamics3/March_26_14-34-54_4de27bda6b/",
-  "classifier_model_dir": "classifiers/none/",
+  "fwd_model_dir": [
+    "ss_log_data/rope_no_obs/0",
+    "ss_log_data/rope_no_obs/1",
+    "ss_log_data/rope_no_obs/2",
+    "ss_log_data/rope_no_obs/3",
+    "ss_log_data/rope_no_obs/4",
+    "ss_log_data/rope_no_obs/5",
+    "ss_log_data/rope_no_obs/6",
+    "ss_log_data/rope_no_obs/7",
+    "ss_log_data/rope_no_obs/8",
+    "ss_log_data/rope_no_obs/9"
+  ],
+  "classifier_model_dir": "classifiers/rope_no_ensemble/April_16_12-05-19_3d60864d12/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
@@ -21,20 +32,20 @@
   ],
   "goal_threshold": 0.05,
   "fixed_goal": null,
-  "reset_gripper_to": null,
+  "reset_robot": null,
   "real_time_rate": 0.0,
   "max_step_size": 0.01,
   "smoothing": null,
   "scenario": "link_bot",
   "table_config": {
     "nickname": [
-      "Full",
-      "Dynamics"
+      "Classifier",
+      "No Ens."
     ],
-    "classifier": "None",
+    "classifier": "Learned",
     "dynamics": [
       "Single",
-      "Full"
+      "Unconstrained"
     ]
   }
 }

@@ -25,7 +25,7 @@
   "smoothing": null,
   "scenario": "tether",
   "table_config": {
-    "nickname": "Classifier (ours)",
+    "nickname": ["Collision", "Checker"],
     "classifier": ["Collision", "Checker"],
     "dynamics": ["Single", "Unconstrained"]
   }

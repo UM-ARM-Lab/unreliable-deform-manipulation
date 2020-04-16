@@ -1,5 +1,5 @@
 {
-  "fwd_model_dir": "ss_log_data/rope_no_obs/March_21_12-51-17_1510a3723b/",
+  "fwd_model_dir": "ss_log_data/rope_no_obs/0",
   "classifier_model_dir": "classifiers/collision/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
@@ -25,5 +25,19 @@
   "real_time_rate": 0.0,
   "max_step_size": 0.01,
   "smoothing": null,
-  "scenario": "link_bot"
+  "scenario": "link_bot",
+  "table_config": {
+    "nickname": [
+      "Collision",
+      "Checker"
+    ],
+    "classifier": [
+      "Collision",
+      "Checker"
+    ],
+    "dynamics": [
+      "Single",
+      "Unconstrained"
+    ]
+  }
 }

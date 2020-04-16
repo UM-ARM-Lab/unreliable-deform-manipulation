@@ -1,17 +1,17 @@
 {
   "fwd_model_dir": [
-    "ss_log_data/rope_no_obs2-0",
-    "ss_log_data/rope_no_obs2-1",
-    "ss_log_data/rope_no_obs2-2",
-    "ss_log_data/rope_no_obs2-3",
-    "ss_log_data/rope_no_obs2-4",
-    "ss_log_data/rope_no_obs2-5",
-    "ss_log_data/rope_no_obs2-6",
-    "ss_log_data/rope_no_obs2-7",
-    "ss_log_data/rope_no_obs2-8",
-    "ss_log_data/rope_no_obs2-9"
+    "ss_log_data/rope_no_obs/0",
+    "ss_log_data/rope_no_obs/1",
+    "ss_log_data/rope_no_obs/2",
+    "ss_log_data/rope_no_obs/3",
+    "ss_log_data/rope_no_obs/4",
+    "ss_log_data/rope_no_obs/5",
+    "ss_log_data/rope_no_obs/6",
+    "ss_log_data/rope_no_obs/7",
+    "ss_log_data/rope_no_obs/8",
+    "ss_log_data/rope_no_obs/9"
   ],
-  "classifier_model_dir": "classifiers/rope-with-stdev/March_30_23-33-50_daf5256d2a",
+  "classifier_model_dir": "classifiers/rope_ensemble/April_16_13-19-55_3d60864d12/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
@@ -36,5 +36,16 @@
   "real_time_rate": 0.0,
   "max_step_size": 0.01,
   "smoothing": null,
-  "scenario": "link_bot"
+  "scenario": "link_bot",
+  "table_config": {
+    "nickname": [
+      "Classifier",
+      "(ours)"
+    ],
+    "classifier": "Learned",
+    "dynamics": [
+      "Ensemble",
+      "Unconstrained"
+    ]
+  }
 }
