@@ -95,18 +95,21 @@ def partial_add_transition_image(states_keys,
             state_dict[add_planned(k)] = planned_state
             next_state_dict[add_next_and_planned(k)] = planned_state_next
 
-        return make_transition_images(full_env=full_env,
-                                      full_env_origin=full_env_origin,
-                                      res=res,
-                                      state_dict=state_dict,
-                                      action=action,
-                                      next_state_dict=next_state_dict,
-                                      scenario=scenario,
-                                      local_env_h=local_env_h,
-                                      local_env_w=local_env_w,
-                                      k=rope_image_k,
-                                      batch_size=batch_size,
-                                      action_in_image=False)
+        transition_images = make_transition_images(full_env=full_env,
+                                                   full_env_origin=full_env_origin,
+                                                   res=res,
+                                                   state_dict=state_dict,
+                                                   action=action,
+                                                   next_state_dict=next_state_dict,
+                                                   scenario=scenario,
+                                                   local_env_h=local_env_h,
+                                                   local_env_w=local_env_w,
+                                                   k=rope_image_k,
+                                                   batch_size=batch_size,
+                                                   action_in_image=False)
+
+        example['transition_image'] = transition_images
+        return example
 
     return _add_transition_image
 
