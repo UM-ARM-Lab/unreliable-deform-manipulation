@@ -1,6 +1,0 @@
-{
-  "pre_close_threshold": 0.15,
-  "post_close_threshold": 0.21,
-  "discard_pre_far": true,
-  "state_key": "link_bot"
-}
