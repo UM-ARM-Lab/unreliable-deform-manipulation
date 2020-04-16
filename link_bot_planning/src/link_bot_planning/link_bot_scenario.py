@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 from ignition.markers import MarkerProvider
+from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import CollectDynamicsParams
 from link_bot_pycommon.base_services import Services
@@ -170,8 +171,9 @@ class LinkBotScenario(ExperimentScenario):
         :param state: Dict of batched states
         :return:
         """
-        b = int(state['link_bot'].shape[0])
-        link_bot_points = tf.reshape(state['link_bot'], [b, -1, 2])
+        state_key = add_planned('link_bot')
+        b = int(state[state_key].shape[0])
+        link_bot_points = tf.reshape(state[state_key], [b, -1, 2])
         head_point_where_gripper_is = link_bot_points[:, -1]
         return head_point_where_gripper_is
 

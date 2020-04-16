@@ -5,7 +5,7 @@ from moonshine.numpy_utils import add_batch
 from moonshine.bilinear_sampler import bilinear_sampler
 
 
-# @tf.function
+@tf.function
 def get_local_env_and_origin_differentiable(center_point,
                                             full_env,
                                             full_env_origin,

@@ -59,7 +59,7 @@ class ObstacleNN(MyKerasModel):
 
         self.flatten_conv_output = layers.Flatten()
 
-    # @tf.function
+    @tf.function
     def get_local_env(self, center_point, full_env_origin, full_env, res):
         local_env, local_env_origin = get_local_env_and_origin_differentiable(center_point=center_point,
                                                                               full_env=full_env,
@@ -69,7 +69,7 @@ class ObstacleNN(MyKerasModel):
                                                                               local_w_cols=self.local_env_w_cols)
         return local_env, local_env_origin
 
-    # @tf.function
+    @tf.function
     def call(self, dataset_element, training=None, mask=None):
         input_dict, _ = dataset_element
         actions = input_dict['action']
@@ -106,7 +106,7 @@ class ObstacleNN(MyKerasModel):
                 env_h_rows = tf.convert_to_tensor(self.local_env_h_rows, tf.float32)
                 env_w_cols = tf.convert_to_tensor(self.local_env_w_cols, tf.float32)
 
-            rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols, k=self.rope_image_k)
+            rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols, k=self.rope_image_k, batch_size=self.batch_size)
 
             env = tf.expand_dims(env, axis=3)
 
@@ -142,7 +142,7 @@ class ObstacleNN(MyKerasModel):
 
         return output_states
 
-    # @tf.function
+    @tf.function
     def state_vector_to_state_dict(self, s_t):
         state_dict = {}
         start_idx = 0
@@ -152,7 +152,7 @@ class ObstacleNN(MyKerasModel):
             start_idx += n
         return state_dict
 
-    # @tf.function
+    @tf.function
     def state_vector_to_state_sequence_dict(self, pred_states):
         state_dict = {}
         start_idx = 0
