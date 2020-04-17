@@ -8,7 +8,10 @@ class ExperimentScenario:
 
     def __eq__(self, other):
         if isinstance(other, str):
-            return str(other) == str(self)
+            return other == self.simple_name()
+        raise NotImplementedError()
+
+    def simple_name(self):
         raise NotImplementedError()
 
     @staticmethod

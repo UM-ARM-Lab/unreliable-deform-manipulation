@@ -1,4 +1,5 @@
 import tensorflow as tf
+from colorama import Fore
 
 from moonshine.loss_utils import loss_on_dicts
 
@@ -10,9 +11,22 @@ def dynamics_loss_function(dataset_element, predictions):
 
 
 def dynamics_points_metrics_function(dataset_element, predictions):
-    input_data, output_data = dataset_element
+    _, output_data = dataset_element
+    metrics = dynamics_points_metrics(output_data, predictions)
+    return metrics
+
+
+def dynamics_points_metrics(output_data, predictions):
+    if "print_warning" not in dynamics_points_metrics.__dict__:
+        dynamics_points_metrics.print_warning = True
+
     metrics = {}
     for state_key, pred_state in predictions.items():
+        if state_key not in output_data:
+            if dynamics_points_metrics.print_warning:
+                dynamics_points_metrics.print_warning = False
+                print(Fore.YELLOW + "predicted state {} not dataset".format(state_key) + Fore.RESET)
+            continue
         true_state = output_data[state_key]
         pred_points = tf.reshape(pred_state, [pred_state.shape[0], pred_state.shape[1], -1, 2])
         true_points = tf.reshape(true_state, [true_state.shape[0], true_state.shape[1], -1, 2])

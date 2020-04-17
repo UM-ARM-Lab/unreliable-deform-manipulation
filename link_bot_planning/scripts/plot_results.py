@@ -11,7 +11,6 @@ from link_bot_planning.get_scenario import get_scenario
 from link_bot_planning.ompl_viz import plan_vs_execution
 from link_bot_planning.params import FullEnvParams
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.link_bot_sdf_utils import compute_extent
 
 
 def main():
@@ -34,16 +33,14 @@ def main():
     full_env = np.array(metric_for_plan['full_env'])
     h = full_env.shape[0]
     w = full_env.shape[1]
-    classifier_hparam_filename = pathlib.Path(data['planner_params']['classifier_model_dir']) / 'hparams.json'
-    classifier_hparams = json.load(classifier_hparam_filename.open("r"))
-    res = FullEnvParams.from_json(classifier_hparams['classifier_dataset_hparams']['full_env_params']).res
-    origin = np.array([h, w]) // 2
-    full_env_extent = compute_extent(h, w, res, origin)
+    fwd_model_hparam_filename = pathlib.Path(data['planner_params']['fwd_model_dir']) / 'hparams.json'
+    fwd_model_hparam = json.load(fwd_model_hparam_filename.open("r"))
+    full_env_params = FullEnvParams.from_json(fwd_model_hparam['dynamics_dataset_hparams']['full_env_params'])
     planned_path = metric_for_plan['planned_path']
     actual_path = metric_for_plan['actual_path']
 
     if args.plot_type == 'plot':
-        plt.imshow(np.flipud(full_env), extent=full_env_extent, cmap='Greys')
+        plt.imshow(np.flipud(full_env), extent=full_env_params.extent, cmap='Greys')
         ax = plt.gca()
         for state in planned_path:
             scenario.plot_state(ax, state, color='c', s=20, zorder=2)
@@ -53,14 +50,14 @@ def main():
         scenario.plot_state_simple(ax, planned_path[0], color='c', label='start', zorder=2)
         plt.legend()
         plt.axis("equal")
-        plt.xlim(full_env_extent[0:2])
-        plt.ylim(full_env_extent[2:4])
+        plt.xlim(full_env_params.extent[0:2])
+        plt.ylim(full_env_params.extent[2:4])
         plt.xlabel("X (m)")
         plt.ylabel("Y (m)")
         plt.show()
     if args.plot_type == 'animate':
         anim = plan_vs_execution(full_env,
-                                 full_env_extent,
+                                 full_env_params.extent,
                                  scenario,
                                  goal,
                                  planned_path,

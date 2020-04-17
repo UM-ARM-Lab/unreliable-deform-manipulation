@@ -190,20 +190,18 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.n_failures += 1
         folder = self.failures_root / str(self.n_failures)
         folder.mkdir(parents=True)
-        image_file = (folder / 'full_env.png')
         info_file = (folder / 'info.json').open('w')
         info = {
             'start_states': dict([(k, v.tolist()) for k, v in start_states.items()]),
             'tail_goal_point': tail_goal_point,
             'sdf': {
-                'res': environment.resolution,
-                'origin': environment.origin.tolist(),
-                'extent': environment.extent.tolist(),
-                'data': environment.data.tolist(),
+                'res': environment['full_env/res'],
+                'origin': environment['full_env/origin'].tolist(),
+                'extent': environment['full_env/extent'].tolist(),
+                'data': environment['full_env/env'].tolist(),
             },
         }
         json.dump(info, info_file, indent=2)
-        plt.imsave(image_file, environment.image > 0)
 
 
 def main():

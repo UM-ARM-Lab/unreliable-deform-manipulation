@@ -38,6 +38,17 @@ def dict_of_tensors_to_dict_of_numpy_arrays(tf_dict):
     return np_dict
 
 
+def sequence_of_dicts_to_dict_of_sequences(seq_of_dicts):
+    dict_of_seqs = {}
+    for d in seq_of_dicts:
+        for k, v in d.items():
+            if k not in dict_of_seqs:
+                dict_of_seqs[k] = []
+            dict_of_seqs[k].append(v)
+
+    return dict_of_seqs
+
+
 def dict_of_sequences_to_sequence_of_dicts(dict_of_seqs):
     seq_of_dicts = []
     # assumes all values in the dict have the same first dimension size (num time steps)

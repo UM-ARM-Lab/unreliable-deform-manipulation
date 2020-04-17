@@ -25,8 +25,6 @@ tf.compat.v1.enable_eager_execution(config=config)
 
 def plot_individual(train_dataset, scenario: ExperimentScenario, states_description):
     for i, (input_data, output_data) in enumerate(train_dataset):
-        # TODO: draw all kinds of states, not just link bot
-
         fig, ax = plt.subplots()
 
         actions = input_data['action'].numpy()
@@ -62,7 +60,6 @@ def plot_individual(train_dataset, scenario: ExperimentScenario, states_descript
 
         interval = 100
         anim = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
-        # anim.save("example.gif", writer='imagemagick', dpi=300)
         plt.show()
 
         i += 1

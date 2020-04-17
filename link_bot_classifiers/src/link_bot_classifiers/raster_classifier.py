@@ -177,7 +177,14 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         for state in states_sequence:
             states_sequence_to_draw.append({k: state[k] for k in state if k != 'stdev'})
 
-        batched_inputs = add_batch(full_env, full_env_origin, res, states_sequence_to_draw)
+        environment = {
+            'full_env/env': full_env,
+            'full_env/origin': full_env_origin,
+            'full_env/res': res,
+        }
+        start_states = states_sequence[0]
+        environment.update(self.scenario.get_environment_from_start_states_dict(start_states))
+        batched_inputs = add_batch(environment, states_sequence_to_draw)
         image = make_traj_images_from_states_list(*batched_inputs, rope_image_k=self.model_hparams['rope_image_k'])[0]
 
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)

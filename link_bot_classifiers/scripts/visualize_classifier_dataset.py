@@ -120,8 +120,7 @@ def show_visualization(args, model_hparams, classifier_dataset, example, label, 
         show_image(example, model_hparams, title)
     elif args.display_type == 'plot':
         show_trajectory_plot(classifier_dataset, example, scenario, title)
-    elif args.display_type == 'plot':
-        show_transition_plot(example, label, title)
+        # show_transition_plot(example, label, title)
 
 
 def show_transition_plot(example, label, title):

@@ -25,6 +25,9 @@ class BaseDynamicsFunction:
         self.states_description = self.hparams['dynamics_dataset_hparams']['states_description']
         self.states_keys = None
 
+    def propagate_from_dataset_element(self, dataset_element):
+        raise NotImplementedError()
+
     def propagate(self,
                   full_env: np.ndarray,
                   full_env_origin: np.ndarray,

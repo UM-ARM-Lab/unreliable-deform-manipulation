@@ -209,6 +209,9 @@ class TetherScenario(ExperimentScenario):
         batched_point_robot = tf.reshape(state['link_bot'], [b, 2])
         return batched_point_robot
 
+    def simple_name(self):
+        return "tether"
+
     def __repr__(self):
         return "Tethered Point Robot"
 

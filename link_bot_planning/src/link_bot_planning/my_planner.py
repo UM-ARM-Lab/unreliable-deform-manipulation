@@ -154,6 +154,7 @@ class MyPlanner:
 
         actions = np.array(actions)
 
+        # TODO: check_constraint and propagate should take in "environment" instead of these three special variances
         accept_probability = self.classifier_model.check_constraint(full_env=self.environment['full_env/env'],
                                                                     full_env_origin=self.environment['full_env/origin'],
                                                                     res=self.environment['full_env/res'],
@@ -181,7 +182,7 @@ class MyPlanner:
     def predict(self, np_states, np_actions):
         # use the forward model to predict the next configuration
         mean_next_states = self.fwd_model.propagate(full_env=self.environment['full_env/env'],
-                                                    full_env_origin=self.environment['full_env/env'],
+                                                    full_env_origin=self.environment['full_env/origin'],
                                                     res=self.fwd_model.full_env_params.res,
                                                     start_states=np_states,
                                                     actions=np_actions)

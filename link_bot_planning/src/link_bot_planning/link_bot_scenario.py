@@ -181,6 +181,9 @@ class LinkBotScenario(ExperimentScenario):
     def __repr__(self):
         return "Rope Manipulation"
 
+    def simple_name(self):
+        return "link_bot"
+
     @staticmethod
     def robot_name():
         return "link_bot"

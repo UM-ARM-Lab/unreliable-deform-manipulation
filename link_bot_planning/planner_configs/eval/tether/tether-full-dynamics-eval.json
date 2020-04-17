@@ -1,32 +1,50 @@
 {
-  "fwd_model_dir": "ss_log_data/derp_tether_all/April_05_01-25-15_40e3795142",
+  "fwd_model_dir": "ss_log_data/tether-full-dynamics/April_16_09-47-50_2eef5c5dd7/",
   "classifier_model_dir": "classifiers/none/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
   "accept_threshold": 0.5,
   "max_angle_rad": 1.0,
-  "random_epsilon": 0.05,
+  "random_epsilon": 0.0,
   "full_env_w": 5.0,
   "full_env_h": 5.0,
   "goal_w_m": 2.75,
   "goal_h_m": 2.75,
   "timeout": 240,
   "movable_obstacles": [
+    "box1",
+    "box2",
+    "box3",
+    "box4",
+    "box5",
+    "box6",
+    "box7",
+    "box8",
+    "box9",
+    "box10",
+    "box11",
+    "box12",
+    "box13"
   ],
   "goal_threshold": 0.05,
   "fixed_goal": null,
-  "reset_robot": [
-    0.0,
-    0.0
-  ],
+  "reset_robot": null,
   "real_time_rate": 0.0,
-  "max_step_size": 0.01,
+  "max_step_size": 0.005,
   "smoothing": null,
   "scenario": "tether",
   "table_config": {
-    "nickname": ["Full", "Dynamics"],
-    "classifier": "None",
-    "dynamics": ["Single", "Full"]
+    "nickname": [
+      "Full",
+      "Dynamics"
+    ],
+    "classifier": [
+      "None"
+    ],
+    "dynamics": [
+      "Single",
+      "Full"
+    ]
   }
 }

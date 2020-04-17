@@ -83,6 +83,26 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
         self.n_models = len(self.models)
         self.states_keys = self.models[0].states_keys
 
+    def propagate_from_dataset_element(self, dataset_element):
+        all_predictions = {}
+        for fwd_model in self.models:
+            prediction = fwd_model.propagate_from_dataset_element(dataset_element)
+            for k, v in prediction.items():
+                if k not in all_predictions:
+                    all_predictions[k] = []
+                all_predictions[k].append(v)
+        all_stdevs = []
+        total_prediction = {}
+        for k, v in all_predictions.items():
+            mean_prediction = tf.math.reduce_mean(tf.stack(v, axis=0), axis=0)
+            all_stdevs.append(tf.math.reduce_std(tf.stack(v, axis=0), axis=0))
+            total_prediction[k] = mean_prediction
+
+        total_stdev = tf.reduce_sum(tf.stack(all_stdevs, axis=0), axis=0)
+        total_prediction['stdev'] = total_stdev
+        return total_prediction
+
+
     def propagate_differentiable(self,
                                  full_env,
                                  full_env_origin,

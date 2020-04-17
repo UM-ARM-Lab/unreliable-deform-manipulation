@@ -106,7 +106,8 @@ class ObstacleNN(MyKerasModel):
                 env_h_rows = tf.convert_to_tensor(self.local_env_h_rows, tf.float32)
                 env_w_cols = tf.convert_to_tensor(self.local_env_w_cols, tf.float32)
 
-            rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols, k=self.rope_image_k, batch_size=self.batch_size)
+            rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols, k=self.rope_image_k,
+                                                 batch_size=self.batch_size)
 
             env = tf.expand_dims(env, axis=3)
 
@@ -174,6 +175,9 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
         self.ckpt.restore(self.manager.latest_checkpoint)
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
+
+    def propagate_from_dataset_element(self, dataset_element):
+        return self.net(dataset_element)
 
     def propagate_differentiable(self,
                                  full_env: np.ndarray,
