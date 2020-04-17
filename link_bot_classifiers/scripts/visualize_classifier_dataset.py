@@ -7,7 +7,6 @@ from time import perf_counter
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from grid_strategy import strategies
 
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.classifier_dataset import ClassifierDataset
@@ -45,6 +44,7 @@ def main():
 
     classifier_dataset = ClassifierDataset(args.dataset_dirs, no_balance=args.no_balance)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
+
     scenario = get_scenario(classifier_dataset.hparams['scenario'])
     model_hparams = json.load(args.model_hparams.open("r"))
 
@@ -180,19 +180,24 @@ def show_image(example, model_hparams, title):
     image = example[image_key].numpy()
     n_channels = image.shape[2]
 
-    specs = strategies.SquareStrategy("center").get_grid(n_channels)
-
     if n_channels != 3:
-        for c, subplot_args in enumerate(specs):
-            ax = plt.subplot(subplot_args)
-            ax.set_title(title)
-            plt.imshow(np.flipud(image[:, :, c]))
+        environment = image[:, :, 0]
+        initial_tether = np.sum(image[:, :, 1:12], axis=2)
+        point = np.sum(image[:, :, 12:14], axis=2)
+        new_image = np.stack([environment, initial_tether, point], axis=2)
+        plt.imshow(np.flipud(new_image))
+        # specs = strategies.SquareStrategy("center").get_grid(n_channels)
+        # for c, subplot_args in enumerate(specs):
+        #     ax = plt.subplot(subplot_args)
+        #     ax.set_title(title)
+        #     plt.imshow(np.flipud(image[:, :, c]))
     else:
         plt.imshow(np.flipud(image))
 
     ax = plt.gca()
     ax.set_xticks([])
     ax.set_yticks([])
+    plt.title(title)
     plt.show(block=True)
 
 

@@ -157,7 +157,7 @@ def make_traj_images(environment,
                 batch_size=batch_size)
             time_color = float(t) / n_time_steps
             time_color_image_t = rope_img_t * time_color
-            binary_states_image += rope_img_t / n_time_steps
+            binary_states_image += rope_img_t
             time_colored_states_image += time_color_image_t
 
     rope_images = tf.concat((initial_tether_img, binary_states_image, time_colored_states_image), axis=3)
