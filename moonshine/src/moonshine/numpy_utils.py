@@ -31,6 +31,13 @@ def states_are_equal(state_dict1, state_dict2):
     return True
 
 
+def dict_of_tensors_to_dict_of_numpy_arrays(tf_dict):
+    np_dict = {}
+    for k, v in tf_dict.items():
+        np_dict[k] = v.numpy()
+    return np_dict
+
+
 def dict_of_sequences_to_sequence_of_dicts(dict_of_seqs):
     seq_of_dicts = []
     # assumes all values in the dict have the same first dimension size (num time steps)

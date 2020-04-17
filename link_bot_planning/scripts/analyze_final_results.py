@@ -52,6 +52,10 @@ def make_cell(text, tablefmt):
         return text
 
 
+def make_header():
+    return ["Name", "Dynamics", "Classifier", "mean", "median", "std"]
+
+
 def make_row(planner_params, metric_data, tablefmt):
     table_config = planner_params['table_config']
     row = [
@@ -133,7 +137,7 @@ def main():
         timeout = planner_params['timeout']
         table_config = planner_params['table_config']
         nickname = table_config['nickname']
-        nickname = "".join(nickname) if isinstance(nickname, list) else nickname
+        legend_nickname = " ".join(nickname) if isinstance(nickname, list) else nickname
         data = metrics.pop('metrics')
         N = len(data)
         print("{} has {} examples".format(subfolder, N))
@@ -172,12 +176,12 @@ def main():
             for threshold in errors_thresholds:
                 success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / N * 100
                 execution_successes.append(success_percentage)
-            execution_success_ax.plot(errors_thresholds, execution_successes, label=nickname, linewidth=5, color=color)
+            execution_success_ax.plot(errors_thresholds, execution_successes, label=legend_nickname, linewidth=5, color=color)
 
             # Execution Error Plot
             final_execution_to_goal_pdf = stats.gaussian_kde(final_execution_to_goal_errors)
             final_execution_to_goal_densities_at_thresholds = final_execution_to_goal_pdf(errors_thresholds)
-            execution_error_ax.plot(errors_thresholds, final_execution_to_goal_densities_at_thresholds, label=nickname,
+            execution_error_ax.plot(errors_thresholds, final_execution_to_goal_densities_at_thresholds, label=legend_nickname,
                                     linewidth=5,
                                     c=color)
             max_density = max(np.max(final_execution_to_goal_densities_at_thresholds), max_density)
@@ -187,7 +191,7 @@ def main():
             for threshold in errors_thresholds:
                 success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / N * 100
                 planning_successes.append(success_percentage)
-            planning_success_ax.plot(errors_thresholds, planning_successes, label=nickname, linewidth=5, c=color)
+            planning_success_ax.plot(errors_thresholds, planning_successes, label=legend_nickname, linewidth=5, c=color)
 
         execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
         plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
@@ -219,7 +223,12 @@ def main():
 
     for metric_name, table_data in aggregate_metrics.items():
         print(Style.BRIGHT + metric_name + Style.NORMAL)
-        table = tabulate(table_data, tablefmt=table_format, floatfmt='6.4f', numalign='center', stralign='left')
+        table = tabulate(table_data,
+                         headers=make_header(),
+                         tablefmt=table_format,
+                         floatfmt='6.4f',
+                         numalign='center',
+                         stralign='left')
         print(table)
         print()
 
