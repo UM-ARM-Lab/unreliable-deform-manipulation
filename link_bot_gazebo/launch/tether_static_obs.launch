@@ -7,7 +7,7 @@
     <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/tether_obstacles.world"/>
+        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/tether_static_obstacles.world"/>
         <arg name="verbose" default="$(arg verbose)"/>
         <arg name="paused" default="true"/>
         <arg name="gui" value="$(arg gui)"/>
