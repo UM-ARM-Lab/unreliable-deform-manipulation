@@ -12,6 +12,7 @@ from moonshine.image_functions import setup_image_inputs
 from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function
+from moonshine.metric import AccuracyMetric
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
@@ -67,7 +68,7 @@ def train_main(args, seed: int):
           metrics_function=binary_classification_metrics_function,
           postprocess=postprocess,
           checkpoint=args.checkpoint,
-          key_metric="accuracy",
+          key_metric=AccuracyMetric,
           log_path=log_path,
           log_scalars_every=args.log_scalars_every)
 

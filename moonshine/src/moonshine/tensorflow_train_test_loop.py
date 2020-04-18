@@ -1,6 +1,6 @@
 import json
 import pathlib
-from typing import Dict, Callable, Optional, List
+from typing import Dict, Callable, Optional, List, Type
 
 import numpy as np
 import progressbar
@@ -8,8 +8,8 @@ import tensorflow as tf
 from colorama import Fore, Style
 
 from link_bot_planning.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine import experiments_util
+from moonshine.metric import Metric, LossMetric
 
 
 class MyKerasModel(tf.keras.Model):
@@ -63,7 +63,7 @@ def train(keras_model: MyKerasModel,
           log_path: Optional[pathlib.Path] = None,
           log_scalars_every: int = 500,
           validation_every: int = 1,
-          key_metric: str = 'loss',
+          key_metric: Type[Metric] = LossMetric,
           ):
     """
 
@@ -124,7 +124,7 @@ def train(keras_model: MyKerasModel,
             model_hparams['seed'] = seed
             model_hparams['batch_size'] = batch_size
             model_hparams['dataset'] = [str(dataset_dir) for dataset_dir in dataset_dirs]
-            model_hparams['key_metric'] = key_metric
+            model_hparams['key_metric'] = key_metric.key()
             hparams_file.write(json.dumps(model_hparams, indent=2))
 
         writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
@@ -191,12 +191,12 @@ def train(keras_model: MyKerasModel,
                         tf.contrib.summary.scalar('validation_' + metric_name.replace(" ", "_"), mean_metric_value, step=step)
 
                 # check new best based on the desired metric (or loss)
-                if key_metric == 'loss':
+                if key_metric.key() == 'loss':
                     key_metric_value = val_mean_loss
                 else:
-                    key_metric_value = val_mean_metrics[key_metric]
+                    key_metric_value = val_mean_metrics[key_metric.key()]
 
-                if best_key_metric_value is None or key_metric_value < best_key_metric_value:
+                if best_key_metric_value is None or key_metric.is_better_than(key_metric_value, best_key_metric_value):
                     best_key_metric_value = key_metric_value
                     if logging:
                         save_path = manager.save()
