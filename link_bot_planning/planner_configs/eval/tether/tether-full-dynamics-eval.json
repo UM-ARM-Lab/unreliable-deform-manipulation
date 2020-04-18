@@ -1,5 +1,5 @@
 {
-  "fwd_model_dir": "ss_log_data/tether-full-dynamics/April_16_09-47-50_2eef5c5dd7/",
+  "fwd_model_dir": "ss_log_data/",
   "classifier_model_dir": "classifiers/none/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
@@ -13,19 +13,6 @@
   "goal_h_m": 2.75,
   "timeout": 240,
   "movable_obstacles": [
-    "box1",
-    "box2",
-    "box3",
-    "box4",
-    "box5",
-    "box6",
-    "box7",
-    "box8",
-    "box9",
-    "box10",
-    "box11",
-    "box12",
-    "box13"
   ],
   "goal_threshold": 0.05,
   "fixed_goal": null,

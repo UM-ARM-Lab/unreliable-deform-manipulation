@@ -5,7 +5,7 @@
     "ss_log_data/tether-unconstrained/2",
     "ss_log_data/tether-unconstrained/3"
   ],
-  "classifier_model_dir": "classifiers/tether_ensemble/April_16_19-54-50_a5aab8f065/",
+  "classifier_model_dir": "classifiers/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
@@ -18,19 +18,6 @@
   "goal_h_m": 2.75,
   "timeout": 240,
   "movable_obstacles": [
-    "box1",
-    "box2",
-    "box3",
-    "box4",
-    "box5",
-    "box6",
-    "box7",
-    "box8",
-    "box9",
-    "box10",
-    "box11",
-    "box12",
-    "box13"
   ],
   "goal_threshold": 0.05,
   "fixed_goal": null,

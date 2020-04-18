@@ -74,6 +74,7 @@ class ObstacleNN(MyKerasModel):
         input_dict, _ = dataset_element
         actions = input_dict['action']
         input_sequence_length = actions.shape[1]
+        print(input_sequence_length)
 
         # Combine all the states into one big vector, based on which states were listed in the hparams file
         substates_0 = []
