@@ -233,7 +233,7 @@ def split_into_sequences(state_feature_names, action_feature_names, constant_fea
     return constant_data, state_like_seqs, action_like_seqs
 
 
-def slice_sequences(constant_data, state_like_seqs, action_like_seqs, desired_sequence_length: int):
+def slice_sequences(constant_data, state_like_seqs, action_like_seqs, desired_sequence_length: int, step_size: int):
     sequence_length = int(next(iter((state_like_seqs.values()))).shape[0])
 
     state_like_seqs_sliced = {}
@@ -249,7 +249,7 @@ def slice_sequences(constant_data, state_like_seqs, action_like_seqs, desired_se
         constant_data_sliced[example_name] = []
 
     # add elements to the lists
-    for t_start in range(0, sequence_length, desired_sequence_length):
+    for t_start in range(0, sequence_length, step_size):
         if t_start + desired_sequence_length > sequence_length:
             break
         state_like_t_slice = slice(t_start, t_start + desired_sequence_length)

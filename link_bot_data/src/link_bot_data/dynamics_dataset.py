@@ -9,9 +9,10 @@ from link_bot_planning.params import FullEnvParams
 
 
 class DynamicsDataset(BaseDataset):
-    def __init__(self, dataset_dirs: List[pathlib.Path]):
+    def __init__(self, dataset_dirs: List[pathlib.Path], step_size: int = 1):
         super(DynamicsDataset, self).__init__(dataset_dirs)
 
+        self.step_size = step_size
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
 
         self.action_feature_names = ['action']
@@ -54,11 +55,11 @@ class DynamicsDataset(BaseDataset):
             return split_into_sequences(self.state_feature_names,
                                         self.action_feature_names,
                                         self.constant_feature_names,
-                                        max_sequence_length=self.desired_sequence_length,
+                                        max_sequence_length=self.max_sequence_length,
                                         example_dict=example)
 
         def _slice_sequences(constant_data, state_like_seqs, action_like_seqs):
-            return slice_sequences(constant_data, state_like_seqs, action_like_seqs, self.desired_sequence_length)
+            return slice_sequences(constant_data, state_like_seqs, action_like_seqs, self.desired_sequence_length, self.step_size)
 
         # FIXME: don't separate const/state/action to begin with?
         def _combine_data(const_data, state_like_sequences, action_like_sequences):

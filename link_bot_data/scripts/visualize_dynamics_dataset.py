@@ -59,7 +59,7 @@ def plot_individual(train_dataset, scenario: ExperimentScenario, states_descript
             ax.set_title("{} {}".format(i, t))
 
         interval = 100
-        anim = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=True)
+        anim = FuncAnimation(fig, update, frames=actions.shape[0], interval=interval, repeat=False)
         plt.show()
 
         i += 1
