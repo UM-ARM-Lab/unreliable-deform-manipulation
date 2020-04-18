@@ -124,6 +124,7 @@ def train(keras_model: MyKerasModel,
             model_hparams['seed'] = seed
             model_hparams['batch_size'] = batch_size
             model_hparams['dataset'] = [str(dataset_dir) for dataset_dir in dataset_dirs]
+            model_hparams['key_metric'] = key_metric
             hparams_file.write(json.dumps(model_hparams, indent=2))
 
         writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
