@@ -7,7 +7,7 @@
     "link_bot",
     "tether"
   ],
-  "sequence_length": 10,
+  "sequence_length": 4,
   "fc_layer_sizes": [256],
   "rope_image_k": 1000,
   "conv_filters": [

@@ -5,7 +5,7 @@
     "ss_log_data/tether-unconstrained/2",
     "ss_log_data/tether-unconstrained/3"
   ],
-  "classifier_model_dir": "classifiers/",
+  "classifier_model_dir": "classifiers/tether_ensemble/April_17_22-38-55_f9ddc3cd6a/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",

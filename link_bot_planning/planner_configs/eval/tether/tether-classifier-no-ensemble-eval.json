@@ -1,6 +1,6 @@
 {
   "fwd_model_dir": "ss_log_data/tether-unconstrained/0",
-  "classifier_model_dir": "classifiers/",
+  "classifier_model_dir": "classifiers/tether_no_ensemble",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",

@@ -1,5 +1,5 @@
 {
-  "fwd_model_dir": "ss_log_data/",
+  "fwd_model_dir": "ss_log_data/tether-new-static-full",
   "classifier_model_dir": "classifiers/none/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
