@@ -31,6 +31,13 @@ def states_are_equal(state_dict1, state_dict2):
     return True
 
 
+def dict_of_numpy_arrays_to_dict_of_tensors(np_dict, dtype=tf.float32):
+    tf_dict = {}
+    for k, v in np_dict.items():
+        tf_dict[k] = tf.convert_to_tensor(v, dtype=dtype)
+    return tf_dict
+
+
 def dict_of_tensors_to_dict_of_numpy_arrays(tf_dict):
     np_dict = {}
     for k, v in tf_dict.items():

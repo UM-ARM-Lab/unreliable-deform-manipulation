@@ -4,7 +4,6 @@ from __future__ import division, print_function
 import argparse
 import json
 import pathlib
-import time
 from typing import Optional, Dict, List
 
 import matplotlib.pyplot as plt
@@ -15,7 +14,7 @@ import tensorflow as tf
 from colorama import Fore
 from ompl import base as ob
 
-import link_bot_data.link_bot_dataset_utils
+from link_bot_data.link_bot_dataset_utils import data_directory
 from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute
@@ -224,9 +223,8 @@ def main():
 
     print(Fore.CYAN + "Using Seed {}".format(args.seed) + Fore.RESET)
 
-    now = str(int(time.time()))
     root = pathlib.Path('results') / "{}-compare".format(args.nickname)
-    common_output_directory = link_bot_data.link_bot_dataset_utils.data_directory(root, now)
+    common_output_directory = data_directory(root)
     common_output_directory = pathlib.Path(common_output_directory)
     print(Fore.CYAN + "common output directory: {}".format(common_output_directory) + Fore.RESET)
     if not common_output_directory.is_dir():

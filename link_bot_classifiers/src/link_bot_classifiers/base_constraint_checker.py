@@ -14,17 +14,13 @@ class BaseConstraintChecker:
         self.full_env_params = None
 
     def check_constraint(self,
-                         full_env: np.ndarray,
-                         full_env_origin: np.ndarray,
-                         res: float,
+                         environement: Dict,
                          states_sequence: List[Dict],
                          actions: np.ndarray) -> float:
         pass
 
     def check_constraint_differentiable(self,
-                                        full_env: np.ndarray,
-                                        full_env_origin: np.ndarray,
-                                        res: float,
+                                        environment: Dict,
                                         states_sequence: List[Dict],
                                         actions: tf.Variable) -> tf.Tensor:
         pass

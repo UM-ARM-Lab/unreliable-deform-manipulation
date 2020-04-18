@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import pathlib
+import time
 from typing import Optional, Dict
 
 import git
@@ -125,10 +126,11 @@ def cachename(mode: Optional[str] = None):
 
 
 def data_directory(outdir: pathlib.Path, *names):
+    now = str(int(time.time()))
     repo = git.Repo(search_parent_directories=True)
     sha = repo.head.object.hexsha[:10]
-    format_string = "{}_{}_" + "{}_" * (len(names) - 1) + "{}"
-    full_output_directory = pathlib.Path(format_string.format(outdir, sha, *names))
+    format_string = "{}_{}_{}" + len(names) * '_{}'
+    full_output_directory = pathlib.Path(format_string.format(outdir, now, sha, *names))
     if outdir:
         if full_output_directory.is_file():
             print(Fore.RED + "argument outdir is an existing file, aborting." + Fore.RESET)

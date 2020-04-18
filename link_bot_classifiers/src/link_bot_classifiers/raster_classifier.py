@@ -15,7 +15,7 @@ from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import FullEnvParams
 from link_bot_pycommon.link_bot_pycommon import make_dict_float32
 from moonshine.image_functions import make_transition_images, make_traj_images_from_states_list
-from moonshine.numpy_utils import add_batch
+from moonshine.numpy_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 
@@ -126,9 +126,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         self.ckpt.restore(self.manager.latest_checkpoint)
 
     def check_transition(self,
-                         full_env,
-                         full_env_origin,
-                         res,
+                         environment: Dict,
                          states_sequence: List[Dict],
                          actions,
                          ) -> tf.Tensor:
@@ -140,11 +138,6 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         states_i_plus_1_to_draw = {k: states_i_plus_1[k] for k in states_i_plus_1 if k != 'stdev'}
 
         action_in_image = self.model_hparams['action_in_image']
-        environment = {
-            'full_env/env': full_env,
-            'full_env/origin': full_env_origin,
-            'full_env/res': res,
-        }
         batched_inputs = add_batch(environment, states_i_to_draw, action_i, states_i_plus_1_to_draw)
         image = make_transition_images(*batched_inputs,
                                        scenario=self.scenario,
@@ -162,9 +155,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         return accept_probability
 
     def check_trajectory(self,
-                         full_env: np.ndarray,
-                         full_env_origin: np.ndarray,
-                         res: float,
+                         environment: Dict,
                          states_sequence: List[Dict],
                          actions: tf.Variable) -> tf.Tensor:
         # Get state states/action for just the transition, which we also feed into the classifier
@@ -177,13 +168,6 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         for state in states_sequence:
             states_sequence_to_draw.append({k: state[k] for k in state if k != 'stdev'})
 
-        environment = {
-            'full_env/env': full_env,
-            'full_env/origin': full_env_origin,
-            'full_env/res': res,
-        }
-        start_states = states_sequence[0]
-        environment.update(self.scenario.get_environment_from_start_states_dict(start_states))
         batched_inputs = add_batch(environment, states_sequence_to_draw)
         image = make_traj_images_from_states_list(*batched_inputs, rope_image_k=self.model_hparams['rope_image_k'])[0]
 
@@ -194,38 +178,29 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         return accept_probability
 
     def check_constraint_differentiable(self,
-                                        full_env: np.ndarray,
-                                        full_env_origin: np.ndarray,
-                                        res: float,
+                                        environment: Dict,
                                         states_sequence: List[Dict],
                                         actions) -> tf.Tensor:
         image_key = self.model_hparams['image_key']
-        # ensure res is a float32
-        res = tf.convert_to_tensor(res, dtype=tf.float32)
+        environment = dict_of_numpy_arrays_to_dict_of_tensors(environment)
         if image_key == 'transition_image':
-            return self.check_transition(full_env=full_env,
-                                         full_env_origin=full_env_origin,
-                                         res=res,
+            return self.check_transition(environment=environment,
                                          states_sequence=states_sequence,
                                          actions=actions)
         elif image_key == 'trajectory_image':
-            return self.check_trajectory(full_env, full_env_origin, res, states_sequence, actions)
+            return self.check_trajectory(environment, states_sequence, actions)
         else:
             raise ValueError('invalid image_key')
 
     def check_constraint(self,
-                         full_env: np.ndarray,
-                         full_env_origin: np.ndarray,
-                         res: float,
+                         environement: Dict,
                          states_sequence: List[Dict],
                          actions: np.ndarray) -> float:
         actions = tf.Variable(actions, dtype=tf.float32, name="actions")
         states_sequence = [make_dict_float32(s) for s in states_sequence]
-        prediction = self.check_constraint_differentiable(full_env,
-                                                          full_env_origin,
-                                                          res,
-                                                          states_sequence,
-                                                          actions)
+        prediction = self.check_constraint_differentiable(environment=environement,
+                                                          states_sequence=states_sequence,
+                                                          actions=actions)
         return prediction.numpy()
 
     def net_inputs(self, action_i, states_i, states_i_plus_1):
