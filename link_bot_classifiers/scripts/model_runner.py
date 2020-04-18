@@ -67,6 +67,7 @@ def train_main(args, seed: int):
           metrics_function=binary_classification_metrics_function,
           postprocess=postprocess,
           checkpoint=args.checkpoint,
+          key_metric="accuracy",
           log_path=log_path,
           log_scalars_every=args.log_scalars_every)
 
