@@ -132,7 +132,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
         metrics_for_plan = {
             'planner_status': planner_status.asString(),
-            'full_env': environment['full_env/env'].tolist(),
+            'environment': listify(environment),
             'planned_path': planned_path_listified,
             'actual_path': actual_path_listified,
             'planning_time': planning_time,
@@ -150,14 +150,13 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         ax = plt.gca()
         legend = plot_plan(ax=ax,
                            state_space_description=self.planner.state_space_description,
-                           experiment_scenario=self.planner.scenario,
+                           scenario=self.planner.scenario,
                            viz_object=self.planner.viz_object,
                            planner_data=planner_data,
-                           environment=environment['full_env/env'],
+                           environment=environment,
                            goal=goal,
                            planned_path=planned_path,
                            planned_actions=None,
-                           extent=environment['full_env/extent'],
                            draw_tree=False,
                            draw_rejected=False)
 

@@ -35,6 +35,10 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
+    def plot_environment(ax, environment: Dict):
+        raise NotImplementedError()
+
+    @staticmethod
     def plot_action(ax, state: Dict, action, color, s: int, zorder: int):
         raise NotImplementedError()
 

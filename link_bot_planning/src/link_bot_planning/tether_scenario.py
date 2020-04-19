@@ -160,6 +160,17 @@ class TetherScenario(ExperimentScenario):
         ax.scatter(goal[0], goal[1], c=color, label=label, **kwargs)
 
     @staticmethod
+    def plot_environment(ax, environment: Dict):
+        occupancy = environment['full_env/env']
+        extent = environment['full_env/extent']
+        ax.imshow(np.flipud(occupancy), extent=extent, cmap='Greys')
+        tether = np.reshape(environment['initial_tether'], [-1, 2])
+        xs = tether[:, 0]
+        ys = tether[:, 1]
+        ax.scatter(xs, ys, c='gray', s=20, zorder=1, label='initial tether')
+        ax.plot(xs, ys, linewidth=1, c='gray', zorder=1)
+
+    @staticmethod
     def update_action_artist(artist, state, action):
         """ artist: Whatever was returned by plot_state """
         point_robot = np.reshape(state['link_bot'], [2])

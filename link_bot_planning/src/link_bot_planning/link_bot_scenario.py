@@ -140,6 +140,12 @@ class LinkBotScenario(ExperimentScenario):
         ax.scatter(goal[0], goal[1], c=color, label=label, **kwargs)
 
     @staticmethod
+    def plot_environment(ax, environment: Dict):
+        occupancy = environment['full_env/env']
+        extent = environment['full_env/extent']
+        ax.imshow(np.flipud(occupancy), extent=extent, cmap='Greys')
+
+    @staticmethod
     def update_artist(artist, state):
         """ artist: Whatever was returned by plot_state """
         line, scatt = artist

@@ -56,12 +56,11 @@ def main():
         plt.ylabel("Y (m)")
         plt.show()
     if args.plot_type == 'animate':
-        anim = plan_vs_execution(full_env,
-                                 full_env_params.extent,
-                                 scenario,
-                                 goal,
-                                 planned_path,
-                                 actual_path)
+        anim = plan_vs_execution(environment=environment,
+                                 scenario=scenario,
+                                 goal=goal,
+                                 planned_path=planned_path,
+                                 actual_path=actual_path)
         if args.save:
             out_filename = args.results_dir / 'plan_vs_execution_{}.gif'.format(args.plan_idx)
             anim.save(out_filename, writer='imagemagick', dpi=100)
