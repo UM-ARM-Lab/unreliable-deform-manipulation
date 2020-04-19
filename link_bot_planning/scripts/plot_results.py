@@ -30,17 +30,14 @@ def main():
     metric_for_plan = metrics[args.plan_idx]
 
     goal = metric_for_plan['goal']
-    full_env = np.array(metric_for_plan['full_env'])
-    h = full_env.shape[0]
-    w = full_env.shape[1]
-    fwd_model_hparam_filename = pathlib.Path(data['planner_params']['fwd_model_dir']) / 'hparams.json'
-    fwd_model_hparam = json.load(fwd_model_hparam_filename.open("r"))
-    full_env_params = FullEnvParams.from_json(fwd_model_hparam['dynamics_dataset_hparams']['full_env_params'])
+    environment = metric_for_plan['environment']
+    full_env = np.array(environment['full_env/env'])
+    extent = np.array(environment['full_env/extent'])
     planned_path = metric_for_plan['planned_path']
     actual_path = metric_for_plan['actual_path']
 
     if args.plot_type == 'plot':
-        plt.imshow(np.flipud(full_env), extent=full_env_params.extent, cmap='Greys')
+        plt.imshow(np.flipud(full_env), extent=extent, cmap='Greys')
         ax = plt.gca()
         for state in planned_path:
             scenario.plot_state(ax, state, color='c', s=20, zorder=2)
@@ -50,8 +47,8 @@ def main():
         scenario.plot_state_simple(ax, planned_path[0], color='c', label='start', zorder=2)
         plt.legend()
         plt.axis("equal")
-        plt.xlim(full_env_params.extent[0:2])
-        plt.ylim(full_env_params.extent[2:4])
+        plt.xlim(extent[0:2])
+        plt.ylim(extent[2:4])
         plt.xlabel("X (m)")
         plt.ylabel("Y (m)")
         plt.show()
