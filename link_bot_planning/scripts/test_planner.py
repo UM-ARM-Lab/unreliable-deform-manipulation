@@ -148,7 +148,7 @@ def main():
     args = parser.parse_args()
 
     np.random.seed(args.seed)
-    tf.random.set_random_seed(args.seed)
+    tf.random.set_seed(args.seed)
     ou.RNG.setSeed(args.seed)
     ou.setLogLevel(ou.LOG_ERROR)
 

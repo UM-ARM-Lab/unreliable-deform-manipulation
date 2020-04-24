@@ -180,7 +180,7 @@ def main():
     args = parser.parse_args()
 
     np.random.seed(1)
-    tf.random.set_random_seed(1)
+    tf.random.set_seed(1)
 
     # load the dataset
     dataset = DynamicsDataset(args.dataset_dir)

@@ -233,7 +233,7 @@ def main():
         # start at the same seed every time to make the planning environments & plans the same (hopefully?)
         # setting OMPL random seed should have no effect, because I use numpy's random in my sampler?
         np.random.seed(args.seed)
-        tf.random.set_random_seed(args.seed)  # not sure if this has any effect
+        tf.random.set_seed(args.seed)  # not sure if this has any effect
 
         planner_config_name = p_params_name.stem
 

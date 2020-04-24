@@ -133,7 +133,7 @@ def main():
         seed = args.seed
     print("Using seed {}".format(seed))
     np.random.seed(seed)
-    tf.random.set_random_seed(seed)
+    tf.random.set_seed(seed)
 
     if args == argparse.Namespace():
         parser.print_usage()
