@@ -15,10 +15,10 @@ def main():
     args = parser.parse_args()
 
     filenames = [str(filename) for filename in args.dataset_dir.glob("{}/*.tfrecords".format(args.mode))]
-    options = tf.python_io.TFRecordOptions(compression_type='ZLIB')
     for filename in filenames:
-        example = next(tf.python_io.tf_record_iterator(filename, options=options))
-        dict_message = MessageToDict(tf.train.Example.FromString(example))
+        example = next(iter(tf.data.TFRecordDataset(filename, compression_type='ZLIB'))).numpy()
+        message = tf.train.Example.FromString(example)
+        dict_message = MessageToDict(message)
         feature = dict_message['features']['feature']
 
         to_print = []
