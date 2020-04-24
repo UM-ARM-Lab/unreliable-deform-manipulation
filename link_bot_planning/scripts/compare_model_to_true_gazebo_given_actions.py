@@ -40,7 +40,7 @@ def main():
     if args.outdir:
         args.outdir.mkdir(exist_ok=True)
 
-    tf.set_seed(args.seed)
+    tf.random.set_seed(args.seed)
     np.random.seed(args.seed)
     random.seed(args.seed)
 
