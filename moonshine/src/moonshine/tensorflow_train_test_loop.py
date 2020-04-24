@@ -87,7 +87,7 @@ def train(keras_model: MyKerasModel,
     :param ensemble: number of times to copy the model
     :return:
     """
-    optimizer = tf.optimizers.Adam()
+    optimizer = tf.optimizers.Adam(model_hparams['learning_rate'])
 
     global_step = tf.Variable(1)
 

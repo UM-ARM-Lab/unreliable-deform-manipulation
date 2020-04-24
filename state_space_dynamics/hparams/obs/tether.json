@@ -20,5 +20,6 @@
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
   "activity_reg": 0.05,
+  "learning_rate": 0.0001,
   "epochs": 500
 }

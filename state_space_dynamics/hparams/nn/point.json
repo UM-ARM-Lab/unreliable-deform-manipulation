@@ -7,5 +7,6 @@
   ],
   "residual": true,
   "state_key": "link_bot",
+  "learning_rate": 0.001,
   "epochs": 100
 }
