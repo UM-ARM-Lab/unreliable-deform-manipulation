@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import json
+import logging
 import pathlib
 from time import perf_counter
 
@@ -16,6 +17,7 @@ from link_bot_pycommon.args import my_formatter
 
 
 def main():
+    tf.get_logger().setLevel(logging.ERROR)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
     parser.add_argument('labeling_params', type=pathlib.Path)

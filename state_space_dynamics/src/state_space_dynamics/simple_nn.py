@@ -26,7 +26,7 @@ class SimpleNN(MyKerasModel):
         self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
 
-    @tf.function
+    @tf.function()
     def call(self, dataset_element, training=None, mask=None):
         input_dict, _ = dataset_element
         states = input_dict[self.state_key]
@@ -63,7 +63,7 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         self.net = SimpleNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
-        self.ckpt.restore(self.manager.latest_checkpoint)
+        self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.states_keys = [self.net.state_key]
