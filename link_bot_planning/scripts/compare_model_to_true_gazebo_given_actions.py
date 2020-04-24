@@ -40,7 +40,8 @@ def main():
 
     args = parser.parse_args()
 
-    args.outdir.mkdir(exist_ok=True)
+    if args.outdir:
+        args.outdir.mkdir(exist_ok=True)
 
     tf.set_random_seed(args.seed)
     np.random.seed(args.seed)
@@ -66,8 +67,8 @@ def main():
                                max_step_size=fwd_model.max_step_size)
     service_provider.pause(std_srvs.srv.EmptyRequest())
 
-    full_env_data = get_occupancy_data(env_w_m=classifier_model.full_env_params.w,
-                                       env_h_m=classifier_model.full_env_params.h,
+    full_env_data = get_occupancy_data(env_w_m=fwd_model.full_env_params.w,
+                                       env_h_m=fwd_model.full_env_params.h,
                                        res=fwd_model.full_env_params.res,
                                        service_provider=service_provider,
                                        robot_name=scenario.robot_name())
@@ -95,9 +96,12 @@ def main():
 
     actual_path = execute_plan(service_provider, fwd_model.dt, actions)
 
-    anim = ompl_viz.plan_vs_execution(full_env_data.data,
-                                      full_env_data.extent,
-                                      scenario,
+    environment = {
+        'full_env/env': full_env_data.data,
+        'full_env/extent': full_env_data.extent,
+    }
+    anim = ompl_viz.plan_vs_execution(environment=environment,
+                                      scenario=scenario,
                                       goal=None,
                                       accept_probabilities=accept_probabilities,
                                       planned_path=predicted_path,

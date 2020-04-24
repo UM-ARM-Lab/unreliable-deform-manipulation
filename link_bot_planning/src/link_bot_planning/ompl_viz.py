@@ -34,7 +34,7 @@ def plot_plan(ax,
         start = planned_path[0]
         end = planned_path[-1]
         scenario.plot_state_simple(ax, start, color='b', s=50, zorder=5, label='start')
-        # experiment_scenario.plot_state_simple(ax, end, color='pink', s=50, zorder=5, marker='*', label='end')
+        scenario.plot_state_simple(ax, end, color='m', s=20, zorder=5, marker='*', label='end')
         scenario.plot_goal(ax, goal, color='c', zorder=5, s=50, label='goal')
         draw_every_n = 1
         T = len(planned_path)

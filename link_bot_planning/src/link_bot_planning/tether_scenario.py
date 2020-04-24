@@ -164,11 +164,12 @@ class TetherScenario(ExperimentScenario):
         occupancy = environment['full_env/env']
         extent = environment['full_env/extent']
         ax.imshow(np.flipud(occupancy), extent=extent, cmap='Greys')
-        tether = np.reshape(environment['initial_tether'], [-1, 2])
-        xs = tether[:, 0]
-        ys = tether[:, 1]
-        ax.scatter(xs, ys, c='gray', s=20, zorder=1, label='initial tether')
-        ax.plot(xs, ys, linewidth=1, c='gray', zorder=1)
+        if 'initial_tether' in environment:
+            tether = np.reshape(environment['initial_tether'], [-1, 2])
+            xs = tether[:, 0]
+            ys = tether[:, 1]
+            ax.scatter(xs, ys, c='gray', s=20, zorder=1, label='initial tether')
+            ax.plot(xs, ys, linewidth=1, c='gray', zorder=1)
 
     @staticmethod
     def update_action_artist(artist, state, action):

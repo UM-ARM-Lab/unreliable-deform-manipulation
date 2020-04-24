@@ -3,16 +3,35 @@ import tensorflow as tf
 
 
 def listify(x):
+    def _listify(x):
+        if isinstance(x, np.ndarray):
+            return x.tolist()
+        elif isinstance(x, list):
+            return [_listify(x_i) for x_i in x]
+        elif isinstance(x, tf.Tensor):
+            x_np = x.numpy()
+            return _listify(x_np)
+        elif isinstance(x, dict):
+            return dict([(k, _listify(v)) for k, v in x.items()])
+        elif isinstance(x, int):
+            return x
+        elif isinstance(x, float):
+            return x
+        else:
+            raise NotImplementedError(type(x))
+
     if isinstance(x, np.ndarray):
         return x.tolist()
     elif isinstance(x, list):
-        return [listify(x_i) for x_i in x]
+        return [_listify(x_i) for x_i in x]
     elif isinstance(x, tf.Tensor):
         x_np = x.numpy()
-        return listify(x_np)
+        return _listify(x_np)
     elif isinstance(x, dict):
-        return dict([(k, listify(v)) for k, v in x.items()])
+        return dict([(k, _listify(v)) for k, v in x.items()])
     elif isinstance(x, float):
+        return [x]
+    elif isinstance(x, int):
         return [x]
     else:
         raise NotImplementedError(type(x))
