@@ -1,15 +1,10 @@
 #!/usr/bin/env python
-import json
-from colorama import Fore, Style
+import argparse
 import pathlib
 
 import tensorflow as tf
+from colorama import Fore, Style
 from google.protobuf.json_format import MessageToDict
-import argparse
-
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
-config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
-tf.compat.v1.enable_eager_execution(config=config)
 
 
 def main():
@@ -44,7 +39,7 @@ def main():
         k = 15
         for items in to_print[:k]:
             print("{}: {},".format(*items))
-        if len(to_print) > 2*k:
+        if len(to_print) > 2 * k:
             print("...")
         for items in to_print[-k:]:
             print("{}: {},".format(*items))

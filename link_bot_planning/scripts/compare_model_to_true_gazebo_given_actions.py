@@ -19,12 +19,9 @@ from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.ros_pycommon import get_occupancy_data, get_states_dict
 from victor import victor_services
 
-tf.compat.v1.enable_eager_execution()
-
 
 def main():
     np.set_printoptions(suppress=True, linewidth=250, precision=4, threshold=64 * 64 * 3)
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')

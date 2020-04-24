@@ -7,8 +7,6 @@ import tensorflow as tf
 
 from moonshine.image_functions import raster_differentiable_faster, raster_differentiable
 
-tf.compat.v1.enable_eager_execution()
-
 state = np.array([[0, 0]], dtype=np.float32)
 res = [0.03]
 h = 200

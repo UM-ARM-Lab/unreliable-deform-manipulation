@@ -3,18 +3,9 @@ import argparse
 import pathlib
 from time import perf_counter
 
-import progressbar
-import tensorflow as tf
-
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import balance, cachename
-from moonshine.image_functions import add_traj_image, add_transition_image, add_transition_image_to_example
-from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
-
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
-config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
-tf.compat.v1.enable_eager_execution(config=config)
+from moonshine.image_functions import add_traj_image
 
 
 def main():

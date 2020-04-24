@@ -21,13 +21,8 @@ from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
-from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter, point_arg
 from victor import victor_services
-
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
-config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
-tf.compat.v1.enable_eager_execution(config=config)
 
 
 class TestWithClassifier(plan_and_execute.PlanAndExecute):
@@ -136,7 +131,6 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=250)
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("service_provider", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')

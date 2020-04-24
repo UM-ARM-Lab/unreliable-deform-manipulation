@@ -15,10 +15,6 @@ from link_bot_planning.get_scenario import get_scenario
 from moonshine.image_functions import setup_image_inputs
 from moonshine.numpy_utils import remove_batch
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
-config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
-tf.compat.v1.enable_eager_execution(config=config)
-
 
 def main():
     plt.style.use("slides")
@@ -40,7 +36,7 @@ def main():
     args.batch_size = 1
 
     np.random.seed(args.seed)
-    tf.compat.v1.random.set_random_seed(args.seed)
+    tf.random.set_seed(args.seed)
 
     classifier_dataset = ClassifierDataset(args.dataset_dirs, no_balance=args.no_balance)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)

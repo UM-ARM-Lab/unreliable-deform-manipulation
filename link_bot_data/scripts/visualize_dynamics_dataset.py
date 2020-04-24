@@ -18,10 +18,6 @@ from link_bot_pycommon.args import my_formatter
 from moonshine.image_functions import old_raster
 from moonshine.numpy_utils import add_batch
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
-config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
-tf.compat.v1.enable_eager_execution(config=config)
-
 
 def plot_individual(train_dataset, scenario: ExperimentScenario, states_description):
     for i, (input_data, output_data) in enumerate(train_dataset):
@@ -170,9 +166,7 @@ def plot_heatmap(train_dataset, show_env=True):
 
 
 def main():
-    # plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=250, precision=3)
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')

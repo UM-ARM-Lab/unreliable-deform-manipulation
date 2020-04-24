@@ -8,18 +8,12 @@ import tensorflow as tf
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
-from moonshine.image_functions import setup_image_inputs
 from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function
+from moonshine.image_functions import setup_image_inputs
 from moonshine.metric import AccuracyMetric
 from moonshine.tensorflow_train_test_loop import evaluate, train
-
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.4)
-config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
-tf.compat.v1.enable_eager_execution(config=config)
-
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 def train_main(args, seed: int):

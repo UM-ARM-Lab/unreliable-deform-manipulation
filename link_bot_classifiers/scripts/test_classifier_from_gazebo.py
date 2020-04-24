@@ -5,7 +5,6 @@ import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 import rospy
-import tensorflow as tf
 
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_gazebo.gazebo_services import GazeboServices
@@ -14,14 +13,9 @@ from link_bot_pycommon.args import my_formatter, point_arg
 from link_bot_pycommon.link_bot_pycommon import make_dict_float32
 from link_bot_pycommon.ros_pycommon import get_occupancy_data, get_states_dict
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.5)
-config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
-tf.compat.v1.enable_eager_execution(config=config)
-
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=200)
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')

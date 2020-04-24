@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rospy
 import tensorflow as tf
-tf.compat.v1.enable_eager_execution()
 
 from link_bot_gazebo import gazebo_services
 from link_bot_pycommon.link_bot_sdf_utils import compute_extent

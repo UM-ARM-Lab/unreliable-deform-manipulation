@@ -27,10 +27,6 @@ from link_bot_pycommon.args import my_formatter
 from moonshine.numpy_utils import listify
 from victor import victor_services
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.1)
-config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
-tf.compat.v1.enable_eager_execution(config=config)
-
 
 class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
@@ -204,7 +200,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=250)
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
     ou.setLogLevel(ou.LOG_ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)

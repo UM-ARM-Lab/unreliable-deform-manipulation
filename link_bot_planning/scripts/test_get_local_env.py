@@ -4,8 +4,6 @@ import tensorflow as tf
 
 from moonshine.image_functions import raster_differentiable
 
-tf.compat.v1.enable_eager_execution()
-
 from link_bot_pycommon.link_bot_sdf_utils import compute_extent
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
 import numpy as np

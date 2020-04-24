@@ -6,7 +6,6 @@ import pathlib
 
 import numpy as np
 import rospy
-import tensorflow
 
 from link_bot_data import base_collect_dynamics_data
 from link_bot_gazebo import gazebo_services
@@ -14,14 +13,9 @@ from link_bot_planning.params import CollectDynamicsParams
 from link_bot_pycommon.args import my_formatter
 from victor import victor_services
 
-opts = tensorflow.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
-conf = tensorflow.compat.v1.ConfigProto(gpu_options=opts)
-tensorflow.compat.v1.enable_eager_execution(config=conf)
-
 
 def main():
     np.set_printoptions(precision=4, suppress=True, linewidth=220, threshold=5000)
-    tensorflow.compat.v1.logging.set_verbosity(tensorflow.compat.v1.logging.WARN)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("service_provider", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')

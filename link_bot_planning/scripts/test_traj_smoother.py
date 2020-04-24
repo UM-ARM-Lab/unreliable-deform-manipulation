@@ -14,13 +14,8 @@ from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import compute_extent
 
-gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.5)
-config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
-tf.compat.v1.enable_eager_execution(config=config)
-
 
 def main():
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.FATAL)
     plt.style.use("slides")
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
@@ -39,7 +34,7 @@ def main():
     w = 200
     h = 200
     full_env = np.zeros([h, w], dtype=np.float32)
-    #full_env[50:110, 116:135] = 1.0
+    # full_env[50:110, 116:135] = 1.0
     full_env_origin = np.array([h // 2, w // 2])
     full_env_extent = compute_extent(h, w, res, full_env_origin)
 
@@ -98,7 +93,7 @@ def main():
 
     actions = tf.Variable(actions, dtype=tf.float32, name='controls', trainable=True)
 
-    fig, axes = plt.subplots(1, 2, figsize=(20,10))
+    fig, axes = plt.subplots(1, 2, figsize=(20, 10))
     axes[0].set_title("Path")
     experiment_scenario.plot_goal(axes[0], goal, color='g', label='goal')
     experiment_scenario.plot_state_simple(axes[0], start_states, color='r')
