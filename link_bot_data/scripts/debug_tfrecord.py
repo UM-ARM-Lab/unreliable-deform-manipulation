@@ -37,12 +37,16 @@ def main():
         to_print = sorted(to_print)
         print(Style.BRIGHT + filename + Style.NORMAL)
         k = 15
-        for items in to_print[:k]:
-            print("{}: {},".format(*items))
-        if len(to_print) > 2 * k:
-            print("...")
-        for items in to_print[-k:]:
-            print("{}: {},".format(*items))
+        if len(to_print) < k:
+            for items in to_print:
+                print("{}: {},".format(*items))
+        else:
+            for items in to_print[:k]:
+                print("{}: {},".format(*items))
+            if len(to_print) > 2 * k:
+                print("...")
+            for items in to_print[-k:]:
+                print("{}: {},".format(*items))
 
         key = input(Fore.CYAN + "press enter to see an example from the next record file... (q to quit) " + Fore.RESET)
         if key == 'q':

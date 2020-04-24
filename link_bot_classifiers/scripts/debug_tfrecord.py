@@ -1,1 +1,0 @@
-../../link_bot_data/scripts/debug_tfrecord.py
