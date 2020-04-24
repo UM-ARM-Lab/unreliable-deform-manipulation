@@ -1,5 +1,6 @@
 import json
 import pathlib
+from copy import deepcopy
 from typing import Dict, Callable, Optional, List, Type
 
 import numpy as np
@@ -19,7 +20,7 @@ class MyKerasModel(tf.keras.Model):
 
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__()
-        self.hparams = tf.contrib.checkpoint.NoDependency(hparams)
+        self.hparams = deepcopy(hparams)
         self.batch_size = batch_size
         self.scenario = scenario
 
@@ -86,9 +87,9 @@ def train(keras_model: MyKerasModel,
     :param ensemble: number of times to copy the model
     :return:
     """
-    optimizer = tf.train.AdamOptimizer()
+    optimizer = tf.optimizers.Adam()
 
-    global_step = tf.train.get_or_create_global_step()
+    global_step = tf.Variable(1)
 
     # If we're resuming a checkpoint, there is no new log path
     if checkpoint is not None:
@@ -127,7 +128,7 @@ def train(keras_model: MyKerasModel,
             model_hparams['key_metric'] = key_metric.key()
             hparams_file.write(json.dumps(model_hparams, indent=2))
 
-        writer = tf.contrib.summary.create_file_writer(logdir=full_log_path)
+        writer = tf.summary.create_file_writer(logdir=str(full_log_path))
 
     def train_loop():
         step = None
@@ -156,11 +157,11 @@ def train(keras_model: MyKerasModel,
 
                 if logging:
                     if step % log_scalars_every == 0:
-                        tf.contrib.summary.scalar("batch_loss", train_batch_loss, step=step)
+                        tf.summary.scalar("batch_loss", train_batch_loss, step=step)
 
                         train_batch_metrics = metrics_function(train_element, train_predictions)
                         for metric_name, metric_value in train_batch_metrics.items():
-                            tf.contrib.summary.scalar('train_' + metric_name.replace(" ", "_"), metric_value, step=step)
+                            tf.summary.scalar('train_' + metric_name.replace(" ", "_"), metric_value, step=step)
 
                 ####################
                 # Update global step
@@ -185,10 +186,10 @@ def train(keras_model: MyKerasModel,
                 print(Style.BRIGHT + log_msg.format(epoch, val_mean_loss) + Style.NORMAL)
 
                 if logging:
-                    tf.contrib.summary.scalar('validation_loss', val_mean_loss, step=step)
+                    tf.summary.scalar('validation_loss', val_mean_loss, step=step)
                     for metric_name, mean_metric_value in val_mean_metrics.items():
                         print(metric_name, mean_metric_value)
-                        tf.contrib.summary.scalar('validation_' + metric_name.replace(" ", "_"), mean_metric_value, step=step)
+                        tf.summary.scalar('validation_' + metric_name.replace(" ", "_"), mean_metric_value, step=step)
 
                 # check new best based on the desired metric (or loss)
                 if key_metric.key() == 'loss':
@@ -209,7 +210,7 @@ def train(keras_model: MyKerasModel,
 
     try:
         if logging:
-            with writer.as_default(), tf.contrib.summary.always_record_summaries():
+            with writer.as_default():
                 train_loop()
         else:
             train_loop()
