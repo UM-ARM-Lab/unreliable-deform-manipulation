@@ -5,6 +5,8 @@ import numpy as np
 import tensorflow as tf
 
 from ignition.markers import MarkerProvider
+from link_bot_data.link_bot_dataset_utils import add_planned
+from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import CollectDynamicsParams
 from link_bot_pycommon.base_services import Services
@@ -72,6 +74,13 @@ class LinkBotScenario(ExperimentScenario):
         scatt = ax.scatter(xs[0], ys[0], c=color, s=s, zorder=zorder)
         line = ax.plot(xs, ys, linewidth=6, c=color, zorder=zorder, label=label)[0]
         return line, scatt
+
+    @staticmethod
+    def plot_action(ax, state: Dict, action, color, s: int, zorder: int):
+        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+        artist = plot_arrow(ax, link_bot_points[-2, 0], link_bot_points[-1, 1], action[0], action[1], zorder=zorder, linewidth=1,
+                            color=color)
+        return artist
 
     @staticmethod
     def distance_to_goal(
@@ -154,6 +163,12 @@ class LinkBotScenario(ExperimentScenario):
         scatt.set_offsets(link_bot_points[0])
 
     @staticmethod
+    def update_action_artist(artist, state, action):
+        """ artist: Whatever was returned by plot_state """
+        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+        update_arrow(artist, link_bot_points[-2, 0], link_bot_points[-1, 1], action[0], action[1])
+
+    @staticmethod
     def publish_state_marker(marker_provider: MarkerProvider, state):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         tail_point = link_bot_points[0]
@@ -170,15 +185,18 @@ class LinkBotScenario(ExperimentScenario):
         return head_point_where_gripper_is
 
     @staticmethod
-    # @tf.function
+    @tf.function
     def local_environment_center_differentiable(state):
         """
         :param state: Dict of batched states
         :return:
         """
-        state_key = 'link_bot'
-        b = int(state[state_key].shape[0])
-        link_bot_points = tf.reshape(state[state_key], [b, -1, 2])
+        if 'link_bot' in state:
+            link_bot_state = state['link_bot']
+        elif add_planned('link_bot') in state:
+            link_bot_state = state[add_planned('link_bot')]
+        b = int(link_bot_state.shape[0])
+        link_bot_points = tf.reshape(link_bot_state, [b, -1, 2])
         head_point_where_gripper_is = link_bot_points[:, -1]
         return head_point_where_gripper_is
 

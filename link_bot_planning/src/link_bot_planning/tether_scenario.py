@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 from ignition.markers import MarkerProvider
-from link_bot_data.link_bot_dataset_utils import add_all_and_planned, add_all
+from link_bot_data.link_bot_dataset_utils import add_all, add_planned
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import CollectDynamicsParams
@@ -211,14 +211,18 @@ class TetherScenario(ExperimentScenario):
         return point_robot
 
     @staticmethod
-    # @tf.function
+    @tf.function
     def local_environment_center_differentiable(state):
         """
         :param state: Dict of batched states
         :return:
         """
-        b = int(state['link_bot'].shape[0])
-        batched_point_robot = tf.reshape(state['link_bot'], [b, 2])
+        if 'link_bot' in state:
+            link_bot_state = state['link_bot']
+        elif add_planned('link_bot') in state:
+            link_bot_state = state[add_planned('link_bot')]
+        b = int(link_bot_state.shape[0])
+        batched_point_robot = tf.reshape(link_bot_state, [b, 2])
         return batched_point_robot
 
     def simple_name(self):

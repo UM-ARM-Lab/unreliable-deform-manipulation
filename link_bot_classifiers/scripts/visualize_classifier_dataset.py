@@ -110,13 +110,16 @@ def print_stats_and_timing(args, count, negative_count, positive_count, total_dt
 
 
 def show_visualization(args, model_hparams, classifier_dataset, example, label, scenario, title):
+    image_key = model_hparams['image_key']
     if args.display_type == 'just_count':
         pass
     elif args.display_type == 'image':
         show_image(example, model_hparams, title)
     elif args.display_type == 'plot':
-        show_trajectory_plot(classifier_dataset, example, scenario, title)
-        # show_transition_plot(example, label, title)
+        if image_key == 'transition_image':
+            show_transition_plot(example, label, title)
+        elif image_key == 'trajectory_image':
+            show_trajectory_plot(classifier_dataset, example, scenario, title)
 
 
 def show_transition_plot(example, label, title):
