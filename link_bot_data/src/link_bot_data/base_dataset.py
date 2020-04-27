@@ -21,7 +21,7 @@ class BaseDataset:
             dataset_hparams_filename = dataset_dir / 'hparams.json'
 
             # to merge dataset hparams
-            hparams = json.load(open(str(dataset_hparams_filename), 'r'))
+            hparams = json.load(dataset_hparams_filename.open('r'))
             for k, v in hparams.items():
                 if k not in self.hparams:
                     self.hparams[k] = v
@@ -42,6 +42,7 @@ class BaseDataset:
                      sequence_length: Optional[int] = None,
                      n_parallel_calls: int = tf.data.experimental.AUTOTUNE,
                      do_not_process: bool = False,
+                     shard: Optional[int] = None,
                      take: Optional[int] = None,
                      ) -> tf.data.Dataset:
         if mode == 'all':
@@ -66,12 +67,14 @@ class BaseDataset:
         return self.get_datasets_from_records(all_filenames,
                                               n_parallel_calls=n_parallel_calls,
                                               do_not_process=do_not_process,
+                                              shard=shard,
                                               take=take)
 
     def get_datasets_from_records(self,
                                   records: List[str],
                                   n_parallel_calls: Optional[int] = None,
                                   do_not_process: Optional[bool] = False,
+                                  shard: Optional[int] = None,
                                   take: Optional[int] = None,
                                   ) -> tf.data.Dataset:
         dataset = tf.data.TFRecordDataset(records, buffer_size=1 * 1024 * 1024, compression_type='ZLIB')
@@ -82,6 +85,9 @@ class BaseDataset:
 
         if take is not None:
             dataset = dataset.take(take)
+
+        if shard is not None:
+            dataset = dataset.shard(shard)
 
         if not do_not_process:
             dataset = self.post_process(dataset, n_parallel_calls)

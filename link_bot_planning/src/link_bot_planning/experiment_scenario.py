@@ -112,3 +112,7 @@ class ExperimentScenario:
     @staticmethod
     def get_environment_from_start_states_dict(start_states: Dict):
         raise NotImplementedError()
+
+    @staticmethod
+    def animate_predictions(dataset_element, predictions):
+        raise NotImplementedError()

@@ -2,6 +2,23 @@ import numpy as np
 import tensorflow as tf
 
 
+def numpify(x):
+    if isinstance(x, np.ndarray):
+        return x
+    elif isinstance(x, list):
+        return np.array(x)
+    elif isinstance(x, tf.Tensor):
+        return x.numpy()
+    elif isinstance(x, dict):
+        return dict([(k, numpify(v)) for k, v in x.items()])
+    elif isinstance(x, int):
+        return x
+    elif isinstance(x, float):
+        return x
+    else:
+        raise NotImplementedError(type(x))
+
+
 def listify(x):
     def _listify(x):
         if isinstance(x, np.ndarray):

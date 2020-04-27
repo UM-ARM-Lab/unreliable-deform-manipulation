@@ -1,13 +1,13 @@
 {
   "full dynamics": {
-    "model_dir": "log_data/tether-full-dynamics/April_16_09-47-50_2eef5c5dd7"
+    "model_dir": "log_data/tf2_tether_obs/April_24_18-39-58_e56afcd75c/"
   },
   "unconstrained dynamics": {
     "model_dir": [
-      "log_data/tether-unconstrained/0",
-      "log_data/tether-unconstrained/1",
-      "log_data/tether-unconstrained/2",
-      "log_data/tether-unconstrained/3"
+      "log_data/tf2_tether/0",
+      "log_data/tf2_tether/1",
+      "log_data/tf2_tether/2",
+      "log_data/tf2_tether/3"
     ]
   }
 }

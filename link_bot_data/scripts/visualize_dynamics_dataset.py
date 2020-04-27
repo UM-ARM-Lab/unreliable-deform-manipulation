@@ -166,6 +166,7 @@ def plot_heatmap(train_dataset, show_env=True):
 
 
 def main():
+    plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=250, precision=3)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)

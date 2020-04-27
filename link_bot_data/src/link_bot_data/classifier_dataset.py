@@ -30,8 +30,16 @@ def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, datas
                 start_states_t[name] = start_state_t
 
             predictions_from_start_t = fwd_model.propagate_differentiable_batched(start_states_t, actions[:, start_t:])
-            # null out all the predictions past divergence
-            predictions_from_start_t, last_valid_ts = null_diverged(outputs, predictions_from_start_t, start_t, labeling_params)
+            if labeling_params['discard_diverged']:
+                # null out all the predictions past divergence
+                predictions_from_start_t, last_valid_ts = null_diverged(outputs,
+                                                                        predictions_from_start_t,
+                                                                        start_t,
+                                                                        labeling_params)
+            else:
+                # an array of size batch equal to the time-sequence length of outputs
+                last_valid_ts = np.ones(batch_size) * (dataset.max_sequence_length - 1)
+
             # when start_t > 0, this output will need to be padded so that all outputs are the same size
             all_predictions = null_previous_states(predictions_from_start_t, dataset.max_sequence_length)
 
@@ -76,7 +84,7 @@ def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, datas
                     state_key_next = add_next(state_key)
                     planned_state_key_next = add_next_and_planned(state_key)
                     post_transition_distance = tf.norm(out_example[state_key_next] - out_example[planned_state_key_next])
-                    threshold = labeling_params['post_close_threshold']
+                    threshold = labeling_params['threshold']
                     post_close = post_transition_distance < threshold
                     out_example['label'] = tf.expand_dims(tf.cast(post_close, dtype=tf.float32), axis=0)
 

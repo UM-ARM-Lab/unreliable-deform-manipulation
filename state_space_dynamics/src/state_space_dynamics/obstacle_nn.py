@@ -172,7 +172,7 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
         self.states_keys = self.net.states_keys
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
-        self.ckpt.restore(self.manager.latest_checkpoint)
+        self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
 

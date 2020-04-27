@@ -1,11 +1,8 @@
 {
   "full dynamics": {
-    "model_dir": "log_data/rope_full_dynamics3/March_26_14-34-54_4de27bda6b/"
-  },
-  "rigid": {
-    "model_dir": "log_data/rope_rigid_translation"
+    "model_dir": "log_data/tf2_rope_obs/April_27_14-44-27_e56afcd75c"
   },
   "unconstrained dynamics": {
-    "model_dir": "log_data/rope_no_obs2/March_25_17-46-11_61e55c4b8c/"
+    "model_dir": "log_data/tf2_rope"
   }
 }

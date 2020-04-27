@@ -3,6 +3,7 @@ from typing import Dict, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from matplotlib.animation import FuncAnimation
 
 from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_all, add_planned
@@ -11,6 +12,7 @@ from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import CollectDynamicsParams
 from link_bot_pycommon.base_services import Services
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
+from moonshine.numpy_utils import dict_of_sequences_to_sequence_of_dicts, remove_batch, numpify
 from peter_msgs.msg import Action
 
 
@@ -164,6 +166,9 @@ class TetherScenario(ExperimentScenario):
         occupancy = environment['full_env/env']
         extent = environment['full_env/extent']
         ax.imshow(np.flipud(occupancy), extent=extent, cmap='Greys')
+        ax.set_aspect('equal')
+        ax.set_xlim(extent[0:2])
+        ax.set_ylim(extent[2:4])
         if 'initial_tether' in environment:
             tether = np.reshape(environment['initial_tether'], [-1, 2])
             xs = tether[:, 0]
@@ -195,6 +200,44 @@ class TetherScenario(ExperimentScenario):
             ys = link_bot_points[:, 1]
             line.set_data(xs, ys)
             scatt.set_offsets(link_bot_points[0])
+
+    @staticmethod
+    def animate_predictions(example_idx, dataset_element, predictions):
+        predictions = remove_batch(predictions)
+        predictions = numpify(dict_of_sequences_to_sequence_of_dicts(predictions))
+        inputs, outputs = dataset_element
+        actions = inputs['action']
+        assert actions.shape[0] == 1
+        actions = remove_batch(actions)
+        outputs = remove_batch(outputs)
+        inputs = numpify(remove_batch(inputs))
+        actual = numpify(dict_of_sequences_to_sequence_of_dicts(outputs))
+        fig = plt.figure()
+        ax = plt.gca()
+        prediction_artist = TetherScenario.plot_state(ax, predictions[0], 'g', zorder=3, s=10, label='prediction')
+        actual_artist = TetherScenario.plot_state(ax, actual[0], '#00ff00', zorder=3, s=30, label='actual')
+        action_artist = TetherScenario.plot_action(ax, actual[0], actions[0], color='c', s=30, zorder=4)
+        environment = {
+            'full_env/env': inputs['full_env/env'],
+            'full_env/extent': inputs['full_env/extent'],
+        }
+        TetherScenario.plot_environment(ax, environment)
+        ax.set_title("{}, t=0".format(example_idx))
+        ax.set_xlabel("x (m)")
+        ax.set_ylabel("y (m)")
+        plt.legend()
+
+        n_states = len(actual)
+
+        def update(t):
+            TetherScenario.update_artist(prediction_artist, predictions[t])
+            TetherScenario.update_artist(actual_artist, actual[t])
+            ax.set_title("{}, t={}".format(example_idx, t))
+            if t < n_states - 1:
+                TetherScenario.update_action_artist(action_artist, actual[t], actions[t])
+
+        anim = FuncAnimation(fig, update, interval=500, repeat=True, frames=n_states)
+        return anim
 
     @staticmethod
     def publish_state_marker(marker_provider: MarkerProvider, state):
