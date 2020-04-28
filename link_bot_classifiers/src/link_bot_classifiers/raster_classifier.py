@@ -31,6 +31,10 @@ class RasterClassifier(MyKerasModel):
 
         self.states_keys = self.hparams['states_keys']
 
+        if 'image_noise_stddev' in hparams:
+            self.noise_layer = tf.keras.layers.GaussianNoise(stddev=hparams['image_noise_stddev'])
+        else:
+            self.noise_layer = None
         self.conv_layers = []
         self.pool_layers = []
         for n_filters, kernel_size in self.hparams['conv_filters']:
@@ -73,10 +77,12 @@ class RasterClassifier(MyKerasModel):
 
         return out_conv_z
 
-    @tf.function
-    def call(self, input_dict: Dict, training=None, mask=None):
+    def call(self, input_dict: Dict, training=True, mask=None):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         image = input_dict[self.hparams['image_key']]
+        if self.noise_layer is not None:
+            image = self.noise_layer(image, training=training)
+
         action = input_dict['action']
         out_conv_z = self._conv(image)
         conv_output = self.conv_flatten(out_conv_z)
@@ -151,7 +157,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
         net_inputs['transition_image'] = image
 
-        accept_probability = self.net(add_batch(net_inputs))[0, 0]
+        accept_probability = self.net(add_batch(net_inputs), training=False)[0, 0]
         return accept_probability
 
     def check_trajectory(self,
@@ -174,7 +180,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
         net_inputs['trajectory_image'] = image
 
-        accept_probability = self.net(add_batch(net_inputs))[0, 0]
+        accept_probability = self.net(add_batch(net_inputs), training=False)[0, 0]
         return accept_probability
 
     def check_constraint_differentiable(self,

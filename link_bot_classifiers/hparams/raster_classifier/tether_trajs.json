@@ -5,6 +5,7 @@
     "link_bot"
   ],
   "image_key": "trajectory_image",
+  "image_noise_stddev": 0.01,
   "action_in_image": false,
   "rope_image_k": 1000,
   "fc_layer_sizes": [256],

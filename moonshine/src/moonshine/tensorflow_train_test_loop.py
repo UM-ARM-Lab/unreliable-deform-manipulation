@@ -31,7 +31,7 @@ def compute_loss_and_metrics(tf_dataset, keras_model, loss_function, metrics_fun
     for dataset_element in progressbar.progressbar(tf_dataset):
         if postprocess is not None:
             dataset_element = postprocess(dataset_element)
-        predictions = keras_model(dataset_element)
+        predictions = keras_model(dataset_element, training=False)
         batch_loss = loss_function(dataset_element, predictions)
         losses.append(batch_loss)
 
@@ -156,7 +156,7 @@ def train(keras_model: MyKerasModel,
                     train_element = postprocess(train_element)
 
                 with tf.GradientTape() as tape:
-                    train_predictions = keras_model(train_element)
+                    train_predictions = keras_model(train_element, training=True)
                     train_batch_loss = loss_function(train_element, train_predictions)
 
                 variables = keras_model.trainable_variables
