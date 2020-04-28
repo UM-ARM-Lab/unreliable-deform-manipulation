@@ -84,6 +84,7 @@ def main():
         'Final Plan To Goal Error': [],
         'Final Plan To Execution Error': [],
         'Num Nodes': [],
+        'Num Steps': [],
     }
 
     execution_to_goal_errors_comparisons = {}
@@ -148,6 +149,7 @@ def main():
         timeouts = 0
         planning_times = []
         nums_nodes = []
+        nums_steps = []
         for datum in data:
             planned_path = datum['planned_path']
             actual_path = datum['actual_path']
@@ -162,6 +164,9 @@ def main():
 
             num_nodes = datum['num_nodes']
             nums_nodes.append(num_nodes)
+
+            num_steps = len(planned_path)
+            nums_steps.append(num_steps)
 
             planning_times.append(datum['planning_time'])
 
@@ -204,6 +209,7 @@ def main():
         aggregate_metrics['Final Execution To Goal Error'].append(
             make_row(planner_params, final_execution_to_goal_errors, table_format))
         aggregate_metrics['Num Nodes'].append(make_row(planner_params, nums_nodes, table_format))
+        aggregate_metrics['Num Steps'].append(make_row(planner_params, nums_steps, table_format))
 
         print("{:50s}: {:3.2f}% timeout ".format(str(subfolder), timeout_percentage))
 
