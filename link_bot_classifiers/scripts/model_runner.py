@@ -11,10 +11,12 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_planning.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function
+from moonshine.gpu_config import limit_gpu_mem
 from moonshine.image_functions import setup_image_inputs
 from moonshine.metric import AccuracyMetric
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
+limit_gpu_mem(2)
 
 def train_main(args, seed: int):
     if args.log:
