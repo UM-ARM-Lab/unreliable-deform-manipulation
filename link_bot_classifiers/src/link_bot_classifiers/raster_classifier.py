@@ -77,6 +77,7 @@ class RasterClassifier(MyKerasModel):
 
         return out_conv_z
 
+    @tf.function
     def call(self, input_dict: Dict, training=True, mask=None):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         image = input_dict[self.hparams['image_key']]
