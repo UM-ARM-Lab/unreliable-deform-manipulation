@@ -1,6 +1,6 @@
 {
-  "fwd_model_dir": "ss_log_data/tether-unconstrained/0",
-  "classifier_model_dir": "classifiers/tether_no_ensemble",
+  "fwd_model_dir": "ss_log_data/tf2_tether/0",
+  "classifier_model_dir": "classifiers/tf2_tether_no_ensemble",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
@@ -11,7 +11,7 @@
   "full_env_h": 5.0,
   "goal_w_m": 2.75,
   "goal_h_m": 2.75,
-  "timeout": 300,
+  "timeout": 240,
   "movable_obstacles": [
   ],
   "goal_threshold": 0.05,

@@ -1,11 +1,15 @@
 {
   "fwd_model_dir": [
-    "ss_log_data/tether-unconstrained/0",
-    "ss_log_data/tether-unconstrained/1",
-    "ss_log_data/tether-unconstrained/2",
-    "ss_log_data/tether-unconstrained/3"
+    "ss_log_data/tf2_tether/0",
+    "ss_log_data/tf2_tether/1",
+    "ss_log_data/tf2_tether/2",
+    "ss_log_data/tf2_tether/3",
+    "ss_log_data/tf2_tether/4",
+    "ss_log_data/tf2_tether/5",
+    "ss_log_data/tf2_tether/6",
+    "ss_log_data/tf2_tether/7"
   ],
-  "classifier_model_dir": "classifiers/tether_new_static_obs_ensemble/April_18_10-58-06_d7e6b3bc00",
+  "classifier_model_dir": "classifiers/tf2_rope_ensemble/April_24_13-07-05_f4a4bbc896/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
@@ -16,7 +20,7 @@
   "full_env_h": 5.0,
   "goal_w_m": 2.75,
   "goal_h_m": 2.75,
-  "timeout": 900,
+  "timeout": 240,
   "movable_obstacles": [
   ],
   "goal_threshold": 0.05,

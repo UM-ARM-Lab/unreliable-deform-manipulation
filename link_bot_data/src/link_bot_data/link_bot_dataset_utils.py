@@ -184,7 +184,7 @@ def null_previous_states(example, max_sequence_length):
 
 
 def null_diverged(true_sequences, pred_sequences, start_t: int, labeling_params: Dict):
-    threshold = labeling_params['post_close_threshold']
+    threshold = labeling_params['threshold']
     state_key = labeling_params['state_key']
     pred_sequence_for_state_key = pred_sequences[state_key]
     sequence_for_state_key = true_sequences[state_key][:, start_t:]

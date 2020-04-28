@@ -14,6 +14,9 @@ from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_planning import model_utils
 from link_bot_pycommon.args import my_formatter
+from moonshine.gpu_config import limit_gpu_mem
+
+limit_gpu_mem(1)
 
 
 def main():
