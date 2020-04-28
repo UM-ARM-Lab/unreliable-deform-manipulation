@@ -22,6 +22,10 @@
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
   "activity_reg": 0.05,
-  "learning_rate": 0.0001,
-  "epochs": 500
+  "learning_rate_schedule": {
+    "initial_rate": 0.0005,
+    "decay_steps": 500,
+    "decay_rate": 0.99
+  },
+  "epochs": 1000
 }
