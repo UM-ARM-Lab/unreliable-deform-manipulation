@@ -87,7 +87,16 @@ def train(keras_model: MyKerasModel,
     :param ensemble: number of times to copy the model
     :return:
     """
-    optimizer = tf.optimizers.Adam(model_hparams['learning_rate'])
+    if 'learning_rate_schedule' in model_hparams:
+        print("Using learning rate schedule")
+        learning_rate_schedule_params = model_hparams['learning_rate_schedule']
+        initial_learning_rate = learning_rate_schedule_params['initial_rate']
+        learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=initial_learning_rate,
+                                                                       decay_steps=learning_rate_schedule_params['decay_steps'],
+                                                                       decay_rate=learning_rate_schedule_params['decay_rate'])
+    else:
+        learning_rate = model_hparams['learning_rate']
+    optimizer = tf.optimizers.Adam(learning_rate=learning_rate)
 
     global_step = tf.Variable(1)
 
