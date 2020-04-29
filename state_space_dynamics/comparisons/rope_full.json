@@ -1,8 +1,17 @@
 {
+  "unconstrained dynamics": {
+    "model_dir": [
+      "log_data/tf2_rope/0",
+      "log_data/tf2_rope/1",
+      "log_data/tf2_rope/2",
+      "log_data/tf2_rope/3",
+      "log_data/tf2_rope/4",
+      "log_data/tf2_rope/5",
+      "log_data/tf2_rope/6",
+      "log_data/tf2_rope/7"
+    ]
+  },
   "full dynamics": {
     "model_dir": "log_data/tf2_rope_obs/April_27_14-44-27_e56afcd75c"
-  },
-  "unconstrained dynamics": {
-    "model_dir": "log_data/tf2_rope"
   }
 }

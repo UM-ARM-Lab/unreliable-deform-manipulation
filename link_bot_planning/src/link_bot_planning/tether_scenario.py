@@ -202,44 +202,6 @@ class TetherScenario(ExperimentScenario):
             scatt.set_offsets(link_bot_points[0])
 
     @staticmethod
-    def animate_predictions(example_idx, dataset_element, predictions):
-        predictions = remove_batch(predictions)
-        predictions = numpify(dict_of_sequences_to_sequence_of_dicts(predictions))
-        inputs, outputs = dataset_element
-        actions = inputs['action']
-        assert actions.shape[0] == 1
-        actions = remove_batch(actions)
-        outputs = remove_batch(outputs)
-        inputs = numpify(remove_batch(inputs))
-        actual = numpify(dict_of_sequences_to_sequence_of_dicts(outputs))
-        fig = plt.figure()
-        ax = plt.gca()
-        prediction_artist = TetherScenario.plot_state(ax, predictions[0], 'g', zorder=3, s=10, label='prediction')
-        actual_artist = TetherScenario.plot_state(ax, actual[0], '#00ff00', zorder=3, s=30, label='actual')
-        action_artist = TetherScenario.plot_action(ax, actual[0], actions[0], color='c', s=30, zorder=4)
-        environment = {
-            'full_env/env': inputs['full_env/env'],
-            'full_env/extent': inputs['full_env/extent'],
-        }
-        TetherScenario.plot_environment(ax, environment)
-        ax.set_title("{}, t=0".format(example_idx))
-        ax.set_xlabel("x (m)")
-        ax.set_ylabel("y (m)")
-        plt.legend()
-
-        n_states = len(actual)
-
-        def update(t):
-            TetherScenario.update_artist(prediction_artist, predictions[t])
-            TetherScenario.update_artist(actual_artist, actual[t])
-            ax.set_title("{}, t={}".format(example_idx, t))
-            if t < n_states - 1:
-                TetherScenario.update_action_artist(action_artist, actual[t], actions[t])
-
-        anim = FuncAnimation(fig, update, interval=500, repeat=True, frames=n_states)
-        return anim
-
-    @staticmethod
     def publish_state_marker(marker_provider: MarkerProvider, state):
         point_robot = np.reshape(state['link_bot'], [2])
         marker_provider.publish_marker(id=0, rgb=[1, 0, 0], scale=0.05, x=point_robot[0], y=point_robot[1])

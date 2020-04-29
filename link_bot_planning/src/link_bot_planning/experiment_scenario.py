@@ -1,7 +1,11 @@
 from typing import Dict
 
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
 from ignition.markers import MarkerProvider
 from link_bot_pycommon.base_services import Services
+from moonshine.numpy_utils import remove_batch, numpify, dict_of_sequences_to_sequence_of_dicts
 
 
 class ExperimentScenario:
@@ -113,6 +117,40 @@ class ExperimentScenario:
     def get_environment_from_start_states_dict(start_states: Dict):
         raise NotImplementedError()
 
-    @staticmethod
-    def animate_predictions(dataset_element, predictions):
-        raise NotImplementedError()
+    @classmethod
+    def animate_predictions(cls, example_idx, dataset_element, predictions):
+        predictions = remove_batch(predictions)
+        predictions = numpify(dict_of_sequences_to_sequence_of_dicts(predictions))
+        inputs, outputs = dataset_element
+        actions = inputs['action']
+        assert actions.shape[0] == 1
+        actions = remove_batch(actions)
+        outputs = remove_batch(outputs)
+        inputs = numpify(remove_batch(inputs))
+        actual = numpify(dict_of_sequences_to_sequence_of_dicts(outputs))
+        fig = plt.figure()
+        ax = plt.gca()
+        prediction_artist = cls.plot_state(ax, predictions[0], 'g', zorder=3, s=10, label='prediction')
+        actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=30, label='actual')
+        action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=30, zorder=4)
+        environment = {
+            'full_env/env': inputs['full_env/env'],
+            'full_env/extent': inputs['full_env/extent'],
+        }
+        cls.plot_environment(ax, environment)
+        ax.set_title("{}, t=0".format(example_idx))
+        ax.set_xlabel("x (m)")
+        ax.set_ylabel("y (m)")
+        plt.legend()
+
+        n_states = len(actual)
+
+        def update(t):
+            cls.update_artist(prediction_artist, predictions[t])
+            cls.update_artist(actual_artist, actual[t])
+            ax.set_title("{}, t={}".format(example_idx, t))
+            if t < n_states - 1:
+                cls.update_action_artist(action_artist, actual[t], actions[t])
+
+        anim = FuncAnimation(fig, update, interval=500, repeat=True, frames=n_states)
+        return anim
