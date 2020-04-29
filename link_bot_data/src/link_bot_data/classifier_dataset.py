@@ -14,34 +14,17 @@ from link_bot_planning.params import FullEnvParams
 
 def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, dataset: DynamicsDataset, labeling_params: Dict):
     batch_size = 128
-    for in_example in tf_dataset.batch(batch_size):
-        inputs, outputs = in_example
+    for dataset_element in tf_dataset.batch(batch_size):
+        inputs, outputs = dataset_element
         full_env = inputs['full_env/env']
         full_env_origin = inputs['full_env/origin']
         full_env_extent = inputs['full_env/extent']
         full_env_res = inputs['full_env/res']
         traj_idx = inputs['traj_idx']
-        actions = inputs['action']
 
         for start_t in range(0, dataset.max_sequence_length - 1, labeling_params['start_step']):
-            start_states_t = {}
-            for name in dataset.states_description.keys():
-                start_state_t = tf.expand_dims(inputs[name][:, start_t], axis=1)
-                start_states_t[name] = start_state_t
-
-            predictions_from_start_t = fwd_model.propagate_differentiable_batched(start_states_t, actions[:, start_t:])
-            if labeling_params['discard_diverged']:
-                # null out all the predictions past divergence
-                predictions_from_start_t, last_valid_ts = null_diverged(outputs,
-                                                                        predictions_from_start_t,
-                                                                        start_t,
-                                                                        labeling_params)
-            else:
-                # an array of size batch equal to the time-sequence length of outputs
-                last_valid_ts = np.ones(batch_size) * (dataset.max_sequence_length - 1)
-
-            # when start_t > 0, this output will need to be padded so that all outputs are the same size
-            all_predictions = null_previous_states(predictions_from_start_t, dataset.max_sequence_length)
+            all_predictions, last_valid_ts = predict_and_nullify(dataset, fwd_model, dataset_element, labeling_params, batch_size,
+                                                                 start_t)
 
             for batch_idx in range(full_env.shape[0]):
                 out_example = {
@@ -80,15 +63,45 @@ def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, datas
                     out_example['action'] = inputs['action'][batch_idx, end_t - 1]
 
                     # compute label
-                    state_key = labeling_params['state_key']
-                    state_key_next = add_next(state_key)
-                    planned_state_key_next = add_next_and_planned(state_key)
-                    post_transition_distance = tf.norm(out_example[state_key_next] - out_example[planned_state_key_next])
-                    threshold = labeling_params['threshold']
-                    post_close = post_transition_distance < threshold
-                    out_example['label'] = tf.expand_dims(tf.cast(post_close, dtype=tf.float32), axis=0)
+                    label = compute_label(labeling_params, out_example)
+                    out_example['label'] = label
 
                     yield out_example
+
+
+def compute_label(labeling_params, out_example):
+    state_key = labeling_params['state_key']
+    state_key_next = add_next(state_key)
+    planned_state_key_next = add_next_and_planned(state_key)
+    labeling_state = out_example[state_key_next]
+    labeling_planned_state = out_example[planned_state_key_next]
+    post_transition_distance = tf.norm(labeling_state - labeling_planned_state)
+    threshold = labeling_params['threshold']
+    post_close = post_transition_distance < threshold
+    label = tf.expand_dims(tf.cast(post_close, dtype=tf.float32), axis=0)
+    return label
+
+
+def predict_and_nullify(dataset, fwd_model, dataset_element, labeling_params, batch_size, start_t):
+    inputs, outputs = dataset_element
+    actions = inputs['action']
+    start_states_t = {}
+    for name in dataset.states_description.keys():
+        start_state_t = tf.expand_dims(inputs[name][:, start_t], axis=1)
+        start_states_t[name] = start_state_t
+    predictions_from_start_t = fwd_model.propagate_differentiable_batched(start_states_t, actions[:, start_t:])
+    if labeling_params['discard_diverged']:
+        # null out all the predictions past divergence
+        predictions_from_start_t, last_valid_ts = null_diverged(outputs,
+                                                                predictions_from_start_t,
+                                                                start_t,
+                                                                labeling_params)
+    else:
+        # an array of size batch equal to the time-sequence length of outputs
+        last_valid_ts = np.ones(batch_size) * (dataset.max_sequence_length - 1)
+    # when start_t > 0, this output will need to be padded so that all outputs are the same size
+    all_predictions = null_previous_states(predictions_from_start_t, dataset.max_sequence_length)
+    return all_predictions, last_valid_ts
 
 
 class ClassifierDataset(BaseDataset):

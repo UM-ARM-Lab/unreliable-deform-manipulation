@@ -1,7 +1,7 @@
 {
   "balance": true,
   "threshold": 0.15,
-  "discard_diverged": false,
+  "discard_diverged": true,
   "state_key": "link_bot",
   "label_key": "label",
   "examples_per_sub_traj": 5,

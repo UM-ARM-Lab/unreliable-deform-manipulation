@@ -14,6 +14,7 @@ from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_planning import model_utils
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.filesystem_utils import mkdir_and_ask
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)
@@ -38,7 +39,11 @@ def main():
 
     dataset = DynamicsDataset([args.dataset_dir])
 
-    args.out_dir.mkdir(parents=False, exist_ok=False)
+    success = mkdir_and_ask(args.out_dir, parents=True)
+    if not success:
+        print(Fore.RED + "Aborting" + Fore.RESET)
+        return
+
     new_hparams_filename = args.out_dir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams
     if len(args.fwd_model_dir) > 1:

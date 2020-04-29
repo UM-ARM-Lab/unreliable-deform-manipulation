@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import os
 import pathlib
 import time
 from typing import Optional, Dict
@@ -10,6 +9,7 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon.filesystem_utils import mkdir_and_ask
 
 NULL_PAD_VALUE = -10000
 
@@ -136,7 +136,7 @@ def data_directory(outdir: pathlib.Path, *names):
             print(Fore.RED + "argument outdir is an existing file, aborting." + Fore.RESET)
             return
         elif not full_output_directory.is_dir():
-            os.mkdir(full_output_directory)
+            mkdir_and_ask(full_output_directory, parents=True)
     return full_output_directory
 
 
