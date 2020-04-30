@@ -76,6 +76,7 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     get_occupancy_service_ = ros_node_->advertiseService(so);
   }
 
+  printf("Finished loading collision map plugin!\n");
   ros_queue_thread_ = std::thread(std::bind(&CollisionMapPlugin::QueueThread, this));
 }
 

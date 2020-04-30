@@ -78,12 +78,12 @@ class GazeboServices(Services):
         enable_link_bot.data = 'position'
         self.link_bot_mode.publish(enable_link_bot)
 
-        self.reset_robot(reset_robot, verbose)
+        self.reset_robot(verbose, reset_robot)
 
         if verbose >= 1:
             print(Fore.YELLOW + "World is Reset" + Fore.RESET)
 
-    def reset_robot(self, reset_robot, verbose):
+    def reset_robot(self, verbose: int, reset_robot: Optional = None):
         if reset_robot is not None:
             reset = LinkBotResetRequest()
             reset.point.x = reset_robot[0]

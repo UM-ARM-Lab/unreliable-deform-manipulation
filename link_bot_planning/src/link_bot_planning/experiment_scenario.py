@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -118,7 +118,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @classmethod
-    def animate_predictions(cls, example_idx, dataset_element, predictions, labels=None):
+    def animate_predictions_from_dataset(cls, example_idx, dataset_element, predictions, labels=None):
         predictions = remove_batch(predictions)
         predictions = numpify(dict_of_sequences_to_sequence_of_dicts(predictions))
         inputs, outputs = dataset_element
@@ -128,21 +128,39 @@ class ExperimentScenario:
         outputs = remove_batch(outputs)
         inputs = numpify(remove_batch(inputs))
         actual = numpify(dict_of_sequences_to_sequence_of_dicts(outputs))
-        fig = plt.figure()
-        ax = plt.gca()
-        prediction_artist = cls.plot_state(ax, predictions[0], 'g', zorder=3, s=10, label='prediction')
-        actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=30, label='actual')
-        action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=30, zorder=4)
         extent = inputs['full_env/extent']
         environment = {
             'full_env/env': inputs['full_env/env'],
             'full_env/extent': extent,
         }
+        return cls.animate_predictions(environment=environment,
+                                       actions=actions,
+                                       actual=actual,
+                                       predictions=predictions,
+                                       example_idx=example_idx,
+                                       labels=labels)
+
+    @classmethod
+    def animate_predictions(cls,
+                            environment,
+                            actions,
+                            actual,
+                            predictions: Optional,
+                            example_idx: Optional = None,
+                            labels: Optional = None):
+        fig = plt.figure()
+        ax = plt.gca()
+        prediction_artist = None
+        if predictions is not None:
+            prediction_artist = cls.plot_state(ax, predictions[0], 'g', zorder=3, s=10, label='prediction')
+        actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=30, label='actual')
+        action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=30, zorder=4)
         cls.plot_environment(ax, environment)
         if labels is None:
             ax.set_title("{}, t=0".format(example_idx))
         else:
             ax.set_title("{}, t=0, label={}".format(example_idx, labels[0]))
+            extent = environment['full_env/extent']
             label_line = ax.plot([extent[0], extent[1], extent[1], extent[0], extent[0]],
                                  [extent[2], extent[2], extent[3], extent[3], extent[2]],
                                  color='k',
@@ -155,7 +173,8 @@ class ExperimentScenario:
         n_states = len(actual)
 
         def update(t):
-            cls.update_artist(prediction_artist, predictions[t])
+            if predictions is not None:
+                cls.update_artist(prediction_artist, predictions[t])
             cls.update_artist(actual_artist, actual[t])
             if labels is None:
                 ax.set_title("{}, t=0".format(example_idx))

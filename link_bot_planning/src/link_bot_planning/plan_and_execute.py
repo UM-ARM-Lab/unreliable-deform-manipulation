@@ -9,6 +9,7 @@ from colorama import Fore
 from ompl import base as ob
 
 from link_bot_planning import my_planner
+from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.params import SimParams
@@ -16,6 +17,21 @@ from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 from link_bot_pycommon.ros_pycommon import get_states_dict
 from peter_msgs.msg import Action
+
+
+def get_environment_common(w_m: float, h_m: float, res: float, service_provider: Services, scenario: ExperimentScenario):
+    full_env_data = get_occupancy_data(env_w_m=w_m,
+                                       env_h_m=h_m,
+                                       res=res,
+                                       service_provider=service_provider,
+                                       robot_name=scenario.robot_name())
+    environment = {
+        'full_env/env': full_env_data.data,
+        'full_env/origin': full_env_data.origin,
+        'full_env/res': full_env_data.resolution,
+        'full_env/extent': full_env_data.extent,
+    }
+    return environment
 
 
 def execute_plan(service_provider, dt, actions):
@@ -80,7 +96,12 @@ class PlanAndExecute:
                 # get the environment, which here means anything which is assumed constant during planning
                 # This includes the occupancy map but can also include things like the initial state of the tether
 
-                environment = self.get_environment_common()
+                environment = get_environment_common(w_m=self.planner.full_env_params.w,
+                                                     h_m=self.planner.full_env_params.h,
+                                                     res=self.planner.full_env_params.res,
+                                                     service_provider=self.service_provider,
+                                                     scenario=self.planner.scenario)
+
                 environment.update(self.planner.scenario.get_environment_from_start_states_dict(start_states))
 
                 # generate a random target
@@ -146,20 +167,6 @@ class PlanAndExecute:
                 break
 
         self.on_complete(initial_poses_in_collision)
-
-    def get_environment_common(self):
-        full_env_data = get_occupancy_data(env_w_m=self.planner.full_env_params.w,
-                                           env_h_m=self.planner.full_env_params.h,
-                                           res=self.planner.full_env_params.res,
-                                           service_provider=self.service_provider,
-                                           robot_name=self.planner.scenario.robot_name())
-        environment = {
-            'full_env/env': full_env_data.data,
-            'full_env/origin': full_env_data.origin,
-            'full_env/res': full_env_data.resolution,
-            'full_env/extent': full_env_data.extent,
-        }
-        return environment
 
     def get_goal(self, w_meters, h_meters, environment):
         return sample_collision_free_goal(goal_w_m=w_meters, goal_h_m=h_meters, environment=environment, rng=self.goal_rng)

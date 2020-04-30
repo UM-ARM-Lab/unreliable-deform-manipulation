@@ -54,7 +54,7 @@ def run(args, base_folder: pathlib.Path, models: Dict[str, BaseDynamicsFunction]
             # Plotting
             if not args.no_plot or args.save:
                 if example_idx < args.n_examples:
-                    anim = model.scenario.animate_predictions(example_idx, dataset_element, predictions)
+                    anim = model.scenario.animate_predictions_from_dataset(example_idx, dataset_element, predictions)
                     if not args.no_plot:
                         plt.show()
                     if args.save:

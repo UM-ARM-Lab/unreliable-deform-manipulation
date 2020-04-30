@@ -30,6 +30,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto execute_abs_action_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExecuteAction>(
       "execute_absolute_action", execute_abs_action_bind, ros::VoidPtr(), &queue_);
   auto action_bind = boost::bind(&MultiLinkBotModelPlugin::ExecuteAction, this, _1, _2);
+  auto action_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExecuteAction>("execute_action", action_bind,
                                                                                    ros::VoidPtr(), &queue_);
   auto action_mode_bind = boost::bind(&MultiLinkBotModelPlugin::OnActionMode, this, _1);
   auto action_mode_so = ros::SubscribeOptions::create<std_msgs::String>("link_bot_action_mode", 1, action_mode_bind,
