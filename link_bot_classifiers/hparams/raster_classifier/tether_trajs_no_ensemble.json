@@ -20,5 +20,6 @@
   "activity_reg": 0.05,
   "dropout_rate": 0.0,
   "batch_norm": false,
+  "learning_rate": 0.001,
   "stdev": false
 }
