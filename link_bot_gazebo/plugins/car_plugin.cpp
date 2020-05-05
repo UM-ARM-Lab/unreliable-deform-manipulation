@@ -1,3 +1,6 @@
+#include <atomic>
+#include <memory>
+
 #include "car_plugin.h"
 
 #include <peter_msgs/GetObject.h>

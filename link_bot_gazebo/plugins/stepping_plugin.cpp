@@ -1,9 +1,11 @@
+#include <atomic>
+#include <memory>
+
 #include <peter_msgs/WorldControl.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <ros/subscribe_options.h>
 
-#include <atomic>
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
 #include <ignition/math/Pose3.hh>

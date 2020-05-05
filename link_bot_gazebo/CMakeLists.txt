@@ -5,6 +5,9 @@ find_package(catkin REQUIRED COMPONENTS roscpp sdf_tools peter_msgs)
 find_package(cnpy REQUIRED)
 find_package(gazebo REQUIRED)
 
+
+set(CMAKE_CXX_STANDARD 17)
+
 catkin_python_setup()
 
 catkin_package()

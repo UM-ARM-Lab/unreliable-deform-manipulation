@@ -1,3 +1,8 @@
+#include <chrono>
+#include <functional>
+#include <atomic>
+#include <memory>
+
 #include <cnpy/cnpy.h>
 #include <std_msgs/ColorRGBA.h>
 #include <std_msgs/MultiArrayDimension.h>
@@ -5,9 +10,7 @@
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/serialization.hpp>
 #include <arc_utilities/zlib_helpers.hpp>
-#include <chrono>
 #include <experimental/filesystem>
-#include <functional>
 
 #include "collision_map_plugin.h"
 
