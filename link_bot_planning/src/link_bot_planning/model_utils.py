@@ -6,9 +6,9 @@ import tensorflow as tf
 
 from link_bot_planning.get_scenario import get_scenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
-from state_space_dynamics.obstacle_nn import ObstacleNNWrapper
+from state_space_dynamics.full_dynamics_nn import ObstacleNNWrapper
 from state_space_dynamics.rigid_translation_model import RigidTranslationModel
-from state_space_dynamics.simple_nn import SimpleNNWrapper
+from state_space_dynamics.unconstrained_dynamics_nn import SimpleNNWrapper
 
 
 def load_generic_model(model_dir) -> [BaseDynamicsFunction, Tuple[str]]:

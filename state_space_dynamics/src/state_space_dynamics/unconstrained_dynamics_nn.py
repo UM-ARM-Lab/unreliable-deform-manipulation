@@ -11,7 +11,7 @@ from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
-class SimpleNN(MyKerasModel):
+class UnconstrainedDynamicsNN(MyKerasModel):
 
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams=hparams, batch_size=batch_size, scenario=scenario)
@@ -22,7 +22,7 @@ class SimpleNN(MyKerasModel):
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
         self.state_key = self.hparams['state_key']
-        # TODO: support multiple state keys like in obstacle_nn
+        # TODO: support multiple state keys
         self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
 
@@ -60,7 +60,7 @@ class SimpleNNWrapper(BaseDynamicsFunction):
 
     def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
         super().__init__(model_dir, batch_size, scenario)
-        self.net = SimpleNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
+        self.net = UnconstrainedDynamicsNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()

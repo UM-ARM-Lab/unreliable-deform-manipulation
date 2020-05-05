@@ -16,7 +16,7 @@ from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
-class ObstacleNN(MyKerasModel):
+class FullDynamicsNN(MyKerasModel):
 
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams, batch_size, scenario)
@@ -168,7 +168,7 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
 
     def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
         super().__init__(model_dir, batch_size, scenario)
-        self.net = ObstacleNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
+        self.net = FullDynamicsNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         self.states_keys = self.net.states_keys
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
@@ -220,4 +220,4 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
         return predictions
 
 
-model = ObstacleNN
+model = FullDynamicsNN
