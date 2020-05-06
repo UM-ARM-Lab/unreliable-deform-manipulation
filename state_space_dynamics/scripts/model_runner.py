@@ -13,7 +13,7 @@ from moonshine import experiments_util
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
-limit_gpu_mem(2)
+limit_gpu_mem(6)
 
 
 def train_func(args, seed: int):
@@ -26,7 +26,7 @@ def train_func(args, seed: int):
         log_path = None
 
     # Model parameters
-    model_hparams = json.load(open(args.model_hparams, 'r'))
+    model_hparams = json.load(args.model_hparams.open('r'))
 
     # Datasets
     train_dataset = DynamicsDataset(args.dataset_dirs)

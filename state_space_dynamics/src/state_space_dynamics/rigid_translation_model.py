@@ -4,8 +4,9 @@ from typing import Dict, List
 import numpy as np
 import tensorflow as tf
 
-from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
 from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points, print_dict
+from moonshine.numpy_utils import dict_of_sequences_to_sequence_of_dicts, sequence_of_dicts_to_dict_of_sequences
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
@@ -17,6 +18,28 @@ class RigidTranslationModel(BaseDynamicsFunction):
         b = self.hparams['B']
         self.B = tf.constant(np.array(b), dtype=tf.float32)
         self.states_keys = self.hparams['states_keys']
+
+    def propagate_from_dataset_element(self, dataset_element):
+        inputs, _ = dataset_element
+        batch_states = {key: inputs[key] for key in self.states_keys}
+        batch_states = dict_of_sequences_to_sequence_of_dicts(batch_states)
+        predictions = {k: [] for k in self.states_keys}
+        for full_env, full_env_origin, res, states, actions in zip(inputs['full_env/env'],
+                                                                   inputs['full_env/origin'],
+                                                                   inputs['full_env/res'],
+                                                                   batch_states,
+                                                                   inputs['action']):
+            start_states = {k: states[k][0] for k in states.keys()}
+            out_states = self.propagate_differentiable(full_env=full_env,
+                                                       full_env_origin=full_env_origin,
+                                                       res=res,
+                                                       start_states=start_states,
+                                                       actions=actions)
+            out_states = sequence_of_dicts_to_dict_of_sequences(out_states)
+            for k in self.states_keys:
+                predictions[k].append(out_states[k])
+        predictions = {k: tf.stack(predictions[k], axis=0) for k in predictions.keys()}
+        return predictions
 
     def propagate_differentiable(self,
                                  full_env: np.ndarray,

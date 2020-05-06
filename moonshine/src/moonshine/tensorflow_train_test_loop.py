@@ -139,6 +139,17 @@ def train(keras_model: MyKerasModel,
 
         writer = tf.summary.create_file_writer(logdir=str(full_log_path))
 
+    @tf.function
+    def forwrad_pass_and_apply_gradients(train_element):
+        with tf.GradientTape() as tape:
+            train_predictions = keras_model(train_element, training=True)
+            train_batch_loss = loss_function(train_element, train_predictions)
+
+        variables = keras_model.trainable_variables
+        gradients = tape.gradient(train_batch_loss, variables)
+        optimizer.apply_gradients(zip(gradients, variables))
+        return train_predictions, train_batch_loss
+
     def train_loop():
         step = None
         best_key_metric_value = None
@@ -155,13 +166,7 @@ def train(keras_model: MyKerasModel,
                 if postprocess is not None:
                     train_element = postprocess(train_element)
 
-                with tf.GradientTape() as tape:
-                    train_predictions = keras_model(train_element, training=True)
-                    train_batch_loss = loss_function(train_element, train_predictions)
-
-                variables = keras_model.trainable_variables
-                gradients = tape.gradient(train_batch_loss, variables)
-                optimizer.apply_gradients(zip(gradients, variables))
+                train_predictions, train_batch_loss = forwrad_pass_and_apply_gradients(train_element)
                 batch_losses.append(train_batch_loss.numpy())
 
                 if logging:

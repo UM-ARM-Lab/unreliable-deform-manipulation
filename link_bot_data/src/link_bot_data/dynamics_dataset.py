@@ -10,6 +10,10 @@ from link_bot_planning.params import FullEnvParams
 
 class DynamicsDataset(BaseDataset):
     def __init__(self, dataset_dirs: List[pathlib.Path], step_size: int = 1):
+        """
+        :param dataset_dirs: dataset directories
+        :param step_size: the number of time steps to skip when slicing the full trajectories into trajectories for training
+        """
         super(DynamicsDataset, self).__init__(dataset_dirs)
 
         self.step_size = step_size

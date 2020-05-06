@@ -10,7 +10,7 @@ def numpify(x):
     elif isinstance(x, tf.Tensor):
         return x.numpy()
     elif isinstance(x, dict):
-        return dict([(k, numpify(v)) for k, v in x.items()])
+        return {k: numpify(v) for k, v in x.items()}
     elif isinstance(x, int):
         return x
     elif isinstance(x, float):
@@ -29,7 +29,7 @@ def listify(x):
             x_np = x.numpy()
             return _listify(x_np)
         elif isinstance(x, dict):
-            return dict([(k, _listify(v)) for k, v in x.items()])
+            return {k: _listify(v) for k, v in x.items()}
         elif isinstance(x, int):
             return x
         elif isinstance(x, float):
@@ -45,7 +45,7 @@ def listify(x):
         x_np = x.numpy()
         return _listify(x_np)
     elif isinstance(x, dict):
-        return dict([(k, _listify(v)) for k, v in x.items()])
+        return {k: _listify(v) for k, v in x.items()}
     elif isinstance(x, float):
         return [x]
     elif isinstance(x, int):
@@ -121,7 +121,7 @@ def add_batch(*xs):
 
 def remove_batch_single(x):
     if isinstance(x, dict):
-        return dict([(k, v[0]) for k, v in x.items()])
+        return {k: v[0] for k, v in x.items()}
     else:
         return x[0]
 
@@ -134,6 +134,6 @@ def add_batch_single(x):
     elif isinstance(x, tf.Tensor):
         return tf.expand_dims(x, axis=0)
     elif isinstance(x, dict):
-        return dict([(k, add_batch_single(v)) for k, v in x.items()])
+        return {k: add_batch_single(v) for k, v in x.items()}
     else:
         return np.array([x])

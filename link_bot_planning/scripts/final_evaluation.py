@@ -186,7 +186,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         folder.mkdir(parents=True)
         info_file = (folder / 'info.json').open('w')
         info = {
-            'start_states': dict([(k, v.tolist()) for k, v in start_states.items()]),
+            'start_states': {k: v.tolist() for k, v in start_states.items()},
             'tail_goal_point': tail_goal_point,
             'sdf': {
                 'res': environment['full_env/res'],

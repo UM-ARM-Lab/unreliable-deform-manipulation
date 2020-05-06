@@ -4,11 +4,10 @@
   "use_full_env": false,
   "tether": true,
   "states_keys": [
-    "link_bot",
-    "tether"
+    "link_bot"
   ],
   "sequence_length": 10,
-  "fc_layer_sizes": [256],
+  "fc_layer_sizes": [256, 256],
   "rope_image_k": 10000,
   "conv_filters": [
     [8, [5, 5]],

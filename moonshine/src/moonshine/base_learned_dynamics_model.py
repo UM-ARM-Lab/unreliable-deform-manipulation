@@ -47,7 +47,7 @@ def ensemble_dynamics_loss_function(dataset_element, predictions):
     input_data, output_data = dataset_element
     # repeat the output data to match the number of ensembles
     n_ensembles = int(next(iter(predictions.values())).shape[1])
-    output_data_repeated = dict([(k, tf.stack([v] * n_ensembles, axis=1)) for k, v in output_data.items()])
+    output_data_repeated = {k: tf.stack([v] * n_ensembles, axis=1) for k, v in output_data.items()}
 
     loss = tf.keras.losses.MeanSquaredError()
     return loss_on_dicts(loss, dict_true=output_data_repeated, dict_pred=predictions)

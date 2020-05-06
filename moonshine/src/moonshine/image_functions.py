@@ -229,6 +229,7 @@ def add_traj_image_to_example(example,
     return example
 
 
+@tf.function
 def raster_differentiable(state, res, origin, h, w, k, batch_size: int):
     """
     Even though this data is batched, we use singular and reserve plural for sequences in time

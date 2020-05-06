@@ -102,7 +102,6 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
         total_prediction['stdev'] = total_stdev
         return total_prediction
 
-
     def propagate_differentiable(self,
                                  full_env,
                                  full_env_origin,
@@ -157,7 +156,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
 
         # restructure data to be one List of dicts, where each dict has all the states/keys of the original dicts, but averaged
         # and with an additional state/key for stdev
-        ensemble_predictions = dict([(state_key, []) for state_key in self.states_keys])
+        ensemble_predictions = {state_key: [] for state_key in self.states_keys}
         ensemble_predictions['stdev'] = []
 
         T = int(actions.shape[1]) + 1

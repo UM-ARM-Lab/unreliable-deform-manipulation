@@ -62,7 +62,7 @@ def run(args, base_folder: pathlib.Path, models: Dict[str, BaseDynamicsFunction]
                         filename = base_folder / '{}_anim_{}.gif'.format(model_name, example_idx)
                         from time import perf_counter
                         t0 = perf_counter()
-                        anim.save(filename, writer='imagemagick', dpi=300)
+                        anim.save(filename, writer='imagemagick', dpi=100)
                         write_dt = perf_counter() - t0
                         print('Saved animation {}/{} ({:.4f}s)'.format(example_idx + 1, args.n_examples, write_dt))
 
