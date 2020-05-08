@@ -96,15 +96,15 @@ class FullDynamicsNN(MyKerasModel):
             if self.hparams['use_full_env']:
                 env = full_env
                 env_origin = full_env_origin
-                env_h_rows = tf.convert_to_tensor(self.full_env_params.h_rows, tf.float32)
-                env_w_cols = tf.convert_to_tensor(self.full_env_params.w_cols, tf.float32)
+                env_h_rows = self.full_env_params.h_rows
+                env_w_cols = self.full_env_params.w_cols
             else:
                 state = self.state_vector_to_state_dict(s_t)
                 local_env_center = self.scenario.local_environment_center_differentiable(state)
                 # NOTE: we assume same resolution for local and full environment
                 env, env_origin = self.get_local_env(local_env_center, full_env_origin, full_env, res)
-                env_h_rows = tf.convert_to_tensor(self.local_env_h_rows, tf.float32)
-                env_w_cols = tf.convert_to_tensor(self.local_env_w_cols, tf.float32)
+                env_h_rows = self.local_env_h_rows
+                env_w_cols = self.local_env_w_cols
 
             rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols, k=self.rope_image_k,
                                                  batch_size=self.batch_size)
