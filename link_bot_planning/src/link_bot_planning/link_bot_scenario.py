@@ -226,9 +226,14 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def get_environment_from_start_states_dict(start_states: Dict):
-        return {}
+        raise NotImplementedError()
 
     @staticmethod
     def get_environment_from_example(example: Dict):
-        raise {}
-
+        inputs, _ = example
+        return {
+            'full_env/env': inputs['full_env/env'],
+            'full_env/origin': inputs['full_env/origin'],
+            'full_env/res': inputs['full_env/res'],
+            'full_env/extent': inputs['full_env/extent'],
+        }

@@ -70,7 +70,6 @@ class CollectDynamicsParams:
     dt: float
     steps_per_traj: int
     movable_obstacles: List[str]
-    move_objects_every_n: int
     trajs_per_file: int
     no_obstacles: bool
     goal_radius_m: Optional[float] = None

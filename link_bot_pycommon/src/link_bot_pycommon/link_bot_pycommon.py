@@ -249,3 +249,16 @@ def make_dict_float32(d):
     for k, s_k in d.items():
         d[k] = s_k.astype(np.float32)
     return d
+
+
+def compute_max_consecutive_zeros(labels):
+    max_consecutive_zeros = 0
+    consecutive_zeros = 0
+    for label in labels:
+        if label == 0:
+            consecutive_zeros += 1
+        if label == 1:
+            max_consecutive_zeros = max(max_consecutive_zeros, consecutive_zeros)
+            consecutive_zeros = 0
+    max_consecutive_zeros = max(max_consecutive_zeros, consecutive_zeros)
+    return max_consecutive_zeros
