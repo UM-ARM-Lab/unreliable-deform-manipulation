@@ -76,9 +76,9 @@ def generate_traj(scenario: ExperimentScenario,
     return example, global_t_step
 
 
-def rearrange_environment(service_provider, params: CollectDynamicsParams, traj_idx, env_rng):
+def rearrange_environment(service_provider, params: CollectDynamicsParams, env_rng):
     if params.movable_obstacles is not None:
-        if len(params.movable_obstacles) > 0 and traj_idx % params.move_objects_every_n == 0:
+        if len(params.movable_obstacles) > 0:
             service_provider.move_objects(params.max_step_size,
                                           params.movable_obstacles,
                                           params.full_env_w_m,
@@ -101,10 +101,8 @@ def generate_trajs(service_provider,
         if params.reset_robot is not None or params.reset_world:
             service_provider.reset_world(args.verbose, reset_robot=params.reset_robot)
 
-        current_record_traj_idx = traj_idx % params.trajs_per_file
-
         # Might not do anything, depends on args
-        rearrange_environment(service_provider, params, traj_idx, env_rng)
+        rearrange_environment(service_provider, params, env_rng)
 
         # Generate a new trajectory
         example, global_t_step = generate_traj(scenario=scenario,
@@ -113,8 +111,8 @@ def generate_trajs(service_provider,
                                                traj_idx=traj_idx,
                                                global_t_step=global_t_step,
                                                action_rng=action_rng,
-                                               verbose=args.verbose
-                                               )
+                                               verbose=args.verbose)
+        current_record_traj_idx = traj_idx % params.trajs_per_file
         examples[current_record_traj_idx] = example
 
         # Save the data

@@ -8,17 +8,19 @@
   "goal_w_m": 2.1,
   "goal_h_m": 2.1,
   "max_step_size": 0.01,
-  "move_objects_every_n": 6,
   "movable_obstacles": [
     "moving_box1",
     "moving_box2",
     "moving_box3",
     "moving_box6",
-    "moving_box7"
+    "moving_box7",
+    "moving_box8",
+    "moving_box9",
+    "moving_box11"
   ],
   "no_obstacles": false,
-  "steps_per_traj": 10,
-  "trajs_per_file": 128
+  "steps_per_traj": 50,
+  "trajs_per_file": 1
 }
 
 

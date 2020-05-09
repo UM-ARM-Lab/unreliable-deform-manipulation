@@ -157,7 +157,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
     }
 
     if (!sdf->HasElement("A")) {
-      printf("identity A matrix");
+      gzlog << "Identity A Matrix\n";
     }
     else {
       auto const a_vec = sdf->GetElement("A")->Get<ignition::math::Vector4d>();
@@ -169,7 +169,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
     }
 
     if (!sdf->HasElement("B")) {
-      printf("identity B matrix");
+      gzlog << "Identity B Matrix\n";
     }
     else {
       auto const b_vec = sdf->GetElement("B")->Get<ignition::math::Vector4d>();

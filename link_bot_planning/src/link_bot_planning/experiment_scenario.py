@@ -118,7 +118,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @classmethod
-    def animate_predictions_from_dataset(cls, example_idx, dataset_element, predictions, labels=None):
+    def animate_predictions_from_dataset(cls, example_idx, dataset_element, predictions, labels=None, start_idx=0, end_idx=-1):
         predictions = remove_batch(predictions)
         predictions = numpify(dict_of_sequences_to_sequence_of_dicts(predictions))
         inputs, outputs = dataset_element
@@ -133,12 +133,13 @@ class ExperimentScenario:
             'full_env/env': inputs['full_env/env'],
             'full_env/extent': extent,
         }
+
         return cls.animate_predictions(environment=environment,
-                                       actions=actions,
-                                       actual=actual,
-                                       predictions=predictions,
+                                       actions=actions[start_idx:end_idx],
+                                       actual=actual[start_idx:end_idx],
+                                       predictions=predictions[start_idx:end_idx],
                                        example_idx=example_idx,
-                                       labels=labels)
+                                       labels=labels[start_idx:end_idx])
 
     @classmethod
     def animate_predictions(cls,
@@ -177,9 +178,9 @@ class ExperimentScenario:
                 cls.update_artist(prediction_artist, predictions[t])
             cls.update_artist(actual_artist, actual[t])
             if labels is None:
-                ax.set_title("{}, t=0".format(example_idx))
+                ax.set_title("{}, t={}".format(example_idx, t))
             else:
-                ax.set_title("{}, t=0, label={}".format(example_idx, labels[t]))
+                ax.set_title("{}, t={}, label={}".format(example_idx, t, labels[t]))
                 label_color = 'r' if labels[t] == 0 else 'g'
                 label_line.set_color(label_color)
             if t < n_states - 1:

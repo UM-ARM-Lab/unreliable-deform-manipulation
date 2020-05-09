@@ -9,10 +9,10 @@ import tensorflow as tf
 
 from link_bot_data.classifier_dataset import predict_and_nullify
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import data_directory
+from link_bot_data.link_bot_dataset_utils import data_directory, is_funneling
 from link_bot_planning import model_utils
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.link_bot_pycommon import compute_max_consecutive_zeros
+from link_bot_pycommon.link_bot_pycommon import longest_funneling_subsequence, trim_funneling
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)
@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--mode', choices=['train', 'test', 'val', 'all'], default='train')
     parser.add_argument('--take', type=int)
     parser.add_argument('--sequence-length', type=int, default=10)
+    parser.add_argument('--max-diverged', type=int, default=4)
     parser.add_argument('--save', action='store_true')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--no-plot', action='store_true')
@@ -56,7 +57,6 @@ def main():
 
         predictions, _ = predict_and_nullify(dataset, fwd_models, dataset_element, labeling_params, 1, 0)
 
-
         # check if this example shows funneling (i.e a label of 1 after a label of 0)
         threshold = labeling_params['threshold']
         state_key = labeling_params['state_key']
@@ -64,19 +64,24 @@ def main():
         sequence_for_state_key = outputs[state_key]
         model_error = tf.linalg.norm(sequence_for_state_key - pred_sequence_for_state_key, axis=2)
         labels = tf.cast(model_error < threshold, dtype=tf.int64)
-        num_ones = tf.reduce_sum(labels)
-        index_of_last_1 = tf.reduce_max(tf.where(labels))
-        funneling = (index_of_last_1 >= num_ones)
+        funneling = is_funneling(labels)
+        labels_list = labels.numpy().squeeze()
+        start_idx, end_idx = longest_funneling_subsequence(labels_list)
+        max_consecutive_zeros = end_idx - start_idx
 
-        if funneling:
+        if funneling and max_consecutive_zeros <= args.max_diverged:
             n_funneling += 1
-            labels_list = labels.numpy().squeeze()
+
             # accumulated statistics
-            max_consecutive_zeros = compute_max_consecutive_zeros(labels_list)
             maxs_consecutive_zeros.append(max_consecutive_zeros)
+
+            # trim examples to remove proceeding ones
+            start_idx, end_idx = trim_funneling(labels_list)
 
             # animate the state versus ground truth
             anim = fwd_models.scenario.animate_predictions_from_dataset(example_idx=example_idx,
+                                                                        start_idx=start_idx,
+                                                                        end_idx=end_idx,
                                                                         dataset_element=dataset_element,
                                                                         predictions=predictions,
                                                                         labels=labels_list)
@@ -86,6 +91,8 @@ def main():
                 anim.save(filename, writer='imagemagick', dpi=300, fps=1)
             if not args.no_plot:
                 plt.show()
+            else:
+                plt.close()
 
     print("{}/{} examples are funneling  [mode={}]".format(n_funneling, example_idx, args.mode))
 

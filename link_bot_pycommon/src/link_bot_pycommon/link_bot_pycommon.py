@@ -251,14 +251,52 @@ def make_dict_float32(d):
     return d
 
 
-def compute_max_consecutive_zeros(labels):
+def longest_funneling_subsequence(x):
+    max_start_idx = 0
+    max_end_idx = 0
+    start_idx = 0
     max_consecutive_zeros = 0
     consecutive_zeros = 0
-    for label in labels:
-        if label == 0:
-            consecutive_zeros += 1
-        if label == 1:
-            max_consecutive_zeros = max(max_consecutive_zeros, consecutive_zeros)
+    for i, x_i in enumerate(x):
+        if x_i == 1:
+            if consecutive_zeros > max_consecutive_zeros:
+                max_consecutive_zeros = consecutive_zeros
+                max_start_idx = start_idx
+                max_end_idx = i
             consecutive_zeros = 0
-    max_consecutive_zeros = max(max_consecutive_zeros, consecutive_zeros)
-    return max_consecutive_zeros
+        if x_i == 0:
+            if consecutive_zeros == 0:
+                start_idx = i
+            consecutive_zeros += 1
+    return max_start_idx, max_end_idx
+
+
+def trim_funneling(x, max_leading_ones=3, max_trailing_ones=3):
+    start_of_zeros, end_of_zeros = longest_funneling_subsequence(x)
+    assert start_of_zeros != 0
+
+    # expand start index
+    if start_of_zeros == 1:
+        just_before_start_of_zeros = 0
+    else:
+        just_before_start_of_zeros = 0
+        for i in range(start_of_zeros - 1, -1, -1):
+            if start_of_zeros - just_before_start_of_zeros > max_leading_ones:
+                break
+            if x[i] == 0:
+                just_before_start_of_zeros = i + 1
+                break
+
+    # expand end index
+    if end_of_zeros == len(x):
+        end_of_ones_after_zeros = end_of_zeros
+    else:
+        end_of_ones_after_zeros = end_of_zeros
+        for i, x_i in enumerate(x[end_of_zeros:]):
+            if x_i - end_of_zeros > max_leading_ones:
+                break
+            if x_i == 0:
+                break
+            end_of_ones_after_zeros += 1
+
+    return just_before_start_of_zeros, end_of_ones_after_zeros

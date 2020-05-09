@@ -8,11 +8,10 @@ from link_bot_data.base_dataset import BaseDataset
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_next, add_planned, add_next_and_planned, add_all_and_planned, \
     null_future_states, add_all, null_previous_states, balance, null_diverged
-from link_bot_planning.model_utils import EnsembleDynamicsFunction
 from link_bot_planning.params import FullEnvParams
 
 
-def add_model_predictions(fwd_model: EnsembleDynamicsFunction, tf_dataset, dataset: DynamicsDataset, labeling_params: Dict):
+def add_model_predictions(fwd_model, tf_dataset, dataset: DynamicsDataset, labeling_params: Dict):
     batch_size = 128
     for dataset_element in tf_dataset.batch(batch_size):
         inputs, outputs = dataset_element
@@ -98,9 +97,9 @@ def predict_and_nullify(dataset, fwd_model, dataset_element, labeling_params, ba
                                                                 labeling_params)
     else:
         # an array of size batch equal to the time-sequence length of outputs
-        last_valid_ts = np.ones(batch_size) * (dataset.max_sequence_length - 1)
+        last_valid_ts = np.ones(batch_size) * (dataset.desired_sequence_length - 1)
     # when start_t > 0, this output will need to be padded so that all outputs are the same size
-    all_predictions = null_previous_states(predictions_from_start_t, dataset.max_sequence_length)
+    all_predictions = null_previous_states(predictions_from_start_t, dataset.desired_sequence_length)
     return all_predictions, last_valid_ts
 
 

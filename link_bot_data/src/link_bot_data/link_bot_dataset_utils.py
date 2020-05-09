@@ -275,3 +275,10 @@ def slice_sequences(constant_data, state_like_seqs, action_like_seqs, desired_se
 def strip_time_format(feature_name):
     if feature_name.startswith('%d/'):
         return feature_name[3:]
+
+
+def is_funneling(labels):
+    num_ones = tf.reduce_sum(labels)
+    index_of_last_1 = tf.reduce_max(tf.where(labels))
+    funneling = (index_of_last_1 >= num_ones)
+    return funneling
