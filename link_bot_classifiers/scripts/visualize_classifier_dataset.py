@@ -145,6 +145,7 @@ def show_transition_plot(example, label, title):
 
 
 def show_trajectory_plot(classifier_dataset, example, scenario, title):
+    print(example['traj_idx'].numpy(), example['start_t'].numpy(), example['end_t'].numpy())
     full_env = example['full_env/env'].numpy()
     full_env_extent = example['full_env/extent'].numpy()
     actual_state_all = example[add_all(classifier_dataset.label_state_key)].numpy()

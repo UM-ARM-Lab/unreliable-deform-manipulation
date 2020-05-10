@@ -230,10 +230,12 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def get_environment_from_example(example: Dict):
-        inputs, _ = example
+        if isinstance(example, tuple):
+            example = example[0]
+
         return {
-            'full_env/env': inputs['full_env/env'],
-            'full_env/origin': inputs['full_env/origin'],
-            'full_env/res': inputs['full_env/res'],
-            'full_env/extent': inputs['full_env/extent'],
+            'full_env/env': example['full_env/env'],
+            'full_env/origin': example['full_env/origin'],
+            'full_env/res': example['full_env/res'],
+            'full_env/extent': example['full_env/extent'],
         }

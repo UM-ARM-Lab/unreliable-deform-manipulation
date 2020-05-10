@@ -19,7 +19,7 @@ from moonshine.numpy_utils import add_batch, dict_of_numpy_arrays_to_dict_of_ten
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 
-class RasterClassifier(MyKerasModel):
+class RNNImageClassifier(MyKerasModel):
 
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams, batch_size, scenario=scenario)
@@ -116,7 +116,7 @@ class RasterClassifier(MyKerasModel):
         return accept_probability
 
 
-class RasterClassifierWrapper(BaseConstraintChecker):
+class RNNImageClassifierWrapper(BaseConstraintChecker):
 
     def __init__(self, path: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
         super().__init__(scenario)
@@ -125,7 +125,7 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         self.full_env_params = FullEnvParams.from_json(self.model_hparams['classifier_dataset_hparams']['full_env_params'])
         self.input_h_rows = self.model_hparams['input_h_rows']
         self.input_w_cols = self.model_hparams['input_w_cols']
-        self.net = RasterClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
+        self.net = RNNImageClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
         if self.manager.latest_checkpoint:
@@ -228,4 +228,4 @@ class RasterClassifierWrapper(BaseConstraintChecker):
         return net_inputs
 
 
-model = RasterClassifierWrapper
+model = RNNImageClassifierWrapper
