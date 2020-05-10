@@ -69,12 +69,13 @@ class LinkBotScenario(ExperimentScenario):
                    color,
                    s: int,
                    zorder: int,
-                   label: Optional[str] = None):
+                   label: Optional[str] = None,
+                   **kwargs):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         xs = link_bot_points[:, 0]
         ys = link_bot_points[:, 1]
         scatt = ax.scatter(xs[0], ys[0], c=color, s=s, zorder=zorder)
-        line = ax.plot(xs, ys, linewidth=4, c=color, zorder=zorder, label=label)[0]
+        line = ax.plot(xs, ys, linewidth=4, c=color, zorder=zorder, label=label, **kwargs)[0]
         return line, scatt
 
     @staticmethod

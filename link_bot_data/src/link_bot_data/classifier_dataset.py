@@ -6,15 +6,16 @@ import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import add_next, add_planned, add_next_and_planned, add_all_and_planned, \
-    null_future_states, add_all, null_previous_states, balance, null_diverged
+from link_bot_data.link_bot_dataset_utils import add_planned, null_pad, null_previous_states, \
+    balance, null_diverged
 from link_bot_planning.params import FullEnvParams
 
 
 def add_model_predictions(fwd_model, tf_dataset, dataset: DynamicsDataset, labeling_params: Dict):
     prediction_horizon = labeling_params['prediction_horizon']
     classifier_horizon = labeling_params['classifier_horizon']
-    batch_size = 128
+    assert prediction_horizon <= dataset.desired_sequence_length
+    batch_size = 32
     for dataset_element in tf_dataset.batch(batch_size):
         inputs, outputs = dataset_element
         full_env = inputs['full_env/env']
@@ -23,21 +24,21 @@ def add_model_predictions(fwd_model, tf_dataset, dataset: DynamicsDataset, label
         full_env_res = inputs['full_env/res']
         traj_idx = inputs['traj_idx']
 
-        for prediction_start_t in range(0, dataset.max_sequence_length - 1, labeling_params['start_step']):
+        for prediction_start_t in range(0, dataset.max_sequence_length - prediction_horizon + 1, labeling_params['start_step']):
             prediction_end_t = prediction_start_t + prediction_horizon
             outputs_from_start_t = {k: v[:, prediction_start_t:prediction_end_t] for k, v in outputs.items()}
-            predictions_from_start_t, last_valid_ts = predict_subsequence(states_description=dataset.states_description,
-                                                                          fwd_model=fwd_model,
-                                                                          dataset_element=dataset_element,
-                                                                          prediction_start_t=prediction_start_t,
-                                                                          prediction_horizon=prediction_horizon)
+            predictions_from_start_t = predict_subsequence(states_description=dataset.states_description,
+                                                           fwd_model=fwd_model,
+                                                           dataset_element=dataset_element,
+                                                           prediction_start_t=prediction_start_t,
+                                                           prediction_horizon=prediction_horizon)
 
             for batch_idx in range(full_env.shape[0]):
-                for classifier_start_t in range(prediction_start_t, prediction_start_t + prediction_horizon - 1):
-                    max_classifier_end_t = max(classifier_start_t + classifier_horizon, prediction_horizon)
-                    for classifier_end_t in range(classifier_start_t, max_classifier_end_t):
-                        print(prediction_start_t, classifier_end_t, classifier_end_t)
-                        continue
+                for classifier_start_t in range(0, prediction_horizon - 1):
+                    max_classifier_end_t = min(classifier_start_t + classifier_horizon, prediction_horizon)
+                    out_example_end_idx = 1
+                    for classifier_end_t in range(classifier_start_t + 1, max_classifier_end_t):
+
                         out_example = {
                             'full_env/env': full_env[batch_idx],
                             'full_env/origin': full_env_origin[batch_idx],
@@ -45,30 +46,41 @@ def add_model_predictions(fwd_model, tf_dataset, dataset: DynamicsDataset, label
                             'full_env/res': full_env_res[batch_idx],
                             'traj_idx': tf.squeeze(traj_idx[batch_idx]),
                             'prediction_start_t': prediction_start_t,
-                            'end_t': end_t,
+                            'classifier_start_t': classifier_start_t,
+                            'classifier_end_t': classifier_end_t,
                         }
-                        for name, output in outputs.items():
-                            out_example[name] = output[batch_idx]
+
+                        # this slice gives arrays of fixed length (ex, 5) which must be null padded from classifier_end_t onwards
+                        classifier_full_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon)
+                        for name, output in outputs_from_start_t.items():
+                            output_from_cst = output[batch_idx][classifier_full_slice]
+                            null_padded_sequence = null_pad(output_from_cst, end=out_example_end_idx)
+                            out_example[name] = null_padded_sequence
 
                         for name, prediction in predictions_from_start_t.items():
-                            out_example[add_planned(name)] = prediction[batch_idx]
+                            pred_from_cst = prediction[batch_idx][classifier_full_slice]
+                            null_padded_sequence = null_pad(pred_from_cst, end=out_example_end_idx)
+                            out_example[add_planned(name)] = null_padded_sequence
 
                         # action
                         out_example['action'] = inputs['action'][batch_idx]
 
                         # compute label
-                        label = compute_label(labeling_params, out_example)
+                        state_key = labeling_params['state_key']
+                        planned_state_key = add_planned(state_key)
+
+                        labeling_state = out_example[state_key][out_example_end_idx]
+                        labeling_planned_state = out_example[planned_state_key][out_example_end_idx]
+
+                        label = compute_label(labeling_params, labeling_state, labeling_planned_state)
                         out_example['label'] = label
 
                         yield out_example
 
+                        out_example_end_idx += 1
 
-def compute_label(labeling_params, out_example):
-    state_key = labeling_params['state_key']
-    state_key_next = add_next(state_key)
-    planned_state_key_next = add_next_and_planned(state_key)
-    labeling_state = out_example[state_key_next]
-    labeling_planned_state = out_example[planned_state_key_next]
+
+def compute_label(labeling_params, labeling_state, labeling_planned_state):
     post_transition_distance = tf.norm(labeling_state - labeling_planned_state)
     threshold = labeling_params['threshold']
     post_close = post_transition_distance < threshold
@@ -76,6 +88,7 @@ def compute_label(labeling_params, out_example):
     return label
 
 
+@tf.function
 def predict_subsequence(states_description, fwd_model, dataset_element, prediction_start_t, prediction_horizon):
     inputs, outputs = dataset_element
 
@@ -130,8 +143,9 @@ class ClassifierDataset(BaseDataset):
             'full_env/extent',
             'full_env/res',
             'traj_idx',
-            'start_t',
-            'end_t',
+            'prediction_start_t',
+            'classifier_start_t',
+            'classifier_end_t',
             'action',
             'label',
         ]

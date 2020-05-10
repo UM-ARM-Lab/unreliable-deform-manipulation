@@ -4,7 +4,7 @@
   "discard_diverged": false,
   "state_key": "link_bot",
   "label_key": "label",
-  "prediction_horizon": 100,
+  "prediction_horizon": 50,
   "classifier_horizon": 5,
   "start_step": 1
 }

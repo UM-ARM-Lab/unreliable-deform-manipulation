@@ -11,6 +11,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dir', type=pathlib.Path)
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train')
+    parser.add_argument('--print-limit', type=int, default=15)
 
     args = parser.parse_args()
 
@@ -36,16 +37,15 @@ def main():
 
         to_print = sorted(to_print)
         print(Style.BRIGHT + filename + Style.NORMAL)
-        k = 15
-        if len(to_print) < k:
+        if len(to_print) < args.print_limit:
             for items in to_print:
                 print("{}: {},".format(*items))
         else:
-            for items in to_print[:k]:
+            for items in to_print[:args.print_limit]:
                 print("{}: {},".format(*items))
-            if len(to_print) > 2 * k:
+            if len(to_print) > 2 * args.print_limit:
                 print("...")
-            for items in to_print[-k:]:
+            for items in to_print[-args.print_limit:]:
                 print("{}: {},".format(*items))
 
         key = input(Fore.CYAN + "press enter to see an example from the next record file... (q to quit) " + Fore.RESET)

@@ -160,6 +160,18 @@ def add_all_and_planned(feature_name):
     return add_all(add_planned(feature_name))
 
 
+def null_pad(sequence, start=None, end=None):
+    if isinstance(sequence, tf.Tensor):
+        new_sequence = sequence.numpy().copy()
+    else:
+        new_sequence = sequence.copy()
+    if start is not None and start > 0:
+        new_sequence[:start] = NULL_PAD_VALUE
+    if end is not None and end + 1 < len(sequence):
+        new_sequence[end + 1:] = NULL_PAD_VALUE
+    return new_sequence
+
+
 def null_future_states(sequence, end_idx):
     if isinstance(sequence, tf.Tensor):
         new_sequence = sequence.numpy().copy()
@@ -186,6 +198,7 @@ def null_previous_states(example, max_sequence_length):
 def null_diverged(true_sequences, pred_sequences, start_t: int, labeling_params: Dict):
     threshold = labeling_params['threshold']
     state_key = labeling_params['state_key']
+
     pred_sequence_for_state_key = pred_sequences[state_key]
     sequence_for_state_key = true_sequences[state_key][:, start_t:]
     # stop the trajectory at the first divergence. i.e the first time d(s^{t+1},\hat{s}^{t+1}) > delta

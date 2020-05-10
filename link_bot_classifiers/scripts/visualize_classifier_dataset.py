@@ -18,7 +18,7 @@ from moonshine.numpy_utils import remove_batch
 
 def main():
     plt.style.use("slides")
-    np.set_printoptions(suppress=True, linewidth=200)
+    np.set_printoptions(suppress=True, linewidth=200, precision=3)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('model_hparams', type=pathlib.Path, help='classifier model hparams')
@@ -145,25 +145,24 @@ def show_transition_plot(example, label, title):
 
 
 def show_trajectory_plot(classifier_dataset, example, scenario, title):
-    print(example['traj_idx'].numpy(), example['start_t'].numpy(), example['end_t'].numpy())
     full_env = example['full_env/env'].numpy()
     full_env_extent = example['full_env/extent'].numpy()
-    actual_state_all = example[add_all(classifier_dataset.label_state_key)].numpy()
-    planned_state_all = example[add_all_and_planned(classifier_dataset.label_state_key)].numpy()
+    actual_state_all = example[classifier_dataset.label_state_key].numpy()
+    planned_state_all = example[add_planned(classifier_dataset.label_state_key)].numpy()
     plt.figure()
     plt.imshow(np.flipud(full_env), extent=full_env_extent)
     ax = plt.gca()
     for time_idx in range(planned_state_all.shape[0]):
         # don't plot NULL states
-        if not np.any(planned_state_all[time_idx, 0] == NULL_PAD_VALUE):
+        if not np.any(planned_state_all[time_idx] == NULL_PAD_VALUE):
             actual_state = {
                 classifier_dataset.label_state_key: actual_state_all[time_idx]
             }
             planned_state = {
                 classifier_dataset.label_state_key: planned_state_all[time_idx]
             }
-            scenario.plot_state(ax, actual_state, color='red', s=20, zorder=2, label='actual state')
-            scenario.plot_state(ax, planned_state, color='blue', s=5, zorder=3, label='planned state')
+            scenario.plot_state(ax, actual_state, color='red', s=20, zorder=2, label='actual state', alpha=0.2)
+            scenario.plot_state(ax, planned_state, color='blue', s=5, zorder=3, label='planned state', alpha=0.2)
     if scenario == 'tether':
         start_t = int(example['start_t'].numpy())
         tether_start = example[add_all('tether')][start_t].numpy()
@@ -172,6 +171,7 @@ def show_trajectory_plot(classifier_dataset, example, scenario, title):
         }
         scenario.plot_state(ax, tether_start_state, color='green', s=5, zorder=1)
     plt.title(title)
+    plt.legend()
     plt.show()
 
 
@@ -202,12 +202,7 @@ def show_image(example, model_hparams, title):
 
 
 def make_title(example, label):
-    if add_planned('stdev') in example:
-        stdev = example[add_planned('stdev')].numpy().squeeze()
-        stdev_next = example[add_next_and_planned('stdev')].numpy().squeeze()
-        title = "Label = {}, stdev={:.3f},{:.3f}".format(label, stdev, stdev_next)
-    else:
-        title = "Label = {}, no stdev".format(label)
+    title = f"Label = {label}"
     return title
 
 

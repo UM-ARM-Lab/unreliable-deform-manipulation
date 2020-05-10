@@ -122,7 +122,8 @@ def make_traj_images(environment,
     full_env_origin = environment['full_env/origin']
     res = environment['full_env/res']
     # FIXME: this is a big hacky, maybe we need the scenario to tell us how to raster state & environment into images?
-    initial_tether = environment['initial_tether']
+    if 'initial_tether' in environment:
+        initial_tether = environment['initial_tether']
     h = int(full_env.shape[1])
     w = int(full_env.shape[2])
 
@@ -133,14 +134,15 @@ def make_traj_images(environment,
     time_colored_states_image = tf.zeros([batch_size, h, w, 1])
 
     # Initial tether state
-    initial_tether_img = raster_differentiable(
-        state=initial_tether,
-        origin=full_env_origin,
-        res=res,
-        h=h,
-        w=w,
-        k=rope_image_k,
-        batch_size=batch_size)
+    if 'initial_tether' in environment:
+        initial_tether_img = raster_differentiable(
+            state=initial_tether,
+            origin=full_env_origin,
+            res=res,
+            h=h,
+            w=w,
+            k=rope_image_k,
+            batch_size=batch_size)
 
     for planned_state_seq in states_dict.values():
         n_time_steps = int(planned_state_seq.shape[1])
@@ -160,7 +162,10 @@ def make_traj_images(environment,
             binary_states_image += rope_img_t
             time_colored_states_image += time_color_image_t
 
-    rope_images = tf.concat((initial_tether_img, binary_states_image, time_colored_states_image), axis=3)
+    if 'initial_tether' in environment:
+        rope_images = tf.concat((initial_tether_img, binary_states_image, time_colored_states_image), axis=3)
+    else:
+        rope_images = tf.concat((binary_states_image, time_colored_states_image), axis=3)
 
     image = tf.concat((full_env, rope_images), axis=3)
     return image
@@ -217,7 +222,7 @@ def add_traj_image_to_example(example,
 
     planned_states_dict = {}
     for state_key in states_keys:
-        states_all = example[add_all_and_planned(state_key)]
+        states_all = example[add_planned(state_key)]
         planned_states_dict[state_key] = states_all
 
     image = make_traj_images(environment=environment,
