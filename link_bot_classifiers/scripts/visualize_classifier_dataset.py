@@ -10,7 +10,7 @@ import tensorflow as tf
 
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_all_and_planned, add_planned, add_next_and_planned
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned, state_dict_is_null_tf
 from link_bot_planning.get_scenario import get_scenario
 from moonshine.image_functions import setup_image_inputs
 from moonshine.moonshine_utils import remove_batch
@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--no-balance', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--only-length', type=int)
     parser.add_argument('--take', type=int)
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--perf', action='store_true', help='print time per iteration')
@@ -115,7 +116,7 @@ def show_visualization(args, model_hparams, classifier_dataset, example, label, 
     if args.display_type == 'just_count':
         pass
     elif args.display_type == 'image':
-        show_image(example, model_hparams, title)
+        show_image(args, example, model_hparams, title)
     elif args.display_type == 'plot':
         if image_key == 'transition_image':
             show_transition_plot(example, label, title)
@@ -141,7 +142,9 @@ def show_transition_plot(example, label, title):
         actual_env_extent=full_env_extent,
         title=title,
         label=label)
-    plt.legend()
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys())
     plt.show(block=True)
 
 
@@ -172,38 +175,49 @@ def show_trajectory_plot(classifier_dataset, example, scenario, title):
         }
         scenario.plot_state(ax, tether_start_state, color='green', s=5, zorder=1)
     plt.title(title)
-    plt.legend()
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys())
     plt.show()
 
 
-def show_image(example, model_hparams, title):
+def show_image(args, example, model_hparams, title):
     image_key = model_hparams['image_key']
+    valid_seq_length = (example['classifier_end_t'] - example['classifier_start_t'] + 1).numpy()
+
+    if args.only_length and args.only_length != valid_seq_length:
+        return
+
     image = example[image_key].numpy()
     n_channels = image.shape[2]
-
     if n_channels != 3:
-        environment = image[:, :, 0]
-        initial_tether = np.sum(image[:, :, 1:12], axis=2)
-        point = np.sum(image[:, :, 12:14], axis=2)
-        new_image = np.stack([environment, initial_tether, point], axis=2)
-        plt.imshow(np.flipud(new_image))
-        # specs = strategies.SquareStrategy("center").get_grid(n_channels)
-        # for c, subplot_args in enumerate(specs):
-        #     ax = plt.subplot(subplot_args)
-        #     ax.set_title(title)
-        #     plt.imshow(np.flipud(image[:, :, c]))
+        T = image.shape[0]
+        fig, axes = plt.subplots(nrows=1, ncols=T)
+        fig.suptitle(title)
+        for t in range(T):
+            env_image_t = image[t, :, :, -1]
+            state_image_t = np.sum(image[t, :, :, :-1], axis=2)
+            zeros = np.zeros_like(env_image_t)
+            image_t = np.stack([env_image_t, state_image_t, zeros], axis=2)
+            axes[t].imshow(np.flipud(image_t), vmin=0, vmax=1)
+            axes[t].set_title(f"t={t}")
+            axes[t].set_xticks([])
+            axes[t].set_yticks([])
     else:
         plt.imshow(np.flipud(image))
+        ax = plt.gca()
+        ax.set_xticks([])
+        ax.set_yticks([])
+        plt.title(title)
 
-    ax = plt.gca()
-    ax.set_xticks([])
-    ax.set_yticks([])
-    plt.title(title)
     plt.show(block=True)
 
 
 def make_title(example, label):
-    title = f"Label = {label}"
+    traj_idx = int(example["traj_idx"][0].numpy())
+    start = int(example["classifier_start_t"].numpy())
+    end = int(example["classifier_end_t"].numpy())
+    title = f"Traj={traj_idx},{start}-{end} Label={label}"
     return title
 
 

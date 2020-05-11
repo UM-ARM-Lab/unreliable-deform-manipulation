@@ -14,6 +14,24 @@ from link_bot_pycommon.filesystem_utils import mkdir_and_ask
 NULL_PAD_VALUE = -10000
 
 
+def state_dict_is_null_tf(state: Dict):
+    for v in state.values():
+        if tf.reduce_any(tf.equal(v, NULL_PAD_VALUE)):
+            return True
+    return False
+
+
+def total_state_dim(state: Dict):
+    """
+    :param state: assumed to be [batch, state_dim]
+    :return:
+    """
+    state_dim = 0
+    for v in state.values():
+        state_dim += int(v.shape[1] / 2)
+    return state_dim
+
+
 def parse_and_deserialize(dataset, feature_description, n_parallel_calls=None):
     parsed_dataset = parse_dataset(dataset, feature_description, n_parallel_calls=n_parallel_calls)
     deserialized_dataset = deserialize(parsed_dataset, n_parallel_calls=n_parallel_calls)

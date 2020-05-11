@@ -2,7 +2,8 @@ from typing import Optional, Dict, List
 
 import tensorflow as tf
 
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_next_and_planned, add_planned
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_next_and_planned, add_planned, state_dict_is_null_tf, \
+    total_state_dim
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
@@ -171,14 +172,18 @@ def make_traj_images(scenario: ExperimentScenario,
     :return: [batch, time, h, w, 1 + n_points]
     """
     images = []
+    state_dim = total_state_dim(states_list[0]) + 1
     for states_dict_t in states_list:
-        image = make_state_and_env_image(environment=environment,
-                                         state_dict=states_dict_t,
-                                         scenario=scenario,
-                                         local_env_h=local_env_h,
-                                         local_env_w=local_env_w,
-                                         k=rope_image_k,
-                                         batch_size=batch_size)
+        if state_dict_is_null_tf(states_dict_t):
+            image = tf.zeros([batch_size, local_env_h, local_env_w, state_dim])
+        else:
+            image = make_state_and_env_image(environment=environment,
+                                             state_dict=states_dict_t,
+                                             scenario=scenario,
+                                             local_env_h=local_env_h,
+                                             local_env_w=local_env_w,
+                                             k=rope_image_k,
+                                             batch_size=batch_size)
         images.append(image)
     all_images = tf.stack(images, axis=1)
     return all_images
@@ -243,7 +248,7 @@ def add_traj_image_to_example(scenario: ExperimentScenario,
         states_all = example[add_planned(state_key)]
         planned_states_dict[state_key] = states_all
 
-    planned_states_list = dict_of_sequences_to_sequence_of_dicts_tf(planned_states_dict)
+    planned_states_list = dict_of_sequences_to_sequence_of_dicts_tf(planned_states_dict, time_axis=1)
     image = make_traj_images(scenario=scenario,
                              environment=environment,
                              states_list=planned_states_list,

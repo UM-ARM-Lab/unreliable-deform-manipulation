@@ -6,5 +6,5 @@
   "label_key": "label",
   "prediction_horizon": 50,
   "classifier_horizon": 5,
-  "start_step": 3
+  "start_step": 1
 }
