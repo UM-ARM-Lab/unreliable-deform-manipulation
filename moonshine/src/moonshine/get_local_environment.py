@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-from moonshine.numpy_utils import add_batch
+from moonshine.moonshine_utils import add_batch
 from moonshine.bilinear_sampler import bilinear_sampler
 
 

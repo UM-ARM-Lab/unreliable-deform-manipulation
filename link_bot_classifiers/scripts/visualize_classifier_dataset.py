@@ -13,7 +13,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_all_and_planned, add_planned, add_next_and_planned
 from link_bot_planning.get_scenario import get_scenario
 from moonshine.image_functions import setup_image_inputs
-from moonshine.numpy_utils import remove_batch
+from moonshine.moonshine_utils import remove_batch
 
 
 def main():
@@ -70,6 +70,7 @@ def main():
 
         if postprocess is not None:
             example = postprocess(example)
+
         example = remove_batch(example)
 
         label = example['label'].numpy().squeeze()

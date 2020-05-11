@@ -6,7 +6,7 @@ import pathlib
 
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import compute_extent
-from moonshine.numpy_utils import listify
+from moonshine.moonshine_utils import listify
 
 
 def main():

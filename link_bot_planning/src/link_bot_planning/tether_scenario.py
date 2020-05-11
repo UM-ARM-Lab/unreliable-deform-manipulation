@@ -12,7 +12,7 @@ from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import CollectDynamicsParams
 from link_bot_pycommon.base_services import Services
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
-from moonshine.numpy_utils import dict_of_sequences_to_sequence_of_dicts, remove_batch, numpify
+from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, remove_batch, numpify
 from peter_msgs.msg import Action
 
 

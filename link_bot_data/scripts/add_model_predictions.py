@@ -17,7 +17,7 @@ from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.filesystem_utils import mkdir_and_ask
 from moonshine.gpu_config import limit_gpu_mem
 
-limit_gpu_mem(1)
+limit_gpu_mem(2)
 
 
 def main():
@@ -26,7 +26,7 @@ def main():
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
     parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
-    parser.add_argument('--max-examples-per-record', type=int, default=128, help="examples per file")
+    parser.add_argument('--max-examples-per-record', type=int, default=2048, help="examples per file")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
 

@@ -92,14 +92,29 @@ def sequence_of_dicts_to_dict_of_sequences(seq_of_dicts):
     return dict_of_seqs
 
 
-def dict_of_sequences_to_sequence_of_dicts(dict_of_seqs):
+def dict_of_sequences_to_sequence_of_dicts_tf(dict_of_seqs, time_axis=0):
+    # FIXME: a common problem I have is that I have a dictionary of tensors, each with the smae shape in the first M dimensions
+    # and I want to get those shapes, but I don't care which key/value I use. Feels like I need a different datastructure here.
     seq_of_dicts = []
     # assumes all values in the dict have the same first dimension size (num time steps)
-    T = len(list(dict_of_seqs.values())[0])
+    T = list(dict_of_seqs.values())[0].shape[time_axis]
     for t in range(T):
         dict_t = {}
         for k, v in dict_of_seqs.items():
-            dict_t[k] = v[t]
+            dict_t[k] = tf.gather(v, t, axis=time_axis)
+        seq_of_dicts.append(dict_t)
+
+    return seq_of_dicts
+
+
+def dict_of_sequences_to_sequence_of_dicts(dict_of_seqs, time_axis=0):
+    seq_of_dicts = []
+    # assumes all values in the dict have the same first dimension size (num time steps)
+    T = len(list(dict_of_seqs.values())[time_axis])
+    for t in range(T):
+        dict_t = {}
+        for k, v in dict_of_seqs.items():
+            dict_t[k] = np.take(v, t, axis=time_axis)
         seq_of_dicts.append(dict_t)
 
     return seq_of_dicts

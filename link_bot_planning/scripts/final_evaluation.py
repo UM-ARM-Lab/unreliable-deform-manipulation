@@ -24,7 +24,7 @@ from link_bot_planning.ompl_viz import plot_plan
 from link_bot_planning.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
-from moonshine.numpy_utils import listify
+from moonshine.moonshine_utils import listify
 from victor import victor_services
 
 

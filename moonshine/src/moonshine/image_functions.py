@@ -2,10 +2,54 @@ from typing import Optional, Dict, List
 
 import tensorflow as tf
 
-from link_bot_data.link_bot_dataset_utils import add_all_and_planned, NULL_PAD_VALUE, add_next_and_planned, add_planned
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_next_and_planned, add_planned
 from link_bot_planning.experiment_scenario import ExperimentScenario
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
+from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts_tf
+
+
+def make_state_and_env_image(environment: Dict,
+                             state_dict: Dict,
+                             scenario: ExperimentScenario,
+                             local_env_h: int,
+                             local_env_w: int,
+                             k: float,
+                             batch_size: Optional[int] = 1,
+                             ):
+    """
+    :param environment:
+    :param state_dict: each element should be [batch,n_state]
+    :param scenario:
+    :param local_env_h:
+    :param local_env_w:
+    :param k: constant controlling fuzzyness of how the rope is drawn in the image, should be like 1000
+    :param batch_size:
+
+    :return [batch,n_points*2+1], aka  [batch,n_state+1]
+    """
+    local_env_center_point = scenario.local_environment_center_differentiable(state_dict)
+    local_env, local_env_origin = get_local_env_and_origin_differentiable(center_point=local_env_center_point,
+                                                                          full_env=environment['full_env/env'],
+                                                                          full_env_origin=environment['full_env/origin'],
+                                                                          res=environment['full_env/res'],
+                                                                          local_h_rows=local_env_h,
+                                                                          local_w_cols=local_env_w)
+
+    concat_args = []
+    for planned_state in state_dict.values():
+        planned_rope_image = raster_differentiable(state=planned_state,
+                                                   res=environment['full_env/res'],
+                                                   origin=local_env_origin,
+                                                   h=local_env_h,
+                                                   w=local_env_w,
+                                                   k=k,
+                                                   batch_size=batch_size)
+        concat_args.append(planned_rope_image)
+
+    concat_args.append(tf.expand_dims(local_env, axis=3))
+    image = tf.concat(concat_args, axis=3)
+    return image
 
 
 def make_transition_images(environment: Dict,
@@ -109,70 +153,42 @@ def partial_add_transition_image(states_keys,
     return _add_transition_image
 
 
-def make_traj_images(environment,
-                     states_dict: Dict,
+def make_traj_images(scenario: ExperimentScenario,
+                     environment,
+                     states_list: List[Dict],
+                     local_env_h: int,
+                     local_env_w: int,
                      rope_image_k: float,
                      batch_size: int):
     """
+    :param scenario:
     :param environment:
     :param states_dict: each element is [batch, time, n]
-    :return: [batch, h, w, 3]
+    :param local_env_h:
+    :param local_env_w:
+    :param rope_image_k:
+    :param batch_size:
+    :return: [batch, time, h, w, 1 + n_points]
     """
-    full_env = environment['full_env/env']
-    full_env_origin = environment['full_env/origin']
-    res = environment['full_env/res']
-    # FIXME: this is a big hacky, maybe we need the scenario to tell us how to raster state & environment into images?
-    if 'initial_tether' in environment:
-        initial_tether = environment['initial_tether']
-    h = int(full_env.shape[1])
-    w = int(full_env.shape[2])
-
-    # add channel index
-    full_env = tf.expand_dims(full_env, axis=3)
-
-    binary_states_image = tf.zeros([batch_size, h, w, 1])
-    time_colored_states_image = tf.zeros([batch_size, h, w, 1])
-
-    # Initial tether state
-    if 'initial_tether' in environment:
-        initial_tether_img = raster_differentiable(
-            state=initial_tether,
-            origin=full_env_origin,
-            res=res,
-            h=h,
-            w=w,
-            k=rope_image_k,
-            batch_size=batch_size)
-
-    for planned_state_seq in states_dict.values():
-        n_time_steps = int(planned_state_seq.shape[1])
-        # point robot states over time
-        for t in range(n_time_steps):
-            planned_state_t = planned_state_seq[:, t]
-            rope_img_t = raster_differentiable(
-                state=planned_state_t,
-                origin=full_env_origin,
-                res=res,
-                h=h,
-                w=w,
-                k=rope_image_k,
-                batch_size=batch_size)
-            time_color = float(t) / n_time_steps
-            time_color_image_t = rope_img_t * time_color
-            binary_states_image += rope_img_t
-            time_colored_states_image += time_color_image_t
-
-    if 'initial_tether' in environment:
-        rope_images = tf.concat((initial_tether_img, binary_states_image, time_colored_states_image), axis=3)
-    else:
-        rope_images = tf.concat((binary_states_image, time_colored_states_image), axis=3)
-
-    image = tf.concat((full_env, rope_images), axis=3)
-    return image
+    images = []
+    for states_dict_t in states_list:
+        image = make_state_and_env_image(environment=environment,
+                                         state_dict=states_dict_t,
+                                         scenario=scenario,
+                                         local_env_h=local_env_h,
+                                         local_env_w=local_env_w,
+                                         k=rope_image_k,
+                                         batch_size=batch_size)
+        images.append(image)
+    all_images = tf.stack(images, axis=1)
+    return all_images
 
 
-def make_traj_images_from_states_list(environment: Dict,
+def make_traj_images_from_states_list(scenario: ExperimentScenario,
+                                      environment: Dict,
                                       states: List[Dict],
+                                      local_env_w: int,
+                                      local_env_h: int,
                                       rope_image_k: float,
                                       ):
     """
@@ -181,19 +197,11 @@ def make_traj_images_from_states_list(environment: Dict,
     :return: [batch, h, w, 3]
     :param rope_image_k: large constant controlling fuzzyness of rope drawing, like 1000
     """
-    # Reformat the list of dicts of tensors into one dict of tensors
-    T = len(states)
-    states_dict = {}
-    keys = states[0].keys()
-    for key in keys:
-        state_with_time = []
-        for t in range(T):
-            state_with_time.append(states[t][key])
-        state_with_time = tf.stack(state_with_time, axis=1)
-        states_dict[key] = state_with_time
-
-    return make_traj_images(environment=environment,
-                            states_dict=states_dict,
+    return make_traj_images(scenario=scenario,
+                            environment=environment,
+                            states_list=states,
+                            local_env_h=local_env_h,
+                            local_env_w=local_env_w,
                             rope_image_k=rope_image_k,
                             batch_size=1)
 
@@ -201,18 +209,28 @@ def make_traj_images_from_states_list(environment: Dict,
 def partial_add_traj_image(states_keys: List[str],
                            scenario: ExperimentScenario,
                            batch_size: int,
+                           local_env_h: int,
+                           local_env_w: int,
                            rope_image_k: float):
     def _add_traj_image(example):
-        return add_traj_image_to_example(example, states_keys, scenario, batch_size, rope_image_k)
+        return add_traj_image_to_example(scenario=scenario,
+                                         example=example,
+                                         states_keys=states_keys,
+                                         local_env_h=local_env_h,
+                                         local_env_w=local_env_w,
+                                         rope_image_k=rope_image_k,
+                                         batch_size=batch_size)
 
     return _add_traj_image
 
 
-def add_traj_image_to_example(example,
+def add_traj_image_to_example(scenario: ExperimentScenario,
+                              example,
                               states_keys: List[str],
-                              scenario: ExperimentScenario,
-                              batch_size: int,
-                              rope_image_k: float):
+                              local_env_w: int,
+                              local_env_h: int,
+                              rope_image_k: float,
+                              batch_size: int):
     environment = {
         'full_env/env': example['full_env/env'],
         'full_env/origin': example['full_env/origin'],
@@ -225,8 +243,12 @@ def add_traj_image_to_example(example,
         states_all = example[add_planned(state_key)]
         planned_states_dict[state_key] = states_all
 
-    image = make_traj_images(environment=environment,
-                             states_dict=planned_states_dict,
+    planned_states_list = dict_of_sequences_to_sequence_of_dicts_tf(planned_states_dict)
+    image = make_traj_images(scenario=scenario,
+                             environment=environment,
+                             states_list=planned_states_list,
+                             local_env_w=local_env_w,
+                             local_env_h=local_env_h,
                              rope_image_k=rope_image_k,
                              batch_size=batch_size)
 
@@ -312,6 +334,8 @@ def setup_image_inputs(args, scenario, classifier_dataset, model_hparams):
     elif image_key == 'trajectory_image':
         postprocess = partial_add_traj_image(states_keys=model_hparams['states_keys'],
                                              scenario=scenario,
+                                             local_env_h=model_hparams['local_env_h_rows'],
+                                             local_env_w=model_hparams['local_env_w_cols'],
                                              batch_size=args.batch_size,
                                              rope_image_k=model_hparams['rope_image_k'])
         model_hparams['input_h_rows'] = classifier_dataset.full_env_params.h_rows

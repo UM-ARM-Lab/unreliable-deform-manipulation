@@ -5,7 +5,7 @@ from matplotlib.animation import FuncAnimation
 
 from ignition.markers import MarkerProvider
 from link_bot_pycommon.base_services import Services
-from moonshine.numpy_utils import remove_batch, numpify, dict_of_sequences_to_sequence_of_dicts
+from moonshine.moonshine_utils import remove_batch, numpify, dict_of_sequences_to_sequence_of_dicts_tf
 
 
 class ExperimentScenario:
@@ -120,14 +120,14 @@ class ExperimentScenario:
     @classmethod
     def animate_predictions_from_dataset(cls, example_idx, dataset_element, predictions, labels=None, start_idx=0, end_idx=-1):
         predictions = remove_batch(predictions)
-        predictions = numpify(dict_of_sequences_to_sequence_of_dicts(predictions))
+        predictions = numpify(dict_of_sequences_to_sequence_of_dicts_tf(predictions))
         inputs, outputs = dataset_element
         actions = inputs['action']
         assert actions.shape[0] == 1
         actions = remove_batch(actions)
         outputs = remove_batch(outputs)
         inputs = numpify(remove_batch(inputs))
-        actual = numpify(dict_of_sequences_to_sequence_of_dicts(outputs))
+        actual = numpify(dict_of_sequences_to_sequence_of_dicts_tf(outputs))
         extent = inputs['full_env/extent']
         environment = {
             'full_env/env': inputs['full_env/env'],

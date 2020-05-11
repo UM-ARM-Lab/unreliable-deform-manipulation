@@ -15,7 +15,7 @@ from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import FullEnvParams
 from link_bot_pycommon.link_bot_pycommon import make_dict_float32
 from moonshine.image_functions import make_transition_images, make_traj_images_from_states_list
-from moonshine.numpy_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors
+from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 
@@ -64,6 +64,7 @@ class RNNImageClassifier(MyKerasModel):
             self.dropout_layers.append(dropout)
             self.dense_layers.append(dense)
 
+        self.lstm = layers.LSTM(self.hparams['rnn_size'], unroll=True)
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
     @tf.function
@@ -104,14 +105,15 @@ class RNNImageClassifier(MyKerasModel):
             conv_output = tf.concat(concat_args, axis=1)
 
         if self.hparams['batch_norm']:
-            conv_output = self.batch_norm(conv_output)
+            conv_output = self.batch_norm(conv_output, training=training)
 
         z = conv_output
         for dropout_layer, dense_layer in zip(self.dropout_layers, self.dense_layers):
-            h = dropout_layer(z)
-            z = dense_layer(h)
-        out_h = z
+            d = dropout_layer(z, training=training)
+            z = dense_layer(d)
+        out_d = z
 
+        out_h = self.lstm(out_d)
         accept_probability = self.output_layer(out_h)
         return accept_probability
 

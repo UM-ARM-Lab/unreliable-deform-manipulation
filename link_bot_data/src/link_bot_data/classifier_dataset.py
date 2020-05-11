@@ -15,7 +15,7 @@ def add_model_predictions(fwd_model, tf_dataset, dataset: DynamicsDataset, label
     prediction_horizon = labeling_params['prediction_horizon']
     classifier_horizon = labeling_params['classifier_horizon']
     assert prediction_horizon <= dataset.desired_sequence_length
-    batch_size = 32
+    batch_size = 2048
     for dataset_element in tf_dataset.batch(batch_size):
         inputs, outputs = dataset_element
         full_env = inputs['full_env/env']
@@ -27,6 +27,7 @@ def add_model_predictions(fwd_model, tf_dataset, dataset: DynamicsDataset, label
         for prediction_start_t in range(0, dataset.max_sequence_length - prediction_horizon + 1, labeling_params['start_step']):
             prediction_end_t = prediction_start_t + prediction_horizon
             outputs_from_start_t = {k: v[:, prediction_start_t:prediction_end_t] for k, v in outputs.items()}
+
             predictions_from_start_t = predict_subsequence(states_description=dataset.states_description,
                                                            fwd_model=fwd_model,
                                                            dataset_element=dataset_element,
@@ -34,7 +35,7 @@ def add_model_predictions(fwd_model, tf_dataset, dataset: DynamicsDataset, label
                                                            prediction_horizon=prediction_horizon)
 
             for batch_idx in range(full_env.shape[0]):
-                for classifier_start_t in range(0, prediction_horizon - 1):
+                for classifier_start_t in range(0, prediction_horizon - classifier_horizon):
                     max_classifier_end_t = min(classifier_start_t + classifier_horizon, prediction_horizon)
                     out_example_end_idx = 1
                     for classifier_end_t in range(classifier_start_t + 1, max_classifier_end_t):
@@ -88,7 +89,6 @@ def compute_label(labeling_params, labeling_state, labeling_planned_state):
     return label
 
 
-@tf.function
 def predict_subsequence(states_description, fwd_model, dataset_element, prediction_start_t, prediction_horizon):
     inputs, outputs = dataset_element
 

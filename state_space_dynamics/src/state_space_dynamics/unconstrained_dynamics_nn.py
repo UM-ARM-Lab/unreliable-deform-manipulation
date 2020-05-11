@@ -6,7 +6,7 @@ import tensorflow.keras.layers as layers
 from colorama import Fore
 
 from link_bot_planning.experiment_scenario import ExperimentScenario
-from moonshine.numpy_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts
+from moonshine.moonshine_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 

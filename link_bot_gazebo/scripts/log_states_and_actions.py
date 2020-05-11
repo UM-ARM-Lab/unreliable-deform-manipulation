@@ -11,7 +11,7 @@ from link_bot_gazebo import gazebo_services
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_planning.plan_and_execute import get_environment_common
 from link_bot_pycommon.args import my_formatter
-from moonshine.numpy_utils import listify
+from moonshine.moonshine_utils import listify
 from peter_msgs.msg import Action
 from victor import victor_services
 

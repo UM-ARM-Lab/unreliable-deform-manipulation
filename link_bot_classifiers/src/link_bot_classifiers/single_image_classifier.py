@@ -15,7 +15,7 @@ from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import FullEnvParams
 from link_bot_pycommon.link_bot_pycommon import make_dict_float32
 from moonshine.image_functions import make_transition_images, make_traj_images_from_states_list
-from moonshine.numpy_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors
+from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 

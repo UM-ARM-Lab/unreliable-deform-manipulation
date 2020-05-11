@@ -11,7 +11,7 @@ from link_bot_planning.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import FullEnvParams
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
 from moonshine.image_functions import raster_differentiable
-from moonshine.numpy_utils import add_batch, dict_of_sequences_to_sequence_of_dicts, remove_batch
+from moonshine.moonshine_utils import add_batch, dict_of_sequences_to_sequence_of_dicts, remove_batch
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
