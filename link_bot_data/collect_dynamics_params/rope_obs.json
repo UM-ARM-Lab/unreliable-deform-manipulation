@@ -5,8 +5,8 @@
   "full_env_h_m": 2,
   "reset_robot": null,
   "reset_world": false,
-  "goal_w_m": 2.1,
-  "goal_h_m": 2.1,
+  "goal_w_m": 2.10,
+  "goal_h_m": 2.10,
   "max_step_size": 0.01,
   "movable_obstacles": [
     "moving_box1",
@@ -16,6 +16,7 @@
     "moving_box7",
     "moving_box8",
     "moving_box9",
+    "moving_box10",
     "moving_box11"
   ],
   "no_obstacles": false,

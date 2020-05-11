@@ -30,6 +30,7 @@ def main():
     parser.add_argument('--only-length', type=int)
     parser.add_argument('--take', type=int)
     parser.add_argument('--only-negative', action='store_true')
+    parser.add_argument('--only-funneling', action='store_true')
     parser.add_argument('--perf', action='store_true', help='print time per iteration')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
 
@@ -74,6 +75,12 @@ def main():
 
         example = remove_batch(example)
 
+        is_close = example['is_close'].numpy().squeeze()
+        last_valid_idx = int(example['last_valid_idx'].numpy().squeeze())
+        n_valid_states = last_valid_idx + 1
+        valid_is_close = is_close[:last_valid_idx + 1]
+        num_diverged = n_valid_states - np.count_nonzero(valid_is_close)
+        funneling = num_diverged > 0 and valid_is_close[-1]
         label = example['label'].numpy().squeeze()
 
         if args.only_negative and label != 0:
@@ -82,6 +89,9 @@ def main():
             positive_count += 1
         else:
             negative_count += 1
+
+        if args.only_funneling and not funneling:
+            continue
 
         count += 1
 
