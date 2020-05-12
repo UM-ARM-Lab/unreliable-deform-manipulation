@@ -125,7 +125,8 @@ class ExperimentScenario:
                                                     classifier_dataset: ClassifierDataset,
                                                     example_idx: int,
                                                     dataset_element: Dict,
-                                                    trim: Optional[bool] = False):
+                                                    trim: Optional[bool] = False,
+                                                    accept_probability: Optional[float] = None):
         is_close = dataset_element['is_close'].numpy()
         last_valid_idx = int(dataset_element['last_valid_idx'].numpy().squeeze())
         valid_is_close = is_close[:last_valid_idx + 1]
@@ -155,11 +156,18 @@ class ExperimentScenario:
                                        actual=actual[start_idx:end_idx],
                                        predictions=predictions[start_idx:end_idx],
                                        example_idx=example_idx,
-                                       labels=is_close[start_idx:end_idx])
+                                       labels=is_close[start_idx:end_idx],
+                                       accept_probability=accept_probability)
 
     @classmethod
-    def animate_predictions_from_dynamics_dataset(cls, example_idx, dataset_element, predictions, labels=None, start_idx=0,
-                                                  end_idx=-1):
+    def animate_predictions_from_dynamics_dataset(cls,
+                                                  example_idx,
+                                                  dataset_element,
+                                                  predictions,
+                                                  labels=None,
+                                                  start_idx=0,
+                                                  end_idx=-1,
+                                                  accept_probability: Optional[float] = None):
         predictions = remove_batch(predictions)
         predictions = numpify(dict_of_sequences_to_sequence_of_dicts_tf(predictions))
         inputs, outputs = dataset_element
@@ -180,7 +188,8 @@ class ExperimentScenario:
                                        actual=actual[start_idx:end_idx],
                                        predictions=predictions[start_idx:end_idx],
                                        example_idx=example_idx,
-                                       labels=labels[start_idx:end_idx])
+                                       labels=labels[start_idx:end_idx],
+                                       accept_probability=accept_probability)
 
     @classmethod
     def animate_predictions(cls,
@@ -189,19 +198,17 @@ class ExperimentScenario:
                             actual,
                             predictions: Optional,
                             example_idx: Optional = None,
-                            labels: Optional = None):
+                            labels: Optional = None,
+                            accept_probability: Optional[float] = None):
         fig = plt.figure()
         ax = plt.gca()
         prediction_artist = None
         if predictions is not None:
             prediction_artist = cls.plot_state(ax, predictions[0], 'g', zorder=3, s=30, label='prediction')
-        actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=30, label='actual')
+        actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=30, label='actual', alpha=0.6)
         action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=30, zorder=4)
         cls.plot_environment(ax, environment)
-        if labels is None:
-            ax.set_title("{}, t=0".format(example_idx))
-        else:
-            ax.set_title("{}, t=0, label={}".format(example_idx, labels[0]))
+        if labels is not None:
             extent = environment['full_env/extent']
             label_line = ax.plot([extent[0], extent[1], extent[1], extent[0], extent[0]],
                                  [extent[2], extent[2], extent[3], extent[3], extent[2]],
@@ -218,12 +225,15 @@ class ExperimentScenario:
             if predictions is not None:
                 cls.update_artist(prediction_artist, predictions[t])
             cls.update_artist(actual_artist, actual[t])
-            if labels is None:
-                ax.set_title("{}, t={}".format(example_idx, t))
-            else:
-                ax.set_title("{}, t={}, label={}".format(example_idx, t, labels[t]))
+            title_t = f"example {example_idx}, t={t}"
+            if labels is not None:
+                title_t += f" label={labels[t]}"
                 label_color = 'r' if labels[t] == 0 else 'g'
                 label_line.set_color(label_color)
+            if accept_probability is not None:
+                title_t += f" accept={accept_probability:.3f}"
+            ax.set_title(title_t)
+
             if t < n_states - 1:
                 cls.update_action_artist(action_artist, actual[t], actions[t])
 

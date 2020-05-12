@@ -58,13 +58,13 @@ def generate_traj(scenario: ExperimentScenario,
                                             params=params,
                                             action_rng=action_rng)
 
-        service_provider.execute_action(action_msg)
-
         feature['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature(action_msg.action)
         for name, state_dict in state_dict.items():
             feature['{}/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state_dict)
         feature['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature(traj_idx)
         feature['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature(time_idx)
+
+        service_provider.execute_action(action_msg)
 
         global_t_step += 1
 

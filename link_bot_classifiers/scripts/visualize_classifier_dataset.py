@@ -8,11 +8,9 @@ from time import perf_counter
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
 
-from link_bot_classifiers.visualization import plot_classifier_data
+from link_bot_classifiers.visualization import visualize_classifier_example, classifier_example_title
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
@@ -109,7 +107,7 @@ def main():
 
         count += 1
 
-        title = make_title(example, label)
+        title = classifier_example_title(example)
 
         # Print statistics intermittently
         if count % 100 == 0:
@@ -118,7 +116,7 @@ def main():
         #############################
         # Show Visualization
         #############################
-        visualize(args, outdir, model_hparams, classifier_dataset, example, label, scenario, title, count)
+        visualize_classifier_example(args, scenario, outdir, model_hparams, classifier_dataset, example, count, title)
         if not args.no_plot:
             plt.show()
         else:
@@ -137,126 +135,6 @@ def print_stats_and_timing(args, count, negative_count, positive_count, total_dt
     print("Number positive: {}".format(positive_count))
     print("Number negative: {}".format(negative_count))
     print("Class balance: {:4.1f}% positive".format(class_balance))
-
-
-def visualize(args, outdir, model_hparams, classifier_dataset, example, label, scenario, title, count):
-    image_key = model_hparams['image_key']
-    if args.display_type == 'just_count':
-        pass
-    elif args.display_type == 'image':
-        show_image(args, example, model_hparams, title)
-    elif args.display_type == 'anim':
-        anim = show_anim(args, scenario, classifier_dataset, example, count)
-        if args.save:
-            filename = outdir / f'example_{count}.gif'
-            print(Fore.CYAN + f"Saving {filename}" + Fore.RESET)
-            anim.save(filename, writer='imagemagick', dpi=100, fps=1)
-    elif args.display_type == 'plot':
-        if image_key == 'transition_image':
-            show_transition_plot(args, example, label, title)
-        elif image_key == 'trajectory_image':
-            show_trajectory_plot(args, classifier_dataset, example, scenario, title)
-
-
-def show_transition_plot(args, example, label, title):
-    full_env = example['full_env/env'].numpy()
-    full_env_extent = example['full_env/extent'].numpy()
-    res = example['full_env/res'].numpy()
-    state = example['link_bot'].numpy()
-    action = example['action'].numpy()
-    next_state = example['link_bot_next'].numpy()
-    planned_next_state = example['planned_state/link_bot_next'].numpy()
-    plot_classifier_data(
-        next_state=next_state,
-        action=action,
-        planned_next_state=planned_next_state,
-        res=res,
-        state=state,
-        actual_env=full_env,
-        actual_env_extent=full_env_extent,
-        title=title,
-        label=label)
-    handles, labels = plt.gca().get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
-    plt.legend(by_label.values(), by_label.keys())
-
-
-def show_trajectory_plot(args, classifier_dataset, example, scenario, title):
-    full_env = example['full_env/env'].numpy()
-    full_env_extent = example['full_env/extent'].numpy()
-    actual_state_all = example[classifier_dataset.label_state_key].numpy()
-    planned_state_all = example[add_planned(classifier_dataset.label_state_key)].numpy()
-    plt.figure()
-    plt.imshow(np.flipud(full_env), extent=full_env_extent)
-    ax = plt.gca()
-    for time_idx in range(planned_state_all.shape[0]):
-        # don't plot NULL states
-        if not np.any(planned_state_all[time_idx] == NULL_PAD_VALUE):
-            actual_state = {
-                classifier_dataset.label_state_key: actual_state_all[time_idx]
-            }
-            planned_state = {
-                classifier_dataset.label_state_key: planned_state_all[time_idx]
-            }
-            scenario.plot_state(ax, actual_state, color='red', s=20, zorder=2, label='actual state', alpha=0.2)
-            scenario.plot_state(ax, planned_state, color='blue', s=5, zorder=3, label='planned state', alpha=0.2)
-    if scenario == 'tether':
-        start_t = int(example['start_t'].numpy())
-        tether_start = example[add_all('tether')][start_t].numpy()
-        tether_start_state = {
-            'tether': tether_start
-        }
-        scenario.plot_state(ax, tether_start_state, color='green', s=5, zorder=1)
-    plt.title(title)
-    handles, labels = plt.gca().get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
-    plt.legend(by_label.values(), by_label.keys())
-
-
-def show_image(args, example, model_hparams, title):
-    image_key = model_hparams['image_key']
-    valid_seq_length = (example['classifier_end_t'] - example['classifier_start_t'] + 1).numpy()
-
-    if args.only_length and args.only_length != valid_seq_length:
-        return
-
-    image = example[image_key].numpy()
-    n_channels = image.shape[2]
-    if n_channels != 3:
-        T = image.shape[0]
-        fig, axes = plt.subplots(nrows=1, ncols=T)
-        fig.suptitle(title)
-        for t in range(T):
-            env_image_t = image[t, :, :, -1]
-            state_image_t = np.sum(image[t, :, :, :-1], axis=2)
-            zeros = np.zeros_like(env_image_t)
-            image_t = np.stack([env_image_t, state_image_t, zeros], axis=2)
-            axes[t].imshow(np.flipud(image_t), vmin=0, vmax=1)
-            axes[t].set_title(f"t={t}")
-            axes[t].set_xticks([])
-            axes[t].set_yticks([])
-    else:
-        plt.imshow(np.flipud(image))
-        ax = plt.gca()
-        ax.set_xticks([])
-        ax.set_yticks([])
-        plt.title(title)
-
-
-def show_anim(args, scenario, classifier_dataset, example, count):
-    # animate the state versus ground truth
-    anim = scenario.animate_predictions_from_classifier_dataset(classifier_dataset=classifier_dataset,
-                                                                example_idx=count,
-                                                                dataset_element=example)
-    return anim
-
-
-def make_title(example, label):
-    traj_idx = int(example["traj_idx"][0].numpy())
-    start = int(example["classifier_start_t"].numpy())
-    end = int(example["classifier_end_t"].numpy())
-    title = f"Traj={traj_idx},{start}-{end} Label={label}"
-    return title
 
 
 if __name__ == '__main__':

@@ -113,7 +113,7 @@ def train(keras_model: MyKerasModel,
 
     ckpt = tf.train.Checkpoint(step=global_step, optimizer=optimizer, net=keras_model)
     manager = tf.train.CheckpointManager(ckpt, full_log_path, max_to_keep=5)
-    ckpt.restore(manager.latest_checkpoint)
+    ckpt.restore(manager.latest_checkpoint).expect_partial()
     if checkpoint is not None:
         if manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
@@ -269,7 +269,7 @@ def evaluate(keras_model: MyKerasModel,
              ):
     ckpt = tf.train.Checkpoint(net=keras_model)
     manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=1)  # doesn't matter here, we're not saving
-    ckpt.restore(manager.latest_checkpoint)
+    ckpt.restore(manager.latest_checkpoint).expect_partial()
     print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
 
     try:
