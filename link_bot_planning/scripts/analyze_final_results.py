@@ -11,7 +11,7 @@ from colorama import Style, Fore
 from scipy import stats
 from tabulate import tabulate
 
-from link_bot_planning.get_scenario import get_scenario
+from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.metric_utils import breif_row_stats
 

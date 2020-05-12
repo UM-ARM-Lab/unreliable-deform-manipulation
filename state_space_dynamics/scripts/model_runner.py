@@ -8,7 +8,7 @@ import tensorflow as tf
 
 import state_space_dynamics
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_planning.get_scenario import get_scenario
+from link_bot_pycommon.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.tensorflow_train_test_loop import evaluate, train

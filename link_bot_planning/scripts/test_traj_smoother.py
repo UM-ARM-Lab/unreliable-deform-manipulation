@@ -9,7 +9,7 @@ import tensorflow as tf
 from matplotlib.animation import FuncAnimation
 
 from link_bot_planning import model_utils, classifier_utils
-from link_bot_planning.link_bot_scenario import LinkBotScenario
+from link_bot_pycommon.link_bot_scenario import LinkBotScenario
 from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import compute_extent

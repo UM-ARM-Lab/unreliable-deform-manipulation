@@ -8,7 +8,7 @@ import tensorflow as tf
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_planning.get_scenario import get_scenario
+from link_bot_pycommon.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function
 from moonshine.gpu_config import limit_gpu_mem

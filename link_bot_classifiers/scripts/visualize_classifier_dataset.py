@@ -13,7 +13,7 @@ from colorama import Fore
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned
-from link_bot_planning.get_scenario import get_scenario
+from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.image_functions import setup_image_inputs

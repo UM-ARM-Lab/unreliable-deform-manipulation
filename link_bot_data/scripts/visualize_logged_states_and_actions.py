@@ -6,7 +6,7 @@ import pathlib
 
 import matplotlib.pyplot as plt
 
-from link_bot_planning.get_scenario import get_scenario
+from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 
 

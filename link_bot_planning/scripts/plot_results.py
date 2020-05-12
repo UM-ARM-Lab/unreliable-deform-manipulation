@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import numpy as np
 
-from link_bot_planning.get_scenario import get_scenario
+from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_planning.ompl_viz import plan_vs_execution
 from link_bot_pycommon.args import my_formatter
 

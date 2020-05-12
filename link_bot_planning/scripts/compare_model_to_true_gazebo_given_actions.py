@@ -13,7 +13,7 @@ import tensorflow as tf
 
 from link_bot_gazebo import gazebo_services
 from link_bot_planning import model_utils, classifier_utils, ompl_viz
-from link_bot_planning.get_scenario import get_scenario
+from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_planning.plan_and_execute import execute_plan
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.ros_pycommon import get_occupancy_data, get_states_dict

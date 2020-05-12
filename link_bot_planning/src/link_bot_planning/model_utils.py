@@ -4,7 +4,7 @@ from typing import Tuple, List, Dict
 
 import tensorflow as tf
 
-from link_bot_planning.get_scenario import get_scenario
+from link_bot_pycommon.get_scenario import get_scenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from state_space_dynamics.full_dynamics_nn import ObstacleNNWrapper
 from state_space_dynamics.rigid_translation_model import RigidTranslationModel
