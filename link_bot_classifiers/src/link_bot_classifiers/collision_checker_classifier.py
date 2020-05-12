@@ -5,7 +5,7 @@ from typing import List, Dict
 import numpy as np
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.link_bot_pycommon import vector_to_points_2d
 from link_bot_pycommon.link_bot_sdf_utils import point_to_idx, OccupancyData

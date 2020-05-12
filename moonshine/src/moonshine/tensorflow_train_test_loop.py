@@ -8,7 +8,7 @@ import progressbar
 import tensorflow as tf
 from colorama import Fore, Style
 
-from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine import experiments_util
 from moonshine.metric import Metric, LossMetric
 

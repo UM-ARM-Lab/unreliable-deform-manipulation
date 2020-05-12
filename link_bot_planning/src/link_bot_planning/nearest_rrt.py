@@ -3,7 +3,7 @@ from typing import Dict
 import ompl.control as oc
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon.base_services import Services

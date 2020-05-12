@@ -4,7 +4,7 @@ import tensorflow as tf
 
 from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_next_and_planned, add_planned, state_dict_is_null_tf, \
     total_state_dim
-from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
 from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts_tf

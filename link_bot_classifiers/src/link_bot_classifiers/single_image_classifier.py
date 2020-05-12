@@ -11,7 +11,7 @@ from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import add_next_and_planned, add_planned
-from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_planning.params import FullEnvParams
 from link_bot_pycommon.link_bot_pycommon import make_dict_float32
 from moonshine.image_functions import make_transition_images, make_traj_images_from_states_list

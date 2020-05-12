@@ -12,7 +12,7 @@ from matplotlib.animation import FuncAnimation
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.visualization import plot_rope_configuration
-from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_planning.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
 from moonshine.image_functions import old_raster

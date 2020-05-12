@@ -3,7 +3,7 @@ from typing import Dict
 import ompl.base as ob
 import ompl.control as oc
 
-from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_planning.state_spaces import from_numpy, compound_to_numpy
 from link_bot_planning.viz_object import VizObject
 

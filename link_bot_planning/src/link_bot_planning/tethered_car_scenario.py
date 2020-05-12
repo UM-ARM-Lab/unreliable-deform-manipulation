@@ -5,9 +5,8 @@ import tensorflow as tf
 
 from ignition.markers import MarkerProvider
 from link_bot_data.visualization import plot_arrow, update_arrow
-from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.base_services import Services
-from link_bot_pycommon.link_bot_pycommon import wrap_angle
 from moonshine.base_learned_dynamics_model import dynamics_loss_function
 from peter_msgs.msg import Action
 

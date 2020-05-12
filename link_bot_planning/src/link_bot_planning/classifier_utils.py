@@ -6,7 +6,7 @@ from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
 from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_classifiers.single_image_classifier import SingleImageClassifierWrapper
-from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 
 
 def load_generic_model(model_dir: pathlib.Path, scenario: ExperimentScenario) -> [BaseConstraintChecker]:

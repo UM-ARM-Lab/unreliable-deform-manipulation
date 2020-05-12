@@ -1,9 +1,9 @@
-from typing import Dict, List, Callable
+from typing import Dict, List
 
 import numpy as np
 import tensorflow as tf
 
-from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 
 
 class BaseConstraintChecker:

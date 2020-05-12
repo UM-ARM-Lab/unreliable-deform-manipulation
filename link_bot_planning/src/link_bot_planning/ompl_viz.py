@@ -6,7 +6,7 @@ from matplotlib import cm
 from matplotlib.animation import FuncAnimation
 from ompl import base as ob
 
-from link_bot_planning.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_planning.state_spaces import compound_to_numpy
 from link_bot_planning.viz_object import VizObject
 from moonshine.moonshine_utils import states_are_equal
