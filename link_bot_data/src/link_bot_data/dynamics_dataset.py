@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
 from link_bot_data.link_bot_dataset_utils import split_into_sequences, slice_sequences
-from link_bot_planning.params import FullEnvParams
+from link_bot_pycommon.params import FullEnvParams
 
 
 class DynamicsDataset(BaseDataset):

@@ -10,7 +10,7 @@ from link_bot_classifiers import none_classifier
 from link_bot_data.visualization import plot_rope_configuration
 from link_bot_gazebo import gazebo_services
 from link_bot_planning import model_utils
-from link_bot_planning.params import LocalEnvParams
+from link_bot_pycommon.params import LocalEnvParams
 from link_bot_planning.shooting_directed_control_sampler import ShootingDirectedControlSamplerInternal
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_pycommon import make_random_rope_configuration

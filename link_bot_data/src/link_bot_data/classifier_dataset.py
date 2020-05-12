@@ -8,7 +8,7 @@ from link_bot_data.base_dataset import BaseDataset
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_planned, null_pad, null_previous_states, \
     balance, null_diverged
-from link_bot_planning.params import FullEnvParams
+from link_bot_pycommon.params import FullEnvParams
 
 
 def add_model_predictions(fwd_model,

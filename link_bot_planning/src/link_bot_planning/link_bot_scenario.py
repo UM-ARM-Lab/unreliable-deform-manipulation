@@ -8,7 +8,7 @@ from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_planning.params import CollectDynamicsParams
+from link_bot_pycommon.params import CollectDynamicsParams
 from link_bot_pycommon.base_services import Services
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from peter_msgs.msg import Action

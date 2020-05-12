@@ -13,7 +13,7 @@ from colorama import Fore
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_planning.get_scenario import get_scenario
-from link_bot_planning.params import FullEnvParams, SimParams, CollectDynamicsParams
+from link_bot_pycommon.params import FullEnvParams, SimParams, CollectDynamicsParams
 from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
 from link_bot_pycommon.ros_pycommon import get_states_dict

@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_planning.params import FullEnvParams, SimParams
+from link_bot_pycommon.params import FullEnvParams, SimParams
 
 
 class BaseDynamicsFunction:

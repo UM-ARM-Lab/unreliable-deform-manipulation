@@ -21,7 +21,7 @@ from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot_plan
-from link_bot_planning.params import SimParams
+from link_bot_pycommon.params import SimParams
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
 from moonshine.moonshine_utils import listify
