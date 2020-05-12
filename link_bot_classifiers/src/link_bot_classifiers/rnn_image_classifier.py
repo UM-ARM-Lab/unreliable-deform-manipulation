@@ -62,7 +62,7 @@ class RNNImageClassifier(MyKerasModel):
         self.lstm = layers.LSTM(self.hparams['rnn_size'], unroll=True)
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
-    # @tf.function
+    @tf.function
     def _conv(self, images):
         # merge batch & time dimensions
         batch, time, h, w, c = images.shape
@@ -72,20 +72,20 @@ class RNNImageClassifier(MyKerasModel):
             conv_z = pool_layer(conv_h)
         out_conv_z = conv_z
         out_conv_z = tf.reshape(out_conv_z, [batch, time, -1])
-        print(out_conv_z.shape)
         # un-merge batch & time dimensions
 
         return out_conv_z
 
-    # @tf.function
+    @tf.function
     def call(self, input_dict: Dict, training=True, mask=None):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         images = input_dict[self.hparams['image_key']]
 
         action = input_dict['action']
+        padded_action = tf.pad(action, [[0, 0], [0, 1], [0, 0]])
         conv_output = self._conv(images)
 
-        concat_args = [conv_output, action]
+        concat_args = [conv_output, padded_action]
         if self.hparams['stdev']:
             stdevs = input_dict[add_planned('stdev')]
             concat_args.append(stdevs)
@@ -93,9 +93,7 @@ class RNNImageClassifier(MyKerasModel):
             planned_state_key = add_planned(state_key)
             state = input_dict[planned_state_key]
             concat_args.append(state)
-        print(concat_args)
         conv_output = tf.concat(concat_args, axis=2)
-        print(conv_output.shape)
 
         if self.hparams['batch_norm']:
             conv_output = self.batch_norm(conv_output, training=training)
@@ -105,12 +103,9 @@ class RNNImageClassifier(MyKerasModel):
             d = dropout_layer(z, training=training)
             z = dense_layer(d)
         out_d = z
-        print(out_d.shape)
 
         out_h = self.lstm(out_d)
-        print(out_h.shape)
         accept_probability = self.output_layer(out_h)
-        print(accept_probability.shape)
         return accept_probability
 
 

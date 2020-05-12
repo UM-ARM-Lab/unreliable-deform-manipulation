@@ -153,6 +153,7 @@ def train(keras_model: MyKerasModel,
     def train_loop():
         step = None
         best_key_metric_value = None
+        validation_iterator = iter(val_tf_dataset.repeat())
 
         for epoch in range(epochs):
             ################
@@ -176,6 +177,33 @@ def train(keras_model: MyKerasModel,
                         train_batch_metrics = metrics_function(train_element, train_predictions)
                         for metric_name, metric_value in train_batch_metrics.items():
                             tf.summary.scalar('train_' + metric_name.replace(" ", "_"), metric_value, step=step)
+
+                    if step % 500 == 0:
+                        val_losses = []
+                        val_metrics = {}
+                        for i in range(128):
+                            batch = next(validation_iterator)
+                            if postprocess is not None:
+                                dataset_element = postprocess(batch)
+                            predictions = keras_model(batch, training=False)
+                            val_batch_loss = loss_function(dataset_element, predictions)
+                            val_losses.append(val_batch_loss)
+
+                            metrics_element = metrics_function(dataset_element, predictions)
+                            for k, v in metrics_element.items():
+                                if k not in val_metrics:
+                                    val_metrics[k] = []
+                                val_metrics[k].append(v)
+
+                        val_mean_loss = np.mean(val_losses)
+
+                        val_mean_metrics = {}
+                        for k, v in val_metrics.items():
+                            val_mean_metrics[k] = np.mean(v)
+                        if logging:
+                            tf.summary.scalar('validation_loss', val_mean_loss, step=step)
+                            for metric_name, mean_metric_value in val_mean_metrics.items():
+                                tf.summary.scalar('validation_' + metric_name.replace(" ", "_"), mean_metric_value, step=step)
 
                 ####################
                 # Update global step

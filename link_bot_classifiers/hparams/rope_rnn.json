@@ -8,7 +8,7 @@
   "image_noise_stddev": 0.0,
   "action_in_image": false,
   "rope_image_k": 10000,
-  "rnn_size": [16],
+  "rnn_size": 16,
   "fc_layer_sizes": [],
   "conv_filters": [
     [8, [5, 5]],
@@ -23,6 +23,6 @@
   "batch_norm": false,
   "local_env_h_rows": 100,
   "local_env_w_cols": 100,
-  "learning_rate": 0.001,
+  "learning_rate": 0.0001,
   "stdev": true
 }

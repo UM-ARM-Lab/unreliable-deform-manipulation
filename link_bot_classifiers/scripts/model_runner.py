@@ -18,6 +18,7 @@ from moonshine.tensorflow_train_test_loop import evaluate, train
 
 limit_gpu_mem(2)
 
+
 def train_main(args, seed: int):
     if args.log:
         log_path = experiments_util.experiment_name(args.log)
@@ -122,7 +123,7 @@ def main():
     eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
-    eval_parser.add_argument('--batch-size', type=int, default=32)
+    eval_parser.add_argument('--batch-size', type=int, default=64)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.set_defaults(func=eval_main)
     eval_parser.add_argument('--seed', type=int, default=None)
