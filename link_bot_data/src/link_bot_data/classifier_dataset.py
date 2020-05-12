@@ -12,7 +12,7 @@ from link_bot_planning.params import FullEnvParams
 
 
 def add_model_predictions(fwd_model,
-                          tf_dataset,
+                          tf_dataset: tf.data.TFRecordDataset,
                           dataset: DynamicsDataset,
                           labeling_params: Dict):
     prediction_horizon = labeling_params['prediction_horizon']
@@ -20,6 +20,7 @@ def add_model_predictions(fwd_model,
     batch_size = 2048
     for dataset_element in tf_dataset.batch(batch_size):
         inputs, outputs = dataset_element
+        actual_batch_size = int(inputs['traj_idx'].shape[0])
 
         for prediction_start_t in range(0, dataset.max_sequence_length - prediction_horizon + 1, labeling_params['start_step']):
             prediction_end_t = prediction_start_t + prediction_horizon
@@ -31,7 +32,7 @@ def add_model_predictions(fwd_model,
                                                            prediction_start_t=prediction_start_t,
                                                            prediction_horizon=prediction_horizon)
 
-            for batch_idx in range(batch_size):
+            for batch_idx in range(actual_batch_size):
                 yield from generate_examples_for_prediction(inputs=inputs,
                                                             outputs_from_start_t=outputs_from_start_t,
                                                             prediction_start_t=prediction_start_t,
@@ -71,19 +72,20 @@ def generate_examples_for_prediction(inputs: Dict,
             }
 
             # this slice gives arrays of fixed length (ex, 5) which must be null padded from classifier_end_t onwards
-            classifier_full_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon)
+            state_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon)
+            action_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon - 1)
             for name, output in outputs_from_start_t.items():
-                output_from_cst = output[batch_idx][classifier_full_slice]
+                output_from_cst = output[batch_idx][state_slice]
                 null_padded_sequence = null_pad(output_from_cst, end=out_example_end_idx)
                 out_example[name] = null_padded_sequence
 
             for name, prediction in predictions_from_start_t.items():
-                pred_from_cst = prediction[batch_idx][classifier_full_slice]
+                pred_from_cst = prediction[batch_idx][state_slice]
                 null_padded_sequence = null_pad(pred_from_cst, end=out_example_end_idx)
                 out_example[add_planned(name)] = null_padded_sequence
 
             # action
-            out_example['action'] = inputs['action'][batch_idx]
+            out_example['action'] = inputs['action'][batch_idx][action_slice]
 
             # compute label
             state_key = labeling_params['state_key']

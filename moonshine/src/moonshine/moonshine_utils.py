@@ -136,7 +136,16 @@ def add_batch(*xs):
 
 def remove_batch_single(x):
     if isinstance(x, dict):
-        return {k: v[0] for k, v in x.items()}
+        return {k: remove_batch_single(v) for k, v in x.items()}
+    elif isinstance(x, int):
+        return x
+    elif isinstance(x, float):
+        return x
+    elif isinstance(x, tf.Tensor):
+        if len(x.shape) == 0:
+            return x
+        else:
+            return x[0]
     else:
         return x[0]
 

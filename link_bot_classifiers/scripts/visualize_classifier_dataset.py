@@ -2,16 +2,19 @@
 import argparse
 import json
 import pathlib
+import time
 from time import perf_counter
 
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from colorama import Fore
 
 from link_bot_classifiers.visualization import plot_classifier_data
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned, state_dict_is_null_tf
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_all, add_planned
 from link_bot_planning.get_scenario import get_scenario
+from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.image_functions import setup_image_inputs
 from moonshine.moonshine_utils import remove_batch
 
@@ -22,10 +25,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('model_hparams', type=pathlib.Path, help='classifier model hparams')
-    parser.add_argument('display_type', choices=['just_count', 'image', 'plot'])
+    parser.add_argument('display_type', choices=['just_count', 'image', 'anim', 'plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--no-balance', action='store_true')
+    parser.add_argument('--save', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--only-length', type=int)
     parser.add_argument('--take', type=int)
@@ -52,6 +56,10 @@ def main():
         dataset = dataset.shuffle(buffer_size=1024)
 
     dataset = dataset.batch(1)
+
+    now = int(time.time())
+    outdir = pathlib.Path('results') / f'anim_{now}'
+    outdir.mkdir(parents=True)
 
     done = False
 
@@ -85,34 +93,41 @@ def main():
 
         if args.only_negative and label != 0:
             continue
+        if args.only_funneling and not funneling:
+            continue
+
+        if count == 0:
+            print_dict(example)
+
         if label:
             positive_count += 1
         else:
             negative_count += 1
 
-        if args.only_funneling and not funneling:
-            continue
-
         count += 1
 
-        if args.no_plot:
-            # still count, but do nothing else
-            continue
-
         title = make_title(example, label)
+
+        # Print statistics intermittently
+        if count % 100 == 0:
+            print_stats_and_timing(args, count, negative_count, positive_count)
 
         #############################
         # Show Visualization
         #############################
-        show_visualization(args, model_hparams, classifier_dataset, example, label, scenario, title)
+        visualize(args, outdir, model_hparams, classifier_dataset, example, label, scenario, title, count)
+        if not args.no_plot:
+            plt.show()
+        else:
+            plt.close()
 
     total_dt = perf_counter() - t0
 
     print_stats_and_timing(args, count, negative_count, positive_count, total_dt)
 
 
-def print_stats_and_timing(args, count, negative_count, positive_count, total_dt):
-    if args.perf:
+def print_stats_and_timing(args, count, negative_count, positive_count, total_dt=None):
+    if args.perf and total_dt is not None:
         print("Total iteration time = {:.4f}".format(total_dt))
     class_balance = positive_count / count * 100
     print("Number of examples: {}".format(count))
@@ -121,20 +136,26 @@ def print_stats_and_timing(args, count, negative_count, positive_count, total_dt
     print("Class balance: {:4.1f}% positive".format(class_balance))
 
 
-def show_visualization(args, model_hparams, classifier_dataset, example, label, scenario, title):
+def visualize(args, outdir, model_hparams, classifier_dataset, example, label, scenario, title, count):
     image_key = model_hparams['image_key']
     if args.display_type == 'just_count':
         pass
     elif args.display_type == 'image':
         show_image(args, example, model_hparams, title)
+    elif args.display_type == 'anim':
+        anim = show_anim(args, scenario, classifier_dataset, example, count)
+        if args.save:
+            filename = outdir / f'example_{count}.gif'
+            print(Fore.CYAN + f"Saving {filename}" + Fore.RESET)
+            anim.save(filename, writer='imagemagick', dpi=100, fps=1)
     elif args.display_type == 'plot':
         if image_key == 'transition_image':
-            show_transition_plot(example, label, title)
+            show_transition_plot(args, example, label, title)
         elif image_key == 'trajectory_image':
-            show_trajectory_plot(classifier_dataset, example, scenario, title)
+            show_trajectory_plot(args, classifier_dataset, example, scenario, title)
 
 
-def show_transition_plot(example, label, title):
+def show_transition_plot(args, example, label, title):
     full_env = example['full_env/env'].numpy()
     full_env_extent = example['full_env/extent'].numpy()
     res = example['full_env/res'].numpy()
@@ -155,10 +176,9 @@ def show_transition_plot(example, label, title):
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys())
-    plt.show(block=True)
 
 
-def show_trajectory_plot(classifier_dataset, example, scenario, title):
+def show_trajectory_plot(args, classifier_dataset, example, scenario, title):
     full_env = example['full_env/env'].numpy()
     full_env_extent = example['full_env/extent'].numpy()
     actual_state_all = example[classifier_dataset.label_state_key].numpy()
@@ -188,7 +208,6 @@ def show_trajectory_plot(classifier_dataset, example, scenario, title):
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys())
-    plt.show()
 
 
 def show_image(args, example, model_hparams, title):
@@ -220,7 +239,13 @@ def show_image(args, example, model_hparams, title):
         ax.set_yticks([])
         plt.title(title)
 
-    plt.show(block=True)
+
+def show_anim(args, scenario, classifier_dataset, example, count):
+    # animate the state versus ground truth
+    anim = scenario.animate_predictions_from_classifier_dataset(classifier_dataset=classifier_dataset,
+                                                                example_idx=count,
+                                                                dataset_element=example)
+    return anim
 
 
 def make_title(example, label):

@@ -79,12 +79,12 @@ def main():
             start_idx, end_idx = trim_funneling(labels_list)
 
             # animate the state versus ground truth
-            anim = fwd_models.scenario.animate_predictions_from_dataset(example_idx=example_idx,
-                                                                        start_idx=start_idx,
-                                                                        end_idx=end_idx,
-                                                                        dataset_element=dataset_element,
-                                                                        predictions=predictions,
-                                                                        labels=labels_list)
+            anim = fwd_models.scenario.animate_predictions_from_dynamics_dataset(example_idx=example_idx,
+                                                                                 start_idx=start_idx,
+                                                                                 end_idx=end_idx,
+                                                                                 dataset_element=dataset_element,
+                                                                                 predictions=predictions,
+                                                                                 labels=labels_list)
             if args.save:
                 filename = root / 'example_{}.gif'.format(example_idx)
                 print("Saving {}".format(filename))

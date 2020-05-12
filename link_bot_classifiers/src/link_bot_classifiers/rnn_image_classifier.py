@@ -31,10 +31,6 @@ class RNNImageClassifier(MyKerasModel):
 
         self.states_keys = self.hparams['states_keys']
 
-        if 'image_noise_stddev' in hparams:
-            self.noise_layer = tf.keras.layers.GaussianNoise(stddev=hparams['image_noise_stddev'])
-        else:
-            self.noise_layer = None
         self.conv_layers = []
         self.pool_layers = []
         for n_filters, kernel_size in self.hparams['conv_filters']:
@@ -48,7 +44,6 @@ class RNNImageClassifier(MyKerasModel):
             self.conv_layers.append(conv)
             self.pool_layers.append(pool)
 
-        self.conv_flatten = layers.Flatten()
         if self.hparams['batch_norm']:
             self.batch_norm = layers.BatchNormalization()
 
@@ -67,42 +62,40 @@ class RNNImageClassifier(MyKerasModel):
         self.lstm = layers.LSTM(self.hparams['rnn_size'], unroll=True)
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
-    @tf.function
-    def _conv(self, image):
-        # feed into a CNN
-        conv_z = image
+    # @tf.function
+    def _conv(self, images):
+        # merge batch & time dimensions
+        batch, time, h, w, c = images.shape
+        conv_z = tf.reshape(images, [batch * time, h, w, c])
         for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
             conv_h = conv_layer(conv_z)
             conv_z = pool_layer(conv_h)
         out_conv_z = conv_z
+        out_conv_z = tf.reshape(out_conv_z, [batch, time, -1])
+        print(out_conv_z.shape)
+        # un-merge batch & time dimensions
 
         return out_conv_z
 
-    @tf.function
+    # @tf.function
     def call(self, input_dict: Dict, training=True, mask=None):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
-        image = input_dict[self.hparams['image_key']]
-        if self.noise_layer is not None:
-            image = self.noise_layer(image, training=training)
+        images = input_dict[self.hparams['image_key']]
 
         action = input_dict['action']
-        out_conv_z = self._conv(image)
-        conv_output = self.conv_flatten(out_conv_z)
+        conv_output = self._conv(images)
 
-        if self.hparams['mixed']:
-            concat_args = [conv_output, action]
-            if self.hparams['stdev']:
-                stdev = input_dict[add_planned('stdev')]
-                stdev_next = input_dict[add_next_and_planned('stdev')]
-                concat_args.extend([stdev, stdev_next])
-            for state_key in self.states_keys:
-                planned_state_key = add_planned(state_key)
-                planned_state_key_next = add_next_and_planned(state_key)
-                state = input_dict[planned_state_key]
-                next_state = input_dict[planned_state_key_next]
-                concat_args.append(state)
-                concat_args.append(next_state)
-            conv_output = tf.concat(concat_args, axis=1)
+        concat_args = [conv_output, action]
+        if self.hparams['stdev']:
+            stdevs = input_dict[add_planned('stdev')]
+            concat_args.append(stdevs)
+        for state_key in self.states_keys:
+            planned_state_key = add_planned(state_key)
+            state = input_dict[planned_state_key]
+            concat_args.append(state)
+        print(concat_args)
+        conv_output = tf.concat(concat_args, axis=2)
+        print(conv_output.shape)
 
         if self.hparams['batch_norm']:
             conv_output = self.batch_norm(conv_output, training=training)
@@ -112,9 +105,12 @@ class RNNImageClassifier(MyKerasModel):
             d = dropout_layer(z, training=training)
             z = dense_layer(d)
         out_d = z
+        print(out_d.shape)
 
         out_h = self.lstm(out_d)
+        print(out_h.shape)
         accept_probability = self.output_layer(out_h)
+        print(accept_probability.shape)
         return accept_probability
 
 

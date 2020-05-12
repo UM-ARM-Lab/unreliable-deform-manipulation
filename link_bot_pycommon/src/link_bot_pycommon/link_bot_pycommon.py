@@ -148,11 +148,14 @@ def transpose_2d_lists(l):
 def print_dict(example):
     for k, v in example.items():
         if hasattr(v, 'dtype'):
-            print(k, v.dtype, v.shape)
-        elif hasattr(v, 'shape'):
-            print(k, '?', v.shape)
+            dtype = v.dtype
         else:
-            print(k, '?', '?')
+            dtype = '?'
+        if hasattr(v, 'shape'):
+            shape = v.shape
+        else:
+            shape = '?'
+        print(f"{k:25s} {str(dtype):20s} {str(shape)}")
 
 
 def rand_str(length=16):

@@ -4,7 +4,10 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 from ignition.markers import MarkerProvider
+from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_pycommon.base_services import Services
+from link_bot_pycommon.link_bot_pycommon import trim_funneling, print_dict
 from moonshine.moonshine_utils import remove_batch, numpify, dict_of_sequences_to_sequence_of_dicts_tf
 
 
@@ -118,7 +121,45 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @classmethod
-    def animate_predictions_from_dataset(cls, example_idx, dataset_element, predictions, labels=None, start_idx=0, end_idx=-1):
+    def animate_predictions_from_classifier_dataset(cls,
+                                                    classifier_dataset: ClassifierDataset,
+                                                    example_idx: int,
+                                                    dataset_element: Dict,
+                                                    trim: Optional[bool] = False):
+        is_close = dataset_element['is_close'].numpy()
+        last_valid_idx = int(dataset_element['last_valid_idx'].numpy().squeeze())
+        valid_is_close = is_close[:last_valid_idx + 1]
+
+        if trim:
+            start_idx, end_idx = trim_funneling(valid_is_close)
+        else:
+            start_idx = 0
+            end_idx = len(valid_is_close)
+
+        predictions = {}
+        actual = {}
+        for state_key in classifier_dataset.state_keys:
+            predictions[state_key] = dataset_element[add_planned(state_key)]
+            actual[state_key] = dataset_element[state_key]
+
+        predictions = numpify(dict_of_sequences_to_sequence_of_dicts_tf(predictions))
+        actual = numpify(dict_of_sequences_to_sequence_of_dicts_tf(actual))
+        actions = dataset_element['action']
+        environment = numpify({
+            'full_env/env': dataset_element['full_env/env'],
+            'full_env/extent': dataset_element['full_env/extent'],
+        })
+
+        return cls.animate_predictions(environment=environment,
+                                       actions=actions[start_idx:end_idx],
+                                       actual=actual[start_idx:end_idx],
+                                       predictions=predictions[start_idx:end_idx],
+                                       example_idx=example_idx,
+                                       labels=is_close[start_idx:end_idx])
+
+    @classmethod
+    def animate_predictions_from_dynamics_dataset(cls, example_idx, dataset_element, predictions, labels=None, start_idx=0,
+                                                  end_idx=-1):
         predictions = remove_batch(predictions)
         predictions = numpify(dict_of_sequences_to_sequence_of_dicts_tf(predictions))
         inputs, outputs = dataset_element
@@ -153,7 +194,7 @@ class ExperimentScenario:
         ax = plt.gca()
         prediction_artist = None
         if predictions is not None:
-            prediction_artist = cls.plot_state(ax, predictions[0], 'g', zorder=3, s=10, label='prediction')
+            prediction_artist = cls.plot_state(ax, predictions[0], 'g', zorder=3, s=30, label='prediction')
         actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=30, label='actual')
         action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=30, zorder=4)
         cls.plot_environment(ax, environment)
@@ -186,5 +227,5 @@ class ExperimentScenario:
             if t < n_states - 1:
                 cls.update_action_artist(action_artist, actual[t], actions[t])
 
-        anim = FuncAnimation(fig, update, interval=500, repeat=True, frames=n_states)
+        anim = FuncAnimation(fig, update, interval=1000, repeat=True, frames=n_states)
         return anim

@@ -1,5 +1,5 @@
 {
-  "model_class": "raster",
+  "model_class": "rnn",
   "scenario": "link_bot",
   "states_keys": [
     "link_bot"
@@ -9,7 +9,7 @@
   "action_in_image": false,
   "rope_image_k": 10000,
   "rnn_size": [16],
-  "fc_layer_sizes": [128],
+  "fc_layer_sizes": [],
   "conv_filters": [
     [8, [5, 5]],
     [8, [3, 3]],
