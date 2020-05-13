@@ -117,8 +117,9 @@ def main():
             axes[i, j].set_title(title)
 
     if not args.no_plot:
-        handles, labels = axes[0, 0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc='upper center')
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        plt.legend(by_label.values(), by_label.keys())
         plt.show()
 
 

@@ -67,7 +67,6 @@ def plot_classifier_data(
     ax.set_title(title)
     ax.set_xlabel("x (m)")
     ax.set_ylabel("y (m)")
-    # ax.legend()
 
 
 def visualize_classifier_example(args,
