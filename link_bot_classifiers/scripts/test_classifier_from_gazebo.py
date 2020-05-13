@@ -15,6 +15,7 @@ from link_bot_pycommon.ros_pycommon import get_occupancy_data, get_states_dict
 
 
 def main():
+    plt.style.use("slides")
     np.set_printoptions(precision=6, suppress=True, linewidth=200)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
@@ -49,7 +50,7 @@ def main():
 
     state = get_states_dict(service_provider, fwd_model.states_keys)
     if classifier_model.model_hparams['stdev']:
-        state['stdev'] = np.float32(0.0)
+        state['stdev'] = np.array([0.0], dtype=np.float32)
 
     if args.actions:
         actions = np.genfromtxt(args.actions, delimiter=',')
@@ -93,11 +94,14 @@ def main():
         next_state = make_dict_float32(next_state)
         states_sequence = [state, next_state]
 
-        accept_probability = classifier_model.check_constraint(full_env=full_env_data.data,
-                                                               full_env_origin=full_env_data.origin,
-                                                               res=full_env_data.resolution,
+        environment = {
+            'full_env/env': full_env_data.data,
+            'full_env/origin': full_env_data.origin,
+            'full_env/res': full_env_data.resolution,
+        }
+        accept_probability = classifier_model.check_constraint(environement=environment,
                                                                states_sequence=states_sequence,
-                                                               actions=actions)
+                                                               actions=action)
         accept_probability = float(accept_probability)
         prediction = 1 if accept_probability > 0.5 else 0
         title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)
@@ -116,7 +120,6 @@ def main():
     if not args.no_plot:
         handles, labels = axes[0, 0].get_legend_handles_labels()
         fig.legend(handles, labels, loc='upper center')
-        plt.tight_layout()
         plt.show()
 
 

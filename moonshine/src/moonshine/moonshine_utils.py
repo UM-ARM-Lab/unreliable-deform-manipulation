@@ -82,6 +82,7 @@ def dict_of_tensors_to_dict_of_numpy_arrays(tf_dict):
 
 
 def sequence_of_dicts_to_dict_of_sequences(seq_of_dicts):
+    # TODO: make a data structure that works both ways, as a dict and as a list
     dict_of_seqs = {}
     for d in seq_of_dicts:
         for k, v in d.items():
@@ -93,7 +94,7 @@ def sequence_of_dicts_to_dict_of_sequences(seq_of_dicts):
 
 
 def dict_of_sequences_to_sequence_of_dicts_tf(dict_of_seqs, time_axis=0):
-    # FIXME: a common problem I have is that I have a dictionary of tensors, each with the smae shape in the first M dimensions
+    # FIXME: a common problem I have is that I have a dictionary of tensors, each with the same shape in the first M dimensions
     # and I want to get those shapes, but I don't care which key/value I use. Feels like I need a different datastructure here.
     seq_of_dicts = []
     # assumes all values in the dict have the same first dimension size (num time steps)

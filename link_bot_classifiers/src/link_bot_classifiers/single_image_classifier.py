@@ -176,7 +176,11 @@ class SingleImageClassifierWrapper(BaseConstraintChecker):
             states_sequence_to_draw.append({k: state[k] for k in state if k != 'stdev'})
 
         batched_inputs = add_batch(environment, states_sequence_to_draw)
-        image = make_traj_images_from_states_list(*batched_inputs, rope_image_k=self.model_hparams['rope_image_k'])[0]
+        image = make_traj_images_from_states_list(*batched_inputs,
+                                                  scenario=self.scenario,
+                                                  local_env_h=self.input_h_rows,
+                                                  local_env_w=self.input_w_cols,
+                                                  rope_image_k=self.model_hparams['rope_image_k'])[0]
 
         net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
         net_inputs['trajectory_image'] = image

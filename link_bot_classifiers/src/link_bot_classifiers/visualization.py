@@ -48,7 +48,7 @@ def plot_classifier_data(
     if planned_state is not None:
         plot_rope_configuration(ax, planned_state, c='green', label='planned state', zorder=3)
     if planned_next_state is not None:
-        plot_rope_configuration(ax, planned_next_state, c='blue', label='planned next state', zorder=5, linestyle='-.',
+        plot_rope_configuration(ax, planned_next_state, c='blue', label='planned next state', zorder=5,
                                 linewidth=5)
     if state is not None:
         ax.scatter(state[-2], state[-1], c='k')

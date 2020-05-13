@@ -189,13 +189,11 @@ def make_traj_images(scenario: ExperimentScenario,
     return all_images
 
 
-def make_traj_images_from_states_list(scenario: ExperimentScenario,
-                                      environment: Dict,
+def make_traj_images_from_states_list(environment: Dict,
                                       states: List[Dict],
+                                      scenario: ExperimentScenario,
                                       local_env_w: int,
-                                      local_env_h: int,
-                                      rope_image_k: float,
-                                      ):
+                                      local_env_h: int, rope_image_k: float):
     """
     :param environment:
     :param states: each element is [batch, time, n]

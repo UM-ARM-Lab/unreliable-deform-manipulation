@@ -10,12 +10,12 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_data.link_bot_dataset_utils import add_next_and_planned, add_planned
+from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.link_bot_pycommon import make_dict_float32, print_dict
 from link_bot_pycommon.params import FullEnvParams
-from link_bot_pycommon.link_bot_pycommon import make_dict_float32
-from moonshine.image_functions import make_transition_images, make_traj_images_from_states_list
-from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors
+from moonshine.image_functions import make_traj_images_from_states_list
+from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, sequence_of_dicts_to_dict_of_sequences
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 
@@ -125,54 +125,34 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.ckpt.restore(self.manager.latest_checkpoint)
 
-    def check_transition(self,
-                         environment: Dict,
-                         states_sequence: List[Dict],
-                         actions,
-                         ) -> tf.Tensor:
-        states_i = states_sequence[-2]
-        # remove stdev from state we draw. if stdev doesn't exist this will still work
-        states_i_to_draw = {k: states_i[k] for k in states_i if k != 'stdev'}
-        action_i = actions[-1]
-        states_i_plus_1 = states_sequence[-1]
-        states_i_plus_1_to_draw = {k: states_i_plus_1[k] for k in states_i_plus_1 if k != 'stdev'}
-
-        action_in_image = self.model_hparams['action_in_image']
-        batched_inputs = add_batch(environment, states_i_to_draw, action_i, states_i_plus_1_to_draw)
-        image = make_transition_images(*batched_inputs,
-                                       scenario=self.scenario,
-                                       local_env_h=self.input_h_rows,
-                                       local_env_w=self.input_w_cols,
-                                       action_in_image=action_in_image,
-                                       batch_size=1,
-                                       k=self.model_hparams['rope_image_k'])[0]
-        image = tf.convert_to_tensor(image, dtype=tf.float32)
-
-        net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
-        net_inputs['transition_image'] = image
-
-        accept_probability = self.net(add_batch(net_inputs), training=False)[0, 0]
-        return accept_probability
-
     def check_trajectory(self,
                          environment: Dict,
                          states_sequence: List[Dict],
-                         actions: tf.Variable) -> tf.Tensor:
-        # Get state states/action for just the transition, which we also feed into the classifier
-        action_i = actions[-1]
-        states_i = states_sequence[-2]
-        states_i_plus_1 = states_sequence[1]
-
+                         actions) -> tf.Tensor:
         # remove stdev from state we draw
         states_sequence_to_draw = []
         for state in states_sequence:
             states_sequence_to_draw.append({k: state[k] for k in state if k != 'stdev'})
 
         batched_inputs = add_batch(environment, states_sequence_to_draw)
-        image = make_traj_images_from_states_list(*batched_inputs, rope_image_k=self.model_hparams['rope_image_k'])[0]
+        image = make_traj_images_from_states_list(*batched_inputs,
+                                                  scenario=self.scenario,
+                                                  local_env_h=self.input_h_rows,
+                                                  local_env_w=self.input_w_cols,
+                                                  rope_image_k=self.model_hparams['rope_image_k'])[0]
 
-        net_inputs = self.net_inputs(action_i, states_i, states_i_plus_1)
-        net_inputs['trajectory_image'] = image
+        states_dict = sequence_of_dicts_to_dict_of_sequences(states_sequence)
+        net_inputs = {
+            'trajectory_image': image,
+            'action': tf.convert_to_tensor(actions, tf.float32),
+        }
+
+        if self.net.hparams['stdev']:
+            net_inputs[add_planned('stdev')] = tf.convert_to_tensor(states_dict['stdev'], tf.float32)
+
+        for state_key in self.net.states_keys:
+            planned_state_key = add_planned(state_key)
+            net_inputs[planned_state_key] = tf.convert_to_tensor(states_dict[state_key], tf.float32)
 
         accept_probability = self.net(add_batch(net_inputs), training=False)[0, 0]
         return accept_probability
@@ -184,9 +164,7 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         image_key = self.model_hparams['image_key']
         environment = dict_of_numpy_arrays_to_dict_of_tensors(environment)
         if image_key == 'transition_image':
-            return self.check_transition(environment=environment,
-                                         states_sequence=states_sequence,
-                                         actions=actions)
+            raise NotImplementedError()
         elif image_key == 'trajectory_image':
             return self.check_trajectory(environment, states_sequence, actions)
         else:
@@ -202,23 +180,6 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
                                                           states_sequence=states_sequence,
                                                           actions=actions)
         return prediction.numpy()
-
-    def net_inputs(self, action_i, states_i, states_i_plus_1):
-        net_inputs = {
-            'action': tf.convert_to_tensor(action_i, tf.float32),
-        }
-
-        if self.net.hparams['stdev']:
-            net_inputs[add_planned('stdev')] = tf.convert_to_tensor(states_i['stdev'], tf.float32)
-            net_inputs[add_next_and_planned('stdev')] = tf.convert_to_tensor(states_i_plus_1['stdev'], tf.float32)
-
-        for state_key in self.net.states_keys:
-            planned_state_key = add_planned(state_key)
-            planned_state_key_next = add_next_and_planned(state_key)
-            net_inputs[planned_state_key] = tf.convert_to_tensor(states_i[state_key], tf.float32)
-            net_inputs[planned_state_key_next] = tf.convert_to_tensor(states_i_plus_1[state_key], tf.float32)
-
-        return net_inputs
 
 
 model = RNNImageClassifierWrapper
