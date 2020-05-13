@@ -136,7 +136,7 @@ def viz_main(args, seed: int):
             accept_probability = keras_model(example, training=False)
             example = remove_batch(example)
             accept_probability = float(remove_batch(accept_probability).numpy().squeeze())
-            accept = accept_probability > 0.5
+            accept = accept_probability > args.classifier_threshold
 
             label = example['label'].numpy().squeeze()
 
@@ -202,6 +202,7 @@ def main():
     viz_parser.add_argument('checkpoint', type=pathlib.Path)
     viz_parser.add_argument('display_type', choices=['just_count', 'image', 'anim', 'plot'])
     viz_parser.add_argument('--batch-size', type=int, default=1)
+    viz_parser.add_argument('--classifier-threshold', type=float, default=0.5)
     viz_parser.add_argument('--shuffle', action='store_true')
     viz_parser.add_argument('--no-balance', action='store_true')
     viz_parser.add_argument('--only-negative', action='store_true')

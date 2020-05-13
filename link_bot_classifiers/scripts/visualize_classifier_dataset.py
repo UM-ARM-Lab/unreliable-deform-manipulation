@@ -64,6 +64,7 @@ def main():
 
     done = False
 
+    funneling_count = 0
     positive_count = 0
     negative_count = 0
     count = 0
@@ -104,6 +105,8 @@ def main():
             positive_count += 1
         else:
             negative_count += 1
+        if funneling:
+            funneling_count += 1
 
         count += 1
 
@@ -111,7 +114,7 @@ def main():
 
         # Print statistics intermittently
         if count % 100 == 0:
-            print_stats_and_timing(args, count, negative_count, positive_count)
+            print_stats_and_timing(args, count, funneling_count, negative_count, positive_count)
 
         #############################
         # Show Visualization
@@ -124,14 +127,15 @@ def main():
 
     total_dt = perf_counter() - t0
 
-    print_stats_and_timing(args, count, negative_count, positive_count, total_dt)
+    print_stats_and_timing(args, count, funneling_count, negative_count, positive_count, total_dt)
 
 
-def print_stats_and_timing(args, count, negative_count, positive_count, total_dt=None):
+def print_stats_and_timing(args, count, funneling_count, negative_count, positive_count, total_dt=None):
     if args.perf and total_dt is not None:
         print("Total iteration time = {:.4f}".format(total_dt))
     class_balance = positive_count / count * 100
     print("Number of examples: {}".format(count))
+    print("Number of funneling examples: {}".format(funneling_count))
     print("Number positive: {}".format(positive_count))
     print("Number negative: {}".format(negative_count))
     print("Class balance: {:4.1f}% positive".format(class_balance))
