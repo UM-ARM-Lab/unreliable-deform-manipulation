@@ -119,6 +119,10 @@ def main():
         #############################
         # Show Visualization
         #############################
+        valid_seq_length = (example['classifier_end_t'] - example['classifier_start_t'] + 1).numpy()
+        if args.only_length and args.only_length != valid_seq_length:
+            continue
+
         visualize_classifier_example(args, scenario, outdir, model_hparams, classifier_dataset, example, count, title)
         if not args.no_plot:
             plt.show()

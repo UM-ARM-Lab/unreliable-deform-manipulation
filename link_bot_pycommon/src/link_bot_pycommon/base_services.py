@@ -75,21 +75,20 @@ class Services:
         if verbose >= 1:
             print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
 
-    def move_objects(self,
-                     max_step_size: float,
-                     objects,
-                     env_w: float,
-                     env_h: float,
-                     padding: float,
-                     rng: np.random.RandomState):
-        pass
+    def random_move_objects(self,
+                            objects,
+                            env_w: float,
+                            env_h: float,
+                            padding: float,
+                            rng: np.random.RandomState):
+        raise NotImplementedError()
 
     def setup_env(self,
                   verbose: int,
                   real_time_rate: float,
                   reset_to: Optional,
                   max_step_size: Optional[float] = None):
-        pass
+        raise NotImplementedError()
 
     def nudge(self, action_dim):
         nudge = ExecuteActionRequest()

@@ -13,13 +13,6 @@ Position2dPlugin::~Position2dPlugin()
 
 void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 {
-  if (!ros::isInitialized()) {
-    auto argc = 0;
-    char **argv = nullptr;
-    ros::init(argc, argv, "position_2d_plugin", ros::init_options::NoSigintHandler);
-    return;
-  }
-
   // Get sdf parameters
   {
     if (!sdf->HasElement("kP_pos")) {
@@ -127,20 +120,24 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     return;
   }
 
-  auto stop_bind = boost::bind(&Position2dPlugin::OnStop, this, _1);
+  // setup ROS stuff
+  int argc = 0;
+  ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
+
+  auto stop_bind = boost::bind(&Position2dPlugin::OnStop, this, _1, _2);
   auto stop_so =
-      ros::SubscribeOptions::create<std_msgs::Empty>("/position_2d_stop", 1, stop_bind, ros::VoidPtr(), &queue_);
-  auto enable_bind = boost::bind(&Position2dPlugin::OnEnable, this, _1);
-  auto enable_so = ros::SubscribeOptions::create<peter_msgs::ModelsEnable>(
-      "/position_2d_enable", 1, enable_bind, ros::VoidPtr(), &queue_);
-  auto pos_action_bind = boost::bind(&Position2dPlugin::OnAction, this, _1);
-  auto pos_action_so = ros::SubscribeOptions::create<peter_msgs::ModelsPoses>(
-      "/position_2d_action", 1, pos_action_bind, ros::VoidPtr(), &queue_);
+      ros::AdvertiseServiceOptions::create<std_srvs::Empty>("position_2d_stop", stop_bind, ros::VoidPtr(), &queue_);
+  auto enable_bind = boost::bind(&Position2dPlugin::OnEnable, this, _1, _2);
+  auto enable_so = ros::AdvertiseServiceOptions::create<peter_msgs::Position2DEnable>("position_2d_enable", enable_bind,
+                                                                                      ros::VoidPtr(), &queue_);
+  auto pos_action_bind = boost::bind(&Position2dPlugin::OnAction, this, _1, _2);
+  auto pos_action_so = ros::AdvertiseServiceOptions::create<peter_msgs::Position2DAction>(
+      "position_2d_action", pos_action_bind, ros::VoidPtr(), &queue_);
 
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
-  enable_sub_ = ros_node_->subscribe(enable_so);
-  action_sub_ = ros_node_->subscribe(pos_action_so);
-  stop_sub_ = ros_node_->subscribe(stop_so);
+  enable_service_ = ros_node_->advertiseService(enable_so);
+  action_service_ = ros_node_->advertiseService(pos_action_so);
+  stop_service_ = ros_node_->advertiseService(stop_so);
 
   ros_queue_thread_ = std::thread(std::bind(&Position2dPlugin::QueueThread, this));
 
@@ -195,32 +192,30 @@ void Position2dPlugin::OnUpdate()
   }
 }
 
-void Position2dPlugin::OnStop(std_msgs::EmptyConstPtr const msg)
+bool Position2dPlugin::OnStop(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
 {
+  gzerr << model_->GetScopedName() << " stop!\n";
   target_pose_ = link_->WorldPose();
+  return true;
 }
 
-void Position2dPlugin::OnEnable(peter_msgs::ModelsEnableConstPtr const msg)
+bool Position2dPlugin::OnEnable(peter_msgs::Position2DEnableRequest &req, peter_msgs::Position2DEnableResponse &res)
 {
-  for (auto const &model_name : msg->model_names) {
-    if (model_name == model_->GetScopedName()) {
-      enabled_ = msg->enable;
-    }
-  }
+  gzerr << " enabled = " << req.enable << '\n';
+  enabled_ = req.enable;
+  return true;
 }
 
-void Position2dPlugin::OnAction(peter_msgs::ModelsPosesConstPtr const msg)
+bool Position2dPlugin::OnAction(peter_msgs::Position2DActionRequest &req, peter_msgs::Position2DActionResponse &res)
 {
-  for (auto const &action : msg->actions) {
-    if (action.model_name == model_->GetScopedName()) {
-      target_pose_.Pos().X(action.pose.position.x);
-      target_pose_.Pos().Y(action.pose.position.y);
-      target_pose_.Rot().X(action.pose.orientation.x);
-      target_pose_.Rot().Y(action.pose.orientation.y);
-      target_pose_.Rot().Z(action.pose.orientation.z);
-      target_pose_.Rot().W(action.pose.orientation.w);
-    }
-  }
+  gzerr << " pos = " << req.pose.position.x << ", " << req.pose.position.y << '\n';
+  target_pose_.Pos().X(req.pose.position.x);
+  target_pose_.Pos().Y(req.pose.position.y);
+  target_pose_.Rot().X(req.pose.orientation.x);
+  target_pose_.Rot().Y(req.pose.orientation.y);
+  target_pose_.Rot().Z(req.pose.orientation.z);
+  target_pose_.Rot().W(req.pose.orientation.w);
+  return true;
 }
 
 void Position2dPlugin::QueueThread()

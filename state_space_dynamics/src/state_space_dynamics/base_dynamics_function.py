@@ -28,6 +28,7 @@ class BaseDynamicsFunction:
     def propagate_from_dataset_element(self, dataset_element):
         raise NotImplementedError()
 
+    # TODO: make propagate use the "environment" dict abstraction
     def propagate(self,
                   full_env: np.ndarray,
                   full_env_origin: np.ndarray,

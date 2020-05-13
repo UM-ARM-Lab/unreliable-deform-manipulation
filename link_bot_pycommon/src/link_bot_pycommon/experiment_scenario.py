@@ -225,7 +225,10 @@ class ExperimentScenario:
             if predictions is not None:
                 cls.update_artist(prediction_artist, predictions[t])
             cls.update_artist(actual_artist, actual[t])
-            title_t = f"example {example_idx}, t={t}"
+            if example_idx is None:
+                title_t = f"t={t}"
+            else:
+                title_t = f"example {example_idx}, t={t}"
             if labels is not None:
                 title_t += f" label={labels[t]}"
                 label_color = 'r' if labels[t] == 0 else 'g'

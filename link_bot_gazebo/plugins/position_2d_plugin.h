@@ -1,18 +1,20 @@
 #pragma once
 
-#include <ros/ros.h>
+#include <geometry_msgs/Pose.h>
+#include <peter_msgs/ModelsEnable.h>
+#include <peter_msgs/ModelsPoses.h>
+#include <peter_msgs/Position2DAction.h>
+#include <peter_msgs/Position2DEnable.h>
 #include <ros/callback_queue.h>
+#include <ros/ros.h>
+#include <std_msgs/Empty.h>
+#include <std_srvs/Empty.h>
 
 #include <gazebo/common/Events.hh>
 #include <gazebo/common/Plugin.hh>
 #include <gazebo/common/Time.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/TransportTypes.hh>
-
-#include <geometry_msgs/Pose.h>
-#include <peter_msgs/ModelsPoses.h>
-#include <peter_msgs/ModelsEnable.h>
-#include <std_msgs/Empty.h>
 
 namespace gazebo {
 
@@ -24,11 +26,11 @@ class Position2dPlugin : public ModelPlugin {
 
   void OnUpdate();
 
-  void OnStop(std_msgs::EmptyConstPtr msg);
+  bool OnStop(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res);
 
-  void OnEnable(peter_msgs::ModelsEnableConstPtr msg);
+  bool OnEnable(peter_msgs::Position2DEnableRequest &req, peter_msgs::Position2DEnableResponse &res);
 
-  void OnAction(peter_msgs::ModelsPosesConstPtr msg);
+  bool OnAction(peter_msgs::Position2DActionRequest &req, peter_msgs::Position2DActionResponse &res);
 
  private:
   void QueueThread();
@@ -41,9 +43,9 @@ class Position2dPlugin : public ModelPlugin {
   std::unique_ptr<ros::NodeHandle> ros_node_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
-  ros::Subscriber enable_sub_;
-  ros::Subscriber action_sub_;
-  ros::Subscriber stop_sub_;
+  ros::ServiceServer enable_service_;
+  ros::ServiceServer action_service_;
+  ros::ServiceServer stop_service_;
   double kP_pos_{0.0};
   double kI_pos_{0.0};
   double kD_pos_{0.0};

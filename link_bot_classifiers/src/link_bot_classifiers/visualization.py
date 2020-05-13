@@ -83,9 +83,9 @@ def visualize_classifier_example(args,
     if args.display_type == 'just_count':
         pass
     elif args.display_type == 'image':
-        return trajectory_image(args, example, model_hparams, title)
+        return trajectory_image(example, model_hparams, title)
     elif args.display_type == 'anim':
-        anim = trajectory_animation(args, scenario, classifier_dataset, example, example_idx, accept_probability)
+        anim = trajectory_animation(scenario, classifier_dataset, example, example_idx, accept_probability)
         if args.save:
             filename = outdir / f'example_{example_idx}.gif'
             print(Fore.CYAN + f"Saving {filename}" + Fore.RESET)
@@ -93,15 +93,15 @@ def visualize_classifier_example(args,
         return anim
     elif args.display_type == 'plot':
         if image_key == 'transition_image':
-            return transition_plot(args, example, label, title)
+            return transition_plot(example, label, title)
         elif image_key == 'trajectory_image':
             fig = plt.figure()
             ax = plt.gca()
-            trajectory_plot_from_dataset(args, ax, classifier_dataset, example, scenario, title)
+            trajectory_plot_from_dataset(ax, classifier_dataset, example, scenario, title)
             return fig
 
 
-def transition_plot(args, example, label, title):
+def transition_plot(example, label, title):
     full_env = example['full_env/env'].numpy()
     full_env_extent = example['full_env/extent'].numpy()
     res = example['full_env/res'].numpy()
@@ -124,7 +124,7 @@ def transition_plot(args, example, label, title):
     plt.legend(by_label.values(), by_label.keys())
 
 
-def trajectory_plot_from_dataset(args, ax, classifier_dataset, example, scenario, title):
+def trajectory_plot_from_dataset(ax, classifier_dataset, example, scenario, title):
     actual_states = example[classifier_dataset.label_state_key].numpy()
     planned_states = example[add_planned(classifier_dataset.label_state_key)].numpy()
     environment = scenario.get_environment_from_example(example)
@@ -141,28 +141,24 @@ def trajectory_plot(ax,
                     scenario,
                     environment: Dict,
                     actual_states: Optional[List[Dict]] = None,
-                    planned_states: Optional[List[Dict]] = None):
+                    predicted_states: Optional[List[Dict]] = None):
     scenario.plot_environment(ax, environment)
-    T = len(planned_states)
+    T = len(predicted_states)
     for time_idx in range(T):
         # don't plot NULL states
         actual_color = cm.Reds_r(time_idx / T)
         planned_color = cm.Blues_r(time_idx / T)
-        if not state_dict_is_null(planned_states[time_idx]):
+        if not state_dict_is_null(predicted_states[time_idx]):
             if actual_states is not None:
                 actual_s_t = actual_states[time_idx]
                 scenario.plot_state(ax, actual_s_t, color=actual_color, s=20, zorder=2, label='actual state', alpha=0.5)
-            if planned_states is not None:
-                planned_s_t = planned_states[time_idx]
+            if predicted_states is not None:
+                planned_s_t = predicted_states[time_idx]
                 scenario.plot_state(ax, planned_s_t, color=planned_color, s=5, zorder=3, label='planned state', alpha=0.5)
 
 
-def trajectory_image(args, example, model_hparams, title):
+def trajectory_image(example, model_hparams, title):
     image_key = model_hparams['image_key']
-    valid_seq_length = (example['classifier_end_t'] - example['classifier_start_t'] + 1).numpy()
-
-    if args.only_length and args.only_length != valid_seq_length:
-        return
 
     image = example[image_key].numpy()
     n_channels = image.shape[2]
@@ -188,7 +184,7 @@ def trajectory_image(args, example, model_hparams, title):
         plt.title(title)
 
 
-def trajectory_animation(args, scenario, classifier_dataset, example, count, accept_probability):
+def trajectory_animation(scenario, classifier_dataset, example, count, accept_probability):
     # animate the state versus ground truth
     anim = scenario.animate_predictions_from_classifier_dataset(classifier_dataset=classifier_dataset,
                                                                 example_idx=count,

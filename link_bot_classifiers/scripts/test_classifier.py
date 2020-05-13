@@ -1,0 +1,139 @@
+#!/usr/bin/env python
+import argparse
+import json
+import pathlib
+import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+from colorama import Fore
+
+import rospy
+from link_bot_gazebo.gazebo_services import GazeboServices
+from link_bot_planning import model_utils, classifier_utils
+from link_bot_planning.plan_and_execute import execute_plan
+from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.ros_pycommon import get_occupancy_data, get_states_dict, xy_move
+from moonshine.gpu_config import limit_gpu_mem
+from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_sequences
+
+limit_gpu_mem(1)
+
+
+def main():
+    plt.style.use("slides")
+    np.set_printoptions(precision=6, suppress=True, linewidth=200)
+
+    parser = argparse.ArgumentParser(formatter_class=my_formatter)
+    parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')
+    parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
+    parser.add_argument("test_config", help="json file describing the test", type=pathlib.Path)
+    parser.add_argument("--real-time-rate", type=float, default=0.0, help='real time rate')
+    parser.add_argument('--save', action='store_true')
+    parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
+
+    args = parser.parse_args()
+
+    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir)
+    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, fwd_model.scenario)
+    full_env_params = fwd_model.full_env_params
+
+    max_step_size = fwd_model.hparams['dynamics_dataset_hparams']['max_step_size']
+
+    rospy.init_node('test_classifier_from_gazebo')
+
+    test_config = json.load(args.test_config.open("r"))
+    actions = np.array(test_config['actions'])
+
+    service_provider = GazeboServices(test_config['object_positions'].keys())
+    full_env_data, state = setup(args, service_provider, classifier_model, full_env_params, fwd_model, max_step_size, test_config)
+    environment = {
+        'full_env/env': full_env_data.data,
+        'full_env/origin': full_env_data.origin,
+        'full_env/res': full_env_data.resolution,
+        'full_env/extent': full_env_data.extent,
+    }
+
+    # Prediction
+    accept_probability, predicted_states_list = predict(actions, classifier_model, full_env_data, fwd_model, environment, state)
+
+    # Execute
+    actual_states_list = execute_plan(service_provider, fwd_model.dt, actions)
+
+    # Compute labels
+    labeling_params = classifier_model.model_hparams['classifier_dataset_hparams']['labeling_params']
+    state_key = labeling_params['state_key']
+    predicted_states_dict = sequence_of_dicts_to_dict_of_sequences(predicted_states_list)
+    actual_states_dict = sequence_of_dicts_to_dict_of_sequences(actual_states_list)
+    labeling_states = np.array(actual_states_dict[state_key])
+    labeling_predicted_states = np.array(predicted_states_dict[state_key])
+    model_error = np.linalg.norm(labeling_states - labeling_predicted_states, axis=1)
+    threshold = labeling_params['threshold']
+    is_close = model_error < threshold
+    is_first_state_close = is_close[0]
+    if not is_first_state_close:
+        print(Fore.RED + "First state is not close! Bug!" + Fore.RESET)
+    label = is_close[-1]
+
+    print(is_close)
+    anim = fwd_model.scenario.animate_predictions(environment=environment,
+                                                  actions=actions,
+                                                  actual=actual_states_list,
+                                                  predictions=predicted_states_list,
+                                                  labels=is_close,
+                                                  accept_probability=accept_probability)
+
+    # Print & Visualize
+    print(f"label={label} p(accept)={accept_probability:04.3f}")
+    title = f"label={label} p(accept) = {100 * accept_probability:04.3f}%"
+    plt.title(title)
+
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys())
+    plt.show()
+    if args.save:
+        now = int(time.time())
+        outdir = pathlib.Path("results") / 'test_classifier' / f"{now}"
+        outdir.mkdir(parents=True)
+        filename = outdir / f"{args.test_config.stem}.gif"
+        anim.save(filename, writer='imagemagick', dpi=200, fps=1)
+
+
+def predict(actions, classifier_model, full_env_data, fwd_model, environment, state):
+    predicted_states = fwd_model.propagate(full_env=full_env_data.data,
+                                           full_env_origin=full_env_data.origin,
+                                           res=full_env_data.resolution,
+                                           start_states=state,
+                                           actions=actions)
+    accept_probability = classifier_model.check_constraint(environement=environment,
+                                                           states_sequence=predicted_states,
+                                                           actions=actions)
+    accept_probability = float(accept_probability)
+    return accept_probability, predicted_states
+
+
+def setup(args, service_provider, classifier_model, full_env_params, fwd_model, max_step_size, test_config):
+    service_provider.setup_env(verbose=args.verbose,
+                               real_time_rate=args.real_time_rate,
+                               reset_robot=test_config['reset_robot'],
+                               max_step_size=max_step_size,
+                               stop=True,
+                               reset_world=test_config['reset_world'])
+    object_moves = {}
+    for name, (x, y) in test_config['object_positions'].items():
+        object_moves[name] = xy_move(x, y)
+    service_provider.move_objects(object_moves=object_moves)
+    full_env_data = get_occupancy_data(env_w_m=full_env_params.w,
+                                       env_h_m=full_env_params.h,
+                                       res=full_env_params.res,
+                                       service_provider=service_provider,
+                                       robot_name=fwd_model.scenario.robot_name())
+    state = get_states_dict(service_provider, fwd_model.states_keys)
+    if classifier_model.model_hparams['stdev']:
+        state['stdev'] = np.array([0.0], dtype=np.float32)
+    return full_env_data, state
+
+
+if __name__ == '__main__':
+    main()

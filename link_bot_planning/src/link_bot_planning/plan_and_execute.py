@@ -212,12 +212,11 @@ class PlanAndExecute:
         if self.sim_params.movable_obstacles is not None:
             # FIXME: instead of hard coding obstacles names, use the /objects service
             # generate a new environment by rearranging the obstacles
-            self.service_provider.move_objects(self.sim_params.max_step_size,
-                                               self.sim_params.movable_obstacles,
-                                               self.planner.full_env_params.w,
-                                               self.planner.full_env_params.h,
-                                               padding=0,
-                                               rng=self.env_rng)
+            self.service_provider.random_move_objects(self.sim_params.movable_obstacles,
+                                                      self.planner.full_env_params.w,
+                                                      self.planner.full_env_params.h,
+                                                      padding=0,
+                                                      rng=self.env_rng)
 
     def execute_plan(self, actions):
         """
