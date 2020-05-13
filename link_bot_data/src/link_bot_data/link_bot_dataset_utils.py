@@ -14,6 +14,13 @@ from link_bot_pycommon.filesystem_utils import mkdir_and_ask
 NULL_PAD_VALUE = -10000
 
 
+def state_dict_is_null(state: Dict):
+    for v in state.values():
+        if np.any(v == NULL_PAD_VALUE):
+            return True
+    return False
+
+
 def state_dict_is_null_tf(state: Dict):
     for v in state.values():
         if tf.reduce_any(tf.equal(v, NULL_PAD_VALUE)):

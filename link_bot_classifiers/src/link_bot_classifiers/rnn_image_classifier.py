@@ -12,7 +12,7 @@ from tensorflow import keras
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_pycommon import make_dict_float32, print_dict
+from link_bot_pycommon.link_bot_pycommon import make_dict_float32
 from link_bot_pycommon.params import FullEnvParams
 from moonshine.image_functions import make_traj_images_from_states_list
 from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, sequence_of_dicts_to_dict_of_sequences

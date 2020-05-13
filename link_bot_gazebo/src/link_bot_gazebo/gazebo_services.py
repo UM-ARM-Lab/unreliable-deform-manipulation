@@ -42,6 +42,8 @@ class GazeboServices(Services):
                   verbose: int,
                   real_time_rate: float,
                   reset_robot: Optional,
+                  reset_world: Optional[bool] = True,
+                  stop: Optional[bool] = True,
                   max_step_size: Optional[float] = None,
                   ):
         self.wait(verbose)
@@ -58,14 +60,15 @@ class GazeboServices(Services):
         set.time_step = max_step_size
         self.set_physics.call(set)
 
-        self.reset_world(verbose, reset_robot)
+        if reset_world:
+            self.reset_world(verbose, reset_robot)
 
-        # first the controller
-        n_action = self.get_n_action()
-        stop = ExecuteActionRequest()
-        stop.action.action = [0] * n_action
-        stop.action.max_time_per_step = 1.0
-        self.execute_action(stop)
+        if stop:
+            n_action = self.get_n_action()
+            stop = ExecuteActionRequest()
+            stop.action.action = [0] * n_action
+            stop.action.max_time_per_step = 1.0
+            self.execute_action(stop)
 
         self.position_2d_stop.publish(std_msgs.msg.Empty())
 

@@ -1,12 +1,13 @@
 import pathlib
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 import numpy as np
 from colorama import Fore
+from matplotlib import cm
 from matplotlib import pyplot as plt
 
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE, add_all
+from link_bot_data.link_bot_dataset_utils import add_planned, state_dict_is_null
 from link_bot_data.visualization import plot_rope_configuration, plot_arrow
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -69,16 +70,6 @@ def plot_classifier_data(
     # ax.legend()
 
 
-def make_interpretable_image(image: np.ndarray, n_points: int):
-    image_23d = image.squeeze()
-    assert (image.shape[2] == 23)
-    pre_rope = np.sum(image_23d[:, :, 0:n_points], axis=2)
-    post_rope = np.sum(image_23d[:, :, n_points:2 * n_points], axis=2)
-    local_env = image_23d[:, :, 2 * n_points]
-    interpretable_image = np.stack([pre_rope, post_rope, local_env], axis=2)
-    return interpretable_image
-
-
 def visualize_classifier_example(args,
                                  scenario: ExperimentScenario,
                                  outdir: pathlib.Path,
@@ -93,9 +84,9 @@ def visualize_classifier_example(args,
     if args.display_type == 'just_count':
         pass
     elif args.display_type == 'image':
-        return show_image(args, example, model_hparams, title)
+        return trajectory_image(args, example, model_hparams, title)
     elif args.display_type == 'anim':
-        anim = show_anim(args, scenario, classifier_dataset, example, example_idx, accept_probability)
+        anim = trajectory_animation(args, scenario, classifier_dataset, example, example_idx, accept_probability)
         if args.save:
             filename = outdir / f'example_{example_idx}.gif'
             print(Fore.CYAN + f"Saving {filename}" + Fore.RESET)
@@ -103,12 +94,15 @@ def visualize_classifier_example(args,
         return anim
     elif args.display_type == 'plot':
         if image_key == 'transition_image':
-            return show_transition_plot(args, example, label, title)
+            return transition_plot(args, example, label, title)
         elif image_key == 'trajectory_image':
-            return show_trajectory_plot(args, classifier_dataset, example, scenario, title)
+            fig = plt.figure()
+            ax = plt.gca()
+            trajectory_plot_from_dataset(args, ax, classifier_dataset, example, scenario, title)
+            return fig
 
 
-def show_transition_plot(args, example, label, title):
+def transition_plot(args, example, label, title):
     full_env = example['full_env/env'].numpy()
     full_env_extent = example['full_env/extent'].numpy()
     res = example['full_env/res'].numpy()
@@ -131,40 +125,40 @@ def show_transition_plot(args, example, label, title):
     plt.legend(by_label.values(), by_label.keys())
 
 
-def show_trajectory_plot(args, classifier_dataset, example, scenario, title):
-    full_env = example['full_env/env'].numpy()
-    full_env_extent = example['full_env/extent'].numpy()
-    actual_state_all = example[classifier_dataset.label_state_key].numpy()
-    planned_state_all = example[add_planned(classifier_dataset.label_state_key)].numpy()
-    fig = plt.figure()
-    plt.imshow(np.flipud(full_env), extent=full_env_extent)
-    ax = plt.gca()
-    for time_idx in range(planned_state_all.shape[0]):
-        # don't plot NULL states
-        if not np.any(planned_state_all[time_idx] == NULL_PAD_VALUE):
-            actual_state = {
-                classifier_dataset.label_state_key: actual_state_all[time_idx]
-            }
-            planned_state = {
-                classifier_dataset.label_state_key: planned_state_all[time_idx]
-            }
-            scenario.plot_state(ax, actual_state, color='red', s=20, zorder=2, label='actual state', alpha=0.2)
-            scenario.plot_state(ax, planned_state, color='blue', s=5, zorder=3, label='planned state', alpha=0.2)
-    if scenario == 'tether':
-        start_t = int(example['start_t'].numpy())
-        tether_start = example[add_all('tether')][start_t].numpy()
-        tether_start_state = {
-            'tether': tether_start
-        }
-        scenario.plot_state(ax, tether_start_state, color='green', s=5, zorder=1)
-    plt.title(title)
-    handles, labels = plt.gca().get_legend_handles_labels()
+def trajectory_plot_from_dataset(args, ax, classifier_dataset, example, scenario, title):
+    actual_states = example[classifier_dataset.label_state_key].numpy()
+    planned_states = example[add_planned(classifier_dataset.label_state_key)].numpy()
+    environment = scenario.get_environment_from_example(example)
+
+    trajectory_plot(ax, scenario, environment, actual_states, planned_states)
+
+    ax.set_title(title)
+    handles, labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
-    plt.legend(by_label.values(), by_label.keys())
-    return fig
+    ax.legend(by_label.values(), by_label.keys())
 
 
-def show_image(args, example, model_hparams, title):
+def trajectory_plot(ax,
+                    scenario,
+                    environment: Dict,
+                    actual_states: Optional[List[Dict]] = None,
+                    planned_states: Optional[List[Dict]] = None):
+    scenario.plot_environment(ax, environment)
+    T = len(planned_states)
+    for time_idx in range(T):
+        # don't plot NULL states
+        actual_color = cm.Reds_r(time_idx / T)
+        planned_color = cm.Blues_r(time_idx / T)
+        if not state_dict_is_null(planned_states[time_idx]):
+            if actual_states is not None:
+                actual_s_t = actual_states[time_idx]
+                scenario.plot_state(ax, actual_s_t, color=actual_color, s=20, zorder=2, label='actual state', alpha=0.5)
+            if planned_states is not None:
+                planned_s_t = planned_states[time_idx]
+                scenario.plot_state(ax, planned_s_t, color=planned_color, s=5, zorder=3, label='planned state', alpha=0.5)
+
+
+def trajectory_image(args, example, model_hparams, title):
     image_key = model_hparams['image_key']
     valid_seq_length = (example['classifier_end_t'] - example['classifier_start_t'] + 1).numpy()
 
@@ -195,7 +189,7 @@ def show_image(args, example, model_hparams, title):
         plt.title(title)
 
 
-def show_anim(args, scenario, classifier_dataset, example, count, accept_probability):
+def trajectory_animation(args, scenario, classifier_dataset, example, count, accept_probability):
     # animate the state versus ground truth
     anim = scenario.animate_predictions_from_classifier_dataset(classifier_dataset=classifier_dataset,
                                                                 example_idx=count,

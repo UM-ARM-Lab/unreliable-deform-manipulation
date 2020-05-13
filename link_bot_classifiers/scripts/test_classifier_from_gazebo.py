@@ -4,9 +4,9 @@ import pathlib
 
 import matplotlib.pyplot as plt
 import numpy as np
-import rospy
 
-from link_bot_classifiers.visualization import plot_classifier_data
+import rospy
+from link_bot_classifiers.visualization import plot_classifier_data, trajectory_plot_from_dataset, trajectory_plot
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import model_utils, classifier_utils
 from link_bot_pycommon.args import my_formatter, point_arg
@@ -23,7 +23,7 @@ def main():
     parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
     parser.add_argument("--actions", help="file listing a series of actions", type=pathlib.Path)
     parser.add_argument('--no-plot', action='store_true', help="don't show plots, useful for debugging")
-    parser.add_argument('--speed', type=float, default=0.3, help='speed of test actions')
+    parser.add_argument('--speed', type=float, default=0.1, help='speed of test actions')
     parser.add_argument("--real-time-rate", type=float, default=0.0, help='real time rate')
     parser.add_argument("--reset-robot", type=point_arg, help='reset robot')
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
@@ -40,7 +40,12 @@ def main():
     rospy.init_node('test_classifier_from_gazebo')
 
     service_provider = GazeboServices()
-    service_provider.setup_env(args.verbose, args.real_time_rate, args.reset_robot, max_step_size)
+    service_provider.setup_env(verbose=args.verbose,
+                               real_time_rate=args.real_time_rate,
+                               reset_robot=args.reset_robot,
+                               max_step_size=max_step_size,
+                               stop=False,
+                               reset_world=False)
 
     full_env_data = get_occupancy_data(env_w_m=full_env_params.w,
                                        env_h_m=full_env_params.h,
@@ -78,7 +83,7 @@ def main():
             theta_rad = np.deg2rad(theta_deg)
             vx = np.cos(theta_rad) * speed
             vy = np.sin(theta_rad) * speed
-            action = np.array([[vx, vy]])
+            action = np.array([[vx, vy], [vx, vy], [vx, vy], [vx, vy]])
             actions_info.append((speed, theta_deg, action))
 
     fig, axes = plt.subplots(3, 3)
@@ -88,34 +93,28 @@ def main():
                                           res=full_env_data.resolution,
                                           start_states=state,
                                           actions=action)
-        next_state = pred_states[1]
-
-        state = make_dict_float32(state)
-        next_state = make_dict_float32(next_state)
-        states_sequence = [state, next_state]
 
         environment = {
             'full_env/env': full_env_data.data,
             'full_env/origin': full_env_data.origin,
             'full_env/res': full_env_data.resolution,
+            'full_env/extent': full_env_data.extent,
         }
         accept_probability = classifier_model.check_constraint(environement=environment,
-                                                               states_sequence=states_sequence,
+                                                               states_sequence=pred_states,
                                                                actions=action)
         accept_probability = float(accept_probability)
-        prediction = 1 if accept_probability > 0.5 else 0
         title = 'P(accept) = {:04.3f}%'.format(100 * accept_probability)
 
-        print("v={:04.3f}m/s theta={:04.3f}deg    p(accept)={:04.3f}".format(speed, theta_deg, accept_probability))
+        print("v={:04.3f}m/s theta={:04.3f}deg p(accept)={:04.3f}".format(speed, theta_deg, accept_probability))
         if not args.no_plot:
             i, j = np.unravel_index(k, [3, 3])
-            plot_classifier_data(ax=axes[i, j],
-                                 actual_env=full_env_data.data,
-                                 actual_env_extent=full_env_data.extent,
-                                 planned_state=state['link_bot'],
-                                 planned_next_state=next_state['link_bot'],
-                                 title=title,
-                                 label=prediction)
+            trajectory_plot(axes[i, j],
+                            fwd_model.scenario,
+                            environment=environment,
+                            actual_states=None,
+                            planned_states=pred_states)
+            axes[i, j].set_title(title)
 
     if not args.no_plot:
         handles, labels = axes[0, 0].get_legend_handles_labels()
