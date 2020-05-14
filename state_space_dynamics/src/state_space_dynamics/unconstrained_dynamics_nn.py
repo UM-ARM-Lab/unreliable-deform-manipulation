@@ -26,7 +26,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
 
-    @tf.function()
+    # @tf.function()
     def call(self, dataset_element, training=None, mask=None):
         input_dict, _ = dataset_element
         states = input_dict[self.state_key]

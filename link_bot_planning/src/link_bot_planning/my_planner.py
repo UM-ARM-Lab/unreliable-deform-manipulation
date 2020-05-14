@@ -150,8 +150,10 @@ class MyPlanner:
 
     def motions_valid(self, motions):
         final_state = compound_to_numpy(self.motions[-1].getState())
-
-        return motions_is_valid
+        motions_valid = final_state['num_diverged'] < self.classifier_model.model_hparams['horizon']
+        if not motions_valid:
+            self.viz_object.rejected_samples.append(final_state)
+        return motions_valid
 
     def motions_to_numpy(self, motions):
         states_sequence = []
@@ -163,6 +165,7 @@ class MyPlanner:
             # FIXME: find a better way to handle states that aren't in state space description, or put stdev into
             #  state space description?
             state_t['stdev'] = np.array([state[self.stdev_subspace_idx][0]])
+            state_t['num_diverged'] = np.array([state[self.num_diverged_subspace_idx][0]])
             states_sequence.append(state_t)
             if t > 0:  # skip the first (null) action, because that would represent the action that brings us to the first state
                 actions.append(self.control_to_numpy(motion.getControl()))
@@ -176,24 +179,27 @@ class MyPlanner:
     def predict(self, previous_states, previous_actions, new_action):
         # use the forward model to predict the next configuration
         # TODO: check_constraint and propagate should take in "environment" instead of these three special variances
+        actions = np.expand_dims(new_action, axis=0)
         start_state = previous_states[-1]
         mean_next_states = self.fwd_model.propagate(full_env=self.environment['full_env/env'],
                                                     full_env_origin=self.environment['full_env/origin'],
                                                     res=self.fwd_model.full_env_params.res,
                                                     start_states=start_state,
-                                                    actions=new_action)
+                                                    actions=actions)
         # get only the final state predicted
         final_states = mean_next_states[-1]
         all_states = previous_states + [final_states]
-        all_actions = np.array(previous_actions + [new_action])
+        if len(previous_actions.shape) == 1:
+            all_actions = np.expand_dims(new_action, axis=0)
+        else:
+            all_actions = np.concatenate((previous_actions, new_action), axis=0)
+        assert len(all_actions.shape) == 2
         # propagate num_diverged
         classifier_probability = self.classifier_model.check_constraint(environement=self.environment,
                                                                         states_sequence=all_states,
                                                                         actions=all_actions)
 
         classifier_accept = classifier_probability > self.params['accept_threshold']
-        if not classifier_accept:
-            self.viz_object.rejected_samples.append(final_states)
 
         final_states['num_diverged'] = 0 if classifier_accept else start_state['num_diverged'] + 1
         return final_states
@@ -255,7 +261,7 @@ class MyPlanner:
         # create start and goal states
         ompl_start = ob.CompoundState(self.state_space)
         start_states['stdev'] = np.array([0.0])
-        start_states['num_diverged'] = np.array([0.0])
+        start_states['num_diverged'] = np.array(0.0)
         self.compound_from_numpy(start_states, ompl_start())
 
         start = ob.State(ompl_start)

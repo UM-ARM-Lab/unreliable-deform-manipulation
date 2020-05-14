@@ -132,7 +132,7 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         # remove stdev from state we draw
         states_sequence_to_draw = []
         for state in states_sequence:
-            states_sequence_to_draw.append({k: state[k] for k in state if k != 'stdev'})
+            states_sequence_to_draw.append({k: state[k] for k in state if k != 'stdev' and k != 'num_diverged'})
 
         batched_inputs = add_batch(environment, states_sequence_to_draw)
         image = make_traj_images_from_states_list(*batched_inputs,
