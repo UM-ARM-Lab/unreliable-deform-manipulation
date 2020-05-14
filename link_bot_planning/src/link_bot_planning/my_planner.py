@@ -37,7 +37,6 @@ class MyPlanner:
                  seed: int,
                  verbose: int,
                  ):
-        # FIXME:
         self.verbose = verbose
         self.rope_length = rospy.get_param('/link_bot/rope_length')
         self.planner = None
@@ -95,6 +94,16 @@ class MyPlanner:
         self.subspace_bounds.append(stdev_bounds)
         self.state_space.addSubspace(stdev_subspace, weight=0)
 
+        # extra subspace component for the number of diverged steps
+        self.num_diverged_subspace_idx = subspace_idx + 2
+        num_diverged_subspace = ob.RealVectorStateSpace(1)
+        num_diverged_bounds = ob.RealVectorBounds(1)
+        num_diverged_bounds.setLow(-1000)
+        num_diverged_bounds.setHigh(1000)
+        num_diverged_subspace.setBounds(num_diverged_bounds)
+        self.subspace_bounds.append(num_diverged_bounds)
+        self.state_space.addSubspace(num_diverged_subspace, weight=0)
+
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
 
         control_bounds = ob.RealVectorBounds(2)
@@ -110,7 +119,7 @@ class MyPlanner:
 
         self.si = self.ss.getSpaceInformation()
 
-        self.ss.setStatePropagator(oc.StatePropagatorFn(self.propagate))
+        self.ss.setStatePropagator(oc.AdvancedStatePropagatorFn(self.propagate))
         self.ss.setMotionsValidityChecker(oc.MotionsValidityCheckerFn(self.motions_valid))
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
 
@@ -140,52 +149,53 @@ class MyPlanner:
         return self.state_space.satisfiesBounds(state)
 
     def motions_valid(self, motions):
+        final_state = compound_to_numpy(self.motions[-1].getState())
+
+        return motions_is_valid
+
+    def motions_to_numpy(self, motions):
         states_sequence = []
         actions = []
         for t, motion in enumerate(motions):
             # motions is a vector of oc.Motion, which has a state, parent, and control
             state = motion.getState()
             state_t = compound_to_numpy(self.state_space_description, state)
-            # FIXME: feels hacky
+            # FIXME: find a better way to handle states that aren't in state space description, or put stdev into
+            #  state space description?
             state_t['stdev'] = np.array([state[self.stdev_subspace_idx][0]])
             states_sequence.append(state_t)
             if t > 0:  # skip the first (null) action, because that would represent the action that brings us to the first state
                 actions.append(self.control_to_numpy(motion.getControl()))
-
         actions = np.array(actions)
-
-        accept_probability = self.classifier_model.check_constraint(environement=self.environment,
-                                                                    states_sequence=states_sequence,
-                                                                    actions=actions)
-
-        classifier_accept = accept_probability > self.params['accept_threshold']
-        random_accept = self.classifier_rng.uniform(0, 1) <= self.params['random_epsilon']
-        motions_is_valid = classifier_accept or random_accept
-
-        if random_accept and not classifier_accept:
-            final_link_bot_state = states_sequence[-1]
-            self.viz_object.randomly_accepted_samples.append(final_link_bot_state)
-
-        if not motions_is_valid:
-            final_link_bot_state = states_sequence[-1]
-            self.viz_object.rejected_samples.append(final_link_bot_state)
-
-        return motions_is_valid
+        return states_sequence, actions
 
     def control_to_numpy(self, control):
         np_u = ompl_control_to_model_action(control, self.n_action)
         return np_u
 
-    def predict(self, np_states, np_actions):
+    def predict(self, previous_states, previous_actions, new_action):
         # use the forward model to predict the next configuration
         # TODO: check_constraint and propagate should take in "environment" instead of these three special variances
+        start_state = previous_states[-1]
         mean_next_states = self.fwd_model.propagate(full_env=self.environment['full_env/env'],
                                                     full_env_origin=self.environment['full_env/origin'],
                                                     res=self.fwd_model.full_env_params.res,
-                                                    start_states=np_states,
-                                                    actions=np_actions)
+                                                    start_states=start_state,
+                                                    actions=new_action)
         # get only the final state predicted
         final_states = mean_next_states[-1]
+        all_states = previous_states + [final_states]
+        all_actions = np.array(previous_actions + [new_action])
+        # propagate num_diverged
+        classifier_probability = self.classifier_model.check_constraint(environement=self.environment,
+                                                                        states_sequence=all_states,
+                                                                        actions=all_actions)
+
+        classifier_accept = classifier_probability > self.params['accept_threshold']
+        if not classifier_accept:
+            self.viz_object.rejected_samples.append(final_states)
+
+        final_states['num_diverged'] = 0 if classifier_accept else start_state['num_diverged'] + 1
         return final_states
 
     def compound_from_numpy(self, np_states: Dict, state_out):
@@ -199,18 +209,13 @@ class MyPlanner:
             else:
                 state_out[self.stdev_subspace_idx][0] = 0
 
-    def propagate(self, start, control, duration, state_out):
+    def propagate(self, motions, control, duration, state_out):
         del duration  # unused, multi-step propagation is handled inside propagateMotionsWhileValid
 
         # Convert from OMPL -> Numpy
-        np_states = compound_to_numpy(self.state_space_description, start)
-        # FIXME: feels hacky
-        # add extra dim / expand dim
-        np_states['stdev'] = np.array([start[self.stdev_subspace_idx][0]])
-        np_action = self.control_to_numpy(control)
-        np_actions = np.expand_dims(np_action, axis=0)
-
-        np_final_states = self.predict(np_states, np_actions)
+        new_action = self.control_to_numpy(control)
+        previous_states, previous_actions = self.motions_to_numpy(motions)
+        np_final_states = self.predict(previous_states, previous_actions, new_action)
 
         # Convert back Numpy -> OMPL
         self.compound_from_numpy(np_final_states, state_out)
@@ -250,6 +255,7 @@ class MyPlanner:
         # create start and goal states
         ompl_start = ob.CompoundState(self.state_space)
         start_states['stdev'] = np.array([0.0])
+        start_states['num_diverged'] = np.array([0.0])
         self.compound_from_numpy(start_states, ompl_start())
 
         start = ob.State(ompl_start)
@@ -315,6 +321,7 @@ class MyPlanner:
             np_state = compound_to_numpy(self.state_space_description, state)
             # FIXME: feels hacky
             np_state['stdev'] = state[self.stdev_subspace_idx][0]
+            np_state['num_diverged'] = state[self.num_diverged_subspace_idx][0]
             planned_path.append(np_state)
 
         np_controls = np.ndarray((ompl_path.getControlCount(), self.n_action))

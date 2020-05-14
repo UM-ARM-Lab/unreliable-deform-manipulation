@@ -1,17 +1,15 @@
 {
   "fwd_model_dir": [
-    "ss_log_data/rope_no_obs/0",
-    "ss_log_data/rope_no_obs/1",
-    "ss_log_data/rope_no_obs/2",
-    "ss_log_data/rope_no_obs/3",
-    "ss_log_data/rope_no_obs/4",
-    "ss_log_data/rope_no_obs/5",
-    "ss_log_data/rope_no_obs/6",
-    "ss_log_data/rope_no_obs/7",
-    "ss_log_data/rope_no_obs/8",
-    "ss_log_data/rope_no_obs/9"
+    "ss_log_data/tf2_rope/0",
+    "ss_log_data/tf2_rope/1",
+    "ss_log_data/tf2_rope/2",
+    "ss_log_data/tf2_rope/3",
+    "ss_log_data/tf2_rope/4",
+    "ss_log_data/tf2_rope/5",
+    "ss_log_data/tf2_rope/6",
+    "ss_log_data/tf2_rope/7"
   ],
-  "classifier_model_dir": "classifiers/rope_ensemble/April_16_13-19-55_3d60864d12/",
+  "classifier_model_dir": "classifiers/rope_rnn_lr=0.0001/May_12_12-09-06_7acb2e27c8/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",

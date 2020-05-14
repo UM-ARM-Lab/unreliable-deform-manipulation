@@ -9,6 +9,7 @@ import numpy as np
 from colorama import Fore
 
 import rospy
+from link_bot_data.classifier_dataset import compute_label_np
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import model_utils, classifier_utils
 from link_bot_planning.plan_and_execute import execute_plan
@@ -62,18 +63,12 @@ def main():
 
     # Compute labels
     labeling_params = classifier_model.model_hparams['classifier_dataset_hparams']['labeling_params']
-    state_key = labeling_params['state_key']
     predicted_states_dict = sequence_of_dicts_to_dict_of_sequences(predicted_states_list)
     actual_states_dict = sequence_of_dicts_to_dict_of_sequences(actual_states_list)
-    labeling_states = np.array(actual_states_dict[state_key])
-    labeling_predicted_states = np.array(predicted_states_dict[state_key])
-    model_error = np.linalg.norm(labeling_states - labeling_predicted_states, axis=1)
-    threshold = labeling_params['threshold']
-    is_close = model_error < threshold
+    is_close, label = compute_label_np(actual_states_dict, labeling_params, predicted_states_dict)
     is_first_state_close = is_close[0]
     if not is_first_state_close:
         print(Fore.RED + "First state is not close! Bug!" + Fore.RESET)
-    label = is_close[-1]
 
     print(is_close)
     anim = fwd_model.scenario.animate_predictions(environment=environment,

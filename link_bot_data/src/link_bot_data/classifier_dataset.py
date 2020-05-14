@@ -9,6 +9,7 @@ from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_planned, null_pad, null_previous_states, \
     balance, null_diverged
 from link_bot_pycommon.params import FullEnvParams
+from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 
 
 def add_model_predictions(fwd_model,
@@ -33,6 +34,7 @@ def add_model_predictions(fwd_model,
                                                            prediction_horizon=prediction_horizon)
 
             for batch_idx in range(actual_batch_size):
+                # TODO: index into batch here before passing in
                 yield from generate_examples_for_prediction(inputs=inputs,
                                                             outputs_from_start_t=outputs_from_start_t,
                                                             prediction_start_t=prediction_start_t,
@@ -74,47 +76,71 @@ def generate_examples_for_prediction(inputs: Dict,
             # this slice gives arrays of fixed length (ex, 5) which must be null padded from classifier_end_t onwards
             state_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon)
             action_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon - 1)
+            sliced_outputs = {}
             for name, output in outputs_from_start_t.items():
                 output_from_cst = output[batch_idx][state_slice]
                 null_padded_sequence = null_pad(output_from_cst, end=out_example_end_idx)
                 out_example[name] = null_padded_sequence
+                sliced_outputs[name] = null_padded_sequence
 
+            sliced_predictions = {}
             for name, prediction in predictions_from_start_t.items():
                 pred_from_cst = prediction[batch_idx][state_slice]
                 null_padded_sequence = null_pad(pred_from_cst, end=out_example_end_idx)
                 out_example[add_planned(name)] = null_padded_sequence
+                sliced_predictions[name] = null_padded_sequence
 
             # action
             out_example['action'] = inputs['action'][batch_idx][action_slice]
 
-            # compute label
-            state_key = labeling_params['state_key']
-            planned_state_key = add_planned(state_key)
+            # TODO: planned -> predicted whenver we're talking about applying the dynamics model
+            #  so like add_planned should be add_predicted or something
 
-            # TODO: use scenario to compute distance here?
-            labeling_states = out_example[state_key]
-            labeling_planned_states = out_example[planned_state_key]
-            model_error = tf.norm(labeling_states - labeling_planned_states, axis=1)
-            threshold = labeling_params['threshold']
-            is_close = model_error < threshold
+            # compute label
+            is_close, label = compute_label_tf(actual_states_dict=sliced_outputs,
+                                               predicted_states_dict=sliced_predictions,
+                                               labeling_params=labeling_params,
+                                               end_idx=out_example_end_idx)
+            is_first_valid_state_close = is_close[0]
             is_close_for_valid_states = is_close[:out_example_end_idx + 1]
-            is_first_valid_state_close = is_close_for_valid_states[0]
-            is_last_valid_state_close = is_close_for_valid_states[-1]
             # this expand dims is necessary for keras losses to work
-            label = tf.expand_dims(tf.cast(is_last_valid_state_close, dtype=tf.float32), axis=0)
-            none_are_close = tf.reduce_all(tf.logical_not(is_close_for_valid_states))
+            all_are_not_close = tf.reduce_all(tf.logical_not(is_close_for_valid_states))  # all have diverged
             out_example['is_close'] = tf.cast(is_close, dtype=tf.float32)
             out_example['last_valid_idx'] = out_example_end_idx
-            out_example['label'] = label
+            out_example['label'] = tf.expand_dims(tf.cast(label, dtype=tf.float32), axis=0)
 
-            # ignore examples where the first predicted and true states are not closed, since will not
-            # occur during planning, and because the classification problem would be ill-posed for those examples.
-            if none_are_close and out_example_end_idx == 4:
-                # we can stop looking at this prediction sequence, no further examples will have a first valid state close
-                return
-            elif is_first_valid_state_close:
+            if labeling_params['relaxed']:
+                # ignore examples where the first predicted and true states are not closed, since will not
+                # occur during planning, and because the classification problem would be ill-posed for those examples.
+                if all_are_not_close and out_example_end_idx == 4:
+                    # we can stop looking at this prediction sequence, no further examples will have a first valid state close
+                    return
+                if is_first_valid_state_close:
+                    yield out_example
+            else:
+                # stop after the first negative example, so we don't produce examples with multiple not-close (diverged) states
                 yield out_example
+                if not label:
+                    return
+
             out_example_end_idx += 1
+
+
+def compute_label_tf(actual_states_dict: Dict, labeling_params: Dict, predicted_states_dict: Dict, end_idx: int = -1):
+    state_key = labeling_params['state_key']
+    labeling_states = tf.convert_to_tensor(actual_states_dict[state_key])
+    labeling_predicted_states = tf.convert_to_tensor(predicted_states_dict[state_key])
+    # TODO: use scenario to compute distance here?
+    model_error = tf.linalg.norm(labeling_states - labeling_predicted_states, axis=1)
+    threshold = labeling_params['threshold']
+    is_close = model_error < threshold
+    label = is_close[end_idx]
+    return is_close, label
+
+
+def compute_label_np(actual_states_dict: Dict, labeling_params: Dict, predicted_states_dict: Dict, end_idx: int = -1):
+    is_close, label = compute_label_tf(actual_states_dict, labeling_params, predicted_states_dict, end_idx)
+    return is_close.numpy(), label.numpy()
 
 
 def predict_subsequence(states_description, fwd_model, dataset_element, prediction_start_t, prediction_horizon):

@@ -194,21 +194,18 @@ void Position2dPlugin::OnUpdate()
 
 bool Position2dPlugin::OnStop(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
 {
-  gzerr << model_->GetScopedName() << " stop!\n";
   target_pose_ = link_->WorldPose();
   return true;
 }
 
 bool Position2dPlugin::OnEnable(peter_msgs::Position2DEnableRequest &req, peter_msgs::Position2DEnableResponse &res)
 {
-  gzerr << " enabled = " << req.enable << '\n';
   enabled_ = req.enable;
   return true;
 }
 
 bool Position2dPlugin::OnAction(peter_msgs::Position2DActionRequest &req, peter_msgs::Position2DActionResponse &res)
 {
-  gzerr << " pos = " << req.pose.position.x << ", " << req.pose.position.y << '\n';
   target_pose_.Pos().X(req.pose.position.x);
   target_pose_.Pos().Y(req.pose.position.y);
   target_pose_.Rot().X(req.pose.orientation.x);

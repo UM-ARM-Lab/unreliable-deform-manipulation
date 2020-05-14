@@ -9,20 +9,23 @@ from typing import Tuple, Optional, Dict, List
 import matplotlib.pyplot as plt
 import numpy as np
 import ompl.util as ou
-import rospy
-import std_srvs
 import tensorflow as tf
 from ompl import base as ob
 
+import rospy
+import std_srvs
 from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import ompl_viz
 from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_pycommon.params import SimParams
 from link_bot_pycommon.args import my_formatter, point_arg
+from link_bot_pycommon.params import SimParams
+from moonshine.gpu_config import limit_gpu_mem
 from victor import victor_services
+
+limit_gpu_mem(1)
 
 
 class TestWithClassifier(plan_and_execute.PlanAndExecute):
@@ -172,7 +175,7 @@ def main():
         service_provider = victor_services.VictorServices()
     else:
         rospy.set_param('service_provider', 'gazebo')
-        service_provider = gazebo_services.GazeboServices()
+        service_provider = gazebo_services.GazeboServices(planner_params['movable_obstacles'])
 
     service_provider.setup_env(verbose=args.verbose,
                                real_time_rate=sim_params.real_time_rate,

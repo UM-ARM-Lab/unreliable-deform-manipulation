@@ -1,3 +1,5 @@
+from typing import Dict
+
 import numpy as np
 import tensorflow as tf
 
@@ -162,3 +164,15 @@ def add_batch_single(x):
         return {k: add_batch_single(v) for k, v in x.items()}
     else:
         return np.array([x])
+
+
+def index_dict_of_batched_vectors_np(in_dict: Dict, index: int, batch_axis: int = 0):
+    out_dict_tf = index_dict_of_batched_vectors_tf(in_dict=in_dict, index=index, batch_axis=batch_axis)
+    return {k: v.numpy() for k, v in out_dict_tf}
+
+
+def index_dict_of_batched_vectors_tf(in_dict: Dict, index: int, batch_axis: int = 0):
+    out_dict = {}
+    for k, v in in_dict.items():
+        out_dict[k] = tf.gather(v, index, axis=batch_axis)
+    return out_dict
