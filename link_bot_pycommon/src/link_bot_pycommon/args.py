@@ -1,4 +1,5 @@
 import argparse
+import re
 import shutil
 from enum import Enum
 
@@ -46,3 +47,25 @@ def add_bool_arg(parser: argparse.ArgumentParser, flag: str, required: bool = Tr
     group = parser.add_mutually_exclusive_group(required=required)
     group.add_argument('--' + flag, action='store_true', help=help)
     group.add_argument('--no-' + flag, action='store_true', help="NOT " + help)
+
+
+def int_range_arg(v):
+    """
+    :param v: either a single int or a range like 3-8 (both ends inclusive)
+    :return: list of ints
+    """
+    try:
+        i = int(v)
+        return [i]
+    except ValueError:
+        pass
+    # parse things like 1-4
+    m = re.fullmatch("(\d+)-(\d+)", v)
+    try:
+        if m:
+            start = int(m.group(1))
+            end = int(m.group(2))
+            return list(range(start, end + 1))
+    except ValueError:
+        pass
+    raise argparse.ArgumentTypeError(f"invalid int range {v}")

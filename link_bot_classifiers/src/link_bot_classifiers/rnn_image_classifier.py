@@ -115,6 +115,8 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         super().__init__(scenario)
         model_hparams_file = path / 'hparams.json'
         self.model_hparams = json.load(model_hparams_file.open('r'))
+        self.dataset_labeling_params = self.model_hparams['classifier_dataset_hparams']['labeling_params']
+        self.horizon = self.dataset_labeling_params['classifier_horizon']
         self.full_env_params = FullEnvParams.from_json(self.model_hparams['classifier_dataset_hparams']['full_env_params'])
         self.input_h_rows = self.model_hparams['input_h_rows']
         self.input_w_cols = self.model_hparams['input_w_cols']
@@ -171,12 +173,12 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
             raise ValueError('invalid image_key')
 
     def check_constraint(self,
-                         environement: Dict,
+                         environment: Dict,
                          states_sequence: List[Dict],
                          actions: np.ndarray) -> float:
         actions = tf.Variable(actions, dtype=tf.float32, name="actions")
         states_sequence = [make_dict_float32(s) for s in states_sequence]
-        prediction = self.check_constraint_differentiable(environment=environement,
+        prediction = self.check_constraint_differentiable(environment=environment,
                                                           states_sequence=states_sequence,
                                                           actions=actions)
         return prediction.numpy()

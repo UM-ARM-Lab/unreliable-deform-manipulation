@@ -101,7 +101,7 @@ def predict(actions, classifier_model, full_env_data, fwd_model, environment, st
                                            res=full_env_data.resolution,
                                            start_states=state,
                                            actions=actions)
-    accept_probability = classifier_model.check_constraint(environement=environment,
+    accept_probability = classifier_model.check_constraint(environment=environment,
                                                            states_sequence=predicted_states,
                                                            actions=actions)
     accept_probability = float(accept_probability)

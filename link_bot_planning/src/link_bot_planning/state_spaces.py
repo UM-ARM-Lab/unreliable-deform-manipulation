@@ -170,6 +170,13 @@ def compound_to_numpy(state_space_description, state):
     return np_states
 
 
+def compound_from_numpy(state_space_description, np_states: Dict, state_out):
+    for subspace_name, subspace_description in state_space_description.items():
+        idx = subspace_description['idx']
+        n_state = subspace_description['n_state']
+        from_numpy(np_states[subspace_name], state_out[idx], n_state)
+
+
 def ompl_control_to_model_action(control, n_action):
     distance_angle = to_numpy(control, n_action)
     angle = distance_angle[0, 0]

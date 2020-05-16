@@ -28,9 +28,10 @@ class MyGoalRegion(ob.GoalSampleableRegion):
         """
         Uses the distance between a specific point in a specific subspace and the goal point
         """
-        named_states = compound_to_numpy(self.state_description, state)
-        distance = self.experiment_scenario.distance_to_goal(state=named_states,
-                                                             goal=self.goal)
+        state_np = compound_to_numpy(self.state_description, state)
+        distance = self.experiment_scenario.distance_to_goal(state=state_np, goal=self.goal)
+        if state_np['num_diverged'] > 0:
+            distance += 1e9
         return distance
 
     def sampleGoal(self, state_out: ob.CompoundStateInternal):

@@ -4,7 +4,6 @@ import numpy as np
 from colorama import Fore
 
 import rospy
-import std_msgs
 from gazebo_msgs.srv import ApplyBodyWrench, SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from geometry_msgs.msg import Pose

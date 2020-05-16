@@ -53,7 +53,7 @@ def plot_plan(ax,
             edges_map = ob.mapUintToPlannerDataEdge()
 
             np_s = compound_to_numpy(state_space_description, s)
-            scenario.plot_state_simple(ax, np_s, color='k')
+            scenario.plot_state(ax, np_s, color='k', s=10, zorder=2)
 
             planner_data.getEdges(vertex_index, edges_map)
             for vertex_index2 in edges_map.keys():
@@ -79,12 +79,12 @@ def plot_plan(ax,
     return legend
 
 
-def plan_vs_execution(environment: Dict,
-                      scenario: ExperimentScenario,
-                      goal: Optional = None,
-                      planned_path: Optional[List[Dict]] = None,
-                      actual_path: Optional[List[Dict]] = None,
-                      accept_probabilities: Optional[List[float]] = None):
+def animate(environment: Dict,
+            scenario: ExperimentScenario,
+            goal: Optional = None,
+            planned_path: Optional[List[Dict]] = None,
+            actual_path: Optional[List[Dict]] = None,
+            accept_probabilities: Optional[List[float]] = None):
     fig = plt.figure(figsize=(20, 20))
     ax = plt.gca()
     extent = environment['full_env/extent']

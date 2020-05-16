@@ -21,6 +21,7 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
         self.model_hparams = json.load(model_hparams_file.open('r'))
         self.local_h_rows = self.model_hparams['local_h_rows']
         self.local_w_cols = self.model_hparams['local_w_cols']
+        self.horizon = 2
 
     @staticmethod
     def check_collision(inflated_local_env, resolution, origin, xs, ys):
@@ -62,12 +63,13 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
         raise NotImplementedError()
 
     def check_constraint(self,
-                         full_env: np.ndarray,
-                         full_env_origin: np.ndarray,
-                         res: float,
+                         environment: Dict,
                          states_sequence: List[Dict],
                          actions: np.ndarray) -> float:
-        states_i = states_sequence[-2]
+        states_i = states_sequence[-1]
+        full_env = environment['full_env/env']
+        full_env_origin = environment['full_env/origin']
+        res = environment['full_env/res']
         local_env_center = self.scenario.local_environment_center(states_i)
 
         local_env, local_env_origin = get_local_env_and_origin(center_point=local_env_center,

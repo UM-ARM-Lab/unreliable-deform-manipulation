@@ -94,3 +94,6 @@ class Services:
         nudge = ExecuteActionRequest()
         nudge.action.action = np.random.randn(action_dim)
         self.execute_action(nudge)
+
+    def reset_world(self, verbose, reset_robot: Optional = None):
+        raise NotImplementedError()

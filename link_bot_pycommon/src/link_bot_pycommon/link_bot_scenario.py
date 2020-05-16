@@ -1,5 +1,6 @@
 from typing import Dict, Optional
 
+import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -7,9 +8,9 @@ import tensorflow as tf
 from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_arrow, update_arrow
+from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import CollectDynamicsParams
-from link_bot_pycommon.base_services import Services
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from peter_msgs.msg import Action
 
@@ -68,19 +69,25 @@ class LinkBotScenario(ExperimentScenario):
                    s: int,
                    zorder: int,
                    label: Optional[str] = None,
+                   linewidth=4,
                    **kwargs):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         xs = link_bot_points[:, 0]
         ys = link_bot_points[:, 1]
         scatt = ax.scatter(xs[0], ys[0], c=color, s=s, zorder=zorder)
-        line = ax.plot(xs, ys, linewidth=4, c=color, zorder=zorder, label=label, **kwargs)[0]
-        return line, scatt
+        line = ax.plot(xs, ys, linewidth=linewidth, c=color, zorder=zorder, label=label, **kwargs)[0]
+        txt = None
+        if 'num_diverged' in state:
+            txt = ax.text(x=xs[-1], y=ys[-1], s=f"{int(np.squeeze(state['num_diverged']))}", zorder=zorder + 1)
+            txt.set_path_effects([PathEffects.withStroke(linewidth=1, foreground='w')])
+
+        return line, scatt, txt
 
     @staticmethod
-    def plot_action(ax, state: Dict, action, color, s: int, zorder: int):
+    def plot_action(ax, state: Dict, action, color, s: int, zorder: int, linewidth=1, **kwargs):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
-        artist = plot_arrow(ax, link_bot_points[-1, 0], link_bot_points[-1, 1], action[0], action[1], zorder=zorder, linewidth=1,
-                            color=color)
+        artist = plot_arrow(ax, link_bot_points[-1, 0], link_bot_points[-1, 1], action[0], action[1], zorder=zorder,
+                            linewidth=linewidth, color=color, **kwargs)
         return artist
 
     @staticmethod
@@ -156,12 +163,16 @@ class LinkBotScenario(ExperimentScenario):
     @staticmethod
     def update_artist(artist, state):
         """ artist: Whatever was returned by plot_state """
-        line, scatt = artist
+        line, scatt, txt = artist
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         xs = link_bot_points[:, 0]
         ys = link_bot_points[:, 1]
         line.set_data(xs, ys)
         scatt.set_offsets(link_bot_points[0])
+        if txt is not None:
+            txt.set_text(f"{int(np.squeeze(state['num_diverged']))}")
+            txt.set_x(xs[-1])
+            txt.set_y(ys[-1])
 
     @staticmethod
     def update_action_artist(artist, state, action):

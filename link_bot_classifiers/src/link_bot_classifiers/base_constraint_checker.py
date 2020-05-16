@@ -14,7 +14,7 @@ class BaseConstraintChecker:
         self.full_env_params = None
 
     def check_constraint(self,
-                         environement: Dict,
+                         environment: Dict,
                          states_sequence: List[Dict],
                          actions: np.ndarray) -> float:
         pass

@@ -97,12 +97,12 @@ def main():
         'full_env/env': full_env_data.data,
         'full_env/extent': full_env_data.extent,
     }
-    anim = ompl_viz.plan_vs_execution(environment=environment,
-                                      scenario=scenario,
-                                      goal=None,
-                                      accept_probabilities=accept_probabilities,
-                                      planned_path=predicted_path,
-                                      actual_path=actual_path)
+    anim = ompl_viz.animate(environment=environment,
+                            scenario=scenario,
+                            goal=None,
+                            accept_probabilities=accept_probabilities,
+                            planned_path=predicted_path,
+                            actual_path=actual_path)
     if args.outdir:
         outfilename = args.outdir / 'actions_{}.gif'.format(args.actions.stem)
         anim.save(outfilename, writer='imagemagick', dpi=100)

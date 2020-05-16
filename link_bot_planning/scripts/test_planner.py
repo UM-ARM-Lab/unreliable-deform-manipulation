@@ -82,11 +82,11 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         print("Planning Time {:0.3f}".format(planning_time))
 
         if rospy.get_param('service_provider') == 'victor':
-            anim = ompl_viz.plan_vs_execution(environment=environment,
-                                              scenario=self.planner.scenario,
-                                              goal=goal,
-                                              planned_path=planned_path,
-                                              actual_path=None)
+            anim = ompl_viz.animate(environment=environment,
+                                    scenario=self.planner.scenario,
+                                    goal=goal,
+                                    planned_path=planned_path,
+                                    actual_path=None)
             plt.show()
         else:
             plt.figure()
@@ -103,7 +103,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                                         draw_tree=self.draw_tree,
                                         draw_rejected=self.draw_rejected)
 
-            plt.savefig("/tmp/.latest-plan.png", dpi=100, bbox_extra_artists=(legend,), bbox_inches='tight')
+            plt.savefig("results/latest-plan.png", dpi=100, bbox_extra_artists=(legend,), bbox_inches='tight')
         plt.show(block=True)
 
     def on_execution_complete(self,
@@ -123,12 +123,12 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         execution_to_goal_error = self.planner.scenario.distance_to_goal(final_state, goal)
         print('Execution to Goal Error: {:0.3f}'.format(execution_to_goal_error))
 
-        anim = ompl_viz.plan_vs_execution(environment=environment,
-                                          scenario=self.planner.scenario,
-                                          goal=goal,
-                                          planned_path=planned_path,
-                                          actual_path=actual_path)
-        anim.save("/tmp/.latest-plan-vs-execution.gif", dpi=100, writer='imagemagick')
+        anim = ompl_viz.animate(environment=environment,
+                                scenario=self.planner.scenario,
+                                goal=goal,
+                                planned_path=planned_path,
+                                actual_path=actual_path)
+        anim.save("results/latest-plan-vs-execution.gif", dpi=200, writer='imagemagick', fps=1)
         plt.show(block=True)
 
 
@@ -196,8 +196,8 @@ def main():
         no_execution=args.no_execution,
         goal=args.goal,
         seed=args.seed,
-        draw_tree=(args.verbose > 1),
-        draw_rejected=(args.verbose > 1)
+        draw_tree=False,
+        draw_rejected=False,
     )
     tester.run()
 

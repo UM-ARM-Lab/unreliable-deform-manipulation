@@ -204,12 +204,12 @@ class SingleImageClassifierWrapper(BaseConstraintChecker):
             raise ValueError('invalid image_key')
 
     def check_constraint(self,
-                         environement: Dict,
+                         environment: Dict,
                          states_sequence: List[Dict],
                          actions: np.ndarray) -> float:
         actions = tf.Variable(actions, dtype=tf.float32, name="actions")
         states_sequence = [make_dict_float32(s) for s in states_sequence]
-        prediction = self.check_constraint_differentiable(environment=environement,
+        prediction = self.check_constraint_differentiable(environment=environment,
                                                           states_sequence=states_sequence,
                                                           actions=actions)
         return prediction.numpy()

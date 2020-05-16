@@ -1,0 +1,44 @@
+{
+  "fwd_model_dir": [
+    "ss_log_data/tf2_rope/0",
+    "ss_log_data/tf2_rope/1",
+    "ss_log_data/tf2_rope/2",
+    "ss_log_data/tf2_rope/3",
+    "ss_log_data/tf2_rope/4",
+    "ss_log_data/tf2_rope/5",
+    "ss_log_data/tf2_rope/6",
+    "ss_log_data/tf2_rope/7"
+  ],
+  "classifier_model_dir": "classifiers/rope_rnn_strict_mer/May_15_13-26-02_819fdd060a/",
+  "planner_type": "NearestRRT",
+  "sampler_type": "random",
+  "directed_control_sampler": "simple",
+  "accept_threshold": 0.5,
+  "max_angle_rad": 1.0,
+  "random_epsilon": 0.0,
+  "full_env_w": 2.0,
+  "full_env_h": 2.0,
+  "goal_w_m": 1.5,
+  "goal_h_m": 1.5,
+  "timeout": 120,
+  "movable_obstacles": [
+  ],
+  "goal_threshold": 0.05,
+  "fixed_goal": null,
+  "reset_robot": null,
+  "real_time_rate": 0.0,
+  "max_step_size": 0.01,
+  "smoothing": null,
+  "scenario": "link_bot",
+  "table_config": {
+    "nickname": [
+      "Classifier",
+      "(ours)"
+    ],
+    "classifier": "Learned",
+    "dynamics": [
+      "Ensemble",
+      "Unconstrained"
+    ]
+  }
+}

@@ -180,7 +180,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         metrics_file = self.metrics_filename.open('w')
         json.dump(self.metrics, metrics_file, indent=2)
 
-    def on_planner_failure(self, start_states, tail_goal_point, environment: link_bot_sdf_utils.OccupancyData, planner_data):
+    def on_planner_failure(self, start_states, tail_goal_point, environment: Dict, planner_data):
         self.n_failures += 1
         folder = self.failures_root / str(self.n_failures)
         folder.mkdir(parents=True)
@@ -241,7 +241,7 @@ def main():
         if args.env_type == 'victor':
             service_provider = victor_services.VictorServices()
         else:
-            service_provider = gazebo_services.GazeboServices()
+            service_provider = gazebo_services.GazeboServices(planner_params['movable_obstacles'])
 
         # look up the planner params
         planner, _ = get_planner(planner_params=planner_params,
