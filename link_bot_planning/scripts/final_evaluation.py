@@ -124,12 +124,14 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         print("{}: {}".format(self.subfolder, self.successfully_completed_plan_idx))
 
         planned_path_listified = listify(planned_path)
+        planned_actions_listified = listify(planned_actions)
         actual_path_listified = listify(actual_path)
 
         metrics_for_plan = {
             'planner_status': planner_status.asString(),
             'environment': listify(environment),
             'planned_path': planned_path_listified,
+            'actions': planned_actions_listified,
             'actual_path': actual_path_listified,
             'planning_time': planning_time,
             'plan_to_goal_error': plan_to_goal_error,

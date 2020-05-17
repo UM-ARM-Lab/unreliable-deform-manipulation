@@ -7,7 +7,7 @@ import pathlib
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
-from link_bot_data.classifier_dataset import predict_and_nullify
+from link_bot_data.classifier_dataset_utils import predict_and_nullify
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import data_directory, is_funneling
 from link_bot_planning import model_utils

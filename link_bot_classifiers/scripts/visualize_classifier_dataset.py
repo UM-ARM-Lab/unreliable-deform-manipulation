@@ -119,7 +119,10 @@ def main():
         #############################
         # Show Visualization
         #############################
-        print(example['traj_idx'].numpy(), example['classifier_start_t'].numpy(), example['classifier_end_t'].numpy())
+        # print(example['traj_idx'].numpy()[0],
+        #       example['prediction_start_t'].numpy(),
+        #       example['classifier_start_t'].numpy(),
+        #       example['classifier_end_t'].numpy())
         valid_seq_length = (example['classifier_end_t'] - example['classifier_start_t'] + 1).numpy()
         if args.only_length and args.only_length != valid_seq_length:
             continue

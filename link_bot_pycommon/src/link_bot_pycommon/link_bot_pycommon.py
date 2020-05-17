@@ -155,7 +155,7 @@ def print_dict(example):
             shape = v.shape
         else:
             shape = '?'
-        print(f"{k:25s} {str(dtype):20s} {str(shape)}")
+        print(f"{k:30s} {str(dtype):20s} {str(shape)}")
 
 
 def rand_str(length=16):

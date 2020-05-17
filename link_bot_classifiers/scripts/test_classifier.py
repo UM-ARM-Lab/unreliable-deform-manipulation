@@ -9,7 +9,7 @@ import numpy as np
 from colorama import Fore
 
 import rospy
-from link_bot_data.classifier_dataset import compute_label_np
+from link_bot_data.classifier_dataset_utils import compute_label_np
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import model_utils, classifier_utils
 from link_bot_planning.plan_and_execute import execute_plan
