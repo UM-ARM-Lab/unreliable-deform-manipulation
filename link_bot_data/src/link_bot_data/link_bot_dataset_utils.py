@@ -144,11 +144,12 @@ def balance(dataset, labeling_params: Dict):
 
 def cachename(mode: Optional[str] = None):
     cache_root = pathlib.Path.home() / '.mytfcache'
+    cache_root.mkdir(exist_ok=True, parents=False)
     if mode is not None:
         tmpname = cache_root / f"{mode}_{link_bot_pycommon.rand_str()}"
     else:
         tmpname = cache_root / f"{link_bot_pycommon.rand_str()}"
-    return tmpname
+    return str(tmpname)
 
 
 def data_directory(outdir: pathlib.Path, *names):
