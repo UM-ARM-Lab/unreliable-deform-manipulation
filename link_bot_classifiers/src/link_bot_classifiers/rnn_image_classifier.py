@@ -86,9 +86,6 @@ class RNNImageClassifier(MyKerasModel):
         conv_output = self._conv(images)
 
         concat_args = [conv_output, padded_action]
-        if self.hparams['stdev']:
-            stdevs = input_dict[add_planned('stdev')]
-            concat_args.append(stdevs)
         for state_key in self.states_keys:
             planned_state_key = add_planned(state_key)
             state = input_dict[planned_state_key]
@@ -99,6 +96,11 @@ class RNNImageClassifier(MyKerasModel):
                 points = points - points[:, :, tf.newaxis, 0]
                 state = tf.reshape(points, [self.batch_size, time, -1])
             concat_args.append(state)
+
+        if self.hparams['stdev']:
+            stdevs = input_dict[add_planned('stdev')]
+            concat_args.append(stdevs)
+
         conv_output = tf.concat(concat_args, axis=2)
 
         if self.hparams['batch_norm']:

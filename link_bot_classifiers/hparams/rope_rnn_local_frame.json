@@ -9,12 +9,12 @@
   "use_local_frame": true,
   "action_in_image": true,
   "rope_image_k": 10000,
-  "rnn_size": 64,
+  "rnn_size": 128,
   "fc_layer_sizes": [],
   "conv_filters": [
-    [8, [5, 5]],
-    [8, [3, 3]],
-    [8, [3, 3]]
+    [32, [7, 7]],
+    [32, [5, 5]],
+    [32, [5, 5]]
   ],
   "mixed": true,
   "kernel_reg": 0.05,

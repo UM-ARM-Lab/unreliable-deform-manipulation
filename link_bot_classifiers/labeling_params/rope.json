@@ -1,6 +1,6 @@
 {
   "balance": true,
-  "threshold": 0.10,
+  "threshold": 0.05,
   "discard_diverged": false,
   "relaxed": true,
   "state_key": "link_bot",

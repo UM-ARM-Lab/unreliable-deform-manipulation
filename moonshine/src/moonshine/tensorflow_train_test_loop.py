@@ -145,6 +145,10 @@ def train(keras_model: MyKerasModel,
             train_predictions = keras_model(train_element, training=True)
             train_batch_loss = loss_function(train_element, train_predictions)
 
+            flooding_level = model_hparams['flooding_level'] if 'flooding_level' in model_hparams else None
+            if flooding_level is not None:
+                train_batch_loss = tf.math.abs(train_batch_loss - flooding_level) + flooding_level
+
         variables = keras_model.trainable_variables
         gradients = tape.gradient(train_batch_loss, variables)
         optimizer.apply_gradients(zip(gradients, variables))
