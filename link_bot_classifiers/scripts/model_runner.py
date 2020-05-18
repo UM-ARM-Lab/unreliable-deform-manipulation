@@ -51,7 +51,7 @@ def train_main(args, seed: int):
     postprocess, model_hparams = setup_image_inputs(args, scenario, train_dataset, model_hparams)
 
     net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=1024, seed=seed)
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=50000, seed=seed)
     train_tf_dataset = train_tf_dataset.prefetch(args.batch_size)
     val_tf_dataset = val_tf_dataset.prefetch(args.batch_size)
 
