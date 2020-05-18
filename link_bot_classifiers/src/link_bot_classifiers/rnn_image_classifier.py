@@ -92,6 +92,12 @@ class RNNImageClassifier(MyKerasModel):
         for state_key in self.states_keys:
             planned_state_key = add_planned(state_key)
             state = input_dict[planned_state_key]
+            if 'use_local_frame' in self.hparams and self.hparams['use_local_frame']:
+                # note this assumes all state vectors are[x1,y1,...,xn,y2]
+                time = state.shape[1]
+                points = tf.reshape(state, [self.batch_size, time, -1, 2])
+                points = points - points[:, :, tf.newaxis, 0]
+                state = tf.reshape(points, [self.batch_size, time, -1])
             concat_args.append(state)
         conv_output = tf.concat(concat_args, axis=2)
 
@@ -136,7 +142,7 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         for state in states_sequence:
             states_sequence_to_draw.append({k: state[k] for k in state if k != 'stdev' and k != 'num_diverged'})
 
-        batched_inputs = add_batch(environment, states_sequence_to_draw)
+        batched_inputs = add_batch(environment, states_sequence_to_draw, actions)
         image = make_traj_images_from_states_list(*batched_inputs,
                                                   scenario=self.scenario,
                                                   local_env_h=self.input_h_rows,

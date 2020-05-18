@@ -1,0 +1,29 @@
+{
+  "model_class": "rnn",
+  "scenario": "link_bot",
+  "states_keys": [
+    "link_bot"
+  ],
+  "image_key": "trajectory_image",
+  "image_noise_stddev": 0.0,
+  "use_local_frame": true,
+  "action_in_image": true,
+  "rope_image_k": 10000,
+  "rnn_size": 64,
+  "fc_layer_sizes": [],
+  "conv_filters": [
+    [8, [5, 5]],
+    [8, [3, 3]],
+    [8, [3, 3]]
+  ],
+  "mixed": true,
+  "kernel_reg": 0.05,
+  "bias_reg": 0.05,
+  "activity_reg": 0.05,
+  "dropout_rate": 0.0,
+  "batch_norm": false,
+  "local_env_h_rows": 100,
+  "local_env_w_cols": 100,
+  "learning_rate": 0.0001,
+  "stdev": true
+}

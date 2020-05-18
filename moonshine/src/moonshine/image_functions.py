@@ -11,11 +11,13 @@ from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts_tf
 
 
 def make_state_and_env_image(environment: Dict,
+                             action,
                              state_dict: Dict,
                              scenario: ExperimentScenario,
                              local_env_h: int,
                              local_env_w: int,
                              k: float,
+                             action_in_image: Optional[bool] = False,
                              batch_size: Optional[int] = 1,
                              ):
     """
@@ -47,6 +49,10 @@ def make_state_and_env_image(environment: Dict,
                                                    k=k,
                                                    batch_size=batch_size)
         concat_args.append(planned_rope_image)
+
+    if action_in_image:
+        action_image = smear_action_differentiable(action, local_env_h, local_env_w)
+        concat_args.append(action_image)
 
     concat_args.append(tf.expand_dims(local_env, axis=3))
     image = tf.concat(concat_args, axis=3)
@@ -157,6 +163,7 @@ def partial_add_transition_image(states_keys,
 def make_traj_images(scenario: ExperimentScenario,
                      environment,
                      states_list: List[Dict],
+                     actions,
                      local_env_h: int,
                      local_env_w: int,
                      rope_image_k: float,
@@ -173,11 +180,17 @@ def make_traj_images(scenario: ExperimentScenario,
     """
     images = []
     state_dim = total_state_dim(states_list[0]) + 1
-    for states_dict_t in states_list:
+    for t, states_dict_t in enumerate(states_list):
+        if t < actions.shape[1]:
+            action_t = actions[:, t]
+        else:
+            n_action = actions.shape[2]
+            action_t = tf.zeros([batch_size, n_action])
         if state_dict_is_null_tf(states_dict_t):
             image = tf.zeros([batch_size, local_env_h, local_env_w, state_dim])
         else:
             image = make_state_and_env_image(environment=environment,
+                                             action=action_t,
                                              state_dict=states_dict_t,
                                              scenario=scenario,
                                              local_env_h=local_env_h,
@@ -191,6 +204,7 @@ def make_traj_images(scenario: ExperimentScenario,
 
 def make_traj_images_from_states_list(environment: Dict,
                                       states: List[Dict],
+                                      actions,
                                       scenario: ExperimentScenario,
                                       local_env_w: int,
                                       local_env_h: int, rope_image_k: float):
@@ -203,6 +217,7 @@ def make_traj_images_from_states_list(environment: Dict,
     return make_traj_images(scenario=scenario,
                             environment=environment,
                             states_list=states,
+                            actions=actions,
                             local_env_h=local_env_h,
                             local_env_w=local_env_w,
                             rope_image_k=rope_image_k,
@@ -250,6 +265,7 @@ def add_traj_image_to_example(scenario: ExperimentScenario,
     image = make_traj_images(scenario=scenario,
                              environment=environment,
                              states_list=planned_states_list,
+                             actions=example['action'],
                              local_env_w=local_env_w,
                              local_env_h=local_env_h,
                              rope_image_k=rope_image_k,

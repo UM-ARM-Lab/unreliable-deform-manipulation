@@ -52,4 +52,5 @@ class ClassifierDataset(BaseDataset):
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
         if not self.no_balance:
             dataset = balance(dataset, self.labeling_params)
+
         return dataset
