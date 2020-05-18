@@ -143,10 +143,11 @@ def balance(dataset, labeling_params: Dict):
 
 
 def cachename(mode: Optional[str] = None):
+    cache_root = pathlib.Path.home() / '.mytfcache'
     if mode is not None:
-        tmpname = "/data/tf_{}_{}".format(mode, link_bot_pycommon.rand_str())
+        tmpname = cache_root / f"{mode}_{link_bot_pycommon.rand_str()}"
     else:
-        tmpname = "/tmp/tf_{}".format(link_bot_pycommon.rand_str())
+        tmpname = cache_root / f"{link_bot_pycommon.rand_str()}"
     return tmpname
 
 
