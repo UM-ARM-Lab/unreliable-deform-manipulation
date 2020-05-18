@@ -10,12 +10,13 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_data.link_bot_dataset_utils import add_planned
+from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_pycommon import make_dict_float32
+from link_bot_pycommon.link_bot_pycommon import make_dict_float32, print_dict
 from link_bot_pycommon.params import FullEnvParams
 from moonshine.image_functions import make_traj_images_from_states_list
-from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, sequence_of_dicts_to_dict_of_sequences
+from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, sequence_of_dicts_to_dict_of_sequences, \
+    numpify
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 
@@ -59,6 +60,7 @@ class RNNImageClassifier(MyKerasModel):
             self.dropout_layers.append(dropout)
             self.dense_layers.append(dense)
 
+        self.mask = layers.Masking(mask_value=NULL_PAD_VALUE)
         self.lstm = layers.LSTM(self.hparams['rnn_size'], unroll=True)
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
@@ -77,7 +79,7 @@ class RNNImageClassifier(MyKerasModel):
         return out_conv_z
 
     @tf.function
-    def call(self, input_dict: Dict, training=True, mask=None):
+    def call(self, input_dict: Dict, training=True, **kwargs):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         images = input_dict[self.hparams['image_key']]
 
@@ -112,7 +114,10 @@ class RNNImageClassifier(MyKerasModel):
             z = dense_layer(d)
         out_d = z
 
-        out_h = self.lstm(out_d)
+        # doesn't matter which state_key we use, they're all null padded the same way
+        state_key_for_mask = add_planned(self.states_keys[0])
+        mask = self.mask(input_dict[state_key_for_mask])
+        out_h = self.lstm(out_d, mask=mask._keras_mask)
         accept_probability = self.output_layer(out_h)
         return accept_probability
 

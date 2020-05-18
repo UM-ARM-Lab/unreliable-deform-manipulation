@@ -45,13 +45,13 @@ def train_main(args, seed: int):
     scenario = get_scenario(model_hparams['scenario'])
 
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train').batch(args.batch_size, drop_remainder=True)
+    train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_dataset.get_datasets(mode='val').batch(args.batch_size, drop_remainder=True)
 
     postprocess, model_hparams = setup_image_inputs(args, scenario, train_dataset, model_hparams)
 
     net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=50000, seed=seed)
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed)
     train_tf_dataset = train_tf_dataset.prefetch(args.batch_size)
     val_tf_dataset = val_tf_dataset.prefetch(args.batch_size)
 
@@ -179,6 +179,7 @@ def main():
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--epochs', type=int, default=15)
+    train_parser.add_argument('--take', type=int)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches',

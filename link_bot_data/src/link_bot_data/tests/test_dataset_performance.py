@@ -3,9 +3,10 @@ import argparse
 import pathlib
 from time import perf_counter
 
+import progressbar
+
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.args import my_formatter
-from moonshine.image_functions import add_traj_image
 
 
 def main():
@@ -25,14 +26,13 @@ def main():
     tf_dataset = dataset.get_datasets(mode=args.mode)
     tf_dataset = tf_dataset.batch(batch_size)
 
-    tf_dataset = add_traj_image(tf_dataset, states_keys=['link_bot'], rope_image_k=1000, batch_size=batch_size)
     # tf_dataset = add_transition_image(tf_dataset,
     #                                   states_keys=["link_bot"],
     #                                   scenario=get_scenario("link_bot"),
     #                                   local_env_h=50,
     #                                   local_env_w=50,
     #                                   rope_image_k=1000)
-    # tf_dataset = tf_dataset.shuffle(1024)
+    tf_dataset = tf_dataset.shuffle(512)
 
     time_to_load = perf_counter() - t0
     print("Time to Load (s): {:5.3f}".format(time_to_load))
@@ -42,9 +42,10 @@ def main():
     try:
         for _ in range(args.n_repetitions):
             t0 = perf_counter()
-            for e in tf_dataset.take(8):
-                print('{:.5f}'.format(perf_counter() - t0))
+            for e in progressbar.progressbar(tf_dataset):
+                # print('{:.5f}'.format(perf_counter() - t0))
                 pass
+            print('{:.5f}'.format(perf_counter() - t0))
     except KeyboardInterrupt:
         pass
 

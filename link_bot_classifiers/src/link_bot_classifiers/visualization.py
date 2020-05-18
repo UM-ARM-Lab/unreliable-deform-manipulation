@@ -167,12 +167,13 @@ def trajectory_image(example, model_hparams, title):
         fig, axes = plt.subplots(nrows=1, ncols=T)
         fig.suptitle(title)
         for t in range(T):
-            env_image_t = image[t, :, :, -1]
-            state_image_t = np.sum(image[t, :, :, :-1], axis=2)
-            zeros = np.zeros_like(env_image_t)
-            image_t = np.stack([env_image_t, state_image_t, zeros], axis=2)
+            env_image_t = np.tile(image[t, :, :, -1:], [1, 1, 3])
+            state_image_t = state_image_to_cmap(image[t, :, :, :-1])
+            image_t = paste_over(state_image_t, env_image_t)
             axes[t].imshow(np.flipud(image_t), vmin=0, vmax=1)
             axes[t].set_title(f"t={t}")
+            if t < T - 1:
+                axes[t].text(x=10, y=image.shape[1] + 10, s=f"u={example['action'][t]}")
             axes[t].set_xticks([])
             axes[t].set_yticks([])
         return fig
@@ -182,6 +183,24 @@ def trajectory_image(example, model_hparams, title):
         ax.set_xticks([])
         ax.set_yticks([])
         plt.title(title)
+
+
+def state_image_to_cmap(state_image: np.ndarray, cmap=cm.viridis, binary_threshold=0.1):
+    h, w, n_channels = state_image.shape
+    new_image = np.zeros([h, w, 3])
+    for channel_idx in range(n_channels):
+        channel = np.take(state_image, indices=channel_idx, axis=-1)
+        color = cmap(channel_idx / n_channels)[:3]
+        rows, cols = np.where(channel > binary_threshold)
+        new_image[rows, cols] = color
+    return new_image
+
+
+def paste_over(i1, i2, binary_threshold=0.1):
+    # first create a mask for everywhere i1 > binary_threshold, and zero out those pixels in i2, then add.
+    mask = np.any(i1 > binary_threshold, axis=2)
+    i2[mask] = 0
+    return i2 + i1
 
 
 def trajectory_animation(scenario, classifier_dataset, example, count, accept_probability):

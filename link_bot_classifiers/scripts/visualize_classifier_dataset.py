@@ -54,7 +54,7 @@ def main():
     postprocess, _ = setup_image_inputs(args, scenario, classifier_dataset, model_hparams)
 
     if args.shuffle:
-        dataset = dataset.shuffle(buffer_size=1024)
+        dataset = dataset.shuffle(buffer_size=512)
 
     dataset = dataset.batch(1)
 

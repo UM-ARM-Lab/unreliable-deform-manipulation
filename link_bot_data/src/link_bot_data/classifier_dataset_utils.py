@@ -89,7 +89,9 @@ def generate_examples_for_prediction(inputs: Dict,
 
             # action
             if 'action' in inputs:
-                out_example['action'] = inputs['action'][action_slice]
+                actions = inputs['action'][action_slice]
+                null_padded_actions = null_pad(actions, end=out_example_end_idx - 1)
+                out_example['action'] = null_padded_actions
 
             # TODO: planned -> predicted whenver we're talking about applying the dynamics model
             #  so like add_planned should be add_predicted or something

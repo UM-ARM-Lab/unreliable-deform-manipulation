@@ -7,7 +7,7 @@
   "image_key": "trajectory_image",
   "image_noise_stddev": 0.0,
   "use_local_frame": true,
-  "action_in_image": true,
+  "action_in_image": false,
   "rope_image_k": 10000,
   "rnn_size": 128,
   "fc_layer_sizes": [],
