@@ -181,7 +181,7 @@ def train(keras_model: MyKerasModel,
                     if step % 500 == 0:
                         val_losses = []
                         val_metrics = {}
-                        for i in range(128):
+                        for i in range(32):
                             batch = next(validation_iterator)
                             if postprocess is not None:
                                 dataset_element = postprocess(batch)
