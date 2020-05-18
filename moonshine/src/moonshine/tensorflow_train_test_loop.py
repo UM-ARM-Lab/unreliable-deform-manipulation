@@ -167,6 +167,7 @@ def train(keras_model: MyKerasModel,
             batch_losses = []
 
             for train_element in progressbar.progressbar(train_tf_dataset):
+                step = int(global_step.numpy())
                 if postprocess is not None:
                     train_element = postprocess(train_element)
 
