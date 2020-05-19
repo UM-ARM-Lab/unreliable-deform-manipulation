@@ -9,8 +9,8 @@
   "use_local_frame": true,
   "action_in_image": false,
   "rope_image_k": 10000,
-  "rnn_size": 32,
-  "fc_layer_sizes": [32, 32],
+  "rnn_size": 128,
+  "fc_layer_sizes": [128],
   "conv_filters": [
     [32, [7, 7]],
     [32, [7, 7]],
@@ -26,5 +26,6 @@
   "local_env_h_rows": 100,
   "local_env_w_cols": 100,
   "learning_rate": 0.0001,
+  "flooding_level": 0.1,
   "stdev": true
 }
