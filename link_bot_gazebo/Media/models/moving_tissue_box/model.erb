@@ -49,7 +49,21 @@
         </surface>
       </collision>
     </link>
-    <static>true</static>
+    <plugin name="position_2d" filename="libposition_2d_plugin.so">
+      <linkName>link_1</linkName>
+      <kP_pos>50</kP_pos>
+      <kI_pos>0.0</kI_pos>
+      <kD_pos>0.0</kD_pos>
+      <max_vel>1.0</max_vel>
+      <kP_rot>20</kP_rot>
+      <kI_rot>0.0</kI_rot>
+      <kD_rot>0.0</kD_rot>
+      <max_torque>20.0</max_torque>
+      <kP_vel>100.0</kP_vel>
+      <kI_vel>0.0</kI_vel>
+      <kD_vel>0.0</kD_vel>
+      <max_force>100.0</max_force>
+    </plugin>
   </model>
 </sdf>
 
