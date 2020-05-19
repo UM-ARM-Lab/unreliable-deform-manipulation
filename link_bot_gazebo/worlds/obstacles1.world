@@ -37,90 +37,51 @@
             <pose>0 0 0 0 0 0</pose>
             <name>arena</name>
         </include>
+
         <include>
-            <uri>model://cheezits</uri>
-            <pose>0.2 0.1 0 0 0 0</pose>
-            <name>box1</name>
+            <uri>model://small_moving_box</uri>
+            <pose>0.8 0 0 0 0 0</pose>
+            <name>moving_box1</name>
         </include>
         <include>
-            <uri>model://cheezits</uri>
-            <pose>0.4 0.1 0 0 0 0</pose>
-            <name>box2</name>
+            <uri>model://small_moving_box</uri>
+            <pose>-0.4 0 0 0 0 0</pose>
+            <name>moving_box2</name>
         </include>
         <include>
-            <uri>model://cheezits</uri>
-            <pose>-0.4 0.1 0 0 0 0</pose>
-            <name>box4</name>
+            <uri>model://small_moving_box</uri>
+            <pose>-0.4 0.8 0 0 0 0</pose>
+            <name>moving_box3</name>
         </include>
         <include>
-            <uri>model://cheezits</uri>
-            <pose>-0.2 0.1 0 0 0 0</pose>
-            <name>box5</name>
+            <uri>model://small_moving_box</uri>
+            <pose>-0.5 0.5 0 0 0 0</pose>
+            <name>moving_box6</name>
         </include>
         <include>
-            <uri>model://tissue_box</uri>
-            <pose>0.4 0.5 0 0 0 0</pose>
-            <name>box6</name>
+            <uri>model://small_moving_box</uri>
+            <pose>0.2 -0.5 0 0 0 0</pose>
+            <name>moving_box7</name>
         </include>
         <include>
-            <uri>model://tissue_box</uri>
-            <pose>0.2 0.5 0 0 0 0</pose>
-            <name>box7</name>
+            <uri>model://small_moving_box</uri>
+            <pose>0.4 .4 0 0 0 0</pose>
+            <name>moving_box8</name>
         </include>
         <include>
-            <uri>model://tissue_box</uri>
-            <pose>0.0 0.5 0 0 0 0</pose>
-            <name>box8</name>
+            <uri>model://small_moving_box</uri>
+            <pose>0.65 -0.5 0 0 0 0</pose>
+            <name>moving_box9</name>
         </include>
         <include>
-            <uri>model://tissue_box</uri>
-            <pose>-0.2 0.5 0 0 0 0</pose>
-            <name>box9</name>
+            <uri>model://small_moving_box</uri>
+            <pose>-0.15 -0.4 0 0 0 0</pose>
+            <name>moving_box10</name>
         </include>
         <include>
-            <uri>model://tissue_box</uri>
-            <pose>-0.4 0.5 0 0 0 0</pose>
-            <name>box10</name>
-        </include>
-        <include>
-            <uri>model://small_box</uri>
-            <pose>-0.5 -0.3 0 0 0 0</pose>
-            <name>box11</name>
-        </include>
-        <include>
-            <uri>model://small_box</uri>
-            <pose>0.0 -0.3 0 0 0 0</pose>
-            <name>box12</name>
-        </include>
-        <include>
-            <uri>model://small_box</uri>
-            <pose>0.5 -0.3 0 0 0 0</pose>
-            <name>box13</name>
-        </include>
-        <include>
-            <uri>model://small_box</uri>
-            <pose>-0.5 -0.75 0 0 0 0</pose>
-            <name>box14</name>
-        </include>
-        <include>
-            <uri>model://small_box</uri>
-            <pose>0.0 -0.75 0 0 0 0</pose>
-            <name>box15</name>
-        </include>
-        <include>
-            <uri>model://small_box</uri>
-            <pose>0.5 -0.75 0 0 0 0</pose>
-            <name>box175</name>
-        </include>
-        <include>
-            <uri>model://small_box</uri>
-            <pose>0.7 0.7 0 0 0 0</pose>
-            <name>box17</name>
-        </include>
-        <include>
-            <uri>model://small_box</uri>
-            <pose>-0.7 0.7 0 0 0 0</pose>
-            <name>box18</name>
+            <uri>model://small_moving_box</uri>
+            <pose>-0.25 0.5 0 0 0 0</pose>
+            <name>moving_box11</name>
         </include>
     </world>
 </sdf>

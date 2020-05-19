@@ -9,11 +9,11 @@
   "use_local_frame": true,
   "action_in_image": false,
   "rope_image_k": 10000,
-  "rnn_size": 128,
-  "fc_layer_sizes": [],
+  "rnn_size": 32,
+  "fc_layer_sizes": [32, 32],
   "conv_filters": [
     [32, [7, 7]],
-    [32, [5, 5]],
+    [32, [7, 7]],
     [32, [5, 5]],
     [32, [5, 5]]
   ],

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import pathlib
 import time
 from typing import Optional, Dict
@@ -143,8 +144,11 @@ def balance(dataset, labeling_params: Dict):
 
 
 def cachename(mode: Optional[str] = None):
-    cache_root = pathlib.Path.home() / '.mytfcache'
-    cache_root.mkdir(exist_ok=True, parents=False)
+    if 'TF_CACHE_ROOT' in os.environ:
+        cache_root = pathlib.Path(os.environ['TF_CACHE_ROOT'])
+        cache_root.mkdir(exist_ok=True, parents=True)
+    else:
+        cache_root = pathlib.Path('/tmp')
     if mode is not None:
         tmpname = cache_root / f"{mode}_{link_bot_pycommon.rand_str()}"
     else:

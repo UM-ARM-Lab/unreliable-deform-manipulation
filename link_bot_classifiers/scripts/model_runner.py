@@ -14,14 +14,15 @@ from link_bot_classifiers.visualization import visualize_classifier_example, cla
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine import experiments_util
-from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function
+from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function, \
+    binary_classification_sequence_loss_function
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.image_functions import setup_image_inputs
 from moonshine.metric import AccuracyMetric
 from moonshine.moonshine_utils import remove_batch
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
-limit_gpu_mem(2)
+limit_gpu_mem(3)
 
 
 def train_main(args, seed: int):
@@ -58,6 +59,8 @@ def train_main(args, seed: int):
     ###############
     # Train
     ###############
+    loss_function = binary_classification_sequence_loss_function
+    # loss_function = binary_classification_loss_function
     train(keras_model=net,
           model_hparams=model_hparams,
           train_tf_dataset=train_tf_dataset,
@@ -66,7 +69,7 @@ def train_main(args, seed: int):
           seed=seed,
           batch_size=args.batch_size,
           epochs=args.epochs,
-          loss_function=binary_classification_loss_function,
+          loss_function=loss_function,
           metrics_function=binary_classification_metrics_function,
           postprocess=postprocess,
           checkpoint=args.checkpoint,
@@ -95,9 +98,11 @@ def eval_main(args, seed: int):
     # Evaluate
     ###############
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    loss_function = binary_classification_sequence_loss_function
+    # loss_function = binary_classification_loss_function
     evaluate(keras_model=net,
              test_tf_dataset=test_tf_dataset,
-             loss_function=binary_classification_loss_function,
+             loss_function=loss_function,
              metrics_function=binary_classification_metrics_function,
              postprocess=postprocess,
              checkpoint_path=args.checkpoint)

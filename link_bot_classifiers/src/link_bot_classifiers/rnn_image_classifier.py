@@ -61,7 +61,7 @@ class RNNImageClassifier(MyKerasModel):
             self.dense_layers.append(dense)
 
         self.mask = layers.Masking(mask_value=NULL_PAD_VALUE)
-        self.lstm = layers.LSTM(self.hparams['rnn_size'], unroll=True)
+        self.lstm = layers.LSTM(self.hparams['rnn_size'], unroll=True, return_sequences=True)
         self.output_layer = layers.Dense(1, activation='sigmoid')
 
     @tf.function
@@ -92,7 +92,7 @@ class RNNImageClassifier(MyKerasModel):
             planned_state_key = add_planned(state_key)
             state = input_dict[planned_state_key]
             if 'use_local_frame' in self.hparams and self.hparams['use_local_frame']:
-                # note this assumes all state vectors are[x1,y1,...,xn,y2]
+                # note this assumes all state vectors are[x1,y1,...,xn,yn]
                 time = state.shape[1]
                 points = tf.reshape(state, [self.batch_size, time, -1, 2])
                 points = points - points[:, :, tf.newaxis, 0]
@@ -118,8 +118,10 @@ class RNNImageClassifier(MyKerasModel):
         state_key_for_mask = add_planned(self.states_keys[0])
         mask = self.mask(input_dict[state_key_for_mask])
         out_h = self.lstm(out_d, mask=mask._keras_mask)
-        accept_probability = self.output_layer(out_h)
-        return accept_probability
+        all_accept_probabilities = self.output_layer(out_h)
+        # ignore the first output, it is meaningless to predict the validity of a single state
+        valid_accept_probabilities = all_accept_probabilities[:, 1:]
+        return valid_accept_probabilities
 
 
 class RNNImageClassifierWrapper(BaseConstraintChecker):
