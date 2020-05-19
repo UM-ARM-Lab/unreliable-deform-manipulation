@@ -139,7 +139,7 @@ def train(keras_model: MyKerasModel,
 
         writer = tf.summary.create_file_writer(logdir=str(full_log_path))
 
-    @tf.function
+    # @tf.function
     def forward_pass_and_apply_gradients(train_element):
         with tf.GradientTape() as tape:
             train_predictions = keras_model(train_element, training=True)
@@ -186,14 +186,14 @@ def train(keras_model: MyKerasModel,
                         val_losses = []
                         val_metrics = {}
                         for i in range(32):
-                            batch = next(validation_iterator)
+                            val_dataset_element = next(validation_iterator)
                             if postprocess is not None:
-                                dataset_element = postprocess(batch)
-                            predictions = keras_model(batch, training=False)
-                            val_batch_loss = loss_function(dataset_element, predictions)
+                                val_dataset_element = postprocess(val_dataset_element)
+                            predictions = keras_model(val_dataset_element, training=False)
+                            val_batch_loss = loss_function(val_dataset_element, predictions)
                             val_losses.append(val_batch_loss)
 
-                            metrics_element = metrics_function(dataset_element, predictions)
+                            metrics_element = metrics_function(val_dataset_element, predictions)
                             for k, v in metrics_element.items():
                                 if k not in val_metrics:
                                     val_metrics[k] = []

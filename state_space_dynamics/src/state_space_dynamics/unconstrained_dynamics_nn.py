@@ -6,7 +6,7 @@ import tensorflow.keras.layers as layers
 from colorama import Fore
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts
+from moonshine.moonshine_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts_tf
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -27,7 +27,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
 
     # @tf.function()
-    def call(self, dataset_element, training=None, mask=None):
+    def call(self, dataset_element, training, mask=None):
         input_dict, _ = dataset_element
         states = input_dict[self.state_key]
         actions = input_dict['action']
@@ -104,5 +104,5 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         # it is easier to deal with a list of states where each state is a dictionary
         predictions = self.net((test_x, None))
         predictions = remove_batch(predictions)
-        predictions = dict_of_sequences_to_sequence_of_dicts(predictions)
+        predictions = dict_of_sequences_to_sequence_of_dicts_tf(predictions)
         return predictions

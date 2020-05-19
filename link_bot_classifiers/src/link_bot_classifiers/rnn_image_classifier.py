@@ -12,11 +12,10 @@ from tensorflow import keras
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_pycommon import make_dict_float32, print_dict
+from link_bot_pycommon.link_bot_pycommon import make_dict_float32
 from link_bot_pycommon.params import FullEnvParams
 from moonshine.image_functions import make_traj_images_from_states_list
-from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, sequence_of_dicts_to_dict_of_sequences, \
-    numpify
+from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, sequence_of_dicts_to_dict_of_sequences
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 
@@ -62,7 +61,8 @@ class RNNImageClassifier(MyKerasModel):
 
         self.mask = layers.Masking(mask_value=NULL_PAD_VALUE)
         self.lstm = layers.LSTM(self.hparams['rnn_size'], unroll=True, return_sequences=True)
-        self.output_layer = layers.Dense(1, activation='sigmoid')
+        self.output_layer = layers.Dense(1, activation=None)
+        self.sigmoid = layers.Activation("sigmoid")
 
     @tf.function
     def _conv(self, images):
@@ -79,7 +79,7 @@ class RNNImageClassifier(MyKerasModel):
         return out_conv_z
 
     @tf.function
-    def call(self, input_dict: Dict, training=True, **kwargs):
+    def call(self, input_dict: Dict, training, **kwargs):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         images = input_dict[self.hparams['image_key']]
 
@@ -118,10 +118,16 @@ class RNNImageClassifier(MyKerasModel):
         state_key_for_mask = add_planned(self.states_keys[0])
         mask = self.mask(input_dict[state_key_for_mask])
         out_h = self.lstm(out_d, mask=mask._keras_mask)
-        all_accept_probabilities = self.output_layer(out_h)
+        # for every timestep's output, map down to a single scalar, the logit for accept probability
+        all_accept_logits = self.output_layer(out_h)
         # ignore the first output, it is meaningless to predict the validity of a single state
-        valid_accept_probabilities = all_accept_probabilities[:, 1:]
-        return valid_accept_probabilities
+        valid_accept_logits = all_accept_logits[:, 1:]
+        valid_accept_probabilities = self.sigmoid(valid_accept_logits)
+
+        return {
+            'logits': valid_accept_logits,
+            'probabilities': valid_accept_probabilities
+        }
 
 
 class RNNImageClassifierWrapper(BaseConstraintChecker):
@@ -171,7 +177,8 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
             planned_state_key = add_planned(state_key)
             net_inputs[planned_state_key] = tf.convert_to_tensor(states_dict[state_key], tf.float32)
 
-        accept_probability = self.net(add_batch(net_inputs), training=False)[0, 0]
+        net_outputs = self.net(add_batch(net_inputs), training=False)[0, 0]
+        accept_probability = net_outputs['probabilities']
         return accept_probability
 
     def check_constraint_differentiable(self,
