@@ -7,7 +7,7 @@ from ignition.markers import MarkerProvider
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_pycommon.base_services import Services
-from link_bot_pycommon.link_bot_pycommon import trim_funneling, print_dict
+from link_bot_pycommon.link_bot_pycommon import trim_reconverging
 from moonshine.moonshine_utils import remove_batch, numpify, dict_of_sequences_to_sequence_of_dicts_tf
 
 
@@ -126,13 +126,14 @@ class ExperimentScenario:
                                                     example_idx: int,
                                                     dataset_element: Dict,
                                                     trim: Optional[bool] = False,
-                                                    accept_probability: Optional[float] = None):
+                                                    accept_probability: Optional[float] = None,
+                                                    fps: Optional[int] = 1):
         is_close = dataset_element['is_close'].numpy()
         last_valid_idx = int(dataset_element['last_valid_idx'].numpy().squeeze())
         valid_is_close = is_close[:last_valid_idx + 1]
 
         if trim:
-            start_idx, end_idx = trim_funneling(valid_is_close)
+            start_idx, end_idx = trim_reconverging(valid_is_close)
         else:
             start_idx = 0
             end_idx = len(valid_is_close)
@@ -157,7 +158,8 @@ class ExperimentScenario:
                                        predictions=predictions[start_idx:end_idx],
                                        example_idx=example_idx,
                                        labels=is_close[start_idx:end_idx],
-                                       accept_probability=accept_probability)
+                                       accept_probability=accept_probability,
+                                       fps=fps)
 
     @classmethod
     def animate_predictions_from_dynamics_dataset(cls,
@@ -167,7 +169,8 @@ class ExperimentScenario:
                                                   labels=None,
                                                   start_idx=0,
                                                   end_idx=-1,
-                                                  accept_probability: Optional[float] = None):
+                                                  accept_probability: Optional[float] = None,
+                                                  fps: Optional[int] = 1):
         predictions = remove_batch(predictions)
         predictions = numpify(dict_of_sequences_to_sequence_of_dicts_tf(predictions))
         inputs, outputs = dataset_element
@@ -189,7 +192,8 @@ class ExperimentScenario:
                                        predictions=predictions[start_idx:end_idx],
                                        example_idx=example_idx,
                                        labels=labels[start_idx:end_idx],
-                                       accept_probability=accept_probability)
+                                       accept_probability=accept_probability,
+                                       fps=fps)
 
     @classmethod
     def animate_predictions(cls,
@@ -199,7 +203,8 @@ class ExperimentScenario:
                             predictions: Optional,
                             example_idx: Optional = None,
                             labels: Optional = None,
-                            accept_probability: Optional[float] = None):
+                            accept_probability: Optional[float] = None,
+                            fps: Optional[int] = 1):
         fig = plt.figure()
         ax = plt.gca()
         prediction_artist = None
@@ -240,5 +245,5 @@ class ExperimentScenario:
             if t < n_states - 1:
                 cls.update_action_artist(action_artist, actual[t], actions[t])
 
-        anim = FuncAnimation(fig, update, interval=1000, repeat=True, frames=n_states)
+        anim = FuncAnimation(fig, update, interval=1000 / fps, repeat=True, frames=n_states)
         return anim

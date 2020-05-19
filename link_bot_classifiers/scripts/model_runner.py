@@ -15,7 +15,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function, \
-    binary_classification_sequence_loss_function
+    binary_classification_sequence_loss_function, binary_classification_sequence_metrics_function
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.image_functions import setup_image_inputs
 from moonshine.metric import AccuracyMetric
@@ -60,6 +60,8 @@ def train_main(args, seed: int):
     # Train
     ###############
     loss_function = binary_classification_sequence_loss_function
+    metrics_function = binary_classification_sequence_metrics_function
+    # metrics_function = binary_classification_metrics_function
     # loss_function = binary_classification_loss_function
     train(keras_model=net,
           model_hparams=model_hparams,
@@ -70,7 +72,7 @@ def train_main(args, seed: int):
           batch_size=args.batch_size,
           epochs=args.epochs,
           loss_function=loss_function,
-          metrics_function=binary_classification_metrics_function,
+          metrics_function=metrics_function,
           postprocess=postprocess,
           checkpoint=args.checkpoint,
           key_metric=AccuracyMetric,
@@ -99,11 +101,13 @@ def eval_main(args, seed: int):
     ###############
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
     loss_function = binary_classification_sequence_loss_function
+    metrics_function = binary_classification_sequence_metrics_function
+    # metrics_function = binary_classification_metrics_function
     # loss_function = binary_classification_loss_function
     evaluate(keras_model=net,
              test_tf_dataset=test_tf_dataset,
              loss_function=loss_function,
-             metrics_function=binary_classification_metrics_function,
+             metrics_function=metrics_function,
              postprocess=postprocess,
              checkpoint_path=args.checkpoint)
 
@@ -215,7 +219,7 @@ def main():
     viz_parser.add_argument('--only-positive', action='store_true')
     viz_parser.add_argument('--only-false-positives', action='store_true')
     viz_parser.add_argument('--only-false-negatives', action='store_true')
-    viz_parser.add_argument('--only-funneling', action='store_true')
+    viz_parser.add_argument('--only-reconverging', action='store_true')
     viz_parser.add_argument('--save', action='store_true')
     viz_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
     viz_parser.add_argument('--verbose', '-v', action='count', default=0)

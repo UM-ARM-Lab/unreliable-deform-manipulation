@@ -9,10 +9,10 @@ import tensorflow as tf
 
 from link_bot_data.classifier_dataset_utils import predict_and_nullify
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import data_directory, is_funneling
+from link_bot_data.link_bot_dataset_utils import data_directory, is_reconverging
 from link_bot_planning import model_utils
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.link_bot_pycommon import longest_funneling_subsequence, trim_funneling
+from link_bot_pycommon.link_bot_pycommon import longest_reconverging_subsequence, trim_reconverging
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)
@@ -38,7 +38,7 @@ def main():
 
     root = None
     if args.save:
-        root = data_directory(pathlib.Path('results/funneling_examples/1'))
+        root = data_directory(pathlib.Path('results/reconverging_examples/1'))
 
     labeling_params = json.load(args.labeling_params.open("r"))
     fwd_models, _ = model_utils.load_generic_model(args.fwd_model_dir)
@@ -51,32 +51,32 @@ def main():
         tf_dataset = tf_dataset.shuffle(2048)
 
     maxs_consecutive_zeros = []
-    n_funneling = 0
+    n_reconverging = 0
     for example_idx, dataset_element in enumerate(tf_dataset.batch(1)):
         inputs, outputs = dataset_element
 
         predictions, _ = predict_and_nullify(dataset, fwd_models, dataset_element, labeling_params, 1, 0)
 
-        # check if this example shows funneling (i.e a label of 1 after a label of 0)
+        # check if this example shows reconverging (i.e a label of 1 after a label of 0)
         threshold = labeling_params['threshold']
         state_key = labeling_params['state_key']
         pred_sequence_for_state_key = predictions[state_key]
         sequence_for_state_key = outputs[state_key]
         model_error = tf.linalg.norm(sequence_for_state_key - pred_sequence_for_state_key, axis=2)
         labels = tf.cast(model_error < threshold, dtype=tf.int64)
-        funneling = is_funneling(labels)
+        reconverging = is_reconverging(labels)
         labels_list = labels.numpy().squeeze()
-        start_idx, end_idx = longest_funneling_subsequence(labels_list)
+        start_idx, end_idx = longest_reconverging_subsequence(labels_list)
         max_consecutive_zeros = end_idx - start_idx
 
-        if funneling and max_consecutive_zeros <= args.max_diverged:
-            n_funneling += 1
+        if reconverging and max_consecutive_zeros <= args.max_diverged:
+            n_reconverging += 1
 
             # accumulated statistics
             maxs_consecutive_zeros.append(max_consecutive_zeros)
 
             # trim examples to remove proceeding ones
-            start_idx, end_idx = trim_funneling(labels_list)
+            start_idx, end_idx = trim_reconverging(labels_list)
 
             # animate the state versus ground truth
             anim = fwd_models.scenario.animate_predictions_from_dynamics_dataset(example_idx=example_idx,
@@ -94,7 +94,7 @@ def main():
             else:
                 plt.close()
 
-    print("{}/{} examples are funneling  [mode={}]".format(n_funneling, example_idx, args.mode))
+    print("{}/{} examples are reconverging  [mode={}]".format(n_reconverging, example_idx, args.mode))
 
     if not args.no_plot:
         bins = range(args.sequence_length)

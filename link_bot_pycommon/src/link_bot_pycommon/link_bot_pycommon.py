@@ -254,7 +254,7 @@ def make_dict_float32(d):
     return d
 
 
-def longest_funneling_subsequence(x):
+def longest_reconverging_subsequence(x):
     max_start_idx = 0
     max_end_idx = 0
     start_idx = 0
@@ -274,8 +274,8 @@ def longest_funneling_subsequence(x):
     return max_start_idx, max_end_idx
 
 
-def trim_funneling(x, max_leading_ones=3, max_trailing_ones=3):
-    start_of_zeros, end_of_zeros = longest_funneling_subsequence(x)
+def trim_reconverging(x, max_leading_ones=3, max_trailing_ones=3):
+    start_of_zeros, end_of_zeros = longest_reconverging_subsequence(x)
     assert start_of_zeros != 0
 
     # expand start index

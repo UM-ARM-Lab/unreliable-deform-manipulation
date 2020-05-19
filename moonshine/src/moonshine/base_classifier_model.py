@@ -10,6 +10,15 @@ def binary_classification_sequence_loss_function(dataset_element, predictions):
     return total_bce
 
 
+def binary_classification_sequence_metrics_function(dataset_element, predictions):
+    labels = tf.expand_dims(dataset_element['is_close'][:, 1:], axis=2)
+    accuracy_over_time = tf.keras.metrics.binary_accuracy(y_true=labels, y_pred=predictions)
+    average_accuracy = tf.reduce_mean(accuracy_over_time)
+    return {
+        'accuracy': average_accuracy
+    }
+
+
 def binary_classification_loss_function(dataset_element, predictions):
     label = dataset_element['label']
     bce = tf.keras.losses.BinaryCrossentropy()

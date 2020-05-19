@@ -32,10 +32,12 @@ def main():
     parser.add_argument('--no-balance', action='store_true')
     parser.add_argument('--save', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--fps', type=int, default=1)
     parser.add_argument('--only-length', type=int)
     parser.add_argument('--take', type=int)
     parser.add_argument('--only-negative', action='store_true')
-    parser.add_argument('--only-funneling', action='store_true')
+    parser.add_argument('--only-positive', action='store_true')
+    parser.add_argument('--only-reconverging', action='store_true')
     parser.add_argument('--perf', action='store_true', help='print time per iteration')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
 
@@ -64,7 +66,7 @@ def main():
 
     done = False
 
-    funneling_count = 0
+    reconverging_count = 0
     positive_count = 0
     negative_count = 0
     count = 0
@@ -90,12 +92,14 @@ def main():
         n_valid_states = last_valid_idx + 1
         valid_is_close = is_close[:last_valid_idx + 1]
         num_diverged = n_valid_states - np.count_nonzero(valid_is_close)
-        funneling = num_diverged > 0 and valid_is_close[-1]
+        reconverging = num_diverged > 0 and valid_is_close[-1]
         label = example['label'].numpy().squeeze()
 
+        if args.only_positive and label != 1:
+            continue
         if args.only_negative and label != 0:
             continue
-        if args.only_funneling and not funneling:
+        if args.only_reconverging and not reconverging:
             continue
 
         if count == 0:
@@ -105,8 +109,8 @@ def main():
             positive_count += 1
         else:
             negative_count += 1
-        if funneling:
-            funneling_count += 1
+        if reconverging:
+            reconverging_count += 1
 
         count += 1
 
@@ -114,7 +118,7 @@ def main():
 
         # Print statistics intermittently
         if count % 100 == 0:
-            print_stats_and_timing(args, count, funneling_count, negative_count, positive_count)
+            print_stats_and_timing(args, count, reconverging_count, negative_count, positive_count)
 
         #############################
         # Show Visualization
@@ -127,7 +131,15 @@ def main():
         if args.only_length and args.only_length != valid_seq_length:
             continue
 
-        _ = visualize_classifier_example(args, scenario, outdir, model_hparams, classifier_dataset, example, count, title)
+        _ = visualize_classifier_example(args=args,
+                                         scenario=scenario,
+                                         outdir=outdir,
+                                         model_hparams=model_hparams,
+                                         classifier_dataset=classifier_dataset,
+                                         example=example,
+                                         example_idx=count,
+                                         title=title,
+                                         fps=args.fps)
         if not args.no_plot:
             plt.show()
         else:
@@ -135,15 +147,15 @@ def main():
 
     total_dt = perf_counter() - t0
 
-    print_stats_and_timing(args, count, funneling_count, negative_count, positive_count, total_dt)
+    print_stats_and_timing(args, count, reconverging_count, negative_count, positive_count, total_dt)
 
 
-def print_stats_and_timing(args, count, funneling_count, negative_count, positive_count, total_dt=None):
+def print_stats_and_timing(args, count, reconverging_count, negative_count, positive_count, total_dt=None):
     if args.perf and total_dt is not None:
         print("Total iteration time = {:.4f}".format(total_dt))
     class_balance = positive_count / count * 100
     print("Number of examples: {}".format(count))
-    print("Number of funneling examples: {}".format(funneling_count))
+    print("Number of reconverging examples: {}".format(reconverging_count))
     print("Number positive: {}".format(positive_count))
     print("Number negative: {}".format(negative_count))
     print("Class balance: {:4.1f}% positive".format(class_balance))

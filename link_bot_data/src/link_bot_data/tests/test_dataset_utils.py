@@ -2,13 +2,13 @@ import unittest
 import numpy as np
 import tensorflow as tf
 
-from link_bot_data.link_bot_dataset_utils import is_funneling, null_pad, NULL_PAD_VALUE
+from link_bot_data.link_bot_dataset_utils import is_reconverging, null_pad, NULL_PAD_VALUE
 
 
 class MyTestCase(unittest.TestCase):
-    def test_is_funneling(self):
-        self.assertTrue(is_funneling(tf.constant([1, 0, 0, 1], tf.int64)).numpy())
-        self.assertFalse(is_funneling(tf.constant([1, 0, 0, 0], tf.int64)).numpy())
+    def test_is_reconverging(self):
+        self.assertTrue(is_reconverging(tf.constant([1, 0, 0, 1], tf.int64)).numpy())
+        self.assertFalse(is_reconverging(tf.constant([1, 0, 0, 0], tf.int64)).numpy())
 
     def test_null_pad(self):
         np.testing.assert_allclose(null_pad(np.array([1, 0, 0, 1]), start=0, end=2),

@@ -321,8 +321,8 @@ def strip_time_format(feature_name):
         return feature_name[3:]
 
 
-def is_funneling(labels):
+def is_reconverging(labels):
     num_ones = tf.reduce_sum(labels)
     index_of_last_1 = tf.reduce_max(tf.where(labels))
-    funneling = (index_of_last_1 >= num_ones)
-    return funneling
+    reconverging = (index_of_last_1 >= num_ones)
+    return reconverging
