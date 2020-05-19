@@ -12,7 +12,10 @@ from colorama import Fore
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_planning import model_utils
 from link_bot_pycommon.args import my_formatter
+from moonshine.gpu_config import limit_gpu_mem
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
+
+limit_gpu_mem(2)
 
 
 def load_dataset_and_models(args):

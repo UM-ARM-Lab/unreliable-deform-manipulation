@@ -2,9 +2,6 @@
   "rigid": {
     "model_dir": "log_data/rope_rigid_translation"
   },
-  "full dynamics with full env": {
-    "model_dir": "log_data/rope_full_env/May_05_18-42-12_6735775ed2"
-  },
   "full dynamics with local env": {
     "model_dir": "log_data/tf2_rope_obs/April_27_14-44-27_e56afcd75c"
   }

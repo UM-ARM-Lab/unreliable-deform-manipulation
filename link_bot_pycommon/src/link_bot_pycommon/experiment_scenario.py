@@ -186,12 +186,13 @@ class ExperimentScenario:
             'full_env/extent': extent,
         }
 
+        labels = labels[start_idx:end_idx] if labels is not None else None
         return cls.animate_predictions(environment=environment,
                                        actions=actions[start_idx:end_idx],
                                        actual=actual[start_idx:end_idx],
                                        predictions=predictions[start_idx:end_idx],
                                        example_idx=example_idx,
-                                       labels=labels[start_idx:end_idx],
+                                       labels=labels,
                                        accept_probability=accept_probability,
                                        fps=fps)
 
