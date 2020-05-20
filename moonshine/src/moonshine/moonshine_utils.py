@@ -83,6 +83,14 @@ def dict_of_tensors_to_dict_of_numpy_arrays(tf_dict):
     return np_dict
 
 
+def flatten_batch_and_time(d):
+    # assumes each element in d is of shape [b, t, ...]
+    new_d = {}
+    for k, v in d.items():
+        new_d[k] = tf.reshape(v, [-1] + v.shape.as_list()[2:])
+    return new_d
+
+
 def sequence_of_dicts_to_dict_of_sequences(seq_of_dicts):
     # TODO: make a data structure that works both ways, as a dict and as a list
     dict_of_seqs = {}

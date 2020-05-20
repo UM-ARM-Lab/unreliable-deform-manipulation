@@ -2,12 +2,11 @@ from typing import Optional, Dict, List
 
 import tensorflow as tf
 
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_next_and_planned, add_planned, state_dict_is_null_tf, \
-    total_state_dim
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_next_and_planned, add_planned
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.action_smear_layer import smear_action_differentiable
-from moonshine.get_local_environment import get_local_env_and_origin_differentiable
-from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts_tf
+from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
+from moonshine.moonshine_utils import flatten_batch_and_time
 
 
 def make_transition_images(environment: Dict,
@@ -36,12 +35,12 @@ def make_transition_images(environment: Dict,
     :return [batch,n_points*2+n_action+1], aka  [batch,n_state+n_action+1]
     """
     local_env_center_point = scenario.local_environment_center_differentiable(state_dict)
-    local_env, local_env_origin = get_local_env_and_origin_differentiable(center_point=local_env_center_point,
-                                                                          full_env=environment['full_env/env'],
-                                                                          full_env_origin=environment['full_env/origin'],
-                                                                          res=environment['full_env/res'],
-                                                                          local_h_rows=local_env_h,
-                                                                          local_w_cols=local_env_w)
+    local_env, local_env_origin = get_local_env(center_point=local_env_center_point,
+                                                full_env=environment['full_env/env'],
+                                                full_env_origin=environment['full_env/origin'],
+                                                res=environment['full_env/res'],
+                                                local_h_rows=local_env_h,
+                                                local_w_cols=local_env_w)
 
     concat_args = []
     for planned_state in state_dict.values():
@@ -113,91 +112,55 @@ def partial_add_transition_image(states_keys,
 
 def make_traj_images(scenario: ExperimentScenario,
                      environment,
-                     states_list: List[Dict],
+                     states_dict: Dict,
                      actions,
                      local_env_h: int,
                      local_env_w: int,
                      rope_image_k: float,
-                     batch_size: int):
+                     batch_size: int,
+                     action_in_image: bool = True):
     """
-    :param scenario:
-    :param environment:
-    :param states_dict: each element is [batch, time, n]
-    :param local_env_h:
-    :param local_env_w:
-    :param rope_image_k:
-    :param batch_size:
     :return: [batch, time, h, w, 1 + n_points]
     """
+    # First flatten batch & time
+    states_dict_batch_time = flatten_batch_and_time(states_dict)
+    zero_pad_actions = tf.pad(actions, [[0, 0], [0, 1], [0, 0]])
+    actions_batch_time = tf.reshape(zero_pad_actions, [-1] + actions.shape.as_list()[2:])
+    time = int(zero_pad_actions.shape[1])
+    batch_and_time = int(actions_batch_time.shape[0])
+    env_batch_time = tf.tile(environment['full_env/env'], [time, 1, 1])
+    env_origin_batch_time = tf.tile(environment['full_env/origin'], [time, 1])
+    env_res_batch_time = tf.tile(environment['full_env/res'], [time])
 
-    @tf.function
-    def make_state_and_env_image(environment: Dict,
-                                 action,
-                                 state_dict: Dict,
-                                 local_env_h: int,
-                                 local_env_w: int,
-                                 k: float,
-                                 action_in_image: Optional[bool] = False,
-                                 batch_size: Optional[int] = 1,
-                                 ):
-        """
-        :param environment:
-        :param state_dict: each element should be [batch,n_state]
-        :param scenario:
-        :param local_env_h:
-        :param local_env_w:
-        :param k: constant controlling fuzzyness of how the rope is drawn in the image, should be like 1000
-        :param batch_size:
+    # this will produce images even for "null" data,
+    # but are masked out in the RNN, and not actually used in the computation
+    local_env_center_point_batch_time = scenario.local_environment_center_differentiable(states_dict_batch_time)
+    local_env_batch_time, local_env_origin_batch_time = get_local_env(center_point=local_env_center_point_batch_time,
+                                                                      full_env=env_batch_time,
+                                                                      full_env_origin=env_origin_batch_time,
+                                                                      res=env_res_batch_time,
+                                                                      local_h_rows=local_env_h,
+                                                                      local_w_cols=local_env_w)
 
-        :return [batch,n_points*2+1], aka  [batch,n_state+1]
-        """
-        local_env_center_point = scenario.local_environment_center_differentiable(state_dict)
-        local_env, local_env_origin = get_local_env_and_origin_differentiable(center_point=local_env_center_point,
-                                                                              full_env=environment['full_env/env'],
-                                                                              full_env_origin=environment['full_env/origin'],
-                                                                              res=environment['full_env/res'],
-                                                                              local_h_rows=local_env_h,
-                                                                              local_w_cols=local_env_w)
+    concat_args = []
+    for planned_state in states_dict_batch_time.values():
+        planned_rope_image = raster_differentiable(state=planned_state,
+                                                   res=env_res_batch_time,
+                                                   origin=local_env_origin_batch_time,
+                                                   h=local_env_h,
+                                                   w=local_env_w,
+                                                   k=rope_image_k,
+                                                   batch_size=batch_and_time)
+        concat_args.append(planned_rope_image)
 
-        concat_args = []
-        for planned_state in state_dict.values():
-            planned_rope_image = raster_differentiable(state=planned_state,
-                                                       res=environment['full_env/res'],
-                                                       origin=local_env_origin,
-                                                       h=local_env_h,
-                                                       w=local_env_w,
-                                                       k=k,
-                                                       batch_size=batch_size)
-            concat_args.append(planned_rope_image)
+    if action_in_image:
+        action_image = smear_action_differentiable(actions_batch_time, local_env_h, local_env_w)
+        concat_args.append(action_image)
 
-        if action_in_image:
-            action_image = smear_action_differentiable(action, local_env_h, local_env_w)
-            concat_args.append(action_image)
-
-        concat_args.append(tf.expand_dims(local_env, axis=3))
-        image = tf.concat(concat_args, axis=3)
-        return image
-
-    images = []
-    for t, states_dict_t in enumerate(states_list):
-        if t < actions.shape[1]:
-            action_t = actions[:, t]
-        else:
-            n_action = actions.shape[2]
-            action_t = tf.zeros([batch_size, n_action])
-
-        # this will produce images even for "null" data,
-        # but are masked out in the RNN, and not actually used in the computation
-        image = make_state_and_env_image(environment=environment,
-                                         action=action_t,
-                                         state_dict=states_dict_t,
-                                         local_env_h=local_env_h,
-                                         local_env_w=local_env_w,
-                                         k=rope_image_k,
-                                         batch_size=batch_size)
-        images.append(image)
-    all_images = tf.stack(images, axis=1)
-    return all_images
+    concat_args.append(tf.expand_dims(local_env_batch_time, axis=3))
+    images_batch_time = tf.concat(concat_args, axis=3)
+    images = tf.reshape(images_batch_time, [batch_size, time, local_env_h, local_env_w, -1])
+    return images
 
 
 def make_traj_images_from_states_list(environment: Dict,
@@ -214,7 +177,7 @@ def make_traj_images_from_states_list(environment: Dict,
     """
     return make_traj_images(scenario=scenario,
                             environment=environment,
-                            states_list=states,
+                            states_dict=states,
                             actions=actions,
                             local_env_h=local_env_h,
                             local_env_w=local_env_w,
@@ -259,10 +222,9 @@ def add_traj_image_to_example(scenario: ExperimentScenario,
         states_all = example[add_planned(state_key)]
         planned_states_dict[state_key] = states_all
 
-    planned_states_list = dict_of_sequences_to_sequence_of_dicts_tf(planned_states_dict, time_axis=1)
     image = make_traj_images(scenario=scenario,
                              environment=environment,
-                             states_list=planned_states_list,
+                             states_dict=planned_states_dict,
                              actions=example['action'],
                              local_env_w=local_env_w,
                              local_env_h=local_env_h,

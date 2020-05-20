@@ -3,7 +3,8 @@ from unittest import TestCase
 import numpy as np
 import tensorflow as tf
 
-from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, dict_of_sequences_to_sequence_of_dicts_tf
+from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, dict_of_sequences_to_sequence_of_dicts_tf, \
+    flatten_batch_and_time
 from moonshine.tests import testing_utils
 
 
@@ -35,3 +36,15 @@ class Test(TestCase):
                     {'a': tf.constant([3, 6], tf.float32)}]
         out = dict_of_sequences_to_sequence_of_dicts_tf(d, time_axis=1)
         testing_utils.assert_list_of_dicts_close_tf(out, expected)
+
+    def test_flatten_batch_and_time(self):
+        in_x = tf.constant([[[1, 2], [2, 2]], [[3, 2], [4, 2]], [[5, 2], [6, 2]]], dtype=tf.float32)
+        expected_x = tf.constant([[1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2]], dtype=tf.float32)
+        input_dict = {
+            'x': in_x
+        }
+        expected_dict = {
+            'x': expected_x
+        }
+        out_dict = flatten_batch_and_time(input_dict)
+        testing_utils.assert_dicts_close_tf(out_dict, expected_dict)
