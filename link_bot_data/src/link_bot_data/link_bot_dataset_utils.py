@@ -120,7 +120,7 @@ def has_already_diverged(transition: Dict, labeling_params):
     return already_diverged
 
 
-def balance(dataset, labeling_params: Dict):
+def balance(dataset, labeling_params: Dict, cache_negative : bool = True):
     def _label_is(label_is):
         def __filter(transition):
             label_key = labeling_params['label_key']
@@ -131,7 +131,8 @@ def balance(dataset, labeling_params: Dict):
 
     positive_examples = dataset.filter(_label_is(1))
     negative_examples = dataset.filter(_label_is(0))
-    negative_examples = negative_examples.cache(cachename())
+    if cache_negative:
+        negative_examples = negative_examples.cache(cachename())
 
     # TODO: check which dataset is smaller, and repeat that one
     negative_examples = negative_examples.repeat()

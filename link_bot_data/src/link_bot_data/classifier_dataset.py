@@ -18,6 +18,7 @@ class ClassifierDataset(BaseDataset):
         self.label_state_key = self.hparams['labeling_params']['state_key']
 
         self.state_keys = self.hparams['state_keys']
+        self.cache_negative = False
 
         self.feature_names = [
             'full_env/env',
@@ -51,6 +52,6 @@ class ClassifierDataset(BaseDataset):
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
         if not self.no_balance:
-            dataset = balance(dataset, self.labeling_params)
+            dataset = balance(dataset, self.labeling_params, cache_negative=self.cache_negative)
 
         return dataset
