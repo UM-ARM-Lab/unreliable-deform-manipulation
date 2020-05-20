@@ -9,6 +9,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.image_functions import add_traj_image_to_example
+from moonshine.old_image_functions import add_traj_image_to_example as add_traj_image_to_example_old
 
 
 def main():
@@ -31,11 +32,20 @@ def main():
     time_to_load = perf_counter() - t0
     print("Time to Load (s): {:5.3f}".format(time_to_load))
 
+    n = 2048
+    batches = int(n / args.batch_size)
     try:
         # ram_usage = []
         for _ in range(args.n_repetitions):
+            # None
             t0 = perf_counter()
-            for e in progressbar.progressbar(tf_dataset.take(100)):
+            for e in progressbar.progressbar(tf_dataset.take(batches)):
+                pass
+            print('{:.5f}'.format(perf_counter() - t0))
+
+            # NEW
+            t0 = perf_counter()
+            for e in progressbar.progressbar(tf_dataset.take(batches)):
                 e = add_traj_image_to_example(scenario=scenario,
                                               example=e,
                                               local_env_w=100,
@@ -43,12 +53,20 @@ def main():
                                               local_env_h=100,
                                               rope_image_k=10000,
                                               batch_size=args.batch_size)
-                # print('{:.5f}'.format(perf_counter() - t0))
-                # process = psutil.Process(os.getpid())
-                # current_ram_usage = process.memory_info().rss
-                # ram_usage.append(current_ram_usage)
-                pass
             print('{:.5f}'.format(perf_counter() - t0))
+
+            # OLD
+            t0 = perf_counter()
+            for e in progressbar.progressbar(tf_dataset.take(batches)):
+                e = add_traj_image_to_example_old(scenario=scenario,
+                                                  example=e,
+                                                  local_env_w=100,
+                                                  states_keys=['link_bot'],
+                                                  local_env_h=100,
+                                                  rope_image_k=10000,
+                                                  batch_size=args.batch_size)
+            print('{:.5f}'.format(perf_counter() - t0))
+
         # plt.plot(ram_usage)
         # plt.xlabel("iteration")
         # plt.ylabel("ram usage (bytes)")
