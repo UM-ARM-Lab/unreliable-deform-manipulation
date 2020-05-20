@@ -59,10 +59,12 @@ def train_main(args, seed: int):
     ###############
     # Train
     ###############
-    loss_function = binary_classification_sequence_loss_function
-    metrics_function = binary_classification_sequence_metrics_function
-    # metrics_function = binary_classification_metrics_function
-    # loss_function = binary_classification_loss_function
+    if model_hparams['supervize_full_sequence']:
+        loss_function = binary_classification_sequence_loss_function
+        metrics_function = binary_classification_sequence_metrics_function
+    else:
+        metrics_function = binary_classification_metrics_function
+        loss_function = binary_classification_loss_function
     train(keras_model=net,
           model_hparams=model_hparams,
           train_tf_dataset=train_tf_dataset,
@@ -100,10 +102,12 @@ def eval_main(args, seed: int):
     # Evaluate
     ###############
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
-    loss_function = binary_classification_sequence_loss_function
-    metrics_function = binary_classification_sequence_metrics_function
-    # metrics_function = binary_classification_metrics_function
-    # loss_function = binary_classification_loss_function
+    if model_hparams['supervize_full_sequence']:
+        loss_function = binary_classification_sequence_loss_function
+        metrics_function = binary_classification_sequence_metrics_function
+    else:
+        metrics_function = binary_classification_metrics_function
+        loss_function = binary_classification_loss_function
     evaluate(keras_model=net,
              test_tf_dataset=test_tf_dataset,
              loss_function=loss_function,

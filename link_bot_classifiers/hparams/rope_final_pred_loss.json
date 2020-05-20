@@ -6,14 +6,18 @@
   ],
   "image_key": "trajectory_image",
   "image_noise_stddev": 0.0,
+  "use_local_frame": true,
   "action_in_image": false,
   "rope_image_k": 10000,
-  "fc_layer_sizes": [256],
+  "rnn_size": 128,
+  "fc_layer_sizes": [128],
   "conv_filters": [
-    [8, [5, 5]],
-    [8, [3, 3]],
-    [8, [3, 3]]
+    [32, [7, 7]],
+    [32, [7, 7]],
+    [32, [5, 5]],
+    [32, [5, 5]]
   ],
+  "supervize_full_sequence": false,
   "mixed": true,
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
@@ -22,6 +26,7 @@
   "batch_norm": false,
   "local_env_h_rows": 100,
   "local_env_w_cols": 100,
-  "learning_rate": 0.001,
+  "learning_rate": 0.0001,
+  "flooding_level": null,
   "stdev": true
 }

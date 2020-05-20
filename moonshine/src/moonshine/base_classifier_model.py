@@ -6,14 +6,14 @@ def binary_classification_sequence_loss_function(dataset_element, predictions):
     labels = tf.expand_dims(dataset_element['is_close'][:, 1:], axis=2)
     logits = predictions['logits']
     bce = tf.keras.losses.binary_crossentropy(y_true=labels, y_pred=logits, from_logits=True)
-    # sums over batch & time
-    total_bce = tf.reduce_sum(bce)
+    # mean over batch & time
+    total_bce = tf.reduce_mean(bce)
     return total_bce
 
 
 def binary_classification_sequence_metrics_function(dataset_element, predictions):
-    logits = predictions['logits']
     labels = tf.expand_dims(dataset_element['is_close'][:, 1:], axis=2)
+    logits = predictions['logits']
     accuracy_over_time = tf.keras.metrics.binary_accuracy(y_true=labels, y_pred=logits)
     average_accuracy = tf.reduce_mean(accuracy_over_time)
     return {
@@ -22,19 +22,19 @@ def binary_classification_sequence_metrics_function(dataset_element, predictions
 
 
 def binary_classification_loss_function(dataset_element, predictions):
-    logits = predictions['logits']
     label = dataset_element['label']
-    bce = tf.keras.losses.binary_crossentropy(y_true=label, y_pred=logits, from_logits=True)
-    # sums over batch & time
-    total_bce = tf.reduce_sum(bce)
+    logit = predictions['logits'][:, -1]
+    bce = tf.keras.losses.binary_crossentropy(y_true=label, y_pred=logit, from_logits=True)
+    # mean over batch & time
+    total_bce = tf.reduce_mean(bce)
     return total_bce
 
 
 def binary_classification_metrics_function(dataset_element, predictions):
     label = dataset_element['label']
-    logits = predictions['logits']
-    accuracy_metric = tf.keras.metrics.BinaryAccuracy(name='accuracy')
-    accuracy_metric.update_state(y_true=label, y_pred=logits)
+    logit = predictions['logits'][:, -1]
+    accuracy_over_time = tf.keras.metrics.binary_accuracy(y_true=label, y_pred=logit)
+    average_accuracy = tf.reduce_mean(accuracy_over_time)
     return {
-        'accuracy': accuracy_metric.result()
+        'accuracy': average_accuracy
     }
