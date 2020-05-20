@@ -33,4 +33,4 @@ class MyTestCase(unittest.TestCase):
         cache_dataset.cache_negative = True
         max_ram_yes_cache = iterate_and_record_max_ram_usage(cache_dataset)
 
-        self.assertGreater(max_ram_yes_cache, max_ram_no_cache * 1.2)
+        self.assertGreater(max_ram_yes_cache, max_ram_no_cache * 1.3)
