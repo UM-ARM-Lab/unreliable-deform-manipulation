@@ -10,6 +10,7 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
+from link_bot_classifiers.visualization import state_image_to_cmap, trajectory_image
 from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_pycommon import make_dict_float32
@@ -78,13 +79,13 @@ class RNNImageClassifier(MyKerasModel):
 
         return out_conv_z
 
-    @tf.function
+    # @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
         images = input_dict[self.hparams['image_key']]
-
         action = input_dict['action']
         padded_action = tf.pad(action, [[0, 0], [0, 1], [0, 0]])
+
         conv_output = self._conv(images)
 
         concat_args = [conv_output, padded_action]
@@ -116,8 +117,26 @@ class RNNImageClassifier(MyKerasModel):
 
         # doesn't matter which state_key we use, they're all null padded the same way
         state_key_for_mask = add_planned(self.states_keys[0])
-        mask = self.mask(input_dict[state_key_for_mask])
+        state_for_mask = input_dict[state_key_for_mask]
+        mask = self.mask(state_for_mask)
         out_h = self.lstm(out_d, mask=mask._keras_mask)
+
+        import matplotlib.pyplot as plt
+        print(state_key_for_mask)
+        print(out_h.shape)
+        print(mask._keras_mask)
+        print(images.shape)
+        T = 6
+        fig, axes = plt.subplots(nrows=2, ncols=T, constrained_layout=True)
+        trajectory_image(axes=axes[0], image=images[0], actions=action[0])
+        for t in range(T):
+            out_h_image = tf.expand_dims(out_h[0][t], axis=0).numpy()
+            axes[1][t].imshow(out_h_image, interpolation=None)
+            axes[1][t].set_xticks([])
+            axes[1][t].set_yticks([])
+            axes[1][t].set_aspect(10)
+        plt.show()
+
         # for every timestep's output, map down to a single scalar, the logit for accept probability
         all_accept_logits = self.output_layer(out_h)
         # ignore the first output, it is meaningless to predict the validity of a single state

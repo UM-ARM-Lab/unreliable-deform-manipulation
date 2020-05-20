@@ -179,24 +179,23 @@ def make_traj_images(scenario: ExperimentScenario,
     :return: [batch, time, h, w, 1 + n_points]
     """
     images = []
-    state_dim = total_state_dim(states_list[0]) + 1
     for t, states_dict_t in enumerate(states_list):
         if t < actions.shape[1]:
             action_t = actions[:, t]
         else:
             n_action = actions.shape[2]
             action_t = tf.zeros([batch_size, n_action])
-        if state_dict_is_null_tf(states_dict_t):
-            image = tf.zeros([batch_size, local_env_h, local_env_w, state_dim])
-        else:
-            image = make_state_and_env_image(environment=environment,
-                                             action=action_t,
-                                             state_dict=states_dict_t,
-                                             scenario=scenario,
-                                             local_env_h=local_env_h,
-                                             local_env_w=local_env_w,
-                                             k=rope_image_k,
-                                             batch_size=batch_size)
+
+        # this will produce images even for "null" data,
+        # but are masked out in the RNN, and not actually used in the computation
+        image = make_state_and_env_image(environment=environment,
+                                         action=action_t,
+                                         state_dict=states_dict_t,
+                                         scenario=scenario,
+                                         local_env_h=local_env_h,
+                                         local_env_w=local_env_w,
+                                         k=rope_image_k,
+                                         batch_size=batch_size)
         images.append(image)
     all_images = tf.stack(images, axis=1)
     return all_images

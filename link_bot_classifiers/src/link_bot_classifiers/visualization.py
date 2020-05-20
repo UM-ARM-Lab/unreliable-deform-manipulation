@@ -84,7 +84,7 @@ def visualize_classifier_example(args,
     if args.display_type == 'just_count':
         pass
     elif args.display_type == 'image':
-        return trajectory_image(example, model_hparams, title)
+        return trajectory_image_from_example(example, model_hparams, title)
     elif args.display_type == 'anim':
         anim = trajectory_animation(scenario, classifier_dataset, example, example_idx, accept_probability, fps=fps)
         if args.save:
@@ -158,32 +158,29 @@ def trajectory_plot(ax,
                 scenario.plot_state(ax, planned_s_t, color=planned_color, s=5, zorder=3, label='planned state', alpha=0.5)
 
 
-def trajectory_image(example, model_hparams, title):
+def trajectory_image_from_example(example, model_hparams, title):
     image_key = model_hparams['image_key']
 
     image = example[image_key].numpy()
-    n_channels = image.shape[2]
-    if n_channels != 3:
-        T = image.shape[0]
-        fig, axes = plt.subplots(nrows=1, ncols=T)
-        fig.suptitle(title)
-        for t in range(T):
-            env_image_t = np.tile(image[t, :, :, -1:], [1, 1, 3])
-            state_image_t = state_image_to_cmap(image[t, :, :, :-1])
-            image_t = paste_over(state_image_t, env_image_t)
-            axes[t].imshow(np.flipud(image_t), vmin=0, vmax=1)
-            axes[t].set_title(f"t={t}")
-            if t < T - 1:
-                axes[t].text(x=10, y=image.shape[1] + 10, s=f"u={example['action'][t]}")
-            axes[t].set_xticks([])
-            axes[t].set_yticks([])
-        return fig
-    else:
-        plt.imshow(np.flipud(image))
-        ax = plt.gca()
-        ax.set_xticks([])
-        ax.set_yticks([])
-        plt.title(title)
+    actions = example['action']
+    T = image.shape[0]
+    fig, axes = plt.subplots(nrows=1, ncols=T)
+    trajectory_image(axes=axes, image=image, actions=actions)
+    fig.suptitle(title)
+
+
+def trajectory_image(axes, image, actions):
+    T = image.shape[0]
+    for t in range(T):
+        env_image_t = np.tile(image[t, :, :, -1:], [1, 1, 3])
+        state_image_t = state_image_to_cmap(image[t, :, :, :-1])
+        image_t = paste_over(state_image_t, env_image_t)
+        axes[t].imshow(np.flipud(image_t), vmin=0, vmax=1)
+        axes[t].set_title(f"t={t}")
+        if t < T - 1:
+            axes[t].text(x=10, y=image.shape[1] + 10, s=f"u={actions[t]}")
+        axes[t].set_xticks([])
+        axes[t].set_yticks([])
 
 
 def state_image_to_cmap(state_image: np.ndarray, cmap=cm.viridis, binary_threshold=0.1):
