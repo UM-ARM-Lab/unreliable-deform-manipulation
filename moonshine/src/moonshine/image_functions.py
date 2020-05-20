@@ -10,55 +10,6 @@ from moonshine.get_local_environment import get_local_env_and_origin_differentia
 from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts_tf
 
 
-def make_state_and_env_image(environment: Dict,
-                             action,
-                             state_dict: Dict,
-                             scenario: ExperimentScenario,
-                             local_env_h: int,
-                             local_env_w: int,
-                             k: float,
-                             action_in_image: Optional[bool] = False,
-                             batch_size: Optional[int] = 1,
-                             ):
-    """
-    :param environment:
-    :param state_dict: each element should be [batch,n_state]
-    :param scenario:
-    :param local_env_h:
-    :param local_env_w:
-    :param k: constant controlling fuzzyness of how the rope is drawn in the image, should be like 1000
-    :param batch_size:
-
-    :return [batch,n_points*2+1], aka  [batch,n_state+1]
-    """
-    local_env_center_point = scenario.local_environment_center_differentiable(state_dict)
-    local_env, local_env_origin = get_local_env_and_origin_differentiable(center_point=local_env_center_point,
-                                                                          full_env=environment['full_env/env'],
-                                                                          full_env_origin=environment['full_env/origin'],
-                                                                          res=environment['full_env/res'],
-                                                                          local_h_rows=local_env_h,
-                                                                          local_w_cols=local_env_w)
-
-    concat_args = []
-    for planned_state in state_dict.values():
-        planned_rope_image = raster_differentiable(state=planned_state,
-                                                   res=environment['full_env/res'],
-                                                   origin=local_env_origin,
-                                                   h=local_env_h,
-                                                   w=local_env_w,
-                                                   k=k,
-                                                   batch_size=batch_size)
-        concat_args.append(planned_rope_image)
-
-    if action_in_image:
-        action_image = smear_action_differentiable(action, local_env_h, local_env_w)
-        concat_args.append(action_image)
-
-    concat_args.append(tf.expand_dims(local_env, axis=3))
-    image = tf.concat(concat_args, axis=3)
-    return image
-
-
 def make_transition_images(environment: Dict,
                            state_dict: Dict,
                            action,
@@ -178,6 +129,55 @@ def make_traj_images(scenario: ExperimentScenario,
     :param batch_size:
     :return: [batch, time, h, w, 1 + n_points]
     """
+
+    @tf.function
+    def make_state_and_env_image(environment: Dict,
+                                 action,
+                                 state_dict: Dict,
+                                 local_env_h: int,
+                                 local_env_w: int,
+                                 k: float,
+                                 action_in_image: Optional[bool] = False,
+                                 batch_size: Optional[int] = 1,
+                                 ):
+        """
+        :param environment:
+        :param state_dict: each element should be [batch,n_state]
+        :param scenario:
+        :param local_env_h:
+        :param local_env_w:
+        :param k: constant controlling fuzzyness of how the rope is drawn in the image, should be like 1000
+        :param batch_size:
+
+        :return [batch,n_points*2+1], aka  [batch,n_state+1]
+        """
+        local_env_center_point = scenario.local_environment_center_differentiable(state_dict)
+        local_env, local_env_origin = get_local_env_and_origin_differentiable(center_point=local_env_center_point,
+                                                                              full_env=environment['full_env/env'],
+                                                                              full_env_origin=environment['full_env/origin'],
+                                                                              res=environment['full_env/res'],
+                                                                              local_h_rows=local_env_h,
+                                                                              local_w_cols=local_env_w)
+
+        concat_args = []
+        for planned_state in state_dict.values():
+            planned_rope_image = raster_differentiable(state=planned_state,
+                                                       res=environment['full_env/res'],
+                                                       origin=local_env_origin,
+                                                       h=local_env_h,
+                                                       w=local_env_w,
+                                                       k=k,
+                                                       batch_size=batch_size)
+            concat_args.append(planned_rope_image)
+
+        if action_in_image:
+            action_image = smear_action_differentiable(action, local_env_h, local_env_w)
+            concat_args.append(action_image)
+
+        concat_args.append(tf.expand_dims(local_env, axis=3))
+        image = tf.concat(concat_args, axis=3)
+        return image
+
     images = []
     for t, states_dict_t in enumerate(states_list):
         if t < actions.shape[1]:
@@ -191,7 +191,6 @@ def make_traj_images(scenario: ExperimentScenario,
         image = make_state_and_env_image(environment=environment,
                                          action=action_t,
                                          state_dict=states_dict_t,
-                                         scenario=scenario,
                                          local_env_h=local_env_h,
                                          local_env_w=local_env_w,
                                          k=rope_image_k,
