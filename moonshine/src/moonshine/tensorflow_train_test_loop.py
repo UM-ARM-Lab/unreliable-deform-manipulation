@@ -139,7 +139,7 @@ def train(keras_model: MyKerasModel,
 
         writer = tf.summary.create_file_writer(logdir=str(full_log_path))
 
-    # @tf.function
+    @tf.function
     def forward_pass_and_apply_gradients(train_element):
         with tf.GradientTape() as tape:
             train_predictions = keras_model(train_element, training=True)
