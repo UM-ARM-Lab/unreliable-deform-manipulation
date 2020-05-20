@@ -51,7 +51,6 @@ def get_local_env_and_origin_np(center_point,
     return local_env, local_env_origin
 
 
-# @tf.function
 def get_local_env_and_origin_differentiable(center_point,
                                             full_env,
                                             full_env_origin,
@@ -94,13 +93,9 @@ def get_local_env_and_origin_differentiable(center_point,
     batch_y_indices_in_full_env_frame = batch_y_indices + local_to_full_offset[:, 0, tf.newaxis, tf.newaxis]
     batch_x_indices_in_full_env_frame = batch_x_indices + local_to_full_offset[:, 1, tf.newaxis, tf.newaxis]
 
-    image = tf.expand_dims(full_env, axis=3)
-    # [b, h, w]
-    # local_image = bilinear_sampler(image, batch_x_indices_in_full_env_frame, batch_y_indices_in_full_env_frame)
-    # local_env = local_image[:, :, :, 0]
-
     batch_indices = tf.tile(tf.range(0, batch_size, dtype=tf.int64)[:, tf.newaxis, tf.newaxis], [1, local_h_rows, local_w_cols])
     gather_indices = tf.stack([batch_indices, batch_y_indices_in_full_env_frame, batch_x_indices_in_full_env_frame], axis=3)
+    image = tf.expand_dims(full_env, axis=3)
     local_image = tf.gather_nd(image, gather_indices)
     local_env = tf.transpose(local_image[:, :, :, 0], [0, 2, 1])
 

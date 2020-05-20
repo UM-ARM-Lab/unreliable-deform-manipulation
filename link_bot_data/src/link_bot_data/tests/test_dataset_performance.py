@@ -32,7 +32,7 @@ def main():
     time_to_load = perf_counter() - t0
     print("Time to Load (s): {:5.3f}".format(time_to_load))
 
-    n = 2048
+    n = 8192
     batches = int(n / args.batch_size)
     try:
         # ram_usage = []
