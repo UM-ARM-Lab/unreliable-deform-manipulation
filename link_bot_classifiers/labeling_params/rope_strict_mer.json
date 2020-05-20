@@ -1,11 +1,11 @@
 {
   "balance": true,
-  "threshold": 0.10,
+  "threshold": 0.08,
   "discard_diverged": false,
   "relaxed": false,
   "state_key": "link_bot",
   "label_key": "label",
-  "prediction_horizon": 2,
-  "classifier_horizon": 2,
+  "prediction_horizon": 20,
+  "classifier_horizon": 6,
   "start_step": 1
 }

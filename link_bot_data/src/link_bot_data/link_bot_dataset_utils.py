@@ -134,10 +134,8 @@ def balance(dataset, labeling_params: Dict, cache_negative : bool = True):
     if cache_negative:
         negative_examples = negative_examples.cache(cachename())
 
-    # TODO: check which dataset is smaller, and repeat that one
-    negative_examples = negative_examples.repeat()
-
     # Combine and flatten
+    # zip will balance by dropping examples from whichever is larger
     balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
 

@@ -1,9 +1,0 @@
-{
-  "balance": true,
-  "threshold": 0.05,
-  "discard_diverged": true,
-  "state_key": "link_bot",
-  "label_key": "label",
-  "examples_per_sub_traj": 8,
-  "start_step": 2
-}

@@ -12,7 +12,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 def iterate_and_record_max_ram_usage(dataset):
     tf_dataset = dataset.get_datasets(mode='test')
     batch_size = 256
-    tf_dataset = tf_dataset.batch(batch_size)
+    tf_dataset = tf_dataset.batch(batch_size).take(100)
 
     max_ram_usage = 0
     for _ in progressbar.progressbar(tf_dataset):
@@ -33,4 +33,4 @@ class MyTestCase(unittest.TestCase):
         cache_dataset.cache_negative = True
         max_ram_yes_cache = iterate_and_record_max_ram_usage(cache_dataset)
 
-        self.assertGreater(max_ram_yes_cache, max_ram_no_cache * 1.1)
+        self.assertGreater(max_ram_yes_cache, max_ram_no_cache * 1.2)
