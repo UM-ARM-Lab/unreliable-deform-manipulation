@@ -123,8 +123,7 @@ def has_already_diverged(transition: Dict, labeling_params):
 def balance(dataset, labeling_params: Dict, cache_negative : bool = True):
     def _label_is(label_is):
         def __filter(transition):
-            label_key = labeling_params['label_key']
-            result = tf.squeeze(tf.equal(transition[label_key], label_is))
+            result = tf.squeeze(tf.equal(transition['label'], label_is))
             return result
 
         return __filter

@@ -151,7 +151,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
                 # must be batch, T, 2
                 'action': actions,
             }
-            predictions = fwd_model.net((net_input, None))
+            predictions = fwd_model.net((net_input, None), training=False)
             all_predictions.append(predictions)
 
         # restructure data to be one List of dicts, where each dict has all the states/keys of the original dicts, but averaged

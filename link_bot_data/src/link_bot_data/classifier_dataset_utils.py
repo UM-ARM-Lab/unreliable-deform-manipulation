@@ -13,14 +13,16 @@ def add_model_predictions(fwd_model,
                           dataset: DynamicsDataset,
                           labeling_params: Dict):
     prediction_horizon = labeling_params['prediction_horizon']
+    classifier_horizon = labeling_params['classifier_horizon']
     assert prediction_horizon <= dataset.desired_sequence_length
     batch_size = 2048
     for dataset_element in tf_dataset.batch(batch_size):
         inputs, outputs = dataset_element
         actual_batch_size = int(inputs['traj_idx'].shape[0])
 
-        for prediction_start_t in range(0, dataset.max_sequence_length - prediction_horizon + 1, labeling_params['start_step']):
-            prediction_end_t = prediction_start_t + prediction_horizon
+        for prediction_start_t in range(0, dataset.max_sequence_length - classifier_horizon - 1, labeling_params['start_step']):
+            prediction_end_t = min(prediction_start_t + prediction_horizon, dataset.max_sequence_length)
+            actual_prediction_horizon = prediction_end_t - prediction_start_t
             outputs_from_start_t = {k: v[:, prediction_start_t:prediction_end_t] for k, v in outputs.items()}
 
             predictions_from_start_t = predict_subsequence(states_description=dataset.states_description,
@@ -30,7 +32,6 @@ def add_model_predictions(fwd_model,
                                                            prediction_horizon=prediction_horizon)
 
             for batch_idx in range(actual_batch_size):
-                # TODO: index into batch here before passing in
                 inputs_b = index_dict_of_batched_vectors_tf(inputs, batch_idx)
                 outputs_from_start_t_b = index_dict_of_batched_vectors_tf(outputs_from_start_t, batch_idx)
                 predictions_from_start_t_b = index_dict_of_batched_vectors_tf(predictions_from_start_t, batch_idx)
@@ -39,7 +40,7 @@ def add_model_predictions(fwd_model,
                                                             predictions=predictions_from_start_t_b,
                                                             start_t=prediction_start_t,
                                                             labeling_params=labeling_params,
-                                                            prediction_horizon=prediction_horizon)
+                                                            prediction_horizon=actual_prediction_horizon)
 
 
 def generate_examples_for_prediction(inputs: Dict,
@@ -70,7 +71,7 @@ def generate_examples_for_prediction(inputs: Dict,
                 'classifier_end_t': classifier_end_t,
             }
 
-            # this slice gives arrays of fixed length (ex, 5) which must be null padded from classifier_end_t onwards
+            # this slice gives arrays of fixed length (ex, 5) which must be null padded from out_example_end_idx onwards
             state_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon)
             action_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon - 1)
             sliced_outputs = {}
