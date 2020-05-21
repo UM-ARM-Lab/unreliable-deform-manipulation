@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-import matplotlib.pyplot as plt
 import argparse
 import json
 import pathlib
 
+import matplotlib.pyplot as plt
 import numpy as np
 import progressbar
 import tensorflow as tf
@@ -17,7 +17,6 @@ from moonshine import experiments_util
 from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function, \
     binary_classification_sequence_loss_function, binary_classification_sequence_metrics_function
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.image_functions import setup_image_inputs
 from moonshine.metric import AccuracyMetric
 from moonshine.moonshine_utils import remove_batch
 from moonshine.tensorflow_train_test_loop import evaluate, train
@@ -49,8 +48,6 @@ def train_main(args, seed: int):
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_dataset.get_datasets(mode='val').batch(args.batch_size, drop_remainder=True)
 
-    postprocess, model_hparams = setup_image_inputs(args, scenario, train_dataset, model_hparams)
-
     net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed)
     train_tf_dataset = train_tf_dataset.prefetch(args.batch_size)
@@ -75,7 +72,6 @@ def train_main(args, seed: int):
           epochs=args.epochs,
           loss_function=loss_function,
           metrics_function=metrics_function,
-          postprocess=postprocess,
           checkpoint=args.checkpoint,
           key_metric=AccuracyMetric,
           log_path=log_path,
@@ -96,7 +92,6 @@ def eval_main(args, seed: int):
     ###############
     test_dataset = ClassifierDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
-    postprocess, model_hparams = setup_image_inputs(args, scenario, test_dataset, model_hparams)
 
     ###############
     # Evaluate
@@ -112,7 +107,6 @@ def eval_main(args, seed: int):
              test_tf_dataset=test_tf_dataset,
              loss_function=loss_function,
              metrics_function=metrics_function,
-             postprocess=postprocess,
              checkpoint_path=args.checkpoint)
 
 
@@ -131,7 +125,6 @@ def viz_main(args, seed: int):
     dataset_name = "_and_".join([d.name for d in args.dataset_dirs])
     classifier_dataset = ClassifierDataset(args.dataset_dirs)
     tf_dataset = classifier_dataset.get_datasets(mode=args.mode).batch(args.batch_size).shuffle(buffer_size=1024, seed=seed)
-    postprocess, model_hparams = setup_image_inputs(args, scenario, classifier_dataset, model_hparams)
 
     ###############
     # Evaluate
@@ -144,8 +137,6 @@ def viz_main(args, seed: int):
     outdir = args.checkpoint / f'visualizations_{dataset_name}'
     try:
         for example_idx, example in enumerate(progressbar.progressbar(tf_dataset)):
-            if postprocess is not None:
-                example = postprocess(example)
             accept_probability = keras_model(example, training=False)
             example = remove_batch(example)
             accept_probability = float(remove_batch(accept_probability).numpy().squeeze())

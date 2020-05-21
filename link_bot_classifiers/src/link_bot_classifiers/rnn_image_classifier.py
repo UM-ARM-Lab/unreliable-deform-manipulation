@@ -4,19 +4,22 @@ import pathlib
 from typing import Dict, List
 
 import numpy as np
+import matplotlib.pyplot as plt
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore
 from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_classifiers.visualization import state_image_to_cmap, trajectory_image
+from link_bot_classifiers.visualization import trajectory_image
 from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_pycommon import make_dict_float32
 from link_bot_pycommon.params import FullEnvParams
-from moonshine.image_functions import make_traj_images_from_states_list
-from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, sequence_of_dicts_to_dict_of_sequences
+from moonshine.action_smear_layer import smear_action_differentiable
+from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
+from moonshine.image_functions import raster_differentiable
+from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, flatten_batch_and_time
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 
@@ -28,7 +31,9 @@ class RNNImageClassifier(MyKerasModel):
         self.classifier_dataset_hparams = self.hparams['classifier_dataset_hparams']
         self.dynamics_dataset_hparams = self.classifier_dataset_hparams['fwd_model_hparams']['dynamics_dataset_hparams']
         self.n_action = self.dynamics_dataset_hparams['n_action']
-        self.batch_size = batch_size
+        self.local_env_h_rows = self.hparams['local_env_h_rows']
+        self.local_env_w_cols = self.hparams['local_env_w_cols']
+        self.rope_image_k = self.hparams['rope_image_k']
 
         self.states_keys = self.hparams['states_keys']
 
@@ -66,6 +71,51 @@ class RNNImageClassifier(MyKerasModel):
         self.sigmoid = layers.Activation("sigmoid")
 
     @tf.function
+    def make_traj_images(self,
+                         environment,
+                         states_dict_batch_time,
+                         local_env_center_point_batch_time,
+                         padded_actions):
+        """
+        :return: [batch, time, h, w, 1 + n_points]
+        """
+        actions_batch_time = tf.reshape(padded_actions, [-1] + padded_actions.shape.as_list()[2:])
+        time = int(padded_actions.shape[1])
+        batch_and_time = int(actions_batch_time.shape[0])
+        env_batch_time = tf.tile(environment['full_env/env'], [time, 1, 1])
+        env_origin_batch_time = tf.tile(environment['full_env/origin'], [time, 1])
+        env_res_batch_time = tf.tile(environment['full_env/res'], [time])
+
+        # this will produce images even for "null" data,
+        # but are masked out in the RNN, and not actually used in the computation
+        local_env_batch_time, local_env_origin_batch_time = get_local_env(center_point=local_env_center_point_batch_time,
+                                                                          full_env=env_batch_time,
+                                                                          full_env_origin=env_origin_batch_time,
+                                                                          res=env_res_batch_time,
+                                                                          local_h_rows=self.local_env_h_rows,
+                                                                          local_w_cols=self.local_env_w_cols)
+
+        concat_args = []
+        for planned_state in states_dict_batch_time.values():
+            planned_rope_image = raster_differentiable(state=planned_state,
+                                                       res=env_res_batch_time,
+                                                       origin=local_env_origin_batch_time,
+                                                       h=self.local_env_h_rows,
+                                                       w=self.local_env_w_cols,
+                                                       k=self.rope_image_k,
+                                                       batch_size=batch_and_time)
+            concat_args.append(planned_rope_image)
+
+        if self.hparams['action_in_image']:
+            action_image = smear_action_differentiable(actions_batch_time, self.local_env_h_rows, self.local_env_w_cols)
+            concat_args.append(action_image)
+
+        concat_args.append(tf.expand_dims(local_env_batch_time, axis=3))
+        images_batch_time = tf.concat(concat_args, axis=3)
+        images = tf.reshape(images_batch_time, [time, self.batch_size, self.local_env_h_rows, self.local_env_w_cols, -1])
+        return images
+
+    @tf.function
     def _conv(self, images):
         # merge batch & time dimensions
         batch, time, h, w, c = images.shape
@@ -81,10 +131,21 @@ class RNNImageClassifier(MyKerasModel):
 
     @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
-        # Choose what key to use, so depending on how the model was trained it will expect a transition_image or trajectory_image
-        images = input_dict[self.hparams['image_key']]
-        action = input_dict['action']
-        padded_action = tf.pad(action, [[0, 0], [0, 1], [0, 0]])
+        # First flatten batch & time
+        transposed_states_dict = {k: tf.transpose(input_dict[k], [1, 0, 2]) for k in self.states_keys}
+        states_dict_batch_time = flatten_batch_and_time(transposed_states_dict)
+        padded_action = tf.pad(input_dict['action'], [[0, 0], [0, 1], [0, 0]])
+        local_env_center_point_batch_time = self.scenario.local_environment_center_differentiable(states_dict_batch_time)
+        images = self.make_traj_images(environment=self.scenario.get_environment_from_example(input_dict),
+                                       states_dict_batch_time=states_dict_batch_time,
+                                       local_env_center_point_batch_time=local_env_center_point_batch_time,
+                                       padded_actions=padded_action)
+        images = tf.transpose(images, [1, 0, 2, 3, 4])  # undo transpose
+
+        # T = 5
+        # fig, axes = plt.subplots(nrows=1, ncols=T, constrained_layout=True)
+        # trajectory_image(axes, images[0], padded_action[0])
+        # plt.show()
 
         conv_output = self._conv(images)
 
@@ -142,8 +203,6 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         self.dataset_labeling_params = self.model_hparams['classifier_dataset_hparams']['labeling_params']
         self.horizon = self.dataset_labeling_params['classifier_horizon']
         self.full_env_params = FullEnvParams.from_json(self.model_hparams['classifier_dataset_hparams']['full_env_params'])
-        self.input_h_rows = self.model_hparams['input_h_rows']
-        self.input_w_cols = self.model_hparams['input_w_cols']
         self.net = RNNImageClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
@@ -160,14 +219,6 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         for state in states_sequence:
             states_sequence_to_draw.append({k: state[k] for k in state if k != 'stdev' and k != 'num_diverged'})
 
-        batched_inputs = add_batch(environment, states_sequence_to_draw, actions)
-        image = make_traj_images_from_states_list(*batched_inputs,
-                                                  scenario=self.scenario,
-                                                  local_env_h=self.input_h_rows,
-                                                  local_env_w=self.input_w_cols,
-                                                  rope_image_k=self.model_hparams['rope_image_k'])[0]
-
-        states_dict = sequence_of_dicts_to_dict_of_sequences(states_sequence)
         net_inputs = {
             'trajectory_image': image,
             'action': tf.convert_to_tensor(actions, tf.float32),

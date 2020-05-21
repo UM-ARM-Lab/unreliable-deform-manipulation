@@ -51,6 +51,7 @@ def get_local_env_and_origin_np(center_point,
     return local_env, local_env_origin
 
 
+@tf.function
 def get_local_env_and_origin_differentiable(center_point,
                                             full_env,
                                             full_env_origin,

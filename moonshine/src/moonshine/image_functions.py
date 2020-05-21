@@ -1,117 +1,15 @@
-from typing import Optional, Dict, List
+from typing import Dict, List
 
 import tensorflow as tf
 
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_next_and_planned, add_planned
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
-from moonshine.get_local_environment import get_local_env_and_origin_np as get_local_env_np
-from moonshine.moonshine_utils import flatten_batch_and_time
+from moonshine.moonshine_utils import flatten_batch_and_time, sequence_of_dicts_to_dict_of_sequences
 
 
-def make_transition_images(environment: Dict,
-                           state_dict: Dict,
-                           action,
-                           next_state_dict: Dict,
-                           scenario: ExperimentScenario,
-                           local_env_h: int,
-                           local_env_w: int,
-                           k: float,
-                           batch_size: Optional[int] = 1,
-                           action_in_image: Optional[bool] = False,
-                           ):
-    """
-    :param environment:
-    :param state_dict: each element should be [batch,n_state]
-    :param action: [batch,n_action]
-    :param next_state_dict: each element should be [batch,n_state]
-    :param scenario:
-    :param local_env_h:
-    :param local_env_w:
-    :param k: constant controlling fuzzyness of how the rope is drawn in the image, should be like 1000
-    :param action_in_image: include new channels for actions
-    :param batch_size:
-
-    :return [batch,n_points*2+n_action+1], aka  [batch,n_state+n_action+1]
-    """
-    local_env_center_point = scenario.local_environment_center_differentiable(state_dict)
-    local_env, local_env_origin = get_local_env(center_point=local_env_center_point,
-                                                full_env=environment['full_env/env'],
-                                                full_env_origin=environment['full_env/origin'],
-                                                res=environment['full_env/res'],
-                                                local_h_rows=local_env_h,
-                                                local_w_cols=local_env_w)
-
-    concat_args = []
-    for planned_state in state_dict.values():
-        planned_rope_image = raster_differentiable(state=planned_state,
-                                                   res=environment['full_env/res'],
-                                                   origin=local_env_origin,
-                                                   h=local_env_h,
-                                                   w=local_env_w,
-                                                   k=k,
-                                                   batch_size=batch_size)
-        concat_args.append(planned_rope_image)
-    for planned_next_state in next_state_dict.values():
-        planned_next_rope_image = raster_differentiable(state=planned_next_state,
-                                                        origin=local_env_origin,
-                                                        res=environment['full_env/res'],
-                                                        h=local_env_h,
-                                                        w=local_env_w,
-                                                        k=k,
-                                                        batch_size=batch_size)
-        concat_args.append(planned_next_rope_image)
-
-    if action_in_image:
-        action_image = smear_action_differentiable(action, local_env_h, local_env_w)
-        concat_args.append(action_image)
-
-    concat_args.append(tf.expand_dims(local_env, axis=3))
-    image = tf.concat(concat_args, axis=3)
-    return image
-
-
-def partial_add_transition_image(states_keys,
-                                 scenario,
-                                 local_env_h: int,
-                                 local_env_w: int,
-                                 batch_size: int,
-                                 rope_image_k: float):
-    def _add_transition_image(example):
-        action = example['action']
-        environment = {
-            'full_env/env': example['full_env/env'],
-            'full_env/origin': example['full_env/origin'],
-            'full_env/res': example['full_env/res'],
-        }
-
-        state_dict = {}
-        next_state_dict = {}
-        for k in states_keys:
-            planned_state = example[add_planned(k)]
-            planned_state_next = example[add_next_and_planned(k)]
-            state_dict[add_planned(k)] = planned_state
-            next_state_dict[add_next_and_planned(k)] = planned_state_next
-
-        transition_images = make_transition_images(environment=environment,
-                                                   state_dict=state_dict,
-                                                   action=action,
-                                                   next_state_dict=next_state_dict,
-                                                   scenario=scenario,
-                                                   local_env_h=local_env_h,
-                                                   local_env_w=local_env_w,
-                                                   k=rope_image_k,
-                                                   batch_size=batch_size,
-                                                   action_in_image=False)
-
-        example['transition_image'] = transition_images
-        return example
-
-    return _add_transition_image
-
-
-def make_traj_images(scenario: ExperimentScenario,
+def make_traj_images(local_env_center_point_batch_time,
                      environment,
                      states_dict: Dict,
                      actions,
@@ -125,6 +23,8 @@ def make_traj_images(scenario: ExperimentScenario,
     """
     # First flatten batch & time
     states_dict_batch_time = flatten_batch_and_time(states_dict)
+    local_env_center_point_batch_time = scenario.local_environment_center_differentiable(states_dict_batch_time)
+
     zero_pad_actions = tf.pad(actions, [[0, 0], [0, 1], [0, 0]])
     actions_batch_time = tf.reshape(zero_pad_actions, [-1] + actions.shape.as_list()[2:])
     time = int(zero_pad_actions.shape[1])
@@ -135,7 +35,6 @@ def make_traj_images(scenario: ExperimentScenario,
 
     # this will produce images even for "null" data,
     # but are masked out in the RNN, and not actually used in the computation
-    local_env_center_point_batch_time = scenario.local_environment_center_differentiable(states_dict_batch_time)
     local_env_batch_time, local_env_origin_batch_time = get_local_env(center_point=local_env_center_point_batch_time,
                                                                       full_env=env_batch_time,
                                                                       full_env_origin=env_origin_batch_time,
@@ -176,64 +75,15 @@ def make_traj_images_from_states_list(environment: Dict,
     :return: [batch, h, w, 3]
     :param rope_image_k: large constant controlling fuzzyness of rope drawing, like 1000
     """
+    states_dict = sequence_of_dicts_to_dict_of_sequences(states)
     return make_traj_images(scenario=scenario,
                             environment=environment,
-                            states_dict=states,
+                            states_dict=states_dict,
                             actions=actions,
                             local_env_h=local_env_h,
                             local_env_w=local_env_w,
                             rope_image_k=rope_image_k,
                             batch_size=1)
-
-
-def partial_add_traj_image(states_keys: List[str],
-                           scenario: ExperimentScenario,
-                           batch_size: int,
-                           local_env_h: int,
-                           local_env_w: int,
-                           rope_image_k: float):
-    def _add_traj_image(example):
-        return add_traj_image_to_example(scenario=scenario,
-                                         example=example,
-                                         states_keys=states_keys,
-                                         local_env_h=local_env_h,
-                                         local_env_w=local_env_w,
-                                         rope_image_k=rope_image_k,
-                                         batch_size=batch_size)
-
-    return _add_traj_image
-
-
-def add_traj_image_to_example(scenario: ExperimentScenario,
-                              example,
-                              states_keys: List[str],
-                              local_env_w: int,
-                              local_env_h: int,
-                              rope_image_k: float,
-                              batch_size: int):
-    environment = {
-        'full_env/env': example['full_env/env'],
-        'full_env/origin': example['full_env/origin'],
-        'full_env/res': example['full_env/res'],
-    }
-    environment.update(scenario.get_environment_from_example(example))
-
-    planned_states_dict = {}
-    for state_key in states_keys:
-        states_all = example[add_planned(state_key)]
-        planned_states_dict[state_key] = states_all
-
-    image = make_traj_images(scenario=scenario,
-                             environment=environment,
-                             states_dict=planned_states_dict,
-                             actions=example['action'],
-                             local_env_w=local_env_w,
-                             local_env_h=local_env_h,
-                             rope_image_k=rope_image_k,
-                             batch_size=batch_size)
-
-    example['trajectory_image'] = image
-    return example
 
 
 @tf.function
@@ -297,30 +147,6 @@ def raster_differentiable(state, res, origin, h, w, k, batch_size: int):
     # TODO: figure out whether to do clipping or normalization, right now we don't do either
     ########################################################################################
     return rope_images
-
-
-def setup_image_inputs(args, scenario, classifier_dataset, model_hparams):
-    postprocess = None
-    image_key = model_hparams['image_key']
-    if image_key == 'transition_image':
-        postprocess = partial_add_transition_image(states_keys=model_hparams['states_keys'],
-                                                   scenario=scenario,
-                                                   local_env_h=model_hparams['local_env_h_rows'],
-                                                   local_env_w=model_hparams['local_env_w_cols'],
-                                                   batch_size=args.batch_size,
-                                                   rope_image_k=model_hparams['rope_image_k'])
-        model_hparams['input_h_rows'] = model_hparams['local_env_h_rows']
-        model_hparams['input_w_cols'] = model_hparams['local_env_w_cols']
-    elif image_key == 'trajectory_image':
-        postprocess = partial_add_traj_image(states_keys=model_hparams['states_keys'],
-                                             scenario=scenario,
-                                             local_env_h=model_hparams['local_env_h_rows'],
-                                             local_env_w=model_hparams['local_env_w_cols'],
-                                             batch_size=args.batch_size,
-                                             rope_image_k=model_hparams['rope_image_k'])
-        model_hparams['input_h_rows'] = classifier_dataset.full_env_params.h_rows
-        model_hparams['input_w_cols'] = classifier_dataset.full_env_params.w_cols
-    return postprocess, model_hparams
 
 
 # Numpy is only used be the one function below

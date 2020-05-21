@@ -8,7 +8,7 @@ import progressbar
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
-from moonshine.image_functions import add_traj_image_to_example
+from moonshine.image_functions import add_traj_image
 from moonshine.old_image_functions import add_traj_image_to_example as add_traj_image_to_example_old
 
 
@@ -46,13 +46,13 @@ def main():
             # NEW
             t0 = perf_counter()
             for e in progressbar.progressbar(tf_dataset.take(batches)):
-                e = add_traj_image_to_example(scenario=scenario,
-                                              example=e,
-                                              local_env_w=100,
-                                              states_keys=['link_bot'],
-                                              local_env_h=100,
-                                              rope_image_k=10000,
-                                              batch_size=args.batch_size)
+                e = add_traj_image(scenario=scenario,
+                                   example=e,
+                                   local_env_w=100,
+                                   states_keys=['link_bot'],
+                                   local_env_h=100,
+                                   rope_image_k=10000,
+                                   batch_size=args.batch_size)
             print('{:.5f}'.format(perf_counter() - t0))
 
             # OLD
