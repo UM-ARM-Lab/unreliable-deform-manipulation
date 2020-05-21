@@ -25,6 +25,6 @@
   "local_env_h_rows": 100,
   "local_env_w_cols": 100,
   "learning_rate": 0.0001,
-  "flooding_level": 0.001,
+  "flooding_level": 0.01,
   "stdev": true
 }
