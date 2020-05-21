@@ -45,11 +45,17 @@ def train_main(args, seed: int):
     scenario = get_scenario(model_hparams['scenario'])
 
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take).batch(args.batch_size, drop_remainder=True)
-    val_tf_dataset = val_dataset.get_datasets(mode='val').batch(args.batch_size, drop_remainder=True)
+    train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
+    val_tf_dataset = val_dataset.get_datasets(mode='val')
 
-    net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed)
+    # to mix up examples so each batch is diverse
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=8192, seed=seed, reshuffle_each_iteration=True)
+
+    train_tf_dataset = train_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
+
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)  # to mix up batches
+
     train_tf_dataset = train_tf_dataset.prefetch(args.batch_size)
     val_tf_dataset = val_tf_dataset.prefetch(args.batch_size)
 
@@ -62,6 +68,8 @@ def train_main(args, seed: int):
     else:
         metrics_function = binary_classification_metrics_function
         loss_function = binary_classification_loss_function
+
+    net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
     train(keras_model=net,
           model_hparams=model_hparams,
           train_tf_dataset=train_tf_dataset,
@@ -172,7 +180,7 @@ def viz_main(args, seed: int):
 
 
 def main():
-    np.set_printoptions(linewidth=250, precision=4, suppress=True)
+    np.set_printoptions(linewidth=250, precision=4, suppress=True, threshold=10000)
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers()
