@@ -4,14 +4,12 @@ import pathlib
 from typing import Dict, List
 
 import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore
 from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_classifiers.visualization import trajectory_image
 from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_pycommon import make_dict_float32
@@ -141,11 +139,6 @@ class RNNImageClassifier(MyKerasModel):
                                        local_env_center_point_batch_time=local_env_center_point_batch_time,
                                        padded_actions=padded_action)
         images = tf.transpose(images, [1, 0, 2, 3, 4])  # undo transpose
-
-        # T = 5
-        # fig, axes = plt.subplots(nrows=1, ncols=T, constrained_layout=True)
-        # trajectory_image(axes, images[0], padded_action[0])
-        # plt.show()
 
         conv_output = self._conv(images)
 
