@@ -169,7 +169,7 @@ def trajectory_image_from_example(example, model_hparams, title):
     fig.suptitle(title)
 
 
-def trajectory_image(axes, image, actions):
+def trajectory_image(axes, image, actions = None):
     T = image.shape[0]
     for t in range(T):
         env_image_t = np.tile(image[t, :, :, -1:], [1, 1, 3])
@@ -178,7 +178,8 @@ def trajectory_image(axes, image, actions):
         axes[t].imshow(np.flipud(image_t), vmin=0, vmax=1)
         axes[t].set_title(f"t={t}")
         if t < T - 1:
-            axes[t].text(x=10, y=image.shape[1] + 10, s=f"u={actions[t]}")
+            if actions is not None:
+                axes[t].text(x=10, y=image.shape[1] + 10, s=f"u={actions[t]}")
         axes[t].set_xticks([])
         axes[t].set_yticks([])
 

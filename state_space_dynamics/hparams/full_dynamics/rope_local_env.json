@@ -7,7 +7,7 @@
     "link_bot"
   ],
   "sequence_length": 10,
-  "fc_layer_sizes": [256, 256],
+  "fc_layer_sizes": [256],
   "rope_image_k": 10000,
   "conv_filters": [
     [8, [5, 5]],
@@ -21,6 +21,6 @@
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
   "activity_reg": 0.05,
-  "learning_rate": 0.00001,
+  "learning_rate": 0.001,
   "epochs": 1000
 }

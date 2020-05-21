@@ -36,6 +36,9 @@ def train_func(args, seed: int):
     train_tf_dataset = train_tf_dataset.shuffle(seed=args.seed, buffer_size=1024).batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
+    train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
+
     # Copy parameters of the dataset into the model
     model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = args.batch_size

@@ -7,6 +7,7 @@ import tensorflow.keras.layers as layers
 from colorama import Fore
 from tensorflow import keras
 
+from link_bot_classifiers.visualization import trajectory_image, paste_over, state_image_to_cmap
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import FullEnvParams
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
@@ -114,6 +115,14 @@ class FullDynamicsNN(MyKerasModel):
 
             # CNN
             z_t = self.concat([rope_image_t, env])
+
+            # import matplotlib.pyplot as plt
+            # plt.figure()
+            # ax = plt.gca()
+            # state_image_t = state_image_to_cmap(rope_image_t[0].numpy())
+            # image_t = paste_over(state_image_t, env[0].numpy())
+            # ax.imshow(np.flipud(image_t), vmin=0, vmax=1)
+            # plt.show()
 
             for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
                 z_t = conv_layer(z_t)

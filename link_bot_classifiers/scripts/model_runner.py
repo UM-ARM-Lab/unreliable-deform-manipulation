@@ -56,8 +56,8 @@ def train_main(args, seed: int):
 
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)  # to mix up batches
 
-    train_tf_dataset = train_tf_dataset.prefetch(args.batch_size)
-    val_tf_dataset = val_tf_dataset.prefetch(args.batch_size)
+    train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     ###############
     # Train
