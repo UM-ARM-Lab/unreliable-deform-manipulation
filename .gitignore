@@ -1,4 +1,5 @@
 *.swp
+*.tar.gz
 .roslaunch.std*
 *.pyc
 log_data
