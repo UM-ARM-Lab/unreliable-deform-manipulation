@@ -22,5 +22,5 @@
   "bias_reg": 0.05,
   "activity_reg": 0.05,
   "learning_rate": 0.001,
-  "epochs": 1000
+  "epochs": 50
 }

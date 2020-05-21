@@ -98,7 +98,6 @@ def eval_func(args, seed: int):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--seed', type=int, default=None)
 
     subparsers = parser.add_subparsers()
 
@@ -111,6 +110,7 @@ def main():
     train_parser.add_argument('--ensemble-idx', type=int)
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=119)
+    train_parser.add_argument('--seed', type=int, default=None)
     train_parser.set_defaults(func=train_func)
 
     eval_parser = subparsers.add_parser('eval')
@@ -120,6 +120,7 @@ def main():
     eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--mode', type=str, choices=['test', 'val', 'train'], default='test')
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
+    eval_parser.add_argument('--seed', type=int, default=None)
     eval_parser.set_defaults(func=eval_func)
 
     args = parser.parse_args()
