@@ -14,7 +14,7 @@ from link_bot_classifiers.visualization import visualize_classifier_example, cla
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine import experiments_util
-from moonshine.base_classifier_model import binary_classification_loss_function, binary_classification_metrics_function, \
+from moonshine.classifier_losses_and_metrics import binary_classification_loss_function, binary_classification_metrics_function, \
     binary_classification_sequence_loss_function, binary_classification_sequence_metrics_function
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.metric import AccuracyMetric

@@ -9,7 +9,7 @@
   "action_in_image": false,
   "rope_image_k": 10000,
   "rnn_size": 128,
-  "fc_layer_sizes": [128, 128],
+  "fc_layer_sizes": [128],
   "conv_filters": [
     [32, [7, 7]],
     [32, [7, 7]],

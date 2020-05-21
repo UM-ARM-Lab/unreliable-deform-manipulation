@@ -172,8 +172,8 @@ class RNNImageClassifier(MyKerasModel):
         # doesn't matter which state_key we use, they're all null padded the same way
         state_key_for_mask = add_planned(self.states_keys[0])
         state_for_mask = input_dict[state_key_for_mask]
-        mask = self.mask(state_for_mask)
-        out_h = self.lstm(out_d, mask=mask._keras_mask)
+        mask = self.mask(state_for_mask)._keras_mask
+        out_h = self.lstm(out_d, mask=mask)
 
         # for every timestep's output, map down to a single scalar, the logit for accept probability
         all_accept_logits = self.output_layer(out_h)
@@ -183,7 +183,8 @@ class RNNImageClassifier(MyKerasModel):
 
         return {
             'logits': valid_accept_logits,
-            'probabilities': valid_accept_probabilities
+            'probabilities': valid_accept_probabilities,
+            'mask': mask,
         }
 
 
