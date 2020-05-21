@@ -14,7 +14,6 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.image_functions import setup_image_inputs
 from moonshine.moonshine_utils import remove_batch
 
 limit_gpu_mem(1)
@@ -47,13 +46,11 @@ def main():
     np.random.seed(args.seed)
     tf.random.set_seed(args.seed)
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs, no_balance=args.no_balance)
+    classifier_dataset = ClassifierDataset(args.dataset_dirs, no_balance=args.no_balance, load_true_states=True)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
 
     scenario = get_scenario(classifier_dataset.hparams['scenario'])
     model_hparams = json.load(args.model_hparams.open("r"))
-
-    postprocess, _ = setup_image_inputs(args, scenario, classifier_dataset, model_hparams)
 
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=512)
@@ -81,9 +78,6 @@ def main():
         iter_dt = perf_counter() - iter_t0
         if args.perf:
             print("{:6.4f}".format(iter_dt))
-
-        if postprocess is not None:
-            example = postprocess(example)
 
         example = remove_batch(example)
 
