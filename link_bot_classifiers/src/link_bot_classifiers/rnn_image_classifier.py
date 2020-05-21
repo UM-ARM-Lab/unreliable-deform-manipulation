@@ -73,13 +73,13 @@ class RNNImageClassifier(MyKerasModel):
                          environment,
                          states_dict_batch_time,
                          local_env_center_point_batch_time,
-                         padded_actions):
+                         padded_actions,
+                         time):
         """
         :return: [batch, time, h, w, 1 + n_points]
         """
         actions_batch_time = tf.reshape(padded_actions, [-1] + padded_actions.shape.as_list()[2:])
-        time = int(padded_actions.shape[1])
-        batch_and_time = int(actions_batch_time.shape[0])
+        batch_and_time = self.batch_size * time
         env_batch_time = tf.tile(environment['full_env/env'], [time, 1, 1])
         env_origin_batch_time = tf.tile(environment['full_env/origin'], [time, 1])
         env_res_batch_time = tf.tile(environment['full_env/res'], [time])
@@ -110,19 +110,17 @@ class RNNImageClassifier(MyKerasModel):
 
         concat_args.append(tf.expand_dims(local_env_batch_time, axis=3))
         images_batch_time = tf.concat(concat_args, axis=3)
-        images = tf.reshape(images_batch_time, [time, self.batch_size, self.local_env_h_rows, self.local_env_w_cols, -1])
-        return images
+        return images_batch_time
 
     @tf.function
-    def _conv(self, images):
+    def _conv(self, images, time):
         # merge batch & time dimensions
-        batch, time, h, w, c = images.shape
-        conv_z = tf.reshape(images, [batch * time, h, w, c])
+        conv_z = images
         for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
             conv_h = conv_layer(conv_z)
             conv_z = pool_layer(conv_h)
         out_conv_z = conv_z
-        out_conv_z = tf.reshape(out_conv_z, [batch, time, -1])
+        out_conv_z = tf.reshape(out_conv_z, [time, self.batch_size, -1])
         # un-merge batch & time dimensions
 
         return out_conv_z
@@ -130,17 +128,19 @@ class RNNImageClassifier(MyKerasModel):
     @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         # First flatten batch & time
-        transposed_states_dict = {k: tf.transpose(input_dict[k], [1, 0, 2]) for k in self.states_keys}
+        transposed_states_dict = {k: tf.transpose(input_dict[add_planned(k)], [1, 0, 2]) for k in self.states_keys}
         states_dict_batch_time = flatten_batch_and_time(transposed_states_dict)
         padded_action = tf.pad(input_dict['action'], [[0, 0], [0, 1], [0, 0]])
+        time = int(padded_action.shape[1])
         local_env_center_point_batch_time = self.scenario.local_environment_center_differentiable(states_dict_batch_time)
-        images = self.make_traj_images(environment=self.scenario.get_environment_from_example(input_dict),
-                                       states_dict_batch_time=states_dict_batch_time,
-                                       local_env_center_point_batch_time=local_env_center_point_batch_time,
-                                       padded_actions=padded_action)
-        images = tf.transpose(images, [1, 0, 2, 3, 4])  # undo transpose
+        images_batch_and_time = self.make_traj_images(environment=self.scenario.get_environment_from_example(input_dict),
+                                                      states_dict_batch_time=states_dict_batch_time,
+                                                      local_env_center_point_batch_time=local_env_center_point_batch_time,
+                                                      padded_actions=padded_action,
+                                                      time=time)
 
-        conv_output = self._conv(images)
+        conv_output = self._conv(images_batch_and_time, time)
+        conv_output = tf.transpose(conv_output, [1, 0, 2])  # undo transpose
 
         concat_args = [conv_output, padded_action]
         for state_key in self.states_keys:

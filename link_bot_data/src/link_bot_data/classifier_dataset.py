@@ -10,9 +10,10 @@ from link_bot_pycommon.params import FullEnvParams
 
 class ClassifierDataset(BaseDataset):
 
-    def __init__(self, dataset_dirs: List[pathlib.Path], no_balance=False):
+    def __init__(self, dataset_dirs: List[pathlib.Path], load_true_states=False, no_balance=False):
         super(ClassifierDataset, self).__init__(dataset_dirs)
         self.no_balance = no_balance
+        self.load_true_states = load_true_states
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
         self.labeling_params = self.hparams['labeling_params']
         self.label_state_key = self.hparams['labeling_params']['state_key']
@@ -35,8 +36,9 @@ class ClassifierDataset(BaseDataset):
             'label',
         ]
 
-        for k in self.hparams['states_description'].keys():
-            self.feature_names.append(k)
+        if self.load_true_states:
+            for k in self.hparams['states_description'].keys():
+                self.feature_names.append(k)
 
         for k in self.state_keys:
             self.feature_names.append(add_planned(k))

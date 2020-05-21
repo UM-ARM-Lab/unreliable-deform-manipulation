@@ -28,7 +28,7 @@ def binary_classification_sequence_metrics_function(dataset_element, predictions
 
 def binary_classification_loss_function(dataset_element, predictions):
     label = dataset_element['label']
-    # because RNN masking handles copying of hiddne states, the final logit is the same as the last "valid" logit
+    # because RNN masking handles copying of hidden states, the final logit is the same as the last "valid" logit
     logit = predictions['logits'][:, -1]
     bce = tf.keras.losses.binary_crossentropy(y_true=label, y_pred=logit, from_logits=True)
     # mean over batch & time
