@@ -77,7 +77,7 @@ def visualize_classifier_example(args,
                                  example: Dict,
                                  example_idx: int,
                                  title: str,
-                                 accept_probability: Optional[float] = None,
+                                 accept_probabilities: Optional = None,
                                  fps: Optional[int] = 1):
     label = example['label'].numpy().squeeze()
     image_key = model_hparams['image_key']
@@ -86,7 +86,7 @@ def visualize_classifier_example(args,
     elif args.display_type == 'image':
         return trajectory_image_from_example(example, model_hparams, title)
     elif args.display_type == 'anim':
-        anim = trajectory_animation(scenario, classifier_dataset, example, example_idx, accept_probability, fps=fps)
+        anim = trajectory_animation(scenario, classifier_dataset, example, example_idx, accept_probabilities, fps=fps)
         if args.save:
             filename = outdir / f'example_{example_idx}.gif'
             print(Fore.CYAN + f"Saving {filename}" + Fore.RESET)
@@ -202,12 +202,12 @@ def paste_over(i1, i2, binary_threshold=0.1):
     return i2 + i1
 
 
-def trajectory_animation(scenario, classifier_dataset, example, count, accept_probability, fps: Optional[int] = 1):
+def trajectory_animation(scenario, classifier_dataset, example, count, accept_probabilities, fps: Optional[int] = 1):
     # animate the state versus ground truth
     anim = scenario.animate_predictions_from_classifier_dataset(classifier_dataset=classifier_dataset,
                                                                 example_idx=count,
                                                                 dataset_element=example,
-                                                                accept_probability=accept_probability,
+                                                                accept_probabilities=accept_probabilities,
                                                                 fps=fps)
     return anim
 

@@ -12,7 +12,7 @@ from link_bot_data.base_dataset import DEFAULT_VAL_SPLIT, DEFAULT_TEST_SPLIT
 from link_bot_data.classifier_dataset_utils import add_model_predictions
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
-from link_bot_planning import model_utils
+from state_space_dynamics import model_utils
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.filesystem_utils import mkdir_and_ask
 from moonshine.gpu_config import limit_gpu_mem

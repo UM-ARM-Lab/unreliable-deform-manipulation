@@ -11,7 +11,8 @@ from colorama import Fore
 import rospy
 from link_bot_data.classifier_dataset_utils import compute_label_np
 from link_bot_gazebo.gazebo_services import GazeboServices
-from link_bot_planning import model_utils, classifier_utils
+from link_bot_planning import classifier_utils
+from state_space_dynamics import model_utils
 from link_bot_planning.plan_and_execute import execute_plan
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.ros_pycommon import get_occupancy_data, get_states_dict, xy_move

@@ -131,7 +131,7 @@ def viz_main(args, seed: int):
     # Dataset
     ###############
     dataset_name = "_and_".join([d.name for d in args.dataset_dirs])
-    classifier_dataset = ClassifierDataset(args.dataset_dirs)
+    classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
     tf_dataset = classifier_dataset.get_datasets(mode=args.mode).batch(args.batch_size).shuffle(buffer_size=1024, seed=seed)
 
     ###############
@@ -145,10 +145,11 @@ def viz_main(args, seed: int):
     outdir = args.checkpoint / f'visualizations_{dataset_name}'
     try:
         for example_idx, example in enumerate(progressbar.progressbar(tf_dataset)):
-            accept_probability = keras_model(example, training=False)
+            outputs = keras_model(example, training=False)
+            accept_probabilities = outputs['probabilities']
             example = remove_batch(example)
-            accept_probability = float(remove_batch(accept_probability).numpy().squeeze())
-            accept = accept_probability > args.classifier_threshold
+            accept_probabilities = remove_batch(accept_probabilities).numpy().squeeze()
+            accept = accept_probabilities[-1] > args.classifier_threshold
 
             label = example['label'].numpy().squeeze()
 
@@ -173,7 +174,7 @@ def viz_main(args, seed: int):
                                                   example=example,
                                                   example_idx=example_idx,
                                                   title=title,
-                                                  accept_probability=accept_probability)
+                                                  accept_probabilities=accept_probabilities)
             plt.show(block=True)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)

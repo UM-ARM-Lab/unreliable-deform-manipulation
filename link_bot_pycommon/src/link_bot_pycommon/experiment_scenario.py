@@ -126,7 +126,7 @@ class ExperimentScenario:
                                                     example_idx: int,
                                                     dataset_element: Dict,
                                                     trim: Optional[bool] = False,
-                                                    accept_probability: Optional[float] = None,
+                                                    accept_probabilities: Optional = None,
                                                     fps: Optional[int] = 1):
         is_close = dataset_element['is_close'].numpy()
         last_valid_idx = int(dataset_element['last_valid_idx'].numpy().squeeze())
@@ -158,7 +158,7 @@ class ExperimentScenario:
                                        predictions=predictions[start_idx:end_idx],
                                        example_idx=example_idx,
                                        labels=is_close[start_idx:end_idx],
-                                       accept_probability=accept_probability,
+                                       accept_probabilities=accept_probabilities,
                                        fps=fps)
 
     @classmethod
@@ -169,7 +169,7 @@ class ExperimentScenario:
                                                   labels=None,
                                                   start_idx=0,
                                                   end_idx=-1,
-                                                  accept_probability: Optional[float] = None,
+                                                  accept_probabilities: Optional = None,
                                                   fps: Optional[int] = 1):
         predictions = remove_batch(predictions)
         predictions = numpify(dict_of_sequences_to_sequence_of_dicts_tf(predictions))
@@ -193,7 +193,7 @@ class ExperimentScenario:
                                        predictions=predictions[start_idx:end_idx],
                                        example_idx=example_idx,
                                        labels=labels,
-                                       accept_probability=accept_probability,
+                                       accept_probabilities=accept_probabilities,
                                        fps=fps)
 
     @classmethod
@@ -204,7 +204,7 @@ class ExperimentScenario:
                             predictions: Optional,
                             example_idx: Optional = None,
                             labels: Optional = None,
-                            accept_probability: Optional[float] = None,
+                            accept_probabilities: Optional = None,
                             fps: Optional[int] = 1):
         fig = plt.figure()
         ax = plt.gca()
@@ -239,7 +239,8 @@ class ExperimentScenario:
                 title_t += f" label={labels[t]}"
                 label_color = 'r' if labels[t] == 0 else 'g'
                 label_line.set_color(label_color)
-            if accept_probability is not None:
+            if accept_probabilities is not None:
+                accept_probability = accept_probabilities[t]
                 title_t += f" accept={accept_probability:.3f}"
             ax.set_title(title_t)
 
