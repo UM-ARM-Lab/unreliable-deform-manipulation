@@ -2,10 +2,12 @@ from typing import Dict, Optional
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.font_manager import FontProperties
 
 from ignition.markers import MarkerProvider
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_planned
+from link_bot_data.visualization import plot_extents
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.link_bot_pycommon import trim_reconverging
 from moonshine.moonshine_utils import remove_batch, numpify, dict_of_sequences_to_sequence_of_dicts_tf
@@ -215,15 +217,18 @@ class ExperimentScenario:
         action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=30, zorder=4)
         cls.plot_environment(ax, environment)
         if labels is not None:
-            extent = environment['full_env/extent']
-            label_line = ax.plot([extent[0], extent[1], extent[1], extent[0], extent[0]],
-                                 [extent[2], extent[2], extent[3], extent[3], extent[2]],
-                                 color='k',
-                                 zorder=5,
-                                 linewidth=10)[0]
+            extent = environment['full_env/extent'] * 1.05
+            offset_extent = extent * 1.025
+            label_line = plot_extents(ax=ax, extent=extent, color='k', zorder=2, alpha=0.5)
+            classification_line = plot_extents(ax=ax, extent=offset_extent, color='k', zorder=3, alpha=0.5)
         ax.set_xlabel("x (m)")
         ax.set_ylabel("y (m)")
         plt.legend()
+
+        font = FontProperties()
+        font.set_family('serif')
+        font.set_name('Times New Roman')
+        font.set_style('italic')
 
         n_states = len(actual)
 
@@ -235,14 +240,23 @@ class ExperimentScenario:
                 title_t = f"t={t}"
             else:
                 title_t = f"example {example_idx}, t={t}"
-            if labels is not None:
-                title_t += f" label={labels[t]}"
-                label_color = 'r' if labels[t] == 0 else 'g'
-                label_line.set_color(label_color)
-            if accept_probabilities is not None:
-                accept_probability = accept_probabilities[t]
-                title_t += f" accept={accept_probability:.3f}"
-            ax.set_title(title_t)
+            if t > 0:
+                if labels is not None:
+                    title_t += f" label={labels[t]}"
+                    label_color = 'r' if labels[t] == 0 else 'g'
+                    label_line.set_color(label_color)
+                if accept_probabilities is not None:
+                    # -1 because the classifier doesn't output a decision for t=0
+                    accept_probability = accept_probabilities[t - 1]
+                    # TODO: use threshold from model hparams
+                    line_color = 'r' if accept_probability < 0.5 else 'g'
+                    classification_line.set_color(line_color)
+                    title_t += f" accept={accept_probability:.3f}"
+            else:
+                title_t += " label=    accept=     "
+                label_line.set_color('k')
+                classification_line.set_color('k')
+            ax.set_title(title_t, fontproperties='monospace')
 
             if t < n_states - 1:
                 cls.update_action_artist(action_artist, actual[t], actions[t])

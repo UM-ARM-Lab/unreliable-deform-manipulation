@@ -45,6 +45,14 @@ def update_arrow(lines, xs, ys, us, vs):
     lines[2].set_data(xys3[0], xys3[1])
 
 
+def plot_extents(ax, extent, linewidth=6, **kwargs):
+    line = ax.plot([extent[0], extent[1], extent[1], extent[0], extent[0]],
+                   [extent[2], extent[2], extent[3], extent[3], extent[2]],
+                   linewidth=linewidth,
+                   **kwargs)[0]
+    return line
+
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 

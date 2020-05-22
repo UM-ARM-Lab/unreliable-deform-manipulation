@@ -122,6 +122,7 @@ def viz_main(args, seed: int):
     ###############
     # Model
     ###############
+    plt.style.use("slides")
     model_hparams = json.load((args.checkpoint / 'hparams.json').open('r'))
     model = link_bot_classifiers.get_model(model_hparams['model_class'])
     scenario = get_scenario(model_hparams['scenario'])
@@ -144,11 +145,13 @@ def viz_main(args, seed: int):
 
     outdir = args.checkpoint / f'visualizations_{dataset_name}'
     try:
-        for example_idx, example in enumerate(progressbar.progressbar(tf_dataset)):
+        for example_idx, example in enumerate(tf_dataset):
             outputs = keras_model(example, training=False)
             accept_probabilities = outputs['probabilities']
             example = remove_batch(example)
             accept_probabilities = remove_batch(accept_probabilities).numpy().squeeze()
+            last_valid_idx = int(example['last_valid_idx'].numpy().squeeze())
+            print(accept_probabilities[:last_valid_idx])  # no +1 here because there's no accept probability for t=0
             accept = accept_probabilities[-1] > args.classifier_threshold
 
             label = example['label'].numpy().squeeze()
