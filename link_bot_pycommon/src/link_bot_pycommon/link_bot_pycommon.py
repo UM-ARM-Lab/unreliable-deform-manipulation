@@ -249,9 +249,7 @@ def vector_to_points_2d(x):
 
 
 def make_dict_float32(d):
-    for k, s_k in d.items():
-        d[k] = s_k.astype(np.float32)
-    return d
+    return {k: s_k.astype(np.float32) for k, s_k in d.items()}
 
 
 def longest_reconverging_subsequence(x):

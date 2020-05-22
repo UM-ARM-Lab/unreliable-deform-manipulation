@@ -17,7 +17,8 @@ from link_bot_pycommon.params import FullEnvParams
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
 from moonshine.image_functions import raster_differentiable
-from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, flatten_batch_and_time
+from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, flatten_batch_and_time, \
+    sequence_of_dicts_to_dict_of_sequences, remove_batch
 from moonshine.tensorflow_train_test_loop import MyKerasModel
 
 
@@ -208,26 +209,23 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
                          environment: Dict,
                          states_sequence: List[Dict],
                          actions) -> tf.Tensor:
-        # remove stdev from state we draw
-        states_sequence_to_draw = []
-        for state in states_sequence:
-            states_sequence_to_draw.append({k: state[k] for k in state if k != 'stdev' and k != 'num_diverged'})
-
+        # construct network inputs
+        states_sequences_dict = sequence_of_dicts_to_dict_of_sequences(states_sequence)
         net_inputs = {
-            'trajectory_image': image,
             'action': tf.convert_to_tensor(actions, tf.float32),
         }
+        net_inputs.update(environment)
 
         if self.net.hparams['stdev']:
-            net_inputs[add_planned('stdev')] = tf.convert_to_tensor(states_dict['stdev'], tf.float32)
+            net_inputs[add_planned('stdev')] = tf.convert_to_tensor(states_sequences_dict['stdev'], tf.float32)
 
         for state_key in self.net.states_keys:
             planned_state_key = add_planned(state_key)
-            net_inputs[planned_state_key] = tf.convert_to_tensor(states_dict[state_key], tf.float32)
+            net_inputs[planned_state_key] = tf.convert_to_tensor(states_sequences_dict[state_key], tf.float32)
 
-        net_outputs = self.net(add_batch(net_inputs), training=False)[0, 0]
-        accept_probability = net_outputs['probabilities']
-        return accept_probability
+        predictions = remove_batch(self.net(add_batch(net_inputs), training=False))
+        accept_probabilities = tf.squeeze(predictions['probabilities'], axis=1)
+        return accept_probabilities
 
     def check_constraint_differentiable(self,
                                         environment: Dict,
@@ -248,10 +246,10 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
                          actions: np.ndarray) -> float:
         actions = tf.Variable(actions, dtype=tf.float32, name="actions")
         states_sequence = [make_dict_float32(s) for s in states_sequence]
-        prediction = self.check_constraint_differentiable(environment=environment,
-                                                          states_sequence=states_sequence,
-                                                          actions=actions)
-        return prediction.numpy()
+        accept_probabilities = self.check_constraint_differentiable(environment=environment,
+                                                                    states_sequence=states_sequence,
+                                                                    actions=actions)
+        return accept_probabilities.numpy()
 
 
 model = RNNImageClassifierWrapper

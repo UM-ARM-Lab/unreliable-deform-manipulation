@@ -102,7 +102,7 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         # the network returns a dictionary where each value is [T, n_state]
         # which is what you'd want for training, but for planning and execution and everything else
         # it is easier to deal with a list of states where each state is a dictionary
-        predictions = self.net((test_x, None))
+        predictions = self.net((test_x, None), training=False)
         predictions = remove_batch(predictions)
         predictions = dict_of_sequences_to_sequence_of_dicts_tf(predictions)
         return predictions

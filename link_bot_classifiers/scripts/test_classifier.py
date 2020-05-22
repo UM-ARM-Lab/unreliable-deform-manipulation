@@ -57,7 +57,7 @@ def main():
     }
 
     # Prediction
-    accept_probability, predicted_states_list = predict(actions, classifier_model, full_env_data, fwd_model, environment, state)
+    accept_probabilities, predicted_states_list = predict(actions, classifier_model, full_env_data, fwd_model, environment, state)
 
     # Execute
     actual_states_list = execute_plan(service_provider, fwd_model.dt, actions)
@@ -66,23 +66,15 @@ def main():
     labeling_params = classifier_model.model_hparams['classifier_dataset_hparams']['labeling_params']
     predicted_states_dict = sequence_of_dicts_to_dict_of_sequences(predicted_states_list)
     actual_states_dict = sequence_of_dicts_to_dict_of_sequences(actual_states_list)
-    is_close, label = compute_label_np(actual_states_dict, labeling_params, predicted_states_dict)
-    is_first_state_close = is_close[0]
-    if not is_first_state_close:
-        print(Fore.RED + "First state is not close! Bug!" + Fore.RESET)
+    is_close, _ = compute_label_np(actual_states_dict, labeling_params, predicted_states_dict)
+    is_close = is_close.astype(np.float32)
 
-    print(is_close)
     anim = fwd_model.scenario.animate_predictions(environment=environment,
                                                   actions=actions,
                                                   actual=actual_states_list,
                                                   predictions=predicted_states_list,
                                                   labels=is_close,
-                                                  accept_probability=accept_probability)
-
-    # Print & Visualize
-    print(f"label={label} p(accept)={accept_probability:04.3f}")
-    title = f"label={label} p(accept) = {100 * accept_probability:04.3f}%"
-    plt.title(title)
+                                                  accept_probabilities=accept_probabilities)
 
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
@@ -93,6 +85,7 @@ def main():
         outdir = pathlib.Path("results") / 'test_classifier' / f"{now}"
         outdir.mkdir(parents=True)
         filename = outdir / f"{args.test_config.stem}.gif"
+        print(f"saving {filename}")
         anim.save(filename, writer='imagemagick', dpi=200, fps=1)
 
 
@@ -102,11 +95,10 @@ def predict(actions, classifier_model, full_env_data, fwd_model, environment, st
                                            res=full_env_data.resolution,
                                            start_states=state,
                                            actions=actions)
-    accept_probability = classifier_model.check_constraint(environment=environment,
-                                                           states_sequence=predicted_states,
-                                                           actions=actions)
-    accept_probability = float(accept_probability)
-    return accept_probability, predicted_states
+    accept_probabilities = classifier_model.check_constraint(environment=environment,
+                                                             states_sequence=predicted_states,
+                                                             actions=actions)
+    return accept_probabilities, predicted_states
 
 
 def setup(args, service_provider, classifier_model, full_env_params, fwd_model, max_step_size, test_config):

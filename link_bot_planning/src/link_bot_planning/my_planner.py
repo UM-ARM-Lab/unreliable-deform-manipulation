@@ -221,7 +221,8 @@ class MyPlanner:
             plt.pause(1)
             print(len(all_states))
             input("press enter to continue")
-        classifier_probability = self.classifier_model.check_constraint(environment=self.environment, states_sequence=all_states,
+        classifier_probability = self.classifier_model.check_constraint(environment=self.environment,
+                                                                        states_sequence=all_states,
                                                                         actions=all_actions)
         classifier_accept = classifier_probability > self.params['accept_threshold']
         final_predicted_state['num_diverged'] = np.array([0.0]) if classifier_accept else last_previous_state['num_diverged'] + 1
