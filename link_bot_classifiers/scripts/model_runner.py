@@ -144,6 +144,7 @@ def viz_main(args, seed: int):
     print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
 
     outdir = args.checkpoint / f'visualizations_{dataset_name}'
+    outdir.mkdir()
     try:
         for example_idx, example in enumerate(tf_dataset):
             outputs = keras_model(example, training=False)
