@@ -2,10 +2,10 @@
 import argparse
 import json
 import pathlib
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-import progressbar
 import tensorflow as tf
 from colorama import Fore
 
@@ -132,8 +132,8 @@ def viz_main(args, seed: int):
     # Dataset
     ###############
     dataset_name = "_and_".join([d.name for d in args.dataset_dirs])
-    classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
-    tf_dataset = classifier_dataset.get_datasets(mode=args.mode).batch(args.batch_size).shuffle(buffer_size=1024, seed=seed)
+    classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True, no_balance=not args.balance)
+    tf_dataset = classifier_dataset.get_datasets(mode=args.mode).batch(args.batch_size).shuffle(buffer_size=2048, seed=seed)
 
     ###############
     # Evaluate
@@ -143,22 +143,26 @@ def viz_main(args, seed: int):
     ckpt.restore(manager.latest_checkpoint).expect_partial()
     print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
 
-    outdir = args.checkpoint / f'visualizations_{dataset_name}'
+    outdir = args.checkpoint / f'visualizations_{int(time.time())}'
     outdir.mkdir()
     try:
         for example_idx, example in enumerate(tf_dataset):
-            outputs = keras_model(example, training=False)
-            accept_probabilities = outputs['probabilities']
+            predictions = keras_model(example, training=False)
             example = remove_batch(example)
-            accept_probabilities = remove_batch(accept_probabilities).numpy().squeeze()
+            predictions = remove_batch(predictions)
+
+            accept_probabilities = predictions['probabilities']
             last_valid_idx = int(example['last_valid_idx'].numpy().squeeze())
-            print(accept_probabilities[:last_valid_idx])  # no +1 here because there's no accept probability for t=0
+            accept_probabilities = accept_probabilities.numpy().squeeze()
             accept = accept_probabilities[-1] > args.classifier_threshold
-
             label = example['label'].numpy().squeeze()
-
             false_negative = label and not accept
             false_positive = accept and not label
+            is_close = example['is_close'].numpy().squeeze()
+            n_valid_states = last_valid_idx + 1
+            valid_is_close = is_close[:last_valid_idx + 1]
+            num_diverged = n_valid_states - np.count_nonzero(valid_is_close)
+            reconverging = num_diverged > 0 and valid_is_close[-1]
 
             if args.only_negative and label != 0:
                 continue
@@ -167,6 +171,8 @@ def viz_main(args, seed: int):
             if args.only_false_negatives and not false_negative:
                 continue
             if args.only_false_positives and not false_positive:
+                continue
+            if args.only_reconverging and not reconverging:
                 continue
 
             title = classifier_example_title(example)
@@ -178,7 +184,8 @@ def viz_main(args, seed: int):
                                                   example=example,
                                                   example_idx=example_idx,
                                                   title=title,
-                                                  accept_probabilities=accept_probabilities)
+                                                  accept_probabilities=accept_probabilities,
+                                                  fps=args.fps)
             plt.show(block=True)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
@@ -203,8 +210,8 @@ def main():
                               default=100)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs',
                               default=1)
-    train_parser.set_defaults(func=train_main)
     train_parser.add_argument('--seed', type=int, default=None)
+    train_parser.set_defaults(func=train_main)
 
     eval_parser = subparsers.add_parser('eval')
     eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
@@ -212,8 +219,8 @@ def main():
     eval_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
     eval_parser.add_argument('--batch-size', type=int, default=64)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
-    eval_parser.set_defaults(func=eval_main)
     eval_parser.add_argument('--seed', type=int, default=None)
+    eval_parser.set_defaults(func=eval_main)
 
     viz_parser = subparsers.add_parser('viz')
     viz_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
@@ -222,7 +229,7 @@ def main():
     viz_parser.add_argument('--batch-size', type=int, default=1)
     viz_parser.add_argument('--classifier-threshold', type=float, default=0.5)
     viz_parser.add_argument('--shuffle', action='store_true')
-    viz_parser.add_argument('--no-balance', action='store_true')
+    viz_parser.add_argument('--balance', action='store_true')
     viz_parser.add_argument('--only-negative', action='store_true')
     viz_parser.add_argument('--only-positive', action='store_true')
     viz_parser.add_argument('--only-false-positives', action='store_true')
@@ -231,8 +238,9 @@ def main():
     viz_parser.add_argument('--save', action='store_true')
     viz_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
     viz_parser.add_argument('--verbose', '-v', action='count', default=0)
-    viz_parser.set_defaults(func=viz_main)
     viz_parser.add_argument('--seed', type=int, default=1)
+    viz_parser.add_argument('--fps', type=float, default=1)
+    viz_parser.set_defaults(func=viz_main)
 
     args = parser.parse_args()
 
