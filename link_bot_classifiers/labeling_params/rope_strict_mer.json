@@ -6,6 +6,6 @@
   "state_key": "link_bot",
   "label_key": "label",
   "prediction_horizon": 20,
-  "classifier_horizon": 6,
+  "classifier_horizon": 2,
   "start_step": 1
 }
