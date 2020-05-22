@@ -147,6 +147,7 @@ def main():
     parser.add_argument("--max-step-size", type=float, default=0.01, help='seconds per physics step')
     parser.add_argument("--goal", type=point_arg, help='x,y in meters')
     parser.add_argument("--debug", action='store_true', help='wait to attach debugger')
+    parser.add_argument("--draw-tree", action='store_true', help='draw tree')
 
     args = parser.parse_args()
 
@@ -162,7 +163,8 @@ def main():
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=planner_params['max_step_size'],
                            movable_obstacles=planner_params['movable_obstacles'],
-                           nudge=True)
+                           nudge=True,
+                           randomize_obstacles=False)
 
     rospy.init_node('test_planner_with_classifier')
 
@@ -181,6 +183,7 @@ def main():
                                real_time_rate=sim_params.real_time_rate,
                                reset_robot=planner_params['reset_robot'],
                                max_step_size=sim_params.max_step_size)
+    service_provider.move_objects_to_positions(planner_params['object_positions'])
     service_provider.pause(std_srvs.srv.EmptyRequest())
 
     planner, _ = get_planner(planner_params=planner_params, service_provider=service_provider, seed=args.seed,
@@ -196,7 +199,7 @@ def main():
         no_execution=args.no_execution,
         goal=args.goal,
         seed=args.seed,
-        draw_tree=False,
+        draw_tree=args.draw_tree,
         draw_rejected=False,
     )
     tester.run()

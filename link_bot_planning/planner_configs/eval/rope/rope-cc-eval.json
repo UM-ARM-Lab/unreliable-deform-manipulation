@@ -17,7 +17,11 @@
     "moving_box2",
     "moving_box3",
     "moving_box6",
-    "moving_box7"
+    "moving_box7",
+    "moving_box8",
+    "moving_box9",
+    "moving_box10",
+    "moving_box11"
   ],
   "goal_threshold": 0.05,
   "fixed_goal": null,

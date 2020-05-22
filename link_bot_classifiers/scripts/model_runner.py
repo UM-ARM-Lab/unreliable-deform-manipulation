@@ -174,6 +174,8 @@ def viz_main(args, seed: int):
                 continue
             if args.only_reconverging and not reconverging:
                 continue
+            if args.only_length and not last_valid_idx == (args.only_length - 1):
+                continue
 
             title = classifier_example_title(example)
             handle = visualize_classifier_example(args=args,
@@ -233,6 +235,7 @@ def main():
     viz_parser.add_argument('--only-negative', action='store_true')
     viz_parser.add_argument('--only-positive', action='store_true')
     viz_parser.add_argument('--only-false-positives', action='store_true')
+    viz_parser.add_argument('--only-length', type=int)
     viz_parser.add_argument('--only-false-negatives', action='store_true')
     viz_parser.add_argument('--only-reconverging', action='store_true')
     viz_parser.add_argument('--save', action='store_true')

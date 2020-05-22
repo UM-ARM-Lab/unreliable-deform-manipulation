@@ -209,8 +209,7 @@ class PlanAndExecute:
         if self.sim_params.nudge is not None:
             self.service_provider.nudge(self.planner.n_action)
 
-        if self.sim_params.movable_obstacles is not None:
-            # FIXME: instead of hard coding obstacles names, use the /objects service
+        if self.sim_params.randomize_obstacles:
             # generate a new environment by rearranging the obstacles
             self.service_provider.random_move_objects(self.sim_params.movable_obstacles,
                                                       self.planner.full_env_params.w,

@@ -30,6 +30,7 @@ class SimParams:
     real_time_rate: float
     max_step_size: float
     movable_obstacles: Optional[List[str]]
+    randomize_obstacles: Optional[bool] = True
     nudge: Optional[bool] = True
 
 

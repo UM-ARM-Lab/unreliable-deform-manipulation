@@ -108,10 +108,7 @@ def setup(args, service_provider, classifier_model, full_env_params, fwd_model, 
                                max_step_size=max_step_size,
                                stop=True,
                                reset_world=test_config['reset_world'])
-    object_moves = {}
-    for name, (x, y) in test_config['object_positions'].items():
-        object_moves[name] = xy_move(x, y)
-    service_provider.move_objects(object_moves=object_moves)
+    service_provider.move_objects_to_positions(test_config['object_positions'])
     full_env_data = get_occupancy_data(env_w_m=full_env_params.w,
                                        env_h_m=full_env_params.h,
                                        res=full_env_params.res,

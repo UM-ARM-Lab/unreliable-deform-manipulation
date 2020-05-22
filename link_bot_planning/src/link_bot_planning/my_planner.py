@@ -11,7 +11,7 @@ from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_planning.link_bot_goal import MyGoalRegion
 from link_bot_planning.state_spaces import ValidRopeConfigurationCompoundSampler, \
-    compound_to_numpy, ompl_control_to_model_action
+    compound_to_numpy, ompl_control_to_model_action, compound_from_numpy
 from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon.base_services import Services
@@ -221,10 +221,11 @@ class MyPlanner:
             plt.pause(1)
             print(len(all_states))
             input("press enter to continue")
-        classifier_probability = self.classifier_model.check_constraint(environment=self.environment,
-                                                                        states_sequence=all_states,
-                                                                        actions=all_actions)
-        classifier_accept = classifier_probability > self.params['accept_threshold']
+        classifier_probabilities = self.classifier_model.check_constraint(environment=self.environment,
+                                                                          states_sequence=all_states,
+                                                                          actions=all_actions)
+        final_classifier_probability = classifier_probabilities[-1]
+        classifier_accept = final_classifier_probability > self.params['accept_threshold']
         final_predicted_state['num_diverged'] = np.array([0.0]) if classifier_accept else last_previous_state['num_diverged'] + 1
         return final_predicted_state
 
@@ -237,7 +238,7 @@ class MyPlanner:
         np_final_states = self.predict(previous_states, previous_actions, new_action)
 
         # Convert back Numpy -> OMPL
-        self.compound_from_numpy(np_final_states, state_out)
+        compound_from_numpy(self.state_space_description, np_final_states, state_out)
 
     def plan(self,
              start_states: Dict,
@@ -256,7 +257,7 @@ class MyPlanner:
         ompl_start = ob.CompoundState(self.state_space)
         start_states['stdev'] = np.array([0.0])
         start_states['num_diverged'] = np.array([0.0])
-        self.compound_from_numpy(start_states, ompl_start())
+        compound_from_numpy(self.state_space_description, start_states, ompl_start())
 
         start = ob.State(ompl_start)
         ompl_goal = MyGoalRegion(self.si,

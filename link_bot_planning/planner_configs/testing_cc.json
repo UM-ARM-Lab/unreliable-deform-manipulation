@@ -9,7 +9,7 @@
     "ss_log_data/tf2_rope/6",
     "ss_log_data/tf2_rope/7"
   ],
-  "classifier_model_dir": "classifiers/sequence_loss_0.08/May_21_13-52-14_e62ea9f557",
+  "classifier_model_dir": "classifiers/collision/",
   "planner_type": "NearestRRT",
   "sampler_type": "random",
   "directed_control_sampler": "simple",
@@ -32,10 +32,13 @@
   "scenario": "link_bot",
   "table_config": {
     "nickname": [
-      "Classifier",
-      "(ours)"
+      "Collision",
+      "Checker"
     ],
-    "classifier": "Learned",
+    "classifier": [
+      "Collision",
+      "Checker"
+    ],
     "dynamics": [
       "Ensemble",
       "Unconstrained"

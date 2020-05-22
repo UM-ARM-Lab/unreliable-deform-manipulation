@@ -12,6 +12,8 @@ from link_bot_pycommon.link_bot_pycommon import quaternion_from_euler
 from peter_msgs.msg import ModelsPoses
 from peter_msgs.srv import WorldControlRequest, ExecuteActionRequest, GetObject, LinkBotReset, \
     LinkBotResetRequest, Position2DEnable, Position2DEnableRequest, Position2DAction, Position2DActionRequest
+
+from link_bot_pycommon.ros_pycommon import xy_move
 from std_msgs.msg import String
 from std_srvs.srv import Empty, EmptyRequest
 
@@ -125,6 +127,12 @@ class GazeboServices(Services):
         random_object_positions = {name: self.random_object_position(w=env_w, h=env_h, padding=padding, rng=rng)
                                    for name in objects}
         self.move_objects(random_object_positions)
+
+    def move_objects_to_positions(self, object_positions_dict):
+        object_moves = {}
+        for name, (x, y) in object_positions_dict.items():
+            object_moves[name] = xy_move(x, y)
+        return self.move_objects(object_moves=object_moves)
 
     def move_objects(self, object_moves: Dict[str, Pose]):
         disable_link_bot = String()

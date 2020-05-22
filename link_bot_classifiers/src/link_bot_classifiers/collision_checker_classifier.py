@@ -1,6 +1,7 @@
 import json
 import pathlib
 from typing import List, Dict
+import tensorflow as tf
 
 import numpy as np
 
@@ -59,18 +60,18 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
 
         return prediction
 
-    def check_trajectory(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray) -> float:
+    def check_trajectory(self, full_env: OccupancyData, states: Dict[str, np.ndarray], actions: np.ndarray):
         raise NotImplementedError()
 
     def check_constraint(self,
                          environment: Dict,
                          states_sequence: List[Dict],
-                         actions: np.ndarray) -> float:
+                         actions: np.ndarray):
         states_i = states_sequence[-1]
         full_env = environment['full_env/env']
         full_env_origin = environment['full_env/origin']
         res = environment['full_env/res']
-        local_env_center = self.scenario.local_environment_center(states_i)
+        local_env_center = tf.cast(self.scenario.local_environment_center(states_i), tf.float32)
 
         local_env, local_env_origin = get_local_env_and_origin(center_point=local_env_center,
                                                                full_env=full_env,
@@ -80,12 +81,13 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
                                                                local_w_cols=self.local_w_cols)
         # remove batch dim with [0]
         # TODO: use scenario here instead of hard-coding link_bot?
-        return self.check_transition(local_env=local_env,
+        prediction = self.check_transition(local_env=local_env,
                                      local_env_origin=local_env_origin,
                                      res=res,
                                      s1=states_sequence[-2]['link_bot'],
                                      s2=states_sequence[-1]['link_bot'],
                                      action=actions[-1])
+        return [prediction]
 
 
 model = CollisionCheckerClassifier
