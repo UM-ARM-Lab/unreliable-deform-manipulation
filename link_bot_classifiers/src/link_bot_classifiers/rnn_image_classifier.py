@@ -15,17 +15,28 @@ from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import FullEnvParams
 from link_bot_pycommon.pycommon import make_dict_float32
 from moonshine.action_smear_layer import smear_action_differentiable
+from moonshine.classifier_losses_and_metrics import binary_classification_sequence_loss_function, \
+    binary_classification_sequence_metrics_function
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
 from moonshine.image_functions import raster_differentiable
 from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, flatten_batch_and_time, \
     sequence_of_dicts_to_dict_of_sequences, remove_batch
-from moonshine.tensorflow_train_test_loop import MyKerasModel
+from shape_completion_training.mykerasmodel import MyKerasModel
 
 
 class RNNImageClassifier(MyKerasModel):
 
+    def compute_loss(self, dataset_element, outputs):
+        return {
+            'loss': binary_classification_sequence_loss_function(dataset_element, outputs)
+        }
+
+    def calculate_metrics(self, dataset_element, outputs):
+        return binary_classification_sequence_metrics_function(dataset_element, outputs)
+
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
-        super().__init__(hparams, batch_size, scenario=scenario)
+        super().__init__(hparams, batch_size)
+        self.scenario = scenario
 
         self.classifier_dataset_hparams = self.hparams['classifier_dataset_hparams']
         self.dynamics_dataset_hparams = self.classifier_dataset_hparams['fwd_model_hparams']['dynamics_dataset_hparams']

@@ -73,8 +73,7 @@ def visualize(accept_probabilities,
     actual_states_list = dict_of_sequences_to_sequence_of_dicts(actual_states_dict)
     predicted_states_list = dict_of_sequences_to_sequence_of_dicts(predicted_states_dict)
     is_close = is_close.astype(np.float32)
-    print(tf.cast(is_close[1:], tf.int32).numpy())
-    print(tf.cast(accept_probabilities > 0.5, tf.int32).numpy())
+
     anim = fwd_model.scenario.animate_predictions(environment=environment,
                                                   actions=actions,
                                                   actual=actual_states_list,

@@ -50,9 +50,3 @@ class ClassifierDataset(BaseDataset):
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
 
         return features_description
-
-    def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
-        if not self.no_balance:
-            dataset = balance(dataset, self.labeling_params, cache_negative=self.cache_negative)
-
-        return dataset
