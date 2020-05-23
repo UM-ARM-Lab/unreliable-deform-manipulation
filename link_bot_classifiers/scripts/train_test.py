@@ -40,8 +40,8 @@ def train_main(args, seed: int):
     # to mix up examples so each batch is diverse
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=2048, seed=seed, reshuffle_each_iteration=True)
 
-    train_tf_dataset = train_tf_dataset.batch(args.batch_size, drop_remainder=True)
-    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    train_tf_dataset = train_tf_dataset.batch(args.batch_size, drop_remainder=True).take(2)
+    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True).take(2)
 
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)  # to mix up batches
 
@@ -51,7 +51,12 @@ def train_main(args, seed: int):
     model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
 
     # Train
-    runner = ModelRunner(model=model, training=True, params=model_hparams, write_summary=False)
+    runner = ModelRunner(model=model,
+                         training=True,
+                         params=model_hparams,
+                         group_name=args.log,
+                         trials_directory=pathlib.Path('trials'),
+                         write_summary=False)
     runner.train(train_tf_dataset, num_epochs=args.epochs, seed=seed)
 
 
