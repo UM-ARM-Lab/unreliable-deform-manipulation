@@ -28,7 +28,7 @@ def main():
     parser.add_argument('display_type', choices=['just_count', 'image', 'anim', 'plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
     parser.add_argument('--shuffle', action='store_true')
-    parser.add_argument('--no-balance', action='store_true')
+    parser.add_argument('--balance', action='store_true')
     parser.add_argument('--save', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--fps', type=int, default=1)
@@ -46,7 +46,7 @@ def main():
     np.random.seed(args.seed)
     tf.random.set_seed(args.seed)
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs, no_balance=args.no_balance, load_true_states=True)
+    classifier_dataset = ClassifierDataset(args.dataset_dirs, no_balance=not args.balance, load_true_states=True)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
 
     scenario = get_scenario(classifier_dataset.hparams['scenario'])
@@ -82,27 +82,15 @@ def main():
         example = remove_batch(example)
 
         is_close = example['is_close'].numpy().squeeze()
-        last_valid_idx = int(example['last_valid_idx'].numpy().squeeze())
-        n_valid_states = last_valid_idx + 1
-        valid_is_close = is_close[:last_valid_idx + 1]
-        num_diverged = n_valid_states - np.count_nonzero(valid_is_close)
-        reconverging = num_diverged > 0 and valid_is_close[-1]
-        label = example['label'].numpy().squeeze()
+        num_diverged = is_close.shape[0] - np.count_nonzero(is_close)
+        reconverging = num_diverged > 0 and is_close[-1]
 
-        if args.only_positive and label != 1:
-            continue
-        if args.only_negative and label != 0:
-            continue
         if args.only_reconverging and not reconverging:
             continue
 
         if count == 0:
             print_dict(example)
 
-        if label:
-            positive_count += 1
-        else:
-            negative_count += 1
         if reconverging:
             reconverging_count += 1
 

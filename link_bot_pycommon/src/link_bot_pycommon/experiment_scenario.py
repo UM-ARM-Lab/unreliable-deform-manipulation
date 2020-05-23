@@ -131,14 +131,12 @@ class ExperimentScenario:
                                                     accept_probabilities: Optional = None,
                                                     fps: Optional[int] = 1):
         is_close = dataset_element['is_close'].numpy()
-        last_valid_idx = int(dataset_element['last_valid_idx'].numpy().squeeze())
-        valid_is_close = is_close[:last_valid_idx + 1]
 
         if trim:
-            start_idx, end_idx = trim_reconverging(valid_is_close)
+            start_idx, end_idx = trim_reconverging(is_close)
         else:
             start_idx = 0
-            end_idx = len(valid_is_close)
+            end_idx = len(is_close)
 
         predictions = {}
         actual = {}
@@ -253,7 +251,10 @@ class ExperimentScenario:
                     classification_line.set_color(line_color)
                     title_t += f" accept={accept_probability:.3f}"
             else:
-                title_t += " label=    accept=     "
+                if accept_probabilities is not None:
+                    title_t += " label=    accept=     "
+                else:
+                    title_t += " label=    "
                 label_line.set_color('k')
                 classification_line.set_color('k')
             ax.set_title(title_t, fontproperties='monospace')

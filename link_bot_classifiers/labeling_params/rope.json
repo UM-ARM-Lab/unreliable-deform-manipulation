@@ -1,8 +1,8 @@
 {
   "relaxed": true,
   "state_key": "link_bot",
-  "threshold": 0.08,
+  "threshold": 0.10,
   "prediction_horizon": 50,
-  "classifier_horizon": 6,
+  "classifier_horizon": 8,
   "start_step": 10
 }

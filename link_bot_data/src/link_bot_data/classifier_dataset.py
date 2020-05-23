@@ -31,9 +31,7 @@ class ClassifierDataset(BaseDataset):
             'classifier_start_t',
             'classifier_end_t',
             'is_close',
-            'last_valid_idx',
             'action',
-            'label',
         ]
 
         if self.load_true_states:

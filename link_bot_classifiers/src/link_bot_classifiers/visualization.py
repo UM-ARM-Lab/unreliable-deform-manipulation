@@ -79,7 +79,6 @@ def visualize_classifier_example(args,
                                  title: str,
                                  accept_probabilities: Optional = None,
                                  fps: Optional[int] = 1):
-    label = example['label'].numpy().squeeze()
     image_key = model_hparams['image_key']
     if args.display_type == 'just_count':
         pass
@@ -94,7 +93,7 @@ def visualize_classifier_example(args,
         return anim
     elif args.display_type == 'plot':
         if image_key == 'transition_image':
-            return transition_plot(example, label, title)
+            return transition_plot(example, None, title)
         elif image_key == 'trajectory_image':
             fig = plt.figure()
             ax = plt.gca()
@@ -213,9 +212,8 @@ def trajectory_animation(scenario, classifier_dataset, example, count, accept_pr
 
 
 def classifier_example_title(example):
-    label = example['label'].numpy().squeeze()
     traj_idx = int(example["traj_idx"][0].numpy())
     start = int(example["classifier_start_t"].numpy())
     end = int(example["classifier_end_t"].numpy())
-    title = f"Traj={traj_idx},{start}-{end} Label={label}"
+    title = f"Traj={traj_idx},{start}-{end}"
     return title
