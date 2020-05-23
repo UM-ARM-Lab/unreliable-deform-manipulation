@@ -9,8 +9,6 @@ import tensorflow as tf
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.get_scenario import get_scenario
-from moonshine.classifier_losses_and_metrics import binary_classification_loss_function, binary_classification_metrics_function, \
-    binary_classification_sequence_loss_function, binary_classification_sequence_metrics_function
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.tensorflow_train_test_loop import evaluate
 from shape_completion_training.model_runner import ModelRunner
@@ -35,13 +33,13 @@ def train_main(args, seed: int):
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
-    val_tf_dataset = val_dataset.get_datasets(mode='val')
+    val_tf_dataset = val_dataset.get_datasets(mode='val', take=200)
 
     # to mix up examples so each batch is diverse
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=2048, seed=seed, reshuffle_each_iteration=True)
 
-    train_tf_dataset = train_tf_dataset.batch(args.batch_size, drop_remainder=True).take(2)
-    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True).take(2)
+    train_tf_dataset = train_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)  # to mix up batches
 
@@ -57,7 +55,7 @@ def train_main(args, seed: int):
                          group_name=args.log,
                          trials_directory=pathlib.Path('trials'),
                          write_summary=False)
-    runner.train(train_tf_dataset, num_epochs=args.epochs, seed=seed)
+    runner.train(train_tf_dataset, val_tf_dataset, num_epochs=args.epochs, seed=seed)
 
 
 def eval_main(args, seed: int):
