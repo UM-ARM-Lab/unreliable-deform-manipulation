@@ -3,7 +3,7 @@
     <arg name="verbose" default="false"/>
     <arg name="gui" default="true"/>
     <arg name="spawn_x" default="0.0"/>
-    <arg name="spawn_y" default="0.0"/>
+    <arg name="spawn_y" default="0.25"/>
 
     <arg name="spawn_yaw" default="0"/>
 

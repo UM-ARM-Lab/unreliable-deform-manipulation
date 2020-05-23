@@ -118,16 +118,6 @@ class GazeboServices(Services):
         pose.orientation.w = q[3]
         return pose
 
-    def random_move_objects(self,
-                            objects: List[str],
-                            env_w: float,
-                            env_h: float,
-                            padding: float,
-                            rng: np.random.RandomState):
-        random_object_positions = {name: self.random_object_position(w=env_w, h=env_h, padding=padding, rng=rng)
-                                   for name in objects}
-        self.move_objects(random_object_positions)
-
     def move_objects_to_positions(self, object_positions_dict):
         object_moves = {}
         for name, (x, y) in object_positions_dict.items():

@@ -9,11 +9,11 @@ from typing import Optional, Dict, List
 import matplotlib.pyplot as plt
 import numpy as np
 import ompl.util as ou
-import rospy
 import tensorflow as tf
 from colorama import Fore
 from ompl import base as ob
 
+import rospy
 from link_bot_data.link_bot_dataset_utils import data_directory
 from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
@@ -21,9 +21,8 @@ from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot_plan
-from link_bot_pycommon.params import SimParams
-from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.params import SimParams
 from moonshine.moonshine_utils import listify
 from victor import victor_services
 
@@ -258,7 +257,7 @@ def main():
 
         sim_params = SimParams(real_time_rate=planner_params['real_time_rate'],
                                max_step_size=planner.fwd_model.max_step_size,
-                               movable_obstacles=planner_params['movable_obstacles'],
+                               movable_obstacles=[], # unused
                                nudge=False)
         print(Fore.GREEN + "Running {} Trials".format(args.n_total_plans) + Fore.RESET)
 

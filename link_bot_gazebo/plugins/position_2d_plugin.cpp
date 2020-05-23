@@ -120,6 +120,9 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     return;
   }
 
+  // get a reference to the collision
+  collision_ = link_->GetCollision(static_cast<unsigned int>(0u));
+
   // setup ROS stuff
   int argc = 0;
   ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
@@ -201,6 +204,14 @@ bool Position2dPlugin::OnStop(std_srvs::EmptyRequest &req, std_srvs::EmptyRespon
 bool Position2dPlugin::OnEnable(peter_msgs::Position2DEnableRequest &req, peter_msgs::Position2DEnableResponse &res)
 {
   enabled_ = req.enable;
+  if (req.enable) {
+    // enable means "move objects", which means we want to disable collision
+    collision_->SetCollideBits(0);
+  }
+  else {
+    // enable collision
+    collision_->SetCollideBits(-1);
+  }
   return true;
 }
 

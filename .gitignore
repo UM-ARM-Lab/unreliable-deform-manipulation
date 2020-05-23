@@ -2,6 +2,7 @@
 *.tar.gz
 .roslaunch.std*
 *.pyc
+trials
 log_data
 old_log_data
 logdata

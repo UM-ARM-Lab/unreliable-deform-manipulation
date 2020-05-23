@@ -38,6 +38,7 @@ class Position2dPlugin : public ModelPlugin {
   event::ConnectionPtr update_connection_;
   physics::ModelPtr model_;
   physics::LinkPtr link_;
+  physics::CollisionPtr collision_;
   std::string link_name_;
   bool enabled_{true};
   std::unique_ptr<ros::NodeHandle> ros_node_;
