@@ -66,8 +66,9 @@ def main():
     labeling_params = classifier_model.model_hparams['classifier_dataset_hparams']['labeling_params']
     predicted_states_dict = sequence_of_dicts_to_dict_of_sequences(predicted_states_list)
     actual_states_dict = sequence_of_dicts_to_dict_of_sequences(actual_states_list)
-    is_close, _ = compute_label_np(actual_states_dict, labeling_params, predicted_states_dict)
+    is_close = compute_label_np(actual_states_dict, labeling_params, predicted_states_dict)
     is_close = is_close.astype(np.float32)
+    print(is_close)
 
     anim = fwd_model.scenario.animate_predictions(environment=environment,
                                                   actions=actions,
