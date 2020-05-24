@@ -20,7 +20,7 @@ from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
-from link_bot_planning.ompl_viz import plot_plan
+from link_bot_planning.ompl_viz import plot_plan, planner_data_to_json
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.params import SimParams
 from moonshine.gpu_config import limit_gpu_mem
@@ -127,6 +127,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         planned_path_listified = listify(planned_path)
         planned_actions_listified = listify(planned_actions)
         actual_path_listified = listify(actual_path)
+        tree_json = planner_data_to_json(planner_data, self.planner.state_space_description)
 
         metrics_for_plan = {
             'planner_status': planner_status.asString(),
@@ -138,6 +139,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'plan_to_goal_error': plan_to_goal_error,
             'execution_to_goal_error': execution_to_goal_error,
             'plan_to_execution_error': plan_to_execution_error,
+            'tree_json': tree_json,
             'goal': goal,
             'num_nodes': num_nodes
         }

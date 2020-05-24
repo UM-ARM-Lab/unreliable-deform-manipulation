@@ -88,8 +88,11 @@ def main():
         example = remove_batch(example)
 
         is_close = example['is_close'].numpy().squeeze()
-        num_diverged = is_close.shape[0] - np.count_nonzero(is_close)
-        reconverging = num_diverged > 0 and is_close[-1]
+        n_close = np.count_nonzero(is_close)
+        n_far = is_close.shape[0] - n_close
+        positive_count += n_close
+        negative_count += n_far
+        reconverging = n_far > 0 and is_close[-1]
         environment = numpify(scenario.get_environment_from_example(example))
         predictions = {}
         for state_key in classifier_dataset.state_keys:

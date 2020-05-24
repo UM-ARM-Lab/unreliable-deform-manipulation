@@ -181,7 +181,7 @@ def metrics_main(args):
     }
     execution_to_goal_errors_comparisons = {}
     plan_to_execution_errors_comparisons = {}
-    max_error = 0.25
+    max_error = 1.25
     errors_thresholds = np.linspace(0.01, max_error, 49)
     print('-' * 90)
     if not args.no_plot:
@@ -201,6 +201,11 @@ def metrics_main(args):
         execution_error_ax = plt.gca()
         execution_error_ax.set_xlabel("Task Error")
         execution_error_ax.set_ylabel("Density")
+
+        plt.figure()
+        planning_error_ax = plt.gca()
+        planning_error_ax.set_xlabel("Task Error")
+        planning_error_ax.set_ylabel("Density")
 
     all_subfolders = get_all_subfolders(args)
 
@@ -295,6 +300,14 @@ def metrics_main(args):
                 planning_successes.append(success_percentage)
             planning_success_ax.plot(errors_thresholds, planning_successes, label=legend_nickname, linewidth=5, c=color)
 
+            # Planning Error Plot
+            final_planning_to_goal_pdf = stats.gaussian_kde(final_plan_to_execution_errors)
+            final_planning_to_goal_densities_at_thresholds = final_planning_to_goal_pdf(errors_thresholds)
+            planning_error_ax.plot(errors_thresholds, final_planning_to_goal_densities_at_thresholds, label=legend_nickname,
+                                    linewidth=5,
+                                    c=color)
+            max_density = max(np.max(final_planning_to_goal_densities_at_thresholds), max_density)
+
         execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
         plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
         headers.append(str(subfolder.name))
@@ -316,10 +329,12 @@ def metrics_main(args):
 
         execution_success_ax.set_title("Success In Execution, {}".format(scenario))
         planning_success_ax.set_title("Success In Planning, {}".format(scenario))
-        execution_error_ax.set_title("Task Error, {}".format(scenario))
+        execution_error_ax.set_title("Execution Task Error, {}".format(scenario))
+        planning_error_ax.set_title("Planning Task Error, {}".format(scenario))
         execution_success_ax.legend()
         execution_error_ax.legend()
         planning_success_ax.legend()
+        planning_error_ax.legend()
 
         # Timeout Plot
         plt.figure()

@@ -47,23 +47,8 @@ def plot_plan(ax,
             scenario.plot_state(ax, state, color=colormap(t / T), s=10, zorder=3, label='final path')
     if draw_tree:
         print("Drawing tree.")
-        for vertex_index in range(planner_data.numVertices()):
-            v = planner_data.getVertex(vertex_index)
-            s = v.getState()
-            edges_map = ob.mapUintToPlannerDataEdge()
-
-            np_s = compound_to_numpy(state_space_description, s)
-            scenario.plot_state(ax, np_s, color='k', s=10, zorder=2)
-
-            planner_data.getEdges(vertex_index, edges_map)
-            for vertex_index2 in edges_map.keys():
-                v2 = planner_data.getVertex(vertex_index2)
-                s2 = v2.getState()
-                np_s2 = compound_to_numpy(state_space_description, s2)
-                # FIXME: have a "plot edge" function in the experiment scenario?
-                ax.plot([np_s['link_bot'][0], np_s2['link_bot'][0]], [np_s['link_bot'][1], np_s2['link_bot'][1]], linewidth=1,
-                        c='grey')
-                scenario.plot_state_simple(ax, np_s2, color='k')
+        tree_json = planner_data_to_json(planner_data, state_space_description)
+        draw_tree_from_json(ax, scenario, tree_json)
 
     ax.set_xlabel("x")
     ax.set_ylabel("y")
@@ -77,6 +62,44 @@ def plot_plan(ax,
     handles = list(by_label.values())
     labels = list(by_label.keys())
     return handles, labels
+
+
+def planner_data_to_json(planner_data, state_space_description):
+    json = {
+        'vertices': [],
+        'edges': [],
+    }
+    for vertex_index in range(planner_data.numVertices()):
+        v = planner_data.getVertex(vertex_index)
+        s = v.getState()
+        edges_map = ob.mapUintToPlannerDataEdge()
+
+        np_s = compound_to_numpy(state_space_description, s)
+        json['vertices'].append(np_s)
+
+        planner_data.getEdges(vertex_index, edges_map)
+        for vertex_index2 in edges_map.keys():
+            v2 = planner_data.getVertex(vertex_index2)
+            s2 = v2.getState()
+            np_s2 = compound_to_numpy(state_space_description, s2)
+            # FIXME: have a "plot edge" function in the experiment scenario?
+            json['edges'].append({
+                'from': np_s,
+                'to': np_s2,
+            })
+    return json
+
+
+def draw_tree_from_json(ax, scenario, tree_json):
+    for state in range(tree_json['vertices']):
+        scenario.plot_state(ax, state, color='k', s=10, zorder=2)
+
+    for edge in tree_json['edges']:
+        s1 = edge['from']
+        s2 = edge['to']
+        # FIXME: have a "plot edge" function in the experiment scenario?
+        ax.plot([s1['link_bot'][0], s2['link_bot'][0]], [s1['link_bot'][1], s2['link_bot'][1]], linewidth=1, c='grey')
+        scenario.plot_state_simple(ax, s2, color='k')
 
 
 def animate(environment: Dict,

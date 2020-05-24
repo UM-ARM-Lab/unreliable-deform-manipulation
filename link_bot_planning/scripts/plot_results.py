@@ -5,12 +5,13 @@ import json
 import pathlib
 
 import matplotlib.pyplot as plt
-from matplotlib import cm
 import numpy as np
+from matplotlib import cm
 
-from link_bot_pycommon.get_scenario import get_scenario
+from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
 from link_bot_planning.ompl_viz import animate
 from link_bot_pycommon.args import my_formatter, int_range_arg
+from link_bot_pycommon.get_scenario import get_scenario
 
 
 def main():
@@ -20,6 +21,7 @@ def main():
     parser.add_argument("plan_idx", type=int_range_arg, help='which plan to show')
     parser.add_argument("plot_type", choices=['plot', 'animate'], help='how to display')
     parser.add_argument("--save", action='store_true')
+    parser.add_argument("--only-collision", action='store_true')
     parser.add_argument("--fps", type=float, default=1)
     parser.add_argument("--headless", action='store_true', help='do not show the window')
 
@@ -28,9 +30,26 @@ def main():
     metrics_filename = args.results_dir / "metrics.json"
     data = json.load(metrics_filename.open("r"))
     scenario = get_scenario(data['planner_params']['scenario'])
+    classifier_model_dir = pathlib.Path(data['planner_params']['classifier_model_dir'])
+    classifier_hparams_filename = classifier_model_dir / 'hparams.json'
+    classifier_hparams = json.load(classifier_hparams_filename.open('r'))
+    local_env_h_rows = classifier_hparams['local_env_h_rows']
+    local_env_w_cols = classifier_hparams['local_env_w_cols']
     metrics = data['metrics']
 
+    cc = CollisionCheckerClassifier.check_collision_inflated
+
     for plan_idx in args.plan_idx:
+
+        # Check if any planned states are in collision
+        environment = metrics['environment']
+        in_collision = False
+        for state in metrics['planned_path']:
+            in_collision = in_collision or cc(scenario, local_env_h_rows, local_env_w_cols, environment, state)
+
+        if args.only_in_collision and not in_collision:
+            continue
+
         plot_plan(args, metrics, plan_idx, scenario)
 
 

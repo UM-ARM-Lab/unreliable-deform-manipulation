@@ -50,8 +50,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                          sim_params=sim_params,
                          service_provider=services,
                          no_execution=no_execution,
-                         seed=seed,
-                         retry_on_failure=False)
+                         seed=seed)
         self.goal = goal
         self.draw_tree = draw_tree
         self.draw_rejected = draw_rejected
@@ -103,7 +102,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                                         draw_tree=self.draw_tree,
                                         draw_rejected=self.draw_rejected)
 
-            plt.savefig("results/latest-plan.png", dpi=100, bbox_extra_artists=(legend,), bbox_inches='tight')
+            plt.savefig("results/latest-plan.png", dpi=200)
         plt.show(block=True)
 
     def on_execution_complete(self,
@@ -183,7 +182,6 @@ def main():
                                real_time_rate=sim_params.real_time_rate,
                                reset_robot=planner_params['reset_robot'],
                                max_step_size=sim_params.max_step_size)
-    service_provider.move_objects_to_positions(planner_params['object_positions'])
     service_provider.pause(std_srvs.srv.EmptyRequest())
 
     planner, _ = get_planner(planner_params=planner_params, service_provider=service_provider, seed=args.seed,
