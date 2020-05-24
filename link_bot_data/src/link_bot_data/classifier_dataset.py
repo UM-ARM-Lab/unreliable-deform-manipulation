@@ -10,7 +10,7 @@ from link_bot_pycommon.params import FullEnvParams
 
 class ClassifierDataset(BaseDataset):
 
-    def __init__(self, dataset_dirs: List[pathlib.Path], load_true_states=False, no_balance=False):
+    def __init__(self, dataset_dirs: List[pathlib.Path], load_true_states=False, no_balance=True):
         super(ClassifierDataset, self).__init__(dataset_dirs)
         self.no_balance = no_balance
         self.load_true_states = load_true_states

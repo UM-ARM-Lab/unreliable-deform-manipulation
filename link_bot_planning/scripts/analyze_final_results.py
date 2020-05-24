@@ -14,7 +14,7 @@ from tabulate import tabulate
 from link_bot_data.classifier_dataset_utils import generate_examples_for_prediction
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_pycommon.metric_utils import breif_row_stats
+from link_bot_pycommon.metric_utils import brief_row_stats, row_stats
 from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_np_arrays
 
 
@@ -55,7 +55,7 @@ def make_cell(text, tablefmt):
 
 
 def make_header():
-    return ["Name", "Dynamics", "Classifier", "mean", "median", "std"]
+    return ["Name", "Dynamics", "Classifier", "min", "max", "mean", "median", "std"]
 
 
 def make_row(planner_params, metric_data, tablefmt):
@@ -65,7 +65,7 @@ def make_row(planner_params, metric_data, tablefmt):
         make_cell(table_config["dynamics"], tablefmt),
         make_cell(table_config["classifier"], tablefmt),
     ]
-    row.extend(breif_row_stats(metric_data))
+    row.extend(row_stats(metric_data))
     return row
 
 
@@ -236,7 +236,7 @@ def metrics_main(args):
         planning_times = []
         nums_nodes = []
         nums_steps = []
-        for datum in data:
+        for plan_idx, datum in enumerate(data):
             planned_path = datum['planned_path']
             actual_path = datum['actual_path']
             final_planned_state = planned_path[-1]
@@ -245,7 +245,8 @@ def metrics_main(args):
             final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, datum['goal'])
             final_plan_to_execution_error = scenario.distance(final_planned_state, final_actual_state)
 
-            if datum['planning_time'] > timeout:
+            if datum['planner_status'] != "Exact solution":
+                print(plan_idx)
                 timeouts += 1
                 # Do not plot metrics for plans which timeout.
                 continue
