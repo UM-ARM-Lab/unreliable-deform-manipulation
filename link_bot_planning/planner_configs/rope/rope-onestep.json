@@ -1,0 +1,134 @@
+{
+  "fwd_model_dir": [
+    "ss_log_data/tf2_rope/0",
+    "ss_log_data/tf2_rope/1",
+    "ss_log_data/tf2_rope/2",
+    "ss_log_data/tf2_rope/3",
+    "ss_log_data/tf2_rope/4",
+    "ss_log_data/tf2_rope/5",
+    "ss_log_data/tf2_rope/6",
+    "ss_log_data/tf2_rope/7"
+  ],
+  "classifier_model_dir": "classifiers/rope_2_seq/May_24_01-12-08_617a0bee2a/",
+  "planner_type": "NearestRRT",
+  "sampler_type": "random",
+  "directed_control_sampler": "simple",
+  "accept_threshold": 0.5,
+  "max_angle_rad": 1.0,
+  "random_epsilon": 0.0,
+  "full_env_w": 2.0,
+  "full_env_h": 2.0,
+  "goal_w_m": 1.5,
+  "goal_h_m": 1.5,
+  "timeout": 120,
+  "movable_obstacles": {
+    "moving_box1": {
+      "x": [
+        -0.70,
+        -0.5
+      ],
+      "y": [
+        0.5,
+        0.7
+      ]
+    },
+    "moving_box2": {
+      "x": [
+        -0.4,
+        0.4
+      ],
+      "y": [
+        0.5,
+        0.7
+      ]
+    },
+    "moving_box3": {
+      "x": [
+        0.0,
+        0.4
+      ],
+      "y": [
+        0.5,
+        0.7
+      ]
+    },
+    "moving_box4": {
+      "x": [
+        -0.7,
+        -0.5
+      ],
+      "y": [
+        -0.4,
+        0.4
+      ]
+    },
+    "moving_box5": {
+      "x": [
+        -0.25,
+        0.25
+      ],
+      "y": [
+        -0.25,
+        0.25
+      ]
+    },
+    "moving_box6": {
+      "x": [
+        0.5,
+        0.7
+      ],
+      "y": [
+        -0.4,
+        0.4
+      ]
+    },
+    "moving_box7": {
+      "x": [
+        -0.7,
+        -0.5
+      ],
+      "y": [
+        -0.7,
+        -0.5
+      ]
+    },
+    "moving_box8": {
+      "x": [
+        -0.4,
+        0.4
+      ],
+      "y": [
+        -0.7,
+        -0.5
+      ]
+    },
+    "moving_box9": {
+      "x": [
+        0.5,
+        0.7
+      ],
+      "y": [
+        -0.7,
+        -0.5
+      ]
+    }
+  },
+  "goal_threshold": 0.05,
+  "fixed_goal": null,
+  "reset_robot": null,
+  "real_time_rate": 0.0,
+  "max_step_size": 0.01,
+  "smoothing": null,
+  "scenario": "link_bot",
+  "table_config": {
+    "nickname": [
+      "Classifier",
+      "(1-step)"
+    ],
+    "classifier": "Learned",
+    "dynamics": [
+      "Ensemble",
+      "Unconstrained"
+    ]
+  }
+}

@@ -14,7 +14,7 @@ from tabulate import tabulate
 from link_bot_data.classifier_dataset_utils import generate_examples_for_prediction
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_pycommon.metric_utils import brief_row_stats, row_stats
+from link_bot_pycommon.metric_utils import row_stats
 from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_np_arrays
 
 
@@ -80,6 +80,7 @@ def main():
     metrics_subparser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
     metrics_subparser.add_argument('--no-plot', action='store_true')
     metrics_subparser.add_argument('--final', action='store_true')
+    metrics_subparser.add_argument('--ignore-timeouts', action='store_true', help='for error metrics, ignore timeouts/approx sln')
     metrics_subparser.set_defaults(func=metrics_main)
 
     error_viz_subparser = subparsers.add_parser('error_viz')
@@ -215,16 +216,18 @@ def metrics_main(args):
     max_density = 0
     prop_cycle = plt.rcParams['axes.prop_cycle']
     colors = prop_cycle.by_key()['color']
+    legend_names = []
+    percentages_solved = []
     for color, subfolder in zip(colors, all_subfolders):
         metrics_filename = subfolder / 'metrics.json'
         metrics = json.load(metrics_filename.open("r"))
         planner_params = metrics['planner_params']
         goal_threshold = planner_params['goal_threshold']
         scenario = get_scenario(planner_params['scenario'])
-        timeout = planner_params['timeout']
         table_config = planner_params['table_config']
         nickname = table_config['nickname']
         legend_nickname = " ".join(nickname) if isinstance(nickname, list) else nickname
+        legend_names.append(legend_nickname)
         data = metrics.pop('metrics')
         N = len(data)
         print("{} has {} examples".format(subfolder, N))
@@ -246,10 +249,10 @@ def metrics_main(args):
             final_plan_to_execution_error = scenario.distance(final_planned_state, final_actual_state)
 
             if datum['planner_status'] != "Exact solution":
-                print(plan_idx)
                 timeouts += 1
                 # Do not plot metrics for plans which timeout.
-                continue
+                if args.ignore_timeouts:
+                    continue
 
             final_plan_to_execution_errors.append(final_plan_to_execution_error)
             final_plan_to_goal_errors.append(final_plan_to_goal_error)
@@ -264,13 +267,16 @@ def metrics_main(args):
             planning_times.append(datum['planning_time'])
 
         timeout_percentage = timeouts / N * 100
-        n_plans_found = N - timeouts
+        n_exact_solutions = N - timeouts
+        percentage_solved = n_exact_solutions / N * 100
+        percentages_solved.append(percentage_solved)
+        n_for_metrics = n_exact_solutions if args.ignore_timeouts else N
 
         if not args.no_plot:
             # Execution Success Plot
             execution_successes = []
             for threshold in errors_thresholds:
-                success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / n_plans_found * 100
+                success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / n_for_metrics * 100
                 execution_successes.append(success_percentage)
             execution_success_ax.plot(errors_thresholds, execution_successes, label=legend_nickname, linewidth=5, color=color)
 
@@ -285,7 +291,7 @@ def metrics_main(args):
             # Planning Success Plot
             planning_successes = []
             for threshold in errors_thresholds:
-                success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / n_plans_found * 100
+                success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / n_for_metrics * 100
                 planning_successes.append(success_percentage)
             planning_success_ax.plot(errors_thresholds, planning_successes, label=legend_nickname, linewidth=5, c=color)
 
@@ -314,6 +320,13 @@ def metrics_main(args):
         execution_success_ax.legend()
         execution_error_ax.legend()
         planning_success_ax.legend()
+
+        # Timeout Plot
+        plt.figure()
+        timeout_ax = plt.gca()
+        timeout_ax.bar(legend_names, percentages_solved, color=colors)
+        timeout_ax.set_ylabel("percentage solved")
+        timeout_ax.set_title("Percentage Solved")
     print('-' * 90)
 
     for metric_name, table_data in aggregate_metrics.items():

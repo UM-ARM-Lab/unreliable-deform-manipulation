@@ -79,7 +79,6 @@ class OccupancyData:
         :param resolution: scalar, assuming square pixels
         :param origin:
         """
-        assert (isinstance(resolution, float))
         self.data = data.astype(np.float32)
         self.resolution = resolution
         # Origin means the indeces (row/col) of the world point (0, 0)

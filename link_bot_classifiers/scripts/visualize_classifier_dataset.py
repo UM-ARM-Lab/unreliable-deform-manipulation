@@ -11,10 +11,12 @@ import tensorflow as tf
 
 from link_bot_classifiers.visualization import visualize_classifier_example, classifier_example_title
 from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.link_bot_dataset_utils import add_planned
+from link_bot_planning import classifier_utils
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.link_bot_pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import remove_batch
+from moonshine.moonshine_utils import remove_batch, dict_of_sequences_to_sequence_of_dicts, numpify
 
 limit_gpu_mem(1)
 
@@ -36,6 +38,7 @@ def main():
     parser.add_argument('--take', type=int)
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--only-positive', action='store_true')
+    parser.add_argument('--only-in-collision', action='store_true')
     parser.add_argument('--only-reconverging', action='store_true')
     parser.add_argument('--perf', action='store_true', help='print time per iteration')
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
@@ -51,6 +54,9 @@ def main():
 
     scenario = get_scenario(classifier_dataset.hparams['scenario'])
     model_hparams = json.load(args.model_hparams.open("r"))
+
+    classifier_model_dir = pathlib.Path('log_data/collision')
+    collision_checker = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)
 
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=512)
@@ -84,8 +90,19 @@ def main():
         is_close = example['is_close'].numpy().squeeze()
         num_diverged = is_close.shape[0] - np.count_nonzero(is_close)
         reconverging = num_diverged > 0 and is_close[-1]
+        environment = numpify(scenario.get_environment_from_example(example))
+        predictions = {}
+        for state_key in classifier_dataset.state_keys:
+            predictions[state_key] = example[add_planned(state_key)]
+        predictions = dict_of_sequences_to_sequence_of_dicts(predictions)
+        in_collision = collision_checker.check_constraint(environment=environment,
+                                                          states_sequence=predictions,
+                                                          actions=example['action'])[0] < 0.5
 
         if args.only_reconverging and not reconverging:
+            continue
+
+        if args.only_in_collision and not in_collision:
             continue
 
         if count == 0:
