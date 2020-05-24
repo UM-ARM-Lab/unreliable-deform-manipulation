@@ -180,7 +180,7 @@ def metrics_main(args):
     }
     execution_to_goal_errors_comparisons = {}
     plan_to_execution_errors_comparisons = {}
-    max_error = 2.0
+    max_error = 0.25
     errors_thresholds = np.linspace(0.01, max_error, 49)
     print('-' * 90)
     if not args.no_plot:
@@ -188,13 +188,13 @@ def metrics_main(args):
         execution_success_ax = plt.gca()
         execution_success_ax.set_xlabel("Success Threshold, Task Error")
         execution_success_ax.set_ylabel("Success Rate")
-        execution_success_ax.set_ylim([-0.1, 100.1])
+        execution_success_ax.set_ylim([-0.1, 100.5])
 
         plt.figure()
         planning_success_ax = plt.gca()
         planning_success_ax.set_xlabel("Success Threshold, Task Error")
         planning_success_ax.set_ylabel("Success Rate")
-        planning_success_ax.set_ylim([-0.1, 100.1])
+        planning_success_ax.set_ylim([-0.1, 100.5])
 
         plt.figure()
         execution_error_ax = plt.gca()
@@ -263,16 +263,15 @@ def metrics_main(args):
             planning_times.append(datum['planning_time'])
 
         timeout_percentage = timeouts / N * 100
-        not_timeout_percentage = 100 - timeouts / N * 100
+        n_plans_found = N - timeouts
 
         if not args.no_plot:
             # Execution Success Plot
             execution_successes = []
             for threshold in errors_thresholds:
-                success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / N * 100
+                success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / n_plans_found * 100
                 execution_successes.append(success_percentage)
             execution_success_ax.plot(errors_thresholds, execution_successes, label=legend_nickname, linewidth=5, color=color)
-            execution_success_ax.plot([0, max_error], [not_timeout_percentage, not_timeout_percentage])
 
             # Execution Error Plot
             final_execution_to_goal_pdf = stats.gaussian_kde(final_execution_to_goal_errors)
@@ -285,10 +284,9 @@ def metrics_main(args):
             # Planning Success Plot
             planning_successes = []
             for threshold in errors_thresholds:
-                success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / N * 100
+                success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / n_plans_found * 100
                 planning_successes.append(success_percentage)
             planning_success_ax.plot(errors_thresholds, planning_successes, label=legend_nickname, linewidth=5, c=color)
-            planning_success_ax.plot([0, max_error], [not_timeout_percentage, not_timeout_percentage])
 
         execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
         plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors

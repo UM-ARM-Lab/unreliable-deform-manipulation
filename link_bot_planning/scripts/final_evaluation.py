@@ -23,9 +23,11 @@ from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.ompl_viz import plot_plan
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.params import SimParams
+from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import listify
 from victor import victor_services
 
+limit_gpu_mem(1)
 
 class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
