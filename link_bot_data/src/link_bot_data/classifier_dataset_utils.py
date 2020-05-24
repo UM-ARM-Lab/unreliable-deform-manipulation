@@ -16,7 +16,7 @@ def add_model_predictions(fwd_model,
     classifier_horizon = labeling_params['classifier_horizon']
     assert classifier_horizon >= 2
     assert prediction_horizon <= dataset.desired_sequence_length
-    batch_size = 8192
+    batch_size = 1024
     for dataset_element in tf_dataset.batch(batch_size):
         inputs, outputs = dataset_element
         actual_batch_size = int(inputs['traj_idx'].shape[0])
