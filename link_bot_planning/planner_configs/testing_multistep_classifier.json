@@ -20,7 +20,7 @@
   "full_env_h": 2.0,
   "goal_w_m": 1.5,
   "goal_h_m": 1.5,
-  "timeout": 5,
+  "timeout": 120,
   "movable_obstacles": {
     "moving_box1": {
       "x": [

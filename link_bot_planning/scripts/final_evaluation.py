@@ -145,23 +145,27 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
         plt.figure()
         ax = plt.gca()
-        legend = plot_plan(ax=ax,
-                           state_space_description=self.planner.state_space_description,
-                           scenario=self.planner.scenario,
-                           viz_object=self.planner.viz_object,
-                           planner_data=planner_data,
-                           environment=environment,
-                           goal=goal,
-                           planned_path=planned_path,
-                           planned_actions=None,
-                           draw_tree=False,
-                           draw_rejected=False)
+        handles, labels = plot_plan(ax=ax,
+                                    state_space_description=self.planner.state_space_description,
+                                    scenario=self.planner.scenario,
+                                    viz_object=self.planner.viz_object,
+                                    planner_data=planner_data,
+                                    environment=environment,
+                                    goal=goal,
+                                    planned_path=planned_path,
+                                    planned_actions=None,
+                                    draw_tree=False,
+                                    draw_rejected=False)
 
-        self.planner.scenario.plot_state_simple(ax,
+        final_actual_handle = self.planner.scenario.plot_state_simple(ax,
                                                 final_state,
-                                                color='pink',
-                                                label='final actual keypoint position',
-                                                zorder=5)
+                                                color='orange',
+                                                zorder=6,
+                                                alpha=0.5)
+
+        handles.append(final_actual_handle)
+        labels.append("final tail actual")
+        legend = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1, 1))
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
         plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
 
@@ -257,7 +261,7 @@ def main():
 
         sim_params = SimParams(real_time_rate=planner_params['real_time_rate'],
                                max_step_size=planner.fwd_model.max_step_size,
-                               movable_obstacles=[], # unused
+                               movable_obstacles=[],  # unused
                                nudge=False)
         print(Fore.GREEN + "Running {} Trials".format(args.n_total_plans) + Fore.RESET)
 

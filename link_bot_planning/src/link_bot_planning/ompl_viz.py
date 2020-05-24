@@ -6,9 +6,9 @@ from matplotlib import cm
 from matplotlib.animation import FuncAnimation
 from ompl import base as ob
 
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_planning.state_spaces import compound_to_numpy
 from link_bot_planning.viz_object import VizObject
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.moonshine_utils import states_are_equal
 
 
@@ -34,8 +34,8 @@ def plot_plan(ax,
         start = planned_path[0]
         end = planned_path[-1]
         scenario.plot_state_simple(ax, start, color='b', s=50, zorder=5, label='start')
-        scenario.plot_state_simple(ax, end, color='m', s=20, zorder=5, marker='*', label='end')
-        scenario.plot_goal(ax, goal, color='c', zorder=5, s=50, label='goal')
+        scenario.plot_state_simple(ax, end, color='m', s=20, zorder=6, marker='*', label='final tail planned')
+        scenario.plot_goal(ax, goal, color='c', zorder=4, s=50, label='goal')
         draw_every_n = 1
         T = len(planned_path)
         colormap = cm.winter
@@ -74,9 +74,9 @@ def plot_plan(ax,
 
     handles, labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
-    legend = ax.legend(by_label.values(), by_label.keys(), loc='upper left', bbox_to_anchor=(1, 1))
-
-    return legend
+    handles = list(by_label.values())
+    labels = list(by_label.keys())
+    return handles, labels
 
 
 def animate(environment: Dict,
@@ -84,7 +84,9 @@ def animate(environment: Dict,
             goal: Optional = None,
             planned_path: Optional[List[Dict]] = None,
             actual_path: Optional[List[Dict]] = None,
-            accept_probabilities: Optional[List[float]] = None):
+            accept_probabilities: Optional[List[float]] = None,
+            fps: float = 1):
+    # TODO: de-duplicate this code
     fig = plt.figure(figsize=(20, 20))
     ax = plt.gca()
     extent = environment['full_env/extent']
@@ -124,5 +126,5 @@ def animate(environment: Dict,
         if actual_path is not None:
             scenario.update_artist(actual_path_artist, actual_path[t])
 
-    anim = FuncAnimation(fig, update, frames=len(planned_path), interval=500)
+    anim = FuncAnimation(fig, update, frames=len(planned_path), interval=1000 / fps)
     return anim

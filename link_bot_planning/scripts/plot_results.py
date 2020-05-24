@@ -20,7 +20,7 @@ def main():
     parser.add_argument("plan_idx", type=int_range_arg, help='which plan to show')
     parser.add_argument("plot_type", choices=['plot', 'animate'], help='how to display')
     parser.add_argument("--save", action='store_true')
-    parser.add_argument("--fps", type=int, default=1)
+    parser.add_argument("--fps", type=float, default=1)
     parser.add_argument("--headless", action='store_true', help='do not show the window')
 
     args = parser.parse_args()
@@ -72,7 +72,8 @@ def plot_plan(args, metrics, plan_idx, scenario):
                        scenario=scenario,
                        goal=goal,
                        planned_path=planned_path,
-                       actual_path=actual_path)
+                       actual_path=actual_path,
+                       fps=args.fps)
         if args.save:
             out_filename = args.results_dir / 'plan_vs_execution_{}.gif'.format(plan_idx)
             print(f"Saving {out_filename}")

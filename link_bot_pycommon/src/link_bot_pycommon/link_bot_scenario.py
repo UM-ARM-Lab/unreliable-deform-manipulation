@@ -60,7 +60,8 @@ class LinkBotScenario(ExperimentScenario):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         x = link_bot_points[0, 0]
         y = link_bot_points[0, 1]
-        ax.scatter(x, y, c=color, label=label, **kwargs)
+        scatt = ax.scatter(x, y, c=color, label=label, **kwargs)
+        return scatt
 
     @staticmethod
     def plot_state(ax: plt.Axes,
@@ -78,7 +79,7 @@ class LinkBotScenario(ExperimentScenario):
         line = ax.plot(xs, ys, linewidth=linewidth, c=color, zorder=zorder, label=label, **kwargs)[0]
         txt = None
         if 'num_diverged' in state:
-            txt = ax.text(x=xs[-1], y=ys[-1], s=f"{int(np.squeeze(state['num_diverged']))}", zorder=zorder + 1)
+            txt = ax.text(x=xs[-1], y=ys[-1], s=f"{int(np.squeeze(state['num_diverged']))}", zorder=zorder + 1, alpha=0.8)
             txt.set_path_effects([PathEffects.withStroke(linewidth=1, foreground='w')])
 
         return line, scatt, txt

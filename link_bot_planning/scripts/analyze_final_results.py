@@ -11,7 +11,7 @@ from colorama import Style, Fore
 from scipy import stats
 from tabulate import tabulate
 
-from link_bot_data.classifier_dataset_utils import generate_examples_for_prediction, compute_label_np
+from link_bot_data.classifier_dataset_utils import generate_examples_for_prediction
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import breif_row_stats
@@ -244,6 +244,12 @@ def metrics_main(args):
             final_plan_to_goal_error = scenario.distance_to_goal(final_planned_state, datum['goal'])
             final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, datum['goal'])
             final_plan_to_execution_error = scenario.distance(final_planned_state, final_actual_state)
+
+            if datum['planning_time'] > timeout:
+                timeouts += 1
+                # Do not plot metrics for plans which timeout.
+                continue
+
             final_plan_to_execution_errors.append(final_plan_to_execution_error)
             final_plan_to_goal_errors.append(final_plan_to_goal_error)
             final_execution_to_goal_errors.append(final_execution_to_goal_error)
@@ -256,10 +262,8 @@ def metrics_main(args):
 
             planning_times.append(datum['planning_time'])
 
-            if datum['planning_time'] > timeout:
-                timeouts += 1
-
         timeout_percentage = timeouts / N * 100
+        not_timeout_percentage = 100 - timeouts / N * 100
 
         if not args.no_plot:
             # Execution Success Plot
@@ -268,6 +272,7 @@ def metrics_main(args):
                 success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / N * 100
                 execution_successes.append(success_percentage)
             execution_success_ax.plot(errors_thresholds, execution_successes, label=legend_nickname, linewidth=5, color=color)
+            execution_success_ax.plot([0, max_error], [not_timeout_percentage, not_timeout_percentage])
 
             # Execution Error Plot
             final_execution_to_goal_pdf = stats.gaussian_kde(final_execution_to_goal_errors)
@@ -277,12 +282,13 @@ def metrics_main(args):
                                     c=color)
             max_density = max(np.max(final_execution_to_goal_densities_at_thresholds), max_density)
 
-            # Planning SuccessPlot
+            # Planning Success Plot
             planning_successes = []
             for threshold in errors_thresholds:
                 success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / N * 100
                 planning_successes.append(success_percentage)
             planning_success_ax.plot(errors_thresholds, planning_successes, label=legend_nickname, linewidth=5, c=color)
+            planning_success_ax.plot([0, max_error], [not_timeout_percentage, not_timeout_percentage])
 
         execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
         plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
