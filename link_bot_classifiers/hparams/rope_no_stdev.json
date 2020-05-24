@@ -5,15 +5,17 @@
     "link_bot"
   ],
   "image_key": "trajectory_image",
-  "image_noise_stddev": 0.0,
   "use_local_frame": true,
   "action_in_image": false,
   "rope_image_k": 10000,
   "rnn_size": 128,
-  "fc_layer_sizes": [],
+  "fc_layer_sizes": [128],
   "conv_filters": [
+    [32, [7, 7]],
+    [32, [5, 5]],
+    [32, [5, 5]]
   ],
-  "supervize_full_sequence": false,
+  "supervize_full_sequence": true,
   "mixed": true,
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
@@ -23,6 +25,6 @@
   "local_env_h_rows": 100,
   "local_env_w_cols": 100,
   "learning_rate": 0.0001,
-  "flooding_level": null,
-  "stdev": true
+  "flooding_level": 0.01,
+  "stdev": false
 }
