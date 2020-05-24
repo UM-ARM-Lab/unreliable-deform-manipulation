@@ -63,10 +63,8 @@ class PlanAndExecute:
                  service_provider: Services,
                  no_execution: bool,
                  seed: int,
-                 retry_on_failure: Optional[bool] = True,
                  pause_between_plans: Optional[bool] = False):
         self.pause_between_plans = pause_between_plans
-        self.retry_on_failure = retry_on_failure
         self.planner = planner
         self.n_total_plans = n_total_plans
         self.n_plans_per_env = n_plans_per_env
@@ -81,93 +79,93 @@ class PlanAndExecute:
         # remove all markers
         self.service_provider.marker_provider.remove_all()
 
-        self.plan_idx = 0
         self.total_plan_idx = 0
+        self.n_failures = 0
 
     def run(self):
         self.total_plan_idx = 0
-        initial_poses_in_collision = 0
         while True:
-            self.on_before_plan()
-            self.plan_idx = 0
-            while True:
-                # get start states
-                start_states = get_states_dict(self.service_provider)
-
-                # get the environment, which here means anything which is assumed constant during planning
-                # This includes the occupancy map but can also include things like the initial state of the tether
-
-                environment = get_environment_common(w_m=self.planner.full_env_params.w,
-                                                     h_m=self.planner.full_env_params.h,
-                                                     res=self.planner.full_env_params.res,
-                                                     service_provider=self.service_provider,
-                                                     scenario=self.planner.scenario)
-
-                environment.update(self.planner.scenario.get_environment_from_start_states_dict(start_states))
-
-                # generate a random target
-                goal = self.get_goal(self.planner_params['goal_w_m'], self.planner_params['goal_h_m'], environment)
-
-                if self.verbose >= 1:
-                    # publish goal marker
-                    self.planner.scenario.publish_goal_marker(self.service_provider.marker_provider,
-                                                              goal,
-                                                              self.planner_params['goal_threshold'])
-
-                if self.verbose >= 1:
-                    print(Fore.CYAN + "Planning from {} to {}".format(start_states, goal) + Fore.RESET)
-
-                t0 = time.time()
-                planner_result = self.planner.plan(start_states, environment, goal)
-                my_planner.interpret_planner_status(planner_result.planner_status, self.verbose)
-                planner_data = ob.PlannerData(self.planner.si)
-                self.planner.planner.getPlannerData(planner_data)
-
-                if self.verbose >= 1:
-                    print(planner_result.planner_status.asString())
-
-                self.on_after_plan()
-
-                if not planner_result.planner_status:
-                    print("fail!")
-                    self.on_planner_failure(start_states, goal, environment, planner_data)
-                    if self.retry_on_failure:
-                        break
-                else:  # Approximate or Exact solution found!
-                    planning_time = time.time() - t0
-                    if self.verbose >= 1:
-                        print("Planning time: {:5.3f}s".format(planning_time))
-
-                    self.on_plan_complete(planner_result.path, goal, planner_result.actions, environment, planner_data,
-                                          planning_time, planner_result.planner_status)
-
-                    # execute the plan, collecting the states that actually occurred
-                    if not self.no_execution:
-                        if self.verbose >= 2:
-                            print(Fore.CYAN + "Executing Plan.".format(goal) + Fore.RESET)
-
-                        actual_path = self.execute_plan(planner_result.actions)
-                        self.on_execution_complete(planner_result.path,
-                                                   planner_result.actions,
-                                                   goal,
-                                                   actual_path,
-                                                   environment,
-                                                   planner_data,
-                                                   planning_time,
-                                                   planner_result.planner_status)
-
-                    if self.pause_between_plans:
-                        input("Press enter to proceed to next plan...")
-
-                self.plan_idx += 1
+            self.randomize_environment()
+            for _ in range(self.n_plans_per_env):
+                self.plan_and_execute_once()
                 self.total_plan_idx += 1
-                if self.plan_idx >= self.n_plans_per_env or self.total_plan_idx >= self.n_total_plans:
-                    break
+                if self.total_plan_idx >= self.n_total_plans:
+                    return
 
-            if self.total_plan_idx >= self.n_total_plans:
-                break
+        self.on_complete()
 
-        self.on_complete(initial_poses_in_collision)
+    def plan_and_execute_once(self):
+        # get start states
+        start_states = get_states_dict(self.service_provider)
+
+        # get the environment, which here means anything which is assumed constant during planning
+        # This includes the occupancy map but can also include things like the initial state of the tether
+
+        environment = get_environment_common(w_m=self.planner.full_env_params.w,
+                                             h_m=self.planner.full_env_params.h,
+                                             res=self.planner.full_env_params.res,
+                                             service_provider=self.service_provider,
+                                             scenario=self.planner.scenario)
+
+        environment.update(self.planner.scenario.get_environment_from_start_states_dict(start_states))
+
+        # generate a random target
+        goal = self.get_goal(self.planner_params['goal_w_m'], self.planner_params['goal_h_m'], environment)
+
+        if self.verbose >= 1:
+            # publish goal marker
+            self.planner.scenario.publish_goal_marker(self.service_provider.marker_provider,
+                                                      goal,
+                                                      self.planner_params['goal_threshold'])
+
+        if self.verbose >= 1:
+            print(Fore.CYAN + "Planning from {} to {}".format(start_states, goal) + Fore.RESET)
+
+        t0 = time.time()
+        # Planning #
+        planner_result = self.planner.plan(start_states, environment, goal)
+        ############
+        my_planner.interpret_planner_status(planner_result.planner_status, self.verbose)
+        planner_data = ob.PlannerData(self.planner.si)
+        self.planner.planner.getPlannerData(planner_data)
+
+        if self.verbose >= 1:
+            print(planner_result.planner_status.asString())
+
+        self.on_after_plan()
+
+        if not planner_result.planner_status:
+            print("failure!")
+            self.on_planner_failure(start_states, goal, environment, planner_data)
+            self.n_failures += 1
+            #  nudging hopefully fixes things
+            if self.sim_params.nudge is not None:
+                self.service_provider.nudge(self.planner.n_action)
+        else:  # Approximate or Exact solution found!
+            planning_time = time.time() - t0
+            if self.verbose >= 1:
+                print("Planning time: {:5.3f}s".format(planning_time))
+
+            self.on_plan_complete(planner_result.path, goal, planner_result.actions, environment, planner_data,
+                                  planning_time, planner_result.planner_status)
+
+            # execute the plan, collecting the states that actually occurred
+            if not self.no_execution:
+                if self.verbose >= 2:
+                    print(Fore.CYAN + "Executing Plan.".format(goal) + Fore.RESET)
+
+                actual_path = self.execute_plan(planner_result.actions)
+                self.on_execution_complete(planner_result.path,
+                                           planner_result.actions,
+                                           goal,
+                                           actual_path,
+                                           environment,
+                                           planner_data,
+                                           planning_time,
+                                           planner_result.planner_status)
+
+            if self.pause_between_plans:
+                input("Press enter to proceed to next plan...")
 
     def get_goal(self, w_meters, h_meters, environment):
         return sample_collision_free_goal(goal_w_m=w_meters, goal_h_m=h_meters, environment=environment, rng=self.goal_rng)
@@ -193,7 +191,7 @@ class PlanAndExecute:
                               planner_status: ob.PlannerStatus):
         pass
 
-    def on_complete(self, initial_poses_in_collision):
+    def on_complete(self):
         pass
 
     def on_planner_failure(self,
@@ -219,10 +217,7 @@ class PlanAndExecute:
         pose.orientation.w = q[3]
         return pose
 
-    def on_before_plan(self):
-        if self.sim_params.nudge is not None:
-            self.service_provider.nudge(self.planner.n_action)
-
+    def randomize_environment(self):
         if self.sim_params.randomize_obstacles:
             # generate a new environment by rearranging the obstacles
             movable_obstacles = self.planner_params['movable_obstacles']

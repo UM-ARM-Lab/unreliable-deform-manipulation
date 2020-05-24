@@ -29,6 +29,7 @@ from victor import victor_services
 
 limit_gpu_mem(1)
 
+
 class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
     def __init__(self,
@@ -77,16 +78,15 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         print(Fore.CYAN + str(self.root) + Fore.RESET)
         self.metrics_filename = self.root / 'metrics.json'
         self.failures_root = self.root / 'failures'
-        self.n_failures = 0
         self.successfully_completed_plan_idx = 0
         self.goal = goal
         self.reset_robot = reset_robot
 
-    def on_before_plan(self):
+    def randomize_environment(self):
         if self.reset_robot is not None:
             self.service_provider.reset_world(self.verbose, self.reset_robot)
 
-        super().on_before_plan()
+        super().randomize_environment()
 
     def on_after_plan(self):
         if self.record:
@@ -160,10 +160,10 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                                     draw_rejected=False)
 
         final_actual_handle = self.planner.scenario.plot_state_simple(ax,
-                                                final_state,
-                                                color='orange',
-                                                zorder=6,
-                                                alpha=0.5)
+                                                                      final_state,
+                                                                      color='orange',
+                                                                      zorder=6,
+                                                                      alpha=0.5)
 
         handles.append(final_actual_handle)
         labels.append("final tail actual")
@@ -182,13 +182,12 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         if self.record:
             self.service_provider.stop_record_trial()
 
-    def on_complete(self, initial_poses_in_collision):
-        self.metrics['initial_poses_in_collision'] = initial_poses_in_collision
+    def on_complete(self):
+        self.metrics['n_failures'] = self.n_failures
         metrics_file = self.metrics_filename.open('w')
         json.dump(self.metrics, metrics_file, indent=2)
 
     def on_planner_failure(self, start_states, tail_goal_point, environment: Dict, planner_data):
-        self.n_failures += 1
         folder = self.failures_root / str(self.n_failures)
         folder.mkdir(parents=True)
         info_file = (folder / 'info.json').open('w')
