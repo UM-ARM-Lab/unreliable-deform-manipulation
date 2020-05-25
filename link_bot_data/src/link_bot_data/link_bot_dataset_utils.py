@@ -323,10 +323,12 @@ def is_reconverging(labels, label_threshold=0.5):
     float_labels = tf.cast(labels, tf.float32)
     int_labels = tf.cast(labels, tf.int64)
     starts_with_1 = float_labels[:, 0] > label_threshold
+    ends_with_1 = float_labels[:, -1] > label_threshold
     num_ones = tf.reduce_sum(int_labels, axis=1)
     index_of_last_1 = float_labels.shape[1] - tf.argmax(tf.reverse(float_labels, axis=[1]), axis=1) - 1
     reconverging = (index_of_last_1 >= num_ones)
-    return tf.logical_and(reconverging, starts_with_1)
+    reconverging_and_start_end_1 = tf.stack([reconverging, starts_with_1, ends_with_1], axis=1)
+    return tf.reduce_all(reconverging_and_start_end_1, axis=1)
 
 
 def num_reconverging(labels):

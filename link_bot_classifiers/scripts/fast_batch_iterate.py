@@ -8,7 +8,7 @@ import numpy as np
 import progressbar
 
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import num_reconverging
+from link_bot_data.link_bot_dataset_utils import num_reconverging, num_reconverging_subsequences
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)
@@ -21,11 +21,12 @@ def main():
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
     parser.add_argument('--batch-size', type=int, default=4096)
+    parser.add_argument('--take', type=int)
 
     args = parser.parse_args()
 
     classifier_dataset = ClassifierDataset(args.dataset_dirs)
-    dataset = classifier_dataset.get_datasets(mode=args.mode)
+    dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
 
     dataset = dataset.batch(args.batch_size)
 
@@ -36,7 +37,7 @@ def main():
     for example in progressbar.progressbar(dataset):
         is_close = example['is_close'].numpy().squeeze()
         positive_count += np.count_nonzero(is_close)
-        reconverging_count += num_reconverging(is_close)
+        reconverging_count += num_reconverging_subsequences(is_close)
         count += is_close.size
 
         # Print statistics intermittently

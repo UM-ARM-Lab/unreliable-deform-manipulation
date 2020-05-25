@@ -19,6 +19,7 @@ class MyTestCase(unittest.TestCase):
         self.assertFalse(batch_is_reconverging_output[2])
         self.assertTrue(remove_batch(is_reconverging(tf.constant([[1, 0, 0, 1]], tf.int64))).numpy())
         self.assertFalse(remove_batch(is_reconverging(tf.constant([[1, 0, 0, 0]], tf.int64))).numpy())
+        self.assertFalse(remove_batch(is_reconverging(tf.constant([[1, 0, 1, 0]], tf.int64))).numpy())
 
     def test_num_reconverging_subsequences(self):
         self.assertEqual(num_reconverging_subsequences(tf.constant([[1, 0, 0, 1], [1, 1, 1, 0], [1, 0, 1, 1]], tf.int64)).numpy(),
