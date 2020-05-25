@@ -120,7 +120,7 @@ def has_already_diverged(transition: Dict, labeling_params):
     return already_diverged
 
 
-def balance(dataset, labeling_params: Dict, cache_negative : bool = True):
+def balance(dataset, labeling_params: Dict, cache_negative: bool = True):
     def _label_is(label_is):
         def __filter(transition):
             result = tf.squeeze(tf.equal(transition['label'], label_is))
@@ -319,8 +319,33 @@ def strip_time_format(feature_name):
         return feature_name[3:]
 
 
-def is_reconverging(labels):
-    num_ones = tf.reduce_sum(labels)
-    index_of_last_1 = tf.reduce_max(tf.where(labels))
+def is_reconverging(labels, label_threshold=0.5):
+    float_labels = tf.cast(labels, tf.float32)
+    int_labels = tf.cast(labels, tf.int64)
+    starts_with_1 = float_labels[:, 0] > label_threshold
+    num_ones = tf.reduce_sum(int_labels, axis=1)
+    index_of_last_1 = float_labels.shape[1] - tf.argmax(tf.reverse(float_labels, axis=[1]), axis=1) - 1
     reconverging = (index_of_last_1 >= num_ones)
-    return reconverging
+    return tf.logical_and(reconverging, starts_with_1)
+
+
+def num_reconverging(labels):
+    """
+    :param labels: [B, H] matrix
+    :return:
+    """
+
+    return tf.math.reduce_sum(tf.cast(is_reconverging(labels), dtype=tf.int32))
+
+
+def num_reconverging_subsequences(labels):
+    """
+    :param labels: [B, H] matrix
+    :return:
+    """
+    n = 0
+    for start_idx in range(labels.shape[1]):
+        for end_idx in range(start_idx + 2, labels.shape[1] + 1):
+            n_i = num_reconverging(labels[:, start_idx:end_idx])
+            n += n_i
+    return n

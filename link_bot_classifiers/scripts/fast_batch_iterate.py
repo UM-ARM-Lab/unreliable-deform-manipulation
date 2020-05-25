@@ -8,6 +8,7 @@ import numpy as np
 import progressbar
 
 from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.link_bot_dataset_utils import num_reconverging
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)
@@ -30,31 +31,30 @@ def main():
 
     positive_count = 0
     count = 0
+    reconverging_count = 0
     t0 = perf_counter()
     for example in progressbar.progressbar(dataset):
         is_close = example['is_close'].numpy().squeeze()
         positive_count += np.count_nonzero(is_close)
+        reconverging_count += num_reconverging(is_close)
         count += is_close.size
 
         # Print statistics intermittently
         if count % 10 == 0:
-            print_stats_and_timing(count, positive_count)
+            print_stats_and_timing(count, positive_count, reconverging_count)
 
     total_dt = perf_counter() - t0
 
-    print_stats_and_timing(count, positive_count, total_dt)
+    print_stats_and_timing(count, positive_count, reconverging_count, total_dt=total_dt)
 
 
-def print_stats_and_timing(count, positive_count, total_dt=None):
+def print_stats_and_timing(count, positive_count, reconverging_count, total_dt=None):
     print()  # newline for clarity
-    negative_count = count - positive_count
     if total_dt is not None:
-        print("Total iteration time = {:.4f}".format(total_dt))
-    class_balance = positive_count / count * 100
-    print("Number of examples: {}".format(count))
-    print("Number positive: {}".format(positive_count))  # newline for clarity
-    print("Number negative: {}".format(negative_count))
-    print("Class balance: {:4.1f}% positive".format(class_balance))
+        print(f"Total iteration time = {total_dt:.4f}")
+    print(f"Total: {count}")
+    print(f"Positive: {positive_count} ({positive_count / count * 100:3.2f}%)")
+    print(f"Reconverging: {reconverging_count} ({reconverging_count / count * 100:3.2f}%)")
 
 
 if __name__ == '__main__':

@@ -10,6 +10,7 @@ import tensorflow as tf
 from link_bot_data.classifier_dataset_utils import predict_and_nullify
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import data_directory, is_reconverging
+from moonshine.moonshine_utils import remove_batch, add_batch
 from state_space_dynamics import model_utils
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_pycommon import longest_reconverging_subsequence, trim_reconverging
@@ -64,7 +65,7 @@ def main():
         sequence_for_state_key = outputs[state_key]
         model_error = tf.linalg.norm(sequence_for_state_key - pred_sequence_for_state_key, axis=2)
         labels = tf.cast(model_error < threshold, dtype=tf.int64)
-        reconverging = is_reconverging(labels)
+        reconverging = remove_batch(is_reconverging(add_batch(labels)))
         labels_list = labels.numpy().squeeze()
         start_idx, end_idx = longest_reconverging_subsequence(labels_list)
         max_consecutive_zeros = end_idx - start_idx
