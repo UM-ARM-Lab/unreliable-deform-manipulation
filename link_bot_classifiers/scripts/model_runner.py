@@ -12,6 +12,7 @@ from colorama import Fore
 import link_bot_classifiers
 from link_bot_classifiers.visualization import visualize_classifier_example, classifier_example_title
 from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.link_bot_dataset_utils import filter_only_reconverging, is_reconverging
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.classifier_losses_and_metrics import binary_classification_loss_function, binary_classification_metrics_function, \
@@ -21,7 +22,7 @@ from moonshine.metric import AccuracyMetric
 from moonshine.moonshine_utils import remove_batch
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
-limit_gpu_mem(3)
+limit_gpu_mem(5)
 
 
 def train_main(args, seed: int):
@@ -100,6 +101,8 @@ def eval_main(args, seed: int):
     ###############
     test_dataset = ClassifierDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
+    if args.only_reconverging:
+        test_tf_dataset = test_tf_dataset.filter(filter_only_reconverging)
 
     ###############
     # Evaluate
@@ -131,9 +134,8 @@ def viz_main(args, seed: int):
     ###############
     # Dataset
     ###############
-    dataset_name = "_and_".join([d.name for d in args.dataset_dirs])
-    classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True, no_balance=not args.balance)
-    tf_dataset = classifier_dataset.get_datasets(mode=args.mode).batch(args.batch_size).shuffle(buffer_size=2048, seed=seed)
+    classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
+    tf_dataset = classifier_dataset.get_datasets(mode=args.mode).batch(args.batch_size)
 
     ###############
     # Evaluate
@@ -150,45 +152,47 @@ def viz_main(args, seed: int):
             predictions = keras_model(example, training=False)
             example = remove_batch(example)
             predictions = remove_batch(predictions)
+            example['trajectory_image'] = predictions['images']
 
-            accept_probabilities = predictions['probabilities']
-            last_valid_idx = int(example['last_valid_idx'].numpy().squeeze())
-            accept_probabilities = accept_probabilities.numpy().squeeze()
-            accept = accept_probabilities[-1] > args.classifier_threshold
-            label = example['label'].numpy().squeeze()
-            false_negative = label and not accept
-            false_positive = accept and not label
-            is_close = example['is_close'].numpy().squeeze()
-            n_valid_states = last_valid_idx + 1
-            valid_is_close = is_close[:last_valid_idx + 1]
-            num_diverged = n_valid_states - np.count_nonzero(valid_is_close)
-            reconverging = num_diverged > 0 and valid_is_close[-1]
+            for end_idx in range(1, classifier_dataset.horizon):
+                accept_probabilities = predictions['probabilities']
+                accept_probabilities = accept_probabilities.numpy().squeeze()
+                accept = accept_probabilities[-1] > args.classifier_threshold
+                is_close = example['is_close'].numpy()
+                label = is_close[end_idx]
+                false_negative = label and not accept
+                false_positive = accept and not label
+                accept_probabilities_t = accept_probabilities[:end_idx + 1]
+                reconverging = is_reconverging(is_close[:end_idx + 1])
+                wrong = false_negative or false_positive
 
-            if args.only_negative and label != 0:
-                continue
-            if args.only_positive and label != 1:
-                continue
-            if args.only_false_negatives and not false_negative:
-                continue
-            if args.only_false_positives and not false_positive:
-                continue
-            if args.only_reconverging and not reconverging:
-                continue
-            if args.only_length and not last_valid_idx == (args.only_length - 1):
-                continue
+                if args.only_negative and label != 0:
+                    continue
+                if args.only_positive and label != 1:
+                    continue
+                if args.only_false_negatives and not false_negative:
+                    continue
+                if args.only_false_positives and not false_positive:
+                    continue
+                if args.only_reconverging and not reconverging:
+                    continue
+                if args.only_wrong and not wrong:
+                    continue
+                if args.only_length and not end_idx == args.only_length:
+                    continue
 
-            title = classifier_example_title(example)
-            handle = visualize_classifier_example(args=args,
-                                                  scenario=scenario,
-                                                  outdir=outdir,
-                                                  model_hparams=model_hparams,
-                                                  classifier_dataset=classifier_dataset,
-                                                  example=example,
-                                                  example_idx=example_idx,
-                                                  title=title,
-                                                  accept_probabilities=accept_probabilities,
-                                                  fps=args.fps)
-            plt.show(block=True)
+                title = classifier_example_title(example)
+                handle = visualize_classifier_example(args=args,
+                                                      scenario=scenario,
+                                                      outdir=outdir,
+                                                      model_hparams=model_hparams,
+                                                      classifier_dataset=classifier_dataset,
+                                                      example=example_t,
+                                                      example_idx=example_idx,
+                                                      title=title,
+                                                      accept_probabilities=accept_probabilities_t,
+                                                      fps=args.fps)
+                plt.show(block=True)
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
 
@@ -219,9 +223,10 @@ def main():
     eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
-    eval_parser.add_argument('--batch-size', type=int, default=64)
+    eval_parser.add_argument('--batch-size', type=int, default=128)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.add_argument('--seed', type=int, default=None)
+    eval_parser.add_argument('--only-reconverging', action='store_true')
     eval_parser.set_defaults(func=eval_main)
 
     viz_parser = subparsers.add_parser('viz')
@@ -230,13 +235,13 @@ def main():
     viz_parser.add_argument('display_type', choices=['just_count', 'image', 'anim', 'plot'])
     viz_parser.add_argument('--batch-size', type=int, default=1)
     viz_parser.add_argument('--classifier-threshold', type=float, default=0.5)
-    viz_parser.add_argument('--shuffle', action='store_true')
     viz_parser.add_argument('--balance', action='store_true')
     viz_parser.add_argument('--only-negative', action='store_true')
     viz_parser.add_argument('--only-positive', action='store_true')
     viz_parser.add_argument('--only-false-positives', action='store_true')
     viz_parser.add_argument('--only-length', type=int)
     viz_parser.add_argument('--only-false-negatives', action='store_true')
+    viz_parser.add_argument('--only-wrong', action='store_true')
     viz_parser.add_argument('--only-reconverging', action='store_true')
     viz_parser.add_argument('--save', action='store_true')
     viz_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')

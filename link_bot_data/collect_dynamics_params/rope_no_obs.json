@@ -9,8 +9,8 @@
   "goal_h_m": 2.1,
   "max_step_size": 0.01,
   "move_objects_every_n": 0,
-  "movable_obstacles": [
-  ],
+  "movable_obstacles": {
+  },
   "steps_per_traj": 10,
   "trajs_per_file": 128,
   "no_obstacles": false

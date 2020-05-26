@@ -34,14 +34,15 @@ class LinkBotScenario(ExperimentScenario):
         max_delta_pos = service_provider.get_max_speed() * params.dt
         new_action = Action()
         while True:
-            # sample the previous action with 80% probability
+            # sample the previous action with 90% probability
             # we implicit use a dynamics model for the gripper here, which in this case is identity linear dynamics
-            if last_action is not None and action_rng.uniform(0, 1) < 0.80:
+            if last_action is not None and action_rng.uniform(0, 1) < 0.90:
                 dx = last_action.action[0]
                 dy = last_action.action[1]
             else:
                 dx, dy = LinkBotScenario.random_delta_pos(action_rng, max_delta_pos)
 
+            # check that the gripper will still be within the artificial bounds of the environment
             half_w = params.goal_w_m / 2
             half_h = params.goal_h_m / 2
             if -half_w <= state['gripper'][0] + dx <= half_w and -half_h <= state['gripper'][1] + dy <= half_h:

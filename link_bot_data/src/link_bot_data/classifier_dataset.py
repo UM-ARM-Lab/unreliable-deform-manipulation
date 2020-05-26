@@ -17,6 +17,7 @@ class ClassifierDataset(BaseDataset):
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
         self.labeling_params = self.hparams['labeling_params']
         self.label_state_key = self.hparams['labeling_params']['state_key']
+        self.horizon = self.hparams['labeling_params']['classifier_horizon']
 
         self.state_keys = self.hparams['state_keys']
         self.cache_negative = False

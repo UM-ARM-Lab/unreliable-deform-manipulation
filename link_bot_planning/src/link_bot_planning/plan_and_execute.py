@@ -8,13 +8,11 @@ import numpy as np
 from colorama import Fore
 from ompl import base as ob
 
-from geometry_msgs.msg import Pose
 from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_pycommon import quaternion_from_euler
 from link_bot_pycommon.params import SimParams
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 from link_bot_pycommon.ros_pycommon import get_states_dict
@@ -90,9 +88,7 @@ class PlanAndExecute:
                 self.plan_and_execute_once()
                 self.total_plan_idx += 1
                 if self.total_plan_idx >= self.n_total_plans:
-                    return
-
-        self.on_complete()
+                    self.on_complete()
 
     def plan_and_execute_once(self):
         # get start states
@@ -204,25 +200,11 @@ class PlanAndExecute:
     def on_after_plan(self):
         pass
 
-    def sample_obstacle_position(self, xy_range: Dict):
-        xrange = xy_range['x']
-        yrange = xy_range['y']
-        pose = Pose()
-        pose.position.x = self.env_rng.uniform(*xrange)
-        pose.position.y = self.env_rng.uniform(*yrange)
-        q = quaternion_from_euler(0, 0, self.env_rng.uniform(-np.pi, np.pi))
-        pose.orientation.x = q[0]
-        pose.orientation.y = q[1]
-        pose.orientation.z = q[2]
-        pose.orientation.w = q[3]
-        return pose
-
     def randomize_environment(self):
         if self.sim_params.randomize_obstacles:
             # generate a new environment by rearranging the obstacles
             movable_obstacles = self.planner_params['movable_obstacles']
-            om_object_positions = {name: self.sample_obstacle_position(xy_range) for name, xy_range in movable_obstacles.items()}
-            self.service_provider.move_objects(om_object_positions)
+            self.service_provider.move_objects_randomly(self.env_rng, movable_obstacles)
 
     def execute_plan(self, actions):
         """

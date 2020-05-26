@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from dataclasses_json import dataclass_json
 
@@ -70,7 +70,7 @@ class CollectDynamicsParams:
     max_step_size: float
     dt: float
     steps_per_traj: int
-    movable_obstacles: List[str]
+    movable_obstacles: dict()
     trajs_per_file: int
     no_obstacles: bool
     goal_radius_m: Optional[float] = None

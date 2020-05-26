@@ -1,4 +1,5 @@
 import pathlib
+import tensorflow as tf
 from typing import Optional, Dict, List
 
 import numpy as np
@@ -83,7 +84,7 @@ def visualize_classifier_example(args,
     if args.display_type == 'just_count':
         pass
     elif args.display_type == 'image':
-        return trajectory_image_from_example(example, model_hparams, title)
+        return trajectory_image_from_example(example, model_hparams, title, accept_probabilities)
     elif args.display_type == 'anim':
         anim = trajectory_animation(scenario, classifier_dataset, example, example_idx, accept_probabilities, fps=fps)
         if args.save:
@@ -157,18 +158,19 @@ def trajectory_plot(ax,
                 scenario.plot_state(ax, planned_s_t, color=planned_color, s=5, zorder=3, label='planned state', alpha=0.5)
 
 
-def trajectory_image_from_example(example, model_hparams, title):
+def trajectory_image_from_example(example, model_hparams, title, accept_probabilities=None):
     image_key = model_hparams['image_key']
 
     image = example[image_key].numpy()
     actions = example['action']
+    is_close = example['is_close']
     T = image.shape[0]
     fig, axes = plt.subplots(nrows=1, ncols=T)
-    trajectory_image(axes=axes, image=image, actions=actions)
+    trajectory_image(axes=axes, image=image, actions=actions, labels=is_close, accept_probabilities=accept_probabilities)
     fig.suptitle(title)
 
 
-def trajectory_image(axes, image, actions = None):
+def trajectory_image(axes, image, actions=None, labels=None, accept_probabilities=None):
     T = image.shape[0]
     for t in range(T):
         env_image_t = np.tile(image[t, :, :, -1:], [1, 1, 3])
@@ -178,7 +180,12 @@ def trajectory_image(axes, image, actions = None):
         axes[t].set_title(f"t={t}")
         if t < T - 1:
             if actions is not None:
-                axes[t].text(x=10, y=image.shape[1] + 10, s=f"u={actions[t]}")
+                axes[t].text(x=10, y=image.shape[1] + 10, s=f"a={actions[t]}")
+        if t > 0:
+            if accept_probabilities is not None:
+                axes[t].text(x=10, y=image.shape[1] + 25, s=f"p={accept_probabilities[t - 1]:0.3f}")
+            if labels is not None:
+                axes[t].text(x=10, y=image.shape[1] + 40, s=f"p={labels[t]:0.3f}")
         axes[t].set_xticks([])
         axes[t].set_yticks([])
 

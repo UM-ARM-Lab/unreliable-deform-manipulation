@@ -11,6 +11,7 @@ from colorama import Fore
 
 from link_bot_pycommon import link_bot_pycommon
 from link_bot_pycommon.filesystem_utils import mkdir_and_ask
+from moonshine.moonshine_utils import remove_batch, add_batch
 
 NULL_PAD_VALUE = -10000
 
@@ -320,6 +321,11 @@ def strip_time_format(feature_name):
 
 
 def is_reconverging(labels, label_threshold=0.5):
+    """
+    :param labels: a [B, H] matrix of 1/0 or true/false
+    :param label_threshold: numbers above this threshold are considered true
+    :return: a [B] binary vector with [i] true for if labels[i] is reconverging
+    """
     float_labels = tf.cast(labels, tf.float32)
     int_labels = tf.cast(labels, tf.int64)
     starts_with_1 = float_labels[:, 0] > label_threshold
@@ -351,3 +357,13 @@ def num_reconverging_subsequences(labels):
             n_i = num_reconverging(labels[:, start_idx:end_idx])
             n += n_i
     return n
+
+
+def filter_only_reconverging(example):
+    is_close = example['is_close']
+    return remove_batch(is_reconverging(add_batch(is_close)))
+
+
+def filter_no_reconverging(example):
+    is_close = example['is_close']
+    return tf.logical_not(remove_batch(is_reconverging(add_batch(is_close))))

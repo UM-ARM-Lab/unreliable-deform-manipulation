@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict
+from typing import Optional, Dict
 
 import numpy as np
 from colorama import Fore
@@ -9,11 +9,10 @@ from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from geometry_msgs.msg import Pose
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.link_bot_pycommon import quaternion_from_euler
+from link_bot_pycommon.ros_pycommon import xy_move
 from peter_msgs.msg import ModelsPoses
 from peter_msgs.srv import WorldControlRequest, ExecuteActionRequest, GetObject, LinkBotReset, \
     LinkBotResetRequest, Position2DEnable, Position2DEnableRequest, Position2DAction, Position2DActionRequest
-
-from link_bot_pycommon.ros_pycommon import xy_move
 from std_msgs.msg import String
 from std_srvs.srv import Empty, EmptyRequest
 
@@ -108,15 +107,15 @@ class GazeboServices(Services):
 
     @staticmethod
     def random_object_position(w: float, h: float, padding: float, rng: np.random.RandomState) -> Pose:
-        pose = Pose()
-        pose.position.x = rng.uniform(-w / 2 + padding, w / 2 - padding)
-        pose.position.y = rng.uniform(-h / 2 + padding, h / 2 - padding)
-        q = quaternion_from_euler(0, 0, rng.uniform(-np.pi, np.pi))
-        pose.orientation.x = q[0]
-        pose.orientation.y = q[1]
-        pose.orientation.z = q[2]
-        pose.orientation.w = q[3]
-        return pose
+        xy_range = {
+            'x': [-w / 2 + padding, w / 2 - padding],
+            'y': [-h / 2 + padding, h / 2 - padding],
+        }
+        return sample_obstacle_position(rng, xy_range)
+
+    def move_objects_randomly(self, env_rng, movable_obstacles):
+        random_object_positions = sample_obstacle_positions(env_rng, movable_obstacles)
+        self.move_objects(random_object_positions)
 
     def move_objects_to_positions(self, object_positions_dict):
         object_moves = {}
@@ -140,7 +139,6 @@ class GazeboServices(Services):
             movable_object_services['enable'](enable_req)
 
         # Move the objects
-        move_action = ModelsPoses()
         for object_name, pose in object_moves.items():
             movable_object_services = self.movable_object_services[object_name]
             move_action_req = Position2DActionRequest()
@@ -162,3 +160,22 @@ class GazeboServices(Services):
         wait = WorldControlRequest()
         wait.steps = int(2 / self.max_step_size)
         self.world_control(wait)  # this will block until stepping is complete
+
+
+def sample_obstacle_position(env_rng, xy_range: Dict) -> Pose:
+    xrange = xy_range['x']
+    yrange = xy_range['y']
+    pose = Pose()
+    pose.position.x = env_rng.uniform(*xrange)
+    pose.position.y = env_rng.uniform(*yrange)
+    q = quaternion_from_euler(0, 0, env_rng.uniform(-np.pi, np.pi))
+    pose.orientation.x = q[0]
+    pose.orientation.y = q[1]
+    pose.orientation.z = q[2]
+    pose.orientation.w = q[3]
+    return pose
+
+
+def sample_obstacle_positions(env_rng, movable_obstacles) -> Dict[str, Pose]:
+    random_object_positions = {name: sample_obstacle_position(env_rng, xy_range) for name, xy_range in movable_obstacles.items()}
+    return random_object_positions

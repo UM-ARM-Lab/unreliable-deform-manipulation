@@ -69,7 +69,20 @@ class RNNImageClassifier(MyKerasModel):
         self.output_layer = layers.Dense(1, activation=None)
         self.sigmoid = layers.Activation("sigmoid")
 
-    @tf.function
+    def make_traj_images_from_input_dict(self, input_dict):
+        # First flatten batch & time
+        transposed_states_dict = {k: tf.transpose(input_dict[add_planned(k)], [1, 0, 2]) for k in self.states_keys}
+        states_dict_batch_time = flatten_batch_and_time(transposed_states_dict)
+        padded_action = tf.pad(input_dict['action'], [[0, 0], [0, 1], [0, 0]])
+        time = int(padded_action.shape[1])
+        local_env_center_point_batch_time = self.scenario.local_environment_center_differentiable(states_dict_batch_time)
+        images_batch_and_time = self.make_traj_images(environment=self.scenario.get_environment_from_example(input_dict),
+                                                      states_dict_batch_time=states_dict_batch_time,
+                                                      local_env_center_point_batch_time=local_env_center_point_batch_time,
+                                                      padded_actions=padded_action,
+                                                      time=time)
+        return images_batch_and_time, padded_action, time
+
     def make_traj_images(self,
                          environment,
                          states_dict_batch_time,
@@ -113,7 +126,6 @@ class RNNImageClassifier(MyKerasModel):
         images_batch_time = tf.concat(concat_args, axis=3)
         return images_batch_time
 
-    @tf.function
     def _conv(self, images, time):
         # merge batch & time dimensions
         conv_z = images
@@ -128,18 +140,10 @@ class RNNImageClassifier(MyKerasModel):
 
     @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
-        # First flatten batch & time
-        transposed_states_dict = {k: tf.transpose(input_dict[add_planned(k)], [1, 0, 2]) for k in self.states_keys}
-        states_dict_batch_time = flatten_batch_and_time(transposed_states_dict)
-        padded_action = tf.pad(input_dict['action'], [[0, 0], [0, 1], [0, 0]])
-        time = int(padded_action.shape[1])
-        local_env_center_point_batch_time = self.scenario.local_environment_center_differentiable(states_dict_batch_time)
-        images_batch_and_time = self.make_traj_images(environment=self.scenario.get_environment_from_example(input_dict),
-                                                      states_dict_batch_time=states_dict_batch_time,
-                                                      local_env_center_point_batch_time=local_env_center_point_batch_time,
-                                                      padded_actions=padded_action,
-                                                      time=time)
+        images_batch_and_time, padded_action, time = self.make_traj_images_from_input_dict(input_dict)
 
+        images = tf.reshape(images_batch_and_time, [time, self.batch_size, self.local_env_h_rows, self.local_env_w_cols, -1])
+        images = tf.transpose(images, [1, 0, 2, 3, 4])  # undo transpose
         conv_output = self._conv(images_batch_and_time, time)
         conv_output = tf.transpose(conv_output, [1, 0, 2])  # undo transpose
 
@@ -186,6 +190,7 @@ class RNNImageClassifier(MyKerasModel):
             'logits': valid_accept_logits,
             'probabilities': valid_accept_probabilities,
             'mask': mask,
+            'images': images,
         }
 
 

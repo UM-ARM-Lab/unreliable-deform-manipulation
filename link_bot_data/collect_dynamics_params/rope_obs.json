@@ -8,20 +8,101 @@
   "goal_w_m": 2.10,
   "goal_h_m": 2.10,
   "max_step_size": 0.01,
-  "movable_obstacles": [
-    "moving_box1",
-    "moving_box2",
-    "moving_box3",
-    "moving_box6",
-    "moving_box7",
-    "moving_box8",
-    "moving_box9",
-    "moving_box10",
-    "moving_box11"
-  ],
+  "movable_obstacles": {
+    "moving_box1": {
+      "x": [
+        -0.70,
+        -0.5
+      ],
+      "y": [
+        0.5,
+        0.7
+      ]
+    },
+    "moving_box2": {
+      "x": [
+        -0.4,
+        0.4
+      ],
+      "y": [
+        0.5,
+        0.7
+      ]
+    },
+    "moving_box3": {
+      "x": [
+        0.0,
+        0.4
+      ],
+      "y": [
+        0.5,
+        0.7
+      ]
+    },
+    "moving_box4": {
+      "x": [
+        -0.7,
+        -0.5
+      ],
+      "y": [
+        -0.4,
+        0.4
+      ]
+    },
+    "moving_box5": {
+      "x": [
+        -0.25,
+        0.25
+      ],
+      "y": [
+        -0.25,
+        0.25
+      ]
+    },
+    "moving_box6": {
+      "x": [
+        0.5,
+        0.7
+      ],
+      "y": [
+        -0.4,
+        0.4
+      ]
+    },
+    "moving_box7": {
+      "x": [
+        -0.7,
+        -0.5
+      ],
+      "y": [
+        -0.7,
+        -0.5
+      ]
+    },
+    "moving_box8": {
+      "x": [
+        -0.4,
+        0.4
+      ],
+      "y": [
+        -0.7,
+        -0.5
+      ]
+    },
+    "moving_box9": {
+      "x": [
+        0.5,
+        0.7
+      ],
+      "y": [
+        -0.7,
+        -0.5
+      ]
+    }
+  },
   "no_obstacles": false,
   "steps_per_traj": 50,
-  "trajs_per_file": 1
+  "trajs_per_file": 16
 }
 
 

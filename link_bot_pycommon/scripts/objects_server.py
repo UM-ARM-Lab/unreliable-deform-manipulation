@@ -3,7 +3,7 @@ import rospy
 
 from peter_msgs.msg import SubspaceDescription
 from peter_msgs.srv import GetObjects, GetObject, GetObjectRequest, GetObjectsResponse, StateSpaceDescription, \
-    StateSpaceDescriptionResponse
+    StateSpaceDescriptionResponse, ListObjects, ListObjectsResponse
 from std_msgs.msg import String
 
 object_services = {}
@@ -43,10 +43,20 @@ def register_object_handler(msg):
     object_services[msg.data] = new_object_service
 
 
+def list_objects_handler(req):
+    global object_services
+
+    res = ListObjectsResponse()
+    for name in object_services.keys():
+        res.names.append(name)
+    return res
+
+
 if __name__ == '__main__':
     rospy.init_node('objects_server')
 
     objects_service = rospy.Service("objects", GetObjects, objects_handler)
+    list_objects_service = rospy.Service("list_objects", ListObjects, list_objects_handler)
     states_description_service = rospy.Service("states_description", StateSpaceDescription, state_space_handler)
     register_object = rospy.Subscriber("register_object", String, register_object_handler)
     rospy.spin()

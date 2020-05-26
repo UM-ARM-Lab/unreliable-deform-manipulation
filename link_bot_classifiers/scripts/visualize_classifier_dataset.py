@@ -34,7 +34,7 @@ def main():
     parser.add_argument('--save', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--fps', type=int, default=1)
-    parser.add_argument('--only-length', type=int)
+    parser.add_argument('--at-least-length', type=int)
     parser.add_argument('--take', type=int)
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--only-positive', action='store_true')
@@ -130,7 +130,7 @@ def main():
         #       example['classifier_start_t'].numpy(),
         #       example['classifier_end_t'].numpy())
         valid_seq_length = (example['classifier_end_t'] - example['classifier_start_t'] + 1).numpy()
-        if args.only_length and args.only_length != valid_seq_length:
+        if args.at_least_length and valid_seq_length < args.at_least_length:
             continue
 
         _ = visualize_classifier_example(args=args,
