@@ -30,7 +30,6 @@ def main():
     parser.add_argument('display_type', choices=['just_count', 'image', 'anim', 'plot'])
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
     parser.add_argument('--shuffle', action='store_true')
-    parser.add_argument('--balance', action='store_true')
     parser.add_argument('--save', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--fps', type=int, default=1)
@@ -49,7 +48,7 @@ def main():
     np.random.seed(args.seed)
     tf.random.set_seed(args.seed)
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs, no_balance=not args.balance, load_true_states=True)
+    classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
 
     scenario = get_scenario(classifier_dataset.hparams['scenario'])

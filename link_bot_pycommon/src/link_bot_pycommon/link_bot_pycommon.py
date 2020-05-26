@@ -150,7 +150,7 @@ def print_dict(example):
         if hasattr(v, 'dtype'):
             dtype = v.dtype
         else:
-            dtype = '?'
+            dtype = type(v)
         if hasattr(v, 'shape'):
             shape = v.shape
         else:

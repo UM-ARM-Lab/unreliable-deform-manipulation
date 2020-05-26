@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import null_pad, add_planned, null_diverged, null_previous_states
+from link_bot_data.link_bot_dataset_utils import add_planned, null_diverged, null_previous_states
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 
 

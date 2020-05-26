@@ -35,7 +35,7 @@ class BaseDataset:
                     print(Fore.RED + msg + Fore.RESET)
 
         self.desired_sequence_length = None
-        self.max_sequence_length = self.hparams['sequence_length']
+        self.max_sequence_length = self.hparams.get('sequence_length', None)
 
     def get_datasets(self,
                      mode: str,

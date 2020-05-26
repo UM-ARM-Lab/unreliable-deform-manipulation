@@ -116,12 +116,18 @@ def eval_main(args, seed: int):
     # Evaluate
     ###############
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
-    if model_hparams['supervize_full_sequence']:
+    if model_hparams['loss_type'] == 'weighted_sequence':
+        loss_function = reconverging_weighted_binary_classification_sequence_loss_function
+        metrics_function = binary_classification_sequence_metrics_function
+    elif model_hparams['loss_type'] == 'sequence':
         loss_function = binary_classification_sequence_loss_function
         metrics_function = binary_classification_sequence_metrics_function
-    else:
+    elif model_hparams['loss_type'] == 'final_step':
         metrics_function = binary_classification_metrics_function
         loss_function = binary_classification_loss_function
+    else:
+        raise NotImplementedError()
+
     evaluate(keras_model=net,
              test_tf_dataset=test_tf_dataset,
              loss_function=loss_function,

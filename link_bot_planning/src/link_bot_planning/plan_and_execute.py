@@ -85,10 +85,12 @@ class PlanAndExecute:
         while True:
             self.randomize_environment()
             for _ in range(self.n_plans_per_env):
-                self.plan_and_execute_once()
-                self.total_plan_idx += 1
-                if self.total_plan_idx >= self.n_total_plans:
-                    self.on_complete()
+                success = self.plan_and_execute_once()
+                if success:
+                    self.total_plan_idx += 1
+                    if self.total_plan_idx >= self.n_total_plans:
+                        self.on_complete()
+                        return
 
     def plan_and_execute_once(self):
         # get start states
@@ -137,6 +139,7 @@ class PlanAndExecute:
             #  nudging hopefully fixes things
             if self.sim_params.nudge is not None:
                 self.service_provider.nudge(self.planner.n_action)
+            return False
         else:  # Approximate or Exact solution found!
             planning_time = time.time() - t0
             if self.verbose >= 1:
@@ -162,6 +165,7 @@ class PlanAndExecute:
 
             if self.pause_between_plans:
                 input("Press enter to proceed to next plan...")
+            return True
 
     def get_goal(self, w_meters, h_meters, environment):
         return sample_collision_free_goal(goal_w_m=w_meters, goal_h_m=h_meters, environment=environment, rng=self.goal_rng)
