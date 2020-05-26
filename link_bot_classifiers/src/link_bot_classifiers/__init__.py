@@ -1,10 +1,8 @@
-from link_bot_classifiers import single_image_classifier, none_classifier, rnn_image_classifier
+from link_bot_classifiers import none_classifier, rnn_image_classifier
 
 
 def get_model(model_class_name):
-    if model_class_name == 'raster':
-        return single_image_classifier.SingleImageClassifier
-    elif model_class_name == 'rnn':
+    if model_class_name == 'rnn':
         return rnn_image_classifier.RNNImageClassifier
     elif model_class_name == "none":
         return none_classifier.NoneClassifier
