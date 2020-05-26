@@ -9,7 +9,7 @@ from ompl import base as ob
 from link_bot_planning.state_spaces import compound_to_numpy
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import states_are_equal
+from moonshine.moonshine_utils import states_are_equal, listify
 
 
 def plot_plan(ax,
@@ -75,7 +75,7 @@ def planner_data_to_json(planner_data, state_space_description):
         edges_map = ob.mapUintToPlannerDataEdge()
 
         np_s = compound_to_numpy(state_space_description, s)
-        json['vertices'].append(np_s)
+        json['vertices'].append(listify(np_s))
 
         planner_data.getEdges(vertex_index, edges_map)
         for vertex_index2 in edges_map.keys():
@@ -83,10 +83,10 @@ def planner_data_to_json(planner_data, state_space_description):
             s2 = v2.getState()
             np_s2 = compound_to_numpy(state_space_description, s2)
             # FIXME: have a "plot edge" function in the experiment scenario?
-            json['edges'].append({
+            json['edges'].append(listify({
                 'from': np_s,
                 'to': np_s2,
-            })
+            }))
     return json
 
 

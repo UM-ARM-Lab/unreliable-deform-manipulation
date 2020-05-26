@@ -1,6 +1,7 @@
 from typing import Optional, List, Tuple
 
 import numpy as np
+import tensorflow as tf
 from colorama import Fore
 
 
@@ -175,6 +176,24 @@ def load_sdf(filename):
         origin = np.array(sdf.shape, dtype=np.int32).reshape(2) // 2
         print(Fore.YELLOW + "WARNING: sdf npz file does not specify its origin, assume origin {}".format(origin) + Fore.RESET)
     return sdf, grad, res, origin
+
+
+def inflate_tf(env: OccupancyData, radius_m: float):
+    assert radius_m >= 0
+    if radius_m == 0:
+        return env
+
+    radius = tf.cast(radius_m / env.resolution, tf.int64)
+    conv = tf.keras.layers.Conv2D(filters=1,
+                                  kernel_size=[2 * radius, 2 * radius],
+                                  padding='same',
+                                  use_bias=False,
+                                  weights=[tf.ones(2 * radius, 2 * radius)])
+    inflated_data = conv(env.data)
+    inflated = OccupancyData(data=inflated_data,
+                             origin=env.origin,
+                             resolution=env.resolution)
+    return inflated
 
 
 def inflate(env: OccupancyData, radius_m: float):

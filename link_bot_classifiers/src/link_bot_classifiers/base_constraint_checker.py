@@ -16,7 +16,7 @@ class BaseConstraintChecker:
     def check_constraint(self,
                          environment: Dict,
                          states_sequence: List[Dict],
-                         actions: np.ndarray) -> float:
+                         actions: np.ndarray):
         pass
 
     def check_constraint_differentiable(self,

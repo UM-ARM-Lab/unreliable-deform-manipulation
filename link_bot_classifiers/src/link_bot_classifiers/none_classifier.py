@@ -11,12 +11,13 @@ class NoneClassifier(BaseConstraintChecker):
 
     def __init__(self, scenario: ExperimentScenario):
         super().__init__(scenario)
+        self.horizon = 2
 
     def check_constraint(self,
                          environment: Dict,
                          states_sequence: List[Dict],
-                         actions: np.ndarray) -> float:
-        return 1.0
+                         actions: np.ndarray):
+        return [1.0]
 
     def check_constraint_differentiable(self,
                                         environment: Dict,

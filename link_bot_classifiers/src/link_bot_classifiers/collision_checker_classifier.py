@@ -77,6 +77,7 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
         xs1, ys1 = vector_to_points_2d(s1)
         xs2, ys2 = vector_to_points_2d(s2)
 
+        # TODO: tensorflow-ify inflate to make collision checking faster here
         inflated_local_env = link_bot_sdf_utils.inflate(local_env_data, self.inflation_radius)
         first_point_check = self.check_collision(inflated_local_env.data, res, local_env_origin, xs1, ys1)
         second_point_check = self.check_collision(inflated_local_env.data, res, local_env_origin, xs2, ys2)
