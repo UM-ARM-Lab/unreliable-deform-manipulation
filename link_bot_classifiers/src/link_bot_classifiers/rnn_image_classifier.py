@@ -208,7 +208,7 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
-        self.ckpt.restore(self.manager.latest_checkpoint)
+        self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
 
     def check_trajectory(self,
                          environment: Dict,
