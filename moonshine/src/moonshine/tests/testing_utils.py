@@ -1,10 +1,14 @@
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
 
 def assert_dicts_close_np(a, b):
     for v1, v2 in zip(a.values(), b.values()):
         assert np.allclose(v1, v2)
+
+
+def assert_close_tf(a, b, rtol=1e-4, atol=1e-8):
+    assert tf.reduce_all(tf.abs(a - b) <= tf.abs(b) * rtol + atol)
 
 
 def assert_dicts_close_tf(a, b, rtol=1e-4, atol=1e-8):

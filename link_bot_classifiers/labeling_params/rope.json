@@ -3,5 +3,5 @@
   "state_key": "link_bot",
   "prediction_horizon": 50,
   "classifier_horizon": 8,
-  "start_step": 1
+  "start_step": 2
 }

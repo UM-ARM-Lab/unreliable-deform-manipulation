@@ -16,7 +16,8 @@ from link_bot_data.link_bot_dataset_utils import filter_only_reconverging, is_re
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.classifier_losses_and_metrics import binary_classification_loss_function, binary_classification_metrics_function, \
-    binary_classification_sequence_loss_function, binary_classification_sequence_metrics_function
+    binary_classification_sequence_loss_function, binary_classification_sequence_metrics_function, \
+    reconverging_weighted_binary_classification_sequence_loss_function
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.metric import AccuracyMetric
 from moonshine.moonshine_utils import remove_batch, add_batch
@@ -63,12 +64,17 @@ def train_main(args, seed: int):
     ###############
     # Train
     ###############
-    if model_hparams['supervize_full_sequence']:
+    if model_hparams['loss_type'] == 'weighted_sequence':
+        loss_function = reconverging_weighted_binary_classification_sequence_loss_function
+        metrics_function = binary_classification_sequence_metrics_function
+    elif model_hparams['loss_type'] == 'sequence':
         loss_function = binary_classification_sequence_loss_function
         metrics_function = binary_classification_sequence_metrics_function
-    else:
+    elif model_hparams['loss_type'] == 'final_step':
         metrics_function = binary_classification_metrics_function
         loss_function = binary_classification_loss_function
+    else:
+        raise NotImplementedError()
 
     net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
     train(keras_model=net,
@@ -214,7 +220,7 @@ def main():
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--take', type=int)
-    train_parser.add_argument('--epochs', type=int, default=150)
+    train_parser.add_argument('--epochs', type=int, default=20)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches',
