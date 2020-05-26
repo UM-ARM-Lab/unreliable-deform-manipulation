@@ -1,5 +1,4 @@
 import pathlib
-import tensorflow as tf
 from typing import Optional, Dict, List
 
 import numpy as np
@@ -79,12 +78,13 @@ def visualize_classifier_example(args,
                                  example_idx: int,
                                  title: str,
                                  accept_probabilities: Optional = None,
+                                 end_idx=None,
                                  fps: Optional[int] = 1):
     image_key = model_hparams['image_key']
     if args.display_type == 'just_count':
         pass
     elif args.display_type == 'image':
-        return trajectory_image_from_example(example, model_hparams, title, accept_probabilities)
+        return trajectory_image_from_example(example, model_hparams, title, accept_probabilities, end_idx)
     elif args.display_type == 'anim':
         anim = trajectory_animation(scenario, classifier_dataset, example, example_idx, accept_probabilities, fps=fps)
         if args.save:
@@ -158,7 +158,7 @@ def trajectory_plot(ax,
                 scenario.plot_state(ax, planned_s_t, color=planned_color, s=5, zorder=3, label='planned state', alpha=0.5)
 
 
-def trajectory_image_from_example(example, model_hparams, title, accept_probabilities=None):
+def trajectory_image_from_example(example, model_hparams, title, accept_probabilities=None, end_idx=None):
     image_key = model_hparams['image_key']
 
     image = example[image_key].numpy()
@@ -166,12 +166,19 @@ def trajectory_image_from_example(example, model_hparams, title, accept_probabil
     is_close = example['is_close']
     T = image.shape[0]
     fig, axes = plt.subplots(nrows=1, ncols=T)
-    trajectory_image(axes=axes, image=image, actions=actions, labels=is_close, accept_probabilities=accept_probabilities)
+    trajectory_image(axes=axes,
+                     image=image,
+                     actions=actions,
+                     labels=is_close,
+                     accept_probabilities=accept_probabilities,
+                     end_idx=end_idx)
     fig.suptitle(title)
 
 
-def trajectory_image(axes, image, actions=None, labels=None, accept_probabilities=None):
+def trajectory_image(axes, image, actions=None, labels=None, accept_probabilities=None, end_idx=None):
     T = image.shape[0]
+    if end_idx is not None:
+        T = min(T, end_idx + 1)
     for t in range(T):
         env_image_t = np.tile(image[t, :, :, -1:], [1, 1, 3])
         state_image_t = state_image_to_cmap(image[t, :, :, :-1])
@@ -186,6 +193,7 @@ def trajectory_image(axes, image, actions=None, labels=None, accept_probabilitie
                 axes[t].text(x=10, y=image.shape[1] + 25, s=f"p={accept_probabilities[t - 1]:0.3f}")
             if labels is not None:
                 axes[t].text(x=10, y=image.shape[1] + 40, s=f"p={labels[t]:0.3f}")
+    for t in range(image.shape[0]):
         axes[t].set_xticks([])
         axes[t].set_yticks([])
 

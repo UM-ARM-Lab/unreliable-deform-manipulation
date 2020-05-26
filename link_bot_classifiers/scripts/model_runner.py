@@ -12,14 +12,14 @@ from colorama import Fore
 import link_bot_classifiers
 from link_bot_classifiers.visualization import visualize_classifier_example, classifier_example_title
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import filter_only_reconverging, is_reconverging
+from link_bot_data.link_bot_dataset_utils import filter_only_reconverging, is_reconverging, filter_no_reconverging
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.classifier_losses_and_metrics import binary_classification_loss_function, binary_classification_metrics_function, \
     binary_classification_sequence_loss_function, binary_classification_sequence_metrics_function
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.metric import AccuracyMetric
-from moonshine.moonshine_utils import remove_batch
+from moonshine.moonshine_utils import remove_batch, add_batch
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
 limit_gpu_mem(5)
@@ -103,6 +103,8 @@ def eval_main(args, seed: int):
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
     if args.only_reconverging:
         test_tf_dataset = test_tf_dataset.filter(filter_only_reconverging)
+    if args.only_not_reconverging:
+        test_tf_dataset = test_tf_dataset.filter(filter_no_reconverging)
 
     ###############
     # Evaluate
@@ -157,13 +159,12 @@ def viz_main(args, seed: int):
             for end_idx in range(1, classifier_dataset.horizon):
                 accept_probabilities = predictions['probabilities']
                 accept_probabilities = accept_probabilities.numpy().squeeze()
-                accept = accept_probabilities[-1] > args.classifier_threshold
+                accept = accept_probabilities[end_idx - 1] > args.classifier_threshold
                 is_close = example['is_close'].numpy()
                 label = is_close[end_idx]
                 false_negative = label and not accept
                 false_positive = accept and not label
-                accept_probabilities_t = accept_probabilities[:end_idx + 1]
-                reconverging = is_reconverging(is_close[:end_idx + 1])
+                reconverging = is_reconverging(add_batch(is_close[:end_idx + 1]))
                 wrong = false_negative or false_positive
 
                 if args.only_negative and label != 0:
@@ -182,17 +183,21 @@ def viz_main(args, seed: int):
                     continue
 
                 title = classifier_example_title(example)
-                handle = visualize_classifier_example(args=args,
-                                                      scenario=scenario,
-                                                      outdir=outdir,
-                                                      model_hparams=model_hparams,
-                                                      classifier_dataset=classifier_dataset,
-                                                      example=example_t,
-                                                      example_idx=example_idx,
-                                                      title=title,
-                                                      accept_probabilities=accept_probabilities_t,
-                                                      fps=args.fps)
-                plt.show(block=True)
+                if not args.no_show:
+                    handle = visualize_classifier_example(args=args,
+                                                          scenario=scenario,
+                                                          outdir=outdir,
+                                                          model_hparams=model_hparams,
+                                                          classifier_dataset=classifier_dataset,
+                                                          example=example,
+                                                          example_idx=example_idx,
+                                                          title=title,
+                                                          accept_probabilities=accept_probabilities,
+                                                          end_idx=end_idx,
+                                                          fps=args.fps)
+                    plt.show(block=True)
+                else:
+                    print(is_close[:end_idx + 1], accept_probabilities[:end_idx])
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)
 
@@ -227,6 +232,7 @@ def main():
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.add_argument('--seed', type=int, default=None)
     eval_parser.add_argument('--only-reconverging', action='store_true')
+    eval_parser.add_argument('--only-not-reconverging', action='store_true')
     eval_parser.set_defaults(func=eval_main)
 
     viz_parser = subparsers.add_parser('viz')
@@ -243,7 +249,9 @@ def main():
     viz_parser.add_argument('--only-false-negatives', action='store_true')
     viz_parser.add_argument('--only-wrong', action='store_true')
     viz_parser.add_argument('--only-reconverging', action='store_true')
+    viz_parser.add_argument('--only-not-reconverging', action='store_true')
     viz_parser.add_argument('--save', action='store_true')
+    viz_parser.add_argument('--no-show', action='store_true')
     viz_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
     viz_parser.add_argument('--verbose', '-v', action='count', default=0)
     viz_parser.add_argument('--seed', type=int, default=1)
