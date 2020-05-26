@@ -21,7 +21,7 @@
   "bias_reg": 0.05,
   "activity_reg": 0.05,
   "dropout_rate": 0.0,
-  "batch_norm": false,
+  "batch_norm": true,
   "local_env_h_rows": 100,
   "local_env_w_cols": 100,
   "learning_rate": 0.0001,
