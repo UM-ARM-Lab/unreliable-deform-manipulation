@@ -24,7 +24,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def sample_action(service_provider: Services, state, last_action, params, action_rng):
+    def sample_action(environment: Dict, service_provider: Services, state, last_action, params, action_rng):
         raise NotImplementedError()
 
     @staticmethod
@@ -53,6 +53,10 @@ class ExperimentScenario:
 
     @staticmethod
     def plot_goal(ax, goal, color, label=None, **kwargs):
+        raise NotImplementedError()
+
+    @staticmethod
+    def state_to_points(state: Dict):
         raise NotImplementedError()
 
     @staticmethod
@@ -119,7 +123,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def get_environment_from_start_states_dict(start_states: Dict):
+    def get_environment_from_state_dict(start_states: Dict):
         raise NotImplementedError()
 
     @classmethod

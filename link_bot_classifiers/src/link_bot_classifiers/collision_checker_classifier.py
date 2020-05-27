@@ -5,6 +5,7 @@ from typing import List, Dict
 import numpy as np
 import tensorflow as tf
 
+import link_bot_pycommon.collision_checking
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -25,28 +26,6 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
         self.local_h_rows = self.model_hparams['local_h_rows']
         self.local_w_cols = self.model_hparams['local_w_cols']
         self.horizon = 2
-
-    @staticmethod
-    def check_collision_inflated(scenario: ExperimentScenario,
-                                 local_h_rows: int,
-                                 local_w_cols: int,
-                                 environment: Dict,
-                                 state: Dict,
-                                 inflation_radius: float = DEFAULT_INFLATION_RADIUS):
-        full_env = environment['full_env/env']
-        full_env_origin = environment['full_env/origin']
-        res = environment['full_env/res']
-        xs, ys = vector_to_points_2d(state['link_bot'])
-        local_env_center = tf.cast(scenario.local_environment_center(state), tf.float32)
-        local_env, local_env_origin = get_local_env_and_origin(center_point=local_env_center,
-                                                               full_env=full_env,
-                                                               full_env_origin=full_env_origin,
-                                                               res=res,
-                                                               local_h_rows=local_h_rows,
-                                                               local_w_cols=local_w_cols)
-        local_env_data = OccupancyData(data=local_env, origin=local_env_origin, resolution=res)
-        inflated_local_env = link_bot_sdf_utils.inflate(local_env_data, inflation_radius)
-        return CollisionCheckerClassifier.check_collision(inflated_local_env, res, local_env_origin, xs, ys)
 
     @staticmethod
     def check_collision(inflated_local_env, resolution, origin, xs, ys):
@@ -77,8 +56,7 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
         xs1, ys1 = vector_to_points_2d(s1)
         xs2, ys2 = vector_to_points_2d(s2)
 
-        # TODO: tensorflow-ify inflate to make collision checking faster here
-        inflated_local_env = link_bot_sdf_utils.inflate(local_env_data, self.inflation_radius)
+        inflated_local_env = link_bot_pycommon.collision_checking.inflate_tf(local_env_data.data, self.inflation_radius, local_env_data.resolution)
         first_point_check = self.check_collision(inflated_local_env.data, res, local_env_origin, xs1, ys1)
         second_point_check = self.check_collision(inflated_local_env.data, res, local_env_origin, xs2, ys2)
         prediction = 1.0 if (first_point_check and second_point_check) else 0.0

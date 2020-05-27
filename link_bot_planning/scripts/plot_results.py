@@ -45,7 +45,7 @@ def main():
         environment = metrics['environment']
         in_collision = False
         for state in metrics['planned_path']:
-            in_collision = in_collision or cc(scenario, local_env_h_rows, local_env_w_cols, environment, state)
+            in_collision = in_collision or cc(scenario, local_env_h_rows, local_env_w_cols, environment, ??)
 
         if args.only_in_collision and not in_collision:
             continue

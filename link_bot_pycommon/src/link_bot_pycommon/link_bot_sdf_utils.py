@@ -1,7 +1,6 @@
 from typing import Optional, List, Tuple
 
 import numpy as np
-import tensorflow as tf
 from colorama import Fore
 
 
@@ -178,45 +177,11 @@ def load_sdf(filename):
     return sdf, grad, res, origin
 
 
-def inflate_tf(env: OccupancyData, radius_m: float):
-    assert radius_m >= 0
-    if radius_m == 0:
-        return env
-
-    radius = tf.cast(radius_m / env.resolution, tf.int64)
-    conv = tf.keras.layers.Conv2D(filters=1,
-                                  kernel_size=[2 * radius, 2 * radius],
-                                  padding='same',
-                                  use_bias=False,
-                                  weights=[tf.ones(2 * radius, 2 * radius)])
-    inflated_data = conv(env.data)
-    inflated = OccupancyData(data=inflated_data,
-                             origin=env.origin,
-                             resolution=env.resolution)
-    return inflated
-
-
-def inflate(env: OccupancyData, radius_m: float):
-    assert radius_m >= 0
-    if radius_m == 0:
-        return env
-
-    inflated_data = np.copy(env.data)
-    radius = int(radius_m / env.resolution)
-
-    for i, j in np.ndindex(env.data.shape):
-        try:
-            if env.data[i, j] == 1:
-                for di in range(-radius, radius + 1):
-                    for dj in range(-radius, radius + 1):
-                        r = i + di
-                        c = j + dj
-                        if 0 <= r < env.data.shape[0] and 0 <= c < env.data.shape[1]:
-                            inflated_data[i + di, j + dj] = 1
-        except IndexError:
-            pass
-
-    inflated = OccupancyData(data=inflated_data,
-                             origin=env.origin,
-                             resolution=env.resolution)
-    return inflated
+def env_from_occupancy_data(occupancy_data: OccupancyData):
+    environment = {
+        'full_env/env': occupancy_data.data,
+        'full_env/origin': occupancy_data.origin,
+        'full_env/res': occupancy_data.resolution,
+        'full_env/extent': occupancy_data.extent,
+    }
+    return environment

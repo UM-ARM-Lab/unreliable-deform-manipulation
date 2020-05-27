@@ -105,7 +105,7 @@ class PlanAndExecute:
                                              service_provider=self.service_provider,
                                              scenario=self.planner.scenario)
 
-        environment.update(self.planner.scenario.get_environment_from_start_states_dict(start_states))
+        environment.update(self.planner.scenario.get_environment_from_state_dict(start_states))
 
         # generate a random target
         goal = self.get_goal(self.planner_params['goal_w_m'], self.planner_params['goal_h_m'], environment)

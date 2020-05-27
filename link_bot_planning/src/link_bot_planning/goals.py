@@ -2,6 +2,7 @@ from typing import Dict
 
 import numpy as np
 
+import link_bot_pycommon.collision_checking
 from link_bot_pycommon import link_bot_sdf_utils
 
 
@@ -25,7 +26,7 @@ def sample_collision_free_goal(goal_w_m: float,
     occupancy_data = link_bot_sdf_utils.OccupancyData(data=environment['full_env/env'],
                                                       resolution=environment['full_env/res'],
                                                       origin=environment['full_env/origin'])
-    occupancy_data = link_bot_sdf_utils.inflate(occupancy_data, radius_m=0.025)
+    occupancy_data = link_bot_pycommon.collision_checking.inflate(occupancy_data, radius_m=0.025)
 
     while True:
         x, y = sample_goal(goal_w_m, goal_h_m, rng)

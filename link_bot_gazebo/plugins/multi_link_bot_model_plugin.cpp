@@ -438,7 +438,7 @@ bool MultiLinkBotModelPlugin::ResetRobot(peter_msgs::LinkBotResetRequest &req, p
   gripper1_target_position_.X(req.point.x);
   gripper1_target_position_.Y(req.point.y);
 
-  while (true) {
+  for (int i; i < 30; ++i) {
     auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
     auto const steps = static_cast<unsigned int>(1.0 / seconds_per_step);
     // Wait until the setpoint is reached

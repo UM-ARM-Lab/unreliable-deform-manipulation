@@ -14,7 +14,7 @@ from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, 
 from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_pycommon.link_bot_sdf_utils import OccupancyData
+from link_bot_pycommon.link_bot_sdf_utils import OccupancyData, env_from_occupancy_data
 from link_bot_pycommon.params import FullEnvParams, SimParams, CollectDynamicsParams
 from link_bot_pycommon.ros_pycommon import get_states_dict
 
@@ -51,8 +51,9 @@ def generate_traj(scenario: ExperimentScenario,
     action_msg = None
     for time_idx in range(params.steps_per_traj):
         state_dict = get_states_dict(service_provider)
-
-        action_msg = scenario.sample_action(service_provider=service_provider,
+        environment = env_from_occupancy_data(full_env_data)
+        action_msg = scenario.sample_action(environment=environment,
+                                            service_provider=service_provider,
                                             state=state_dict,
                                             last_action=action_msg,
                                             params=params,

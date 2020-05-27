@@ -25,7 +25,7 @@ def state_space_handler(req):
     global object_services
 
     res = StateSpaceDescriptionResponse()
-    for service in object_services.values():
+    for name, service in object_services.items():
         object_req = GetObjectRequest()
         object_res = service.call(object_req)
         subspace = SubspaceDescription()

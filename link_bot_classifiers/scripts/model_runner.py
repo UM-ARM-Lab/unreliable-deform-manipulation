@@ -12,7 +12,7 @@ from colorama import Fore
 import link_bot_classifiers
 from link_bot_classifiers.visualization import visualize_classifier_example, classifier_example_title
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import filter_only_reconverging, is_reconverging, filter_no_reconverging
+from link_bot_data.link_bot_dataset_utils import filter_only_reconverging, is_reconverging, filter_no_reconverging, cachename
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.classifier_losses_and_metrics import binary_classification_loss_function, binary_classification_metrics_function, \
@@ -49,6 +49,11 @@ def train_main(args, seed: int):
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
     val_tf_dataset = val_dataset.get_datasets(mode='val')
+
+    if args.only_converging:
+        train_tf_dataset = train_tf_dataset.filter(filter_only_reconverging).cache(cachename())
+        val_tf_dataset = val_tf_dataset.filter(filter_only_reconverging).cache(cachename())
+        model_hparams['only_reconverging'] = True
 
     # to mix up examples so each batch is diverse
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=2048, seed=seed, reshuffle_each_iteration=True)
@@ -229,6 +234,7 @@ def main():
     train_parser.add_argument('--epochs', type=int, default=20)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
+    train_parser.add_argument('--only-converging', action='store_true')
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches',
                               default=100)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs',

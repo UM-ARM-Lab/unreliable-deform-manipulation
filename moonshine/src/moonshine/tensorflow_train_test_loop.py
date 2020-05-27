@@ -243,11 +243,13 @@ def train(keras_model: MyKerasModel,
                 else:
                     key_metric_value = val_mean_metrics[key_metric.key()]
 
-                if best_key_metric_value is None or key_metric.is_better_than(key_metric_value, best_key_metric_value):
-                    best_key_metric_value = key_metric_value
-                    if logging:
-                        save_path = manager.save()
-                        print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(step, save_path) + Fore.RESET)
+                save_path = manager.save()
+                print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(step, save_path) + Fore.RESET)
+                # if best_key_metric_value is None or key_metric.is_better_than(key_metric_value, best_key_metric_value):
+                #     best_key_metric_value = key_metric_value
+                #     if logging:
+                #         save_path = manager.save()
+                #         print(Fore.CYAN + "Step {:6d}: Saved checkpoint {}".format(step, save_path) + Fore.RESET)
 
         if not logging:
             # save the last model, which will be saved in tmp, just in case we did want it

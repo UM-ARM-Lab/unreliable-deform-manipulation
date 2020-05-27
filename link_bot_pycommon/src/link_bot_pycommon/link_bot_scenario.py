@@ -6,9 +6,11 @@ import numpy as np
 import tensorflow as tf
 
 from ignition.markers import MarkerProvider
+from link_bot_classifiers.collision_checker_classifier import DEFAULT_INFLATION_RADIUS
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_pycommon.base_services import Services
+from link_bot_pycommon.collision_checking import griper_interpolate_cc_and_oob
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import CollectDynamicsParams
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
@@ -26,7 +28,8 @@ class LinkBotScenario(ExperimentScenario):
         return dx, dy
 
     @staticmethod
-    def sample_action(service_provider: Services,
+    def sample_action(environment: Dict,
+                      service_provider: Services,
                       state,
                       last_action: Action,
                       params: CollectDynamicsParams,
@@ -34,18 +37,25 @@ class LinkBotScenario(ExperimentScenario):
         max_delta_pos = service_provider.get_max_speed() * params.dt
         new_action = Action()
         while True:
-            # sample the previous action with 90% probability
+            # sample the previous action with 80% probability
             # we implicit use a dynamics model for the gripper here, which in this case is identity linear dynamics
-            if last_action is not None and action_rng.uniform(0, 1) < 0.90:
+            if last_action is not None and action_rng.uniform(0, 1) < 0.80:
                 dx = last_action.action[0]
                 dy = last_action.action[1]
             else:
                 dx, dy = LinkBotScenario.random_delta_pos(action_rng, max_delta_pos)
 
             # check that the gripper will still be within the artificial bounds of the environment
-            half_w = params.goal_w_m / 2
-            half_h = params.goal_h_m / 2
-            if -half_w <= state['gripper'][0] + dx <= half_w and -half_h <= state['gripper'][1] + dy <= half_h:
+            next_gripper_pos = np.array([state['gripper'][0] + dx, state['gripper'][1] + dy])
+            # check that the gripper will not be in collision
+            in_collision_or_oob = griper_interpolate_cc_and_oob(environment=environment,
+                                                                xy0=state['gripper'],
+                                                                xy1=next_gripper_pos,
+                                                                inflate_radius_m=DEFAULT_INFLATION_RADIUS).numpy()
+            if in_collision_or_oob:
+                # nope try again. sample new random action
+                last_action = None
+            else:
                 break
 
         new_action.action = [dx, dy]
@@ -91,6 +101,11 @@ class LinkBotScenario(ExperimentScenario):
         artist = plot_arrow(ax, link_bot_points[-1, 0], link_bot_points[-1, 1], action[0], action[1], zorder=zorder,
                             linewidth=linewidth, color=color, **kwargs)
         return artist
+
+    @staticmethod
+    def state_to_points(state: Dict):
+        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+        return link_bot_points
 
     @staticmethod
     def distance_to_goal(
@@ -236,7 +251,7 @@ class LinkBotScenario(ExperimentScenario):
         return s_t + ds_t
 
     @staticmethod
-    def get_environment_from_start_states_dict(start_states: Dict):
+    def get_environment_from_state_dict(start_states: Dict):
         return {}
 
     @staticmethod
