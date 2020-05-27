@@ -17,7 +17,7 @@ from link_bot_pycommon.get_scenario import get_scenario
 from moonshine import experiments_util
 from moonshine.classifier_losses_and_metrics import binary_classification_loss_function, binary_classification_metrics_function, \
     binary_classification_sequence_loss_function, binary_classification_sequence_metrics_function, \
-    reconverging_weighted_binary_classification_sequence_loss_function
+    reconverging_weighted_binary_classification_sequence_loss_function, negative_weighted_binary_classification_sequence_loss_function
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.metric import AccuracyMetric
 from moonshine.moonshine_utils import remove_batch, add_batch
@@ -121,8 +121,11 @@ def eval_main(args, seed: int):
     # Evaluate
     ###############
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
-    if model_hparams['loss_type'] == 'weighted_sequence':
-        loss_function = reconverging_weighted_binary_classification_sequence_loss_function
+    if model_hparams['loss_type'] == 'negative_weighted_sequence':
+        loss_function = negative_weighted_binary_classification_sequence_loss_function
+        metrics_function = binary_classification_sequence_metrics_function
+    elif model_hparams['loss_type'] == 'sequence':
+        loss_function = binary_classification_sequence_loss_function
         metrics_function = binary_classification_sequence_metrics_function
     elif model_hparams['loss_type'] == 'sequence':
         loss_function = binary_classification_sequence_loss_function
