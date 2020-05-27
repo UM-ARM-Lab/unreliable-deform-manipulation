@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from link_bot_pycommon.link_bot_pycommon import longest_reconverging_subsequence, trim_reconverging
+from link_bot_pycommon.pycommon import longest_reconverging_subsequence, trim_reconverging
 
 
 class Test(TestCase):

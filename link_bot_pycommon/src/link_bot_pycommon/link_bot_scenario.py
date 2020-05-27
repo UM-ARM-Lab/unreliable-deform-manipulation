@@ -10,7 +10,7 @@ from link_bot_classifiers.collision_checker_classifier import DEFAULT_INFLATION_
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_pycommon.base_services import Services
-from link_bot_pycommon.collision_checking import griper_interpolate_cc_and_oob
+from link_bot_pycommon.collision_checking import gripper_interpolate_cc_and_oob
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import CollectDynamicsParams
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
@@ -48,10 +48,10 @@ class LinkBotScenario(ExperimentScenario):
             # check that the gripper will still be within the artificial bounds of the environment
             next_gripper_pos = np.array([state['gripper'][0] + dx, state['gripper'][1] + dy])
             # check that the gripper will not be in collision
-            in_collision_or_oob = griper_interpolate_cc_and_oob(environment=environment,
-                                                                xy0=state['gripper'],
-                                                                xy1=next_gripper_pos,
-                                                                inflate_radius_m=DEFAULT_INFLATION_RADIUS).numpy()
+            in_collision_or_oob = gripper_interpolate_cc_and_oob(environment=environment,
+                                                                 xy0=state['gripper'],
+                                                                 xy1=next_gripper_pos,
+                                                                 inflate_radius_m=DEFAULT_INFLATION_RADIUS).numpy()
             if in_collision_or_oob:
                 # nope try again. sample new random action
                 last_action = None
@@ -104,8 +104,24 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def state_to_points(state: Dict):
+        """
+        :param state:
+        :return:
+        >>> LinkBotScenario.state_to_points({'link_bot': np.array([0, 0, 1, 1, 2, 2]), 'gripper': np.array([0, 0])})
+        array([[0, 0],
+               [1, 1],
+               [2, 2],
+               [0, 0]])
+        """
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
-        return link_bot_points
+        gripper_position = np.reshape(state['gripper'], [-1, 2])
+        points = np.concatenate([link_bot_points, gripper_position], axis=0)
+        return points
+
+    @staticmethod
+    def state_to_gripper_position(state: Dict):
+        gripper_position = np.reshape(state['gripper'], [-1, 2])
+        return gripper_position
 
     @staticmethod
     def distance_to_goal(

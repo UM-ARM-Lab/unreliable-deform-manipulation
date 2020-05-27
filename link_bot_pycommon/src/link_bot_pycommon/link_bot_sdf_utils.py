@@ -1,6 +1,7 @@
 from typing import Optional, List, Tuple
 
 import numpy as np
+import tensorflow as tf
 from colorama import Fore
 
 
@@ -56,6 +57,15 @@ def compute_extent(rows: int,
     xmin, ymin = idx_to_point(0, 0, resolution, origin)
     xmax, ymax = idx_to_point(rows, cols, resolution, origin)
     return np.array([xmin, xmax, ymin, ymax], dtype=np.float32)
+
+
+def batch_point_to_idx_tf(x,
+                       y,
+                       resolution: float,
+                       origin):
+    col = tf.cast(x / resolution + origin[1], tf.int64)
+    row = tf.cast(y / resolution + origin[0], tf.int64)
+    return row, col
 
 
 def point_to_idx(x: float,

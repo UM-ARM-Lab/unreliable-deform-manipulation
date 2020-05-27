@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_pycommon import n_state_to_n_points
+from link_bot_pycommon.pycommon import n_state_to_n_points
 from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, sequence_of_dicts_to_dict_of_sequences
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 

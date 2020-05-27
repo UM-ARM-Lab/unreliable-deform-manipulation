@@ -5,7 +5,7 @@ import tensorflow as tf
 from ompl import base as ob
 
 from link_bot_planning.viz_object import VizObject
-from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon import pycommon
 
 
 class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
@@ -21,7 +21,7 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
         super(ValidRopeConfigurationSampler, self).__init__(state_space)
         self.extent = extent
         self.rope_length = rope_length
-        self.n_links = link_bot_pycommon.n_state_to_n_links(n_state)
+        self.n_links = pycommon.n_state_to_n_links(n_state)
         self.n_state = n_state
         if self.n_links == 0:
             self.link_length = 0
@@ -32,11 +32,11 @@ class ValidRopeConfigurationSampler(ob.RealVectorStateSampler):
         self.rng = rng
 
     def sampleUniform(self, state_out: ob.AbstractState):
-        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent,
-                                                                                     n_state=self.n_state,
-                                                                                     link_length=self.link_length,
-                                                                                     max_angle_rad=self.max_angle_rad,
-                                                                                     rng=self.rng)
+        random_rope_configuration = pycommon.make_random_rope_configuration(self.extent,
+                                                                            n_state=self.n_state,
+                                                                            link_length=self.link_length,
+                                                                            max_angle_rad=self.max_angle_rad,
+                                                                            rng=self.rng)
         for i in range(random_rope_configuration.shape[0]):
             state_out[i] = random_rope_configuration[i]
         self.viz_object.states_sampled_at.append(random_rope_configuration)
@@ -60,7 +60,7 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
         self.rope_length = rope_length
         self.n_rope_state = n_rope_state
         self.link_bot_subspace_idx = link_bot_state_idx
-        self.n_links = link_bot_pycommon.n_state_to_n_links(self.n_rope_state)
+        self.n_links = pycommon.n_state_to_n_links(self.n_rope_state)
         if self.n_links == 0:
             self.link_length = 0
         else:
@@ -72,11 +72,11 @@ class ValidRopeConfigurationCompoundSampler(ob.RealVectorStateSampler):
     def sampleUniform(self, state_out: ob.CompoundStateInternal):
         # We don't bother filling out the other components of state here because we assume they have zero weight
         # so distance calculations won't consider them
-        random_rope_configuration = link_bot_pycommon.make_random_rope_configuration(self.extent,
-                                                                                     n_state=self.n_rope_state,
-                                                                                     link_length=self.link_length,
-                                                                                     max_angle_rad=self.max_angle_rad,
-                                                                                     rng=self.rng)
+        random_rope_configuration = pycommon.make_random_rope_configuration(self.extent,
+                                                                            n_state=self.n_rope_state,
+                                                                            link_length=self.link_length,
+                                                                            max_angle_rad=self.max_angle_rad,
+                                                                            rng=self.rng)
 
         from_numpy(random_rope_configuration, state_out[self.link_bot_subspace_idx], random_rope_configuration.shape[0])
 

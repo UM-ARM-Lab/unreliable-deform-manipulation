@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon import pycommon
 from link_bot_pycommon.filesystem_utils import mkdir_and_ask
 from moonshine.moonshine_utils import remove_batch, add_batch
 
@@ -149,9 +149,9 @@ def cachename(mode: Optional[str] = None):
     else:
         cache_root = pathlib.Path('/tmp')
     if mode is not None:
-        tmpname = cache_root / f"{mode}_{link_bot_pycommon.rand_str()}"
+        tmpname = cache_root / f"{mode}_{pycommon.rand_str()}"
     else:
-        tmpname = cache_root / f"{link_bot_pycommon.rand_str()}"
+        tmpname = cache_root / f"{pycommon.rand_str()}"
     return str(tmpname)
 
 

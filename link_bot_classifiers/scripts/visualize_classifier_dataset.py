@@ -14,7 +14,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_planning import classifier_utils
 from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_pycommon.link_bot_pycommon import print_dict
+from link_bot_pycommon.pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import remove_batch, dict_of_sequences_to_sequence_of_dicts, numpify
 

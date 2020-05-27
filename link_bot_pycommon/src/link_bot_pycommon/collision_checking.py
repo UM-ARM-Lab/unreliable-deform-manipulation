@@ -3,7 +3,10 @@ from typing import Dict
 import numpy as np
 import tensorflow as tf
 
-from link_bot_pycommon.link_bot_sdf_utils import point_to_idx, OccupancyData
+from link_bot_pycommon.link_bot_sdf_utils import point_to_idx, OccupancyData, batch_point_to_idx_tf
+from moonshine.gpu_config import limit_gpu_mem
+
+limit_gpu_mem(0.1)
 
 
 def batch_out_of_bounds_tf(environment: Dict,
@@ -13,7 +16,7 @@ def batch_out_of_bounds_tf(environment: Dict,
     res = environment['full_env/res']
     env = environment['full_env/env']
     h, w = env.shape
-    gripper_rows, gripper_cols = point_to_idx(xs, ys, res, origin=origin)
+    gripper_rows, gripper_cols = batch_point_to_idx_tf(xs, ys, res, origin)
     out_of_bounds = tf.reduce_any(gripper_rows >= h)
     out_of_bounds = out_of_bounds or tf.reduce_any(gripper_rows < 0)
     out_of_bounds = out_of_bounds or tf.reduce_any(gripper_cols >= w)
@@ -30,9 +33,10 @@ def batch_in_collision_tf(environment: Dict,
     res = environment['full_env/res']
     env = environment['full_env/env']
     h, w = env.shape
-    gripper_rows, gripper_cols = point_to_idx(xs, ys, res, origin=origin)
+    gripper_rows, gripper_cols = batch_point_to_idx_tf(xs, ys, res, origin)
     inflated_env = inflate_tf(env=env, res=res, radius_m=inflate_radius_m)
-    in_collision = tf.reduce_any(inflated_env[gripper_rows, gripper_cols] > occupied_threshold)
+    indices = tf.stack([gripper_rows, gripper_cols], axis=1)
+    in_collision = tf.reduce_any(tf.gather_nd(inflated_env, indices) > occupied_threshold)
     return in_collision
 
 
@@ -59,12 +63,17 @@ def any_in_collision_or_out_of_bounds_tf(environment: Dict,
     return tf.reduce_any(in_collision_or_out_of_bounds)
 
 
-def griper_interpolate_cc_and_oob(environment: Dict,
-                                  xy0,
-                                  xy1,
-                                  inflate_radius_m: float,
-                                  occupied_threshold: float = 0.5):
-    xys = tf.range
+def gripper_interpolate_cc_and_oob(environment: Dict,
+                                   xy0,
+                                   xy1,
+                                   inflate_radius_m: float,
+                                   step_size_m: float = 0.01,
+                                   occupied_threshold: float = 0.5):
+    distance = np.linalg.norm(xy1 - xy0)
+    steps = np.arange(0, distance + step_size_m, step_size_m)
+    interpolated_points = np.expand_dims(xy0, axis=1) + np.outer((xy1 - xy0), steps)
+    xs = interpolated_points[0]
+    ys = interpolated_points[1]
     in_collision_or_out_of_bounds = batch_in_collision_or_out_of_bounds_tf(environment,
                                                                            xs=xs,
                                                                            ys=ys,

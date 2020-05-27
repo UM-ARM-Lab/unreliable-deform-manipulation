@@ -9,7 +9,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_extents
 from link_bot_pycommon.base_services import Services
-from link_bot_pycommon.link_bot_pycommon import trim_reconverging
+from link_bot_pycommon.pycommon import trim_reconverging
 from moonshine.moonshine_utils import remove_batch, numpify, dict_of_sequences_to_sequence_of_dicts_tf
 
 
@@ -57,6 +57,10 @@ class ExperimentScenario:
 
     @staticmethod
     def state_to_points(state: Dict):
+        raise NotImplementedError()
+
+    @staticmethod
+    def state_to_gripper_position(state : Dict):
         raise NotImplementedError()
 
     @staticmethod

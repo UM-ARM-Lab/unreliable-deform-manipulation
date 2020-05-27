@@ -8,7 +8,7 @@ from gazebo_msgs.srv import ApplyBodyWrench, SetPhysicsPropertiesRequest, GetPhy
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from geometry_msgs.msg import Pose
 from link_bot_pycommon.base_services import Services
-from link_bot_pycommon.link_bot_pycommon import quaternion_from_euler
+from link_bot_pycommon.pycommon import quaternion_from_euler
 from link_bot_pycommon.ros_pycommon import xy_move
 from peter_msgs.msg import ModelsPoses
 from peter_msgs.srv import WorldControlRequest, ExecuteActionRequest, GetObject, LinkBotReset, \

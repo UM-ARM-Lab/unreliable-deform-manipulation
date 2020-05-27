@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from link_bot_pycommon.link_bot_pycommon import make_random_rope_configuration
+from link_bot_pycommon.pycommon import make_random_rope_configuration
 import matplotlib.pyplot as plt
 from link_bot_data.visualization import plot_rope_configuration
 

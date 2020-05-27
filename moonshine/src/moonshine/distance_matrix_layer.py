@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from link_bot_pycommon import link_bot_pycommon
+from link_bot_pycommon import pycommon
 
 
 class DistanceMatrix(tf.keras.layers.Layer):
@@ -13,7 +13,7 @@ class DistanceMatrix(tf.keras.layers.Layer):
     def build(self, input_shape):
         super(DistanceMatrix, self).build(input_shape)  # Be sure to call this at the end
         self.n = input_shape[1]
-        self.n_points = link_bot_pycommon.n_state_to_n_points(input_shape[1])
+        self.n_points = pycommon.n_state_to_n_points(input_shape[1])
 
     def call(self, x, **kwargs):
         x_as_points = tf.reshape(x, [-1, self.n_points, 2])
