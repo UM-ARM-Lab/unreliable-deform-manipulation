@@ -69,7 +69,10 @@ def train_main(args, seed: int):
     ###############
     # Train
     ###############
-    if model_hparams['loss_type'] == 'weighted_sequence':
+    if model_hparams['loss_type'] == 'negative_weighted_sequence':
+        loss_function = negative_weighted_binary_classification_sequence_loss_function
+        metrics_function = binary_classification_sequence_metrics_function
+    elif model_hparams['loss_type'] == 'weighted_sequence':
         loss_function = reconverging_weighted_binary_classification_sequence_loss_function
         metrics_function = binary_classification_sequence_metrics_function
     elif model_hparams['loss_type'] == 'sequence':
