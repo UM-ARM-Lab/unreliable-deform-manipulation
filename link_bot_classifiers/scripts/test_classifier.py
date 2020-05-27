@@ -1,35 +1,38 @@
 #!/usr/bin/env python
 import argparse
+import tensorflow as tf
 import json
 import pathlib
 import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-from colorama import Fore
 
 import rospy
 from link_bot_data.classifier_dataset_utils import compute_label_np
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import classifier_utils
-from state_space_dynamics import model_utils
 from link_bot_planning.plan_and_execute import execute_plan
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.ros_pycommon import get_occupancy_data, get_states_dict, xy_move
+from link_bot_pycommon.ros_pycommon import get_occupancy_data, get_states_dict
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_sequences
+from state_space_dynamics import model_utils
 
 limit_gpu_mem(1)
 
 
 def main():
     plt.style.use("slides")
-    np.set_printoptions(precision=6, suppress=True, linewidth=200)
+    np.set_printoptions(precision=3, suppress=True, linewidth=200)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')
     parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
     parser.add_argument("test_config", help="json file describing the test", type=pathlib.Path)
+    parser.add_argument("--labeling-params",
+                        help="use labeling params, if not provided we use what the classifier was trained with",
+                        type=pathlib.Path)
     parser.add_argument("--real-time-rate", type=float, default=0.0, help='real time rate')
     parser.add_argument('--save', action='store_true')
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
@@ -63,12 +66,16 @@ def main():
     actual_states_list = execute_plan(service_provider, fwd_model.dt, actions)
 
     # Compute labels
-    labeling_params = classifier_model.model_hparams['classifier_dataset_hparams']['labeling_params']
+    if args.labeling_params is None:
+        labeling_params = classifier_model.model_hparams['classifier_dataset_hparams']['labeling_params']
+    else:
+        labeling_params = json.load(args.labeling_params.open("r"))
     predicted_states_dict = sequence_of_dicts_to_dict_of_sequences(predicted_states_list)
     actual_states_dict = sequence_of_dicts_to_dict_of_sequences(actual_states_list)
     is_close = compute_label_np(actual_states_dict, labeling_params, predicted_states_dict)
     is_close = is_close.astype(np.float32)
-    print(is_close)
+    print(tf.cast(is_close[1:], tf.int32).numpy())
+    print(tf.cast(accept_probabilities > 0.5, tf.int32).numpy())
 
     anim = fwd_model.scenario.animate_predictions(environment=environment,
                                                   actions=actions,
