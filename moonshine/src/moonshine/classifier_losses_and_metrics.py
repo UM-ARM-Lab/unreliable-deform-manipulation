@@ -3,26 +3,47 @@ import tensorflow as tf
 from link_bot_data.link_bot_dataset_utils import is_reconverging
 
 
+def negative_weighted_binary_classification_sequence_loss_function(dataset_element, predictions):
+    # skip the first element, the label will always be 1
+    is_close = dataset_element['is_close'][:, 1:]
+    labels = tf.expand_dims(is_close, axis=2)
+    logits = predictions['logits']
+    valid_indices = tf.where(predictions['mask'][:, 1:])
+    bce = tf.keras.losses.binary_crossentropy(y_true=labels, y_pred=logits, from_logits=True)
+    # mask to ignore loss for states
+    # https://www.tensorflow.org/tutorials/structured_data/imbalanced_data#class_weights
+    total_bce = compute_weighted_mean_loss(bce, is_close, valid_indices)
+    return total_bce
+
+
+def compute_weighted_mean_loss(bce, positives, valid_indices):
+    negatives = 1 - positives
+    n_positive = tf.math.reduce_sum(positives)
+    batch_size = positives.shape[0]
+    n_negative = batch_size - n_positive
+    # TODO: handle division by 0
+    weight_for_positive = batch_size / 2.0 / n_positive
+    weight_for_negative = batch_size / 2.0 / n_negative
+    weighted_bce = tf.math.add(tf.math.multiply(bce, positives * weight_for_positive),
+                               tf.math.multiply(bce, negatives * weight_for_negative))
+    valid_weighted_bce = tf.gather_nd(weighted_bce, valid_indices)
+    # mean over batch & time
+    total_bce = tf.reduce_mean(valid_weighted_bce)
+    return total_bce
+
+
 def reconverging_weighted_binary_classification_sequence_loss_function(dataset_element, predictions):
     # skip the first element, the label will always be 1
-    labels = tf.expand_dims(dataset_element['is_close'][:, 1:], axis=2)
+    is_close = dataset_element['is_close'][:, 1:]
+    labels = tf.expand_dims(is_close, axis=2)
     logits = predictions['logits']
     valid_indices = tf.where(predictions['mask'][:, 1:])
     bce = tf.keras.losses.binary_crossentropy(y_true=labels, y_pred=logits, from_logits=True)
     # mask to ignore loss for states
     reconverging = tf.cast(is_reconverging(dataset_element['is_close']), tf.float32)
-    not_reconverging = 1 - reconverging
-    n_reconverging = tf.cast(tf.math.reduce_sum(reconverging), tf.float32)
-    batch_size = labels.shape[0]
-    weight_for_reconverging = tf.minimum(batch_size / 2.0 / n_reconverging, 1e4)
-    weight_for_not_reconverging = batch_size / 2.0 / (batch_size - n_reconverging)
-    bce_T = tf.transpose(bce)
-    weighted_bce = tf.math.add(tf.math.multiply(bce_T, not_reconverging * weight_for_not_reconverging),
-                               tf.math.multiply(bce_T, reconverging * weight_for_reconverging))
-    weighted_bce = tf.transpose(weighted_bce)
-    valid_weighted_bce = tf.gather_nd(weighted_bce, valid_indices)
-    # mean over batch & time
-    total_bce = tf.reduce_mean(valid_weighted_bce)
+    T = is_close.shape[1]
+    reconverging_per_step = tf.stack([reconverging]*T, axis=1)
+    total_bce = compute_weighted_mean_loss(bce, reconverging_per_step, valid_indices)
     return total_bce
 
 
