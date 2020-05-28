@@ -181,7 +181,7 @@ def viz_main(args, seed: int):
 
             for end_idx in range(1, classifier_dataset.horizon):
                 accept_probabilities = predictions['probabilities']
-                accept_probabilities = accept_probabilities.numpy().squeeze()
+                accept_probabilities = accept_probabilities.numpy().squeeze(axis=1)
                 accept = accept_probabilities[end_idx - 1] > args.classifier_threshold
                 is_close = example['is_close'].numpy()
                 label = is_close[end_idx]

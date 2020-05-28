@@ -72,22 +72,15 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         return self.net(dataset_element)
 
     def propagate_differentiable(self,
-                                 full_env,
-                                 full_env_origin,
-                                 res,
+                                 environment: Dict,
                                  start_states: Dict,
                                  actions) -> List[Dict]:
         """
-        :param full_env:        (H, W)
-        :param full_env_origin: (2)
-        :param res:             scalar
         :param start_states:          each value in the dictionary should be of shape (batch, n_state)
         :param actions:        (T, 2)
         :return: states:       each value in the dictionary should be a of shape [batch, T+1, n_state)
         """
-        del full_env  # unused
-        del full_env_origin  # unused
-        del res  # unsed
+        del environment  # unused
         state = start_states[self.net.state_key]
         state = tf.expand_dims(state, axis=0)
         state = tf.convert_to_tensor(state, dtype=tf.float32)

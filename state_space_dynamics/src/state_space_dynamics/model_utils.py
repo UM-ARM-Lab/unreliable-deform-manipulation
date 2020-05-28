@@ -103,16 +103,12 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
         return total_prediction
 
     def propagate_differentiable(self,
-                                 full_env,
-                                 full_env_origin,
-                                 res: float,
+                                 environment: Dict,
                                  start_states: Dict,
                                  actions: tf.Variable) -> List[Dict]:
         all_predictions = []
         for fwd_model in self.models:
-            predictions = fwd_model.propagate_differentiable(full_env=full_env,
-                                                             full_env_origin=full_env_origin,
-                                                             res=res,
+            predictions = fwd_model.propagate_differentiable(environment=environment,
                                                              start_states=start_states,
                                                              actions=actions)
             all_predictions.append(predictions)

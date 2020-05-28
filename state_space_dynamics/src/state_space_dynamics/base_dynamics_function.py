@@ -30,9 +30,7 @@ class BaseDynamicsFunction:
 
     # TODO: make propagate use the "environment" dict abstraction
     def propagate(self,
-                  full_env: np.ndarray,
-                  full_env_origin: np.ndarray,
-                  res: float,
+                  environment: Dict,
                   start_states: Dict[str, np.ndarray],
                   actions: np.ndarray) -> List[Dict]:
         for k in start_states.keys():
@@ -40,9 +38,7 @@ class BaseDynamicsFunction:
         actions = actions.astype(np.float32)
 
         actions = tf.Variable(actions, dtype=tf.float32, name='actions')
-        predictions = self.propagate_differentiable(full_env,
-                                                    full_env_origin,
-                                                    res,
+        predictions = self.propagate_differentiable(environment,
                                                     start_states,
                                                     actions)
         predictions_np = []
@@ -55,9 +51,7 @@ class BaseDynamicsFunction:
         return predictions_np
 
     def propagate_differentiable(self,
-                                 full_env: np.ndarray,
-                                 full_env_origin: np.ndarray,
-                                 res: float,
+                                 environment: Dict,
                                  start_states: Dict[str, np.ndarray],
                                  actions: tf.Variable) -> List[Dict]:
         raise NotImplementedError()

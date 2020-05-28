@@ -187,20 +187,22 @@ class LinkBotScenario(ExperimentScenario):
     def plot_goal(ax, goal, color='g', label=None, **kwargs):
         ax.scatter(goal[0], goal[1], c=color, label=label, **kwargs)
 
-    @staticmethod
-    def plot_environment(ax, environment: Dict):
+    @classmethod
+    def plot_environment(cls, ax, environment: Dict):
         occupancy = environment['full_env/env']
         extent = environment['full_env/extent']
         ax.imshow(np.flipud(occupancy), extent=extent, cmap='Greys')
 
     @staticmethod
-    def update_artist(artist, state):
+    def update_artist(artist, state, **kwargs):
         """ artist: Whatever was returned by plot_state """
         line, scatt, txt = artist
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         xs = link_bot_points[:, 0]
         ys = link_bot_points[:, 1]
         line.set_data(xs, ys)
+        if 'alpha' in kwargs:
+            line.set_alpha(kwargs['alpha'])
         scatt.set_offsets(link_bot_points[0])
         if txt is not None:
             txt.set_text(f"{int(np.squeeze(state['num_diverged']))}")

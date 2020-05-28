@@ -115,6 +115,7 @@ def compute_is_close_tf(actual_states_dict: Dict, labeling_params: Dict, predict
     model_error = tf.linalg.norm(labeling_states - labeling_predicted_states, axis=1)
     threshold = labeling_params['threshold']
     is_close = model_error < threshold
+
     return is_close
 
 
