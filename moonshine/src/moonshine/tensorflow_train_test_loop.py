@@ -10,7 +10,7 @@ from colorama import Fore, Style
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine import experiments_util
-from moonshine.metric import Metric, LossMetric
+from shape_completion_training.metric import Metric, LossMetric
 
 
 class MyKerasModel(tf.keras.Model):
@@ -267,7 +267,7 @@ def train(keras_model: MyKerasModel,
 
 
 def evaluate(keras_model: MyKerasModel,
-             test_tf_dataset,
+             tf_dataset,
              loss_function: Callable,
              checkpoint_path: pathlib.Path,
              metrics_function: Callable,
@@ -279,14 +279,14 @@ def evaluate(keras_model: MyKerasModel,
     print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
 
     try:
-        test_mean_loss, test_mean_metrics = compute_loss_and_metrics(test_tf_dataset,
-                                                                     keras_model,
-                                                                     loss_function,
-                                                                     metrics_function,
-                                                                     postprocess)
-        print("Test Loss:  {:8.5f}".format(test_mean_loss))
+        mean_loss, mean_metrics = compute_loss_and_metrics(tf_dataset,
+                                                           keras_model,
+                                                           loss_function,
+                                                           metrics_function,
+                                                           postprocess)
+        print("loss:  {:8.5f}".format(mean_loss))
 
-        for metric_name, metric_value in test_mean_metrics.items():
+        for metric_name, metric_value in mean_metrics.items():
             print("{} {:8.4f}".format(metric_name, metric_value))
     except KeyboardInterrupt:
         print(Fore.YELLOW + "Interrupted." + Fore.RESET)

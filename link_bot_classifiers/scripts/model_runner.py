@@ -19,7 +19,7 @@ from moonshine.classifier_losses_and_metrics import binary_classification_loss_f
     binary_classification_sequence_loss_function, binary_classification_sequence_metrics_function, \
     reconverging_weighted_binary_classification_sequence_loss_function, negative_weighted_binary_classification_sequence_loss_function
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.metric import AccuracyMetric
+from shape_completion_training.metric import AccuracyMetric
 from moonshine.moonshine_utils import remove_batch, add_batch
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
@@ -140,7 +140,7 @@ def eval_main(args, seed: int):
         raise NotImplementedError()
 
     evaluate(keras_model=net,
-             test_tf_dataset=test_tf_dataset,
+             tf_dataset=test_tf_dataset,
              loss_function=loss_function,
              metrics_function=metrics_function,
              checkpoint_path=args.checkpoint)

@@ -37,7 +37,7 @@ def main():
     for example in progressbar.progressbar(dataset):
         is_close = example['is_close'].numpy().squeeze()
         positive_count += np.count_nonzero(is_close)
-        reconverging_count += num_reconverging(is_close)
+        reconverging_count += num_reconverging_subsequences(is_close)
         count += is_close.size
 
         # Print statistics intermittently
