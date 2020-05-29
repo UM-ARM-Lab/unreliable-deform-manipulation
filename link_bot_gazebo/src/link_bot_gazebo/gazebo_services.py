@@ -12,7 +12,8 @@ from link_bot_pycommon.pycommon import quaternion_from_euler
 from link_bot_pycommon.ros_pycommon import xy_move
 from peter_msgs.msg import ModelsPoses
 from peter_msgs.srv import WorldControlRequest, ExecuteActionRequest, GetObject, LinkBotReset, \
-    LinkBotResetRequest, Position2DEnable, Position2DEnableRequest, Position2DAction, Position2DActionRequest
+    LinkBotResetRequest, Position2DEnable, Position2DEnableRequest, Position2DAction, Position2DActionRequest, \
+    SetRopeConfiguration, SetRopeConfigurationRequest
 from std_msgs.msg import String
 from std_srvs.srv import Empty, EmptyRequest
 
@@ -33,6 +34,7 @@ class GazeboServices(Services):
 
         # not used in real robot experiments
         self.get_tether_state = rospy.ServiceProxy("tether", GetObject)
+        self.set_rope_config = rospy.ServiceProxy("set_rope_config", SetRopeConfiguration)
 
         # TODO: Consider moving this kind of interaction with the environment to a separate node, since we will probably
         #  never be able to do it on a real robot
@@ -104,6 +106,20 @@ class GazeboServices(Services):
             self.reset_robot_service(reset)
             if verbose >= 1:
                 print(Fore.YELLOW + "World is Reset" + Fore.RESET)
+
+    def reset_rope(self, x, y, yaw, joint_angles):
+        gripper_pose = Pose()
+        gripper_pose.position.x = x
+        gripper_pose.position.y = y
+        q = quaternion_from_euler(0, 0, yaw)
+        gripper_pose.orientation.x = q[0]
+        gripper_pose.orientation.y = q[1]
+        gripper_pose.orientation.z = q[2]
+        gripper_pose.orientation.w = q[3]
+        req = SetRopeConfigurationRequest()
+        req.gripper_poses.append(gripper_pose)
+        req.joint_angles.extend(joint_angles)
+        self.set_rope_config(req)
 
     @staticmethod
     def random_object_position(w: float, h: float, padding: float, rng: np.random.RandomState) -> Pose:

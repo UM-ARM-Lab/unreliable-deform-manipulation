@@ -12,8 +12,8 @@ from tensorflow import keras
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.pycommon import make_dict_float32
 from link_bot_pycommon.params import FullEnvParams
+from link_bot_pycommon.pycommon import make_dict_float32
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
 from moonshine.image_functions import raster_differentiable
@@ -69,7 +69,7 @@ class RNNImageClassifier(MyKerasModel):
         self.output_layer = layers.Dense(1, activation=None)
         self.sigmoid = layers.Activation("sigmoid")
 
-    def make_traj_images_from_input_dict(self, input_dict):
+    def make_traj_images_from_input_dict(self, input_dict, batch_size):
         # First flatten batch & time
         transposed_states_dict = {k: tf.transpose(input_dict[add_planned(k)], [1, 0, 2]) for k in self.states_keys}
         states_dict_batch_time = flatten_batch_and_time(transposed_states_dict)
@@ -80,6 +80,7 @@ class RNNImageClassifier(MyKerasModel):
                                                       states_dict_batch_time=states_dict_batch_time,
                                                       local_env_center_point_batch_time=local_env_center_point_batch_time,
                                                       padded_actions=padded_action,
+                                                      batch_size=batch_size,
                                                       time=time)
         return images_batch_and_time, padded_action, time
 
@@ -88,12 +89,13 @@ class RNNImageClassifier(MyKerasModel):
                          states_dict_batch_time,
                          local_env_center_point_batch_time,
                          padded_actions,
+                         batch_size,
                          time):
         """
         :return: [batch, time, h, w, 1 + n_points]
         """
         actions_batch_time = tf.reshape(padded_actions, [-1] + padded_actions.shape.as_list()[2:])
-        batch_and_time = self.batch_size * time
+        batch_and_time = batch_size * time
         env_batch_time = tf.tile(environment['full_env/env'], [time, 1, 1])
         env_origin_batch_time = tf.tile(environment['full_env/origin'], [time, 1])
         env_res_batch_time = tf.tile(environment['full_env/res'], [time])
@@ -126,25 +128,26 @@ class RNNImageClassifier(MyKerasModel):
         images_batch_time = tf.concat(concat_args, axis=3)
         return images_batch_time
 
-    def _conv(self, images, time):
+    def _conv(self, images, time, batch_size):
         # merge batch & time dimensions
         conv_z = images
         for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
             conv_h = conv_layer(conv_z)
             conv_z = pool_layer(conv_h)
         out_conv_z = conv_z
-        out_conv_z = tf.reshape(out_conv_z, [time, self.batch_size, -1])
+        out_conv_z = tf.reshape(out_conv_z, [time, batch_size, -1])
         # un-merge batch & time dimensions
 
         return out_conv_z
 
     @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
-        images_batch_and_time, padded_action, time = self.make_traj_images_from_input_dict(input_dict)
+        batch_size = int(input_dict['action'].shape[0])
+        images_batch_and_time, padded_action, time = self.make_traj_images_from_input_dict(input_dict, batch_size)
 
-        images = tf.reshape(images_batch_and_time, [time, self.batch_size, self.local_env_h_rows, self.local_env_w_cols, -1])
+        images = tf.reshape(images_batch_and_time, [time, batch_size, self.local_env_h_rows, self.local_env_w_cols, -1])
         images = tf.transpose(images, [1, 0, 2, 3, 4])  # undo transpose
-        conv_output = self._conv(images_batch_and_time, time)
+        conv_output = self._conv(images_batch_and_time, time, batch_size)
         conv_output = tf.transpose(conv_output, [1, 0, 2])  # undo transpose
 
         concat_args = [conv_output, padded_action]
@@ -154,9 +157,9 @@ class RNNImageClassifier(MyKerasModel):
             if 'use_local_frame' in self.hparams and self.hparams['use_local_frame']:
                 # note this assumes all state vectors are[x1,y1,...,xn,yn]
                 time = state.shape[1]
-                points = tf.reshape(state, [self.batch_size, time, -1, 2])
+                points = tf.reshape(state, [batch_size, time, -1, 2])
                 points = points - points[:, :, tf.newaxis, 0]
-                state = tf.reshape(points, [self.batch_size, time, -1])
+                state = tf.reshape(points, [batch_size, time, -1])
             concat_args.append(state)
 
         if self.hparams['stdev']:
@@ -210,10 +213,32 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
         self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
 
-    def check_trajectory(self,
-                         environment: Dict,
-                         states_sequence: List[Dict],
-                         actions) -> tf.Tensor:
+    def check_constraint_differentiable_batched_tf(self,
+                                                   environment: Dict,
+                                                   predictions: Dict,
+                                                   actions) -> tf.Tensor:
+        # construct network inputs
+        net_inputs = {
+            'action': tf.convert_to_tensor(actions, tf.float32),
+        }
+        net_inputs.update(environment)
+
+        if self.net.hparams['stdev']:
+            net_inputs[add_planned('stdev')] = tf.convert_to_tensor(predictions['stdev'], tf.float32)
+
+        for state_key in self.net.states_keys:
+            planned_state_key = add_planned(state_key)
+            net_inputs[planned_state_key] = tf.convert_to_tensor(predictions[state_key], tf.float32)
+
+        predictions = self.net(net_inputs, training=False)
+        accept_probabilities = tf.squeeze(predictions['probabilities'], axis=1)
+        return accept_probabilities
+
+    def check_constraint_differentiable(self,
+                                        environment: Dict,
+                                        states_sequence: List[Dict],
+                                        actions) -> tf.Tensor:
+        environment = dict_of_numpy_arrays_to_dict_of_tensors(environment)
         # construct network inputs
         states_sequences_dict = sequence_of_dicts_to_dict_of_sequences(states_sequence)
         net_inputs = {
@@ -232,23 +257,10 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         accept_probabilities = tf.squeeze(predictions['probabilities'], axis=1)
         return accept_probabilities
 
-    def check_constraint_differentiable(self,
-                                        environment: Dict,
-                                        states_sequence: List[Dict],
-                                        actions) -> tf.Tensor:
-        image_key = self.model_hparams['image_key']
-        environment = dict_of_numpy_arrays_to_dict_of_tensors(environment)
-        if image_key == 'transition_image':
-            raise NotImplementedError()
-        elif image_key == 'trajectory_image':
-            return self.check_trajectory(environment, states_sequence, actions)
-        else:
-            raise ValueError('invalid image_key')
-
     def check_constraint(self,
                          environment: Dict,
                          states_sequence: List[Dict],
-                         actions: np.ndarray) -> float:
+                         actions: np.ndarray):
         actions = tf.Variable(actions, dtype=tf.float32, name="actions")
         states_sequence = [make_dict_float32(s) for s in states_sequence]
         accept_probabilities = self.check_constraint_differentiable(environment=environment,

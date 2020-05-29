@@ -9,6 +9,8 @@
 #include <memory>
 #include <sstream>
 
+#include "enumerate.h"
+
 namespace gazebo {
 
 constexpr auto close_enough{0.001};
@@ -35,6 +37,9 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto action_mode_bind = boost::bind(&MultiLinkBotModelPlugin::OnActionMode, this, _1);
   auto action_mode_so = ros::SubscribeOptions::create<std_msgs::String>("link_bot_action_mode", 1, action_mode_bind,
                                                                         ros::VoidPtr(), &queue_);
+  auto set_config_bind = boost::bind(&MultiLinkBotModelPlugin::SetRopeConfigCallback, this, _1, _2);
+  auto config_so = ros::AdvertiseServiceOptions::create<peter_msgs::SetRopeConfiguration>(
+      "set_rope_config", set_config_bind, ros::VoidPtr(), &queue_);
   auto state_bind = boost::bind(&MultiLinkBotModelPlugin::StateServiceCallback, this, _1, _2);
   auto service_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotState>("link_bot_state", state_bind,
                                                                                    ros::VoidPtr(), &queue_);
@@ -51,6 +56,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
                                                                                  ros::VoidPtr(), &queue_);
 
   joy_sub_ = ros_node_.subscribe(joy_so);
+  set_configuration_service_ = ros_node_.advertiseService(config_so);
   execute_action_service_ = ros_node_.advertiseService(action_so);
   execute_absolute_action_service_ = ros_node_.advertiseService(execute_abs_action_so);
   register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
@@ -448,6 +454,29 @@ bool MultiLinkBotModelPlugin::ResetRobot(peter_msgs::LinkBotResetRequest &req, p
     }
   }
 
+  return true;
+}
+
+bool MultiLinkBotModelPlugin::SetRopeConfigCallback(peter_msgs::SetRopeConfigurationRequest &req, peter_msgs::SetRopeConfigurationResponse &res)
+{
+  auto const gripper_pose = req.gripper_poses[0];
+  ignition::math::Pose3d pose{
+    gripper_pose.position.x,
+    gripper_pose.position.y,
+    gripper_pose.position.z,
+    gripper_pose.orientation.w,
+    gripper_pose.orientation.x,
+    gripper_pose.orientation.y,
+    gripper_pose.orientation.z,
+  };
+  model_->SetWorldPose(pose);
+  for (auto pair : enumerate(model_->GetJoints()))
+  {
+    auto [i, joint] = pair;
+    if (i < req.joint_angles.size()) {
+      joint->SetPosition(0, req.joint_angles[i]);
+    }
+  }
   return true;
 }
 

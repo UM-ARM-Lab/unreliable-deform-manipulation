@@ -235,7 +235,7 @@ def metrics_main(args):
         legend_names.append(legend_nickname)
         data = metrics.pop('metrics')
         N = len(data)
-        print("{} has {} examples".format(subfolder, N))
+        print(Fore.GREEN + f"{subfolder} has {N} examples" + Fore.RESET)
 
         final_plan_to_execution_errors = []
         final_plan_to_goal_errors = []
@@ -244,6 +244,7 @@ def metrics_main(args):
         planning_times = []
         nums_nodes = []
         nums_steps = []
+        poor_approximate_plans = []
         for plan_idx, datum in enumerate(data):
             planned_path = datum['planned_path']
             actual_path = datum['actual_path']
@@ -258,6 +259,11 @@ def metrics_main(args):
                 # Do not plot metrics for plans which timeout.
                 if args.ignore_timeouts:
                     continue
+
+                # Check that we didn't get kinda close
+                if final_plan_to_goal_error > 0.5:
+                    print(f"plan {plan_idx} was {final_plan_to_goal_error:.3f} from the goal")
+                    poor_approximate_plans.append(datum)
 
             final_plan_to_execution_errors.append(final_plan_to_execution_error)
             final_plan_to_goal_errors.append(final_plan_to_goal_error)
@@ -276,6 +282,8 @@ def metrics_main(args):
         percentage_solved = n_exact_solutions / N * 100
         percentages_solved.append(percentage_solved)
         n_for_metrics = n_exact_solutions if args.ignore_timeouts else N
+        n_poor_plans = len(poor_approximate_plans)
+        poor_plan_percentage = n_poor_plans / N * 100
 
         if not args.no_plot:
             # Execution Success Plot
@@ -304,8 +312,8 @@ def metrics_main(args):
             final_planning_to_goal_pdf = stats.gaussian_kde(final_plan_to_execution_errors)
             final_planning_to_goal_densities_at_thresholds = final_planning_to_goal_pdf(errors_thresholds)
             planning_error_ax.plot(errors_thresholds, final_planning_to_goal_densities_at_thresholds, label=legend_nickname,
-                                    linewidth=5,
-                                    c=color)
+                                   linewidth=5,
+                                   c=color)
             max_density = max(np.max(final_planning_to_goal_densities_at_thresholds), max_density)
 
         execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
@@ -321,7 +329,7 @@ def metrics_main(args):
         aggregate_metrics['Num Nodes'].append(make_row(planner_params, nums_nodes, table_format))
         aggregate_metrics['Num Steps'].append(make_row(planner_params, nums_steps, table_format))
 
-        print("{:50s}: {:3.2f}% timeout ".format(str(subfolder), timeout_percentage))
+        print(f"{subfolder.name:30s}: {timeout_percentage:3.2f}% timeout {poor_plan_percentage:3.2f}% could use RAS")
     if not args.no_plot:
         execution_success_ax.plot([goal_threshold, goal_threshold], [0, 100], color='k', linestyle='--')
         execution_error_ax.plot([goal_threshold, goal_threshold], [0, max_density], color='k', linestyle='--')

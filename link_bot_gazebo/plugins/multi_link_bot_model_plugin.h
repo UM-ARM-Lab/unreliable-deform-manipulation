@@ -6,6 +6,7 @@
 #include <peter_msgs/LinkBotReset.h>
 #include <peter_msgs/LinkBotState.h>
 #include <peter_msgs/NamedPoints.h>
+#include <peter_msgs/SetRopeConfiguration.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <ros/subscribe_options.h>
@@ -59,6 +60,9 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   bool ResetRobot(peter_msgs::LinkBotResetRequest &req, peter_msgs::LinkBotResetResponse &res);
 
+  bool SetRopeConfigCallback(peter_msgs::SetRopeConfigurationRequest &req,
+                             peter_msgs::SetRopeConfigurationResponse &res);
+
  private:
   auto GetGripper1Pos() -> ignition::math::Vector3d const;
   auto GetGripper1Vel() -> ignition::math::Vector3d const;
@@ -90,6 +94,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   ros::Subscriber action_mode_sub_;
   ros::Subscriber config_sub_;
   ros::ServiceServer state_service_;
+  ros::ServiceServer set_configuration_service_;
   ros::ServiceServer get_object_link_bot_service_;
   ros::ServiceServer get_object_gripper_service_;
   ros::ServiceServer execute_action_service_;

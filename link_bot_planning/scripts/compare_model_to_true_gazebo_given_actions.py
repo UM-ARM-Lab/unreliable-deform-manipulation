@@ -12,7 +12,8 @@ import std_srvs
 import tensorflow as tf
 
 from link_bot_gazebo import gazebo_services
-from link_bot_planning import classifier_utils, ompl_viz
+from link_bot_planning import ompl_viz
+from link_bot_classifiers import classifier_utils
 from state_space_dynamics import model_utils
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_planning.plan_and_execute import execute_plan

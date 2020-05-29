@@ -2,7 +2,7 @@ import pathlib
 from typing import Dict
 
 import link_bot_planning.viz_object
-from link_bot_planning import classifier_utils
+from link_bot_classifiers import classifier_utils
 from state_space_dynamics import model_utils
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_planning.nearest_rrt import NearestRRT
