@@ -12,7 +12,7 @@ def main():
     parser.add_argument("joint_angles", nargs='+', type=float, help='in degrees')
     parser.add_argument("-x", type=float, default=0, help='x')
     parser.add_argument("-y", type=float, default=0, help='y')
-    parser.add_argument("--yaw", "-Y", type=float, default=0, help='yaw')
+    parser.add_argument("--yaw", "-Y", type=float, default=0, help='yaw in degrees')
 
     args = parser.parse_args()
 
@@ -20,7 +20,7 @@ def main():
     service_provider = GazeboServices([])
     service_provider.reset_rope(x=args.x,
                                 y=args.y,
-                                yaw=args.yaw,
+                                yaw=np.deg2rad(args.yaw),
                                 joint_angles=joint_angles_rad)
 
 
