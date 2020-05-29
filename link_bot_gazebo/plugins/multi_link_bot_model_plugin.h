@@ -60,6 +60,8 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   bool ResetRobot(peter_msgs::LinkBotResetRequest &req, peter_msgs::LinkBotResetResponse &res);
 
+  bool StopRobot(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res);
+
   bool SetRopeConfigCallback(peter_msgs::SetRopeConfigurationRequest &req,
                              peter_msgs::SetRopeConfigurationResponse &res);
 
@@ -100,6 +102,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   ros::ServiceServer execute_action_service_;
   ros::ServiceServer execute_absolute_action_service_;
   ros::ServiceServer execute_traj_service_;
+  ros::ServiceServer stop_service_;
   ros::ServiceServer reset_service_;
   ros::ServiceClient objects_service_;
   ros::Publisher register_object_pub_;

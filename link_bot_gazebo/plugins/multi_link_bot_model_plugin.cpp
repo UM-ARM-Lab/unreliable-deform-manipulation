@@ -54,6 +54,9 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto reset_bind = boost::bind(&MultiLinkBotModelPlugin::ResetRobot, this, _1, _2);
   auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("reset_robot", reset_bind,
                                                                                  ros::VoidPtr(), &queue_);
+  auto stop_bind = boost::bind(&MultiLinkBotModelPlugin::StopRobot, this, _1, _2);
+  auto stop_so = ros::AdvertiseServiceOptions::create<std_srvs::Empty>("stop_robot", stop_bind,
+                                                                       ros::VoidPtr(), &queue_);
 
   joy_sub_ = ros_node_.subscribe(joy_so);
   set_configuration_service_ = ros_node_.advertiseService(config_so);
@@ -61,6 +64,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   execute_absolute_action_service_ = ros_node_.advertiseService(execute_abs_action_so);
   register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
   reset_service_ = ros_node_.advertiseService(reset_so);
+  stop_service_ = ros_node_.advertiseService(stop_so);
   action_mode_sub_ = ros_node_.subscribe(action_mode_so);
   state_service_ = ros_node_.advertiseService(service_so);
   get_object_gripper_service_ = ros_node_.advertiseService(get_object_gripper_so);
@@ -435,6 +439,20 @@ bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequ
   res.object.state_vector = state_vector;
   head_point.name = "head";
   res.object.points.emplace_back(head_point);
+
+  return true;
+}
+
+bool MultiLinkBotModelPlugin::StopRobot(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
+{
+
+  auto const current_gripper_pose = GetGripper1Pos();
+  gripper1_target_position_.X(current_gripper_pose.X());
+  gripper1_target_position_.Y(current_gripper_pose.Y());
+  // stepping once should be enough
+  auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
+  auto const steps = static_cast<unsigned int>(1.0 / seconds_per_step);
+  model_->GetWorld()->Step(steps);
 
   return true;
 }

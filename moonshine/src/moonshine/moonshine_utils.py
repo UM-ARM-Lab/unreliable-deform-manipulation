@@ -100,9 +100,9 @@ def sequence_of_dicts_to_dict_of_sequences(seq_of_dicts):
     return dict_of_seqs
 
 
-def sequence_of_dicts_to_dict_of_np_arrays(seq_of_dicts):
+def sequence_of_dicts_to_dict_of_np_arrays(seq_of_dicts, dtype=np.float32):
     dict_of_seqs = sequence_of_dicts_to_dict_of_sequences(seq_of_dicts)
-    return {k: np.array(v) for k, v in dict_of_seqs.items()}
+    return {k: np.array(v, dtype=dtype) for k, v in dict_of_seqs.items()}
 
 
 def dict_of_sequences_to_sequence_of_dicts_tf(dict_of_seqs, time_axis=0):

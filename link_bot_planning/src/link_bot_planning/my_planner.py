@@ -184,9 +184,7 @@ class MyPlanner:
         # TODO: check_constraint and propagate should take in "environment" instead of these three special variances
         new_actions = np.expand_dims(new_action, axis=0)
         last_previous_state = previous_states[-1]
-        predicted_states = self.fwd_model.propagate(full_env=self.environment['full_env/env'],
-                                                    full_env_origin=self.environment['full_env/origin'],
-                                                    res=self.fwd_model.full_env_params.res,
+        predicted_states = self.fwd_model.propagate(environment=self.environment,
                                                     start_states=last_previous_state,
                                                     actions=new_actions)
         # get only the final state predicted

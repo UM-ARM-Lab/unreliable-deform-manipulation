@@ -18,10 +18,11 @@ def main():
 
     joint_angles_rad = np.deg2rad(args.joint_angles)
     service_provider = GazeboServices([])
-    service_provider.reset_rope(x=args.x,
-                                y=args.y,
-                                yaw=np.deg2rad(args.yaw),
-                                joint_angles=joint_angles_rad)
+    for i in range(5):
+        service_provider.reset_rope(x=args.x,
+                                    y=args.y,
+                                    yaw=np.deg2rad(args.yaw),
+                                    joint_angles=joint_angles_rad)
 
 
 if __name__ == '__main__':

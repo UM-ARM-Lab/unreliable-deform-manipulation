@@ -231,7 +231,7 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
             net_inputs[planned_state_key] = tf.convert_to_tensor(predictions[state_key], tf.float32)
 
         predictions = self.net(net_inputs, training=False)
-        accept_probabilities = tf.squeeze(predictions['probabilities'], axis=1)
+        accept_probabilities = tf.squeeze(predictions['probabilities'], axis=2)
         return accept_probabilities
 
     def check_constraint_differentiable(self,

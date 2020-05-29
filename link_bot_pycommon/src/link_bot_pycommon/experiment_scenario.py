@@ -232,11 +232,6 @@ class ExperimentScenario:
         ax.set_ylabel("y (m)")
         plt.legend()
 
-        font = FontProperties()
-        font.set_family('serif')
-        font.set_name('Times New Roman')
-        font.set_style('italic')
-
         n_states = len(actual)
 
         def update(t):
@@ -262,10 +257,10 @@ class ExperimentScenario:
             else:
                 if accept_probabilities is not None:
                     title_t += " label=    accept=     "
-                else:
+                elif labels is not None:
                     title_t += " label=    "
-                label_line.set_color('k')
-                classification_line.set_color('k')
+                    label_line.set_color('k')
+                    classification_line.set_color('k')
             ax.set_title(title_t, fontproperties='monospace')
 
             if t < n_states - 1:

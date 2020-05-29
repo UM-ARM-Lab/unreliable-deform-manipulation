@@ -10,7 +10,6 @@ from geometry_msgs.msg import Pose
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.pycommon import quaternion_from_euler
 from link_bot_pycommon.ros_pycommon import xy_move
-from peter_msgs.msg import ModelsPoses
 from peter_msgs.srv import WorldControlRequest, ExecuteActionRequest, GetObject, LinkBotReset, \
     LinkBotResetRequest, Position2DEnable, Position2DEnableRequest, Position2DAction, Position2DActionRequest, \
     SetRopeConfiguration, SetRopeConfigurationRequest
@@ -35,6 +34,7 @@ class GazeboServices(Services):
         # not used in real robot experiments
         self.get_tether_state = rospy.ServiceProxy("tether", GetObject)
         self.set_rope_config = rospy.ServiceProxy("set_rope_config", SetRopeConfiguration)
+        self.stop_robot = rospy.ServiceProxy("stop_robot", Empty)
 
         # TODO: Consider moving this kind of interaction with the environment to a separate node, since we will probably
         #  never be able to do it on a real robot
@@ -75,11 +75,7 @@ class GazeboServices(Services):
             self.reset_world(verbose, reset_robot)
 
         if stop:
-            n_action = self.get_n_action()
-            stop = ExecuteActionRequest()
-            stop.action.action = [0] * n_action
-            stop.action.max_time_per_step = 1.0
-            self.execute_action(stop)
+            self.stop_robot(EmptyRequest())
 
         for movable_object_services in self.movable_object_services.values():
             movable_object_services['stop'](EmptyRequest())
