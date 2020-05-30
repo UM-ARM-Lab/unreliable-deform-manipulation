@@ -46,7 +46,7 @@ def main():
     fwd_model_dir = args.fwd_model_dir
     classifier_model_dir = args.classifier_model_dir
 
-    start_configs = [None]
+    start_configs = [test_config['start_config']]
     results = predict_and_execute(classifier_model_dir, fwd_model_dir, test_config, start_configs, actions)
     fwd_model, classifier_model, environment, actuals, predictions, accept_probabilities = results
     actual = actuals[0]

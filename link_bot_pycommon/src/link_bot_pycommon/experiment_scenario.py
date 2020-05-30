@@ -219,9 +219,9 @@ class ExperimentScenario:
         ax = plt.gca()
         prediction_artist = None
         if predictions is not None:
-            prediction_artist = cls.plot_state(ax, predictions[0], 'g', zorder=3, s=30, label='prediction')
-        actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=30, label='actual', alpha=0.6)
-        action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=30, zorder=4, linewidth=3)
+            prediction_artist = cls.plot_state(ax, predictions[0], 'g', zorder=3, s=2, label='prediction', linewidth=1)
+        actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=2, label='actual', alpha=0.6, linewidth=1)
+        action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=2, zorder=4, linewidth=1)
         cls.plot_environment(ax, environment)
         if labels is not None:
             extent = environment['full_env/extent'] * 1.05
