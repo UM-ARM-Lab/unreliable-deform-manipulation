@@ -25,11 +25,12 @@ def load_generic_model(model_dir) -> [BaseDynamicsFunction, Tuple[str]]:
         model_path_info[-1] = model_path_info[-1][:-2]  # remove the "-$n" so it's "dir/ensemble" instead of "dir/ensemble-$n"
         return fwd_model, model_path_info
     else:
+        # TODO: use ModelRunner
         if isinstance(model_dir, str):
             model_dir = pathlib.Path(model_dir)
         model_hparams_file = model_dir / 'hparams.json'
         if not model_hparams_file.exists():
-            model_hparams_file = model_dir / 'params.json'
+            model_hparams_file = model_dir.parent / 'params.json'
             if not model_hparams_file.exists():
                 raise FileNotFoundError("no hparams file found!")
         hparams = json.load(model_hparams_file.open('r'))

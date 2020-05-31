@@ -189,13 +189,16 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
         self.net = FullDynamicsNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         self.states_keys = self.net.states_keys
         self.ckpt = tf.train.Checkpoint(net=self.net)
+        # TODO: use shape_completion_training stuff here? ModelRunner?
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
         self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
+        else:
+            raise RuntimeError("Failed to restore!!!")
 
     def propagate_from_dataset_element(self, dataset_element):
-        return self.net(dataset_element)
+        return self.net(dataset_element, False)
 
     def propagate_differentiable(self,
                                  full_env: np.ndarray,
@@ -231,7 +234,7 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
             test_x[state_key] = start_state_with_time_dim
 
         test_x = add_batch(test_x)
-        predictions = self.net((test_x, None))
+        predictions = self.net((test_x, False))
         predictions = remove_batch(predictions)
         predictions = dict_of_sequences_to_sequence_of_dicts_tf(predictions)
 

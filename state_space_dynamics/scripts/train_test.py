@@ -10,7 +10,6 @@ import state_space_dynamics
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.tensorflow_train_test_loop import evaluate
 from shape_completion_training.model_runner import ModelRunner
 
 limit_gpu_mem(3)
@@ -29,6 +28,7 @@ def train_main(args, seed: int):
     model_hparams = json.load((args.model_hparams).open('r'))
     model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = args.batch_size
+    model_hparams['seed'] = seed
     model_class = state_space_dynamics.get_model(model_hparams['model_class'])
     scenario = get_scenario(train_dataset.hparams['scenario'])
 

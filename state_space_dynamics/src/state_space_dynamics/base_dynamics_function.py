@@ -14,7 +14,7 @@ class BaseDynamicsFunction:
     def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
         model_hparams_file = model_dir / 'hparams.json'
         if not model_hparams_file.exists():
-            model_hparams_file = model_dir / 'params.json'
+            model_hparams_file = model_dir.parent / 'params.json'
             if not model_hparams_file.exists():
                 raise FileNotFoundError("no hparams file found!")
         self.scenario = scenario

@@ -2,7 +2,6 @@ from typing import Dict, Optional
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from matplotlib.font_manager import FontProperties
 
 from ignition.markers import MarkerProvider
 from link_bot_data.classifier_dataset import ClassifierDataset
@@ -171,15 +170,7 @@ class ExperimentScenario:
                                        fps=fps)
 
     @classmethod
-    def animate_predictions_from_dynamics_dataset(cls,
-                                                  example_idx,
-                                                  dataset_element,
-                                                  predictions,
-                                                  labels=None,
-                                                  start_idx=0,
-                                                  end_idx=-1,
-                                                  accept_probabilities: Optional = None,
-                                                  fps: Optional[int] = 1):
+    def animation_data_from_dynamics_dataset(cls, dataset_element, predictions, labels=None, start_idx=0, end_idx=-1):
         predictions = remove_batch(predictions)
         predictions = numpify(dict_of_sequences_to_sequence_of_dicts_tf(predictions))
         inputs, outputs = dataset_element
@@ -196,12 +187,26 @@ class ExperimentScenario:
         }
 
         labels = labels[start_idx:end_idx] if labels is not None else None
-        return cls.animate_predictions(environment=environment,
-                                       actions=actions[start_idx:end_idx],
-                                       actual=actual[start_idx:end_idx],
-                                       predictions=predictions[start_idx:end_idx],
+        return environment, actions[start_idx:end_idx], actual[start_idx:end_idx], predictions[start_idx:end_idx], labels
+
+    @classmethod
+    def animate_predictions_from_dynamics_dataset(cls,
+                                                  example_idx,
+                                                  dataset_element,
+                                                  predictions,
+                                                  labels=None,
+                                                  start_idx=0,
+                                                  end_idx=-1,
+                                                  accept_probabilities: Optional = None,
+                                                  fps: Optional[int] = 1):
+
+        animation_data = cls.animation_data_from_dynamics_dataset(dataset_element=dataset_element,
+                                                                  predictions=predictions,
+                                                                  labels=labels,
+                                                                  start_idx=start_idx,
+                                                                  end_idx=end_idx)
+        return cls.animate_predictions(*animation_data,
                                        example_idx=example_idx,
-                                       labels=labels,
                                        accept_probabilities=accept_probabilities,
                                        fps=fps)
 
@@ -211,15 +216,50 @@ class ExperimentScenario:
                             actions,
                             actual,
                             predictions: Optional,
-                            example_idx: Optional = None,
                             labels: Optional = None,
+                            example_idx: Optional = None,
                             accept_probabilities: Optional = None,
                             fps: Optional[int] = 1):
         fig = plt.figure()
         ax = plt.gca()
+        update, frames = cls.animate_predictions_on_axes(ax=ax,
+                                                         fig=fig,
+                                                         environment=environment,
+                                                         actions=actions,
+                                                         actual=actual,
+                                                         predictions=predictions,
+                                                         example_idx=example_idx,
+                                                         labels=labels,
+                                                         accept_probabilities=accept_probabilities,
+                                                         fps=fps)
+
+        plt.legend()
+        anim = FuncAnimation(fig, update, interval=1000 / fps, repeat=True, frames=frames)
+        return anim
+
+    @classmethod
+    def animate_predictions_on_axes(cls,
+                                    ax,
+                                    fig,
+                                    environment,
+                                    actions,
+                                    actual,
+                                    predictions: Optional,
+                                    labels: Optional = None,
+                                    example_idx: Optional = None,
+                                    accept_probabilities: Optional = None,
+                                    prediction_label_name: Optional = 'prediction',
+                                    prediction_color: Optional = 'g',
+                                    fps: Optional[int] = 1):
         prediction_artist = None
         if predictions is not None:
-            prediction_artist = cls.plot_state(ax, predictions[0], 'g', zorder=3, s=2, label='prediction', linewidth=1)
+            prediction_artist = cls.plot_state(ax,
+                                               predictions[0],
+                                               color=prediction_color,
+                                               zorder=3,
+                                               s=2,
+                                               label=prediction_label_name,
+                                               linewidth=1)
         actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=2, label='actual', alpha=0.6, linewidth=1)
         action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=2, zorder=4, linewidth=1)
         cls.plot_environment(ax, environment)
@@ -230,7 +270,6 @@ class ExperimentScenario:
             classification_line = plot_extents(ax=ax, extent=offset_extent, color='k', zorder=3, alpha=0.5)
         ax.set_xlabel("x (m)")
         ax.set_ylabel("y (m)")
-        plt.legend()
 
         n_states = len(actual)
 
@@ -266,8 +305,7 @@ class ExperimentScenario:
             if t < n_states - 1:
                 cls.update_action_artist(action_artist, actual[t], actions[t])
 
-        anim = FuncAnimation(fig, update, interval=1000 / fps, repeat=True, frames=n_states)
-        return anim
+        return update, n_states
 
     @classmethod
     def animate_recovering_actions_sequence(cls,

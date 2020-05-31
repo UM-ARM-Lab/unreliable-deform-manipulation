@@ -25,6 +25,8 @@ def listify(x):
     def _listify(x):
         if isinstance(x, np.ndarray):
             return x.tolist()
+        elif isinstance(x, tuple):
+            return tuple(_listify(x_i) for x_i in x)
         elif isinstance(x, list):
             return [_listify(x_i) for x_i in x]
         elif isinstance(x, tf.Tensor):
@@ -35,6 +37,8 @@ def listify(x):
         elif isinstance(x, int):
             return x
         elif isinstance(x, float):
+            return x
+        elif isinstance(x, str):
             return x
         else:
             raise NotImplementedError(type(x))
