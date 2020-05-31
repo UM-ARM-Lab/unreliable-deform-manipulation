@@ -6,8 +6,8 @@ import pathlib
 import numpy as np
 import tensorflow as tf
 
-import link_bot_classifiers
-from link_bot_data.classifier_dataset import ClassifierDataset
+import state_space_dynamics
+from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.tensorflow_train_test_loop import evaluate
@@ -20,16 +20,17 @@ def train_main(args, seed: int):
     ###############
     # Datasets
     ###############
-    train_dataset = ClassifierDataset(args.dataset_dirs)
-    val_dataset = ClassifierDataset(args.dataset_dirs)
+    train_dataset = DynamicsDataset(args.dataset_dirs)
+    val_dataset = DynamicsDataset(args.dataset_dirs)
 
     ###############
     # Model
     ###############
     model_hparams = json.load((args.model_hparams).open('r'))
-    model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
-    model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
-    scenario = get_scenario(model_hparams['scenario'])
+    model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
+    model_hparams['batch_size'] = args.batch_size
+    model_class = state_space_dynamics.get_model(model_hparams['model_class'])
+    scenario = get_scenario(train_dataset.hparams['scenario'])
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
@@ -50,11 +51,12 @@ def train_main(args, seed: int):
 
     # Train
     trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
+    groupname = args.log if trial_path is None else None
     runner = ModelRunner(model=model,
                          training=True,
                          params=model_hparams,
-                         group_name=args.log,
                          trial_path=trial_path,
+                         group_name=groupname,
                          trials_directory=pathlib.Path('trials'),
                          write_summary=False)
     runner.train(train_tf_dataset, val_tf_dataset, num_epochs=args.epochs)
@@ -64,26 +66,29 @@ def eval_main(args, seed: int):
     ###############
     # Model
     ###############
-    model_hparams = json.load((args.checkpoint / 'hparams.json').open('r'))
-    model = link_bot_classifiers.get_model(model_hparams['model_class'])
+    model_hparams = json.load((args.checkpoint / 'params.json').open('r'))
+    model = state_space_dynamics.get_model(model_hparams['model_class'])
     scenario = get_scenario(model_hparams['scenario'])
     net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
 
     ###############
     # Dataset
     ###############
-    test_dataset = ClassifierDataset(args.dataset_dirs)
+    test_dataset = DynamicsDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
     ###############
     # Evaluate
     ###############
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
-    evaluate(keras_model=net,
-             test_tf_dataset=test_tf_dataset,
-             loss_function=loss_function,
-             metrics_function=metrics_function,
-             checkpoint_path=args.checkpoint)
+
+    runner = ModelRunner(model=model,
+                         training=True,
+                         params=model_hparams,
+                         group_name=args.log,
+                         trials_directory=pathlib.Path('trials'),
+                         write_summary=False)
+    runner.val_epoch(test_tf_dataset)
 
 
 def main():
@@ -98,7 +103,7 @@ def main():
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--take', type=int)
-    train_parser.add_argument('--epochs', type=int, default=1)
+    train_parser.add_argument('--epochs', type=int, default=10)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches',

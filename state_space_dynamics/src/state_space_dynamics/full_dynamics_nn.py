@@ -7,21 +7,21 @@ import tensorflow.keras.layers as layers
 from colorama import Fore
 from tensorflow import keras
 
-from link_bot_classifiers.visualization import trajectory_image, paste_over, state_image_to_cmap
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import FullEnvParams
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
 from moonshine.image_functions import raster_differentiable
 from moonshine.moonshine_utils import add_batch, remove_batch, \
     dict_of_sequences_to_sequence_of_dicts_tf
-from moonshine.tensorflow_train_test_loop import MyKerasModel
+from shape_completion_training.mykerasmodel import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 class FullDynamicsNN(MyKerasModel):
 
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
-        super().__init__(hparams, batch_size, scenario)
+        super().__init__(hparams, batch_size)
+        self.scenario = scenario
         self.initial_epoch = 0
 
         self.full_env_params = FullEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['full_env_params'])
@@ -60,6 +60,14 @@ class FullDynamicsNN(MyKerasModel):
             self.pool_layers.append(pool)
 
         self.flatten_conv_output = layers.Flatten()
+
+    def compute_loss(self, dataset_element, outputs):
+        return {
+            'loss': self.scenario.dynamics_loss_function(dataset_element, outputs)
+        }
+
+    def calculate_metrics(self, dataset_element, outputs):
+        return self.scenario.dynamics_metrics_function(dataset_element, outputs)
 
     @tf.function
     def get_local_env(self, center_point, full_env_origin, full_env, res):

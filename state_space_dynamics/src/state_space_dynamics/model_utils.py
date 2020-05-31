@@ -28,6 +28,10 @@ def load_generic_model(model_dir) -> [BaseDynamicsFunction, Tuple[str]]:
         if isinstance(model_dir, str):
             model_dir = pathlib.Path(model_dir)
         model_hparams_file = model_dir / 'hparams.json'
+        if not model_hparams_file.exists():
+            model_hparams_file = model_dir / 'params.json'
+            if not model_hparams_file.exists():
+                raise FileNotFoundError("no hparams file found!")
         hparams = json.load(model_hparams_file.open('r'))
         scenario = get_scenario(hparams['dynamics_dataset_hparams']['scenario'])
         model_type = hparams['model_class']

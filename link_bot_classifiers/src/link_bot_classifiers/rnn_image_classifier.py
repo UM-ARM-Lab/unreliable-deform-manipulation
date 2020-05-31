@@ -25,15 +25,6 @@ from shape_completion_training.mykerasmodel import MyKerasModel
 
 
 class RNNImageClassifier(MyKerasModel):
-
-    def compute_loss(self, dataset_element, outputs):
-        return {
-            'loss': binary_classification_sequence_loss_function(dataset_element, outputs)
-        }
-
-    def calculate_metrics(self, dataset_element, outputs):
-        return binary_classification_sequence_metrics_function(dataset_element, outputs)
-
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams, batch_size)
         self.scenario = scenario
@@ -95,6 +86,15 @@ class RNNImageClassifier(MyKerasModel):
                                                       time=time)
         return images_batch_and_time, padded_action, time
 
+    def compute_loss(self, dataset_element, outputs):
+        return {
+            'loss': binary_classification_sequence_loss_function(dataset_element, outputs)
+        }
+
+    def calculate_metrics(self, dataset_element, outputs):
+        return binary_classification_sequence_metrics_function(dataset_element, outputs)
+
+    @tf.function
     def make_traj_images(self,
                          environment,
                          states_dict_batch_time,
