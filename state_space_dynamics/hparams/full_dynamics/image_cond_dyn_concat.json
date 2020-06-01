@@ -22,7 +22,7 @@
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
   "activity_reg": 0.05,
-  "combine": "outer_product",
+  "combine": "concat",
   "learning_rate": 0.001,
   "epochs": 50
 }
