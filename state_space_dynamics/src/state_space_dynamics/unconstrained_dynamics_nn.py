@@ -63,13 +63,17 @@ class SimpleNNWrapper(BaseDynamicsFunction):
         self.net = UnconstrainedDynamicsNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(net=self.net, model=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
-        self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
+        status = self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
+            if self.manager.latest_checkpoint:
+                status.assert_existing_objects_matched()
+        else:
+            raise RuntimeError("Failed to restore!!!")
         self.states_keys = [self.net.state_key]
 
-    def propagate_from_dataset_element(self, dataset_element):
-        return self.net(dataset_element)
+    def propagate_from_dataset_element(self, dataset_element, training=False):
+        return self.net(dataset_element, training=training)
 
     def propagate_differentiable(self,
                                  environment: Dict,

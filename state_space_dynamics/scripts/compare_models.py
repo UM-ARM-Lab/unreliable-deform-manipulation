@@ -50,7 +50,7 @@ def generate(args):
     all_data = []
     for example_idx, dataset_element in enumerate(tf_dataset):
         data_per_model_for_element = {}
-        print(example_idx)
+        print(f'running prediction for example {example_idx}')
         for model_name, model in models.items():
             predictions = model.propagate_from_dataset_element(dataset_element)
             data_per_model_for_element[model_name] = {
@@ -142,7 +142,9 @@ def viz(data_filename, fps, no_plot, save):
             plt.show()
         if save:
             filename = base_folder / '{}_anim_{}.gif'.format(model_name, example_idx)
+            print(f"Saving {filename.as_posix()}")
             anim.save(filename, writer='imagemagick', dpi=100)
+            plt.close()
 
     metrics_by_model = {}
     for model_name, metrics_for_model in all_metrics.items():
