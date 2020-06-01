@@ -14,24 +14,8 @@ from tabulate import tabulate
 from link_bot_data.classifier_dataset_utils import generate_examples_for_prediction
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_pycommon.metric_utils import row_stats
+from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
 from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_np_arrays
-
-
-def dict_to_pvale_table(data_dict: Dict, table_format: str, fmt: str = '{:5.3f}'):
-    pvalues = np.zeros([len(data_dict), len(data_dict) + 1], dtype=object)
-    for i, (name1, e1) in enumerate(data_dict.items()):
-        pvalues[i, 0] = name1
-        for j, (_, e2) in enumerate(data_dict.items()):
-            _, pvalue = stats.ttest_ind(e1, e2)
-            if pvalue < 0.01:
-                prefix = "! "
-            else:
-                prefix = "  "
-            pvalues[i, j + 1] = prefix + fmt.format(pvalue)
-    headers = [''] + list(data_dict.keys())
-    table = tabulate(pvalues, headers=headers, tablefmt=table_format)
-    return table
 
 
 def invert_dict(data: List) -> Dict:
@@ -363,7 +347,7 @@ def metrics_main(args):
         print(table)
         print()
     print(Style.BRIGHT + "p-value matrix (goal vs execution)" + Style.NORMAL)
-    print(dict_to_pvale_table(execution_to_goal_errors_comparisons, table_format=table_format))
+    print(dict_to_pvalue_table(execution_to_goal_errors_comparisons, table_format=table_format))
     if not args.no_plot:
         plt.show()
 

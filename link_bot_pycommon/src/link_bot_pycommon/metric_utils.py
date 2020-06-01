@@ -1,4 +1,8 @@
+from typing import Dict
+
 import numpy as np
+from scipy import stats
+from tabulate import tabulate
 
 
 def make_row(metric_name, metric_data):
@@ -13,3 +17,25 @@ def row_stats(metric_data):
 
 def brief_row_stats(metric_data):
     return [np.mean(metric_data), np.median(metric_data), np.std(metric_data)]
+
+
+def dict_to_pvalue_table(data_dict: Dict, table_format: str = 'fancy_grid', fmt: str = '{:5.3f}'):
+    """
+    :param data_dict: A dictionary of "rial_name(str): values(list/array)
+    :param table_format:
+    :param fmt:
+    :return:
+    """
+    pvalues = np.zeros([len(data_dict), len(data_dict) + 1], dtype=object)
+    for i, (name1, e1) in enumerate(data_dict.items()):
+        pvalues[i, 0] = name1
+        for j, (_, e2) in enumerate(data_dict.items()):
+            _, pvalue = stats.ttest_ind(e1, e2)
+            if pvalue < 0.01:
+                prefix = "! "
+            else:
+                prefix = "  "
+            pvalues[i, j + 1] = prefix + fmt.format(pvalue)
+    headers = [''] + list(data_dict.keys())
+    table = tabulate(pvalues, headers=headers, tablefmt=table_format)
+    return table

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from link_bot_pycommon.metric_utils import row_stats
+from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
 import argparse
 import json
 import pathlib
@@ -144,7 +144,7 @@ def viz(data_filename, fps, no_plot, save):
             filename = base_folder / '{}_anim_{}.gif'.format(model_name, example_idx)
             print(f"Saving {filename.as_posix()}")
             anim.save(filename, writer='imagemagick', dpi=100)
-            plt.close()
+        plt.close(fig)
 
     metrics_by_model = {}
     for model_name, metrics_for_model in all_metrics.items():
@@ -153,21 +153,26 @@ def viz(data_filename, fps, no_plot, save):
                 metrics_by_model[metric_name] = {}
             metrics_by_model[metric_name][model_name] = metric_values
 
-    for metric_name, metric_by_model in metrics_by_model.items():
-        headers = ["Model", "min", "max", "mean", "median", "std"]
-        table_data = []
-        for model_name, metric_values in metric_by_model.items():
-            table_data.append([model_name] + row_stats(metric_values))
-        print('-' * 90)
-        print(Style.BRIGHT + metric_name + Style.NORMAL)
-        table = tabulate(table_data,
-                         headers=headers,
-                         tablefmt='fancy_grid',
-                         floatfmt='6.4f',
-                         numalign='center',
-                         stralign='left')
-        print(table)
-        print()
+    with (base_folder / 'metrics_tables.txt').open("w") as metrics_file:
+        for metric_name, metric_by_model in metrics_by_model.items():
+            headers = ["Model", "min", "max", "mean", "median", "std"]
+            table_data = []
+            for model_name, metric_values in metric_by_model.items():
+                table_data.append([model_name] + row_stats(metric_values))
+            print('-' * 90)
+            print(Style.BRIGHT + metric_name + Style.NORMAL)
+            table = tabulate(table_data,
+                             headers=headers,
+                             tablefmt='fancy_grid',
+                             floatfmt='6.4f',
+                             numalign='center',
+                             stralign='left')
+            metrics_file.write(table)
+            print(table)
+            print()
+
+            print(Style.BRIGHT + f"p-value matrix [{metric_name}]" + Style.NORMAL)
+            print(dict_to_pvalue_table(metric_by_model))
 
 
 def main():
