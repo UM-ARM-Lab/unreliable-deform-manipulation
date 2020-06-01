@@ -5,6 +5,7 @@ import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
 from link_bot_data.link_bot_dataset_utils import split_into_sequences, slice_sequences
+from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.params import FullEnvParams
 
 
@@ -18,6 +19,7 @@ class DynamicsDataset(BaseDataset):
 
         self.step_size = step_size
         self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
+        self.scenario = get_scenario(self.hparams['scenario'])
 
         self.action_feature_names = ['action']
 

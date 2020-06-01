@@ -188,12 +188,15 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
         super().__init__(model_dir, batch_size, scenario)
         self.net = FullDynamicsNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         self.states_keys = self.net.states_keys
-        self.ckpt = tf.train.Checkpoint(net=self.net)
+        # find a way to convert the old checkpoints. This is necessary to restore old models.
+        self.ckpt = tf.train.Checkpoint(model=self.net, net=self.net)
         # TODO: use shape_completion_training stuff here? ModelRunner?
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
-        self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
+        status = self.ckpt.restore(self.manager.latest_checkpoint)
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
+            if self.manager.latest_checkpoint:
+                status.assert_existing_objects_matched()
         else:
             raise RuntimeError("Failed to restore!!!")
 

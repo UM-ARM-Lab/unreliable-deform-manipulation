@@ -58,15 +58,20 @@ def generate(args):
         all_data.append(data_per_model_for_element)
     results_filename = base_folder / 'saved_data.json'
     print(Fore.GREEN + "Saving results to {}".format(results_filename) + Fore.RESET)
-    json.dump(listify(all_data), results_filename.open("w"))
+    with results_filename.open("w") as results_file:
+        json.dump(listify(all_data), results_file)
+    viz(results_filename, args.fps, args.no_plot, args.save)
 
 
-def viz(args):
+def viz_main(args):
     plt.style.use("slides")
 
+
+def viz(data_filename, fps, no_plot, save):
     # Save the results
-    base_folder = args.data_filename.parent
-    saved_data = json.load(args.data_filename.open("r"))
+    base_folder = data_filename.parent
+    with data_filename.open("r") as data_file:
+        saved_data = json.load(data_file)
 
     all_metrics = []
     for example_idx, datum in enumerate(saved_data):
@@ -106,10 +111,10 @@ def viz(args):
         handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         plt.legend(by_label.values(), by_label.keys())
-        anim = FuncAnimation(fig, update, interval=1000 / args.fps, repeat=True, frames=frames)
-        if not args.no_plot:
+        anim = FuncAnimation(fig, update, interval=1000 / fps, repeat=True, frames=frames)
+        if not no_plot:
             plt.show()
-        if args.save:
+        if save:
             filename = base_folder / '{}_anim_{}.gif'.format(model_name, example_idx)
             anim.save(filename, writer='imagemagick', dpi=100)
 
@@ -126,7 +131,8 @@ def viz(args):
 
     results_filename = base_folder / 'metrics.json'
     print(Fore.GREEN + "Saving results to {}".format(results_filename) + Fore.RESET)
-    json.dump(all_metrics, results_filename.open("w"))
+    with results_filename.open("w") as results_file:
+        json.dump(all_metrics, results_file)
 
 
 def main():
@@ -143,6 +149,7 @@ def main():
     gen_parser.add_argument('--shard', type=int, help='shard only a subset of the data')
     gen_parser.add_argument('--shuffle', action='store_true')
     gen_parser.add_argument('--save', action='store_true')
+    gen_parser.add_argument('--fps', type=float, default=1)
     gen_parser.set_defaults(func=generate)
 
     viz_parser = subparsers.add_parser('viz')
@@ -150,7 +157,7 @@ def main():
     viz_parser.add_argument('--fps', type=float, default=1)
     viz_parser.add_argument('--save', action='store_true')
     viz_parser.add_argument('--no-plot', action='store_true')
-    viz_parser.set_defaults(func=viz)
+    viz_parser.set_defaults(func=viz_main)
 
     args = parser.parse_args()
     if args == argparse.Namespace():

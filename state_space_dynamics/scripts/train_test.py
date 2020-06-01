@@ -10,6 +10,7 @@ import state_space_dynamics
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.gpu_config import limit_gpu_mem
+from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
 
 limit_gpu_mem(3)
@@ -64,17 +65,17 @@ def train_main(args, seed: int):
 
 def eval_main(args, seed: int):
     ###############
-    # Model
-    ###############
-    model_hparams = json.load((args.checkpoint / 'params.json').open('r'))
-    model = state_space_dynamics.get_model(model_hparams['model_class'])
-    scenario = get_scenario(model_hparams['scenario'])
-    net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
-
-    ###############
     # Dataset
     ###############
     test_dataset = DynamicsDataset(args.dataset_dirs)
+
+    ###############
+    # Model
+    ###############
+    trial_path, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
+                                                             trials_directory=pathlib.Path('trials'))
+    model = state_space_dynamics.get_model(params['model_class'])
+    net = model(hparams=params, batch_size=args.batch_size, scenario=test_dataset.scenario)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
     ###############
@@ -82,10 +83,9 @@ def eval_main(args, seed: int):
     ###############
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
-    runner = ModelRunner(model=model,
-                         training=True,
-                         params=model_hparams,
-                         group_name=args.log,
+    runner = ModelRunner(model=net,
+                         training=False,
+                         trial_path=args.checkpoint.absolute(),
                          trials_directory=pathlib.Path('trials'),
                          write_summary=False)
     runner.val_epoch(test_tf_dataset)
