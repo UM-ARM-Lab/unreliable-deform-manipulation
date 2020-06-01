@@ -1,12 +1,15 @@
 #!/usr/bin/env python
+from link_bot_pycommon.metric_utils import row_stats
 import argparse
 import json
 import pathlib
 import time
 
 import matplotlib.pyplot as plt
-from colorama import Fore
+import numpy as np
+from colorama import Fore, Style
 from matplotlib.animation import FuncAnimation
+from tabulate import tabulate
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.args import my_formatter
@@ -64,16 +67,18 @@ def generate(args):
 
 
 def viz_main(args):
-    plt.style.use("slides")
+    viz(args.data_filename, args.fps, args.no_plot, args.save)
 
 
 def viz(data_filename, fps, no_plot, save):
-    # Save the results
+    plt.style.use("slides")
+
+    # Load the results
     base_folder = data_filename.parent
     with data_filename.open("r") as data_file:
         saved_data = json.load(data_file)
 
-    all_metrics = []
+    all_metrics = {}
     for example_idx, datum in enumerate(saved_data):
         # Plotting
         fig = plt.figure()
@@ -82,6 +87,7 @@ def viz(data_filename, fps, no_plot, save):
         frames = None
         for model_name, data_for_model in datum.items():
             scenario = get_scenario(data_for_model['scenario'])
+            dataset_element = (numpify(data_for_model['dataset_element'][0]), numpify(data_for_model['dataset_element'][1]))
             inputs = remove_batch(numpify(data_for_model['dataset_element'][0]))
             outputs = remove_batch(numpify(data_for_model['dataset_element'][1]))
             predictions = remove_batch(numpify(data_for_model['predictions']))
@@ -93,6 +99,26 @@ def viz(data_filename, fps, no_plot, save):
                 'full_env/env': inputs['full_env/env'],
                 'full_env/extent': extent,
             }
+
+            # Metrics
+            metrics_for_model = {}
+            metrics = scenario.dynamics_metrics_function(dataset_element, numpify(data_for_model['predictions']))
+            loss = scenario.dynamics_loss_function(dataset_element, numpify(data_for_model['predictions']))
+            metrics['loss'] = loss
+            for metric_name, metric_value in metrics.items():
+                if metric_name not in metrics_for_model:
+                    metrics_for_model[metric_name] = []
+                metrics_for_model[metric_name].append(metric_value.numpy())
+
+            for metric_name, metric_values in metrics_for_model.items():
+                mean_metric_value = float(np.mean(metric_values))
+                if model_name not in all_metrics:
+                    all_metrics[model_name] = {}
+                if metric_name not in all_metrics[model_name]:
+                    all_metrics[model_name][metric_name] = []
+                all_metrics[model_name][metric_name].append(mean_metric_value)
+
+            # Plotting
             update, frames = scenario.animate_predictions_on_axes(ax=ax,
                                                                   fig=fig,
                                                                   environment=environment,
@@ -118,21 +144,28 @@ def viz(data_filename, fps, no_plot, save):
             filename = base_folder / '{}_anim_{}.gif'.format(model_name, example_idx)
             anim.save(filename, writer='imagemagick', dpi=100)
 
-        # Metrics
-        # metrics = scenario.dynamics_metrics_function(dataset_element, predictions)
-        # for metric_name, metric_value in metrics.items():
-        #     if metric_name not in metrics_for_model:
-        #         metrics_for_model[metric_name] = []
-        #     metrics_for_model[metric_name].append(metric_value.numpy())
+    metrics_by_model = {}
+    for model_name, metrics_for_model in all_metrics.items():
+        for metric_name, metric_values in metrics_for_model.items():
+            if metric_name not in metrics_by_model:
+                metrics_by_model[metric_name] = {}
+            metrics_by_model[metric_name][model_name] = metric_values
 
-        # for metric_name, metric_values in metrics_for_model.items():
-        #     mean_metric_value = float(np.mean(metric_values))
-        #     all_metrics[model_name][metric_name] = mean_metric_value
-
-    results_filename = base_folder / 'metrics.json'
-    print(Fore.GREEN + "Saving results to {}".format(results_filename) + Fore.RESET)
-    with results_filename.open("w") as results_file:
-        json.dump(all_metrics, results_file)
+    for metric_name, metric_by_model in metrics_by_model.items():
+        headers = ["Model", "min", "max", "mean", "median", "std"]
+        table_data = []
+        for model_name, metric_values in metric_by_model.items():
+            table_data.append([model_name] + row_stats(metric_values))
+        print('-' * 90)
+        print(Style.BRIGHT + metric_name + Style.NORMAL)
+        table = tabulate(table_data,
+                         headers=headers,
+                         tablefmt='fancy_grid',
+                         floatfmt='6.4f',
+                         numalign='center',
+                         stralign='left')
+        print(table)
+        print()
 
 
 def main():
