@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
 import argparse
 import json
 import pathlib
@@ -14,6 +13,7 @@ from tabulate import tabulate
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
+from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import listify, numpify, dict_of_sequences_to_sequence_of_dicts, remove_batch
 from state_space_dynamics import model_utils

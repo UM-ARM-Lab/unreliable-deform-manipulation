@@ -7,6 +7,7 @@ import tensorflow as tf
 from link_bot_pycommon.get_scenario import get_scenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from state_space_dynamics.full_dynamics_nn import ObstacleNNWrapper
+from state_space_dynamics.image_cond_dyn import ImageCondDynamicsWrapper
 from state_space_dynamics.rigid_translation_model import RigidTranslationModel
 from state_space_dynamics.unconstrained_dynamics_nn import SimpleNNWrapper
 
@@ -43,6 +44,9 @@ def load_generic_model(model_dir) -> [BaseDynamicsFunction, Tuple[str]]:
             return nn, model_dir.parts[1:]
         elif model_type == 'ObstacleNN':
             nn = ObstacleNNWrapper(model_dir, batch_size=1, scenario=scenario)
+            return nn, model_dir.parts[1:]
+        elif model_type == 'ImageCondDyn':
+            nn = ImageCondDynamicsWrapper(model_dir, batch_size=1, scenario=scenario)
             return nn, model_dir.parts[1:]
         else:
             raise NotImplementedError("invalid model type {}".format(model_type))

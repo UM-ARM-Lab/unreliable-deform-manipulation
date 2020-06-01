@@ -2,7 +2,10 @@
   "unconstrained dynamics": {
     "model_dir": "log_data/tf2_rope/0"
   },
-  "new full dynamics": {
+  "my full dynamics": {
     "model_dir": "trials/reproducing_rope_full_dynamics/May_31_18-14-47_69431a5cde/latest_checkpoint"
+  },
+  "image cond dyn": {
+    "model_dir": "trials/image_cond_dyn/June_01_11-02-09_49130e57f6/best_checkpoint"
   }
 }
