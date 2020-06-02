@@ -13,6 +13,8 @@ def numpify(x):
         return x.numpy()
     elif isinstance(x, dict):
         return {k: numpify(v) for k, v in x.items()}
+    elif isinstance(x, tuple):
+        return tuple(numpify(x_i) for x_i in x)
     elif isinstance(x, int):
         return x
     elif isinstance(x, float):

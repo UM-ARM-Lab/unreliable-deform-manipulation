@@ -1,4 +1,5 @@
 from typing import Dict, Optional
+from tensorflow_graphics.geometry import transformation
 
 import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
@@ -14,6 +15,7 @@ from link_bot_pycommon.collision_checking import gripper_interpolate_cc_and_oob
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import CollectDynamicsParams
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
+from moonshine.moonshine_utils import remove_batch, add_batch
 from peter_msgs.msg import Action
 
 
@@ -182,6 +184,33 @@ class LinkBotScenario(ExperimentScenario):
         return {
             'link_bot': goal_state
         }
+
+    @staticmethod
+    def to_rope_local_frame(state):
+        rope_state = state['link_bot']
+        return LinkBotScenario.to_rope_local_frame_np(rope_state).numpy()
+
+    @staticmethod
+    def to_rope_local_frame_np(rope_state):
+        return remove_batch(LinkBotScenario.to_rope_local_frame_tf(add_batch(rope_state))).numpy()
+
+    @staticmethod
+    def to_rope_local_frame_tf(rope_state):
+        batch_size = rope_state.shape[0]
+        rope_points = tf.reshape(rope_state, [batch_size, -1, 2])
+        n_points = rope_points.shape[1]
+        # rotate so the link from head to previous not is along positive X axis
+        deltas = rope_points[:, 1:] - rope_points[:, :-1]
+        last_dxs = deltas[:, -1, 0]
+        last_dys = deltas[:, -1, 1]
+        angles_of_last_link = -tf.expand_dims(tf.atan2(last_dys, last_dxs), axis=1)
+        rotation_matrix = transformation.rotation_matrix_2d.from_euler(angles_of_last_link)
+        rotation_matrix_tiled = tf.tile(tf.expand_dims(rotation_matrix, axis=1), [1, n_points, 1, 1])
+        rotated_points = transformation.rotation_matrix_2d.rotate(rope_points, rotation_matrix_tiled)
+        # translate so head is at 0,0
+        rotated_points -= rotated_points[:, tf.newaxis, -1]
+        rotated_vectors = tf.reshape(rotated_points, [batch_size, -1])
+        return rotated_vectors
 
     @staticmethod
     def plot_goal(ax, goal, color='g', label=None, **kwargs):

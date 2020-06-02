@@ -1,4 +1,5 @@
 *.gif
+*.pkl
 trials
 data
 *.mp4
