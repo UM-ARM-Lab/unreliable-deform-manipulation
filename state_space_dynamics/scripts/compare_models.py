@@ -80,11 +80,14 @@ def viz(data_filename, fps, no_plot, save):
 
     all_metrics = {}
     for example_idx, datum in enumerate(saved_data):
+        print(example_idx)
         # Plotting
-        fig = plt.figure()
-        ax = plt.gca()
-        update_funcs = []
-        frames = None
+        if no_plot and not save:
+            fig = plt.figure()
+            ax = plt.gca()
+            update_funcs = []
+            frames = None
+
         for model_name, data_for_model in datum.items():
             scenario = get_scenario(data_for_model['scenario'])
             dataset_element = (numpify(data_for_model['dataset_element'][0]), numpify(data_for_model['dataset_element'][1]))
@@ -119,32 +122,34 @@ def viz(data_filename, fps, no_plot, save):
                 all_metrics[model_name][metric_name].append(mean_metric_value)
 
             # Plotting
-            update, frames = scenario.animate_predictions_on_axes(ax=ax,
-                                                                  fig=fig,
-                                                                  environment=environment,
-                                                                  actions=actions,
-                                                                  actual=actual,
-                                                                  predictions=predictions,
-                                                                  example_idx=example_idx,
-                                                                  prediction_label_name=model_name,
-                                                                  prediction_color=None)
-            update_funcs.append(update)
+            if no_plot and not save:
+                update, frames = scenario.animate_predictions_on_axes(ax=ax,
+                                                                      fig=fig,
+                                                                      environment=environment,
+                                                                      actions=actions,
+                                                                      actual=actual,
+                                                                      predictions=predictions,
+                                                                      example_idx=example_idx,
+                                                                      prediction_label_name=model_name,
+                                                                      prediction_color=None)
+                update_funcs.append(update)
 
-        def update(t):
-            for update_func in update_funcs:
-                update_func(t)
+        if no_plot and not save:
+            def update(t):
+                for update_func in update_funcs:
+                    update_func(t)
 
-        handles, labels = plt.gca().get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        plt.legend(by_label.values(), by_label.keys())
-        anim = FuncAnimation(fig, update, interval=1000 / fps, repeat=True, frames=frames)
-        if not no_plot:
-            plt.show()
-        if save:
-            filename = base_folder / '{}_anim_{}.gif'.format(model_name, example_idx)
-            print(f"Saving {filename.as_posix()}")
-            anim.save(filename, writer='imagemagick', dpi=100)
-        plt.close(fig)
+            handles, labels = plt.gca().get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            plt.legend(by_label.values(), by_label.keys())
+            anim = FuncAnimation(fig, update, interval=1000 / fps, repeat=True, frames=frames)
+            if not no_plot:
+                plt.show()
+            if save:
+                filename = base_folder / '{}_anim_{}.gif'.format(model_name, example_idx)
+                print(f"Saving {filename.as_posix()}")
+                anim.save(filename, writer='imagemagick', dpi=100)
+            plt.close(fig)
 
     metrics_by_model = {}
     for model_name, metrics_for_model in all_metrics.items():
