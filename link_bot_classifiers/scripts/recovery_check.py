@@ -17,6 +17,7 @@ from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import env_from_occupancy_data
+from link_bot_pycommon.pycommon import model_dirs_to_json, model_dirs_from_json
 from link_bot_pycommon.ros_pycommon import get_states_dict
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, listify, numpify
@@ -24,7 +25,7 @@ from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, li
 limit_gpu_mem(4)
 
 
-def save_data(basedir, environment, actuals, predictions, accept_probabilities, random_actions):
+def save_data(args, basedir, environment, actuals, predictions, accept_probabilities, random_actions):
     data = {
         'environment': environment,
         'actuals': actuals,
@@ -34,40 +35,18 @@ def save_data(basedir, environment, actuals, predictions, accept_probabilities, 
     }
     filename = basedir / 'saved_data.json'
     print(Fore.GREEN + f'saving {filename.as_posix()}' + Fore.RESET)
-    json.dump(listify(data), filename.open("w"))
-
-
-def main():
-    parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    subparsers = parser.add_subparsers()
-    test_config_parser = subparsers.add_parser('test_config')
-    test_config_parser.add_argument('test_config', help="json file describing the test", type=pathlib.Path)
-    test_config_parser.add_argument('--n-actions-sampled', type=int, default=100)
-    test_config_parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')
-    test_config_parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
-    test_config_parser.set_defaults(func=test_config)
-    load_parser = subparsers.add_parser('load')
-    load_parser.add_argument('load_from', help="json file with previously generated results", type=pathlib.Path)
-    load_parser.set_defaults(func=load)
-
-    np.set_printoptions(suppress=True, precision=3)
-    np.random.seed(0)
-    tf.random.set_seed(0)
-    rospy.init_node("recovery_check")
-    tf.get_logger().setLevel(logging.ERROR)
-
-    args = parser.parse_args()
-    # args.fwd_model_dirs = [pathlib.Path(f"./ss_log_dir/tf2_rope/{i}") for i in range(8)]
-    # args.classifier_model_dir = pathlib.Path('log_data/rope_2_seq/May_24_01-12-08_617a0bee2a')
-    if args == argparse.Namespace():
-        parser.print_usage()
-    else:
-        args.func(args)
+    data_and_model_info = {
+        'data': listify(data),
+        'classifier_model_dir': model_dirs_to_json(args.classifier_model_dir),
+        'fwd_model_dir': model_dirs_to_json(args.fwd_model_dir),
+    }
+    json.dump(data_and_model_info, filename.open("w"))
+    return filename
 
 
 def test_config(args):
     now = time.time()
-    basedir = pathlib.Path(f"results/recovery_check/{int(now)}")
+    basedir = pathlib.Path(f"results/recovery_check/{args.test_config.stem}_{int(now)}")
     basedir.mkdir(exist_ok=True)
 
     test_config = json.load(args.test_config.open("r"))
@@ -77,34 +56,34 @@ def test_config(args):
     results = predict_and_execute(args.classifier_model_dir, args.fwd_model_dir, test_config, start_configs, random_actions)
     fwd_model, classifier_model, environment, actuals, predictions, accept_probabilities = results
 
-    save_data(basedir, environment, actuals, predictions, accept_probabilities, random_actions)
+    filename = save_data(args, basedir, environment, actuals, predictions, accept_probabilities, random_actions)
 
-    compare_predictions_to_actual(basedir=basedir,
-                                  classifier=classifier_model,
-                                  environment=environment,
-                                  random_actions=random_actions,
-                                  predictions=predictions,
-                                  actuals=actuals,
-                                  accepts_probabilities=accept_probabilities)
+    load_and_compare_predictions_to_actual(filename)
 
 
-def load(args):
-    saved_data = json.load(args.load_from.open("r"))
+def load_main(args):
+    load_and_compare_predictions_to_actual(args.load_from)
+
+
+def load_and_compare_predictions_to_actual(load_from: pathlib.Path):
+    data_and_model_info = json.load(load_from.open("r"))
+    saved_data = data_and_model_info['data']
     environment = numpify(saved_data['environment'])
     actuals = [numpify(a_i) for a_i in saved_data['actuals']]
     predictions = [numpify(p_i) for p_i in saved_data['predictions']]
     random_actions = numpify(saved_data['random_actions'])
     accept_probabilities = numpify(saved_data['accept_probabilities'])
-    classifier_model, fwd_model = load_models(classifier_model_dir=args.classifier_model_dir, fwd_model_dir=args.fwd_model_dir)
-
-    basedir = args.load_from.parent
-    compare_predictions_to_actual(basedir=basedir,
-                                  classifier=classifier_model,
-                                  environment=environment,
-                                  random_actions=random_actions,
-                                  predictions=predictions,
-                                  actuals=actuals,
-                                  accepts_probabilities=accept_probabilities)
+    classifier_model_dir = model_dirs_from_json(data_and_model_info['classifier_model_dir'])
+    fwd_model_dir = model_dirs_from_json(data_and_model_info['fwd_model_dir'])
+    classifier_model, fwd_model = load_models(classifier_model_dir=classifier_model_dir, fwd_model_dir=fwd_model_dir)
+    basedir = load_from.parent
+    compare_predictions_to_actual(basedir,
+                                  classifier_model,
+                                  environment,
+                                  random_actions,
+                                  predictions,
+                                  actuals,
+                                  accept_probabilities)
 
 
 def compare_predictions_to_actual(basedir: pathlib.Path,
@@ -113,15 +92,22 @@ def compare_predictions_to_actual(basedir: pathlib.Path,
                                   random_actions,
                                   predictions: List,
                                   actuals: List,
-                                  accepts_probabilities
-                                  ):
+                                  accepts_probabilities):
     labeling_params = classifier.model_hparams['classifier_dataset_hparams']['labeling_params']
     labeling_params['threshold'] = 0.05
     key = labeling_params['state_key']
     all_predictions_are_far = []
     all_predictions_are_rejected = []
-    for i, (prediction, actual, actions, accept_probabilities) in enumerate(
-            zip(predictions, actuals, random_actions, accepts_probabilities)):
+    min_stdevs = []
+    max_stdevs = []
+    for i, zipped in enumerate(zip(predictions, actuals, random_actions, accepts_probabilities)):
+        prediction, actual, actions, accept_probabilities = zipped
+        # [1:] because uncertainty at start is 0
+        min_stdev = np.min(prediction['stdev'][1:])
+        max_stdev = np.max(prediction['stdev'][1:])
+        min_stdevs.append(min_stdev)
+        max_stdevs.append(max_stdev)
+        print(f"[{max_stdev:.4f}, {min_stdev:.4f}]")
         prediction_seq = dict_of_sequences_to_sequence_of_dicts(prediction)
         actual_seq = dict_of_sequences_to_sequence_of_dicts(actual)
         all_prediction_is_close = np.linalg.norm(prediction[key] - actual[key], axis=1) < labeling_params['threshold']
@@ -145,6 +131,9 @@ def compare_predictions_to_actual(basedir: pathlib.Path,
         anim.save(outfilename, writer='imagemagick', dpi=200)
         plt.close()
 
+    print(f"mean min stdev {np.mean(min_stdevs)}")
+    print(f"mean max stdev {np.mean(max_stdevs)}")
+
     if np.all(all_predictions_are_rejected):
         print("needs recovery!")
 
@@ -162,6 +151,34 @@ def get_state_and_environment(classifier_model, scenario, service_provider):
 
 def sample_actions(n_samples, horizon):
     return tf.random.uniform(shape=[n_samples, horizon, 2], minval=-0.15, maxval=0.15)
+
+
+def main():
+    parser = argparse.ArgumentParser(formatter_class=my_formatter)
+    subparsers = parser.add_subparsers()
+    test_config_parser = subparsers.add_parser('test_config')
+    test_config_parser.add_argument('test_config', help="json file describing the test", type=pathlib.Path)
+    test_config_parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')
+    test_config_parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
+    test_config_parser.add_argument('--n-actions-sampled', type=int, default=100)
+    test_config_parser.set_defaults(func=test_config)
+    load_parser = subparsers.add_parser('load')
+    load_parser.add_argument('load_from', help="json file with previously generated results", type=pathlib.Path)
+    load_parser.set_defaults(func=load_main)
+
+    np.set_printoptions(suppress=True, precision=3)
+    np.random.seed(0)
+    tf.random.set_seed(0)
+    rospy.init_node("recovery_check")
+    tf.get_logger().setLevel(logging.ERROR)
+
+    args = parser.parse_args()
+    # args.fwd_model_dirs = [pathlib.Path(f"./ss_log_dir/tf2_rope/{i}") for i in range(8)]
+    # args.classifier_model_dir = pathlib.Path('log_data/rope_2_seq/May_24_01-12-08_617a0bee2a')
+    if args == argparse.Namespace():
+        parser.print_usage()
+    else:
+        args.func(args)
 
 
 if __name__ == '__main__':

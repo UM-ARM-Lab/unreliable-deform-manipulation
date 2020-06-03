@@ -1,5 +1,4 @@
 from typing import Dict, Optional
-from tensorflow_graphics.geometry import transformation
 
 import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
@@ -149,7 +148,7 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def distance(s1, s2):
-        # NOTE: using R^22 distance mangles the rope shape more, so we don't use it.
+        # NOTE: using R^22 distance angles the rope shape more, so we don't use it.
         link_bot_points1 = np.reshape(s1['link_bot'], [-1, 2])
         tail_point1 = link_bot_points1[0]
         link_bot_points2 = np.reshape(s2['link_bot'], [-1, 2])
@@ -158,7 +157,7 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def distance_differentiable(s1, s2):
-        # NOTE: using R^22 distance mangles the rope shape more, so we don't use it.
+        # NOTE: using R^22 distance angles the rope shape more, so we don't use it.
         link_bot_points1 = tf.reshape(s1['link_bot'], [-1, 2])
         tail_point1 = link_bot_points1[0]
         link_bot_points2 = tf.reshape(s2['link_bot'], [-1, 2])
@@ -186,29 +185,41 @@ class LinkBotScenario(ExperimentScenario):
         }
 
     @staticmethod
-    def to_rope_local_frame(state):
+    def to_rope_local_frame(state, reference_state=None):
         rope_state = state['link_bot']
-        return LinkBotScenario.to_rope_local_frame_np(rope_state).numpy()
+        if reference_state is None:
+            reference_rope_state = np.copy(rope_state)
+        else:
+            reference_rope_state = reference_state['link_bot']
+        return LinkBotScenario.to_rope_local_frame_np(rope_state, reference_rope_state)
 
     @staticmethod
-    def to_rope_local_frame_np(rope_state):
-        return remove_batch(LinkBotScenario.to_rope_local_frame_tf(add_batch(rope_state))).numpy()
+    def to_rope_local_frame_np(rope_state, reference_rope_state=None):
+        if reference_rope_state is None:
+            reference_rope_state = np.copy(rope_state)
+        rope_local = LinkBotScenario.to_rope_local_frame_tf(add_batch(rope_state), add_batch(reference_rope_state))
+        return remove_batch(rope_local).numpy()
 
     @staticmethod
-    def to_rope_local_frame_tf(rope_state):
+    def to_rope_local_frame_tf(rope_state, reference_rope_state=None):
+        from tensorflow_graphics.geometry import transformation
+        if reference_rope_state is None:
+            reference_rope_state = tf.identity(rope_state)
         batch_size = rope_state.shape[0]
         rope_points = tf.reshape(rope_state, [batch_size, -1, 2])
+        reference_rope_points = tf.reshape(reference_rope_state, [batch_size, -1, 2])
         n_points = rope_points.shape[1]
-        # rotate so the link from head to previous not is along positive X axis
-        deltas = rope_points[:, 1:] - rope_points[:, :-1]
+        # rotate so the link from head to previous node is along positive X axis
+        deltas = reference_rope_points[:, 1:] - reference_rope_points[:, :-1]
         last_dxs = deltas[:, -1, 0]
         last_dys = deltas[:, -1, 1]
         angles_of_last_link = -tf.expand_dims(tf.atan2(last_dys, last_dxs), axis=1)
         rotation_matrix = transformation.rotation_matrix_2d.from_euler(angles_of_last_link)
         rotation_matrix_tiled = tf.tile(tf.expand_dims(rotation_matrix, axis=1), [1, n_points, 1, 1])
         rotated_points = transformation.rotation_matrix_2d.rotate(rope_points, rotation_matrix_tiled)
+        reference_rotated_points = transformation.rotation_matrix_2d.rotate(reference_rope_points, rotation_matrix_tiled)
         # translate so head is at 0,0
-        rotated_points -= rotated_points[:, tf.newaxis, -1]
+        rotated_points -= reference_rotated_points[:, tf.newaxis, -1]
         rotated_vectors = tf.reshape(rotated_points, [batch_size, -1])
         return rotated_vectors
 

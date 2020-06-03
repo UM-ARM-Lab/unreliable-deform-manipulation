@@ -1,9 +1,11 @@
 from __future__ import division
 
 import math
+import pathlib
 import random
 import string
 import warnings
+from typing import List, Union
 
 import numpy as np
 import tensorflow as tf
@@ -301,3 +303,23 @@ def trim_reconverging(x, max_leading_ones=3, max_trailing_ones=3):
             end_of_ones_after_zeros += 1
 
     return just_before_start_of_zeros, end_of_ones_after_zeros
+
+
+def model_dirs_from_json(model_dirs):
+    if isinstance(model_dirs, list):
+        return [pathlib.Path(s) for s in model_dirs]
+    elif isinstance(model_dirs, str):
+        return pathlib.Path(model_dirs)
+    else:
+        raise NotImplementedError()
+
+
+def model_dirs_to_json(model_dirs: Union[List[pathlib.Path], pathlib.Path]) -> Union[List[str], str]:
+    if isinstance(model_dirs, list):
+        return [p.as_posix() for p in model_dirs]
+    elif isinstance(model_dirs, pathlib.Path):
+        return model_dirs.as_posix()
+    elif isinstance(model_dirs, str):
+        return model_dirs
+    else:
+        raise NotImplementedError()
