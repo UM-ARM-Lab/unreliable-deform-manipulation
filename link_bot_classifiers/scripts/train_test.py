@@ -10,6 +10,7 @@ import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.gpu_config import limit_gpu_mem
+from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model_runner import ModelRunner
 
 limit_gpu_mem(3)
@@ -56,7 +57,7 @@ def train_main(args, seed: int):
                          trial_path=trial_path,
                          trials_directory=pathlib.Path('trials'),
                          write_summary=False)
-    runner.train(train_tf_dataset, val_tf_dataset, num_epochs=args.epochs)
+    runner.train(train_tf_dataset, val_tf_dataset, num_epochs=args.epochs, key_metric=AccuracyMetric)
 
 
 def eval_main(args, seed: int):
