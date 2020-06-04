@@ -97,15 +97,15 @@ def main():
         for state_key in classifier_dataset.state_keys:
             predictions[state_key] = example[add_planned(state_key)]
         predictions = dict_of_sequences_to_sequence_of_dicts(predictions)
-        in_collision = collision_checker.check_constraint(environment=environment,
-                                                          states_sequence=predictions,
-                                                          actions=example['action'])[0] < 0.5
+        # in_collision = collision_checker.check_constraint(environment=environment,
+        #                                                   states_sequence=predictions,
+        #                                                   actions=example['action'])[0] < 0.5
 
         if args.only_reconverging and not reconverging:
             continue
 
-        if args.only_in_collision and not in_collision:
-            continue
+        # if args.only_in_collision and not in_collision:
+        #     continue
 
         if count == 0:
             print_dict(example)

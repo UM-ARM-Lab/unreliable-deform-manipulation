@@ -11,6 +11,7 @@ from link_bot_data.link_bot_dataset_utils import add_planned, state_dict_is_null
 from link_bot_data.visualization import plot_rope_configuration, plot_arrow
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from moonshine.moonshine_utils import numpify, dict_of_sequences_to_sequence_of_dicts
 
 
 def plot_classifier_data(
@@ -93,13 +94,11 @@ def visualize_classifier_example(args,
             anim.save(filename, writer='imagemagick', dpi=100, fps=fps)
         return anim
     elif args.display_type == 'plot':
-        if image_key == 'transition_image':
-            return transition_plot(example, None, title)
-        elif image_key == 'trajectory_image':
-            fig = plt.figure()
-            ax = plt.gca()
-            trajectory_plot_from_dataset(ax, classifier_dataset, example, scenario, title)
-            return fig
+        fig = plt.figure()
+        ax = plt.gca()
+        assert example["is_close"].shape[0] == 2
+        trajectory_plot_from_dataset(ax, classifier_dataset, example, scenario, title)
+        return fig
 
 
 def transition_plot(example, label, title):
@@ -126,13 +125,23 @@ def transition_plot(example, label, title):
 
 
 def trajectory_plot_from_dataset(ax, classifier_dataset, example, scenario, title):
-    actual_states = example[classifier_dataset.label_state_key].numpy()
-    planned_states = example[add_planned(classifier_dataset.label_state_key)].numpy()
+    actual_states = {}
+    planned_states = {}
+    for state_key in classifier_dataset.state_keys:
+        actual_states[state_key] = numpify(example[state_key])
+        planned_states[state_key] = numpify(example[add_planned(state_key)])
     environment = scenario.get_environment_from_example(example)
+    actual_states = dict_of_sequences_to_sequence_of_dicts(actual_states)
+    planned_states = dict_of_sequences_to_sequence_of_dicts(planned_states)
 
     trajectory_plot(ax, scenario, environment, actual_states, planned_states)
 
+    print(example["is_close"])
+    traj_idx = int(example["traj_idx"][0].numpy())
+    label = example["is_close"][1]
+    title = f"Traj={traj_idx}, label={label}"
     ax.set_title(title)
+
     handles, labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     ax.legend(by_label.values(), by_label.keys())

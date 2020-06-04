@@ -14,6 +14,7 @@ from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import FullEnvParams
 from link_bot_pycommon.pycommon import make_dict_float32
+from moonshine import classifier_losses_and_metrics
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.classifier_losses_and_metrics import binary_classification_sequence_loss_function, \
     binary_classification_sequence_metrics_function
@@ -71,6 +72,18 @@ class RNNImageClassifier(MyKerasModel):
         self.output_layer = layers.Dense(1, activation=None)
         self.sigmoid = layers.Activation("sigmoid")
 
+        loss_type = self.hparams['loss_type']
+        if loss_type == 'sequence':
+            self.loss_function = classifier_losses_and_metrics.binary_classification_sequence_loss_function
+        elif loss_type == 'weighted_sequence':
+            self.loss_function = classifier_losses_and_metrics.negative_weighted_binary_classification_sequence_loss_function
+        elif loss_type == 'from_label':
+            self.loss_function = classifier_losses_and_metrics.binary_classification_loss_function
+        elif loss_type == 'reconverging':
+            self.loss_function = classifier_losses_and_metrics.reconverging_weighted_binary_classification_sequence_loss_function
+        else:
+            raise NotImplementedError()
+
     def make_traj_images_from_input_dict(self, input_dict, batch_size):
         # First flatten batch & time
         transposed_states_dict = {k: tf.transpose(input_dict[add_planned(k)], [1, 0, 2]) for k in self.states_keys}
@@ -88,7 +101,7 @@ class RNNImageClassifier(MyKerasModel):
 
     def compute_loss(self, dataset_element, outputs):
         return {
-            'loss': binary_classification_sequence_loss_function(dataset_element, outputs)
+            'loss': self.loss_function(dataset_element, outputs)
         }
 
     def calculate_metrics(self, dataset_element, outputs):

@@ -10,7 +10,6 @@ import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.tensorflow_train_test_loop import evaluate
 from shape_completion_training.model_runner import ModelRunner
 
 limit_gpu_mem(3)
@@ -79,11 +78,16 @@ def eval_main(args, seed: int):
     # Evaluate
     ###############
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
-    evaluate(keras_model=net,
-             test_tf_dataset=test_tf_dataset,
-             loss_function=loss_function,
-             metrics_function=metrics_function,
-             checkpoint_path=args.checkpoint)
+
+    trial_path = args.checkpoint.absolute()
+    runner = ModelRunner(model=model,
+                         training=True,
+                         params=model_hparams,
+                         group_name=None,
+                         trial_path=trial_path,
+                         trials_directory=pathlib.Path('trials'),
+                         write_summary=False)
+    runner.val_epoch(test_tf_dataset)
 
 
 def main():

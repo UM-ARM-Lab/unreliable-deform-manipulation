@@ -23,8 +23,7 @@ from shape_completion_training.metric import AccuracyMetric
 from moonshine.moonshine_utils import remove_batch, add_batch
 from moonshine.tensorflow_train_test_loop import evaluate, train
 
-limit_gpu_mem(5)
-
+limit_gpu_mem(2)
 
 def train_main(args, seed: int):
     if args.log:
