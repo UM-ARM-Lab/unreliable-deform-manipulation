@@ -22,8 +22,14 @@ def compute_weighted_mean_loss(bce, positives, valid_indices):
     batch_size = positives.shape[0]
     n_negative = batch_size - n_positive
     # TODO: handle division by 0
-    weight_for_positive = batch_size / 2.0 / n_positive
-    weight_for_negative = batch_size / 2.0 / n_negative
+    if tf.equal(n_positive, 0):
+        weight_for_positive = 100
+    else:
+        weight_for_positive = batch_size / 2.0 / n_positive
+    if tf.equal(n_negative, 0):
+        weight_for_negative = 100
+    else:
+        weight_for_negative = batch_size / 2.0 / n_negative
     weighted_bce = tf.math.add(tf.math.multiply(bce, positives * weight_for_positive),
                                tf.math.multiply(bce, negatives * weight_for_negative))
     valid_weighted_bce = tf.gather_nd(weighted_bce, valid_indices)
@@ -42,7 +48,7 @@ def reconverging_weighted_binary_classification_sequence_loss_function(dataset_e
     # mask to ignore loss for states
     reconverging = tf.cast(is_reconverging(dataset_element['is_close']), tf.float32)
     T = is_close.shape[1]
-    reconverging_per_step = tf.stack([reconverging]*T, axis=1)
+    reconverging_per_step = tf.stack([reconverging] * T, axis=1)
     total_bce = compute_weighted_mean_loss(bce, reconverging_per_step, valid_indices)
     return total_bce
 
