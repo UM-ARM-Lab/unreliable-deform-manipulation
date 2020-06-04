@@ -11,6 +11,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.metric import AccuracyMetric
+from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
 
 limit_gpu_mem(3)
@@ -64,10 +65,11 @@ def eval_main(args, seed: int):
     ###############
     # Model
     ###############
-    model_hparams = json.load((args.checkpoint / 'hparams.json').open('r'))
-    model = link_bot_classifiers.get_model(model_hparams['model_class'])
-    scenario = get_scenario(model_hparams['scenario'])
-    net = model(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
+    trial_path, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
+                                                             trials_directory=pathlib.Path('trials'))
+    model = link_bot_classifiers.get_model(params['model_class'])
+    scenario = get_scenario(params['scenario'])
+    net = model(hparams=params, batch_size=args.batch_size, scenario=scenario)
 
     ###############
     # Dataset
@@ -83,7 +85,7 @@ def eval_main(args, seed: int):
     trial_path = args.checkpoint.absolute()
     runner = ModelRunner(model=model,
                          training=True,
-                         params=model_hparams,
+                         params=None,
                          group_name=None,
                          trial_path=trial_path,
                          trials_directory=pathlib.Path('trials'),
