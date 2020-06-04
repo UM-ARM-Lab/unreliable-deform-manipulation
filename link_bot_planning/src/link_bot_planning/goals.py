@@ -23,14 +23,14 @@ def sample_collision_free_goal(goal_w_m: float,
     :param rng:  np rng
     :return x, y tuple, meters
     """
-    occupancy_data = link_bot_sdf_utils.OccupancyData(data=environment['full_env/env'],
-                                                      resolution=environment['full_env/res'],
-                                                      origin=environment['full_env/origin'])
-    occupancy_data = link_bot_pycommon.collision_checking.inflate(occupancy_data, radius_m=0.025)
-
+    inflated_env = link_bot_pycommon.collision_checking.inflate_tf(environment['full_env/env'],
+                                                                   radius_m=0.025,
+                                                                   res=environment['full_env/res'])
     while True:
         x, y = sample_goal(goal_w_m, goal_h_m, rng)
-        r, c = link_bot_sdf_utils.point_to_idx(x, y, resolution=occupancy_data.resolution, origin=occupancy_data.origin)
-        collision = occupancy_data.data[r, c]
+        r, c = link_bot_sdf_utils.point_to_idx(x, y,
+                                               resolution=environment['full_env/res'],
+                                               origin=environment['full_env/origin'])
+        collision = inflated_env[r, c]
         if not collision:
             return x, y

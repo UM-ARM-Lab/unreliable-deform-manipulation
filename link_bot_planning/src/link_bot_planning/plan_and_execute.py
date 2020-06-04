@@ -8,6 +8,7 @@ import numpy as np
 from colorama import Fore
 from ompl import base as ob
 
+from geometry_msgs.msg import Pose
 from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner
@@ -119,10 +120,13 @@ class PlanAndExecute:
         if self.verbose >= 1:
             print(Fore.CYAN + "Planning from {} to {}".format(start_states, goal) + Fore.RESET)
 
-        t0 = time.time()
-        # Planning #
-        planner_result = self.planner.plan(start_states, environment, goal)
         ############
+        # Planning #
+        ############
+        return True
+        t0 = time.time()
+        planner_result = self.planner.plan(start_states, environment, goal)
+
         my_planner.interpret_planner_status(planner_result.planner_status, self.verbose)
         planner_data = ob.PlannerData(self.planner.si)
         self.planner.planner.getPlannerData(planner_data)
@@ -208,7 +212,17 @@ class PlanAndExecute:
         if self.sim_params.randomize_obstacles:
             # generate a new environment by rearranging the obstacles
             movable_obstacles = self.planner_params['movable_obstacles']
-            self.service_provider.move_objects_randomly(self.env_rng, movable_obstacles)
+            # self.service_provider.move_objects_randomly(self.env_rng, movable_obstacles)
+            random_obstacle_name = np.random.choice(list(movable_obstacles.keys()))
+            pose = Pose()
+            state = get_states_dict(self.service_provider)
+            gripper_pos = self.planner.scenario.state_to_gripper_position(state)
+            pose.position.x = gripper_pos[0, 0]
+            pose.position.y = gripper_pos[0, 1]
+            object_position = {
+                random_obstacle_name: pose,
+            }
+            self.service_provider.move_objects(object_position)
 
     def execute_plan(self, actions):
         """

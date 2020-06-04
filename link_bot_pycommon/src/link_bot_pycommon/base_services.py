@@ -1,13 +1,14 @@
-from typing import Optional
+from typing import Optional, Dict
 
 import numpy as np
-import rospy
-import std_srvs
 from colorama import Fore
 
+import rospy
+import std_srvs
 from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingRequest
+from geometry_msgs.msg import Pose
 from ignition.markers import MarkerProvider
-from peter_msgs.srv import ComputeOccupancy, LinkBotState, ExecuteAction, WorldControl, LinkBotTrajectory, GetObjects, \
+from peter_msgs.srv import ComputeOccupancy, ExecuteAction, WorldControl, LinkBotTrajectory, GetObjects, \
     StateSpaceDescription, StateSpaceDescriptionRequest, ExecuteActionRequest
 
 
@@ -44,6 +45,9 @@ class Services:
     @staticmethod
     def get_n_action():
         return rospy.get_param("n_action")
+
+    def move_objects(self, object_moves: Dict[str, Pose]):
+        pass
 
     def get_states_description(self):
         request = StateSpaceDescriptionRequest()

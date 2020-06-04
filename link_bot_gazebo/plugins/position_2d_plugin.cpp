@@ -209,7 +209,7 @@ bool Position2dPlugin::OnEnable(peter_msgs::Position2DEnableRequest &req, peter_
     collision_->SetCollideBits(0);
   }
   else {
-    // enable collision
+    // disable, which means enable collision
     collision_->SetCollideBits(-1);
   }
   return true;
