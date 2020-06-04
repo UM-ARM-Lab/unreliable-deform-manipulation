@@ -9,7 +9,7 @@ from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_pycommon.collision_checking import batch_in_collision_tf
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 
-DEFAULT_INFLATION_RADIUS = 0.02
+DEFAULT_INFLATION_RADIUS = 0.021
 
 
 class CollisionCheckerClassifier(BaseConstraintChecker):
@@ -36,14 +36,16 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
         ys = points[:, 1]
         in_collision = batch_in_collision_tf(environment=environment,
                                              xs=xs,
-                                             ys=ys)
-        prediction = 1 - in_collision
+                                             ys=ys,
+                                             inflate_radius_m=DEFAULT_INFLATION_RADIUS)
+        prediction = tf.expand_dims(tf.logical_not(in_collision), axis=0)
         return prediction
 
     def check_constraint(self,
                          environment: Dict,
                          states_sequence: List[Dict],
                          actions: np.ndarray):
+        assert len(states_sequence) == 2
         return self.check_constraint_differentiable(environment, states_sequence, actions).numpy()
 
 

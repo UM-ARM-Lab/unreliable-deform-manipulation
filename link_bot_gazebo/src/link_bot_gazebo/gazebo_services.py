@@ -10,9 +10,9 @@ from geometry_msgs.msg import Pose
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.pycommon import quaternion_from_euler
 from link_bot_pycommon.ros_pycommon import xy_move
-from peter_msgs.srv import WorldControlRequest, ExecuteActionRequest, GetObject, LinkBotReset, \
+from peter_msgs.srv import WorldControlRequest, GetObject, LinkBotReset, \
     LinkBotResetRequest, Position2DEnable, Position2DEnableRequest, Position2DAction, Position2DActionRequest, \
-    SetRopeConfiguration, SetRopeConfigurationRequest
+    SetRopeConfiguration, SetRopeConfigurationRequest, GetPosition2D, GetPosition2DRequest
 from std_msgs.msg import String
 from std_srvs.srv import Empty, EmptyRequest
 
@@ -44,6 +44,7 @@ class GazeboServices(Services):
         for object_name in self.movable_object_names:
             self.movable_object_services[object_name] = {
                 'enable': rospy.ServiceProxy(f'{object_name}/position_2d_enable', Position2DEnable),
+                'get_position': rospy.ServiceProxy(f'{object_name}/get_position_2d', GetPosition2D),
                 'action': rospy.ServiceProxy(f'{object_name}/position_2d_action', Position2DAction),
                 'stop': rospy.ServiceProxy(f'{object_name}/position_2d_stop', Empty),
             }
@@ -124,6 +125,13 @@ class GazeboServices(Services):
             'y': [-h / 2 + padding, h / 2 - padding],
         }
         return sample_obstacle_position(rng, xy_range)
+
+    def get_movable_object_positions(self, movable_obstacles: Dict):
+        positions = {}
+        for object_name in movable_obstacles.keys():
+            position_response = self.movable_object_services[object_name]['get_position'](GetPosition2DRequest())
+            positions[object_name] = position_response
+        return positions
 
     def move_objects_randomly(self, env_rng, movable_obstacles):
         random_object_positions = sample_obstacle_positions(env_rng, movable_obstacles)

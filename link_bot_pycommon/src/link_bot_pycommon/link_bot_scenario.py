@@ -82,7 +82,7 @@ class LinkBotScenario(ExperimentScenario):
                    s: int,
                    zorder: int,
                    label: Optional[str] = None,
-                   linewidth=4,
+                   linewidth=2,
                    **kwargs):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         xs = link_bot_points[:, 0]
@@ -91,7 +91,8 @@ class LinkBotScenario(ExperimentScenario):
         line = ax.plot(xs, ys, linewidth=linewidth, c=color, zorder=zorder, label=label, **kwargs)[0]
         txt = None
         if 'num_diverged' in state:
-            txt = ax.text(x=xs[-1], y=ys[-1], s=f"{int(np.squeeze(state['num_diverged']))}", zorder=zorder + 1, alpha=0.8)
+            txt = ax.text(x=xs[-1], y=ys[-1], s=f"{int(np.squeeze(state['num_diverged']))}", zorder=zorder + 1, alpha=0.8,
+                          fontsize=12)
             txt.set_path_effects([PathEffects.withStroke(linewidth=1, foreground='w')])
 
         return line, scatt, txt
@@ -115,9 +116,12 @@ class LinkBotScenario(ExperimentScenario):
                [0, 0]])
         """
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
-        gripper_position = np.reshape(state['gripper'], [-1, 2])
-        points = np.concatenate([link_bot_points, gripper_position], axis=0)
-        return points
+        if 'gripper' in state:
+            gripper_position = np.reshape(state['gripper'], [-1, 2])
+            points = np.concatenate([link_bot_points, gripper_position], axis=0)
+            return points
+        else:
+            return link_bot_points
 
     @staticmethod
     def state_to_gripper_position(state: Dict):

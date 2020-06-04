@@ -65,7 +65,7 @@ def eval_main(args, seed: int):
     ###############
     # Model
     ###############
-    trial_path, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
+    _, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
                                                              trials_directory=pathlib.Path('trials'))
     model = link_bot_classifiers.get_model(params['model_class'])
     scenario = get_scenario(params['scenario'])
@@ -83,14 +83,16 @@ def eval_main(args, seed: int):
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
     trial_path = args.checkpoint.absolute()
-    runner = ModelRunner(model=model,
+    runner = ModelRunner(model=net,
                          training=True,
                          params=None,
                          group_name=None,
                          trial_path=trial_path,
                          trials_directory=pathlib.Path('trials'),
                          write_summary=False)
-    runner.val_epoch(test_tf_dataset)
+    validation_metrics = runner.val_epoch(test_tf_dataset)
+    for name, value in validation_metrics.items():
+        print(f"{name}: {value:.3f}")
 
 
 def main():

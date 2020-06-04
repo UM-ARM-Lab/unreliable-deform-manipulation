@@ -198,7 +198,7 @@ class ExperimentScenario:
                                                   start_idx=0,
                                                   end_idx=-1,
                                                   accept_probabilities: Optional = None,
-                                                  fps: Optional[int] = 1):
+                                                  fps: Optional[float] = 1):
 
         animation_data = cls.animation_data_from_dynamics_dataset(dataset_element=dataset_element,
                                                                   predictions=predictions,
@@ -219,7 +219,7 @@ class ExperimentScenario:
                             labels: Optional = None,
                             example_idx: Optional = None,
                             accept_probabilities: Optional = None,
-                            fps: Optional[int] = 1):
+                            fps: Optional[float] = 1):
         fig = plt.figure()
         ax = plt.gca()
         update, frames = cls.animate_predictions_on_axes(ax=ax,
@@ -234,7 +234,7 @@ class ExperimentScenario:
                                                          fps=fps)
 
         plt.legend()
-        anim = FuncAnimation(fig, update, interval=1000 / fps, repeat=True, frames=frames)
+        anim = Player(fig, update, max_index=frames, interval=1000 / fps, repeat=True)
         return anim
 
     @classmethod
@@ -250,7 +250,7 @@ class ExperimentScenario:
                                     accept_probabilities: Optional = None,
                                     prediction_label_name: Optional = 'prediction',
                                     prediction_color: Optional = 'g',
-                                    fps: Optional[int] = 1):
+                                    fps: Optional[float] = 1):
         prediction_artist = None
         if predictions is not None:
             prediction_artist = cls.plot_state(ax,
@@ -316,7 +316,7 @@ class ExperimentScenario:
                                             example_idx: Optional = None,
                                             is_close: Optional = None,
                                             accept_probabilities: Optional = None,
-                                            fps: Optional[int] = 1):
+                                            fps: Optional[float] = 1):
         fig = plt.figure()
         ax = plt.gca()
 

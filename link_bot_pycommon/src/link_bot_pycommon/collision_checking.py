@@ -32,7 +32,6 @@ def batch_in_collision_tf(environment: Dict,
     origin = environment['full_env/origin']
     res = environment['full_env/res']
     env = environment['full_env/env']
-    h, w = env.shape
     gripper_rows, gripper_cols = batch_point_to_idx_tf(xs, ys, res, origin)
     inflated_env = inflate_tf(env=env, res=res, radius_m=inflate_radius_m)
     indices = tf.stack([gripper_rows, gripper_cols], axis=1)

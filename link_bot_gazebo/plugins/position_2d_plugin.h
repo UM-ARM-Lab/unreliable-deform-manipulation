@@ -5,6 +5,7 @@
 #include <peter_msgs/ModelsPoses.h>
 #include <peter_msgs/Position2DAction.h>
 #include <peter_msgs/Position2DEnable.h>
+#include <peter_msgs/GetPosition2D.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
@@ -32,6 +33,8 @@ class Position2dPlugin : public ModelPlugin {
 
   bool OnAction(peter_msgs::Position2DActionRequest &req, peter_msgs::Position2DActionResponse &res);
 
+  bool GetPos(peter_msgs::GetPosition2DRequest &req, peter_msgs::GetPosition2DResponse &res);
+
  private:
   void QueueThread();
 
@@ -47,6 +50,7 @@ class Position2dPlugin : public ModelPlugin {
   ros::ServiceServer enable_service_;
   ros::ServiceServer action_service_;
   ros::ServiceServer stop_service_;
+  ros::ServiceServer get_position_service_;
   double kP_pos_{0.0};
   double kI_pos_{0.0};
   double kD_pos_{0.0};

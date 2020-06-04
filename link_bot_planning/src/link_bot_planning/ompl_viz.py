@@ -3,11 +3,11 @@ from typing import Optional, List, Dict
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
-from matplotlib.animation import FuncAnimation
 from ompl import base as ob
 
 from link_bot_planning.state_spaces import compound_to_numpy
 from link_bot_planning.viz_object import VizObject
+from link_bot_pycommon.animation_player import Player
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.moonshine_utils import states_are_equal, listify
 
@@ -105,49 +105,24 @@ def draw_tree_from_json(ax, scenario, tree_json):
 def animate(environment: Dict,
             scenario: ExperimentScenario,
             goal: Optional = None,
+            is_close: Optional = None,
+            planned_actions: Optional = None,
             planned_path: Optional[List[Dict]] = None,
             actual_path: Optional[List[Dict]] = None,
             accept_probabilities: Optional[List[float]] = None,
             fps: float = 1):
-    # TODO: de-duplicate this code
     fig = plt.figure(figsize=(20, 20))
     ax = plt.gca()
-    extent = environment['full_env/extent']
-    scenario.plot_environment(ax, environment)
-
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.axis("equal")
-
-    start = planned_path[0]
-    scenario.plot_state(ax, start, color='b', zorder=2, s=20, label='start')
-    if goal is not None:
-        scenario.plot_goal(ax, goal, color='c', zorder=2, s=20, label='goal')
-        scenario.plot_state(ax, actual_path[-1], color='m', zorder=2, s=20, label='final actual')
-
-    if planned_path is not None:
-        planned_path_artist = scenario.plot_state(ax, planned_path[0], 'g', zorder=3, s=20, label='planned')
-    if actual_path is not None:
-        actual_path_artist = scenario.plot_state(ax, actual_path[0], '#00ff00', zorder=3, s=20, label='actual')
-
-    classifier_line_artist = plt.plot([extent[0], extent[1], extent[1], extent[0], extent[0]],
-                                      [extent[2], extent[2], extent[3], extent[3], extent[2]], c='green', linewidth=8)[0]
-    ax.set_xlim([extent[0], extent[1]])
-    ax.set_ylim([extent[2], extent[3]])
-
-    plt.legend()
-
-    def update(t):
-        if accept_probabilities is not None:
-            if t < len(accept_probabilities):
-                accept_probability = accept_probabilities[t]
-                ax.set_title("P(accept) = {:.3f}".format(accept_probability))
-                color = 'g' if accept_probability > 0.5 else 'r'
-                classifier_line_artist.set_color(color)
-        if planned_path is not None:
-            scenario.update_artist(planned_path_artist, planned_path[t])
-        if actual_path is not None:
-            scenario.update_artist(actual_path_artist, actual_path[t])
-
-    anim = FuncAnimation(fig, update, frames=len(planned_path), interval=1000 / fps)
+    update, frames = scenario.animate_predictions_on_axes(fig=fig,
+                                                          ax=ax,
+                                                          environment=environment,
+                                                          actions=planned_actions,
+                                                          actual=actual_path,
+                                                          predictions=planned_path,
+                                                          labels=is_close,
+                                                          example_idx=None,
+                                                          accept_probabilities=accept_probabilities,
+                                                          fps=fps)
+    scenario.plot_goal(ax, goal, color='c', zorder=4, s=50, label='goal')
+    anim = Player(fig, update, max_index=frames, interval=1000 / fps, repeat=True)
     return anim

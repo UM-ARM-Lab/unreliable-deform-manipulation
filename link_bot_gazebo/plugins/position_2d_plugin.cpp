@@ -137,10 +137,15 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   auto pos_action_so = ros::AdvertiseServiceOptions::create<peter_msgs::Position2DAction>(
       "position_2d_action", pos_action_bind, ros::VoidPtr(), &queue_);
 
+  auto get_pos_bind = boost::bind(&Position2dPlugin::GetPos, this, _1, _2);
+  auto get_pos_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetPosition2D>(
+      "get_position_2d", get_pos_bind, ros::VoidPtr(), &queue_);
+
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   enable_service_ = ros_node_->advertiseService(enable_so);
   action_service_ = ros_node_->advertiseService(pos_action_so);
   stop_service_ = ros_node_->advertiseService(stop_so);
+  get_position_service_ = ros_node_->advertiseService(get_pos_so);
 
   ros_queue_thread_ = std::thread(std::bind(&Position2dPlugin::QueueThread, this));
 
@@ -223,6 +228,14 @@ bool Position2dPlugin::OnAction(peter_msgs::Position2DActionRequest &req, peter_
   target_pose_.Rot().Y(req.pose.orientation.y);
   target_pose_.Rot().Z(req.pose.orientation.z);
   target_pose_.Rot().W(req.pose.orientation.w);
+  return true;
+}
+
+bool Position2dPlugin::GetPos(peter_msgs::GetPosition2DRequest &req, peter_msgs::GetPosition2DResponse &res)
+{
+  auto const pos = link_->WorldPose().Pos();
+  res.x = pos.X();
+  res.y = pos.Y();
   return true;
 }
 

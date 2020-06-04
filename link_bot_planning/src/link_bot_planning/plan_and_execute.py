@@ -17,7 +17,7 @@ from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import SimParams
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 from link_bot_pycommon.ros_pycommon import get_states_dict
-from peter_msgs.msg import Action
+from peter_msgs.msg import Action, sys
 
 
 def get_environment_common(w_m: float, h_m: float, res: float, service_provider: Services, scenario: ExperimentScenario):
@@ -123,7 +123,6 @@ class PlanAndExecute:
         ############
         # Planning #
         ############
-        return True
         t0 = time.time()
         planner_result = self.planner.plan(start_states, environment, goal)
 
@@ -213,16 +212,28 @@ class PlanAndExecute:
             # generate a new environment by rearranging the obstacles
             movable_obstacles = self.planner_params['movable_obstacles']
             # self.service_provider.move_objects_randomly(self.env_rng, movable_obstacles)
-            random_obstacle_name = np.random.choice(list(movable_obstacles.keys()))
-            pose = Pose()
+
             state = get_states_dict(self.service_provider)
             gripper_pos = self.planner.scenario.state_to_gripper_position(state)
+            obstacle_name = self.obstacles_nearest_to(movable_obstacles, gripper_pos)
+            pose = Pose()
             pose.position.x = gripper_pos[0, 0]
             pose.position.y = gripper_pos[0, 1]
             object_position = {
-                random_obstacle_name: pose,
+                obstacle_name: pose,
             }
             self.service_provider.move_objects(object_position)
+
+    def obstacles_nearest_to(self, movable_obstacles, gripper_pos):
+        positions = self.service_provider.get_movable_object_positions(movable_obstacles)
+        min_d = sys.maxsize
+        min_d_name = next(iter(movable_obstacles.keys()))
+        for name, position in positions.items():
+            d = np.linalg.norm(gripper_pos - np.array([position.x, position.y]))
+            if d < min_d:
+                min_d = d
+                min_d_name = name
+        return min_d_name
 
     def execute_plan(self, actions):
         """

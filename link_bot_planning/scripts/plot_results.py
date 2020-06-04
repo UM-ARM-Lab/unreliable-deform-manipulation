@@ -8,10 +8,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 
-from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
+from link_bot_classifiers import classifier_utils
 from link_bot_planning.ompl_viz import animate
 from link_bot_pycommon.args import my_formatter, int_range_arg
 from link_bot_pycommon.get_scenario import get_scenario
+from link_bot_pycommon.pycommon import model_dirs_from_json
+from moonshine.moonshine_utils import numpify, sequence_of_dicts_to_dict_of_sequences, sequence_of_dicts_to_dict_of_np_arrays
+from state_space_dynamics import model_utils
 
 
 def main():
@@ -33,34 +36,39 @@ def main():
     classifier_model_dir = pathlib.Path(data['planner_params']['classifier_model_dir'])
     classifier_hparams_filename = classifier_model_dir / 'hparams.json'
     classifier_hparams = json.load(classifier_hparams_filename.open('r'))
+    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)
+    fwd_model_dirs = model_dirs_from_json(data['planner_params']['fwd_model_dir'])
+    fwd_model, _ = model_utils.load_generic_model(fwd_model_dirs)
+
     local_env_h_rows = classifier_hparams['local_env_h_rows']
     local_env_w_cols = classifier_hparams['local_env_w_cols']
     metrics = data['metrics']
 
-    cc = CollisionCheckerClassifier.check_collision_inflated
+    # cc = CollisionCheckerClassifier.check_collision_inflated
 
     for plan_idx in args.plan_idx:
-
         # Check if any planned states are in collision
-        environment = metrics['environment']
-        in_collision = False
-        for state in metrics['planned_path']:
-            in_collision = in_collision or cc(scenario, local_env_h_rows, local_env_w_cols, environment, ??)
+        # environment = metrics['environment']
+        # in_collision = False
+        # for state in metrics['planned_path']:
+        #     # in_collision = in_collision or cc(scenario, local_env_h_rows, local_env_w_cols, environment, ??)
+        #
+        # if args.only_in_collision and not in_collision:
+        #     continue
 
-        if args.only_in_collision and not in_collision:
-            continue
-
-        plot_plan(args, metrics, plan_idx, scenario)
+        plot_plan(args, fwd_model, classifier_model, metrics, plan_idx, scenario)
 
 
-def plot_plan(args, metrics, plan_idx, scenario):
+def plot_plan(args, fwd_model, classifier_model, metrics, plan_idx, scenario):
     metric_for_plan = metrics[plan_idx]
     goal = metric_for_plan['goal']
-    environment = metric_for_plan['environment']
+    labeling_params = classifier_model.dataset_labeling_params
+    environment = numpify(metric_for_plan['environment'])
     full_env = np.array(environment['full_env/env'])
     extent = np.array(environment['full_env/extent'])
     planned_path = metric_for_plan['planned_path']
     actual_path = metric_for_plan['actual_path']
+    planned_actions = metric_for_plan['actions']
     if args.plot_type == 'plot':
         plt.figure(figsize=(8, 8))
         plt.imshow(np.flipud(full_env), extent=extent, cmap='Greys')
@@ -87,11 +95,17 @@ def plot_plan(args, metrics, plan_idx, scenario):
         else:
             plt.close()
     if args.plot_type == 'animate':
+        p = sequence_of_dicts_to_dict_of_np_arrays(planned_path)['link_bot']
+        a = sequence_of_dicts_to_dict_of_np_arrays(actual_path)['link_bot']
+        is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
+        print(is_close)
         anim = animate(environment=environment,
                        scenario=scenario,
                        goal=goal,
                        planned_path=planned_path,
                        actual_path=actual_path,
+                       planned_actions=planned_actions,
+                       is_close=is_close,
                        fps=args.fps)
         if args.save:
             out_filename = args.results_dir / 'plan_vs_execution_{}.gif'.format(plan_idx)
