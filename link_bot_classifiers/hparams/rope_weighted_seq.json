@@ -15,7 +15,7 @@
     [32, [5, 5]],
     [32, [5, 5]]
   ],
-  "loss_type": "negative_weighted_sequence",
+  "loss_type": "weighted_sequence",
   "mixed": true,
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
