@@ -20,7 +20,7 @@
   "full_env_h": 2.0,
   "goal_w_m": 1.5,
   "goal_h_m": 1.5,
-  "timeout": 10,
+  "timeout": 120,
   "goal_threshold": 0.05,
   "fixed_goal": null,
   "reset_robot": null,

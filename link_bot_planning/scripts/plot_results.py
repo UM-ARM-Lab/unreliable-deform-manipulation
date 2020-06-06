@@ -3,21 +3,21 @@
 import argparse
 import json
 import pathlib
+from pprint import pprint
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 
-from link_bot_classifiers import classifier_utils
 from link_bot_planning.ompl_viz import animate
+from link_bot_planning.results_utils import labeling_params_from_planner_params
 from link_bot_pycommon.args import my_formatter, int_range_arg
 from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_pycommon.pycommon import model_dirs_from_json
-from moonshine.moonshine_utils import numpify, sequence_of_dicts_to_dict_of_sequences, sequence_of_dicts_to_dict_of_np_arrays
-from state_space_dynamics import model_utils
+from moonshine.moonshine_utils import numpify, sequence_of_dicts_to_dict_of_np_arrays
 
 
 def main():
+    np.set_printoptions(linewidth=250, precision=3, suppress=True)
     plt.style.use("paper")
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("results_dir", type=pathlib.Path, help='directory containing metrics.json')
@@ -33,17 +33,12 @@ def main():
     metrics_filename = args.results_dir / "metrics.json"
     data = json.load(metrics_filename.open("r"))
     scenario = get_scenario(data['planner_params']['scenario'])
-    classifier_model_dir = pathlib.Path(data['planner_params']['classifier_model_dir'])
-    classifier_hparams_filename = classifier_model_dir / 'hparams.json'
-    classifier_hparams = json.load(classifier_hparams_filename.open('r'))
-    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)
-    fwd_model_dirs = model_dirs_from_json(data['planner_params']['fwd_model_dir'])
-    fwd_model, _ = model_utils.load_generic_model(fwd_model_dirs)
+    labeling_params = labeling_params_from_planner_params(data['planner_params'])
 
-    local_env_h_rows = classifier_hparams['local_env_h_rows']
-    local_env_w_cols = classifier_hparams['local_env_w_cols']
     metrics = data['metrics']
 
+    # local_env_h_rows = classifier_hparams['local_env_h_rows']
+    # local_env_w_cols = classifier_hparams['local_env_w_cols']
     # cc = CollisionCheckerClassifier.check_collision_inflated
 
     for plan_idx in args.plan_idx:
@@ -56,19 +51,22 @@ def main():
         # if args.only_in_collision and not in_collision:
         #     continue
 
-        plot_plan(args, fwd_model, classifier_model, metrics, plan_idx, scenario)
+        plot_plan(args, labeling_params, metrics, plan_idx, scenario)
 
 
-def plot_plan(args, fwd_model, classifier_model, metrics, plan_idx, scenario):
+def plot_plan(args, labeling_params, metrics, plan_idx, scenario):
     metric_for_plan = metrics[plan_idx]
     goal = metric_for_plan['goal']
-    labeling_params = classifier_model.dataset_labeling_params
     environment = numpify(metric_for_plan['environment'])
     full_env = np.array(environment['full_env/env'])
     extent = np.array(environment['full_env/extent'])
     planned_path = metric_for_plan['planned_path']
     actual_path = metric_for_plan['actual_path']
-    planned_actions = metric_for_plan['actions']
+    # pprint(actual_path)
+    if 'actions' in metric_for_plan:
+        planned_actions = metric_for_plan['actions']
+    else:
+        planned_actions = None
     if args.plot_type == 'plot':
         plt.figure(figsize=(8, 8))
         plt.imshow(np.flipud(full_env), extent=extent, cmap='Greys')
@@ -97,8 +95,10 @@ def plot_plan(args, fwd_model, classifier_model, metrics, plan_idx, scenario):
     if args.plot_type == 'animate':
         p = sequence_of_dicts_to_dict_of_np_arrays(planned_path)['link_bot']
         a = sequence_of_dicts_to_dict_of_np_arrays(actual_path)['link_bot']
-        is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
-        print(is_close)
+        if labeling_params is not None:
+            is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
+        else:
+            is_close = None
         anim = animate(environment=environment,
                        scenario=scenario,
                        goal=goal,

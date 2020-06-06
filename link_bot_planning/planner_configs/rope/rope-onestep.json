@@ -20,7 +20,7 @@
   "full_env_h": 2.0,
   "goal_w_m": 1.5,
   "goal_h_m": 1.5,
-  "timeout": 15,
+  "timeout": 5,
   "movable_obstacles": {
     "moving_box1": {
       "x": [
@@ -113,7 +113,7 @@
       ]
     }
   },
-  "goal_threshold": 0.05,
+  "goal_threshold": 0.03,
   "fixed_goal": null,
   "reset_robot": null,
   "real_time_rate": 0.0,

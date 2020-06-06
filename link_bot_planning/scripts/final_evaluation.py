@@ -120,6 +120,13 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         final_state = actual_path[-1]
         execution_to_goal_error = self.planner.scenario.distance_to_goal(final_state, goal)
 
+        second_state = actual_path[1]
+        second_planned_state = planned_path[1]
+        second_error = self.planner.scenario.distance(second_state, second_planned_state)
+        if second_error > 0.05:
+            print(second_error)
+            import ipdb; ipdb.set_trace()
+
         plan_to_execution_error = self.planner.scenario.distance(final_state, final_planned_state)
 
         print("{}: {}".format(self.subfolder, self.successfully_completed_plan_idx))

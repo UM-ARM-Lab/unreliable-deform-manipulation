@@ -147,9 +147,6 @@ class GazeboServices(Services):
         disable_link_bot = String()
         disable_link_bot.data = 'disabled'
 
-        enable_link_bot = String()
-        enable_link_bot.data = 'position'
-
         # disable the rope controller, enable the objects
         self.link_bot_mode.publish(disable_link_bot)
         for object_name, pose in object_moves.items():
@@ -170,16 +167,14 @@ class GazeboServices(Services):
         step.steps = int(move_wait_duration / self.max_step_size)
         self.world_control(step)  # this will block until stepping is complete
 
-        # stop the objects, enabled the rope controller
+        # stop the objects
         for object_name, pose in object_moves.items():
             movable_object_services = self.movable_object_services[object_name]
             movable_object_services['stop'](EmptyRequest())
-        self.link_bot_mode.publish(enable_link_bot)
 
-        # wait a few steps to ensure the stop message is received
-        wait = WorldControlRequest()
-        wait.steps = int(2 / self.max_step_size)
-        self.world_control(wait)  # this will block until stepping is complete
+        enable_link_bot = String()
+        enable_link_bot.data = 'position'
+        self.link_bot_mode.publish(enable_link_bot)
 
 
 def sample_obstacle_position(env_rng, xy_range: Dict) -> Pose:

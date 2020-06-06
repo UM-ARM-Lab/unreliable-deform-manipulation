@@ -54,9 +54,9 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
   auto reset_bind = boost::bind(&MultiLinkBotModelPlugin::ResetRobot, this, _1, _2);
   auto reset_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotReset>("reset_robot", reset_bind,
                                                                                  ros::VoidPtr(), &queue_);
-  auto stop_bind = boost::bind(&MultiLinkBotModelPlugin::StopRobot, this, _1, _2);
-  auto stop_so = ros::AdvertiseServiceOptions::create<std_srvs::Empty>("stop_robot", stop_bind,
-                                                                       ros::VoidPtr(), &queue_);
+  auto stop_bind = boost::bind(&MultiLinkBotModelPlugin::StopRobotSrv, this, _1, _2);
+  auto stop_so =
+      ros::AdvertiseServiceOptions::create<std_srvs::Empty>("stop_robot", stop_bind, ros::VoidPtr(), &queue_);
 
   joy_sub_ = ros_node_.subscribe(joy_so);
   set_configuration_service_ = ros_node_.advertiseService(config_so);
@@ -306,9 +306,6 @@ bool MultiLinkBotModelPlugin::ExecuteAbsoluteAction(peter_msgs::ExecuteActionReq
   // Wait until the setpoint is reached
   model_->GetWorld()->Step(steps);
 
-  // TODO: fill out state here
-  res.needs_reset = false;
-
   // stop by setting the current position as the target
   gripper1_target_position_ = GetGripper1Pos();
 
@@ -349,7 +346,14 @@ bool MultiLinkBotModelPlugin::ExecuteAction(peter_msgs::ExecuteActionRequest &re
   return true;
 }
 
-void MultiLinkBotModelPlugin::OnActionMode(std_msgs::StringConstPtr msg) { mode_ = msg->data; }
+void MultiLinkBotModelPlugin::OnActionMode(std_msgs::StringConstPtr msg)
+{
+  if (msg->data == "position" and mode_ == "disabled") {
+    // ensure we don't try to move to the previous setpoint
+    StopRobot();
+  }
+  mode_ = msg->data;
+}
 
 bool MultiLinkBotModelPlugin::StateServiceCallback(peter_msgs::LinkBotStateRequest &req,
                                                    peter_msgs::LinkBotStateResponse &res)
@@ -443,9 +447,13 @@ bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequ
   return true;
 }
 
-bool MultiLinkBotModelPlugin::StopRobot(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
+bool MultiLinkBotModelPlugin::StopRobotSrv(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
 {
+  return StopRobot();
+}
 
+bool MultiLinkBotModelPlugin::StopRobot()
+{
   auto const current_gripper_pose = GetGripper1Pos();
   gripper1_target_position_.X(current_gripper_pose.X());
   gripper1_target_position_.Y(current_gripper_pose.Y());
@@ -475,21 +483,16 @@ bool MultiLinkBotModelPlugin::ResetRobot(peter_msgs::LinkBotResetRequest &req, p
   return true;
 }
 
-bool MultiLinkBotModelPlugin::SetRopeConfigCallback(peter_msgs::SetRopeConfigurationRequest &req, peter_msgs::SetRopeConfigurationResponse &res)
+bool MultiLinkBotModelPlugin::SetRopeConfigCallback(peter_msgs::SetRopeConfigurationRequest &req,
+                                                    peter_msgs::SetRopeConfigurationResponse &res)
 {
   auto const gripper_pose = req.gripper_poses[0];
   ignition::math::Pose3d pose{
-    gripper_pose.position.x,
-    gripper_pose.position.y,
-    gripper_pose.position.z,
-    gripper_pose.orientation.w,
-    gripper_pose.orientation.x,
-    gripper_pose.orientation.y,
-    gripper_pose.orientation.z,
+      gripper_pose.position.x,    gripper_pose.position.y,    gripper_pose.position.z,    gripper_pose.orientation.w,
+      gripper_pose.orientation.x, gripper_pose.orientation.y, gripper_pose.orientation.z,
   };
   model_->SetWorldPose(pose);
-  for (auto pair : enumerate(model_->GetJoints()))
-  {
+  for (auto pair : enumerate(model_->GetJoints())) {
     auto [i, joint] = pair;
     if (i < req.joint_angles.size()) {
       joint->SetPosition(0, req.joint_angles[i]);

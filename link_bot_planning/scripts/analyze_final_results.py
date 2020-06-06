@@ -12,6 +12,7 @@ from scipy import stats
 from tabulate import tabulate
 
 from link_bot_data.classifier_dataset_utils import generate_examples_for_prediction
+from link_bot_planning.results_utils import labeling_params_from_planner_params
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
@@ -51,35 +52,6 @@ def make_row(planner_params, metric_data, tablefmt):
     ]
     row.extend(row_stats(metric_data))
     return row
-
-
-def main():
-    np.set_printoptions(suppress=True, precision=4, linewidth=180)
-    plt.style.use('paper')
-
-    parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    subparsers = parser.add_subparsers()
-
-    metrics_subparser = subparsers.add_parser('metrics')
-    metrics_subparser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
-    metrics_subparser.add_argument('--no-plot', action='store_true')
-    metrics_subparser.add_argument('--final', action='store_true')
-    metrics_subparser.add_argument('--ignore-timeouts', action='store_true', help='for error metrics, ignore timeouts/approx sln')
-    metrics_subparser.set_defaults(func=metrics_main)
-
-    error_viz_subparser = subparsers.add_parser('error_viz')
-    error_viz_subparser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
-    error_viz_subparser.add_argument('labeling_params', help='labeling params json file', type=pathlib.Path)
-    error_viz_subparser.add_argument('--no-plot', action='store_true')
-    error_viz_subparser.add_argument('--final', action='store_true')
-    error_viz_subparser.set_defaults(func=error_viz_main)
-
-    args = parser.parse_args()
-
-    if args == argparse.Namespace():
-        parser.print_usage()
-    else:
-        args.func(args)
 
 
 def error_viz_main(args):
@@ -162,6 +134,7 @@ def metrics_main(args):
         'Final Plan To Execution Error': [],
         'Num Nodes': [],
         'Num Steps': [],
+        '% Steps with MER Violations': [],
     }
     execution_to_goal_errors_comparisons = {}
     plan_to_execution_errors_comparisons = {}
@@ -211,6 +184,7 @@ def metrics_main(args):
         metrics_filename = subfolder / 'metrics.json'
         metrics = json.load(metrics_filename.open("r"))
         planner_params = metrics['planner_params']
+        labeling_params = labeling_params_from_planner_params(planner_params)
         goal_threshold = planner_params['goal_threshold']
         scenario = get_scenario(planner_params['scenario'])
         table_config = planner_params['table_config']
@@ -228,6 +202,7 @@ def metrics_main(args):
         planning_times = []
         nums_nodes = []
         nums_steps = []
+        nums_mer_violations = []
         poor_approximate_plans = []
         for plan_idx, datum in enumerate(data):
             planned_path = datum['planned_path']
@@ -237,6 +212,8 @@ def metrics_main(args):
             final_plan_to_goal_error = scenario.distance_to_goal(final_planned_state, datum['goal'])
             final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, datum['goal'])
             final_plan_to_execution_error = scenario.distance(final_planned_state, final_actual_state)
+            p = sequence_of_dicts_to_dict_of_np_arrays(planned_path)['link_bot']
+            a = sequence_of_dicts_to_dict_of_np_arrays(actual_path)['link_bot']
 
             if datum['planner_status'] != "Exact solution":
                 timeouts += 1
@@ -258,6 +235,13 @@ def metrics_main(args):
 
             num_steps = len(planned_path)
             nums_steps.append(num_steps)
+
+            if labeling_params is not None:
+                is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
+                num_mer_violations = np.count_nonzero(1 - is_close) / num_steps * 100
+            else:
+                num_mer_violations = 0
+            nums_mer_violations.append(num_mer_violations)
 
             planning_times.append(datum['planning_time'])
 
@@ -312,8 +296,14 @@ def metrics_main(args):
             make_row(planner_params, final_execution_to_goal_errors, table_format))
         aggregate_metrics['Num Nodes'].append(make_row(planner_params, nums_nodes, table_format))
         aggregate_metrics['Num Steps'].append(make_row(planner_params, nums_steps, table_format))
+        aggregate_metrics['% Steps with MER Violations'].append(make_row(planner_params, nums_mer_violations, table_format))
 
         print(f"{subfolder.name:30s}: {timeout_percentage:3.2f}% timeout {poor_plan_percentage:3.2f}% could use RAS")
+        for error, plan_idx in sorted(zip(final_execution_to_goal_errors, range(len(final_execution_to_goal_errors)))):
+            print(f"{plan_idx}: {error:5.3f} error between execution to goal")
+        if labeling_params is not None:
+            for num_mer_violations, plan_idx in sorted(zip(nums_mer_violations, range(len(nums_mer_violations)))):
+                print(f"{plan_idx}: {num_mer_violations:5.1f}% of steps violate MER")
     if not args.no_plot:
         execution_success_ax.plot([goal_threshold, goal_threshold], [0, 100], color='k', linestyle='--')
         execution_error_ax.plot([goal_threshold, goal_threshold], [0, max_density], color='k', linestyle='--')
@@ -360,6 +350,35 @@ def get_all_subfolders(args):
             if subfolder.is_dir():
                 all_subfolders.append(subfolder)
     return all_subfolders
+
+
+def main():
+    np.set_printoptions(suppress=True, precision=4, linewidth=180)
+    plt.style.use('paper')
+
+    parser = argparse.ArgumentParser(formatter_class=my_formatter)
+    subparsers = parser.add_subparsers()
+
+    metrics_subparser = subparsers.add_parser('metrics')
+    metrics_subparser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
+    metrics_subparser.add_argument('--no-plot', action='store_true')
+    metrics_subparser.add_argument('--final', action='store_true')
+    metrics_subparser.add_argument('--ignore-timeouts', action='store_true', help='for error metrics, ignore timeouts/approx sln')
+    metrics_subparser.set_defaults(func=metrics_main)
+
+    error_viz_subparser = subparsers.add_parser('error_viz')
+    error_viz_subparser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
+    error_viz_subparser.add_argument('labeling_params', help='labeling params json file', type=pathlib.Path)
+    error_viz_subparser.add_argument('--no-plot', action='store_true')
+    error_viz_subparser.add_argument('--final', action='store_true')
+    error_viz_subparser.set_defaults(func=error_viz_main)
+
+    args = parser.parse_args()
+
+    if args == argparse.Namespace():
+        parser.print_usage()
+    else:
+        args.func(args)
 
 
 if __name__ == '__main__':

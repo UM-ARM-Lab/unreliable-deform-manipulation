@@ -261,7 +261,8 @@ class ExperimentScenario:
                                                label=prediction_label_name,
                                                linewidth=1)
         actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=2, label='actual', alpha=0.6, linewidth=1)
-        action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=2, zorder=4, linewidth=1)
+        if actions is not None:
+            action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=2, zorder=4, linewidth=1)
         cls.plot_environment(ax, environment)
         if labels is not None:
             extent = environment['full_env/extent'] * 1.05
@@ -302,7 +303,7 @@ class ExperimentScenario:
                     classification_line.set_color('k')
             ax.set_title(title_t, fontproperties='monospace')
 
-            if t < n_states - 1:
+            if t < n_states - 1 and actions is not None:
                 cls.update_action_artist(action_artist, actual[t], actions[t])
 
         return update, n_states

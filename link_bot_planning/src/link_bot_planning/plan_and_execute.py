@@ -8,10 +8,9 @@ import numpy as np
 from colorama import Fore
 from ompl import base as ob
 
-from geometry_msgs.msg import Pose
 from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
-from link_bot_planning.my_planner import MyPlanner
+from link_bot_planning.my_planner import MyPlanner, PlannerResult
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import SimParams
@@ -125,7 +124,6 @@ class PlanAndExecute:
         ############
         t0 = time.time()
         planner_result = self.planner.plan(start_states, environment, goal)
-
         my_planner.interpret_planner_status(planner_result.planner_status, self.verbose)
         planner_data = ob.PlannerData(self.planner.si)
         self.planner.planner.getPlannerData(planner_data)
@@ -211,18 +209,18 @@ class PlanAndExecute:
         if self.sim_params.randomize_obstacles:
             # generate a new environment by rearranging the obstacles
             movable_obstacles = self.planner_params['movable_obstacles']
-            # self.service_provider.move_objects_randomly(self.env_rng, movable_obstacles)
-
-            state = get_states_dict(self.service_provider)
-            gripper_pos = self.planner.scenario.state_to_gripper_position(state)
-            obstacle_name = self.obstacles_nearest_to(movable_obstacles, gripper_pos)
-            pose = Pose()
-            pose.position.x = gripper_pos[0, 0]
-            pose.position.y = gripper_pos[0, 1]
-            object_position = {
-                obstacle_name: pose,
-            }
-            self.service_provider.move_objects(object_position)
+            self.service_provider.move_objects_randomly(self.env_rng, movable_obstacles)
+            #
+            # state = get_states_dict(self.service_provider)
+            # gripper_pos = self.planner.scenario.state_to_gripper_position(state)
+            # obstacle_name = self.obstacles_nearest_to(movable_obstacles, gripper_pos)
+            # pose = Pose()
+            # pose.position.x = gripper_pos[0, 0]
+            # pose.position.y = gripper_pos[0, 1]
+            # object_position = {
+            #     obstacle_name: pose,
+            # }
+            # self.service_provider.move_objects(object_position)
 
     def obstacles_nearest_to(self, movable_obstacles, gripper_pos):
         positions = self.service_provider.get_movable_object_positions(movable_obstacles)

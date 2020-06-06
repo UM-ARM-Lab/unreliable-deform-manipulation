@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from link_bot_data.link_bot_dataset_utils import is_reconverging
-from shape_completion_training.metric import recall, precision
+from shape_completion_training import metric
 
 
 def negative_weighted_binary_classification_sequence_loss_function(dataset_element, predictions):
@@ -78,13 +78,17 @@ def binary_classification_sequence_metrics_function(dataset_element, predictions
     accuracy_over_time = tf.keras.metrics.binary_accuracy(y_true=valid_labels, y_pred=valid_logits)
     average_accuracy = tf.reduce_mean(accuracy_over_time)
 
-    precision_over_time = precision(y_true=valid_labels, y_pred=valid_probabilities)
-    average_precision = tf.reduce_mean(precision_over_time)
+    precision = metric.precision(y_true=valid_labels, y_pred=valid_probabilities)
+    average_precision = tf.reduce_mean(precision)
 
-    recall_over_time = recall(y_true=valid_labels, y_pred=valid_probabilities)
-    average_recall = tf.reduce_mean(recall_over_time)
+    recall = metric.recall(y_true=valid_labels, y_pred=valid_probabilities)
+    average_recall = tf.reduce_mean(recall)
+
+    negative_accuracy = metric.accuray_on_negatives(y_true=valid_labels, y_pred=valid_probabilities)
+    average_negative_accuracy = tf.reduce_mean(negative_accuracy)
     return {
         'accuracy': average_accuracy,
+        'negative_accuracy': average_negative_accuracy,
         'precision': average_precision,
         'recall': average_recall,
     }

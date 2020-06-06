@@ -60,7 +60,7 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
 
   bool ResetRobot(peter_msgs::LinkBotResetRequest &req, peter_msgs::LinkBotResetResponse &res);
 
-  bool StopRobot(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res);
+  bool StopRobotSrv(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res);
 
   bool SetRopeConfigCallback(peter_msgs::SetRopeConfigurationRequest &req,
                              peter_msgs::SetRopeConfigurationResponse &res);
@@ -115,5 +115,6 @@ class MultiLinkBotModelPlugin : public ModelPlugin {
   // these allow one to make the gripper have some arbitrary linear dynamics
   Eigen::Matrix2d A_{Eigen::Matrix2d::Identity()};
   Eigen::Matrix2d B_{Eigen::Matrix2d::Identity()};
+  bool StopRobot();
 };
 }  // namespace gazebo

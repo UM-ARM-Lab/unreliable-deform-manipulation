@@ -3,13 +3,32 @@ import pathlib
 from typing import List, Dict
 
 import numpy as np
+import rospy
 import tensorflow as tf
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_pycommon.collision_checking import batch_in_collision_tf
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 
-DEFAULT_INFLATION_RADIUS = 0.021
+DEFAULT_INFLATION_RADIUS = 0.02
+# DEFAULT_INFLATION_RADIUS = 0.03
+# rospy.logwarn_once("using inflated CC radius")
+
+
+def check_collision(scenario, environment, states_sequence, collision_check_object=True):
+    state = states_sequence[-1]
+    if collision_check_object:
+        points = scenario.state_to_points(state)
+    else:
+        points = scenario.state_to_gripper_position(state)
+    xs = points[:, 0]
+    ys = points[:, 1]
+    in_collision = batch_in_collision_tf(environment=environment,
+                                         xs=xs,
+                                         ys=ys,
+                                         inflate_radius_m=DEFAULT_INFLATION_RADIUS)
+    prediction = tf.expand_dims(tf.logical_not(in_collision), axis=0)
+    return prediction
 
 
 class CollisionCheckerClassifier(BaseConstraintChecker):
@@ -27,19 +46,7 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
                                         environment: Dict,
                                         states_sequence: List[Dict],
                                         actions) -> tf.Tensor:
-        state = states_sequence[-1]
-        if self.model_hparams['collision_check_object']:
-            points = self.scenario.state_to_points(state)
-        else:
-            points = self.scenario.state_to_gripper_position(state)
-        xs = points[:, 0]
-        ys = points[:, 1]
-        in_collision = batch_in_collision_tf(environment=environment,
-                                             xs=xs,
-                                             ys=ys,
-                                             inflate_radius_m=DEFAULT_INFLATION_RADIUS)
-        prediction = tf.expand_dims(tf.logical_not(in_collision), axis=0)
-        return prediction
+        return check_collision(self.scenario, environment, states_sequence)
 
     def check_constraint(self,
                          environment: Dict,

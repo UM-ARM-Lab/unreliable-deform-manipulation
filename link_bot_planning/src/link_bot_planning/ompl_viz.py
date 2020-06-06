@@ -124,5 +124,8 @@ def animate(environment: Dict,
                                                           accept_probabilities=accept_probabilities,
                                                           fps=fps)
     scenario.plot_goal(ax, goal, color='c', zorder=4, s=50, label='goal')
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys())
     anim = Player(fig, update, max_index=frames, interval=1000 / fps, repeat=True)
     return anim

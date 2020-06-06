@@ -82,7 +82,7 @@ class LinkBotScenario(ExperimentScenario):
                    s: int,
                    zorder: int,
                    label: Optional[str] = None,
-                   linewidth=2,
+                   linewidth=4,
                    **kwargs):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         xs = link_bot_points[:, 0]

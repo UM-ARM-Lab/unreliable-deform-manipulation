@@ -9,6 +9,8 @@ import tensorflow.keras.layers as layers
 from colorama import Fore
 from tensorflow import keras
 
+import rospy
+from link_bot_classifiers import collision_checker_classifier
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -16,8 +18,7 @@ from link_bot_pycommon.params import FullEnvParams
 from link_bot_pycommon.pycommon import make_dict_float32
 from moonshine import classifier_losses_and_metrics
 from moonshine.action_smear_layer import smear_action_differentiable
-from moonshine.classifier_losses_and_metrics import binary_classification_sequence_loss_function, \
-    binary_classification_sequence_metrics_function
+from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
 from moonshine.image_functions import raster_differentiable
 from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, flatten_batch_and_time, \
@@ -290,7 +291,8 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         accept_probabilities = self.check_constraint_differentiable(environment=environment,
                                                                     states_sequence=states_sequence,
                                                                     actions=actions)
-        return accept_probabilities.numpy()
+        accept_probabilities = accept_probabilities.numpy()
+        return accept_probabilities
 
 
 model = RNNImageClassifierWrapper
