@@ -1,10 +1,8 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 
 from ignition.markers import MarkerProvider
-from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_extents
 from link_bot_pycommon.animation_player import Player
@@ -132,7 +130,7 @@ class ExperimentScenario:
 
     @classmethod
     def animate_predictions_from_classifier_dataset(cls,
-                                                    classifier_dataset: ClassifierDataset,
+                                                    state_keys: List[str],
                                                     example_idx: int,
                                                     dataset_element: Dict,
                                                     trim: Optional[bool] = False,
@@ -148,7 +146,7 @@ class ExperimentScenario:
 
         predictions = {}
         actual = {}
-        for state_key in classifier_dataset.state_keys:
+        for state_key in state_keys:
             predictions[state_key] = dataset_element[add_planned(state_key)]
             actual[state_key] = dataset_element[state_key]
 

@@ -5,18 +5,37 @@ import tensorflow as tf
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_planned, null_diverged, null_previous_states
+from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 
 
-def add_model_predictions(fwd_model,
-                          tf_dataset: tf.data.TFRecordDataset,
-                          dataset: DynamicsDataset,
-                          labeling_params: Dict):
+class PredictionActualExample:
+    def __init__(self,
+                 inputs: Dict,
+                 outputs: Dict,
+                 actions: tf.Tensor,
+                 predictions: Dict,
+                 prediction_start_t: int,
+                 labeling_params: Dict,
+                 actual_prediction_horizon: int):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.actions = actions
+        self.predictions = predictions
+        self.prediction_start_t = prediction_start_t
+        self.labeling_params = labeling_params
+        self.actual_prediction_horizon = actual_prediction_horizon
+
+
+def predictions_vs_actual_generator(fwd_model,
+                                    tf_dataset,
+                                    batch_size: int,
+                                    dataset: DynamicsDataset,
+                                    labeling_params: Dict):
     prediction_horizon = labeling_params['prediction_horizon']
     classifier_horizon = labeling_params['classifier_horizon']
     assert classifier_horizon >= 2
     assert prediction_horizon <= dataset.desired_sequence_length
-    batch_size = 1024
     for dataset_element in tf_dataset.batch(batch_size):
         inputs, outputs = dataset_element
         actual_batch_size = int(inputs['traj_idx'].shape[0])
@@ -25,6 +44,7 @@ def add_model_predictions(fwd_model,
             prediction_end_t = min(prediction_start_t + prediction_horizon, dataset.max_sequence_length)
             actual_prediction_horizon = prediction_end_t - prediction_start_t
             outputs_from_start_t = {k: v[:, prediction_start_t:prediction_end_t] for k, v in outputs.items()}
+            actions_from_start_t = inputs['action'][:, prediction_start_t:prediction_end_t]
 
             predictions_from_start_t = predict_subsequence(states_description=dataset.states_description,
                                                            fwd_model=fwd_model,
@@ -36,21 +56,31 @@ def add_model_predictions(fwd_model,
                 inputs_b = index_dict_of_batched_vectors_tf(inputs, batch_idx)
                 outputs_from_start_t_b = index_dict_of_batched_vectors_tf(outputs_from_start_t, batch_idx)
                 predictions_from_start_t_b = index_dict_of_batched_vectors_tf(predictions_from_start_t, batch_idx)
-                yield from generate_examples_for_prediction(inputs=inputs_b,
-                                                            outputs=outputs_from_start_t_b,
-                                                            predictions=predictions_from_start_t_b,
-                                                            start_t=prediction_start_t,
-                                                            labeling_params=labeling_params,
-                                                            prediction_horizon=actual_prediction_horizon)
+                actions_b = actions_from_start_t[batch_idx]
+                yield PredictionActualExample(inputs=inputs_b,
+                                              actions=actions_b,
+                                              outputs=outputs_from_start_t_b,
+                                              predictions=predictions_from_start_t_b,
+                                              prediction_start_t=prediction_start_t,
+                                              labeling_params=labeling_params,
+                                              actual_prediction_horizon=actual_prediction_horizon)
 
 
-def generate_examples_for_prediction(inputs: Dict,
-                                     outputs: Dict,
-                                     predictions: Dict,
-                                     start_t: int,
-                                     labeling_params: Dict,
-                                     prediction_horizon: int):
+def add_model_predictions(fwd_model,
+                          tf_dataset: tf.data.TFRecordDataset,
+                          dataset: DynamicsDataset,
+                          labeling_params: Dict):
+    batch_size = 1
+    for prediction_actual in predictions_vs_actual_generator(fwd_model, tf_dataset, batch_size, dataset, labeling_params):
+        yield from generate_mer_classifier_examples(prediction_actual)
+
+
+def generate_mer_classifier_examples(prediction_actual: PredictionActualExample):
+    inputs = prediction_actual.inputs
+    labeling_params = prediction_actual.labeling_params
+    prediction_horizon = prediction_actual.actual_prediction_horizon
     classifier_horizon = labeling_params['classifier_horizon']
+
     for classifier_start_t in range(0, prediction_horizon - classifier_horizon + 1):
         classifier_end_t = min(classifier_start_t + classifier_horizon, prediction_horizon)
 
@@ -65,7 +95,7 @@ def generate_examples_for_prediction(inputs: Dict,
             'full_env/extent': full_env_extent,
             'full_env/res': full_env_res,
             'traj_idx': tf.squeeze(traj_idx),
-            'prediction_start_t': start_t,
+            'prediction_start_t': prediction_actual.prediction_start_t,
             'classifier_start_t': classifier_start_t,
             'classifier_end_t': classifier_end_t,
         }
@@ -74,21 +104,20 @@ def generate_examples_for_prediction(inputs: Dict,
         state_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon)
         action_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon - 1)
         sliced_outputs = {}
-        for name, output in outputs.items():
+        for name, output in prediction_actual.outputs.items():
             output_from_cst = output[state_slice]
             out_example[name] = output_from_cst
             sliced_outputs[name] = output_from_cst
 
         sliced_predictions = {}
-        for name, prediction in predictions.items():
+        for name, prediction in prediction_actual.predictions.items():
             pred_from_cst = prediction[state_slice]
             out_example[add_planned(name)] = pred_from_cst
             sliced_predictions[name] = pred_from_cst
 
         # action
-        if 'action' in inputs:
-            actions = inputs['action'][action_slice]
-            out_example['action'] = actions
+        actions = prediction_actual.actions[action_slice]
+        out_example['action'] = actions
 
         # TODO: planned -> predicted whenever we're talking about applying the dynamics model
         #  so like add_planned should be add_predicted or something
@@ -101,6 +130,13 @@ def generate_examples_for_prediction(inputs: Dict,
         out_example['is_close'] = tf.cast(is_close, dtype=tf.float32)
 
         if is_first_valid_state_close:
+            import matplotlib.pyplot as plt
+            print(actions, classifier_start_t, prediction_actual.prediction_start_t)
+            anim = get_scenario('link_bot').animate_predictions_from_classifier_dataset(dataset_element=out_example,
+                                                                                        state_keys=['link_bot'],
+                                                                                        example_idx=0,
+                                                                                        fps=5)
+            plt.show()
             yield out_example
         elif classifier_horizon > 5:
             # it's really unlikely things will reconverge here so consider return saves uselessly iterating over a ton of data

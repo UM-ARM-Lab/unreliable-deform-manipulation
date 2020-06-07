@@ -7,7 +7,7 @@ from time import perf_counter
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_data.classifier_dataset_utils import generate_examples_for_prediction
+from link_bot_data.classifier_dataset_utils import generate_mer_classifier_examples
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_pycommon.args import my_formatter
 from moonshine.gpu_config import limit_gpu_mem
@@ -30,7 +30,7 @@ def plan_result_to_examples(result_idx, result, labeling_params):
         inputs.update(environment)
         outputs = sequence_of_dicts_to_dict_of_np_arrays(actual_path[prediction_start_t:])
         predictions = sequence_of_dicts_to_dict_of_np_arrays(planned_path[prediction_start_t:])
-        yield from generate_examples_for_prediction(inputs=inputs,
+        yield from generate_mer_classifier_examples(inputs=inputs,
                                                     outputs=outputs,
                                                     predictions=predictions,
                                                     start_t=prediction_start_t,
