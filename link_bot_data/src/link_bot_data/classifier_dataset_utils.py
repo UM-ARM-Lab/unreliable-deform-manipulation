@@ -70,7 +70,7 @@ def add_model_predictions(fwd_model,
                           tf_dataset: tf.data.TFRecordDataset,
                           dataset: DynamicsDataset,
                           labeling_params: Dict):
-    batch_size = 1
+    batch_size = 1024
     for prediction_actual in predictions_vs_actual_generator(fwd_model, tf_dataset, batch_size, dataset, labeling_params):
         yield from generate_mer_classifier_examples(prediction_actual)
 

@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
+from link_bot_classifiers import classifier_utils
 from link_bot_classifiers.visualization import visualize_classifier_example, classifier_example_title
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_planned
-from link_bot_classifiers import classifier_utils
 from link_bot_data.recovery_dataset import RecoveryDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import print_dict
@@ -26,6 +26,7 @@ def main():
     plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=200, precision=3)
     parser = argparse.ArgumentParser()
+    parser.add_argument('dataset_type', choices=['classifier', 'recovery'])
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('model_hparams', type=pathlib.Path, help='classifier model hparams')
     parser.add_argument('display_type', choices=['just_count', 'image', 'anim', 'plot'])
@@ -49,27 +50,29 @@ def main():
     np.random.seed(args.seed)
     tf.random.set_seed(args.seed)
 
-    # classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
-    classifier_dataset = RecoveryDataset(args.dataset_dirs, load_true_states=True)
-    dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
+    if args.dataset_type == 'classifier':
+        classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
+    elif args.dataset_type == 'recovery':
+        classifier_dataset = RecoveryDataset(args.dataset_dirs, load_true_states=True)
+    else:
+        raise NotImplementedError()
 
+    visualize_dataset(args, classifier_dataset)
+
+
+def visualize_dataset(args, classifier_dataset):
+    dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
     scenario = get_scenario(classifier_dataset.hparams['scenario'])
     model_hparams = json.load(args.model_hparams.open("r"))
-
     classifier_model_dir = pathlib.Path('log_data/collision')
     collision_checker = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)
-
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=512)
-
     dataset = dataset.batch(1)
-
     now = int(time.time())
     outdir = pathlib.Path('results') / f'anim_{now}'
     outdir.mkdir(parents=True)
-
     done = False
-
     reconverging_count = 0
     positive_count = 0
     negative_count = 0
@@ -131,6 +134,9 @@ def main():
         #       example['prediction_start_t'].numpy(),
         #       example['classifier_start_t'].numpy(),
         #       example['classifier_end_t'].numpy())
+        # if example['prediction_start_t'].numpy() < 1.0:
+        #     continue
+
         valid_seq_length = (example['classifier_end_t'] - example['classifier_start_t'] + 1).numpy()
         if args.at_least_length and valid_seq_length < args.at_least_length:
             continue
@@ -148,9 +154,7 @@ def main():
             plt.show()
         else:
             plt.close()
-
     total_dt = perf_counter() - t0
-
     print_stats_and_timing(args, count, reconverging_count, negative_count, positive_count, total_dt)
 
 
