@@ -61,9 +61,6 @@ def recovering_mask(is_close):
     filters = tf.constant([[[1]], [[-1]]], dtype=tf.float32)
     conv_out = tf.squeeze(tf.nn.conv1d(tf.expand_dims(trimmed_and_padded, axis=2), filters, stride=1, padding='VALID'), axis=2)
     # conv_out is > 0 if the pattern [1,0] is found, otherwise it will be 0 or -1
-    # so we filter with >0, then cumsum to make everything after the first 1 along a row also >= 1
-    # then clip to ignore multiple matches of [1,0] because only the first one matters
-    # then each row will look something like [0, ..., 0, 1, ..., 1] which we turn into [True, ..., True, False, ..., False]
     matches = tf.cast(conv_out > 0, tf.float32)
     shifted = tf.concat([zeros, matches[:, :-1]], axis=1)
     mask = tf.logical_not(tf.cast(tf.clip_by_value(tf.cumsum(shifted, axis=1), 0, 1), tf.bool))
