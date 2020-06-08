@@ -62,7 +62,6 @@ def predictions_vs_actual_generator(fwd_model,
                                           labeling_params=labeling_params,
                                           actual_prediction_horizon=actual_prediction_horizon,
                                           batch_size=actual_batch_size)
-            print(f'generating examples {perf_counter() - t0:.4f}')
 
 
 def add_model_predictions(fwd_model,
