@@ -130,15 +130,15 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
         out_example['is_close'] = tf.cast(is_close, dtype=tf.float32)
 
         if is_first_valid_state_close:
-            import matplotlib.pyplot as plt
-            print(actions, classifier_start_t, prediction_actual.prediction_start_t)
-            anim = get_scenario('link_bot').animate_predictions_from_classifier_dataset(dataset_element=out_example,
-                                                                                        state_keys=['link_bot'],
-                                                                                        example_idx=0,
-                                                                                        fps=5)
-            plt.show()
+            # import matplotlib.pyplot as plt
+            # print(actions, classifier_start_t, prediction_actual.prediction_start_t)
+            # anim = get_scenario('link_bot').animate_predictions_from_classifier_dataset(dataset_element=out_example,
+            #                                                                             state_keys=['link_bot'],
+            #                                                                             example_idx=0,
+            #                                                                             fps=5)
+            # plt.show()
             yield out_example
-        elif classifier_horizon > 5:
+        elif classifier_horizon >= 5:
             # it's really unlikely things will reconverge here so consider return saves uselessly iterating over a ton of data
             return
 
