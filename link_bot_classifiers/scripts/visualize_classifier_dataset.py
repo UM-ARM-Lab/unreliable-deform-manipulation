@@ -13,6 +13,7 @@ from link_bot_classifiers.visualization import visualize_classifier_example, cla
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_classifiers import classifier_utils
+from link_bot_data.recovery_dataset import RecoveryDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
@@ -48,7 +49,8 @@ def main():
     np.random.seed(args.seed)
     tf.random.set_seed(args.seed)
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
+    # classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
+    classifier_dataset = RecoveryDataset(args.dataset_dirs, load_true_states=True)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
 
     scenario = get_scenario(classifier_dataset.hparams['scenario'])
@@ -87,6 +89,7 @@ def main():
         example = remove_batch(example)
 
         is_close = example['is_close'].numpy().squeeze()
+        print(is_close)
         n_close = np.count_nonzero(is_close)
         n_far = is_close.shape[0] - n_close
         positive_count += n_close

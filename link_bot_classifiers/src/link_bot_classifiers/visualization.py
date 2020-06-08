@@ -81,7 +81,6 @@ def visualize_classifier_example(args,
                                  accept_probabilities: Optional = None,
                                  end_idx=None,
                                  fps: Optional[int] = 1):
-    image_key = model_hparams['image_key']
     if args.display_type == 'just_count':
         pass
     elif args.display_type == 'image':
@@ -227,7 +226,7 @@ def paste_over(i1, i2, binary_threshold=0.1):
 
 def trajectory_animation(scenario, classifier_dataset, example, count, accept_probabilities, fps: Optional[int] = 1):
     # animate the state versus ground truth
-    anim = scenario.animate_predictions_from_classifier_dataset(classifier_dataset=classifier_dataset,
+    anim = scenario.animate_predictions_from_classifier_dataset(state_keys=classifier_dataset.state_keys,
                                                                 example_idx=count,
                                                                 dataset_element=example,
                                                                 accept_probabilities=accept_probabilities,

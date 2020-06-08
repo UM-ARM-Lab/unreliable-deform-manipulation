@@ -7,7 +7,7 @@ from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import remove_batch, add_batch, index_dict_of_batched_vectors_tf
+from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 
 limit_gpu_mem(2)
 
@@ -34,7 +34,7 @@ def one_step_prediction_actual_generator(fwd_model,
             predictions_from_start_t = predict_onestep(states_description=dataset.states_description,
                                                        fwd_model=fwd_model,
                                                        dataset_element=dataset_element,
-                                                       batch_size=batch_size,
+                                                       batch_size=actual_batch_size,
                                                        prediction_start_t=prediction_start_t,
                                                        prediction_horizon=prediction_horizon)
 
@@ -56,9 +56,13 @@ def generate_recovery_examples(fwd_model,
                                tf_dataset: tf.data.TFRecordDataset,
                                dataset: DynamicsDataset,
                                labeling_params: Dict):
-    batch_size = 1
+    batch_size = 1024
     for prediction_actual in one_step_prediction_actual_generator(fwd_model, tf_dataset, batch_size, dataset, labeling_params):
         yield from generate_recovery_actions_examples(prediction_actual)
+
+
+def starts_recovering(is_close):
+    return tf.argmax(is_close[1:]) > 0
 
 
 def is_recovering(is_close):
@@ -76,6 +80,18 @@ def is_recovering(is_close):
     recovering = tf.logical_and(recovering, at_least_one_close)
     recovering = tf.logical_and(recovering, at_least_one_far)
     return recovering
+
+
+def recovering_mask(is_close):
+    horizon = is_close.shape[0]
+    index_of_first_1 = tf.math.argmax(is_close[1:]) + 1  # skip the start, which we know will always be 1
+    delta_index = tf.math.argmin(is_close[index_of_first_1:])
+    if delta_index == 0:
+        mask = tf.ones([horizon - 1], dtype=tf.bool)
+    else:
+        index_of_first_0_after_first_1 = index_of_first_1 + delta_index
+        mask = tf.range(1, horizon, dtype=tf.int64) < index_of_first_0_after_first_1
+    return tf.concat(([False], mask), axis=0)
 
 
 def generate_recovery_actions_examples(prediction_actual: PredictionActualExample):
@@ -131,17 +147,19 @@ def generate_recovery_actions_examples(prediction_actual: PredictionActualExampl
         is_close = tf.cast(is_close, dtype=tf.float32)
         out_example['is_close'] = is_close
 
-        # TODO: to allow for show examples, yield so long as there's a "recovering" sequence from the start
+        # TODO: to allow for short examples, yield so long as there's a "recovering" sequence from the start
         #  so for example if it looks like                  [-, 0, 0, 1, 1, 0, 0, 0] then
         #  still include that example, and the make will be [0, 1, 1, 1, 1, 0, 0, 0]
-        print(is_close[1:])
-        if remove_batch(is_recovering(add_batch(is_close[1:]))):
-            import matplotlib.pyplot as plt
-            anim = get_scenario('link_bot').animate_predictions_from_classifier_dataset(dataset_element=out_example,
-                                                                                        state_keys=['link_bot'],
-                                                                                        example_idx=0,
-                                                                                        fps=5)
-            plt.show()
+        if starts_recovering(is_close):
+            mask = recovering_mask(is_close)
+            out_example['mask'] = tf.cast(mask, tf.float32)
+            # print(is_close)
+            # import matplotlib.pyplot as plt
+            # anim = get_scenario('link_bot').animate_predictions_from_classifier_dataset(dataset_element=out_example,
+            #                                                                             state_keys=['link_bot'],
+            #                                                                             example_idx=0,
+            #                                                                             fps=5)
+            # plt.show()
             yield out_example
 
 

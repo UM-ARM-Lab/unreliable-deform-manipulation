@@ -5,7 +5,6 @@ import logging
 import pathlib
 from time import perf_counter
 
-import matplotlib.pyplot as plt
 import tensorflow as tf
 from colorama import Fore
 
@@ -81,12 +80,6 @@ def main():
         examples = []
         total_count = 0
         for example_idx, out_example in enumerate(generate_recovery_examples(fwd_models, tf_dataset, dataset, labeling_params)):
-            # generate sequences [0, 0, ..., 1]
-            anim = dataset.scenario.animate_predictions_from_classifier_dataset(dataset_element=out_example,
-                                                                                state_keys=fwd_models.states_keys,
-                                                                                example_idx=example_idx)
-            plt.show()
-
             features = {}
             for k, v in out_example.items():
                 features[k] = float_tensor_to_bytes_feature(v)
