@@ -197,3 +197,13 @@ def index_dict_of_batched_vectors_tf(in_dict: Dict, index: int, batch_axis: int 
     for k, v in in_dict.items():
         out_dict[k] = tf.gather(v, index, axis=batch_axis)
     return out_dict
+
+
+def gather_dict(d: Dict, indices, axis: int = 0):
+    """
+    :param d: a dictionary where each value is a tensor/array with the same dimension along 'axis'
+    :param indices: a 1-d tensor/array/vector of ints describing which elements to include from d
+    :param axis: the axis to gather along
+    :return:
+    """
+    return {k: tf.gather(v, indices, axis=axis) for k, v in d.items()}

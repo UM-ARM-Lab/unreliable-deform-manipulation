@@ -5,8 +5,7 @@ import tensorflow as tf
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_planned, null_diverged, null_previous_states
-from link_bot_pycommon.get_scenario import get_scenario
-from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
+from moonshine.moonshine_utils import gather_dict
 
 
 class PredictionActualExample:
@@ -17,7 +16,8 @@ class PredictionActualExample:
                  predictions: Dict,
                  prediction_start_t: int,
                  labeling_params: Dict,
-                 actual_prediction_horizon: int):
+                 actual_prediction_horizon: int,
+                 batch_size: int):
         self.inputs = inputs
         self.outputs = outputs
         self.actions = actions
@@ -25,6 +25,7 @@ class PredictionActualExample:
         self.prediction_start_t = prediction_start_t
         self.labeling_params = labeling_params
         self.actual_prediction_horizon = actual_prediction_horizon
+        self.batch_size = batch_size
 
 
 def predictions_vs_actual_generator(fwd_model,
@@ -46,24 +47,25 @@ def predictions_vs_actual_generator(fwd_model,
             outputs_from_start_t = {k: v[:, prediction_start_t:prediction_end_t] for k, v in outputs.items()}
             actions_from_start_t = inputs['action'][:, prediction_start_t:prediction_end_t]
 
+            from time import perf_counter
+            t0 = perf_counter()
             predictions_from_start_t = predict_subsequence(states_description=dataset.states_description,
                                                            fwd_model=fwd_model,
                                                            dataset_element=dataset_element,
                                                            prediction_start_t=prediction_start_t,
                                                            prediction_horizon=prediction_horizon)
-
-            for batch_idx in range(actual_batch_size):
-                inputs_b = index_dict_of_batched_vectors_tf(inputs, batch_idx)
-                outputs_from_start_t_b = index_dict_of_batched_vectors_tf(outputs_from_start_t, batch_idx)
-                predictions_from_start_t_b = index_dict_of_batched_vectors_tf(predictions_from_start_t, batch_idx)
-                actions_b = actions_from_start_t[batch_idx]
-                yield PredictionActualExample(inputs=inputs_b,
-                                              actions=actions_b,
-                                              outputs=outputs_from_start_t_b,
-                                              predictions=predictions_from_start_t_b,
-                                              prediction_start_t=prediction_start_t,
-                                              labeling_params=labeling_params,
-                                              actual_prediction_horizon=actual_prediction_horizon)
+            print(f'prediction {perf_counter() - t0:.4f}')
+            from time import perf_counter
+            t0 = perf_counter()
+            yield PredictionActualExample(inputs=inputs,
+                                          actions=actions_from_start_t,
+                                          outputs=outputs_from_start_t,
+                                          predictions=predictions_from_start_t,
+                                          prediction_start_t=prediction_start_t,
+                                          labeling_params=labeling_params,
+                                          actual_prediction_horizon=actual_prediction_horizon,
+                                          batch_size=actual_batch_size)
+            print(f'generating examples {perf_counter() - t0:.4f}')
 
 
 def add_model_predictions(fwd_model,
@@ -81,23 +83,27 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
     prediction_horizon = prediction_actual.actual_prediction_horizon
     classifier_horizon = labeling_params['classifier_horizon']
 
-    for classifier_start_t in range(0, prediction_horizon - classifier_horizon + 1):
-        classifier_end_t = min(classifier_start_t + classifier_horizon, prediction_horizon)
+    for classifier_start_t in range(0, prediction_horizon - classifier_horizon):
+        classifier_end_t = classifier_start_t + classifier_horizon
 
         full_env = inputs['full_env/env']
         full_env_origin = inputs['full_env/origin']
         full_env_extent = inputs['full_env/extent']
         full_env_res = inputs['full_env/res']
         traj_idx = inputs['traj_idx']
+        prediction_start_t = prediction_actual.prediction_start_t
+        prediction_start_t_batched = tf.cast(tf.stack([prediction_start_t] * prediction_actual.batch_size, axis=0), tf.float32)
+        classifier_start_t_batched = tf.cast(tf.stack([classifier_start_t] * prediction_actual.batch_size, axis=0), tf.float32)
+        classifier_end_t_batched = tf.cast(tf.stack([classifier_end_t] * prediction_actual.batch_size, axis=0), tf.float32)
         out_example = {
             'full_env/env': full_env,
             'full_env/origin': full_env_origin,
             'full_env/extent': full_env_extent,
             'full_env/res': full_env_res,
             'traj_idx': tf.squeeze(traj_idx),
-            'prediction_start_t': prediction_actual.prediction_start_t,
-            'classifier_start_t': classifier_start_t,
-            'classifier_end_t': classifier_end_t,
+            'prediction_start_t': prediction_start_t_batched,
+            'classifier_start_t': classifier_start_t_batched,
+            'classifier_end_t': classifier_end_t_batched,
         }
 
         # this slice gives arrays of fixed length (ex, 5) which must be null padded from out_example_end_idx onwards
@@ -105,18 +111,18 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
         action_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon - 1)
         sliced_outputs = {}
         for name, output in prediction_actual.outputs.items():
-            output_from_cst = output[state_slice]
+            output_from_cst = output[:, state_slice]
             out_example[name] = output_from_cst
             sliced_outputs[name] = output_from_cst
 
         sliced_predictions = {}
         for name, prediction in prediction_actual.predictions.items():
-            pred_from_cst = prediction[state_slice]
+            pred_from_cst = prediction[:, state_slice]
             out_example[add_planned(name)] = pred_from_cst
             sliced_predictions[name] = pred_from_cst
 
         # action
-        actions = prediction_actual.actions[action_slice]
+        actions = prediction_actual.actions[:, action_slice]
         out_example['action'] = actions
 
         # TODO: planned -> predicted whenever we're talking about applying the dynamics model
@@ -126,21 +132,14 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
         is_close = compute_is_close_tf(actual_states_dict=sliced_outputs,
                                        predicted_states_dict=sliced_predictions,
                                        labeling_params=labeling_params)
-        is_first_valid_state_close = is_close[0]
         out_example['is_close'] = tf.cast(is_close, dtype=tf.float32)
 
-        if is_first_valid_state_close:
-            # import matplotlib.pyplot as plt
-            # print(actions, classifier_start_t, prediction_actual.prediction_start_t)
-            # anim = get_scenario('link_bot').animate_predictions_from_classifier_dataset(dataset_element=out_example,
-            #                                                                             state_keys=['link_bot'],
-            #                                                                             example_idx=0,
-            #                                                                             fps=5)
-            # plt.show()
-            yield out_example
-        elif classifier_horizon >= 5:
-            # it's really unlikely things will reconverge here so consider return saves uselessly iterating over a ton of data
-            return
+        is_first_predicted_state_close = is_close[:, 1]
+        valid_indices = tf.where(is_first_predicted_state_close)
+        # keep only valid_indices from every key in out_example...
+        valid_out_example = gather_dict(out_example, valid_indices)
+
+        yield valid_out_example
 
 
 def compute_is_close_tf(actual_states_dict: Dict, labeling_params: Dict, predicted_states_dict: Dict):
@@ -148,7 +147,7 @@ def compute_is_close_tf(actual_states_dict: Dict, labeling_params: Dict, predict
     labeling_states = tf.convert_to_tensor(actual_states_dict[state_key])
     labeling_predicted_states = tf.convert_to_tensor(predicted_states_dict[state_key])
     # TODO: use scenario to compute distance here?
-    model_error = tf.linalg.norm(labeling_states - labeling_predicted_states, axis=1)
+    model_error = tf.linalg.norm(labeling_states - labeling_predicted_states, axis=2)
     threshold = labeling_params['threshold']
     is_close = model_error < threshold
 

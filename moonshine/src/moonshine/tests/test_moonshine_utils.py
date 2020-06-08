@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, dict_of_sequences_to_sequence_of_dicts_tf, \
-    flatten_batch_and_time
+    flatten_batch_and_time, gather_dict
 from moonshine.tests import testing_utils
 
 
@@ -47,4 +47,18 @@ class Test(TestCase):
             'x': expected_x
         }
         out_dict = flatten_batch_and_time(input_dict)
+        testing_utils.assert_dicts_close_tf(out_dict, expected_dict)
+
+    def test_slice_dict(self):
+        input_dict = {
+            'a': tf.constant([[0, 1, 2], [3, 4, 5], [6, 7, 8]], dtype=tf.float32),
+            'b': tf.constant([[0, 2], [3, 5], [6, 8]], dtype=tf.float32),
+            'c': tf.constant([0, 5, 7], dtype=tf.float32),
+        }
+        expected_dict = {
+            'a': tf.constant([[0, 1, 2], [6, 7, 8]], dtype=tf.float32),
+            'b': tf.constant([[0, 2], [6, 8]], dtype=tf.float32),
+            'c': tf.constant([0, 7], dtype=tf.float32),
+        }
+        out_dict = gather_dict(input_dict, [0, 2])
         testing_utils.assert_dicts_close_tf(out_dict, expected_dict)
