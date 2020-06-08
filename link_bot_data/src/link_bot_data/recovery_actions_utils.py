@@ -5,6 +5,7 @@ import tensorflow as tf
 from link_bot_data.classifier_dataset_utils import predictions_vs_actual_generator, PredictionActualExample, compute_is_close_tf
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_planned
+from link_bot_pycommon.pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import gather_dict
 
@@ -129,6 +130,7 @@ def generate_recovery_actions_examples(prediction_actual: PredictionActualExampl
 
         is_first_predicted_state_close = is_close[:, 1]
         valid_indices = tf.where(is_first_predicted_state_close)
+        valid_indices = tf.squeeze(valid_indices, axis=1)
         # keep only valid_indices from every key in out_example...
         valid_out_example = gather_dict(out_example, valid_indices)
 

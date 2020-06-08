@@ -48,17 +48,12 @@ def predictions_vs_actual_generator(fwd_model,
             outputs_from_start_t = {k: v[:, prediction_start_t:prediction_end_t] for k, v in outputs.items()}
             actions_from_start_t = inputs['action'][:, prediction_start_t:prediction_end_t]
 
-            from time import perf_counter
-            t0 = perf_counter()
             predictions_from_start_t = prediction_function(states_description=dataset.states_description,
                                                            fwd_model=fwd_model,
                                                            dataset_element=dataset_element,
                                                            batch_size=actual_batch_size,
                                                            prediction_start_t=prediction_start_t,
                                                            prediction_horizon=prediction_horizon)
-            print(f'prediction {perf_counter() - t0:.4f}')
-            from time import perf_counter
-            t0 = perf_counter()
             yield PredictionActualExample(inputs=inputs,
                                           actions=actions_from_start_t,
                                           outputs=outputs_from_start_t,
@@ -143,6 +138,7 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
 
         is_first_predicted_state_close = is_close[:, 1]
         valid_indices = tf.where(is_first_predicted_state_close)
+        valid_indices = tf.squeeze(valid_indices, axis=1)
         # keep only valid_indices from every key in out_example...
         valid_out_example = gather_dict(out_example, valid_indices)
 

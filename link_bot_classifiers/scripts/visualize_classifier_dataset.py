@@ -68,6 +68,7 @@ def visualize_dataset(args, classifier_dataset):
     collision_checker = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=512)
+    print_dict(next(iter(dataset)))
     dataset = dataset.batch(1)
     now = int(time.time())
     outdir = pathlib.Path('results') / f'anim_{now}'
