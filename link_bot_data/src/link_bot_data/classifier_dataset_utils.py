@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Callable
 
 import numpy as np
 import tensorflow as tf
@@ -32,6 +32,7 @@ def predictions_vs_actual_generator(fwd_model,
                                     tf_dataset,
                                     batch_size: int,
                                     dataset: DynamicsDataset,
+                                    prediction_function: Callable,
                                     labeling_params: Dict):
     prediction_horizon = labeling_params['prediction_horizon']
     classifier_horizon = labeling_params['classifier_horizon']
@@ -49,9 +50,10 @@ def predictions_vs_actual_generator(fwd_model,
 
             from time import perf_counter
             t0 = perf_counter()
-            predictions_from_start_t = predict_subsequence(states_description=dataset.states_description,
+            predictions_from_start_t = prediction_function(states_description=dataset.states_description,
                                                            fwd_model=fwd_model,
                                                            dataset_element=dataset_element,
+                                                           batch_size=actual_batch_size,
                                                            prediction_start_t=prediction_start_t,
                                                            prediction_horizon=prediction_horizon)
             print(f'prediction {perf_counter() - t0:.4f}')
@@ -73,7 +75,12 @@ def add_model_predictions(fwd_model,
                           dataset: DynamicsDataset,
                           labeling_params: Dict):
     batch_size = 1024
-    for prediction_actual in predictions_vs_actual_generator(fwd_model, tf_dataset, batch_size, dataset, labeling_params):
+    for prediction_actual in predictions_vs_actual_generator(fwd_model=fwd_model,
+                                                             tf_dataset=tf_dataset,
+                                                             batch_size=batch_size,
+                                                             dataset=dataset,
+                                                             prediction_function=predict_subsequence,
+                                                             labeling_params=labeling_params):
         yield from generate_mer_classifier_examples(prediction_actual)
 
 
@@ -159,7 +166,8 @@ def compute_label_np(actual_states_dict: Dict, labeling_params: Dict, predicted_
     return is_close.numpy()
 
 
-def predict_subsequence(states_description, fwd_model, dataset_element, prediction_start_t, prediction_horizon):
+def predict_subsequence(states_description, fwd_model, dataset_element, batch_size, prediction_start_t, prediction_horizon):
+    del batch_size  # unused
     inputs, outputs = dataset_element
 
     # build inputs to the network

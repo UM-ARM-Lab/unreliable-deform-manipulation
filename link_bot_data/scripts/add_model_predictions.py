@@ -6,6 +6,7 @@ import pathlib
 from time import perf_counter
 
 import tensorflow as tf
+from colorama import Fore
 
 from link_bot_data.base_dataset import DEFAULT_VAL_SPLIT, DEFAULT_TEST_SPLIT
 from link_bot_data.classifier_dataset_utils import add_model_predictions
@@ -100,9 +101,9 @@ def main():
                     start_example_idx = end_example_idx - len(examples)
                     record_filename = "example_{:09d}_to_{:09d}.tfrecords".format(start_example_idx, end_example_idx - 1)
                     full_filename = full_output_directory / record_filename
-                    # if full_filename.exists():
-                    #     print(Fore.RED + "Error! Output file {} exists. Aborting.".format(full_filename) + Fore.RESET)
-                    #     return
+                    if full_filename.exists():
+                        print(Fore.RED + "Error! Output file {} exists. Aborting.".format(full_filename) + Fore.RESET)
+                        return
                     writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=compression_type)
                     writer.write(serialized_dataset)
                     now = perf_counter()

@@ -15,6 +15,7 @@ from link_bot_data.recovery_actions_utils import generate_recovery_examples
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.filesystem_utils import mkdir_and_ask
 from moonshine.gpu_config import limit_gpu_mem
+from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 from state_space_dynamics import model_utils
 
 limit_gpu_mem(2)
@@ -79,38 +80,40 @@ def main():
         current_example_count = 0
         examples = []
         total_count = 0
-        for example_idx, out_example in enumerate(generate_recovery_examples(fwd_models, tf_dataset, dataset, labeling_params)):
-            features = {}
-            for k, v in out_example.items():
-                features[k] = float_tensor_to_bytes_feature(v)
+        for out_example in generate_recovery_examples(fwd_models, tf_dataset, dataset, labeling_params):
+            for batch_idx in range(out_example['traj_idx'].shape[0]):
+                out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
+                features = {}
+                for k, v in out_example_b.items():
+                    features[k] = float_tensor_to_bytes_feature(v)
 
-            example_proto = tf.train.Example(features=tf.train.Features(feature=features))
-            example = example_proto.SerializeToString()
-            examples.append(example)
-            current_example_count += 1
-            total_count += 1
+                example_proto = tf.train.Example(features=tf.train.Features(feature=features))
+                example = example_proto.SerializeToString()
+                examples.append(example)
+                current_example_count += 1
+                total_count += 1
 
-            if current_example_count == args.max_examples_per_record:
-                # save to a TF record
-                serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
+                if current_example_count == args.max_examples_per_record:
+                    # save to a TF record
+                    serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
 
-                end_example_idx = total_count
-                start_example_idx = end_example_idx - len(examples)
-                record_filename = "example_{:09d}_to_{:09d}.tfrecords".format(start_example_idx, end_example_idx - 1)
-                full_filename = full_output_directory / record_filename
-                if full_filename.exists():
-                    print(Fore.RED + "Error! Output file {} exists. Aborting.".format(full_filename) + Fore.RESET)
-                    return
-                writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=compression_type)
-                writer.write(serialized_dataset)
-                now = perf_counter()
-                dt_record = now - last_record
-                print("saved {} ({:.3f}s)".format(full_filename, dt_record))
-                last_record = now
+                    end_example_idx = total_count
+                    start_example_idx = end_example_idx - len(examples)
+                    record_filename = "example_{:09d}_to_{:09d}.tfrecords".format(start_example_idx, end_example_idx - 1)
+                    full_filename = full_output_directory / record_filename
+                    if full_filename.exists():
+                        print(Fore.RED + "Error! Output file {} exists. Aborting.".format(full_filename) + Fore.RESET)
+                        return
+                    writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=compression_type)
+                    writer.write(serialized_dataset)
+                    now = perf_counter()
+                    dt_record = now - last_record
+                    print("saved {} ({:.3f}s)".format(full_filename, dt_record))
+                    last_record = now
 
-                # empty and reset counter
-                current_example_count = 0
-                examples = []
+                    # empty and reset counter
+                    current_example_count = 0
+                    examples = []
 
 
 if __name__ == '__main__':

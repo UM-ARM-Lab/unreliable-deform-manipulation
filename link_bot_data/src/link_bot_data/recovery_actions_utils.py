@@ -2,54 +2,13 @@ from typing import Dict
 
 import tensorflow as tf
 
-from link_bot_data.classifier_dataset_utils import PredictionActualExample, compute_is_close_tf
+from link_bot_data.classifier_dataset_utils import predictions_vs_actual_generator, PredictionActualExample, compute_is_close_tf
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_planned
-from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
+from moonshine.moonshine_utils import gather_dict
 
 limit_gpu_mem(2)
-
-
-def one_step_prediction_actual_generator(fwd_model,
-                                         tf_dataset,
-                                         batch_size: int,
-                                         dataset: DynamicsDataset,
-                                         labeling_params: Dict):
-    prediction_horizon = labeling_params['prediction_horizon']
-    classifier_horizon = labeling_params['classifier_horizon']
-    assert classifier_horizon >= 2
-    assert prediction_horizon <= dataset.desired_sequence_length
-    for dataset_element in tf_dataset.batch(batch_size):
-        inputs, outputs = dataset_element
-        actual_batch_size = int(inputs['traj_idx'].shape[0])
-
-        for prediction_start_t in range(0, dataset.max_sequence_length - classifier_horizon - 1, labeling_params['start_step']):
-            prediction_end_t = min(prediction_start_t + prediction_horizon, dataset.max_sequence_length)
-            actual_prediction_horizon = prediction_end_t - prediction_start_t
-            outputs_from_start_t = {k: v[:, prediction_start_t:prediction_end_t] for k, v in outputs.items()}
-            actions_from_start_t = inputs['action'][:, prediction_start_t:prediction_end_t]
-
-            predictions_from_start_t = predict_onestep(states_description=dataset.states_description,
-                                                       fwd_model=fwd_model,
-                                                       dataset_element=dataset_element,
-                                                       batch_size=actual_batch_size,
-                                                       prediction_start_t=prediction_start_t,
-                                                       prediction_horizon=prediction_horizon)
-
-            for batch_idx in range(actual_batch_size):
-                inputs_b = index_dict_of_batched_vectors_tf(inputs, batch_idx)
-                outputs_from_start_t_b = index_dict_of_batched_vectors_tf(outputs_from_start_t, batch_idx)
-                predictions_from_start_t_b = index_dict_of_batched_vectors_tf(predictions_from_start_t, batch_idx)
-                actions_b = actions_from_start_t[batch_idx]
-                yield PredictionActualExample(inputs=inputs_b,
-                                              outputs=outputs_from_start_t_b,
-                                              actions=actions_b,
-                                              predictions=predictions_from_start_t_b,
-                                              prediction_start_t=prediction_start_t,
-                                              labeling_params=labeling_params,
-                                              actual_prediction_horizon=actual_prediction_horizon)
 
 
 def generate_recovery_examples(fwd_model,
@@ -57,7 +16,12 @@ def generate_recovery_examples(fwd_model,
                                dataset: DynamicsDataset,
                                labeling_params: Dict):
     batch_size = 1024
-    for prediction_actual in one_step_prediction_actual_generator(fwd_model, tf_dataset, batch_size, dataset, labeling_params):
+    for prediction_actual in predictions_vs_actual_generator(fwd_model=fwd_model,
+                                                             tf_dataset=tf_dataset,
+                                                             batch_size=batch_size,
+                                                             dataset=dataset,
+                                                             prediction_function=predict_onestep,
+                                                             labeling_params=labeling_params):
         yield from generate_recovery_actions_examples(prediction_actual)
 
 
@@ -83,22 +47,35 @@ def is_recovering(is_close):
 
 
 def recovering_mask(is_close):
-    horizon = is_close.shape[0]
-    index_of_first_1 = tf.math.argmax(is_close[1:]) + 1  # skip the start, which we know will always be 1
-    delta_index = tf.math.argmin(is_close[index_of_first_1:])
-    if delta_index == 0:
-        mask = tf.ones([horizon - 1], dtype=tf.bool)
-    else:
-        index_of_first_0_after_first_1 = index_of_first_1 + delta_index
-        mask = tf.range(1, horizon, dtype=tf.int64) < index_of_first_0_after_first_1
-    return tf.concat(([False], mask), axis=0)
+    """
+    Looks for the first occurrence of the pattern [1, 0] in each row (appending a 0 to each row first),
+    and the index where this is found defines the end of the mask.
+    The first time step is masked to False because it will always be 1
+    :param is_close: float matrix [B,H] but all values should be 0.0 or 1.0
+    :return: boolean matrix [B,H]
+    """
+    batch_size = is_close.shape[0]
+    # trim the first element and append a zero
+    zeros = tf.zeros([batch_size, 1])
+    trimmed_and_padded = tf.concat([is_close[:, 1:], zeros], axis=1)
+    filters = tf.constant([[[1]], [[-1]]], dtype=tf.float32)
+    conv_out = tf.squeeze(tf.nn.conv1d(tf.expand_dims(trimmed_and_padded, axis=2), filters, stride=1, padding='VALID'), axis=2)
+    # conv_out is > 0 if the pattern [1,0] is found, otherwise it will be 0 or -1
+    # so we filter with >0, then cumsum to make everything after the first 1 along a row also >= 1
+    # then clip to ignore multiple matches of [1,0] because only the first one matters
+    # then each row will look something like [0, ..., 0, 1, ..., 1] which we turn into [True, ..., True, False, ..., False]
+    matches = tf.cast(conv_out > 0, tf.float32)
+    shifted = tf.concat([zeros, matches[:, :-1]], axis=1)
+    mask = tf.logical_not(tf.cast(tf.clip_by_value(tf.cumsum(shifted, axis=1), 0, 1), tf.bool))
+    has_a_1 = tf.reduce_any(is_close[:, 1:] > 0, axis=1, keepdims=True)
+    mask_and_has_1 = tf.logical_and(mask, has_a_1)
+    return tf.concat((tf.cast(zeros, tf.bool), mask_and_has_1), axis=1)
 
 
 def generate_recovery_actions_examples(prediction_actual: PredictionActualExample):
     inputs = prediction_actual.inputs
     outputs = prediction_actual.outputs
     predictions = prediction_actual.predictions
-    start_t = prediction_actual.prediction_start_t
     labeling_params = prediction_actual.labeling_params
     prediction_horizon = prediction_actual.actual_prediction_horizon
     classifier_horizon = labeling_params['classifier_horizon']
@@ -110,15 +87,19 @@ def generate_recovery_actions_examples(prediction_actual: PredictionActualExampl
         full_env_extent = inputs['full_env/extent']
         full_env_res = inputs['full_env/res']
         traj_idx = inputs['traj_idx']
+        prediction_start_t = prediction_actual.prediction_start_t
+        prediction_start_t_batched = tf.cast(tf.stack([prediction_start_t] * prediction_actual.batch_size, axis=0), tf.float32)
+        classifier_start_t_batched = tf.cast(tf.stack([classifier_start_t] * prediction_actual.batch_size, axis=0), tf.float32)
+        classifier_end_t_batched = tf.cast(tf.stack([classifier_end_t] * prediction_actual.batch_size, axis=0), tf.float32)
         out_example = {
             'full_env/env': full_env,
             'full_env/origin': full_env_origin,
             'full_env/extent': full_env_extent,
             'full_env/res': full_env_res,
             'traj_idx': tf.squeeze(traj_idx),
-            'prediction_start_t': start_t,
-            'classifier_start_t': classifier_start_t,
-            'classifier_end_t': classifier_end_t,
+            'prediction_start_t': prediction_start_t_batched,
+            'classifier_start_t': classifier_start_t_batched,
+            'classifier_end_t': classifier_end_t_batched,
         }
 
         # this slice gives arrays of fixed length (ex, 5)
@@ -126,41 +107,35 @@ def generate_recovery_actions_examples(prediction_actual: PredictionActualExampl
         action_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon - 1)
         sliced_outputs = {}
         for name, output in outputs.items():
-            output_from_cst = output[state_slice]
+            output_from_cst = output[:, state_slice]
             out_example[name] = output_from_cst
             sliced_outputs[name] = output_from_cst
 
         sliced_predictions = {}
         for name, prediction in predictions.items():
-            pred_from_cst = prediction[state_slice]
+            pred_from_cst = prediction[:, state_slice]
             out_example[add_planned(name)] = pred_from_cst
             sliced_predictions[name] = pred_from_cst
 
         # action
-        actions = prediction_actual.actions[action_slice]
+        actions = prediction_actual.actions[:, action_slice]
         out_example['action'] = actions
 
         # compute label
         is_close = compute_is_close_tf(actual_states_dict=sliced_outputs,
                                        predicted_states_dict=sliced_predictions,
                                        labeling_params=labeling_params)
-        is_close = tf.cast(is_close, dtype=tf.float32)
-        out_example['is_close'] = is_close
+        is_close_float = tf.cast(is_close, dtype=tf.float32)
+        out_example['is_close'] = is_close_float
+        mask = recovering_mask(is_close_float)
+        out_example['mask'] = tf.cast(mask, tf.float32)
 
-        # TODO: to allow for short examples, yield so long as there's a "recovering" sequence from the start
-        #  so for example if it looks like                  [-, 0, 0, 1, 1, 0, 0, 0] then
-        #  still include that example, and the make will be [0, 1, 1, 1, 1, 0, 0, 0]
-        if starts_recovering(is_close):
-            mask = recovering_mask(is_close)
-            out_example['mask'] = tf.cast(mask, tf.float32)
-            # print(is_close)
-            # import matplotlib.pyplot as plt
-            # anim = get_scenario('link_bot').animate_predictions_from_classifier_dataset(dataset_element=out_example,
-            #                                                                             state_keys=['link_bot'],
-            #                                                                             example_idx=0,
-            #                                                                             fps=5)
-            # plt.show()
-            yield out_example
+        is_first_predicted_state_close = is_close[:, 1]
+        valid_indices = tf.where(is_first_predicted_state_close)
+        # keep only valid_indices from every key in out_example...
+        valid_out_example = gather_dict(out_example, valid_indices)
+
+        yield valid_out_example
 
 
 def predict_onestep(states_description, fwd_model, dataset_element, batch_size, prediction_start_t, prediction_horizon):

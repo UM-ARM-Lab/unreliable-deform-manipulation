@@ -45,27 +45,23 @@ class Test(TestCase):
         self.assertFalse(out)
 
     def test_recovering_mask(self):
-        is_close = tf.constant([1, 0, 1, 1, 0], dtype=tf.float32)
+        is_close = tf.constant([[1, 0, 1, 1, 0, 0],
+                                [1, 0, 0, 0, 0, 1],
+                                [1, 0, 0, 0, 1, 0],
+                                [1, 0, 0, 0, 0, 0],
+                                [1, 0, 1, 1, 1, 0],
+                                [1, 0, 1, 0, 0, 1],
+                                [1, 0, 0, 1, 0, 0],
+                                [1, 0, 1, 0, 1, 0]],
+                               dtype=tf.float32)
         out = recovering_mask(is_close)
-        expected = tf.constant([False, True, True, True, False], dtype=tf.bool)
-        self.assertTrue(tf.reduce_all(tf.equal(out, expected)))
-
-        is_close = tf.constant([1, 0, 0, 0, 1], dtype=tf.float32)
-        out = recovering_mask(is_close)
-        expected = tf.constant([False, True, True, True, True], dtype=tf.bool)
-        self.assertTrue(tf.reduce_all(tf.equal(out, expected)))
-
-        is_close = tf.constant([1, 0, 1, 1, 1], dtype=tf.float32)
-        out = recovering_mask(is_close)
-        expected = tf.constant([False, True, True, True, True], dtype=tf.bool)
-        self.assertTrue(tf.reduce_all(tf.equal(out, expected)))
-
-        is_close = tf.constant([1, 0, 1, 0, 0], dtype=tf.float32)
-        out = recovering_mask(is_close)
-        expected = tf.constant([False, True, True, False, False], dtype=tf.bool)
-        self.assertTrue(tf.reduce_all(tf.equal(out, expected)))
-
-        is_close = tf.constant([1, 0, 0, 1, 0], dtype=tf.float32)
-        out = recovering_mask(is_close)
-        expected = tf.constant([False, True, True, True, False], dtype=tf.bool)
+        expected = tf.constant([[False, True, True, True, False, False],
+                                [False, True, True, True, True, True],
+                                [False, True, True, True, True, False],
+                                [False, False, False, False, False, False],
+                                [False, True, True, True, True, False],
+                                [False, True, True, False, False, False],
+                                [False, True, True, True, False, False],
+                                [False, True, True, False, False, False]],
+                               dtype=tf.bool)
         self.assertTrue(tf.reduce_all(tf.equal(out, expected)))
