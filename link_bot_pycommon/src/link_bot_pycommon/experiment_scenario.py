@@ -1,6 +1,7 @@
 from typing import Dict, Optional, List
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_planned
@@ -158,13 +159,22 @@ class ExperimentScenario:
             'full_env/extent': dataset_element['full_env/extent'],
         })
 
+        if 'mask' in dataset_element:
+            mask = dataset_element['mask'].numpy().astype(np.int64)
+            show_previous_action = True
+        else:
+            mask = None
+            show_previous_action = False
+
         return cls.animate_predictions(environment=environment,
                                        actions=actions[start_idx:end_idx],
                                        actual=actual[start_idx:end_idx],
                                        predictions=predictions[start_idx:end_idx],
                                        example_idx=example_idx,
                                        labels=is_close[start_idx:end_idx],
+                                       mask=mask,
                                        accept_probabilities=accept_probabilities,
+                                       show_previous_action=show_previous_action,
                                        fps=fps)
 
     @classmethod
@@ -217,11 +227,12 @@ class ExperimentScenario:
                             labels: Optional = None,
                             example_idx: Optional = None,
                             accept_probabilities: Optional = None,
+                            mask: Optional = None,
+                            show_previous_action: bool = False,
                             fps: Optional[float] = 1):
         fig = plt.figure()
         ax = plt.gca()
         update, frames = cls.animate_predictions_on_axes(ax=ax,
-                                                         fig=fig,
                                                          environment=environment,
                                                          actions=actions,
                                                          actual=actual,
@@ -229,7 +240,9 @@ class ExperimentScenario:
                                                          example_idx=example_idx,
                                                          labels=labels,
                                                          accept_probabilities=accept_probabilities,
-                                                         fps=fps)
+                                                         mask=mask,
+                                                         show_previous_action=show_previous_action,
+                                                         )
 
         plt.legend()
         anim = Player(fig, update, max_index=frames, interval=1000 / fps, repeat=True)
@@ -238,7 +251,6 @@ class ExperimentScenario:
     @classmethod
     def animate_predictions_on_axes(cls,
                                     ax,
-                                    fig,
                                     environment,
                                     actions,
                                     actual,
@@ -246,9 +258,11 @@ class ExperimentScenario:
                                     labels: Optional = None,
                                     example_idx: Optional = None,
                                     accept_probabilities: Optional = None,
+                                    mask: Optional = None,
                                     prediction_label_name: Optional = 'prediction',
                                     prediction_color: Optional = 'g',
-                                    fps: Optional[float] = 1):
+                                    show_previous_action: bool = False,
+                                    ):
         prediction_artist = None
         if predictions is not None:
             prediction_artist = cls.plot_state(ax,
@@ -259,6 +273,8 @@ class ExperimentScenario:
                                                label=prediction_label_name,
                                                linewidth=1)
         actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=2, label='actual', alpha=0.6, linewidth=1)
+        if show_previous_action:
+            prev_actual_artist = cls.plot_state(ax, actual[0], '#aaaa00', zorder=3, s=2, label='actual', alpha=0.6, linewidth=1)
         if actions is not None:
             action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=2, zorder=4, linewidth=1)
         cls.plot_environment(ax, environment)
@@ -270,9 +286,14 @@ class ExperimentScenario:
         ax.set_xlabel("x (m)")
         ax.set_ylabel("y (m)")
 
-        n_states = len(actual)
+        n_frames = len(actual)
+        if mask is not None:
+            n_frames = np.count_nonzero(mask)
 
         def update(t):
+            if mask is not None:
+                valid_indices = np.where(mask)[0]
+                t = valid_indices[t]
             if predictions is not None:
                 cls.update_artist(prediction_artist, predictions[t])
             cls.update_artist(actual_artist, actual[t])
@@ -301,80 +322,12 @@ class ExperimentScenario:
                     classification_line.set_color('k')
             ax.set_title(title_t, fontproperties='monospace')
 
-            if t < n_states - 1 and actions is not None:
-                cls.update_action_artist(action_artist, actual[t], actions[t])
-
-        return update, n_states
-
-    @classmethod
-    def animate_recovering_actions_sequence(cls,
-                                            environment,
-                                            actions,
-                                            actual,
-                                            predictions,
-                                            example_idx: Optional = None,
-                                            is_close: Optional = None,
-                                            accept_probabilities: Optional = None,
-                                            fps: Optional[float] = 1):
-        fig = plt.figure()
-        ax = plt.gca()
-
-        cls.plot_environment(ax, environment)
-
-        prediction_artist = cls.plot_state(ax, predictions[0], 'm', zorder=3, s=30, label=r'$\hat{s}^{t+1}$', alpha=0.6)
-
-        for actual_state in actual[1:]:
-            cls.plot_state(ax, actual_state, '#444444', zorder=1, s=30, alpha=0.4)
-        current_actual_state_artist = cls.plot_state(ax, actual[1], '#008800', zorder=2, s=30, label=r'$s^t$', alpha=0.6)
-        next_actual_state_artist = cls.plot_state(ax, actual[1], '#00ff00', zorder=2, s=30, label=r'$s^{t+1}$', alpha=0.6)
-        action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=30, zorder=4, linewidth=3)
-
-        if is_close is not None:
-            extent = environment['full_env/extent'] * 1.05
-            offset_extent = extent * 1.025
-            label_line = plot_extents(ax=ax, extent=extent, color='k', zorder=2, alpha=0.5)
-            classification_line = plot_extents(ax=ax, extent=offset_extent, color='k', zorder=3, alpha=0.5)
-        ax.set_xlabel("x (m)")
-        ax.set_ylabel("y (m)")
-        handles, labels = plt.gca().get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        plt.legend(by_label.values(), by_label.keys())
-
-        n_states = len(predictions)
-
-        def update(t):
-            cls.update_artist(prediction_artist, predictions[t])
-            cls.update_action_artist(action_artist, actual[t], actions[t])
-            cls.update_artist(current_actual_state_artist, actual[t])
-            cls.update_artist(next_actual_state_artist, actual[t + 1])
-
-            if example_idx is None:
-                title_t = f"t={t}"
+            if show_previous_action:
+                if t > 0 and actions is not None:
+                    cls.update_artist(prev_actual_artist, actual[t - 1])
+                    cls.update_action_artist(action_artist, actual[t - 1], actions[t - 1])
             else:
-                title_t = f"example {example_idx}, t={t}"
+                if t < n_frames - 1 and actions is not None:
+                    cls.update_action_artist(action_artist, actual[t], actions[t])
 
-            if t > 0:
-                if is_close is not None:
-                    title_t += f" label={is_close[t]}"
-                    label_color = 'r' if is_close[t] == 0 else 'g'
-                    label_line.set_color(label_color)
-                if accept_probabilities is not None:
-                    # -1 because the classifier doesn't output a decision for t=0
-                    accept_probability = accept_probabilities[t - 1]
-                    # TODO: use threshold from model hparams
-                    line_color = 'r' if accept_probability < 0.5 else 'g'
-                    classification_line.set_color(line_color)
-                    title_t += f" accept={accept_probability:.3f}"
-            else:
-                if accept_probabilities is not None:
-                    title_t += " label=    accept=     "
-                else:
-                    title_t += " label=    "
-                if is_close is not None:
-                    label_line.set_color('k')
-                    classification_line.set_color('k')
-
-            ax.set_title(title_t, fontproperties='monospace')
-
-        anim = Player(fig, update, max_index=n_states, interval=1000 / fps, repeat=True)
-        return anim
+        return update, n_frames
