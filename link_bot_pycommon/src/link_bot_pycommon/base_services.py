@@ -19,7 +19,6 @@ class Services:
         self.execute_action = rospy.ServiceProxy("execute_action", ExecuteAction)
         self.world_control = rospy.ServiceProxy('world_control', WorldControl)
         self.pause = rospy.ServiceProxy('gazebo/pause_physics', std_srvs.srv.Empty)
-        self.execute_trajectory = rospy.ServiceProxy("link_bot_execute_trajectory", LinkBotTrajectory)
         self.unpause = rospy.ServiceProxy('gazebo/unpause_physics', std_srvs.srv.Empty)
         self.record = rospy.ServiceProxy('video_recorder', TriggerVideoRecording)
         self.reset = rospy.ServiceProxy("reset", std_srvs.srv.Empty)

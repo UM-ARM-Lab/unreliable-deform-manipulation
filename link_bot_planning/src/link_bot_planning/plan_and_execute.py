@@ -10,7 +10,7 @@ from ompl import base as ob
 
 from link_bot_planning import my_planner
 from link_bot_planning.goals import sample_collision_free_goal
-from link_bot_planning.my_planner import MyPlanner, PlannerResult
+from link_bot_planning.my_planner import MyPlanner
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import SimParams

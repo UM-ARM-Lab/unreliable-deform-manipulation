@@ -1,11 +1,10 @@
-from time import perf_counter
 from typing import Dict, List
 
 import numpy as np
 
 from geometry_msgs.msg import Pose
 from link_bot_pycommon import link_bot_sdf_utils
-from peter_msgs.msg import LinkBotAction, ModelPose
+from peter_msgs.msg import LinkBotAction
 from peter_msgs.srv import ComputeOccupancyRequest, LinkBotTrajectoryRequest
 
 
