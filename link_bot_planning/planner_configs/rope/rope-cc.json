@@ -1,4 +1,9 @@
 {
+  "termination_criteria": {
+    "times_called_threshold": 100,
+    "min_distance_to_goal_threshold": 0.5,
+    "timeout": 120
+  },
   "fwd_model_dir": [
     "ss_log_data/tf2_rope/0",
     "ss_log_data/tf2_rope/1",
@@ -20,7 +25,6 @@
   "full_env_h": 2.0,
   "goal_w_m": 1.5,
   "goal_h_m": 1.5,
-  "timeout": 120,
   "goal_threshold": 0.05,
   "fixed_goal": null,
   "reset_robot": null,

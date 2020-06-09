@@ -1,22 +1,23 @@
+import sys
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Dict, List, Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
-import rospy
 from colorama import Fore
 
+import rospy
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_planning.link_bot_goal import MyGoalRegion
 from link_bot_planning.state_spaces import ValidRopeConfigurationCompoundSampler, \
     compound_to_numpy, ompl_control_to_model_action, compound_from_numpy
-from link_bot_planning.trajectory_smoother import TrajectorySmoother
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon.base_services import Services
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
-import matplotlib.pyplot as plt
 
 
 @dataclass
@@ -77,16 +78,9 @@ class MyPlanner:
         if params['sampler_type'] == 'sample_train':
             raise NotImplementedError()
 
-        smoothing_params = self.params['smoothing']
-        # FIXME: call it "action" instead of control everywhere
-        if smoothing_params is None:
-            self.smoother = None
-        else:
-            self.smoother = TrajectorySmoother(verbose=self.verbose,
-                                               fwd_model=fwd_model,
-                                               classifier_model=classifier_model,
-                                               params=smoothing_params,
-                                               experiment_scenario=self.scenario)
+        self.timeout_or_not_progressing = TimeoutOrNotProgressing(self, self.params['termination_criteria'])
+        self.goal = None
+        self.min_distance_to_goal = sys.maxsize
 
     def setup_state_space(self, service_provider):
         # TODO: make Dict -> state space etc... a function
@@ -155,6 +149,8 @@ class MyPlanner:
 
     def motions_valid(self, motions):
         final_state = compound_to_numpy(self.state_space_description, motions[-1].getState())
+        distance_to_goal = self.scenario.distance_to_goal(final_state, self.goal)
+        self.min_distance_to_goal = min(self.min_distance_to_goal, distance_to_goal)
         motions_valid = bool(np.squeeze(final_state['num_diverged'] < self.classifier_model.horizon - 1))  # yes, minus 1
         if self.verbose >= 3:
             print(final_state)
@@ -250,6 +246,8 @@ class MyPlanner:
         :return: controls, states
         """
         self.environment = environment
+        self.goal = goal
+        self.min_distance_to_goal = sys.maxsize
 
         # create start and goal states
         ompl_start = ob.CompoundState(self.state_space)
@@ -283,16 +281,16 @@ class MyPlanner:
             plt.pause(1)
             input("press enter to continue")
 
-        planner_status = self.ss.solve(self.params['timeout'])
+        planner_status = self.ss.solve(self.timeout_or_not_progressing)
 
         if planner_status:
             ompl_path = self.ss.getSolutionPath()
             controls_np, planned_path = self.convert_path(ompl_path)
-            if self.smoother is not None:
-                controls_np, planned_path = self.smooth_path(goal, controls_np, planned_path)
+            self.goal = None
             return PlannerResult(planner_status=planner_status,
                                  path=planned_path,
                                  actions=controls_np)
+        self.goal = None
         return PlannerResult(planner_status=planner_status,
                              path=None,
                              actions=None)
@@ -340,24 +338,26 @@ class MyPlanner:
 
         return np_controls, planned_path
 
-    def smooth_path(self,
-                    goal,
-                    controls: np.ndarray,
-                    planned_path: List[Dict]):
-        smoothed_actions_tf, smoothed_path_tf = self.smoother.smooth(full_env=self.environment['full_env/env'],
-                                                                     full_env_origin=self.environment['full_env/origin'],
-                                                                     res=self.environment['full_env/res'],
-                                                                     goal=goal,
-                                                                     actions=controls,
-                                                                     planned_path=planned_path)
-        smoothed_path = []
-        for state_tf in smoothed_path_tf:
-            state_np = {}
-            for k, v in state_tf.items():
-                state_np[k] = v.numpy()
-            smoothed_path.append(state_np)
 
-        return smoothed_actions_tf.numpy(), smoothed_path
+class TimeoutOrNotProgressing(ob.PlannerTerminationCondition):
+    def __init__(self, planner: MyPlanner, params: Dict):
+        super().__init__(ob.PlannerTerminationConditionFn(self.condition))
+        self.params = params
+        self.planner = planner
+        self.times_called = 1
+        self.last_distance_to_goal = sys.maxsize
+        self.t0 = perf_counter()
+
+    def condition(self):
+        self.times_called += 1
+        not_progressing = self.times_called > self.params['times_called_threshold'] \
+                          and self.planner.min_distance_to_goal > self.params['min_distance_to_goal_threshold']
+        now = perf_counter()
+        dt_s = now - self.t0
+        timed_out = dt_s > self.params['timeout']
+        should_terminate = timed_out or not_progressing
+        print(f"{self.times_called:6d}, {self.planner.min_distance_to_goal:6.4f} {dt_s:7.4f} --> {should_terminate}")
+        return should_terminate
 
 
 def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0):

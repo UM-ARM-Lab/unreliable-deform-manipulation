@@ -113,16 +113,14 @@ def animate(environment: Dict,
             fps: float = 1):
     fig = plt.figure(figsize=(20, 20))
     ax = plt.gca()
-    update, frames = scenario.animate_predictions_on_axes(fig=fig,
-                                                          ax=ax,
+    update, frames = scenario.animate_predictions_on_axes(ax=ax,
                                                           environment=environment,
                                                           actions=planned_actions,
                                                           actual=actual_path,
                                                           predictions=planned_path,
                                                           labels=is_close,
                                                           example_idx=None,
-                                                          accept_probabilities=accept_probabilities,
-                                                          fps=fps)
+                                                          accept_probabilities=accept_probabilities)
     scenario.plot_goal(ax, goal, color='c', zorder=4, s=50, label='goal')
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))

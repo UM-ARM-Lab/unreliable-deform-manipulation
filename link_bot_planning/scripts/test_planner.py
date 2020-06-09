@@ -127,7 +127,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                                 goal=goal,
                                 planned_path=planned_path,
                                 actual_path=actual_path)
-        anim.save("results/latest-plan-vs-execution.gif", dpi=200, writer='imagemagick', fps=1)
+        anim.save("results/latest-plan-vs-execution.gif", dpi=100, writer='imagemagick', fps=1)
         plt.show(block=True)
 
 
