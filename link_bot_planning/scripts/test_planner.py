@@ -162,7 +162,7 @@ def main():
     sim_params = SimParams(real_time_rate=args.real_time_rate,
                            max_step_size=planner_params['max_step_size'],
                            movable_obstacles=planner_params['movable_obstacles'],
-                           nudge=True,
+                           nudge=False,
                            randomize_obstacles=False)
 
     rospy.init_node('test_planner_with_classifier')
@@ -186,6 +186,8 @@ def main():
 
     planner, _ = get_planner(planner_params=planner_params, service_provider=service_provider, seed=args.seed,
                              verbose=args.verbose)
+
+    service_provider.move_objects_to_positions(planner_params['object_positions'])
 
     tester = TestWithClassifier(
         planner=planner,

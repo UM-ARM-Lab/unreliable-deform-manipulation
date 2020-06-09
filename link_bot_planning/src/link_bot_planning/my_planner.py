@@ -78,7 +78,6 @@ class MyPlanner:
         if params['sampler_type'] == 'sample_train':
             raise NotImplementedError()
 
-        self.timeout_or_not_progressing = TimeoutOrNotProgressing(self, self.params['termination_criteria'])
         self.goal = None
         self.min_distance_to_goal = sys.maxsize
 
@@ -281,7 +280,8 @@ class MyPlanner:
             plt.pause(1)
             input("press enter to continue")
 
-        planner_status = self.ss.solve(self.timeout_or_not_progressing)
+        timeout_or_not_progressing = TimeoutOrNotProgressing(self, self.params['termination_criteria'], self.verbose)
+        planner_status = self.ss.solve(timeout_or_not_progressing)
 
         if planner_status:
             ompl_path = self.ss.getSolutionPath()
@@ -340,11 +340,12 @@ class MyPlanner:
 
 
 class TimeoutOrNotProgressing(ob.PlannerTerminationCondition):
-    def __init__(self, planner: MyPlanner, params: Dict):
+    def __init__(self, planner: MyPlanner, params: Dict, verbose: int):
         super().__init__(ob.PlannerTerminationConditionFn(self.condition))
         self.params = params
         self.planner = planner
         self.times_called = 1
+        self.verbose = verbose
         self.last_distance_to_goal = sys.maxsize
         self.t0 = perf_counter()
 
@@ -356,7 +357,8 @@ class TimeoutOrNotProgressing(ob.PlannerTerminationCondition):
         dt_s = now - self.t0
         timed_out = dt_s > self.params['timeout']
         should_terminate = timed_out or not_progressing
-        print(f"{self.times_called:6d}, {self.planner.min_distance_to_goal:6.4f} {dt_s:7.4f} --> {should_terminate}")
+        if self.verbose >= 2:
+            print(f"{self.times_called:6d}, {self.planner.min_distance_to_goal:6.4f} {dt_s:7.4f} --> {should_terminate}")
         return should_terminate
 
 

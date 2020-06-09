@@ -1,7 +1,7 @@
 {
   "termination_criteria": {
-    "times_called_threshold": 100,
-    "min_distance_to_goal_threshold": 0.5,
+    "times_called_threshold": 500,
+    "min_distance_to_goal_threshold": 0.4,
     "timeout": 120
   },
   "fwd_model_dir": [
@@ -63,8 +63,8 @@
         0.4
       ],
       "y": [
-        0.5,
-        0.7
+        0.2,
+        0.4
       ]
     },
     "moving_box3": {
@@ -73,8 +73,8 @@
         0.4
       ],
       "y": [
-        0.5,
-        0.7
+        0.2,
+        0.4
       ]
     },
     "moving_box4": {
@@ -137,5 +137,43 @@
         -0.5
       ]
     }
+  },
+  "object_positions": {
+    "moving_box1": [
+      -0.7,
+      0.7
+    ],
+    "moving_box2": [
+      0,
+      0.3
+    ],
+    "moving_box3": [
+      0.4,
+      0.3
+    ],
+    "moving_box4": [
+      -0.7,
+      0.0
+    ],
+    "moving_box5": [
+      0.0,
+      0.0
+    ],
+    "moving_box6": [
+      0.4,
+      0.0
+    ],
+    "moving_box7": [
+      -0.7,
+      -0.7
+    ],
+    "moving_box8": [
+      0.0,
+      -0.7
+    ],
+    "moving_box9": [
+      0.7,
+      -0.7
+    ]
   }
 }
