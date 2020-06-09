@@ -9,8 +9,6 @@ import tensorflow.keras.layers as layers
 from colorama import Fore
 from tensorflow import keras
 
-import rospy
-from link_bot_classifiers import collision_checker_classifier
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -108,7 +106,7 @@ class RNNImageClassifier(MyKerasModel):
     def calculate_metrics(self, dataset_element, outputs):
         return binary_classification_sequence_metrics_function(dataset_element, outputs)
 
-    @tf.function
+    # @tf.function
     def make_traj_images(self,
                          environment,
                          states_dict_batch_time,
@@ -165,7 +163,7 @@ class RNNImageClassifier(MyKerasModel):
 
         return out_conv_z
 
-    @tf.function
+    # @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         batch_size = int(input_dict['action'].shape[0])
         images_batch_and_time, padded_action, time = self.make_traj_images_from_input_dict(input_dict, batch_size)

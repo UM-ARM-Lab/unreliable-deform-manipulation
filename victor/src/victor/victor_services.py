@@ -1,9 +1,9 @@
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional
 
 import numpy as np
-from std_srvs.srv import EmptyRequest
 
 from link_bot_pycommon.base_services import Services
+from std_srvs.srv import EmptyRequest
 
 
 class VictorServices(Services):

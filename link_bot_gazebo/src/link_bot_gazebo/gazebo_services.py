@@ -5,7 +5,6 @@ from colorama import Fore
 
 import rospy
 from gazebo_msgs.srv import ApplyBodyWrench, SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
-from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from geometry_msgs.msg import Pose
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.pycommon import quaternion_from_euler
@@ -26,10 +25,6 @@ class GazeboServices(Services):
         self.apply_body_wrench = rospy.ServiceProxy('gazebo/apply_body_wrench', ApplyBodyWrench)
         self.reset_robot_service = rospy.ServiceProxy("reset_robot", LinkBotReset)
         self.gazebo_reset = rospy.ServiceProxy("gazebo/reset_world", Empty)
-
-        # don't want to mock these
-        self.get_physics = rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
-        self.set_physics = rospy.ServiceProxy('gazebo/set_physics_properties', SetPhysicsProperties)
 
         # not used in real robot experiments
         self.get_tether_state = rospy.ServiceProxy("tether", GetObject)

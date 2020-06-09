@@ -22,17 +22,16 @@ def negative_weighted_binary_classification_sequence_loss_function(dataset_eleme
 def compute_weighted_mean_loss(bce, positives, valid_indices):
     negatives = 1 - positives
     n_positive = tf.math.reduce_sum(positives)
-    batch_size = positives.shape[0]
-    n_negative = batch_size - n_positive
-    # TODO: handle division by 0
+    n_negative = tf.math.reduce_sum(negatives)
+    n_total = n_positive + n_negative
     if tf.equal(n_positive, 0):
         weight_for_positive = tf.constant(100, dtype=tf.float32)
     else:
-        weight_for_positive = batch_size / 2.0 / n_positive
+        weight_for_positive = n_total / 2.0 / n_positive
     if tf.equal(n_negative, 0):
         weight_for_negative = tf.constant(100, dtype=tf.float32)
     else:
-        weight_for_negative = batch_size / 2.0 / n_negative
+        weight_for_negative = n_total / 2.0 / n_negative
     weighted_bce = tf.math.add(tf.math.multiply(bce, positives * weight_for_positive),
                                tf.math.multiply(bce, negatives * weight_for_negative))
     valid_weighted_bce = tf.gather_nd(weighted_bce, valid_indices)

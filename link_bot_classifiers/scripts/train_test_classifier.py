@@ -61,7 +61,8 @@ def train_main(args, seed: int):
                          trial_path=trial_path,
                          trials_directory=pathlib.Path('trials'),
                          write_summary=False,
-                         key_metric=AccuracyMetric)
+                         key_metric=AccuracyMetric,
+                         val_every_n_batches=100)
     runner.train(train_tf_dataset, val_tf_dataset, num_epochs=args.epochs)
 
 
@@ -109,7 +110,7 @@ def main():
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--take', type=int)
-    train_parser.add_argument('--epochs', type=int, default=50)
+    train_parser.add_argument('--epochs', type=int, default=10)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches',
