@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow.keras import layers
 
 
@@ -14,3 +15,12 @@ def relu_layers(fc_layer_sizes, use_bias=True):
         return output
 
     return forward
+
+
+def nnelu(input):
+    """
+    Computes the Non-Negative Exponential Linear Unit
+    used when we require the output of a neuron to be strictly positive,
+    such as for producing positive definite matrices
+    """
+    return tf.add(tf.constant(1, dtype=tf.float32), tf.nn.elu(input))

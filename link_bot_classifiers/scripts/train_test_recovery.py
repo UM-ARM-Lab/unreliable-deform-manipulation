@@ -6,8 +6,8 @@ import pathlib
 import numpy as np
 import tensorflow as tf
 
-import state_space_dynamics
-from link_bot_data.dynamics_dataset import DynamicsDataset
+import link_bot_classifiers
+from link_bot_data.recovery_dataset import RecoveryDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.model import filepath_tools
@@ -20,18 +20,18 @@ def train_main(args, seed: int):
     ###############
     # Datasets
     ###############
-    train_dataset = DynamicsDataset(args.dataset_dirs)
-    val_dataset = DynamicsDataset(args.dataset_dirs)
+    train_dataset = RecoveryDataset(args.dataset_dirs)
+    val_dataset = RecoveryDataset(args.dataset_dirs)
 
     ###############
     # Model
     ###############
     model_hparams = json.load((args.model_hparams).open('r'))
-    model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
+    model_hparams['recovery_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
-    model_class = state_space_dynamics.get_model(model_hparams['model_class'])
-    scenario = get_scenario(train_dataset.hparams['scenario'])
+    model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
+    scenario = get_scenario(model_hparams['scenario'])
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
@@ -65,17 +65,18 @@ def train_main(args, seed: int):
 
 def eval_main(args, seed: int):
     ###############
-    # Dataset
-    ###############
-    test_dataset = DynamicsDataset(args.dataset_dirs)
-
-    ###############
     # Model
     ###############
     _, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
                                                     trials_directory=pathlib.Path('trials'))
-    model = state_space_dynamics.get_model(params['model_class'])
-    net = model(hparams=params, batch_size=args.batch_size, scenario=test_dataset.scenario)
+    model = link_bot_classifiers.get_model(params['model_class'])
+    scenario = get_scenario(params['scenario'])
+    net = model(hparams=params, batch_size=args.batch_size, scenario=scenario)
+
+    ###############
+    # Dataset
+    ###############
+    test_dataset = RecoveryDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
     ###############
@@ -105,10 +106,10 @@ def main():
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--take', type=int)
-    train_parser.add_argument('--epochs', type=int, default=10)
+    train_parser.add_argument('--epochs', type=int, default=50)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
-    train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches',
+    train_parser.add_argument('--log-scalars-every', type=int, help='loss every this many steps/batches',
                               default=100)
     train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs',
                               default=1)

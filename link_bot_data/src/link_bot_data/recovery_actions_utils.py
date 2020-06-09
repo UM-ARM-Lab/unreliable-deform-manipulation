@@ -5,7 +5,6 @@ import tensorflow as tf
 from link_bot_data.classifier_dataset_utils import predictions_vs_actual_generator, PredictionActualExample, compute_is_close_tf
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_planned
-from link_bot_pycommon.pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import gather_dict
 
@@ -16,7 +15,7 @@ def generate_recovery_examples(fwd_model,
                                tf_dataset: tf.data.TFRecordDataset,
                                dataset: DynamicsDataset,
                                labeling_params: Dict):
-    batch_size = 1024
+    batch_size = 2048
     for prediction_actual in predictions_vs_actual_generator(fwd_model=fwd_model,
                                                              tf_dataset=tf_dataset,
                                                              batch_size=batch_size,
@@ -55,7 +54,7 @@ def recovering_mask(is_close):
     :param is_close: float matrix [B,H] but all values should be 0.0 or 1.0
     :return: boolean matrix [B,H]
     """
-    batch_size = is_close.shape[0]
+    batch_size, horizon = is_close.shape
     # trim the first element and append a zero
     zeros = tf.zeros([batch_size, 1])
     trimmed_and_padded = tf.concat([is_close[:, 1:], zeros], axis=1)
@@ -65,9 +64,11 @@ def recovering_mask(is_close):
     matches = tf.cast(conv_out > 0, tf.float32)
     shifted = tf.concat([zeros, matches[:, :-1]], axis=1)
     mask = tf.logical_not(tf.cast(tf.clip_by_value(tf.cumsum(shifted, axis=1), 0, 1), tf.bool))
-    has_a_1 = tf.reduce_any(is_close[:, 1:] > 0, axis=1, keepdims=True)
+    has_a_1 = tf.reduce_any(is_close[:, 1:] == 1, axis=1, keepdims=True)
+    starts_with_0 = tf.stack([tf.equal(is_close[:, 1], 0)] * (horizon - 1), axis=1)
     mask_and_has_1 = tf.logical_and(mask, has_a_1)
-    return tf.concat((tf.cast(zeros, tf.bool), mask_and_has_1), axis=1)
+    mask_final = tf.logical_and(mask_and_has_1, starts_with_0)
+    return mask_final
 
 
 def generate_recovery_actions_examples(prediction_actual: PredictionActualExample):
@@ -126,14 +127,11 @@ def generate_recovery_actions_examples(prediction_actual: PredictionActualExampl
         is_close_float = tf.cast(is_close, dtype=tf.float32)
         out_example['is_close'] = is_close_float
         mask = recovering_mask(is_close_float)
+        valid_indices = tf.squeeze(tf.where(tf.reduce_any(mask, axis=1)), axis=1)
         out_example['mask'] = tf.cast(mask, tf.float32)
 
-        is_first_predicted_state_close = is_close[:, 1]
-        valid_indices = tf.where(is_first_predicted_state_close)
-        valid_indices = tf.squeeze(valid_indices, axis=1)
         # keep only valid_indices from every key in out_example...
         valid_out_example = gather_dict(out_example, valid_indices)
-
         yield valid_out_example
 
 

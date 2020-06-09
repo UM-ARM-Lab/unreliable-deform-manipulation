@@ -52,16 +52,20 @@ class Test(TestCase):
                                 [1, 0, 1, 1, 1, 0],
                                 [1, 0, 1, 0, 0, 1],
                                 [1, 0, 0, 1, 0, 0],
+                                [1, 1, 1, 1, 1, 1],
+                                [1, 1, 0, 0, 0, 0],
                                 [1, 0, 1, 0, 1, 0]],
                                dtype=tf.float32)
         out = recovering_mask(is_close)
-        expected = tf.constant([[False, True, True, True, False, False],
-                                [False, True, True, True, True, True],
-                                [False, True, True, True, True, False],
-                                [False, False, False, False, False, False],
-                                [False, True, True, True, True, False],
-                                [False, True, True, False, False, False],
-                                [False, True, True, True, False, False],
-                                [False, True, True, False, False, False]],
+        expected = tf.constant([[True, True, True, False, False],
+                                [True, True, True, True, True],
+                                [True, True, True, True, False],
+                                [False, False, False, False, False],
+                                [True, True, True, True, False],
+                                [True, True, False, False, False],
+                                [True, True, True, False, False],
+                                [False, False, False, False, False],
+                                [False, False, False, False, False],
+                                [True, True, False, False, False]],
                                dtype=tf.bool)
         self.assertTrue(tf.reduce_all(tf.equal(out, expected)))

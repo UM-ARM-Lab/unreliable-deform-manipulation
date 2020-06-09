@@ -1,4 +1,6 @@
 import tensorflow as tf
+import tensorflow_probability as tfp
+from tensorflow_probability import distributions as tfd
 
 from link_bot_data.link_bot_dataset_utils import is_reconverging
 from shape_completion_training import metric
@@ -112,3 +114,23 @@ def binary_classification_metrics_function(dataset_element, predictions):
     return {
         'accuracy': average_accuracy
     }
+
+
+def mdn_sequence_likelihood(dataset_element, predictions):
+    return gaussian_negative_log_likelihood(y=dataset_element['action'],
+                                            alpha=predictions['component_weights'],
+                                            mu=predictions['means'],
+                                            sigma=predictions['covariances'],
+                                            mask=dataset_element['mask'])
+
+
+def gaussian_negative_log_likelihood(y, alpha, mu, sigma, mask):
+    """ Computes the mean negative log-likelihood loss of y given the mixture parameters. """
+    scale_tril = tfp.math.fill_triangular(sigma)
+    gm = tfd.MixtureSameFamily(mixture_distribution=tfd.Categorical(probs=tf.squeeze(alpha, 3)),
+                               components_distribution=tfd.MultivariateNormalTriL(loc=mu, scale_tril=scale_tril))
+    log_likelihood = gm.log_prob(y)  # Evaluate log-probability of y
+    valid_indices = tf.where(mask)
+    valid_log_likelihood = tf.gather_nd(log_likelihood, valid_indices)
+
+    return -tf.reduce_mean(valid_log_likelihood)

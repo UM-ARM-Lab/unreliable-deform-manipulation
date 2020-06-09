@@ -29,6 +29,8 @@ def train_main(args, seed: int):
     ###############
     model_hparams = json.load((args.model_hparams).open('r'))
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
+    model_hparams['batch_size'] = args.batch_size
+    model_hparams['seed'] = seed
     model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
     scenario = get_scenario(model_hparams['scenario'])
 
@@ -51,10 +53,11 @@ def train_main(args, seed: int):
 
     # Train
     trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
+    group_name = args.log if trial_path is None else None
     runner = ModelRunner(model=model,
                          training=True,
                          params=model_hparams,
-                         group_name=args.log,
+                         group_name=group_name,
                          trial_path=trial_path,
                          trials_directory=pathlib.Path('trials'),
                          write_summary=False,
@@ -83,12 +86,9 @@ def eval_main(args, seed: int):
     ###############
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
-    trial_path = args.checkpoint.absolute()
     runner = ModelRunner(model=net,
-                         training=True,
-                         params=None,
-                         group_name=None,
-                         trial_path=trial_path,
+                         training=False,
+                         trial_path=args.checkpoint.absolute(),
                          trials_directory=pathlib.Path('trials'),
                          write_summary=False,
                          key_metric=AccuracyMetric)

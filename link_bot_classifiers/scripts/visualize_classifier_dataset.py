@@ -68,7 +68,6 @@ def visualize_dataset(args, classifier_dataset):
     collision_checker = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)
     if args.shuffle:
         dataset = dataset.shuffle(buffer_size=512)
-    print_dict(next(iter(dataset)))
     dataset = dataset.batch(1)
     now = int(time.time())
     outdir = pathlib.Path('results') / f'anim_{now}'
@@ -93,6 +92,7 @@ def visualize_dataset(args, classifier_dataset):
         example = remove_batch(example)
 
         is_close = example['is_close'].numpy().squeeze()
+        print(example['traj_idx'][0])
         n_close = np.count_nonzero(is_close)
         n_far = is_close.shape[0] - n_close
         positive_count += n_close
