@@ -1,21 +1,28 @@
 #!/usr/bin/env python
+import json
+import pathlib
 from typing import Dict
 
 import tensorflow as tf
 import tensorflow.keras.layers as layers
+import tensorflow_probability as tfp
+from colorama import Fore
 from tensorflow import keras
+from tensorflow_probability import distributions as tfd
 
+from link_bot_classifiers.base_recovery_actions_model import BaseRecoveryActionsModels
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine import classifier_losses_and_metrics
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
 from moonshine.image_functions import raster_differentiable
+from moonshine.moonshine_utils import add_batch, remove_batch, numpify
 from shape_completion_training.mykerasmodel import MyKerasModel
 
 
 class RNNRecoveryModel(MyKerasModel):
-    def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
-        super().__init__(hparams, batch_size)
+    def __init__(self, hparams: Dict, scenario: ExperimentScenario):
+        super().__init__(hparams, None)
         self.scenario = scenario
 
         self.recovery_dataset_hparams = self.hparams['recovery_dataset_hparams']
@@ -54,7 +61,7 @@ class RNNRecoveryModel(MyKerasModel):
                                  activity_regularizer=keras.regularizers.l1(self.hparams['activity_reg']))
             self.env_state_encoder_dense_layers.append(dense)
 
-        self.lstm = layers.LSTM(self.hparams['rnn_size'], unroll=True, return_sequences=True)
+        self.rnn = layers.LSTM(self.hparams['rnn_size'], unroll=True, return_sequences=True, return_state=True)
 
         self.n_covariance_parameters = int((self.n_action ** 2 + self.n_action) / 2)
         self.n_mean_parameters = self.n_action
@@ -116,16 +123,39 @@ class RNNRecoveryModel(MyKerasModel):
         out_conv_z = conv_z
         return tf.reshape(out_conv_z, [batch_size, -1])
 
+    # @tf.function
+    def sample(self, input_dict: Dict):
+        batch_size = 1
+        time = 5  # TODO: how to pick this number? can I use "stop tokens" instead?
+        images, initial_h = self.state_encoder(input_dict, batch_size=batch_size, training=False)
+        initial_c = tf.zeros([batch_size, self.hparams['rnn_size']], dtype=tf.float32)
+
+        sampled_actions = []
+        h_t = initial_h
+        c_t = initial_c
+        for t in range(time):
+            component_weights_t, covariances_t, means_t = self.h_to_parameters(h_t, batch_size, time=1)
+            print(means_t)
+
+            mixture_density = self.mixture_distribution(alpha=component_weights_t, mu=means_t, sigma=covariances_t)
+            sampled_action = mixture_density.sample()
+            sampled_actions.append(sampled_action)
+
+            out_h, h_t, c_t = self.rnn(inputs=sampled_action, training=False, initial_state=[h_t, c_t])
+
+        sampled_actions = tf.concat(sampled_actions, axis=1)
+        return sampled_actions
+
     @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         batch_size, time, _ = input_dict['action'].shape
-        images, initial_h = self.state_encoder(input_dict, training, batch_size)
+        images, initial_h = self.state_encoder(input_dict, batch_size, training)
         component_weights_0, covariances_0, means_0 = self.h_to_parameters(initial_h, batch_size, 1)
 
         actions = input_dict['action']
-        initial_c = tf.ones([batch_size, self.hparams['rnn_size']], dtype=tf.float32) * 0.123
+        initial_c = tf.zeros([batch_size, self.hparams['rnn_size']], dtype=tf.float32)
         # the first element in the mask doesn't mean we should ignore the first action
-        out_h = self.lstm(inputs=actions, mask=input_dict['mask'], training=training, initial_state=[initial_h, initial_c])
+        out_h, _, _ = self.rnn(inputs=actions, mask=input_dict['mask'], training=training, initial_state=[initial_h, initial_c])
 
         # for every time step's output, map down to several vectors representing the parameters defining the mixture of gaussians
         # ignore the last output because it's not used in evaluating the likelihood of the action sequence
@@ -135,11 +165,13 @@ class RNNRecoveryModel(MyKerasModel):
         covariances = tf.concat([covariances_0, covariances], axis=1)
         means = tf.concat([means_0, means], axis=1)
 
+        mixture_density = self.mixture_distribution(alpha=component_weights, mu=means, sigma=covariances)
+        valid_log_likelihood = self.gaussian_negative_log_likelihood(y=input_dict['action'],
+                                                                     gm=mixture_density,
+                                                                     mask=input_dict['mask'])
         return {
-            'means': means,
-            'covariances': covariances,
-            'component_weights': component_weights,
             'images': images,
+            'valid_log_likelihood': valid_log_likelihood
         }
 
     def h_to_parameters(self, out_h, batch_size, time):
@@ -148,7 +180,7 @@ class RNNRecoveryModel(MyKerasModel):
         component_weights = tf.reshape(self.mixture_components_layer(out_h), [batch_size, time, self.n_mixture_components, -1])
         return component_weights, covariances, means
 
-    def state_encoder(self, input_dict, training, batch_size):
+    def state_encoder(self, input_dict, batch_size, training):
         # get only the start states
         start_state = {k: input_dict[add_planned(k)][:, 0] for k in self.states_keys}
         # tile to the number of actions
@@ -157,10 +189,16 @@ class RNNRecoveryModel(MyKerasModel):
                                              start_states=start_state,
                                              local_env_center_point=local_env_center_point,
                                              batch_size=batch_size)
+        # import matplotlib.pyplot as plt
+        # from matplotlib import cm
+        # cmap = cm.viridis
+        # out_image = state_image_to_cmap(images[0], cmap=cmap)
+        # plt.imshow(out_image)
+        # plt.show()
         conv_output = self._conv(images, batch_size)
         concat_args = [conv_output]
         for k, v in start_state.items():
-            if 'use_local_frame' in self.hparams and self.hparams['use_local_frame']:
+            if self.hparams['use_local_frame']:
                 # note this assumes all state vectors are[x1,y1,...,xn,yn]
                 points = tf.reshape(v, [batch_size, -1, 2])
                 points = points - points[:, :, tf.newaxis, 0]
@@ -173,3 +211,41 @@ class RNNRecoveryModel(MyKerasModel):
         for dense_layer in self.env_state_encoder_dense_layers:
             z = dense_layer(z)
         return images, z
+
+    @staticmethod
+    def mixture_distribution(alpha, mu, sigma):
+        scale_tril = tfp.math.fill_triangular(sigma)
+        gm = tfd.MixtureSameFamily(mixture_distribution=tfd.Categorical(probs=tf.squeeze(alpha, 3)),
+                                   components_distribution=tfd.MultivariateNormalTriL(loc=mu, scale_tril=scale_tril))
+        return gm
+
+    @staticmethod
+    def gaussian_negative_log_likelihood(y, gm, mask):
+        log_likelihood = gm.log_prob(y)
+        valid_indices = tf.where(mask)
+        valid_log_likelihood = tf.gather_nd(log_likelihood, valid_indices)
+        return valid_log_likelihood
+
+
+class RNNRecoveryModelWrapper(BaseRecoveryActionsModels):
+
+    def __init__(self, path: pathlib.Path, scenario: ExperimentScenario):
+        super().__init__(scenario)
+        model_hparams_file = path.parent / 'params.json'
+        self.model_hparams = json.load(model_hparams_file.open('r'))
+        self.net = RNNRecoveryModel(hparams=self.model_hparams, scenario=scenario)
+        self.ckpt = tf.train.Checkpoint(model=self.net)
+        self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
+        if self.manager.latest_checkpoint:
+            print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
+        self.ckpt.restore(self.manager.latest_checkpoint)
+
+    def sample(self, environment: Dict, state: Dict):
+        input_dict = environment
+        input_dict.update({add_planned(k): tf.expand_dims(v, axis=0) for k, v in state.items()})
+        input_dict = add_batch(input_dict)
+        input_dict = {k: tf.cast(v, tf.float32) for k, v in input_dict.items()}
+        output = self.net.sample(input_dict)
+        output = remove_batch(output)
+        output = numpify(output)
+        return output

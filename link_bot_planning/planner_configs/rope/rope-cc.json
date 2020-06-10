@@ -1,4 +1,5 @@
 {
+  "recovery_actions_model": "cl_trials/recovery_2d/June_09_10-47-38_2c2578d03d/best_checkpoint",
   "termination_criteria": {
     "times_called_threshold": 500,
     "min_distance_to_goal_threshold": 0.4,

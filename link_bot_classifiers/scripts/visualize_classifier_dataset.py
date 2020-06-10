@@ -92,7 +92,6 @@ def visualize_dataset(args, classifier_dataset):
         example = remove_batch(example)
 
         is_close = example['is_close'].numpy().squeeze()
-        print(example['traj_idx'][0])
         n_close = np.count_nonzero(is_close)
         n_far = is_close.shape[0] - n_close
         positive_count += n_close

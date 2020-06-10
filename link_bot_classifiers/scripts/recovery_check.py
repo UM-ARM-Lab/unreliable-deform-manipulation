@@ -19,7 +19,7 @@ from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import env_from_occupancy_data
-from link_bot_pycommon.pycommon import model_dirs_to_json, model_dirs_from_json
+from link_bot_pycommon.pycommon import paths_to_json, paths_from_json
 from link_bot_pycommon.ros_pycommon import get_states_dict
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import listify, numpify, dict_of_sequences_to_sequence_of_dicts
@@ -39,8 +39,8 @@ def save_data(args, basedir, environment, actuals, predictions, accept_probabili
     print(Fore.GREEN + f'saving {filename.as_posix()}' + Fore.RESET)
     data_and_model_info = {
         'data': listify(data),
-        'classifier_model_dir': model_dirs_to_json(args.classifier_model_dir),
-        'fwd_model_dir': model_dirs_to_json(args.fwd_model_dir),
+        'classifier_model_dir': paths_to_json(args.classifier_model_dir),
+        'fwd_model_dir': paths_to_json(args.fwd_model_dir),
     }
     json.dump(data_and_model_info, filename.open("w"))
     return filename
@@ -76,8 +76,8 @@ def load_and_compare_predictions_to_actual(load_from: pathlib.Path, no_plot):
     predictions = [numpify(p_i) for p_i in saved_data['predictions']]
     random_actions = numpify(saved_data['random_actions'])
     accept_probabilities = numpify(saved_data['accept_probabilities'])
-    classifier_model_dir = model_dirs_from_json(data_and_model_info['classifier_model_dir'])
-    fwd_model_dir = model_dirs_from_json(data_and_model_info['fwd_model_dir'])
+    classifier_model_dir = paths_from_json(data_and_model_info['classifier_model_dir'])
+    fwd_model_dir = paths_from_json(data_and_model_info['fwd_model_dir'])
     classifier_model, fwd_model = load_models(classifier_model_dir=classifier_model_dir, fwd_model_dir=fwd_model_dir)
     basedir = load_from.parent
     compare_predictions_to_actual(basedir,

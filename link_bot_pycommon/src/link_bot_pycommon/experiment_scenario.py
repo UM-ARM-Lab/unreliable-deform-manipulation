@@ -160,7 +160,7 @@ class ExperimentScenario:
         })
 
         if 'mask' in dataset_element:
-            mask = dataset_element['mask'].numpy().astype(np.int64)
+            mask = np.concatenate([[1], dataset_element['mask'].numpy().astype(np.int64)], axis=0)
             show_previous_action = True
         else:
             mask = None

@@ -3,7 +3,7 @@ import tensorflow as tf
 
 from link_bot_classifiers import classifier_utils
 from link_bot_gazebo.gazebo_services import GazeboServices
-from link_bot_planning.plan_and_execute import execute_plan
+from link_bot_planning.plan_and_execute import execute_actions
 from link_bot_pycommon.link_bot_sdf_utils import env_from_occupancy_data
 from link_bot_pycommon.ros_pycommon import get_states_dict, get_occupancy_data
 from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, sequence_of_dicts_to_dict_of_np_arrays, \
@@ -29,7 +29,7 @@ def execute(service_provider, dt, start_configs, random_actions):
     for start_config, actions in zip(start_configs, random_actions):
         set_rope_config(service_provider, start_config)
         service_provider.stop_robot(EmptyRequest())
-        actual_state_sequence = execute_plan(service_provider, dt, actions)
+        actual_state_sequence = execute_actions(service_provider, dt, actions)
         actual_states_dict = sequence_of_dicts_to_dict_of_np_arrays(actual_state_sequence)
         actual_state_sequences.append(actual_states_dict)
     return actual_state_sequences

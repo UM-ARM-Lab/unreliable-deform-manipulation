@@ -9,6 +9,7 @@ import tensorflow as tf
 import link_bot_classifiers
 from link_bot_data.recovery_dataset import RecoveryDataset
 from link_bot_pycommon.get_scenario import get_scenario
+from link_bot_pycommon.pycommon import paths_to_json
 from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
@@ -30,12 +31,13 @@ def train_main(args, seed: int):
     model_hparams['recovery_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
+    model_hparams['datasets'] = paths_to_json(args.dataset_dirs)
     model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
     scenario = get_scenario(model_hparams['scenario'])
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
-    val_tf_dataset = val_dataset.get_datasets(mode='val', take=200)
+    val_tf_dataset = val_dataset.get_datasets(mode='val')
 
     # to mix up examples so each batch is diverse
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=2048, seed=seed, reshuffle_each_iteration=True)
@@ -48,7 +50,7 @@ def train_main(args, seed: int):
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
-    model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
+    model = model_class(hparams=model_hparams, scenario=scenario)
 
     # Train
     trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
@@ -69,9 +71,9 @@ def eval_main(args, seed: int):
     ###############
     _, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
                                                     trials_directory=pathlib.Path('trials'))
-    model = link_bot_classifiers.get_model(params['model_class'])
+    model_class = link_bot_classifiers.get_model(params['model_class'])
     scenario = get_scenario(params['scenario'])
-    net = model(hparams=params, batch_size=args.batch_size, scenario=scenario)
+    net = model_class(hparams=params, scenario=scenario)
 
     ###############
     # Dataset

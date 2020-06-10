@@ -19,7 +19,7 @@ from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner
-from link_bot_planning.my_planner import MyPlanner
+from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus
 from link_bot_planning.ompl_viz import plot_plan, planner_data_to_json
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.params import SimParams
@@ -111,7 +111,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                               environment: Dict,
                               planner_data: ob.PlannerData,
                               planning_time: float,
-                              planner_status: ob.PlannerStatus):
+                              planner_status: MyPlannerStatus):
         num_nodes = planner_data.numVertices()
 
         final_planned_state = planned_path[-1]
@@ -119,13 +119,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
         final_state = actual_path[-1]
         execution_to_goal_error = self.planner.scenario.distance_to_goal(final_state, goal)
-
-        second_state = actual_path[1]
-        second_planned_state = planned_path[1]
-        second_error = self.planner.scenario.distance(second_state, second_planned_state)
-        if second_error > 0.05:
-            print(second_error)
-            import ipdb; ipdb.set_trace()
 
         plan_to_execution_error = self.planner.scenario.distance(final_state, final_planned_state)
 
@@ -137,7 +130,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         tree_json = planner_data_to_json(planner_data, self.planner.state_space_description)
 
         metrics_for_plan = {
-            'planner_status': planner_status.asString(),
+            'planner_status': planner_status.value,
             'environment': listify(environment),
             'planned_path': planned_path_listified,
             'actions': planned_actions_listified,

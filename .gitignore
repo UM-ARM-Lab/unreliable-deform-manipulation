@@ -1,5 +1,6 @@
 *.swp
 trial
+cl_trials
 *.tar.gz
 .roslaunch.std*
 *.pyc

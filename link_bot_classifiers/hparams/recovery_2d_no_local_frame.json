@@ -4,7 +4,7 @@
   "states_keys": [
     "link_bot"
   ],
-  "use_local_frame": true,
+  "use_local_frame": false,
   "rope_image_k": 10000,
   "rnn_size": 128,
   "fc_layer_sizes": [

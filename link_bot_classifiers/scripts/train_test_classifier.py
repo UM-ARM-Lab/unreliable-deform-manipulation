@@ -36,7 +36,7 @@ def train_main(args, seed: int):
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
-    val_tf_dataset = val_dataset.get_datasets(mode='val', take=200)
+    val_tf_dataset = val_dataset.get_datasets(mode='val')
 
     # to mix up examples so each batch is diverse
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=2048, seed=seed, reshuffle_each_iteration=True)

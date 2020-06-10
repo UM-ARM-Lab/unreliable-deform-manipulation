@@ -14,12 +14,13 @@ from ompl import base as ob
 
 import rospy
 import std_srvs
+from link_bot_classifiers.rnn_recovery_model import RNNRecoveryModelWrapper
 from link_bot_gazebo import gazebo_services
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning import ompl_viz
 from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner
-from link_bot_planning.my_planner import MyPlanner
+from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus
 from link_bot_pycommon.args import my_formatter, point_arg
 from link_bot_pycommon.params import SimParams
 from moonshine.gpu_config import limit_gpu_mem
@@ -40,6 +41,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                  no_execution: bool,
                  goal: Optional[Tuple[float, float]],
                  seed: int,
+                 recovery_actions_model: RNNRecoveryModelWrapper,
                  draw_tree: Optional[bool] = True,
                  draw_rejected: Optional[bool] = True):
         super().__init__(planner=planner,
@@ -49,6 +51,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                          planner_params=planner_params,
                          sim_params=sim_params,
                          service_provider=services,
+                         recovery_actions_model=recovery_actions_model,
                          no_execution=no_execution,
                          seed=seed)
         self.goal = goal
@@ -69,7 +72,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                          environment: Dict,
                          planner_data: ob.PlannerData,
                          planning_time: float,
-                         planner_status: ob.PlannerStatus):
+                         planner_status: MyPlannerStatus):
         n_actions = len(planned_actions)
         final_state = planned_path[-1]
         final_error = self.planner.scenario.distance_to_goal(final_state, goal)
@@ -113,7 +116,7 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
                               environment: Dict,
                               planner_data: ob.PlannerData,
                               planning_time: float,
-                              planner_status: ob.PlannerStatus):
+                              planner_status: MyPlannerStatus):
         final_planned_state = planned_path[-1]
         plan_to_goal_error = self.planner.scenario.distance_to_goal(final_planned_state, goal)
         print("Execution to Plan Error: {:.4f}".format(plan_to_goal_error))
@@ -122,13 +125,13 @@ class TestWithClassifier(plan_and_execute.PlanAndExecute):
         execution_to_goal_error = self.planner.scenario.distance_to_goal(final_state, goal)
         print('Execution to Goal Error: {:0.3f}'.format(execution_to_goal_error))
 
-        anim = ompl_viz.animate(environment=environment,
-                                scenario=self.planner.scenario,
-                                goal=goal,
-                                planned_path=planned_path,
-                                actual_path=actual_path)
-        anim.save("results/latest-plan-vs-execution.gif", dpi=100, writer='imagemagick', fps=1)
-        plt.show(block=True)
+        # anim = ompl_viz.animate(environment=environment,
+        #                         scenario=self.planner.scenario,
+        #                         goal=goal,
+        #                         planned_path=planned_path,
+        #                         actual_path=actual_path)
+        # anim.save("results/latest-plan-vs-execution.gif", dpi=100, writer='imagemagick', fps=1)
+        # plt.show(block=True)
 
 
 def main():
@@ -189,6 +192,12 @@ def main():
 
     service_provider.move_objects_to_positions(planner_params['object_positions'])
 
+    if 'recovery_actions_model' in planner_params:
+        recovery_actions_model_path = pathlib.Path(planner_params['recovery_actions_model'])
+        recovery_actions_model = RNNRecoveryModelWrapper(recovery_actions_model_path, planner.scenario)
+    else:
+        recovery_actions_model = None
+
     tester = TestWithClassifier(
         planner=planner,
         n_targets=args.n_targets,
@@ -199,6 +208,7 @@ def main():
         no_execution=args.no_execution,
         goal=args.goal,
         seed=args.seed,
+        recovery_actions_model=recovery_actions_model,
         draw_tree=args.draw_tree,
         draw_rejected=False,
     )

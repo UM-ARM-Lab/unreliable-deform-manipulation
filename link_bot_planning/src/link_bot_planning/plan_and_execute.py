@@ -8,9 +8,9 @@ import numpy as np
 from colorama import Fore
 from ompl import base as ob
 
-from link_bot_planning import my_planner
+from link_bot_classifiers.rnn_recovery_model import RNNRecoveryModelWrapper
 from link_bot_planning.goals import sample_collision_free_goal
-from link_bot_planning.my_planner import MyPlanner
+from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlannerResult
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import SimParams
@@ -34,7 +34,7 @@ def get_environment_common(w_m: float, h_m: float, res: float, service_provider:
     return environment
 
 
-def execute_plan(service_provider, dt, actions):
+def execute_actions(service_provider, dt, actions):
     start_states = get_states_dict(service_provider)
     actual_path = [start_states]
     for t in range(actions.shape[0]):
@@ -61,9 +61,11 @@ class PlanAndExecute:
                  service_provider: Services,
                  no_execution: bool,
                  seed: int,
+                 recovery_actions_model: Optional[RNNRecoveryModelWrapper] = None,
                  pause_between_plans: Optional[bool] = False):
         self.pause_between_plans = pause_between_plans
         self.planner = planner
+        self.recovery_actions_model = recovery_actions_model
         self.n_total_plans = n_total_plans
         self.n_plans_per_env = n_plans_per_env
         self.sim_params = sim_params
@@ -123,17 +125,19 @@ class PlanAndExecute:
         # Planning #
         ############
         t0 = time.time()
-        planner_result = self.planner.plan(start_states, environment, goal)
-        my_planner.interpret_planner_status(planner_result.planner_status, self.verbose)
-        planner_data = ob.PlannerData(self.planner.si)
-        self.planner.planner.getPlannerData(planner_data)
-
+        planner_result = PlannerResult(planner_status=MyPlannerStatus.NotProgressing,
+                                       path=None,
+                                       actions=None)
+        # planner_result = self.planner.plan(start_states, environment, goal)
+        # planner_data = ob.PlannerData(self.planner.si)
+        # self.planner.planner.getPlannerData(planner_data)
+        #
         if self.verbose >= 1:
-            print(planner_result.planner_status.asString())
+            print(planner_result.planner_status)
+        #
+        # self.on_after_plan()
 
-        self.on_after_plan()
-
-        if not planner_result.planner_status:
+        if planner_result.planner_status == MyPlannerStatus.Failure:
             print("failure!")
             self.on_planner_failure(start_states, goal, environment, planner_data)
             self.n_failures += 1
@@ -141,7 +145,14 @@ class PlanAndExecute:
             if self.sim_params.nudge is not None:
                 self.service_provider.nudge(self.planner.n_action)
             return False
-        else:  # Approximate or Exact solution found!
+        elif planner_result.planner_status == MyPlannerStatus.NotProgressing:
+            if self.recovery_actions_model is not None:
+                print("performing recovery action!")
+                current_state = get_states_dict(self.service_provider)
+                recovery_actions = self.recovery_actions_model.sample(environment, current_state)
+                self.execute_actions(recovery_actions)
+            return False
+        elif planner_result.planner_status in [MyPlannerStatus.Solved, MyPlannerStatus.Timeout]:
             planning_time = time.time() - t0
             if self.verbose >= 1:
                 print("Planning time: {:5.3f}s".format(planning_time))
@@ -154,7 +165,7 @@ class PlanAndExecute:
                 if self.verbose >= 2:
                     print(Fore.CYAN + "Executing Plan.".format(goal) + Fore.RESET)
 
-                actual_path = self.execute_plan(planner_result.actions)
+                actual_path = self.execute_actions(planner_result.actions)
                 self.on_execution_complete(planner_result.path,
                                            planner_result.actions,
                                            goal,
@@ -167,6 +178,8 @@ class PlanAndExecute:
             if self.pause_between_plans:
                 input("Press enter to proceed to next plan...")
             return True
+        else:
+            raise NotImplementedError()
 
     def get_goal(self, w_meters, h_meters, environment):
         return sample_collision_free_goal(goal_w_m=w_meters, goal_h_m=h_meters, environment=environment, rng=self.goal_rng)
@@ -178,7 +191,7 @@ class PlanAndExecute:
                          environment: Dict,
                          planner_data: ob.PlannerData,
                          planning_time: float,
-                         planner_status: ob.PlannerStatus):
+                         planner_status: MyPlannerStatus):
         pass
 
     def on_execution_complete(self,
@@ -189,7 +202,7 @@ class PlanAndExecute:
                               environment: Dict,
                               planner_data: ob.PlannerData,
                               planning_time: float,
-                              planner_status: ob.PlannerStatus):
+                              planner_status: MyPlannerStatus):
         pass
 
     def on_complete(self):
@@ -233,9 +246,9 @@ class PlanAndExecute:
                 min_d_name = name
         return min_d_name
 
-    def execute_plan(self, actions):
+    def execute_actions(self, actions):
         """
         :param actions: currently a numpy array, [time, n_action]
         :return: the states, a list of Dicts
         """
-        return execute_plan(self.service_provider, self.planner.fwd_model.dt, actions)
+        return execute_actions(self.service_provider, self.planner.fwd_model.dt, actions)

@@ -82,12 +82,6 @@ def rearrange_environment(service_provider, params: CollectDynamicsParams, env_r
         if len(params.movable_obstacles) > 0:
             movable_obstacles = params.movable_obstacles
             service_provider.move_objects_randomly(env_rng, movable_obstacles)
-            # service_provider.move_objects(params.max_step_size,
-            #                               params.movable_obstacles,
-            #                               params.full_env_w_m,
-            #                               params.full_env_h_m,
-            #                               padding=0,
-            #                               rng=env_rng)
 
 
 def generate_trajs(service_provider,

@@ -16,7 +16,7 @@ from link_bot_planning import ompl_viz
 from link_bot_classifiers import classifier_utils
 from state_space_dynamics import model_utils
 from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_planning.plan_and_execute import execute_plan
+from link_bot_planning.plan_and_execute import execute_actions
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.ros_pycommon import get_occupancy_data, get_states_dict
 from victor import victor_services
@@ -93,7 +93,7 @@ def main():
                                                                actions=actions)
         accept_probabilities.append(accept_probability)
 
-    actual_path = execute_plan(service_provider, fwd_model.dt, actions)
+    actual_path = execute_actions(service_provider, fwd_model.dt, actions)
 
     environment = {
         'full_env/env': full_env_data.data,

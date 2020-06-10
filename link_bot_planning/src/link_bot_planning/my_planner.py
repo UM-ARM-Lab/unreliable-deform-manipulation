@@ -1,30 +1,45 @@
 import sys
 from dataclasses import dataclass
-from time import perf_counter
+from enum import Enum
 from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
-from colorama import Fore
 
 import rospy
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_planning.link_bot_goal import MyGoalRegion
 from link_bot_planning.state_spaces import ValidRopeConfigurationCompoundSampler, \
     compound_to_numpy, ompl_control_to_model_action, compound_from_numpy
+from link_bot_planning.timeout_or_not_progressing import TimeoutOrNotProgressing
 from link_bot_planning.viz_object import VizObject
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
+class MyPlannerStatus(Enum):
+    Solved = "solved"
+    Timeout = "timeout"
+    Failure = "failure"
+    NotProgressing = "not progressing"
+
+    def __bool__(self):
+        if self.value == MyPlannerStatus.Solved:
+            return True
+        elif self.value == MyPlannerStatus.Timeout:
+            return True
+        else:
+            return False
+
+
 @dataclass
 class PlannerResult:
     path: Optional[List[Dict]]
     actions: Optional[np.ndarray]
-    planner_status: ob.PlannerStatus
+    planner_status: MyPlannerStatus
 
 
 class MyPlanner:
@@ -280,8 +295,9 @@ class MyPlanner:
             plt.pause(1)
             input("press enter to continue")
 
-        timeout_or_not_progressing = TimeoutOrNotProgressing(self, self.params['termination_criteria'], self.verbose)
-        planner_status = self.ss.solve(timeout_or_not_progressing)
+        ptc = TimeoutOrNotProgressing(self, self.params['termination_criteria'], self.verbose)
+        ob_planner_status = self.ss.solve(ptc)
+        planner_status = interpret_planner_status(ob_planner_status, ptc)
 
         if planner_status:
             ompl_path = self.ss.getSolutionPath()
@@ -339,31 +355,12 @@ class MyPlanner:
         return np_controls, planned_path
 
 
-class TimeoutOrNotProgressing(ob.PlannerTerminationCondition):
-    def __init__(self, planner: MyPlanner, params: Dict, verbose: int):
-        super().__init__(ob.PlannerTerminationConditionFn(self.condition))
-        self.params = params
-        self.planner = planner
-        self.times_called = 1
-        self.verbose = verbose
-        self.last_distance_to_goal = sys.maxsize
-        self.t0 = perf_counter()
-
-    def condition(self):
-        self.times_called += 1
-        not_progressing = self.times_called > self.params['times_called_threshold'] \
-                          and self.planner.min_distance_to_goal > self.params['min_distance_to_goal_threshold']
-        now = perf_counter()
-        dt_s = now - self.t0
-        timed_out = dt_s > self.params['timeout']
-        should_terminate = timed_out or not_progressing
-        if self.verbose >= 2:
-            print(f"{self.times_called:6d}, {self.planner.min_distance_to_goal:6.4f} {dt_s:7.4f} --> {should_terminate}")
-        return should_terminate
-
-
-def interpret_planner_status(planner_status: ob.PlannerStatus, verbose: int = 0):
-    if verbose >= 1:
-        # If the planner failed, print the error
-        if not planner_status:
-            print(Fore.RED + planner_status.asString() + Fore.RESET)
+def interpret_planner_status(planner_status: ob.PlannerStatus, ptc: TimeoutOrNotProgressing):
+    if planner_status == "Exact solution":
+        return MyPlannerStatus.Solved
+    elif ptc.not_progressing:
+        return MyPlannerStatus.NotProgressing
+    elif ptc.timed_out:
+        return MyPlannerStatus.Timeout
+    else:
+        return MyPlannerStatus.Failure
