@@ -9,6 +9,7 @@ log_data
 old_log_data
 recovery_data
 fwd_model_data
+*_trials
 logdata
 __pycache__
 trials
