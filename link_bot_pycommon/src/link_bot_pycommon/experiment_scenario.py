@@ -7,7 +7,6 @@ from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_extents
 from link_bot_pycommon.animation_player import Player
-from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.pycommon import trim_reconverging
 from moonshine.moonshine_utils import remove_batch, numpify, dict_of_sequences_to_sequence_of_dicts_tf
 
@@ -23,7 +22,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def sample_action(environment: Dict, service_provider: Services, state, last_action, params, action_rng):
+    def sample_action(environment: Dict, service_provider, state, last_action, params, action_rng):
         raise NotImplementedError()
 
     @staticmethod
