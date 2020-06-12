@@ -81,12 +81,12 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         return {self.state_key: pred_states}
 
 
-class SimpleNNWrapper(BaseDynamicsFunction):
+class UDNNWrapper(BaseDynamicsFunction):
 
     def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
         super().__init__(model_dir, batch_size, scenario)
         self.net = UnconstrainedDynamicsNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
-        self.ckpt = tf.train.Checkpoint(net=self.net, model=self.net)
+        self.ckpt = tf.train.Checkpoint(model=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
         status = self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
         if self.manager.latest_checkpoint:

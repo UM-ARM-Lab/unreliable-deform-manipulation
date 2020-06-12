@@ -30,8 +30,25 @@ def train_main(args, seed: int):
     model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
+    trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
+    group_name = args.log if trial_path is None else None
+    trials_directory = pathlib.Path('trials')
+    if args.ensemble_idx is not None:
+        trials_directory = trials_directory / args.log
+        group_name = str(args.ensemble_idx)
+    trial_path, params = filepath_tools.create_or_load_trial(group_name=group_name,
+                                                             params=model_hparams,
+                                                             trial_path=trial_path,
+                                                             trials_directory=trials_directory,
+                                                             write_summary=False)
     model_class = state_space_dynamics.get_model(model_hparams['model_class'])
     scenario = get_scenario(train_dataset.hparams['scenario'])
+
+    model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
+    runner = ModelRunner(model=model,
+                         training=True,
+                         trial_path=trial_path,
+                         params=model_hparams)
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
@@ -47,51 +64,24 @@ def train_main(args, seed: int):
 
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
-
-    model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
-
-    # Train
-    trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
-    group_name = args.log if trial_path is None else None
-    trials_directory = pathlib.Path('trials')
-    if args.ensemble_idx is not None:
-        trials_directory = trials_directory / args.log
-        group_name = str(args.ensemble_idx)
-    runner = ModelRunner(model=model,
-                         training=True,
-                         params=model_hparams,
-                         group_name=group_name,
-                         trial_path=trial_path,
-                         trials_directory=trials_directory,
-                         write_summary=False)
     runner.train(train_tf_dataset, val_tf_dataset, num_epochs=args.epochs)
 
 
 def eval_main(args, seed: int):
-    ###############
-    # Dataset
-    ###############
     test_dataset = DynamicsDataset(args.dataset_dirs)
 
-    ###############
-    # Model
-    ###############
-    _, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
-                                                    trials_directory=pathlib.Path('trials'))
+    trial_path, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
+                                                             trials_directory=pathlib.Path('trials'))
     model = state_space_dynamics.get_model(params['model_class'])
     net = model(hparams=params, batch_size=args.batch_size, scenario=test_dataset.scenario)
-    test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
-
-    ###############
-    # Evaluate
-    ###############
-    test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
     runner = ModelRunner(model=net,
                          training=False,
-                         trial_path=args.checkpoint.absolute(),
-                         trials_directory=pathlib.Path('trials'),
-                         write_summary=False)
+                         trial_path=trial_path,
+                         params=params)
+
+    test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
+    test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
     validation_metrics = runner.val_epoch(test_tf_dataset)
     for name, value in validation_metrics.items():
         print(f"{name}: {value:.3f}")

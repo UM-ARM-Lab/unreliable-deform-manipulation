@@ -5,11 +5,12 @@ from typing import Tuple, List, Dict
 import tensorflow as tf
 
 from link_bot_pycommon.get_scenario import get_scenario
+from shape_completion_training.model.filepath_tools import load_trial
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from state_space_dynamics.full_dynamics_nn import ObstacleNNWrapper
 from state_space_dynamics.image_cond_dyn import ImageCondDynamicsWrapper
 from state_space_dynamics.rigid_translation_model import RigidTranslationModel
-from state_space_dynamics.unconstrained_dynamics_nn import SimpleNNWrapper
+from state_space_dynamics.unconstrained_dynamics_nn import UDNNWrapper
 
 
 def load_generic_model(model_dir) -> [BaseDynamicsFunction, Tuple[str]]:
@@ -26,21 +27,13 @@ def load_generic_model(model_dir) -> [BaseDynamicsFunction, Tuple[str]]:
         model_path_info[-1] = model_path_info[-1][:-2]  # remove the "-$n" so it's "dir/ensemble" instead of "dir/ensemble-$n"
         return fwd_model, model_path_info
     else:
-        # TODO: use ModelRunner
-        if isinstance(model_dir, str):
-            model_dir = pathlib.Path(model_dir)
-        model_hparams_file = model_dir / 'hparams.json'
-        if not model_hparams_file.exists():
-            model_hparams_file = model_dir.parent / 'params.json'
-            if not model_hparams_file.exists():
-                raise FileNotFoundError("no hparams file found!")
-        hparams = json.load(model_hparams_file.open('r'))
+        _, hparams = load_trial(model_dir.absolute())
         scenario = get_scenario(hparams['dynamics_dataset_hparams']['scenario'])
         model_type = hparams['model_class']
         if model_type == 'rigid':
             return RigidTranslationModel(model_dir, batch_size=1, scenario=scenario), model_dir.parts[1:]
         elif model_type == 'SimpleNN':
-            nn = SimpleNNWrapper(model_dir, batch_size=1, scenario=scenario)
+            nn = UDNNWrapper(model_dir, batch_size=1, scenario=scenario)
             return nn, model_dir.parts[1:]
         elif model_type == 'ObstacleNN':
             nn = ObstacleNNWrapper(model_dir, batch_size=1, scenario=scenario)
@@ -84,8 +77,7 @@ def load_ensemble(fwd_model_dirs: List[pathlib.Path]):
 class EnsembleDynamicsFunction(BaseDynamicsFunction):
 
     def __init__(self, fwd_model_dirs: List[pathlib.Path], batch_size: int):
-        model_hparams_file = fwd_model_dirs[0] / 'hparams.json'
-        hparams = json.load(model_hparams_file.open('r'))
+        _, hparams = load_trial(fwd_model_dirs[0].absolute())
         scenario = get_scenario(hparams['dynamics_dataset_hparams']['scenario'])
         super().__init__(fwd_model_dirs[0], batch_size, scenario)
         self.models, _ = load_ensemble(fwd_model_dirs)
