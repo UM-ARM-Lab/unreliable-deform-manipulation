@@ -8,6 +8,7 @@ trials
 log_data
 old_log_data
 recovery_data
+fwd_model_data
 logdata
 __pycache__
 trials

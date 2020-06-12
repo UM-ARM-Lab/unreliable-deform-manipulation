@@ -8,7 +8,6 @@ import tensorflow as tf
 from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_arrow, update_arrow
-from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.collision_checking import batch_out_of_bounds_tf
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import CollectDynamicsParams
@@ -29,7 +28,7 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def sample_action(environment: Dict,
-                      service_provider: Services,
+                      service_provider,
                       state,
                       last_action: Action,
                       params: CollectDynamicsParams,
