@@ -53,12 +53,16 @@ def train_main(args, seed: int):
     # Train
     trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
     group_name = args.log if trial_path is None else None
+    trials_directory = pathlib.Path('trials')
+    if args.ensemble_idx is not None:
+        trials_directory = trials_directory / args.log
+        group_name = str(args.ensemble_idx)
     runner = ModelRunner(model=model,
                          training=True,
                          params=model_hparams,
                          group_name=group_name,
                          trial_path=trial_path,
-                         trials_directory=pathlib.Path('trials'),
+                         trials_directory=trials_directory,
                          write_summary=False)
     runner.train(train_tf_dataset, val_tf_dataset, num_epochs=args.epochs)
 
@@ -106,6 +110,7 @@ def main():
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--take', type=int)
     train_parser.add_argument('--epochs', type=int, default=10)
+    train_parser.add_argument('--ensemble-idx', type=int)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches',
