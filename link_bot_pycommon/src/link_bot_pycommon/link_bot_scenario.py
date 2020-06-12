@@ -6,11 +6,10 @@ import numpy as np
 import tensorflow as tf
 
 from ignition.markers import MarkerProvider
-from link_bot_classifiers.collision_checker_classifier import DEFAULT_INFLATION_RADIUS
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_pycommon.base_services import Services
-from link_bot_pycommon.collision_checking import gripper_interpolate_cc_and_oob
+from link_bot_pycommon.collision_checking import batch_out_of_bounds_tf
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import CollectDynamicsParams
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
@@ -46,14 +45,11 @@ class LinkBotScenario(ExperimentScenario):
             else:
                 dx, dy = LinkBotScenario.random_delta_pos(action_rng, max_delta_pos)
 
-            # check that the gripper will still be within the artificial bounds of the environment
-            next_gripper_pos = np.array([state['gripper'][0] + dx, state['gripper'][1] + dy])
-            # check that the gripper will not be in collision
-            in_collision_or_oob = gripper_interpolate_cc_and_oob(environment=environment,
-                                                                 xy0=state['gripper'],
-                                                                 xy1=next_gripper_pos,
-                                                                 inflate_radius_m=DEFAULT_INFLATION_RADIUS).numpy()
-            if in_collision_or_oob:
+            # check that the gripper will not be out of bounds
+            out_of_bounds = batch_out_of_bounds_tf(environment,
+                                                   tf.constant([state['gripper'][0] + dx]),
+                                                   tf.constant([state['gripper'][1] + dy]))
+            if out_of_bounds:
                 # nope try again. sample new random action
                 last_action = None
             else:

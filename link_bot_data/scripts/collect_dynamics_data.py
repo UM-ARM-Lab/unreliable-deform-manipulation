@@ -22,7 +22,7 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("service_provider", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
-    parser.add_argument("scenario", choices=['link_bot', 'tether'], help='scenario')
+    parser.add_argument("scenario", choices=['link_bot'], help='scenario')
     parser.add_argument("collect_dynamics_params", type=pathlib.Path, help="json file with envrionment parameters")
     parser.add_argument("trajs", type=int, help='how many trajectories to collect')
     parser.add_argument("outdir")

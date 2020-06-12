@@ -9,7 +9,7 @@ from geometry_msgs.msg import Pose
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.pycommon import quaternion_from_euler
 from link_bot_pycommon.ros_pycommon import xy_move
-from peter_msgs.srv import WorldControlRequest, GetObject, LinkBotReset, \
+from peter_msgs.srv import WorldControlRequest, LinkBotReset, \
     LinkBotResetRequest, Position2DEnable, Position2DEnableRequest, Position2DAction, Position2DActionRequest, \
     SetRopeConfiguration, SetRopeConfigurationRequest, GetPosition2D, GetPosition2DRequest
 from std_msgs.msg import String
@@ -27,7 +27,6 @@ class GazeboServices(Services):
         self.gazebo_reset = rospy.ServiceProxy("gazebo/reset_world", Empty)
 
         # not used in real robot experiments
-        self.get_tether_state = rospy.ServiceProxy("tether", GetObject)
         self.set_rope_config = rospy.ServiceProxy("set_rope_config", SetRopeConfiguration)
         self.stop_robot = rospy.ServiceProxy("stop_robot", Empty)
 
