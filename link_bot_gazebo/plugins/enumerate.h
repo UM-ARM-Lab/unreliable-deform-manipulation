@@ -10,7 +10,7 @@ struct enumerate {
     auto first = std::begin(v);
     auto last = std::end(v);
     auto i = 0lu;
-    auto make_pair = [&i] (auto item) auto {
+    auto make_pair = [&i] (auto item) {
       return std::make_pair(i++, item);
     };
     internal_container.resize(std::distance(first, last));

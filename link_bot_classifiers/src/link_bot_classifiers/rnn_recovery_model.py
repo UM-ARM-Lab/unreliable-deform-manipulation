@@ -135,7 +135,6 @@ class RNNRecoveryModel(MyKerasModel):
         c_t = initial_c
         for t in range(time):
             component_weights_t, covariances_t, means_t = self.h_to_parameters(h_t, batch_size, time=1)
-            print(means_t)
 
             mixture_density = self.mixture_distribution(alpha=component_weights_t, mu=means_t, sigma=covariances_t)
             sampled_action = mixture_density.sample()
@@ -165,13 +164,27 @@ class RNNRecoveryModel(MyKerasModel):
         covariances = tf.concat([covariances_0, covariances], axis=1)
         means = tf.concat([means_0, means], axis=1)
 
+        # FIXME: component weights should still cause the dense layers to have some gradient?
+        means = tf.ones([batch_size, time, self.n_mixture_components, 2]) * 0.1
+        covariances = tf.ones([batch_size, time, self.n_mixture_components, 2]) * 0.01
         mixture_density = self.mixture_distribution(alpha=component_weights, mu=means, sigma=covariances)
         valid_log_likelihood = self.gaussian_negative_log_likelihood(y=input_dict['action'],
                                                                      gm=mixture_density,
                                                                      mask=input_dict['mask'])
         return {
+            'means': means,
+            'covs': covariances,
+            'alphas': component_weights,
             'images': images,
             'valid_log_likelihood': valid_log_likelihood
+        }
+
+    def calculate_metrics(self, dataset_element, outputs):
+        return {
+            'max_mean': tf.reduce_max(outputs['means']),
+            'min_mean': tf.reduce_min(outputs['means']),
+            'max_cov': tf.reduce_max(outputs['covs']),
+            'min_cov': tf.reduce_min(outputs['covs']),
         }
 
     def h_to_parameters(self, out_h, batch_size, time):
@@ -214,9 +227,9 @@ class RNNRecoveryModel(MyKerasModel):
 
     @staticmethod
     def mixture_distribution(alpha, mu, sigma):
-        scale_tril = tfp.math.fill_triangular(sigma)
+        # scale_tril = tfp.math.fill_triangular(sigma)
         gm = tfd.MixtureSameFamily(mixture_distribution=tfd.Categorical(probs=tf.squeeze(alpha, 3)),
-                                   components_distribution=tfd.MultivariateNormalTriL(loc=mu, scale_tril=scale_tril))
+                                   components_distribution=tfd.MultivariateNormalDiag(loc=mu, scale_diag=sigma))
         return gm
 
     @staticmethod
