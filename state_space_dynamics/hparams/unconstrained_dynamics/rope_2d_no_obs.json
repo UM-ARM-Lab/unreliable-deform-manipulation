@@ -1,12 +1,13 @@
 {
   "model_class": "SimpleNN",
   "sequence_length": 10,
+  "state_key": "link_bot",
   "fc_layer_sizes": [
     1024,
     1024
   ],
+  "use_local_frame": false,
   "residual": true,
-  "state_key": "link_bot",
   "learning_rate": 0.001,
-  "epochs": 100
+  "epochs": 400
 }

@@ -21,7 +21,7 @@ from moonshine.get_local_environment import get_local_env_and_origin_differentia
 from moonshine.image_functions import raster_differentiable
 from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, flatten_batch_and_time, \
     sequence_of_dicts_to_dict_of_sequences, remove_batch
-from shape_completion_training.mykerasmodel import MyKerasModel
+from shape_completion_training.my_keras_model import MyKerasModel
 
 
 class RNNImageClassifier(MyKerasModel):
@@ -106,7 +106,7 @@ class RNNImageClassifier(MyKerasModel):
     def calculate_metrics(self, dataset_element, outputs):
         return binary_classification_sequence_metrics_function(dataset_element, outputs)
 
-    # @tf.function
+    @tf.function
     def make_traj_images(self,
                          environment,
                          states_dict_batch_time,
@@ -163,7 +163,7 @@ class RNNImageClassifier(MyKerasModel):
 
         return out_conv_z
 
-    # @tf.function
+    @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         batch_size = int(input_dict['action'].shape[0])
         images_batch_and_time, padded_action, time = self.make_traj_images_from_input_dict(input_dict, batch_size)
@@ -177,12 +177,8 @@ class RNNImageClassifier(MyKerasModel):
         for state_key in self.states_keys:
             planned_state_key = add_planned(state_key)
             state = input_dict[planned_state_key]
-            if 'use_local_frame' in self.hparams and self.hparams['use_local_frame']:
-                # note this assumes all state vectors are[x1,y1,...,xn,yn]
-                time = state.shape[1]
-                points = tf.reshape(state, [batch_size, time, -1, 2])
-                points = points - points[:, :, tf.newaxis, 0]
-                state = tf.reshape(points, [batch_size, time, -1])
+            if self.hparams['use_local_frame']:
+                state = self.scenario.put_state_local_frame(state_key, state)
             concat_args.append(state)
 
         if self.hparams['stdev']:

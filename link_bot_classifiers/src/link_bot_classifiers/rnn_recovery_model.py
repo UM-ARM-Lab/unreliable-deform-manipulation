@@ -17,7 +17,7 @@ from moonshine import classifier_losses_and_metrics
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
 from moonshine.image_functions import raster_differentiable
 from moonshine.moonshine_utils import add_batch, remove_batch, numpify
-from shape_completion_training.mykerasmodel import MyKerasModel
+from shape_completion_training.my_keras_model import MyKerasModel
 
 
 class RNNRecoveryModel(MyKerasModel):

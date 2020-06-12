@@ -74,9 +74,9 @@ class LinkBotScenario(ExperimentScenario):
     @staticmethod
     def plot_state(ax: plt.Axes,
                    state: Dict,
-                   color,
-                   s: int,
-                   zorder: int,
+                   color='b',
+                   s: int = 20,
+                   zorder: int = 1,
                    label: Optional[str] = None,
                    linewidth=4,
                    **kwargs):
@@ -323,3 +323,14 @@ class LinkBotScenario(ExperimentScenario):
             'full_env/res': example['full_env/res'],
             'full_env/extent': example['full_env/extent'],
         }
+
+    @staticmethod
+    def put_state_local_frame(state_key, state):
+        batch_size, time, _ = state.shape
+        if state_key in ['link_bot', 'gripper']:
+            points = tf.reshape(state, [batch_size, time, -1, 2])
+            points = points - points[:, :, tf.newaxis, 0]
+            state_in_local_frame = tf.reshape(points, [batch_size, time, -1])
+            return state_in_local_frame
+        else:
+            raise NotImplementedError()

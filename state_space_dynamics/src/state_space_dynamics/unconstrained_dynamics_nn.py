@@ -7,14 +7,23 @@ from colorama import Fore
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.moonshine_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts_tf
-from moonshine.tensorflow_train_test_loop import MyKerasModel
+from shape_completion_training.my_keras_model import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 class UnconstrainedDynamicsNN(MyKerasModel):
 
+    def compute_loss(self, dataset_element, outputs):
+        return {
+            'loss': self.scenario.dynamics_loss_function(dataset_element, outputs)
+        }
+
+    def compute_metrics(self, dataset_element, outputs):
+        return self.scenario.dynamics_metrics_function(dataset_element, outputs)
+
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
-        super().__init__(hparams=hparams, batch_size=batch_size, scenario=scenario)
+        super().__init__(hparams=hparams, batch_size=batch_size)
+        self.scenario = scenario
         self.initial_epoch = 0
 
         self.concat = layers.Concatenate()
@@ -25,6 +34,16 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         # TODO: support multiple state keys
         self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
+
+    def debug_plot(self, s):
+        import matplotlib.pyplot as plt
+        plt.figure()
+        ax = plt.gca()
+        self.scenario.plot_state(ax, {'link_bot': s[0]})
+        plt.axis("equal")
+        plt.xlim([-1, 1])
+        plt.ylim([-1, 1])
+        plt.show(block=True)
 
     @tf.function()
     def call(self, dataset_element, training, mask=None):
@@ -39,7 +58,13 @@ class UnconstrainedDynamicsNN(MyKerasModel):
             s_t = pred_states[-1]
             action_t = actions[:, t]
 
-            _state_action_t = self.concat([s_t, action_t])
+            if self.hparams['use_local_frame']:
+                s_t_w_time = tf.expand_dims(s_t, axis=1)
+                s_t_local = self.scenario.put_state_local_frame(self.state_key, s_t_w_time)
+                s_t_local = tf.squeeze(s_t_local, axis=1)
+                _state_action_t = self.concat([s_t_local, action_t])
+            else:
+                _state_action_t = self.concat([s_t, action_t])
             z_t = _state_action_t
             for dense_layer in self.dense_layers:
                 z_t = dense_layer(z_t)

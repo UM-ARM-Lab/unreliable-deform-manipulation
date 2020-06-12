@@ -331,3 +331,7 @@ class ExperimentScenario:
                     cls.update_action_artist(action_artist, actual[t], actions[t])
 
         return update, n_frames
+
+    @staticmethod
+    def put_state_local_frame(state_key, state):
+        raise NotImplementedError()
