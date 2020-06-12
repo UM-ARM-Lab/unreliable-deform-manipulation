@@ -1,7 +1,7 @@
 {
-  "threshold": 0.09,
+  "threshold": 0.08,
   "state_key": "link_bot",
   "prediction_horizon": 50,
-  "classifier_horizon": 5,
+  "classifier_horizon": 6,
   "start_step": 2
 }
