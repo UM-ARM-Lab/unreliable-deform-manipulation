@@ -10,6 +10,7 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
+from link_bot_classifiers.visualization import trajectory_image
 from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import FullEnvParams
@@ -163,6 +164,19 @@ class RNNImageClassifier(MyKerasModel):
 
         return out_conv_z
 
+    def debug_plot(self, input_dict, images, padded_action, time):
+        import matplotlib.pyplot as plt
+        fig, axes = plt.subplots(nrows=1, ncols=time)
+        trajectory_image(axes=axes,
+                         image=images[0],
+                         actions=padded_action[0],
+                         labels=input_dict['is_close'][0],
+                         )
+        # print(mask[0].numpy())
+        for t in range(time):
+            axes[t].set_aspect("equal")
+        plt.show(block=True)
+
     @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         batch_size = int(input_dict['action'].shape[0])
@@ -184,6 +198,9 @@ class RNNImageClassifier(MyKerasModel):
         if self.hparams['stdev']:
             stdevs = input_dict[add_planned('stdev')]
             concat_args.append(stdevs)
+
+        # uncomment to debug, also comment out the tf.function's
+        # self.debug_plot(input_dict, images, padded_action, time)
 
         conv_output = tf.concat(concat_args, axis=2)
 

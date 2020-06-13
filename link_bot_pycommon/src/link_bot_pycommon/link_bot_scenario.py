@@ -82,7 +82,8 @@ class LinkBotScenario(ExperimentScenario):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         xs = link_bot_points[:, 0]
         ys = link_bot_points[:, 1]
-        scatt = ax.scatter(xs[0], ys[0], c=color, s=s, zorder=zorder)
+        scatt_c = color if isinstance(color, str) else np.reshape(color, [1, -1])
+        scatt = ax.scatter(xs[0], ys[0], c=scatt_c, s=s, zorder=zorder)
         line = ax.plot(xs, ys, linewidth=linewidth, c=color, zorder=zorder, label=label, **kwargs)[0]
         txt = None
         if 'num_diverged' in state:

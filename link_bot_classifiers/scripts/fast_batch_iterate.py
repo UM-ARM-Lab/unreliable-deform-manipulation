@@ -53,8 +53,8 @@ def print_stats_and_timing(count, positive_count, reconverging_count, total_dt=N
     print()  # newline for clarity
     if total_dt is not None:
         print(f"Total iteration time = {total_dt:.4f}")
-    print(f"Total: {count}")
-    print(f"Positive: {positive_count} ({positive_count / count * 100:3.2f}%)")
+    print(f"Total:        {count}")
+    print(f"Positive:     {positive_count} ({positive_count / count * 100:3.2f}%)")
     print(f"Reconverging: {reconverging_count} ({reconverging_count / count * 100:3.2f}%)")
 
 

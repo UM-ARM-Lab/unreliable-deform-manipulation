@@ -31,8 +31,25 @@ def train_main(args, seed: int):
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
+    trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
+    trials_directory = pathlib.Path('trials').absolute()
+    group_name = args.log if trial_path is None else None
+    trial_path, params = filepath_tools.create_or_load_trial(group_name=group_name,
+                                                             params=model_hparams,
+                                                             trial_path=trial_path,
+                                                             trials_directory=trials_directory,
+                                                             write_summary=False)
     model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
     scenario = get_scenario(model_hparams['scenario'])
+
+    model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
+
+    runner = ModelRunner(model=model,
+                         training=True,
+                         params=model_hparams,
+                         trial_path=trial_path,
+                         key_metric=AccuracyMetric,
+                         val_every_n_batches=100)
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
@@ -49,20 +66,6 @@ def train_main(args, seed: int):
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
-    model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
-
-    # Train
-    trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
-    group_name = args.log if trial_path is None else None
-    runner = ModelRunner(model=model,
-                         training=True,
-                         params=model_hparams,
-                         group_name=group_name,
-                         trial_path=trial_path,
-                         trials_directory=pathlib.Path('trials'),
-                         write_summary=False,
-                         key_metric=AccuracyMetric,
-                         val_every_n_batches=100)
     runner.train(train_tf_dataset, val_tf_dataset, num_epochs=args.epochs)
 
 
@@ -110,6 +113,7 @@ def main():
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--take', type=int)
+    train_parser.add_argument('--debug', action='store_true')
     train_parser.add_argument('--epochs', type=int, default=10)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)

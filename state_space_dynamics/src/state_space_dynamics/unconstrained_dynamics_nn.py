@@ -45,7 +45,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         plt.ylim([-1, 1])
         plt.show(block=True)
 
-    @tf.function()
+    @tf.function
     def call(self, dataset_element, training, mask=None):
         input_dict, _ = dataset_element
         states = input_dict[self.state_key]

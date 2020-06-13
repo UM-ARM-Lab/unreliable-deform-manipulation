@@ -12,12 +12,12 @@ def negative_weighted_binary_classification_sequence_loss_function(dataset_eleme
     valid_indices = tf.where(predictions['mask'][:, 1:])
     bce = tf.keras.losses.binary_crossentropy(y_true=labels, y_pred=logits, from_logits=True)
     # mask to ignore loss for states
-    # https://www.tensorflow.org/tutorials/structured_data/imbalanced_data#class_weights
     total_bce = compute_weighted_mean_loss(bce, is_close, valid_indices)
     return total_bce
 
 
 def compute_weighted_mean_loss(bce, positives, valid_indices):
+    # https://www.tensorflow.org/tutorials/structured_data/imbalanced_data#class_weights
     negatives = 1 - positives
     n_positive = tf.math.reduce_sum(positives)
     n_negative = tf.math.reduce_sum(negatives)
@@ -111,6 +111,7 @@ def binary_classification_metrics_function(dataset_element, predictions):
     return {
         'accuracy': average_accuracy
     }
+
 
 def mdn_sequence_likelihood(dataset_element, predictions):
     del dataset_element  # unused

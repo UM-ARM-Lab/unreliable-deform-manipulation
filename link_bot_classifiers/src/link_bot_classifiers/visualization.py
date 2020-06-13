@@ -129,13 +129,12 @@ def trajectory_plot_from_dataset(ax, classifier_dataset, example, scenario, titl
     for state_key in classifier_dataset.state_keys:
         actual_states[state_key] = numpify(example[state_key])
         planned_states[state_key] = numpify(example[add_planned(state_key)])
-    environment = scenario.get_environment_from_example(example)
+    environment = numpify(scenario.get_environment_from_example(example))
     actual_states = dict_of_sequences_to_sequence_of_dicts(actual_states)
     planned_states = dict_of_sequences_to_sequence_of_dicts(planned_states)
 
     trajectory_plot(ax, scenario, environment, actual_states, planned_states)
 
-    print(example["is_close"])
     traj_idx = int(example["traj_idx"][0].numpy())
     label = example["is_close"][1]
     title = f"Traj={traj_idx}, label={label}"
@@ -200,7 +199,7 @@ def trajectory_image(axes, image, actions=None, labels=None, accept_probabilitie
             if accept_probabilities is not None:
                 axes[t].text(x=10, y=image.shape[1] + 25, s=f"p={accept_probabilities[t - 1]:0.3f}")
             if labels is not None:
-                axes[t].text(x=10, y=image.shape[1] + 40, s=f"p={labels[t]:0.3f}")
+                axes[t].text(x=10, y=image.shape[1] + 40, s=f"label={labels[t]:0.3f}")
     for t in range(image.shape[0]):
         axes[t].set_xticks([])
         axes[t].set_yticks([])

@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_planned, null_diverged, null_previous_states
-from moonshine.moonshine_utils import gather_dict
+from moonshine.moonshine_utils import gather_dict, numpify
 
 
 class PredictionActualExample:
@@ -135,11 +135,35 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
                                        labeling_params=labeling_params)
         out_example['is_close'] = tf.cast(is_close, dtype=tf.float32)
 
-        is_first_predicted_state_close = is_close[:, 1]
+        # TODO: debug -- why are all examples labeled 1?
+        # visualize predicted versus actual here
+        is_first_predicted_state_close = is_close[:, 0]
         valid_indices = tf.where(is_first_predicted_state_close)
         valid_indices = tf.squeeze(valid_indices, axis=1)
         # keep only valid_indices from every key in out_example...
         valid_out_example = gather_dict(out_example, valid_indices)
+
+        # import matplotlib.pyplot as plt
+        # from link_bot_classifiers.visualization import trajectory_plot
+        # from link_bot_pycommon.get_scenario import get_scenario
+        # print(tf.squeeze(traj_idx)[0].numpy(),
+        #       prediction_start_t_batched[0].numpy(),
+        #       classifier_start_t_batched[0].numpy(),
+        #       classifier_end_t_batched[0].numpy(),
+        #       is_close[0].numpy(),
+        #       valid_indices.numpy())
+        # plt.figure()
+        # ax = plt.gca()
+        # environment = numpify({
+        #     'full_env/env': full_env[0],
+        #     'full_env/origin': full_env_origin[0],
+        #     'full_env/extent': full_env_extent[0],
+        #     'full_env/res': full_env_res[0],
+        # })
+        # actual_states = [{'link_bot': sliced_outputs['link_bot'][0][0]}, {'link_bot': sliced_outputs['link_bot'][0][1]}]
+        # planned_states = [{'link_bot': sliced_predictions['link_bot'][0][0]}, {'link_bot': sliced_predictions['link_bot'][0][1]}]
+        # trajectory_plot(ax, get_scenario("link_bot"), environment, actual_states, planned_states)
+        # plt.show()
 
         yield valid_out_example
 
