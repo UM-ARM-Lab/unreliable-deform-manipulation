@@ -247,10 +247,10 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         self.horizon = self.dataset_labeling_params['classifier_horizon']
         self.full_env_params = FullEnvParams.from_json(self.model_hparams['classifier_dataset_hparams']['full_env_params'])
         self.net = RNNImageClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
-        self.ckpt = tf.train.Checkpoint(net=self.net)
+        self.ckpt = tf.train.Checkpoint(model=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
 
-        status = self.ckpt.restore(self.manager.latest_checkpoint).assert_nontrivial_match()
+        status = self.ckpt.restore(self.manager.latest_checkpoint)
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
             if self.manager.latest_checkpoint:
