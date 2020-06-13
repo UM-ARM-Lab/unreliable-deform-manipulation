@@ -121,8 +121,7 @@ def generate_recovery_actions_examples(prediction_actual: PredictionActualExampl
         out_example['action'] = actions
 
         # compute label
-        is_close = compute_is_close_tf(actual_states_dict=sliced_outputs,
-                                       predicted_states_dict=sliced_predictions,
+        is_close = compute_is_close_tf(actual_states_dict=sliced_outputs, predicted_states_dict=sliced_predictions,
                                        labeling_params=labeling_params)
         is_close_float = tf.cast(is_close, dtype=tf.float32)
         out_example['is_close'] = is_close_float

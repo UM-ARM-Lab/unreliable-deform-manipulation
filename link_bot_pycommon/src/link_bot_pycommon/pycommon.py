@@ -250,6 +250,10 @@ def vector_to_points_2d(x):
     return xs, ys
 
 
+def make_dict_tf_float32(d):
+    return {k: tf.cast(s_k, tf.float32) for k, s_k in d.items()}
+
+
 def make_dict_float32(d):
     return {k: s_k.astype(np.float32) for k, s_k in d.items()}
 

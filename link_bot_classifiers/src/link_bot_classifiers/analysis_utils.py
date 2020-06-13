@@ -5,6 +5,7 @@ from link_bot_classifiers import classifier_utils
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_planning.plan_and_execute import execute_actions
 from link_bot_pycommon.link_bot_sdf_utils import env_from_occupancy_data
+from link_bot_pycommon.pycommon import make_dict_tf_float32
 from link_bot_pycommon.ros_pycommon import get_states_dict, get_occupancy_data
 from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, sequence_of_dicts_to_dict_of_np_arrays, \
     sequence_of_dicts_to_dict_of_tensors
@@ -15,7 +16,7 @@ from std_srvs.srv import EmptyRequest
 def predict(fwd_models, classifier_model, environment, state_dict, actions):
     n_actions_sampled = actions.shape[0]
     # add time dimension
-    state_dict = {k: tf.expand_dims(v, axis=1) for k, v in state_dict.items()}
+    state_dict = make_dict_tf_float32({k: tf.expand_dims(v, axis=1) for k, v in state_dict.items()})
     predictions = fwd_models.propagate_differentiable_batched(start_states=state_dict, actions=actions)
     environment_batched = {k: tf.stack([v] * n_actions_sampled, axis=0) for k, v in environment.items()}
     accept_probabilities = classifier_model.check_constraint_differentiable_batched_tf(environment=environment_batched,

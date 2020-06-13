@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_planned, null_diverged, null_previous_states
-from moonshine.moonshine_utils import gather_dict, numpify
+from moonshine.moonshine_utils import gather_dict, add_batch, remove_batch
 
 
 class PredictionActualExample:
@@ -130,8 +130,7 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
         #  so like add_planned should be add_predicted or something
 
         # compute label
-        is_close = compute_is_close_tf(actual_states_dict=sliced_outputs,
-                                       predicted_states_dict=sliced_predictions,
+        is_close = compute_is_close_tf(actual_states_dict=sliced_outputs, predicted_states_dict=sliced_predictions,
                                        labeling_params=labeling_params)
         out_example['is_close'] = tf.cast(is_close, dtype=tf.float32)
 
@@ -168,7 +167,7 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
         yield valid_out_example
 
 
-def compute_is_close_tf(actual_states_dict: Dict, labeling_params: Dict, predicted_states_dict: Dict):
+def compute_is_close_tf(actual_states_dict: Dict, predicted_states_dict: Dict, labeling_params: Dict):
     state_key = labeling_params['state_key']
     labeling_states = tf.convert_to_tensor(actual_states_dict[state_key])
     labeling_predicted_states = tf.convert_to_tensor(predicted_states_dict[state_key])
@@ -180,8 +179,8 @@ def compute_is_close_tf(actual_states_dict: Dict, labeling_params: Dict, predict
     return is_close
 
 
-def compute_label_np(actual_states_dict: Dict, labeling_params: Dict, predicted_states_dict: Dict):
-    is_close = compute_is_close_tf(actual_states_dict, labeling_params, predicted_states_dict)
+def compute_label_np(actual_states_dict: Dict, predicted_states_dict: Dict, labeling_params: Dict):
+    is_close = remove_batch(compute_is_close_tf(*add_batch(actual_states_dict, predicted_states_dict), labeling_params))
     return is_close.numpy()
 
 

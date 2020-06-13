@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 import argparse
-import sys
-
-import matplotlib.pyplot as plt
 import json
 import logging
 import pathlib
 import time
 from typing import Dict, List
 
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
@@ -51,7 +49,7 @@ def test_config(args):
 
     now = time.time()
     basedir = pathlib.Path(f"results/recovery_check/{args.test_config.stem}_{int(now)}")
-    basedir.mkdir(exist_ok=True)
+    basedir.mkdir(exist_ok=True, parents=True)
 
     test_config = json.load(args.test_config.open("r"))
     random_actions = sample_actions(args.n_actions_sampled, args.action_sequence_length)
@@ -106,7 +104,6 @@ def compare_predictions_to_actual(basedir: pathlib.Path,
     min_stdevs = []
     median_stdevs = []
     max_stdevs = []
-    max_distance_of_accepted = 0
     for i, zipped in enumerate(zip(predictions, actuals, random_actions, accepts_probabilities)):
         prediction, actual, actions, accept_probabilities = zipped
         # [1:] because uncertainty at start is 0
@@ -122,16 +119,11 @@ def compare_predictions_to_actual(basedir: pathlib.Path,
         prediction_is_far = np.logical_not(last_prediction_is_close)
         prediction_seq = dict_of_sequences_to_sequence_of_dicts(prediction)
         actual_seq = dict_of_sequences_to_sequence_of_dicts(actual)
-        distance = classifier.scenario.distance(prediction_seq[0], prediction_seq[-1])
-
-        if is_close[1]:
-            max_distance_of_accepted = max(max_distance_of_accepted, distance)
 
         prediction_is_rejected = accept_probabilities[-1] < 0.5
         classifier_says = 'reject' if prediction_is_rejected else 'accept'
         print(f"action sequence {i}, "
-              + f"1-step prediction is close to ground truth {is_close[1]}, classifier says {classifier_says} "
-              + f"distance {distance:.3f}")
+              + f"1-step prediction is close to ground truth? {is_close[1]}, classifier says: {classifier_says}")
         all_predictions_are_far.append(prediction_is_far)
         all_predictions_are_rejected.append(prediction_is_rejected)
         if not no_plot:
@@ -143,17 +135,16 @@ def compare_predictions_to_actual(basedir: pathlib.Path,
                                                            accept_probabilities=accept_probabilities)
 
             outfilename = basedir / f'action_{i}.gif'
-            anim.save(outfilename, writer='imagemagick', dpi=200)
+            anim.save(outfilename, writer='imagemagick', dpi=100)
             plt.close()
 
-    print(f"max distance of accepted prediction {max_distance_of_accepted:.3f}")
     print(f"mean min stdev {np.mean(min_stdevs):.4f}")
     print(f"min min stdev {np.min(min_stdevs):.4f}")
     print(f"mean max stdev {np.mean(max_stdevs):.4f}")
     print(f"min max stdev {np.min(max_stdevs):.4f}")
     print(f"mean median stdev {np.mean(median_stdevs):.4f}")
 
-    if max_distance_of_accepted < 0.2:
+    if np.all(all_predictions_are_rejected):
         print("needs recovery!")
 
 
@@ -179,8 +170,8 @@ def main():
     test_config_parser.add_argument('test_config', help="json file describing the test", type=pathlib.Path)
     test_config_parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')
     test_config_parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
-    test_config_parser.add_argument('--n-actions-sampled', type=int, default=100)
-    test_config_parser.add_argument('--action-sequence-length', type=int, default=6)
+    test_config_parser.add_argument('--n-actions-sampled', type=int, default=25)
+    test_config_parser.add_argument('--action-sequence-length', type=int, default=1)
     test_config_parser.set_defaults(func=test_config)
     load_parser = subparsers.add_parser('load')
     load_parser.add_argument('load_from', help="json file with previously generated results", type=pathlib.Path)

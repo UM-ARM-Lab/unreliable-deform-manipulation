@@ -88,6 +88,7 @@ class UDNNWrapper(BaseDynamicsFunction):
         self.net = UnconstrainedDynamicsNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(model=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
+
         status = self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)

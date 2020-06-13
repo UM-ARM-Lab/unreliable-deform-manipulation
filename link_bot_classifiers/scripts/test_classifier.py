@@ -41,7 +41,7 @@ def main():
     test_config = json.load(args.test_config.open("r"))
 
     # read actions from config
-    actions = np.expand_dims(np.array(test_config['actions']), axis=0)
+    actions = np.expand_dims(np.array(test_config['actions']), axis=0).astype(np.float32)
 
     fwd_model_dir = args.fwd_model_dir
     classifier_model_dir = args.classifier_model_dir
@@ -69,7 +69,7 @@ def visualize(accept_probabilities,
         labeling_params = classifier_model.model_hparams['classifier_dataset_hparams']['labeling_params']
     else:
         labeling_params = json.load(args.labeling_params.open("r"))
-    is_close = compute_label_np(actual_states_dict, labeling_params, predicted_states_dict)
+    is_close = compute_label_np(actual_states_dict, predicted_states_dict, labeling_params)
     actual_states_list = dict_of_sequences_to_sequence_of_dicts(actual_states_dict)
     predicted_states_list = dict_of_sequences_to_sequence_of_dicts(predicted_states_dict)
     is_close = is_close.astype(np.float32)

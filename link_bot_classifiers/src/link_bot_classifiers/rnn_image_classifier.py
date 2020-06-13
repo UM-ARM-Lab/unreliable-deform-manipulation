@@ -238,6 +238,10 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
     def __init__(self, path: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
         super().__init__(scenario)
         model_hparams_file = path / 'hparams.json'
+        if not model_hparams_file.exists():
+            model_hparams_file = path.parent / 'params.json'
+            if not model_hparams_file.exists():
+                raise FileNotFoundError("no hparams file found!")
         self.model_hparams = json.load(model_hparams_file.open('r'))
         self.dataset_labeling_params = self.model_hparams['classifier_dataset_hparams']['labeling_params']
         self.horizon = self.dataset_labeling_params['classifier_horizon']
@@ -245,9 +249,14 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         self.net = RNNImageClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(net=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
+
+        status = self.ckpt.restore(self.manager.latest_checkpoint).assert_nontrivial_match()
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
-        self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
+            if self.manager.latest_checkpoint:
+                status.assert_existing_objects_matched()
+        else:
+            raise RuntimeError("Failed to restore!!!")
 
     def check_constraint_differentiable_batched_tf(self,
                                                    environment: Dict,

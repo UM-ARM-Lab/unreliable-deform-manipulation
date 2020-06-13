@@ -1,4 +1,3 @@
-import json
 import pathlib
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
@@ -6,6 +5,7 @@ from link_bot_classifiers.collision_checker_classifier import CollisionCheckerCl
 from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_classifiers.rnn_image_classifier import RNNImageClassifierWrapper
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from shape_completion_training.model.filepath_tools import load_trial
 
 
 def load_generic_model(model_dir: pathlib.Path, scenario: ExperimentScenario) -> [BaseConstraintChecker]:
@@ -17,8 +17,10 @@ def load_generic_model(model_dir: pathlib.Path, scenario: ExperimentScenario) ->
     """
     if isinstance(model_dir, str):
         model_dir = pathlib.Path(model_dir)
-    model_hparams_file = model_dir / 'hparams.json'
-    hparams = json.load(model_hparams_file.open('r'))
+    if isinstance(model_dir, list):
+        assert len(model_dir) == 1
+        model_dir = model_dir[0]
+    _, hparams = load_trial(model_dir.absolute())
     model_type = hparams['model_class']
     if model_type == 'rnn':
         return RNNImageClassifierWrapper(model_dir, batch_size=1, scenario=scenario)
