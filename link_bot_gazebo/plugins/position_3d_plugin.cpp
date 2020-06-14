@@ -1,9 +1,12 @@
-#include "position_2d_plugin.h"
+#include "position_3d_plugin.h"
+
+#define create_service_options(type, name, bind) \
+  ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &queue_)
 
 namespace gazebo {
-GZ_REGISTER_MODEL_PLUGIN(Position2dPlugin);
+GZ_REGISTER_MODEL_PLUGIN(Position3dPlugin)
 
-Position2dPlugin::~Position2dPlugin()
+Position3dPlugin::~Position3dPlugin()
 {
   queue_.clear();
   queue_.disable();
@@ -11,7 +14,7 @@ Position2dPlugin::~Position2dPlugin()
   ros_queue_thread_.join();
 }
 
-void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
+void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 {
   // Get sdf parameters
   {
@@ -99,11 +102,11 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       max_force_ = sdf->GetElement("max_force")->Get<double>();
     }
 
-    if (sdf->HasElement("linkName")) {
-      this->link_name_ = sdf->Get<std::string>("linkName");
+    if (sdf->HasElement("link")) {
+      this->link_name_ = sdf->Get<std::string>("link");
     }
     else {
-      ROS_FATAL_STREAM("The position 2d plugin requires a `linkName` parameter tag");
+      ROS_FATAL_STREAM("The position 3d plugin requires a `linkName` parameter tag");
       return;
     }
   }
@@ -112,34 +115,35 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
   link_ = model_->GetLink(link_name_);
   if (!link_) {
-    ROS_ERROR_NAMED("hand_of_god", "link not found");
+    ROS_ERROR_NAMED("position_3d", "link not found");
     const std::vector<physics::LinkPtr> &links = model_->GetLinks();
     for (unsigned i = 0; i < links.size(); i++) {
-      ROS_ERROR_STREAM_NAMED("hand_of_god", " -- Link " << i << ": " << links[i]->GetName());
+      ROS_ERROR_STREAM_NAMED("position_3d", " -- Link " << i << ": " << links[i]->GetName());
     }
     return;
   }
-
-  // get a reference to the collision
-  collision_ = link_->GetCollision(static_cast<unsigned int>(0u));
 
   // setup ROS stuff
   int argc = 0;
   ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
 
-  auto stop_bind = boost::bind(&Position2dPlugin::OnStop, this, _1, _2);
-  auto stop_so =
-      ros::AdvertiseServiceOptions::create<std_srvs::Empty>("position_2d_stop", stop_bind, ros::VoidPtr(), &queue_);
-  auto enable_bind = boost::bind(&Position2dPlugin::OnEnable, this, _1, _2);
-  auto enable_so = ros::AdvertiseServiceOptions::create<peter_msgs::Position2DEnable>("position_2d_enable", enable_bind,
-                                                                                      ros::VoidPtr(), &queue_);
-  auto pos_action_bind = boost::bind(&Position2dPlugin::OnAction, this, _1, _2);
-  auto pos_action_so = ros::AdvertiseServiceOptions::create<peter_msgs::Position2DAction>(
-      "position_2d_action", pos_action_bind, ros::VoidPtr(), &queue_);
+  auto stop_bind = [this](std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res) { return OnStop(req, res); };
+  auto stop_so = create_service_options(std_srvs::Empty, "stop", stop_bind);
 
-  auto get_pos_bind = boost::bind(&Position2dPlugin::GetPos, this, _1, _2);
-  auto get_pos_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetPosition2D>(
-      "get_position_2d", get_pos_bind, ros::VoidPtr(), &queue_);
+  auto enable_bind = [this](peter_msgs::Position3DEnableRequest &req, peter_msgs::Position3DEnableResponse &res) {
+    return OnEnable(req, res);
+  };
+  auto enable_so = create_service_options(peter_msgs::Position3DEnable, "enable", enable_bind);
+
+  auto pos_action_bind = [this](peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res) {
+    return OnAction(req, res);
+  };
+  auto pos_action_so = create_service_options(peter_msgs::Position3DAction, "set", pos_action_bind);
+
+  auto get_pos_bind = [this](peter_msgs::GetPosition3DRequest &req, peter_msgs::GetPosition3DResponse &res) {
+    return GetPos(req, res);
+  };
+  auto get_pos_so = create_service_options(peter_msgs::GetPosition3D, "get", get_pos_bind);
 
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   enable_service_ = ros_node_->advertiseService(enable_so);
@@ -147,7 +151,7 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   stop_service_ = ros_node_->advertiseService(stop_so);
   get_position_service_ = ros_node_->advertiseService(get_pos_so);
 
-  ros_queue_thread_ = std::thread(std::bind(&Position2dPlugin::QueueThread, this));
+  ros_queue_thread_ = std::thread([this] { QueueThread(); });
 
   constexpr auto max_vel_integral{0};
   constexpr auto max_integral{0};
@@ -159,12 +163,13 @@ void Position2dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   x_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
   y_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
 
-  this->update_connection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&Position2dPlugin::OnUpdate, this));
+  auto update = [this](common::UpdateInfo const &info) { OnUpdate(info); };
+  this->update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
 
   target_pose_ = link_->WorldPose();
 }
 
-void Position2dPlugin::OnUpdate()
+void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
 {
   constexpr auto dt{0.001};
 
@@ -200,27 +205,19 @@ void Position2dPlugin::OnUpdate()
   }
 }
 
-bool Position2dPlugin::OnStop(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
+bool Position3dPlugin::OnStop(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
 {
   target_pose_ = link_->WorldPose();
   return true;
 }
 
-bool Position2dPlugin::OnEnable(peter_msgs::Position2DEnableRequest &req, peter_msgs::Position2DEnableResponse &res)
+bool Position3dPlugin::OnEnable(peter_msgs::Position3DEnableRequest &req, peter_msgs::Position3DEnableResponse &res)
 {
   enabled_ = req.enable;
-  if (req.enable) {
-    // enable means "move objects", which means we want to disable collision
-    collision_->SetCollideBits(0);
-  }
-  else {
-    // disable, which means enable collision
-    collision_->SetCollideBits(-1);
-  }
   return true;
 }
 
-bool Position2dPlugin::OnAction(peter_msgs::Position2DActionRequest &req, peter_msgs::Position2DActionResponse &res)
+bool Position3dPlugin::OnAction(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res)
 {
   target_pose_.Pos().X(req.pose.position.x);
   target_pose_.Pos().Y(req.pose.position.y);
@@ -231,15 +228,16 @@ bool Position2dPlugin::OnAction(peter_msgs::Position2DActionRequest &req, peter_
   return true;
 }
 
-bool Position2dPlugin::GetPos(peter_msgs::GetPosition2DRequest &req, peter_msgs::GetPosition2DResponse &res)
+bool Position3dPlugin::GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs::GetPosition3DResponse &res)
 {
   auto const pos = link_->WorldPose().Pos();
-  res.x = pos.X();
-  res.y = pos.Y();
+  res.pos.x = pos.X();
+  res.pos.y = pos.Y();
+  res.pos.z = pos.Z();
   return true;
 }
 
-void Position2dPlugin::QueueThread()
+void Position3dPlugin::QueueThread()
 {
   double constexpr timeout = 0.01;
   while (ros_node_->ok()) {

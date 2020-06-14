@@ -1,16 +1,17 @@
 #pragma once
 
 #include <geometry_msgs/Pose.h>
+#include <peter_msgs/GetPosition3D.h>
 #include <peter_msgs/ModelsEnable.h>
 #include <peter_msgs/ModelsPoses.h>
-#include <peter_msgs/Position2DAction.h>
-#include <peter_msgs/Position2DEnable.h>
-#include <peter_msgs/GetPosition2D.h>
+#include <peter_msgs/Position3DAction.h>
+#include <peter_msgs/Position3DEnable.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
 #include <std_srvs/Empty.h>
 
+#include <functional>
 #include <gazebo/common/Events.hh>
 #include <gazebo/common/Plugin.hh>
 #include <gazebo/common/Time.hh>
@@ -19,21 +20,21 @@
 
 namespace gazebo {
 
-class Position2dPlugin : public ModelPlugin {
+class Position3dPlugin : public ModelPlugin {
  public:
-  ~Position2dPlugin() override;
+  ~Position3dPlugin() override;
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
 
-  void OnUpdate();
+  void OnUpdate(common::UpdateInfo const &info);
 
   bool OnStop(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res);
 
-  bool OnEnable(peter_msgs::Position2DEnableRequest &req, peter_msgs::Position2DEnableResponse &res);
+  bool OnEnable(peter_msgs::Position3DEnableRequest &req, peter_msgs::Position3DEnableResponse &res);
 
-  bool OnAction(peter_msgs::Position2DActionRequest &req, peter_msgs::Position2DActionResponse &res);
+  bool OnAction(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res);
 
-  bool GetPos(peter_msgs::GetPosition2DRequest &req, peter_msgs::GetPosition2DResponse &res);
+  bool GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs::GetPosition3DResponse &res);
 
  private:
   void QueueThread();

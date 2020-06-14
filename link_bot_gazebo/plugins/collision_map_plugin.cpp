@@ -1,18 +1,15 @@
-#include <chrono>
-#include <functional>
-#include <atomic>
-#include <memory>
+#include "collision_map_plugin.h"
 
-#include <cnpy/cnpy.h>
 #include <std_msgs/ColorRGBA.h>
 #include <std_msgs/MultiArrayDimension.h>
 #include <visualization_msgs/Marker.h>
-#include <arc_utilities/arc_helpers.hpp>
-#include <arc_utilities/serialization.hpp>
-#include <arc_utilities/zlib_helpers.hpp>
-#include <experimental/filesystem>
 
-#include "collision_map_plugin.h"
+#include <arc_utilities/arc_helpers.hpp>
+#include <arc_utilities/zlib_helpers.hpp>
+#include <atomic>
+#include <chrono>
+#include <functional>
+#include <memory>
 
 using namespace gazebo;
 
@@ -22,10 +19,8 @@ const sdf_tools::COLLISION_CELL CollisionMapPlugin::unoccupied_value{0};
 
 void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
 {
-  auto engine = world->Physics();
-  engine->InitForThread();
-  auto ray_shape = engine->CreateShape("ray", gazebo::physics::CollisionPtr());
-  ray = boost::dynamic_pointer_cast<gazebo::physics::RayShape>(ray_shape);
+  engine_ = world->Physics();
+  engine_->InitForThread();
 
   if (!ros::isInitialized()) {
     auto argc = 0;
@@ -71,16 +66,14 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
 
   ros_node_ = std::make_unique<ros::NodeHandle>("collision_map_plugin");
 
-  gazebo_sdf_viz_pub_ = ros_node_->advertise<visualization_msgs::Marker>("gazebo_sdf_viz", 1);
-
   {
-    auto so = ros::AdvertiseServiceOptions::create<peter_msgs::ComputeOccupancy>("/occupancy", get_occupancy, ros::VoidConstPtr(),
-                                                                                 &queue_);
+    auto so = ros::AdvertiseServiceOptions::create<peter_msgs::ComputeOccupancy>("/occupancy", get_occupancy,
+                                                                                 ros::VoidConstPtr(), &queue_);
     get_occupancy_service_ = ros_node_->advertiseService(so);
   }
 
-  printf("Finished loading collision map plugin!\n");
-  ros_queue_thread_ = std::thread(std::bind(&CollisionMapPlugin::QueueThread, this));
+  gzlog << "Finished loading collision map plugin!\n";
+  ros_queue_thread_ = std::thread([this] { QueueThread(); });
 }
 
 CollisionMapPlugin::~CollisionMapPlugin()
@@ -107,8 +100,7 @@ void CollisionMapPlugin::compute_sdf(int64_t h_rows, int64_t w_cols, geometry_ms
   auto const y_height = resolution * h_rows;
   origin_transform.translation() = Eigen::Vector3d{center.x - x_width / 2, center.y - y_height / 2, 0};
   // hard coded for 1-cell in Z
-  grid_ = sdf_tools::CollisionMapGrid(origin_transform, "/gazebo_world", resolution, w_cols, h_rows, 1l,
-                                      oob_value);
+  grid_ = sdf_tools::CollisionMapGrid(origin_transform, "/gazebo_world", resolution, w_cols, h_rows, 1l, oob_value);
   ignition::math::Vector3d start, end;
   start.Z(max_z);
   end.Z(min_z);
@@ -118,6 +110,7 @@ void CollisionMapPlugin::compute_sdf(int64_t h_rows, int64_t w_cols, geometry_ms
 
   auto const t0 = std::chrono::steady_clock::now();
 
+
   for (auto x_idx{0l}; x_idx < grid_.GetNumXCells(); ++x_idx) {
     for (auto y_idx{0l}; y_idx < grid_.GetNumYCells(); ++y_idx) {
       auto const grid_location = grid_.GridIndexToLocation(x_idx, y_idx, 0);
@@ -125,6 +118,8 @@ void CollisionMapPlugin::compute_sdf(int64_t h_rows, int64_t w_cols, geometry_ms
       end.X(grid_location(0));
       start.Y(grid_location(1));
       end.Y(grid_location(1));
+      auto ray_shape = engine_->CreateShape("ray", gazebo::physics::CollisionPtr());
+      auto ray = boost::dynamic_pointer_cast<gazebo::physics::RayShape>(ray_shape);
       ray->SetPoints(start, end);
       ray->GetIntersection(dist, entityName);
       if (not entityName.empty() and (robot_name.empty() or entityName.find(robot_name) != 0)) {
@@ -139,28 +134,7 @@ void CollisionMapPlugin::compute_sdf(int64_t h_rows, int64_t w_cols, geometry_ms
   auto const t1 = std::chrono::steady_clock::now();
   std::chrono::duration<double> const time_to_compute_occupancy_grid = t1 - t0;
   if (verbose) {
-    std::cout << "Time to compute occupancy grid_: " << time_to_compute_occupancy_grid.count() << std::endl;
-  }
-
-  sdf_ = grid_.ExtractSignedDistanceField(oob_value.occupancy, false, false).first;
-
-  auto const t2 = std::chrono::steady_clock::now();
-  std::chrono::duration<double> const time_to_compute_sdf = t2 - t1;
-  if (verbose) {
-    std::cout << "Time to compute sdf: " << time_to_compute_sdf.count() << std::endl;
-  }
-
-  auto const t3 = std::chrono::steady_clock::now();
-  sdf_tools::SignedDistanceField::GradientFunction gradient_function = [&](const int64_t x_index, const int64_t y_index,
-                                                                           const int64_t z_index,
-                                                                           const bool enable_edge_gradients = false) {
-    return sdf_.GetGradient(x_index, y_index, z_index, enable_edge_gradients);
-  };
-  sdf_gradient_ = sdf_.GetFullGradient(gradient_function, true);
-  auto const t4 = std::chrono::steady_clock::now();
-  if (verbose) {
-    std::chrono::duration<double> const time_to_compute_sdf_gradient = t4 - t3;
-    std::cout << "Time to compute sdf gradient: " << time_to_compute_sdf_gradient.count() << std::endl;
+    gzlog << "Time to compute occupancy grid_: " << time_to_compute_occupancy_grid.count() << std::endl;
   }
 }
 
