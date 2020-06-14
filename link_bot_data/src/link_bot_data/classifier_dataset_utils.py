@@ -1,12 +1,18 @@
 from typing import Dict, Callable
 
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
+from link_bot_classifiers.visualization import trajectory_plot
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_planned, null_diverged, null_previous_states
-from moonshine.moonshine_utils import gather_dict, add_batch, remove_batch
+from link_bot_pycommon.get_scenario import get_scenario
+from moonshine.moonshine_utils import gather_dict, add_batch, remove_batch, numpify
 
+
+# TODO: planned -> predicted whenever we're talking about applying the dynamics model
+#  so like add_planned should be add_predicted or something
 
 class PredictionActualExample:
     def __init__(self,
@@ -34,8 +40,23 @@ def predictions_vs_actual_generator(fwd_model,
                                     dataset: DynamicsDataset,
                                     prediction_function: Callable,
                                     labeling_params: Dict):
+    return predictions_vs_actual_generator_for_horizon(fwd_model,
+                                           tf_dataset,
+                                           batch_size,
+                                           dataset,
+                                           prediction_function,
+                                           labeling_params,
+                                           labeling_params['classifier_horizon'])
+
+
+def predictions_vs_actual_generator_for_horizon(fwd_model,
+                                    tf_dataset,
+                                    batch_size: int,
+                                    dataset: DynamicsDataset,
+                                    prediction_function: Callable,
+                                    labeling_params: Dict,
+                                    classifier_horizon: int):
     prediction_horizon = labeling_params['prediction_horizon']
-    classifier_horizon = labeling_params['classifier_horizon']
     assert classifier_horizon >= 2
     assert prediction_horizon <= dataset.desired_sequence_length
     for dataset_element in tf_dataset.batch(batch_size):
@@ -53,7 +74,8 @@ def predictions_vs_actual_generator(fwd_model,
                                                            dataset_element=dataset_element,
                                                            batch_size=actual_batch_size,
                                                            prediction_start_t=prediction_start_t,
-                                                           prediction_horizon=prediction_horizon)
+                                                           prediction_horizon=prediction_horizon,
+                                                           classifier_horizon=classifier_horizon)
             yield PredictionActualExample(inputs=inputs,
                                           actions=actions_from_start_t,
                                           outputs=outputs_from_start_t,
@@ -126,43 +148,38 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
         actions = prediction_actual.actions[:, action_slice]
         out_example['action'] = actions
 
-        # TODO: planned -> predicted whenever we're talking about applying the dynamics model
-        #  so like add_planned should be add_predicted or something
-
         # compute label
         is_close = compute_is_close_tf(actual_states_dict=sliced_outputs, predicted_states_dict=sliced_predictions,
                                        labeling_params=labeling_params)
         out_example['is_close'] = tf.cast(is_close, dtype=tf.float32)
 
-        # TODO: debug -- why are all examples labeled 1?
-        # visualize predicted versus actual here
         is_first_predicted_state_close = is_close[:, 0]
         valid_indices = tf.where(is_first_predicted_state_close)
         valid_indices = tf.squeeze(valid_indices, axis=1)
         # keep only valid_indices from every key in out_example...
         valid_out_example = gather_dict(out_example, valid_indices)
 
-        # import matplotlib.pyplot as plt
-        # from link_bot_classifiers.visualization import trajectory_plot
-        # from link_bot_pycommon.get_scenario import get_scenario
-        # print(tf.squeeze(traj_idx)[0].numpy(),
-        #       prediction_start_t_batched[0].numpy(),
-        #       classifier_start_t_batched[0].numpy(),
-        #       classifier_end_t_batched[0].numpy(),
-        #       is_close[0].numpy(),
-        #       valid_indices.numpy())
-        # plt.figure()
-        # ax = plt.gca()
-        # environment = numpify({
-        #     'full_env/env': full_env[0],
-        #     'full_env/origin': full_env_origin[0],
-        #     'full_env/extent': full_env_extent[0],
-        #     'full_env/res': full_env_res[0],
-        # })
-        # actual_states = [{'link_bot': sliced_outputs['link_bot'][0][0]}, {'link_bot': sliced_outputs['link_bot'][0][1]}]
-        # planned_states = [{'link_bot': sliced_predictions['link_bot'][0][0]}, {'link_bot': sliced_predictions['link_bot'][0][1]}]
-        # trajectory_plot(ax, get_scenario("link_bot"), environment, actual_states, planned_states)
-        # plt.show()
+        def debug():
+            # Visualize example
+            print(tf.squeeze(traj_idx)[0].numpy(),
+                  prediction_start_t_batched[0].numpy(),
+                  classifier_start_t_batched[0].numpy(),
+                  classifier_end_t_batched[0].numpy(),
+                  is_close[0].numpy(),
+                  valid_indices.numpy())
+            plt.figure()
+            ax = plt.gca()
+            environment = numpify({
+                'full_env/env': full_env[0],
+                'full_env/origin': full_env_origin[0],
+                'full_env/extent': full_env_extent[0],
+                'full_env/res': full_env_res[0],
+            })
+            actual_states = [{'link_bot': sliced_outputs['link_bot'][0][0]}, {'link_bot': sliced_outputs['link_bot'][0][1]}]
+            planned_states = [{'link_bot': sliced_predictions['link_bot'][0][0]},
+                              {'link_bot': sliced_predictions['link_bot'][0][1]}]
+            trajectory_plot(ax, get_scenario("link_bot"), environment, actual_states, planned_states)
+            plt.show()
 
         yield valid_out_example
 
@@ -172,7 +189,7 @@ def compute_is_close_tf(actual_states_dict: Dict, predicted_states_dict: Dict, l
     labeling_states = tf.convert_to_tensor(actual_states_dict[state_key])
     labeling_predicted_states = tf.convert_to_tensor(predicted_states_dict[state_key])
     # TODO: use scenario to compute distance here?
-    model_error = tf.linalg.norm(labeling_states - labeling_predicted_states, axis=2)
+    model_error = tf.linalg.norm(labeling_states - labeling_predicted_states, axis=-1)
     threshold = labeling_params['threshold']
     is_close = model_error < threshold
 
@@ -184,7 +201,13 @@ def compute_label_np(actual_states_dict: Dict, predicted_states_dict: Dict, labe
     return is_close.numpy()
 
 
-def predict_subsequence(states_description, fwd_model, dataset_element, batch_size, prediction_start_t, prediction_horizon):
+def predict_subsequence(states_description,
+                        fwd_model,
+                        dataset_element,
+                        batch_size,
+                        prediction_start_t,
+                        prediction_horizon,
+                        classifier_horizon):
     del batch_size  # unused
     inputs, outputs = dataset_element
 

@@ -37,6 +37,7 @@ class RNNImageClassifier(MyKerasModel):
         self.local_env_w_cols = self.hparams['local_env_w_cols']
         self.rope_image_k = self.hparams['rope_image_k']
 
+        # TODO: add stdev to states keys?
         self.states_keys = self.hparams['states_keys']
 
         self.conv_layers = []

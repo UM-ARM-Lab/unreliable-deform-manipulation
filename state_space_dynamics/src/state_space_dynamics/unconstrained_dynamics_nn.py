@@ -101,15 +101,7 @@ class UDNNWrapper(BaseDynamicsFunction):
     def propagate_from_dataset_element(self, dataset_element, training=False):
         return self.net(dataset_element, training=training)
 
-    def propagate_differentiable(self,
-                                 environment: Dict,
-                                 start_states: Dict,
-                                 actions) -> List[Dict]:
-        """
-        :param start_states:          each value in the dictionary should be of shape (batch, n_state)
-        :param actions:        (T, 2)
-        :return: states:       each value in the dictionary should be a of shape [batch, T+1, n_state)
-        """
+    def propagate_differentiable(self, environment: Dict, start_states: Dict, actions) -> List[Dict]:
         del environment  # unused
         state = start_states[self.net.state_key]
         state = tf.expand_dims(state, axis=0)

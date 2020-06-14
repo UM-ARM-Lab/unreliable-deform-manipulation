@@ -8,6 +8,7 @@ from time import perf_counter
 import tensorflow as tf
 from colorama import Fore
 
+from link_bot_classifiers import classifier_utils
 from link_bot_data.base_dataset import DEFAULT_VAL_SPLIT, DEFAULT_TEST_SPLIT
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
@@ -18,7 +19,7 @@ from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 from state_space_dynamics import model_utils
 
-limit_gpu_mem(2)
+limit_gpu_mem(8)
 
 
 def main():
@@ -27,7 +28,8 @@ def main():
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
     parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
-    parser.add_argument('--max-examples-per-record', type=int, default=1024, help="examples per file")
+    parser.add_argument('classifier_model_dir', type=pathlib.Path)
+    parser.add_argument('--max-examples-per-record', type=int, default=1, help="examples per file")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
 
@@ -61,6 +63,9 @@ def main():
     classifier_dataset_hparams['state_keys'] = fwd_models.states_keys
     json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
+    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, fwd_models.scenario)
+
+
     val_split = int(args.total_take * DEFAULT_VAL_SPLIT) if args.total_take is not None else None
     test_split = int(args.total_take * DEFAULT_TEST_SPLIT) if args.total_take is not None else None
     train_split = args.total_take - val_split - test_split if args.total_take is not None else None
@@ -80,7 +85,7 @@ def main():
         current_example_count = 0
         examples = []
         total_count = 0
-        for out_example in generate_recovery_examples(fwd_models, tf_dataset, dataset, labeling_params):
+        for out_example in generate_recovery_examples(fwd_models, classifier_model, tf_dataset, dataset, labeling_params):
             for batch_idx in range(out_example['traj_idx'].shape[0]):
                 out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
                 features = {}

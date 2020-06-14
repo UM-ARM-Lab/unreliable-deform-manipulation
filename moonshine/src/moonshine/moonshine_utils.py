@@ -189,7 +189,7 @@ def add_batch_single(x):
 
 def index_dict_of_batched_vectors_np(in_dict: Dict, index: int, batch_axis: int = 0):
     out_dict_tf = index_dict_of_batched_vectors_tf(in_dict=in_dict, index=index, batch_axis=batch_axis)
-    return {k: v.numpy() for k, v in out_dict_tf}
+    return {k: v.numpy() for k, v in out_dict_tf.items()}
 
 
 def index_dict_of_batched_vectors_tf(in_dict: Dict, index: int, batch_axis: int = 0):

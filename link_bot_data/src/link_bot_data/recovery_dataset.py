@@ -28,10 +28,8 @@ class RecoveryDataset(BaseDataset):
             'full_env/extent',
             'full_env/res',
             'traj_idx',
-            'prediction_start_t',
-            'classifier_start_t',
-            'classifier_end_t',
-            'is_close',
+            'start_t',
+            'end_t',
             'action',
             'mask',
         ]
