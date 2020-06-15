@@ -1,13 +1,18 @@
 {
-  "dt": 1.0,
+  "extent": [
+    -1,
+    1,
+    -1,
+    1,
+    0,
+    0.01
+  ],
   "res": 0.01,
-  "full_env_w_m": 2,
-  "full_env_h_m": 2,
-  "reset_robot": null,
-  "reset_world": false,
-  "goal_w_m": 2.10,
-  "goal_h_m": 2.10,
   "max_step_size": 0.01,
+  "dt": 1.0,
+  "steps_per_traj": 50,
+  "trajs_per_file": 16,
+  "no_obstacles": false,
   "movable_obstacles": {
     "moving_box1": {
       "x": [
@@ -99,10 +104,7 @@
         -0.5
       ]
     }
-  },
-  "no_obstacles": false,
-  "steps_per_traj": 50,
-  "trajs_per_file": 16
+  }
 }
 
 

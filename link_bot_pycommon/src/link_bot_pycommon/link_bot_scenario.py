@@ -75,7 +75,7 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def random_pos(action_rng: np.random.RandomState, environment):
-        x_min, x_max, y_min, y_max, z_min, z_max = environment['full_env/extent']
+        x_min, x_max, y_min, y_max, z_min, z_max = environment['extent']
         pos = action_rng.uniform([x_min, y_min, z_min], [x_max, y_max, z_max])
         return pos
 
@@ -265,8 +265,8 @@ class LinkBotScenario(ExperimentScenario):
 
     @classmethod
     def plot_environment(cls, ax, environment: Dict):
-        occupancy = environment['full_env/env']
-        extent = environment['full_env/extent']
+        occupancy = environment['env']
+        extent = environment['extent']
         ax.imshow(np.flipud(occupancy), extent=extent, cmap='Greys')
 
     @staticmethod
@@ -355,10 +355,10 @@ class LinkBotScenario(ExperimentScenario):
             example = example[0]
 
         return {
-            'full_env/env': example['full_env/env'],
-            'full_env/origin': example['full_env/origin'],
-            'full_env/res': example['full_env/res'],
-            'full_env/extent': example['full_env/extent'],
+            'env': example['env'],
+            'origin': example['origin'],
+            'res': example['res'],
+            'extent': example['extent'],
         }
 
     @staticmethod

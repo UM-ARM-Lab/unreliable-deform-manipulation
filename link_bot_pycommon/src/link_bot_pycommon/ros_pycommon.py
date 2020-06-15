@@ -2,9 +2,9 @@ from typing import Dict, List
 
 import numpy as np
 
-from geometry_msgs.msg import Pose
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_services import Services
+from link_bot_pycommon.link_bot_sdf_utils import extent_to_center, extent_to_env_shape
 from peter_msgs.msg import LinkBotAction
 from peter_msgs.srv import ComputeOccupancyRequest, LinkBotTrajectoryRequest
 
@@ -35,32 +35,12 @@ def get_occupancy(service_provider,
     return grid, response
 
 
-def get_environment_for_extents_3d(extent_3d,
+def get_environment_for_extents_3d(extent,
                                    res: float,
                                    service_provider: Services,
                                    robot_name: str):
-    min_x, max_x, min_y, max_y, min_z, max_z = extent_3d
-    return get_environment_3d(min_x, max_x, min_y, max_y, min_z, max_z, res, service_provider, robot_name)
-
-
-def get_environment_3d(min_x: float,
-                       max_x: float,
-                       min_y: float,
-                       max_y: float,
-                       min_z: float,
-                       max_z: float,
-                       res: float,
-                       service_provider: Services,
-                       robot_name: str):
-    cx = (max_x + min_x) / 2
-    cy = (max_y + min_y) / 2
-    cz = (max_z + min_z) / 2
-    env_h_m = abs(max_x - min_x)
-    env_w_m = abs(max_y - min_y)
-    env_c_m = abs(max_z - min_z)
-    env_h_rows = int(env_h_m / res)
-    env_w_cols = int(env_w_m / res)
-    env_c_channels = int(env_c_m / res)
+    cx, cy, cz = extent_to_center(extent)
+    env_h_rows, env_w_cols, env_c_channels = extent_to_env_shape(extent, res)
     grid, response = get_occupancy(service_provider,
                                    env_w_cols=env_w_cols,
                                    env_h_rows=env_h_rows,
@@ -71,7 +51,6 @@ def get_environment_3d(min_x: float,
                                    center_z=cz,
                                    robot_name=robot_name)
     origin = np.array([env_h_rows // 2, env_w_cols // 2, env_c_channels // 2], np.int32)
-    extent = np.array([min_x, max_x, min_y, max_y, min_z, max_z])
     return {
         'full_env/env': grid,
         'full_env/res': res,

@@ -69,6 +69,30 @@ def compute_extent_3d(rows: int,
     return np.array([xmin, xmax, ymin, ymax, zmin, zmax], dtype=np.float32)
 
 
+def extent_to_env_size(extent_3d):
+    min_x, max_x, min_y, max_y, min_z, max_z = extent_3d
+    env_h_m = abs(max_x - min_x)
+    env_w_m = abs(max_y - min_y)
+    env_c_m = abs(max_z - min_z)
+    return env_h_m, env_w_m, env_c_m
+
+
+def extent_to_env_shape(extent, res):
+    env_h_m, env_w_m, env_c_m = extent_to_env_size(extent)
+    env_h_rows = int(env_h_m / res)
+    env_w_cols = int(env_w_m / res)
+    env_c_channels = int(env_c_m / res)
+    return env_h_rows, env_w_cols, env_c_channels
+
+
+def extent_to_center(extent_3d):
+    min_x, max_x, min_y, max_y, min_z, max_z = extent_3d
+    cx = (max_x + min_x) / 2
+    cy = (max_y + min_y) / 2
+    cz = (max_z + min_z) / 2
+    return cx, cy, cz
+
+
 def environment_to_occupancy_msg(environment: Dict) -> OccupancyStamped:
     occupancy = Float32MultiArray()
     env = environment['full_env/env']

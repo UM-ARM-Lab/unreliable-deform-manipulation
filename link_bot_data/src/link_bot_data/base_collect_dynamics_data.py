@@ -16,6 +16,7 @@ from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, 
 from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.get_scenario import get_scenario
+from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_shape
 from link_bot_pycommon.params import CollectDynamicsParams, Environment
 from link_bot_pycommon.ros_pycommon import get_states_dict
 
@@ -31,16 +32,14 @@ def generate_traj(scenario: ExperimentScenario,
                   action_description: Dict,
                   states_description: Dict):
     if params.no_obstacles:
-        rows = int(params.full_env_h_m // params.res)
-        cols = int(params.full_env_w_m // params.res)
-        channels = int(params.full_env_c_m // params.res)
+        rows, cols, channels = extent_to_env_shape(params.extent, params.res)
         origin = np.array([rows // 2, cols // 2, channels // 2], dtype=np.int32)
         env = np.zeros([rows, cols, channels], dtype=np.float32)
-        environment = Environment(env=env, res=params.res, origin=origin, extent=params.extent)
+        environment = Environment(env=env, res=params.res, origin=origin, extent=params.extent).to_dict()
     else:
         # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
         # over the course of this function
-        environment = ros_pycommon.get_environment_for_extents_3d(extent_3d=params.extent,
+        environment = ros_pycommon.get_environment_for_extents_3d(extent=params.extent,
                                                                   res=params.res,
                                                                   service_provider=service_provider,
                                                                   robot_name=scenario.robot_name())

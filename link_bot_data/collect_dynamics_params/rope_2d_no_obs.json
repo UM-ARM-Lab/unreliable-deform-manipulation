@@ -11,10 +11,10 @@
   "max_step_size": 0.001,
   "dt": 1.0,
   "steps_per_traj": 10,
+  "trajs_per_file": 64,
+  "no_obstacles": true,
   "movable_obstacles": {
-  },
-  "trajs_per_file": 16,
-  "no_obstacles": false
+  }
 }
 
 
