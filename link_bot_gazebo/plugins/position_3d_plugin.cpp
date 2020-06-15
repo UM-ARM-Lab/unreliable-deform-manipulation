@@ -1,5 +1,7 @@
 #include "position_3d_plugin.h"
 
+#include <link_bot_gazebo/mymath.hpp>
+
 #define create_service_options(type, name, bind) \
   ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &queue_)
 
@@ -16,6 +18,12 @@ Position3dPlugin::~Position3dPlugin()
 
 void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 {
+  // setup ROS stuff
+  if (!ros::isInitialized()) {
+    int argc = 0;
+    ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
+  }
+
   // Get sdf parameters
   {
     if (!sdf->HasElement("kP_pos")) {
@@ -23,13 +31,6 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     }
     else {
       kP_pos_ = sdf->GetElement("kP_pos")->Get<double>();
-    }
-
-    if (!sdf->HasElement("kI_pos")) {
-      printf("using default kI_pos=%f\n", kI_pos_);
-    }
-    else {
-      kI_pos_ = sdf->GetElement("kI_pos")->Get<double>();
     }
 
     if (!sdf->HasElement("kD_pos")) {
@@ -46,46 +47,11 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       max_vel_ = sdf->GetElement("max_vel")->Get<double>();
     }
 
-    if (!sdf->HasElement("kP_rot")) {
-      printf("using default kP_rot=%f\n", kP_rot_);
-    }
-    else {
-      kP_rot_ = sdf->GetElement("kP_rot")->Get<double>();
-    }
-
-    if (!sdf->HasElement("kI_rot")) {
-      printf("using default kI_rot=%f\n", kI_rot_);
-    }
-    else {
-      kI_rot_ = sdf->GetElement("kI_rot")->Get<double>();
-    }
-
-    if (!sdf->HasElement("kD_rot")) {
-      printf("using default kD_rot=%f\n", kD_rot_);
-    }
-    else {
-      kD_rot_ = sdf->GetElement("kD_rot")->Get<double>();
-    }
-
-    if (!sdf->HasElement("max_torque")) {
-      printf("using default max_torque=%f\n", max_torque_);
-    }
-    else {
-      max_torque_ = sdf->GetElement("max_torque")->Get<double>();
-    }
-
     if (!sdf->HasElement("kP_vel")) {
       printf("using default kP_vel=%f\n", kP_vel_);
     }
     else {
       kP_vel_ = sdf->GetElement("kP_vel")->Get<double>();
-    }
-
-    if (!sdf->HasElement("kI_vel")) {
-      printf("using default kI_vel=%f\n", kI_vel_);
-    }
-    else {
-      kI_vel_ = sdf->GetElement("kI_vel")->Get<double>();
     }
 
     if (!sdf->HasElement("kD_vel")) {
@@ -102,11 +68,46 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       max_force_ = sdf->GetElement("max_force")->Get<double>();
     }
 
+    if (!sdf->HasElement("kP_rot")) {
+      printf("using default kP_rot=%f\n", kP_rot_);
+    }
+    else {
+      kP_rot_ = sdf->GetElement("kP_rot")->Get<double>();
+    }
+
+    if (!sdf->HasElement("kD_rot")) {
+      printf("using default kD_rot=%f\n", kD_rot_);
+    }
+    else {
+      kD_rot_ = sdf->GetElement("kD_rot")->Get<double>();
+    }
+
+    if (!sdf->HasElement("kP_rot_vel")) {
+      printf("using default kP_rot_vel=%f\n", kP_rot_vel_);
+    }
+    else {
+      kP_rot_vel_ = sdf->GetElement("kP_rot_vel")->Get<double>();
+    }
+
+    if (!sdf->HasElement("kD_rot_vel")) {
+      printf("using default kD_rot_vel=%f\n", kD_rot_vel_);
+    }
+    else {
+      kD_rot_vel_ = sdf->GetElement("kD_rot_vel")->Get<double>();
+    }
+
+    if (!sdf->HasElement("max_torque")) {
+      printf("using default max_torque=%f\n", max_torque_);
+    }
+    else {
+      max_torque_ = sdf->GetElement("max_torque")->Get<double>();
+    }
+
     if (sdf->HasElement("link")) {
       this->link_name_ = sdf->Get<std::string>("link");
     }
     else {
-      ROS_FATAL_STREAM("The position 3d plugin requires a `linkName` parameter tag");
+      ROS_FATAL_STREAM("The position 3d plugin requires a `link` parameter tag");
       return;
     }
   }
@@ -123,9 +124,12 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     return;
   }
 
-  // setup ROS stuff
-  int argc = 0;
-  ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
+  // compute total mass
+  const std::vector<physics::LinkPtr> &links = model_->GetLinks();
+  for (const auto &link : links) {
+    total_mass_ += link->GetInertial()->Mass();
+  }
+  gzerr << total_mass_ << '\n';
 
   auto stop_bind = [this](std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res) { return OnStop(req, res); };
   auto stop_so = create_service_options(std_srvs::Empty, "stop", stop_bind);
@@ -153,78 +157,69 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
 
-  constexpr auto max_vel_integral{0};
   constexpr auto max_integral{0};
-  x_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel_, -max_vel_);
-  y_pos_pid_ = common::PID(kP_pos_, kI_pos_, kD_pos_, max_integral, -max_integral, max_vel_, -max_vel_);
-
-  z_rot_pid_ = common::PID(kP_rot_, kI_rot_, kD_rot_, max_integral, -max_integral, max_torque_, -max_torque_);
-
-  x_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
-  y_vel_pid_ = common::PID(kP_vel_, kI_vel_, kD_vel_, max_vel_integral, -max_vel_integral, max_force_, -max_force_);
+  pos_pid_ = common::PID(kP_pos_, 0, kD_pos_, 0, 0, max_vel_, -max_vel_);
+  vel_pid_ = common::PID(kP_vel_, 0, kD_vel_, 0, 0, max_force_, -max_force_);
+  rot_pid_ = common::PID(kP_rot_, 0, kD_rot_, 0, 0, max_rot_vel_, -max_rot_vel_);
+  rot_vel_pid_ = common::PID(kP_rot_vel_, 0, kD_rot_vel_, 0, 0, max_torque_, -max_torque_);
 
   auto update = [this](common::UpdateInfo const &info) { OnUpdate(info); };
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
 
-  target_pose_ = link_->WorldPose();
+  //  target_position_ = link_->WorldPose().Pos();
+  target_position_ = {0, 0, 0.6};
 }
 
 void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
 {
   constexpr auto dt{0.001};
 
-  ignition::math::Vector3d force;
   auto const pos = link_->WorldPose().Pos();
-  auto const pose_error = pos - target_pose_.Pos();
+  auto const rot = link_->RelativePose().Rot();
+  auto const vel_ = link_->WorldLinearVel();
+  auto const rot_vel_ = link_->RelativeAngularVel();
 
-  target_velocity_.X(x_pos_pid_.Update(pose_error.X(), dt));
-  target_velocity_.Y(y_pos_pid_.Update(pose_error.Y(), dt));
+  pos_error_ = pos - target_position_;
+  auto const target_vel = pos_error_.Normalized() * pos_pid_.Update(pos_error_.Length(), dt);
 
-  auto const vel = link_->WorldLinearVel();
-  auto const vel_error = vel - target_velocity_;
-  force.X(x_vel_pid_.Update(vel_error.X(), dt));
-  force.Y(y_vel_pid_.Update(vel_error.Y(), dt));
+  auto const vel_error = vel_ - target_vel;
+  auto force = vel_error.Normalized() * vel_pid_.Update(vel_error.Length(), dt);
 
-  // FIXME: this assumes the objects are boxes
-  auto const i{0u};
-  auto const collision = link_->GetCollision(i);
-  auto const box = boost::dynamic_pointer_cast<physics::BoxShape>(collision->GetShape());
-  auto const z = box->Size().Z();
+  rot_error_ = angle_error(rot.Z(), 0);  // assume target rotation is 0
+  auto const target_rot_vel = rot_pid_.Update(rot_error_, dt);
 
-  ignition::math::Vector3d torque;
-  torque.X(0);
-  torque.Y(0);
-  auto const yaw_error = link_->WorldPose().Rot().Yaw();
-  auto const yaw_torque = z_rot_pid_.Update(yaw_error, dt);
-  torque.Z(yaw_torque);
+  auto const rot_vel_error = rot_vel_.X() - target_rot_vel;
+  auto const torque = rot_vel_pid_.Update(rot_vel_error, dt);
+
+  // gravity compensation... where does this constant come from?!
+  force.Z(force.Z() + total_mass_ * 12 * target_position_.Z());
 
   if (enabled_) {
-    ignition::math::Vector3d const push_position(0, 0, -z / 2.0 + 0.01);
-    link_->AddForceAtRelativePosition(force, push_position);
-    link_->AddRelativeTorque(torque);
+    link_->AddForce(force);
+    link_->AddRelativeTorque({torque, 0, 0});
   }
 }
 
 bool Position3dPlugin::OnStop(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
 {
-  target_pose_ = link_->WorldPose();
+  target_position_ = link_->WorldPose().Pos();
   return true;
 }
 
 bool Position3dPlugin::OnEnable(peter_msgs::Position3DEnableRequest &req, peter_msgs::Position3DEnableResponse &res)
 {
   enabled_ = req.enable;
+  if (req.enable) {
+    target_position_ = link_->WorldPose().Pos();
+  }
   return true;
 }
 
 bool Position3dPlugin::OnAction(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res)
 {
-  target_pose_.Pos().X(req.pose.position.x);
-  target_pose_.Pos().Y(req.pose.position.y);
-  target_pose_.Rot().X(req.pose.orientation.x);
-  target_pose_.Rot().Y(req.pose.orientation.y);
-  target_pose_.Rot().Z(req.pose.orientation.z);
-  target_pose_.Rot().W(req.pose.orientation.w);
+  target_position_.X(req.position.x);
+  target_position_.Y(req.position.y);
+  target_position_.Z(req.position.z);
   return true;
 }
 

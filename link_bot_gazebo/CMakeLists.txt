@@ -32,7 +32,7 @@ target_link_libraries(collision_map_plugin cnpy::cnpy ${catkin_LIBRARIES} ${GAZE
 add_dependencies(collision_map_plugin ${catkin_EXPORTED_TARGETS})
 
 add_library(position_3d_plugin SHARED plugins/position_3d_plugin.cpp)
-target_include_directories(position_3d_plugin PUBLIC ${catkin_INCLUDE_DIRS})
+target_include_directories(position_3d_plugin PUBLIC ${catkin_INCLUDE_DIRS} include)
 target_link_libraries(position_3d_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 add_dependencies(position_3d_plugin ${catkin_EXPORTED_TARGETS})
 
@@ -40,7 +40,3 @@ add_library(my_camera_plugin SHARED plugins/my_camera_plugin.cpp)
 target_include_directories(my_camera_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(my_camera_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} CameraPlugin)
 add_dependencies(my_camera_plugin ${catkin_EXPORTED_TARGETS})
-
-add_library(test_ray_plugin SHARED plugins/test_ray_plugin.cpp)
-target_include_directories(test_ray_plugin PUBLIC ${catkin_INCLUDE_DIRS})
-target_link_libraries(test_ray_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})

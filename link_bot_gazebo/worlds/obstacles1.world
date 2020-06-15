@@ -39,47 +39,47 @@
         </include>
 
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://movable_box</uri>
             <pose>-0.65 0.65 0 0 0 0</pose>
             <name>moving_box1</name>
         </include>
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://movable_box</uri>
             <pose>0.0 0.65 0 0 0 0</pose>
             <name>moving_box2</name>
         </include>
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://movable_box</uri>
             <pose>0.65 0.65 0 0 0 0</pose>
             <name>moving_box3</name>
         </include>
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://movable_box</uri>
             <pose>-0.65 0.0 0 0 0 0</pose>
             <name>moving_box4</name>
         </include>
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://movable_box</uri>
             <pose>0.0 0.0 0 0 0 0</pose>
             <name>moving_box5</name>
         </include>
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://movable_box</uri>
             <pose>0.65 .0 0 0 0 0</pose>
             <name>moving_box6</name>
         </include>
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://movable_box</uri>
             <pose>-0.65 -0.65 0 0 0 0</pose>
             <name>moving_box7</name>
         </include>
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://movable_box</uri>
             <pose>0.0 -0.65 0 0 0 0</pose>
             <name>moving_box8</name>
         </include>
         <include>
-            <uri>model://small_moving_box</uri>
+            <uri>model://movable_box</uri>
             <pose>0.65 -0.65 0 0 0 0</pose>
             <name>moving_box9</name>
         </include>
