@@ -41,7 +41,7 @@ def main():
         service_provider = victor_services.VictorServices()
     else:
         rospy.set_param('service_provider', 'gazebo')
-        service_provider = gazebo_services.GazeboServices(collect_dynamics_params.movable_obstacles)
+        service_provider = gazebo_services.GazeboServices()
 
     base_collect_dynamics_data.generate(service_provider, collect_dynamics_params, args)
 

@@ -149,14 +149,3 @@ def get_states_dict(service_provider, state_keys=None):
             start_states[named_object.name] = np.array(named_object.state_vector)
 
     return start_states
-
-
-def xy_move(x: float, y: float):
-    pose = Pose()
-    pose.position.x = x
-    pose.position.y = y
-    pose.orientation.x = 0
-    pose.orientation.y = 0
-    pose.orientation.z = 0
-    pose.orientation.w = 1
-    return pose

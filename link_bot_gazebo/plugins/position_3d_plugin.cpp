@@ -12,8 +12,10 @@ Position3dPlugin::~Position3dPlugin()
 {
   queue_.clear();
   queue_.disable();
-  ros_node_->shutdown();
+  ros_node_.shutdown();
+  private_ros_node_->shutdown();
   ros_queue_thread_.join();
+  private_ros_queue_thread_.join();
 }
 
 void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
@@ -26,6 +28,13 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
   // Get sdf parameters
   {
+    if (!sdf->HasElement("name")) {
+      ROS_FATAL_STREAM("The position 3d plugin requires a `name` parameter tag");
+    }
+    else {
+      name_ = sdf->GetElement("name")->Get<std::string>();
+    }
+
     if (!sdf->HasElement("kP_pos")) {
       printf("using default kP_pos=%f\n", kP_pos_);
     }
@@ -152,16 +161,31 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
                                   peter_msgs::ActionSpaceDescriptionResponse &res) { return GetActionSpace(req, res); };
   auto action_space_so = create_service_options(peter_msgs::ActionSpaceDescription, "actions", action_space_bind);
 
-  ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
-  enable_service_ = ros_node_->advertiseService(enable_so);
-  action_service_ = ros_node_->advertiseService(pos_action_so);
-  stop_service_ = ros_node_->advertiseService(stop_so);
-  get_position_service_ = ros_node_->advertiseService(get_pos_so);
-  action_space_service_ = ros_node_->advertiseService(action_space_so);
+  auto get_object_bind = [this](auto &&req, auto &&res) { return GetObjectCallback(req, res); };
+  auto get_object_so = create_service_options(peter_msgs::GetObject, name_, get_object_bind);
+
+  private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
+  enable_service_ = private_ros_node_->advertiseService(enable_so);
+  action_service_ = private_ros_node_->advertiseService(pos_action_so);
+  stop_service_ = private_ros_node_->advertiseService(stop_so);
+  get_position_service_ = private_ros_node_->advertiseService(get_pos_so);
+  action_space_service_ = private_ros_node_->advertiseService(action_space_so);
+
+  register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
+  get_object_service_ = ros_node_.advertiseService(get_object_so);
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
+  private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
 
-  constexpr auto max_integral{0};
+  while (register_object_pub_.getNumSubscribers() < 1) {
+  }
+
+  {
+    std_msgs::String register_object;
+    register_object.data = name_;
+    register_object_pub_.publish(register_object);
+  }
+
   pos_pid_ = common::PID(kP_pos_, 0, kD_pos_, 0, 0, max_vel_, -max_vel_);
   vel_pid_ = common::PID(kP_vel_, 0, kD_vel_, 0, 0, max_force_, -max_force_);
   rot_pid_ = common::PID(kP_rot_, 0, kD_rot_, 0, 0, max_rot_vel_, -max_rot_vel_);
@@ -220,9 +244,16 @@ bool Position3dPlugin::OnEnable(peter_msgs::Position3DEnableRequest &req, peter_
 
 bool Position3dPlugin::OnAction(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res)
 {
+  enabled_ = true;
   target_position_.X(req.position.x);
   target_position_.Y(req.position.y);
   target_position_.Z(req.position.z);
+
+  auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
+  auto const steps = static_cast<unsigned int>(req.timeout / seconds_per_step);
+  // Wait until the setpoint is reached
+  model_->GetWorld()->Step(steps);
+
   return true;
 }
 
@@ -240,25 +271,61 @@ bool Position3dPlugin::GetActionSpace(peter_msgs::ActionSpaceDescriptionRequest 
 {
   peter_msgs::SubspaceDescription action_space;
   action_space.dimensions = 3;
-  action_space.name = "position_3d";
-  // pretend it's a box constraint, so is 0.15 is the max speed, the max along any dimension to remain in that
-  // sphere is ~0.087
-  auto const dimension_wise_max = this->max_vel_ / std::sqrt(3);
-  action_space.lower_bounds.push_back(-dimension_wise_max);
-  action_space.lower_bounds.push_back(-dimension_wise_max);
-  action_space.lower_bounds.push_back(-dimension_wise_max);
-  action_space.upper_bounds.push_back(dimension_wise_max);
-  action_space.upper_bounds.push_back(dimension_wise_max);
-  action_space.upper_bounds.push_back(dimension_wise_max);
+  action_space.name = "position";
+  action_space.lower_bounds.push_back(-10);
+  action_space.lower_bounds.push_back(-10);
+  action_space.lower_bounds.push_back(-10);
+  action_space.upper_bounds.push_back(10);
+  action_space.upper_bounds.push_back(10);
+  action_space.upper_bounds.push_back(10);
+
+  peter_msgs::SubspaceDescription timeout_space;
+  timeout_space.dimensions = 1;
+  timeout_space.name = "timeout";
+  timeout_space.lower_bounds.push_back(-10);
+  timeout_space.upper_bounds.push_back(10);
+
   res.subspaces.push_back(action_space);
+  res.subspaces.push_back(timeout_space);
+  return true;
+}
+
+bool Position3dPlugin::GetObjectCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
+{
+  std::vector<float> state_vector;
+  peter_msgs::NamedPoint link_point;
+  geometry_msgs::Point pt;
+  float const x = link_->WorldPose().Pos().X();
+  float const y = link_->WorldPose().Pos().Y();
+  float const z = link_->WorldPose().Pos().Z();
+  state_vector.push_back(x);
+  state_vector.push_back(y);
+  state_vector.push_back(z);
+  link_point.point.x = x;
+  link_point.point.y = y;
+  link_point.point.z = z;
+  link_point.name = link_->GetName();
+
+  res.object.name = name_;
+  res.object.state_vector = state_vector;
+  res.object.points.emplace_back(link_point);
+
   return true;
 }
 
 void Position3dPlugin::QueueThread()
 {
   double constexpr timeout = 0.01;
-  while (ros_node_->ok()) {
+  while (ros_node_.ok()) {
     queue_.callAvailable(ros::WallDuration(timeout));
+  }
+}
+
+void Position3dPlugin::PrivateQueueThread()
+{
+  double constexpr timeout = 0.01;
+  while (private_ros_node_->ok()) {
+    private_queue_.callAvailable(ros::WallDuration(timeout));
   }
 }
 }  // namespace gazebo

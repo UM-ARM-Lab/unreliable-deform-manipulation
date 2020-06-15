@@ -56,7 +56,7 @@ def main():
         action_request = Action()
         action_request.max_time_per_step = args.dt
         action_request.action = action
-        action_response = service_provider.execute_action(action_request)
+        action_response = scenario.execute_action(action_request)
         for named_object in action_response.objects.objects:
             state_t[named_object.name] = named_object.state_vector
         path.append(state_t)

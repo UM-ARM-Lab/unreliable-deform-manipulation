@@ -1,6 +1,5 @@
 from typing import Optional, Dict
 
-import numpy as np
 from colorama import Fore
 
 import rospy
@@ -9,20 +8,21 @@ from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingR
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from geometry_msgs.msg import Pose
 from ignition.markers import MarkerProvider
-from peter_msgs.srv import ComputeOccupancy, ExecuteAction, WorldControl, GetObjects, \
-    StateSpaceDescription, StateSpaceDescriptionRequest, ExecuteActionRequest
+from peter_msgs.srv import ComputeOccupancy, WorldControl, GetObjects, \
+    StateSpaceDescription, StateSpaceDescriptionRequest, ActionSpaceDescription, \
+    ActionSpaceDescriptionRequest
 
 
 class Services:
 
     def __init__(self):
         self.compute_occupancy = rospy.ServiceProxy('occupancy', ComputeOccupancy)
-        self.execute_action = rospy.ServiceProxy("execute_action", ExecuteAction)
         self.world_control = rospy.ServiceProxy('world_control', WorldControl)
         self.pause = rospy.ServiceProxy('gazebo/pause_physics', std_srvs.srv.Empty)
         self.unpause = rospy.ServiceProxy('gazebo/unpause_physics', std_srvs.srv.Empty)
         self.record = rospy.ServiceProxy('video_recorder', TriggerVideoRecording)
         self.reset = rospy.ServiceProxy("reset", std_srvs.srv.Empty)
+        self.action_description = rospy.ServiceProxy("link_bot/actions", ActionSpaceDescription)
         self.get_objects = rospy.ServiceProxy("objects", GetObjects)
         self.states_description = rospy.ServiceProxy("states_description", StateSpaceDescription)
         self.marker_provider = MarkerProvider()
@@ -40,13 +40,17 @@ class Services:
             'gazebo/set_physics_properties',
         ]
 
-    @staticmethod
-    def get_max_speed():
-        return rospy.get_param("max_speed")
-
-    @staticmethod
-    def get_n_action():
-        return rospy.get_param("n_action")
+    def get_action_description(self):
+        req = ActionSpaceDescriptionRequest()
+        res = self.action_description(req)
+        actions_dict = {}
+        for subspace in res.subspaces:
+            actions_dict[subspace.name] = {
+                'dim': subspace.dimensions,
+                'lower_bounds': subspace.lower_bounds,
+                'upper_bounds': subspace.upper_bounds,
+            }
+        return actions_dict
 
     def move_objects(self, object_moves: Dict[str, Pose]):
         pass
@@ -81,25 +85,8 @@ class Services:
         if verbose >= 1:
             print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
 
-    def random_move_objects(self,
-                            objects,
-                            env_w: float,
-                            env_h: float,
-                            padding: float,
-                            rng: np.random.RandomState):
+    def setup_env(self, verbose: int, real_time_rate: float, max_step_size: float):
         raise NotImplementedError()
-
-    def setup_env(self,
-                  verbose: int,
-                  real_time_rate: float,
-                  reset_to: Optional,
-                  max_step_size: Optional[float] = None):
-        raise NotImplementedError()
-
-    def nudge(self, action_dim):
-        nudge = ExecuteActionRequest()
-        nudge.action.action = np.random.randn(action_dim)
-        self.execute_action(nudge)
 
     def reset_world(self, verbose, reset_robot: Optional = None):
         raise NotImplementedError()

@@ -3,22 +3,34 @@ from typing import Dict, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
 
+from geometry_msgs.msg import Vector3
 from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_extents
 from link_bot_pycommon.animation_player import Player
 from link_bot_pycommon.pycommon import trim_reconverging
 from moonshine.moonshine_utils import remove_batch, numpify, dict_of_sequences_to_sequence_of_dicts_tf
+from peter_msgs.srv import GetPosition3DRequest, WorldControlRequest, Position3DEnableRequest, Position3DActionRequest
+from std_srvs.srv import EmptyRequest
 
 
 class ExperimentScenario:
+    def __init__(self):
+        pass
 
     def __eq__(self, other):
         if isinstance(other, str):
             return other == self.simple_name()
         raise NotImplementedError()
 
-    def simple_name(self):
+    def nudge(self):
+        raise NotImplementedError()
+
+    @staticmethod
+    def simple_name():
+        raise NotImplementedError()
+
+    def execute_action(self, action: Dict):
         raise NotImplementedError()
 
     @staticmethod
@@ -34,11 +46,11 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def plot_state_simple(ax, state, color, label=None, **kwargs):
+    def plot_state_simple(ax, state: Dict, **kwargs):
         raise NotImplementedError()
 
     @staticmethod
-    def plot_state(ax, state: Dict, color, s: int, zorder: int, label: str):
+    def plot_state(ax, state: Dict, **kwargs):
         raise NotImplementedError()
 
     @staticmethod
@@ -46,7 +58,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def plot_action(ax, state: Dict, action, color, s: int, zorder: int):
+    def plot_action(ax, state: Dict, action, color, s: int, zorder: int, **kwargs):
         raise NotImplementedError()
 
     @staticmethod
@@ -271,9 +283,10 @@ class ExperimentScenario:
                                                s=2,
                                                label=prediction_label_name,
                                                linewidth=1)
-        actual_artist = cls.plot_state(ax, actual[0], '#00ff00', zorder=3, s=2, label='actual', alpha=0.6, linewidth=1)
+        actual_artist = cls.plot_state(ax, actual[0], color='#00ff00', zorder=3, s=2, label='actual', alpha=0.6, linewidth=1)
         if show_previous_action:
-            prev_actual_artist = cls.plot_state(ax, actual[0], '#aaaa00', zorder=3, s=2, label='actual', alpha=0.6, linewidth=1)
+            prev_actual_artist = cls.plot_state(ax, actual[0], color='#aaaa00', zorder=3, s=2, label='actual', alpha=0.6,
+                                                linewidth=1)
         if actions is not None:
             action_artist = cls.plot_action(ax, actual[0], actions[0], color='c', s=2, zorder=4, linewidth=1)
         cls.plot_environment(ax, environment)
@@ -334,3 +347,74 @@ class ExperimentScenario:
     @staticmethod
     def put_state_local_frame(state_key, state):
         raise NotImplementedError()
+
+    @staticmethod
+    def random_object_position(w: float, h: float, padding: float, rng: np.random.RandomState) -> Vector3:
+        xy_range = {
+            'x': [-w / 2 + padding, w / 2 - padding],
+            'y': [-h / 2 + padding, h / 2 - padding],
+        }
+        return sample_obstacle_position(rng, xy_range)
+
+    @staticmethod
+    def get_movable_object_positions(movable_object_services: Dict):
+        positions = {}
+        for object_name, services in movable_object_services.items():
+            position_response = services['get_position'](GetPosition3DRequest())
+            positions[object_name] = position_response
+        return positions
+
+    @staticmethod
+    def move_objects_randomly(env_rng, service_provider, movable_object_services, movable_obstacles):
+        random_object_positions = sample_obstacle_positions(env_rng, movable_obstacles)
+        ExperimentScenario.move_objects(service_provider, movable_object_services, random_object_positions)
+
+    @staticmethod
+    def move_objects_to_positions(service_provider, movable_object_services: Dict, object_positions: Dict):
+        object_moves = {}
+        for name, (x, y) in object_positions.items():
+            move = Vector3()
+            move.x = x
+            move.y = y
+            object_moves[name] = move
+        return ExperimentScenario.move_objects(service_provider, movable_object_services, object_moves)
+
+    @staticmethod
+    def move_objects(service_provider, movable_object_services: Dict, object_moves: Dict[str, Vector3]):
+        for object_name, pose in object_moves.items():
+            movable_object_services = movable_object_services[object_name]
+            enable_req = Position3DEnableRequest()
+            enable_req.enable = True
+            movable_object_services['enable'](enable_req)
+
+        # Move the objects
+        for object_name, position in object_moves.items():
+            movable_object_services = movable_object_services[object_name]
+            move_action_req = Position3DActionRequest()
+            move_action_req.position = position
+            movable_object_services['action'](move_action_req)
+
+        # let the move actually occur
+        step = WorldControlRequest()
+        move_wait_duration = 5.00
+        step.steps = int(move_wait_duration / service_provider.max_step_size)
+        service_provider.world_control(step)  # this will block until stepping is complete
+
+        # stop the objects
+        for object_name, pose in object_moves.items():
+            movable_object_services = movable_object_services[object_name]
+            movable_object_services['stop'](EmptyRequest())
+
+
+def sample_obstacle_position(env_rng, xy_range: Dict) -> Vector3:
+    x_range = xy_range['x']
+    y_range = xy_range['y']
+    position = Vector3()
+    position.x = env_rng.uniform(*x_range)
+    position.y = env_rng.uniform(*y_range)
+    return position
+
+
+def sample_obstacle_positions(env_rng, movable_obstacles) -> Dict[str, Vector3]:
+    random_object_positions = {name: sample_obstacle_position(env_rng, xy_range) for name, xy_range in movable_obstacles.items()}
+    return random_object_positions

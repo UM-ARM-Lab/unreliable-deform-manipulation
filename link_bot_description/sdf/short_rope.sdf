@@ -32,10 +32,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -49,10 +55,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -66,10 +78,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -125,10 +143,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -142,10 +166,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -159,10 +189,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -218,10 +254,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -235,10 +277,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -252,10 +300,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -311,10 +365,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -328,10 +388,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -345,10 +411,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -404,10 +476,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -421,10 +499,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -438,10 +522,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -497,10 +587,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -514,10 +610,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -531,10 +633,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -590,10 +698,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -607,10 +721,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -624,10 +744,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -683,10 +809,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -700,10 +832,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -717,10 +855,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -776,10 +920,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -793,10 +943,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -810,10 +966,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -869,10 +1031,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -886,10 +1054,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -903,10 +1077,16 @@
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.10</mu>
-                        <mu2>0.10</mu2>
+                        <mu>0.20</mu>
+                        <mu2>0.20</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
             </surface>
         </collision>
 
@@ -941,8 +1121,8 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -955,17 +1135,21 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.002</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
+            <physics>
+                <ode>
+                </ode>
+            </physics>
         </joint>
         
         <joint name="joint_2" type="universal">
@@ -975,8 +1159,8 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -989,17 +1173,21 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.002</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
+            <physics>
+                <ode>
+                </ode>
+            </physics>
         </joint>
         
         <joint name="joint_3" type="universal">
@@ -1009,8 +1197,8 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -1023,17 +1211,21 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.002</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
+            <physics>
+                <ode>
+                </ode>
+            </physics>
         </joint>
         
         <joint name="joint_4" type="universal">
@@ -1043,8 +1235,8 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -1057,17 +1249,21 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.002</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
+            <physics>
+                <ode>
+                </ode>
+            </physics>
         </joint>
         
         <joint name="joint_5" type="universal">
@@ -1077,8 +1273,8 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -1091,17 +1287,21 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.002</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
+            <physics>
+                <ode>
+                </ode>
+            </physics>
         </joint>
         
         <joint name="joint_6" type="universal">
@@ -1111,8 +1311,8 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -1125,17 +1325,21 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.002</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
+            <physics>
+                <ode>
+                </ode>
+            </physics>
         </joint>
         
         <joint name="joint_7" type="universal">
@@ -1145,8 +1349,8 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -1159,17 +1363,21 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.002</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
+            <physics>
+                <ode>
+                </ode>
+            </physics>
         </joint>
         
         <joint name="joint_8" type="universal">
@@ -1179,8 +1387,8 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -1193,17 +1401,21 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.002</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
+            <physics>
+                <ode>
+                </ode>
+            </physics>
         </joint>
         
         <joint name="joint_9" type="universal">
@@ -1213,8 +1425,8 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -1227,17 +1439,21 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <limit>
-                    <lower>-3</lower>
-                    <upper>3</upper>
+                    <lower>-2.0</lower>
+                    <upper>2.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.002</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
+            <physics>
+                <ode>
+                </ode>
+            </physics>
         </joint>
         
         <link name='head'>
@@ -1268,6 +1484,10 @@
                         <mu2>0.0</mu2>
                     </ode>
                 </friction>
+                <contact>
+                    <ode>
+                    </ode>
+                </contact>
             </surface>
         </collision>
         <visual name='head_visual'>
@@ -1295,14 +1515,14 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.0</damping>
                     <friction>0.1</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.0</damping>
                     <friction>0.1</friction>
                 </dynamics>
             </axis2>
@@ -1312,13 +1532,14 @@
             <rope_length>0.5</rope_length>
         </plugin>
         <plugin name='position_3d_plugin' filename='libposition_3d_plugin.so'>
+            <name>gripper</name>
             <kP_pos>5</kP_pos>
             <kI_pos>0.0</kI_pos>
             <kD_pos>0.0</kD_pos>
-            <kP_vel>100.0</kP_vel>
+            <kP_vel>200.0</kP_vel>
             <kI_vel>0.0</kI_vel>
             <kD_vel>0.0</kD_vel>
-            <max_force>1.0</max_force>
+            <max_force>2.0</max_force>
             <max_vel>0.15</max_vel>
             <kP_rot>0.1</kP_rot>
             <kI_rot>0.0</kI_rot>
@@ -1328,8 +1549,7 @@
             <kD_rot_vel>0.0</kD_rot_vel>
             <max_torque>0.1</max_torque>
             <max_rot_vel>6.0</max_rot_vel>
-            <link>
-            head</link>
+            <link>head</link>
         </plugin>
     </model>
 </sdf>

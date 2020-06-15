@@ -10,7 +10,7 @@ from ompl import base as ob
 
 from link_bot_classifiers.rnn_recovery_model import RNNRecoveryModelWrapper
 from link_bot_planning.goals import sample_collision_free_goal
-from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlannerResult
+from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import SimParams
@@ -34,14 +34,14 @@ def get_environment_common(w_m: float, h_m: float, res: float, service_provider:
     return environment
 
 
-def execute_actions(service_provider, dt, actions):
+def execute_actions(service_provider, scenario, dt, actions):
     start_states = get_states_dict(service_provider)
     actual_path = [start_states]
     for t in range(actions.shape[0]):
         action_request = Action()
         action_request.max_time_per_step = dt
         action_request.action = actions[t]
-        action_response = service_provider.execute_action(action_request)
+        action_response = scenario.execute_action(action_request)
         state_t = {}
         for named_object in action_response.objects.objects:
             state_t[named_object.name] = np.array(named_object.state_vector)
@@ -125,17 +125,14 @@ class PlanAndExecute:
         # Planning #
         ############
         t0 = time.time()
-        planner_result = PlannerResult(planner_status=MyPlannerStatus.NotProgressing,
-                                       path=None,
-                                       actions=None)
-        # planner_result = self.planner.plan(start_states, environment, goal)
-        # planner_data = ob.PlannerData(self.planner.si)
-        # self.planner.planner.getPlannerData(planner_data)
-        #
+        planner_result = self.planner.plan(start_states, environment, goal)
+        planner_data = ob.PlannerData(self.planner.si)
+        self.planner.planner.getPlannerData(planner_data)
+
         if self.verbose >= 1:
             print(planner_result.planner_status)
-        #
-        # self.on_after_plan()
+
+        self.on_after_plan()
 
         if planner_result.planner_status == MyPlannerStatus.Failure:
             print("failure!")
@@ -143,7 +140,7 @@ class PlanAndExecute:
             self.n_failures += 1
             #  nudging hopefully fixes things
             if self.sim_params.nudge is not None:
-                self.service_provider.nudge(self.planner.n_action)
+                self.planner.scenario.nudge()
             return False
         elif planner_result.planner_status == MyPlannerStatus.NotProgressing:
             if self.recovery_actions_model is not None:
@@ -251,4 +248,4 @@ class PlanAndExecute:
         :param actions: currently a numpy array, [time, n_action]
         :return: the states, a list of Dicts
         """
-        return execute_actions(self.service_provider, self.planner.fwd_model.dt, actions)
+        return execute_actions(self.service_provider, self.planner.scenario, self.planner.fwd_model.dt, actions)

@@ -1,15 +1,17 @@
 #pragma once
 
 #include <geometry_msgs/Pose.h>
+#include <peter_msgs/ActionSpaceDescription.h>
+#include <peter_msgs/GetObject.h>
 #include <peter_msgs/GetPosition3D.h>
 #include <peter_msgs/ModelsEnable.h>
 #include <peter_msgs/ModelsPoses.h>
 #include <peter_msgs/Position3DAction.h>
 #include <peter_msgs/Position3DEnable.h>
-#include <peter_msgs/ActionSpaceDescription.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
+#include <std_msgs/String.h>
 #include <std_srvs/Empty.h>
 
 #include <functional>
@@ -39,23 +41,32 @@ class Position3dPlugin : public ModelPlugin {
 
   bool GetActionSpace(peter_msgs::ActionSpaceDescriptionRequest &req, peter_msgs::ActionSpaceDescriptionResponse &res);
 
+  bool GetObjectCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
+
  private:
   void QueueThread();
+
+  void PrivateQueueThread();
 
   event::ConnectionPtr update_connection_;
   physics::ModelPtr model_;
   physics::LinkPtr link_;
   physics::CollisionPtr collision_;
   std::string link_name_;
-  bool enabled_{true};
-  std::unique_ptr<ros::NodeHandle> ros_node_;
+  bool enabled_{false};
+  std::unique_ptr<ros::NodeHandle> private_ros_node_;
+  ros::NodeHandle ros_node_;
   ros::CallbackQueue queue_;
+  ros::CallbackQueue private_queue_;
   std::thread ros_queue_thread_;
+  std::thread private_ros_queue_thread_;
   ros::ServiceServer enable_service_;
   ros::ServiceServer action_service_;
   ros::ServiceServer stop_service_;
   ros::ServiceServer get_position_service_;
   ros::ServiceServer action_space_service_;
+  ros::ServiceServer get_object_service_;
+  ros::Publisher register_object_pub_;
   double kP_pos_{0.0};
   double kD_pos_{0.0};
   double max_vel_{0.0};
@@ -76,6 +87,7 @@ class Position3dPlugin : public ModelPlugin {
   ignition::math::Vector3d pos_error_{0, 0, 0};
   double rot_error_{0};
   double total_mass_{0.0};
+  std::string name_;
 };
 
 }  // namespace gazebo

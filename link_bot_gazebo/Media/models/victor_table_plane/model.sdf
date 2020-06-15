@@ -13,10 +13,15 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>100</mu>
-                            <mu2>50</mu2>
+                            <mu>1000</mu>
+                            <mu2>1000</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <min_depth>0.005</min_depth>
+                        </ode>
+                    </contact>
                 </surface>
             </collision>
             <visual name="visual">

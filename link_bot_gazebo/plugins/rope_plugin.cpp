@@ -14,7 +14,7 @@ namespace gazebo {
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "cppcoreguidelines-pro-type-vararg"
-void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
+void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 {
   // Make sure the ROS node for Gazebo has already been initialized
   if (!ros::isInitialized()) {
@@ -73,7 +73,7 @@ void MultiLinkBotModelPlugin::Load(physics::ModelPtr const parent, sdf::ElementP
 }
 #pragma clang diagnostic pop
 
-bool MultiLinkBotModelPlugin::StateServiceCallback(peter_msgs::LinkBotStateRequest &req,
+bool RopePlugin::StateServiceCallback(peter_msgs::LinkBotStateRequest &req,
                                                    peter_msgs::LinkBotStateResponse &res)
 {
   // get all links named "link_%d" where d is in [1, num_links)
@@ -104,7 +104,7 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(peter_msgs::LinkBotStateReque
   return true;
 }
 
-bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req,
+bool RopePlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req,
                                                        peter_msgs::GetObjectResponse &res)
 {
   res.object.name = "link_bot";
@@ -147,11 +147,17 @@ bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequ
   return true;
 }
 
-bool MultiLinkBotModelPlugin::SetRopeConfigCallback(peter_msgs::SetRopeConfigurationRequest &req,
+bool RopePlugin::SetRopeConfigCallback(peter_msgs::SetRopeConfigurationRequest &req,
                                                     peter_msgs::SetRopeConfigurationResponse &res)
 {
+  auto const gripper_pose = req.gripper_poses[0];
+  ignition::math::Pose3d pose{
+      gripper_pose.position.x,    gripper_pose.position.y,    gripper_pose.position.z,    gripper_pose.orientation.w,
+      gripper_pose.orientation.x, gripper_pose.orientation.y, gripper_pose.orientation.z,
+  };
+  model_->SetWorldPose(pose);
   for (auto pair : enumerate(model_->GetJoints())) {
-    auto const [i, joint] = pair;
+    auto const &[i, joint] = pair;
     if (i < req.joint_angles.size()) {
       joint->SetPosition(0, req.joint_angles[i]);
     }
@@ -159,7 +165,7 @@ bool MultiLinkBotModelPlugin::SetRopeConfigCallback(peter_msgs::SetRopeConfigura
   return true;
 }
 
-void MultiLinkBotModelPlugin::QueueThread()
+void RopePlugin::QueueThread()
 {
   double constexpr timeout = 0.01;
   while (ros_node_.ok()) {
@@ -167,7 +173,7 @@ void MultiLinkBotModelPlugin::QueueThread()
   }
 }
 
-MultiLinkBotModelPlugin::~MultiLinkBotModelPlugin()
+RopePlugin::~RopePlugin()
 {
   queue_.clear();
   queue_.disable();
@@ -176,5 +182,5 @@ MultiLinkBotModelPlugin::~MultiLinkBotModelPlugin()
 }
 
 // Register this plugin with the simulator
-GZ_REGISTER_MODEL_PLUGIN(MultiLinkBotModelPlugin)
+GZ_REGISTER_MODEL_PLUGIN(RopePlugin)
 }  // namespace gazebo

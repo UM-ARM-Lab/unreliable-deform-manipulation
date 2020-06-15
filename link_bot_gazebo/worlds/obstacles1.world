@@ -7,6 +7,13 @@
                 <pose frame=''>0 0 1.02 0 1.565065 1.565065</pose>
             </camera>
         </gui>
+        <physics name="ode" type="ode">
+            <ode>
+                <constraints>
+                    <contact_max_correcting_vel>0</contact_max_correcting_vel>
+                </constraints>
+            </ode>
+        </physics>
         <include>
             <uri>model://victor_table_plane</uri>
         </include>

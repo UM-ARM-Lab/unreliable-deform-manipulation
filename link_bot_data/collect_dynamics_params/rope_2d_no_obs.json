@@ -1,0 +1,20 @@
+{
+  "extent": [
+    -1,
+    1,
+    -1,
+    1,
+    0,
+    0.01
+  ],
+  "res": 0.01,
+  "max_step_size": 0.001,
+  "dt": 1.0,
+  "steps_per_traj": 10,
+  "movable_obstacles": {
+  },
+  "trajs_per_file": 16,
+  "no_obstacles": false
+}
+
+

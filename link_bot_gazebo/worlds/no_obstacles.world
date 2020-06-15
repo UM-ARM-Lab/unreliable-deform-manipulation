@@ -21,14 +21,10 @@
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
         <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
         <physics name="ode" type="ode">
-            <real_time_update_rate>1000</real_time_update_rate>
             <ode>
-                <solver>
-                    <type>quick</type>
-                    <friction_model>cone_model</friction_model>
-                </solver>
                 <constraints>
-                    <contact_surface_layer>0.002</contact_surface_layer>
+                    <contact_max_correcting_vel>0</contact_max_correcting_vel>
+                    <contact_surface_layer>0.005</contact_surface_layer>
                 </constraints>
             </ode>
         </physics>

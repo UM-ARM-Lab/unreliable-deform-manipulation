@@ -26,11 +26,11 @@
 
 namespace gazebo {
 
-class MultiLinkBotModelPlugin : public ModelPlugin {
+class RopePlugin : public ModelPlugin {
  public:
   void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/) override;
 
-  ~MultiLinkBotModelPlugin() override;
+  ~RopePlugin() override;
 
   bool StateServiceCallback(peter_msgs::LinkBotStateRequest &req, peter_msgs::LinkBotStateResponse &res);
 

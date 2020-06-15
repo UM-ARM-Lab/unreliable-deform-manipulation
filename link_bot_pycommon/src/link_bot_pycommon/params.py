@@ -25,7 +25,3 @@ class CollectDynamicsParams:
     movable_obstacles: Dict[str, Dict[str, List[float]]]
     trajs_per_file: int
     no_obstacles: bool
-    goal_extent: np.array
-    goal_radius_m: Optional[float]
-    reset_robot: Optional[List[float]]
-    reset_world: Optional[bool]

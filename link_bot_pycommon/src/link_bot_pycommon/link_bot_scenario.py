@@ -5,68 +5,104 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
+import rospy
+from geometry_msgs.msg import Pose
 from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_arrow, update_arrow
-from link_bot_pycommon.collision_checking import batch_out_of_bounds_tf
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.params import CollectDynamicsParams
+from link_bot_pycommon.pycommon import quaternion_from_euler
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
-from peter_msgs.msg import Action
+from peter_msgs.srv import Position3DAction, Position3DActionRequest, SetRopeConfiguration, Position3DEnableRequest, \
+    SetRopeConfigurationRequest
+from std_srvs.srv import Empty
 
 
 class LinkBotScenario(ExperimentScenario):
+    def __init__(self):
+        super().__init__()
+        object_name = 'link_bot'
+        self.set_srv = rospy.ServiceProxy(f"{object_name}/set", Position3DAction)
+        self.stop_object_srv = rospy.ServiceProxy(f"{object_name}/stop", Empty)
+        self.object_enable_srv = rospy.ServiceProxy(f"{object_name}/enable", Empty)
+        self.get_object_srv = rospy.ServiceProxy(f"{object_name}/get", Empty)
+        self.set_rope_config_srv = rospy.ServiceProxy("set_rope_config", SetRopeConfiguration)
+
+        # self.movable_object_names = movable_object_names
+        # self.movable_object_services = {}
+        # for object_name in self.movable_object_names:
+        #     self.movable_object_services[object_name] = {
+        #         'enable': rospy.ServiceProxy(f'{object_name}/enable', Position3DEnable),
+        #         'get_position': rospy.ServiceProxy(f'{object_name}/get', GetPosition3D),
+        #         'action': rospy.ServiceProxy(f'{object_name}/set', Position3DAction),
+        #         'stop': rospy.ServiceProxy(f'{object_name}/stop', Empty),
+        #     }
+
+    def enable_object(self):
+        enable_object = Position3DEnableRequest()
+        enable_object.enable = True
+        self.object_enable_srv(enable_object)
+
+    def execute_action(self, action: Dict):
+        req = Position3DActionRequest()
+        req.position.x = action['position'][0]
+        req.position.y = action['position'][1]
+        req.position.z = action['position'][2]
+        req.timeout = action['timeout'][0]
+        _ = self.set_srv(req)
+
+    def reset_rope(self, x, y, yaw, joint_angles):
+        gripper_pose = Pose()
+        gripper_pose.position.x = x
+        gripper_pose.position.y = y
+        q = quaternion_from_euler(0, 0, yaw)
+        gripper_pose.orientation.x = q[0]
+        gripper_pose.orientation.y = q[1]
+        gripper_pose.orientation.z = q[2]
+        gripper_pose.orientation.w = q[3]
+        req = SetRopeConfigurationRequest()
+        req.gripper_poses.append(gripper_pose)
+        req.joint_angles.extend(joint_angles)
+        self.set_rope_config_srv(req)
+
+    def nudge(self):
+        self.execute_action({
+            'position': [np.random.randn(), np.random.randn(), 0],
+            'timeout': [0.5],
+        })
 
     @staticmethod
-    def random_delta_pos(action_rng, max_delta_pos):
-        delta_pos = action_rng.uniform(0, max_delta_pos)
-        direction = action_rng.uniform(-np.pi, np.pi)
-        dx = np.cos(direction) * delta_pos
-        dy = np.sin(direction) * delta_pos
-        return dx, dy
+    def random_pos(action_rng: np.random.RandomState, environment):
+        x_min, x_max, y_min, y_max, z_min, z_max = environment['full_env/extent']
+        pos = action_rng.uniform([x_min, y_min, z_min], [x_max, y_max, z_max])
+        return pos
 
     @staticmethod
     def sample_action(environment: Dict,
                       service_provider,
                       state,
-                      last_action: Action,
+                      last_action: Optional[Dict],
                       params: CollectDynamicsParams,
                       action_rng):
-        max_delta_pos = service_provider.get_max_speed() * params.dt
-        new_action = Action()
-        while True:
-            # sample the previous action with 80% probability
-            # we implicit use a dynamics model for the gripper here, which in this case is identity linear dynamics
-            if last_action is not None and action_rng.uniform(0, 1) < 0.80:
-                dx = last_action.action[0]
-                dy = last_action.action[1]
-            else:
-                dx, dy = LinkBotScenario.random_delta_pos(action_rng, max_delta_pos)
-
-            # check that the gripper will not be out of bounds
-            out_of_bounds = batch_out_of_bounds_tf(environment,
-                                                   tf.constant([state['gripper'][0] + dx]),
-                                                   tf.constant([state['gripper'][1] + dy]))
-            if out_of_bounds:
-                # nope try again. sample new random action
-                last_action = None
-            else:
-                break
-
-        new_action.action = [dx, dy]
-        new_action.max_time_per_step = params.dt
-        return new_action
+        # sample the previous action with 80% probability, this improves exploration
+        if last_action is not None and action_rng.uniform(0, 1) < 0.80:
+            return last_action
+        else:
+            pos = LinkBotScenario.random_pos(action_rng, environment)
+            return {
+                'position': pos,
+                'timeout': [params.dt],
+            }
 
     @staticmethod
-    def plot_state_simple(ax: plt.Axes,
-                          state: Dict[str, np.ndarray],
-                          color,
-                          label=None,
-                          **kwargs):
+    def plot_state_simple(ax, state: Dict, **kwargs):
         link_bot_points = np.reshape(state['link_bot'], [-1, 2])
         x = link_bot_points[0, 0]
         y = link_bot_points[0, 1]
+        color = kwargs.get('color')
+        label = kwargs.get('label')
         scatt = ax.scatter(x, y, c=color, label=label, **kwargs)
         return scatt
 
@@ -277,6 +313,7 @@ class LinkBotScenario(ExperimentScenario):
         :param state: Dict of batched states
         :return:
         """
+        link_bot_state = None
         if 'link_bot' in state:
             link_bot_state = state['link_bot']
         elif add_planned('link_bot') in state:

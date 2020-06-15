@@ -4,6 +4,7 @@ import os
 import pathlib
 import sys
 from time import perf_counter
+from typing import Dict
 
 import numpy as np
 import tensorflow as tf
@@ -19,13 +20,16 @@ from link_bot_pycommon.params import CollectDynamicsParams, Environment
 from link_bot_pycommon.ros_pycommon import get_states_dict
 
 
+# TODO: make this a class, to reduce number of arguments passed
 def generate_traj(scenario: ExperimentScenario,
                   params: CollectDynamicsParams,
                   service_provider,
                   traj_idx: int,
                   global_t_step: int,
                   action_rng: np.random.RandomState,
-                  verbose: int):
+                  verbose: int,
+                  action_description: Dict,
+                  states_description: Dict):
     if params.no_obstacles:
         rows = int(params.full_env_h_m // params.res)
         cols = int(params.full_env_w_m // params.res)
@@ -42,26 +46,34 @@ def generate_traj(scenario: ExperimentScenario,
                                                                   robot_name=scenario.robot_name())
 
     feature = dict_of_float_tensors_to_bytes_feature(environment)
+    feature['traj_idx'] = float_tensor_to_bytes_feature(traj_idx)
 
-    action_msg = None
+    action_dict = None
+    actions = {k: [] for k in action_description.keys()}
+    states = {k: [] for k in states_description.keys()}
+    time_indices = []
     for time_idx in range(params.steps_per_traj):
         state_dict = get_states_dict(service_provider)
-        action_msg = scenario.sample_action(environment=environment,
-                                            service_provider=service_provider,
-                                            state=state_dict,
-                                            last_action=action_msg,
-                                            params=params,
-                                            action_rng=action_rng)
+        action_dict = scenario.sample_action(environment=environment,
+                                             service_provider=service_provider,
+                                             state=state_dict,
+                                             last_action=action_dict,
+                                             params=params,
+                                             action_rng=action_rng)
 
-        feature['{}/action'.format(time_idx)] = float_tensor_to_bytes_feature(action_msg.action)
-        for name, state_dict in state_dict.items():
-            feature['{}/{}'.format(time_idx, name)] = float_tensor_to_bytes_feature(state_dict)
-        feature['{}/traj_idx'.format(time_idx)] = float_tensor_to_bytes_feature(traj_idx)
-        feature['{}/time_idx'.format(time_idx)] = float_tensor_to_bytes_feature(time_idx)
+        for action_name, action in action_dict.items():
+            actions[action_name].append(action)
+        for state_name, state in state_dict.items():
+            states[state_name].append(state)
+        time_indices.append(time_idx)
 
-        service_provider.execute_action(action_msg)
+        scenario.execute_action(action_dict)
 
         global_t_step += 1
+
+    feature.update(dict_of_float_tensors_to_bytes_feature(states))
+    feature.update(dict_of_float_tensors_to_bytes_feature(actions))
+    feature['time_indices'] = float_tensor_to_bytes_feature(time_indices)
 
     if verbose:
         print(Fore.GREEN + "Trajectory {} Complete".format(traj_idx) + Fore.RESET)
@@ -84,14 +96,13 @@ def generate_trajs(service_provider,
                    args,
                    full_output_directory,
                    env_rng: np.random.RandomState,
-                   action_rng: np.random.RandomState):
+                   action_rng: np.random.RandomState,
+                   action_description: Dict,
+                   states_description: Dict):
     examples = np.ndarray([params.trajs_per_file], dtype=object)
     global_t_step = 0
     last_record_t = perf_counter()
     for traj_idx in range(args.trajs):
-        if params.reset_robot is not None or params.reset_world:
-            service_provider.reset_world(args.verbose, reset_robot=params.reset_robot)
-
         # Might not do anything, depends on args
         rearrange_environment(service_provider, params, env_rng)
 
@@ -102,7 +113,9 @@ def generate_trajs(service_provider,
                                                traj_idx=traj_idx,
                                                global_t_step=global_t_step,
                                                action_rng=action_rng,
-                                               verbose=args.verbose)
+                                               verbose=args.verbose,
+                                               action_description=action_description,
+                                               states_description=states_description)
         current_record_traj_idx = traj_idx % params.trajs_per_file
         examples[current_record_traj_idx] = example
 
@@ -140,7 +153,7 @@ def generate(service_provider, params: CollectDynamicsParams, args):
         os.mkdir(full_output_directory)
 
     states_description = service_provider.get_states_description()
-    n_action = service_provider.get_n_action()
+    action_description = service_provider.get_action_description()
 
     if args.seed is None:
         args.seed = np.random.randint(0, 10000)
@@ -152,7 +165,7 @@ def generate(service_provider, params: CollectDynamicsParams, args):
             'n_trajs': args.trajs,
             'data_collection_params': params.to_json(),
             'states_description': states_description,
-            'n_action': n_action,
+            'action_description': action_description,
             'scenario': args.scenario,
         }
         json.dump(options, of, indent=2)
@@ -163,7 +176,14 @@ def generate(service_provider, params: CollectDynamicsParams, args):
 
     service_provider.setup_env(verbose=args.verbose,
                                real_time_rate=args.real_time_rate,
-                               max_step_size=params.max_step_size,
-                               reset_robot=params.reset_robot)
+                               max_step_size=params.max_step_size)
 
-    generate_trajs(service_provider, scenario, params, args, full_output_directory, env_rng, action_rng)
+    generate_trajs(service_provider=service_provider,
+                   scenario=scenario,
+                   params=params,
+                   args=args,
+                   full_output_directory=full_output_directory,
+                   env_rng=env_rng,
+                   action_rng=action_rng,
+                   action_description=action_description,
+                   states_description=states_description)

@@ -15,7 +15,7 @@ def batch_out_of_bounds_tf(environment: Dict,
     origin = environment['full_env/origin']
     res = environment['full_env/res']
     env = environment['full_env/env']
-    h, w = env.shape
+    h, w, _ = env.shape
     gripper_rows, gripper_cols = batch_point_to_idx_tf(xs, ys, res, origin)
     out_of_bounds = tf.reduce_any(gripper_rows >= h)
     out_of_bounds = out_of_bounds or tf.reduce_any(gripper_rows < 0)
