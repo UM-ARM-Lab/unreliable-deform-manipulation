@@ -1,12 +1,27 @@
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
+import rospy
+from mps_shape_completion_msgs.msg import OccupancyStamped
+from std_msgs.msg import MultiArrayDimension, Float32MultiArray
+
 
 def indeces_to_point(rowcols, resolution, origin):
     return (rowcols - origin) * resolution
+
+
+def idx_to_point_3d(row: int,
+                    col: int,
+                    channel: int,
+                    resolution: float,
+                    origin: np.ndarray):
+    y = (row - origin[0]) * resolution
+    x = (col - origin[1]) * resolution
+    z = (channel - origin[2]) * resolution
+    return np.array([x, y, z])
 
 
 def idx_to_point(row: int,
@@ -43,6 +58,40 @@ def center_point_to_origin_indices(h_rows: int,
     return np.array([int(-env_origin_x / res), int(-env_origin_y / res)])
 
 
+def compute_extent_3d(rows: int,
+                      cols: int,
+                      channels: int,
+                      resolution: float):
+    """ assumes the origin is in the center """
+    origin = np.array([rows // 2, cols // 2, channels // 2], np.int32)
+    xmin, ymin, zmin = idx_to_point_3d(0, 0, 0, resolution, origin)
+    xmax, ymax, zmax = idx_to_point_3d(rows, cols, channels, resolution, origin)
+    return np.array([xmin, xmax, ymin, ymax, zmin, zmax], dtype=np.float32)
+
+
+def environment_to_occupancy_msg(environment: Dict) -> OccupancyStamped:
+    occupancy = Float32MultiArray()
+    env = environment['full_env/env']
+    occupancy.data = env.astype(np.float32).flatten().tolist()
+    h_rows, w_cols, c_channels = env.shape
+    occupancy.layout.dim.append(MultiArrayDimension(label='x', size=h_rows, stride=h_rows * w_cols * c_channels))
+    occupancy.layout.dim.append(MultiArrayDimension(label='y', size=w_cols, stride=w_cols * c_channels))
+    occupancy.layout.dim.append(MultiArrayDimension(label='z', size=c_channels, stride=c_channels))
+    msg = OccupancyStamped()
+    msg.occupancy = occupancy
+    msg.scale = environment['full_env/res']
+    msg.header.stamp = rospy.Time.now()
+    msg.header.frame_id = 'world'
+    min_x, max_x, min_y, max_y, min_z, max_z = environment['full_env/extent']
+    cx = (max_x - min_x) / 2
+    cy = (max_y - min_y) / 2
+    cz = (max_z - min_z) / 2
+    msg.center.x = cx
+    msg.center.y = cy
+    msg.center.z = cz
+    return msg
+
+
 def compute_extent(rows: int,
                    cols: int,
                    resolution: float,
@@ -60,9 +109,9 @@ def compute_extent(rows: int,
 
 
 def batch_point_to_idx_tf(x,
-                       y,
-                       resolution: float,
-                       origin):
+                          y,
+                          resolution: float,
+                          origin):
     col = tf.cast(x / resolution + origin[1], tf.int64)
     row = tf.cast(y / resolution + origin[0], tf.int64)
     return row, col

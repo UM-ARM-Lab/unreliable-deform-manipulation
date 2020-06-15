@@ -6,6 +6,7 @@
 #include <peter_msgs/ModelsPoses.h>
 #include <peter_msgs/Position3DAction.h>
 #include <peter_msgs/Position3DEnable.h>
+#include <peter_msgs/ActionSpaceDescription.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
@@ -36,6 +37,8 @@ class Position3dPlugin : public ModelPlugin {
 
   bool GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs::GetPosition3DResponse &res);
 
+  bool GetActionSpace(peter_msgs::ActionSpaceDescriptionRequest &req, peter_msgs::ActionSpaceDescriptionResponse &res);
+
  private:
   void QueueThread();
 
@@ -52,6 +55,7 @@ class Position3dPlugin : public ModelPlugin {
   ros::ServiceServer action_service_;
   ros::ServiceServer stop_service_;
   ros::ServiceServer get_position_service_;
+  ros::ServiceServer action_space_service_;
   double kP_pos_{0.0};
   double kD_pos_{0.0};
   double max_vel_{0.0};

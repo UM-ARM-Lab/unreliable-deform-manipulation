@@ -10,12 +10,12 @@ import tensorflow as tf
 from colorama import Fore
 
 import rospy
-from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory
+from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory, \
+    dict_of_float_tensors_to_bytes_feature
 from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_pycommon.link_bot_sdf_utils import OccupancyData, env_from_occupancy_data
-from link_bot_pycommon.params import FullEnvParams, SimParams, CollectDynamicsParams
+from link_bot_pycommon.params import CollectDynamicsParams, Environment
 from link_bot_pycommon.ros_pycommon import get_states_dict
 
 
@@ -29,29 +29,23 @@ def generate_traj(scenario: ExperimentScenario,
     if params.no_obstacles:
         rows = int(params.full_env_h_m // params.res)
         cols = int(params.full_env_w_m // params.res)
-        full_env_origin = np.array([rows // 2, cols // 2], dtype=np.int32)
-        data = np.zeros([rows, cols], dtype=np.float32)
-        full_env_data = OccupancyData(data, params.res, full_env_origin)
+        channels = int(params.full_env_c_m // params.res)
+        origin = np.array([rows // 2, cols // 2, channels // 2], dtype=np.int32)
+        env = np.zeros([rows, cols, channels], dtype=np.float32)
+        environment = Environment(env=env, res=params.res, origin=origin, extent=params.extent)
     else:
         # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
         # over the course of this function
-        full_env_data = ros_pycommon.get_occupancy_data(env_w_m=params.full_env_w_m,
-                                                        env_h_m=params.full_env_h_m,
-                                                        res=params.res,
-                                                        service_provider=service_provider,
-                                                        robot_name=scenario.robot_name())
+        environment = ros_pycommon.get_environment_for_extents_3d(extent_3d=params.extent,
+                                                                  res=params.res,
+                                                                  service_provider=service_provider,
+                                                                  robot_name=scenario.robot_name())
 
-    feature = {
-        'full_env/env': float_tensor_to_bytes_feature(full_env_data.data),
-        'full_env/extent': float_tensor_to_bytes_feature(full_env_data.extent),
-        'full_env/origin': float_tensor_to_bytes_feature(full_env_data.origin),
-        'full_env/res': float_tensor_to_bytes_feature(full_env_data.resolution),
-    }
+    feature = dict_of_float_tensors_to_bytes_feature(environment)
 
     action_msg = None
     for time_idx in range(params.steps_per_traj):
         state_dict = get_states_dict(service_provider)
-        environment = env_from_occupancy_data(full_env_data)
         action_msg = scenario.sample_action(environment=environment,
                                             service_provider=service_provider,
                                             state=state_dict,
@@ -145,13 +139,6 @@ def generate(service_provider, params: CollectDynamicsParams, args):
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)
 
-    full_env_rows = int(params.full_env_h_m / params.res)
-    full_env_cols = int(params.full_env_w_m / params.res)
-    full_env_params = FullEnvParams(h_rows=full_env_rows, w_cols=full_env_cols, res=params.res)
-    sim_params = SimParams(real_time_rate=args.real_time_rate,
-                           max_step_size=params.max_step_size,
-                           movable_obstacles=params.movable_obstacles)
-
     states_description = service_provider.get_states_description()
     n_action = service_provider.get_n_action()
 
@@ -162,12 +149,8 @@ def generate(service_provider, params: CollectDynamicsParams, args):
     with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
         options = {
             'seed': args.seed,
-            'dt': params.dt,
             'n_trajs': args.trajs,
-            'max_step_size': params.max_step_size,
-            'full_env_params': full_env_params.to_json(),
-            'sim_params': sim_params.to_json(),
-            'sequence_length': params.steps_per_traj,
+            'data_collection_params': params.to_json(),
             'states_description': states_description,
             'n_action': n_action,
             'scenario': args.scenario,
@@ -181,6 +164,6 @@ def generate(service_provider, params: CollectDynamicsParams, args):
     service_provider.setup_env(verbose=args.verbose,
                                real_time_rate=args.real_time_rate,
                                max_step_size=params.max_step_size,
-                               reset_robot=[0, 0])
+                               reset_robot=params.reset_robot)
 
     generate_trajs(service_provider, scenario, params, args, full_output_directory, env_rng, action_rng)

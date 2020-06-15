@@ -77,6 +77,10 @@ def deserialize(parsed_dataset, n_parallel_calls=None):
     return deserialized_dataset
 
 
+def dict_of_float_tensors_to_bytes_feature(d):
+    return {k: float_tensor_to_bytes_feature(v) for k, v in d.items()}
+
+
 def float_tensor_to_bytes_feature(value):
     return bytes_feature(tf.io.serialize_tensor(tf.convert_to_tensor(value, dtype=tf.float32)).numpy())
 

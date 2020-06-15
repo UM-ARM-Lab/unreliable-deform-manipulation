@@ -5,7 +5,6 @@
 #include <cstdio>
 #include <gazebo/common/Time.hh>
 #include <gazebo/common/Timer.hh>
-#include <ignition/math/Vector3.hh>
 #include <memory>
 #include <sstream>
 
@@ -86,6 +85,7 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(peter_msgs::LinkBotStateReque
       geometry_msgs::Point pt;
       pt.x = link->WorldPose().Pos().X();
       pt.y = link->WorldPose().Pos().Y();
+      pt.z = link->WorldPose().Pos().Z();
       res.points.emplace_back(pt);
       res.link_names.emplace_back(name);
     }
@@ -95,6 +95,7 @@ bool MultiLinkBotModelPlugin::StateServiceCallback(peter_msgs::LinkBotStateReque
   geometry_msgs::Point pt;
   pt.x = link->WorldPose().Pos().X();
   pt.y = link->WorldPose().Pos().Y();
+  pt.z = link->WorldPose().Pos().Z();
   res.points.emplace_back(pt);
   res.link_names.emplace_back("head");
 
@@ -116,10 +117,13 @@ bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequ
     peter_msgs::NamedPoint named_point;
     float const x = link->WorldPose().Pos().X();
     float const y = link->WorldPose().Pos().Y();
+    float const z = link->WorldPose().Pos().Z();
     state_vector.push_back(x);
     state_vector.push_back(y);
+    state_vector.push_back(z);
     named_point.point.x = x;
     named_point.point.y = y;
+    named_point.point.z = z;
     named_point.name = link_name;
     res.object.points.emplace_back(named_point);
   }
@@ -129,10 +133,13 @@ bool MultiLinkBotModelPlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequ
   geometry_msgs::Point pt;
   float const x = link->WorldPose().Pos().X();
   float const y = link->WorldPose().Pos().Y();
+  float const z = link->WorldPose().Pos().Z();
   state_vector.push_back(x);
   state_vector.push_back(y);
+  state_vector.push_back(z);
   head_point.point.x = x;
   head_point.point.y = y;
+  head_point.point.z = z;
   res.object.state_vector = state_vector;
   head_point.name = "head";
   res.object.points.emplace_back(head_point);

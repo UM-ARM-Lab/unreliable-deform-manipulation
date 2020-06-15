@@ -1,35 +1,25 @@
 #!/usr/bin/env python
 # noinspection PyUnresolvedReferences
-import timeit
-
-import matplotlib.pyplot as plt
-import numpy as np
+import rospy
 
 import rospy
 from link_bot_gazebo import gazebo_services
-from link_bot_pycommon.ros_pycommon import get_local_occupancy_data
+from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
+from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
+from mps_shape_completion_msgs.msg import OccupancyStamped
 
-rospy.init_node("testing")
+rospy.init_node("test_occupancy_service")
+pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10)
 
 services = gazebo_services.GazeboServices([])
 
-h_rows = 100
-w_cols = 100
-res = 0.01
-
+res = 0.03
 while True:
-    occupancy_data = get_local_occupancy_data(rows=h_rows,
-                                              cols=w_cols,
-                                              res=res,
-                                              center_point=np.array([0.6, 0.6]),
-                                              service_provider=services,
-                                              robot_name='car')
-
-    plt.figure()
-    plt.imshow(occupancy_data.image, extent=occupancy_data.extent)
-    ax = plt.gca()
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_xticklabels([])
-    ax.set_yticklabels([])
-    plt.show()
+    environment = get_environment_for_extents_3d([-1, 1, -1, 1, 0, 0.25],
+                                                 res=res,
+                                                 service_provider=services,
+                                                 robot_name='link_bot')
+    msg = environment_to_occupancy_msg(environment)
+    print(msg.header)
+    pub.publish(msg)
+    rospy.sleep(1.0)

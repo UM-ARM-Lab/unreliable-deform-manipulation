@@ -116,10 +116,10 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
   link_ = model_->GetLink(link_name_);
   if (!link_) {
-    ROS_ERROR_NAMED("position_3d", "link not found");
+    gzerr << "position_3d link not found\n";
     const std::vector<physics::LinkPtr> &links = model_->GetLinks();
     for (unsigned i = 0; i < links.size(); i++) {
-      ROS_ERROR_STREAM_NAMED("position_3d", " -- Link " << i << ": " << links[i]->GetName());
+      gzerr << "position_3d -- Link " << i << ": " << links[i]->GetName() << std::endl;
     }
     return;
   }
@@ -129,7 +129,6 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   for (const auto &link : links) {
     total_mass_ += link->GetInertial()->Mass();
   }
-  gzerr << total_mass_ << '\n';
 
   auto stop_bind = [this](std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res) { return OnStop(req, res); };
   auto stop_so = create_service_options(std_srvs::Empty, "stop", stop_bind);
@@ -149,11 +148,16 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   };
   auto get_pos_so = create_service_options(peter_msgs::GetPosition3D, "get", get_pos_bind);
 
+  auto action_space_bind = [this](peter_msgs::ActionSpaceDescriptionRequest &req,
+                                  peter_msgs::ActionSpaceDescriptionResponse &res) { return GetActionSpace(req, res); };
+  auto action_space_so = create_service_options(peter_msgs::ActionSpaceDescription, "actions", action_space_bind);
+
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   enable_service_ = ros_node_->advertiseService(enable_so);
   action_service_ = ros_node_->advertiseService(pos_action_so);
   stop_service_ = ros_node_->advertiseService(stop_so);
   get_position_service_ = ros_node_->advertiseService(get_pos_so);
+  action_space_service_ = ros_node_->advertiseService(action_space_so);
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
 
@@ -166,8 +170,7 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   auto update = [this](common::UpdateInfo const &info) { OnUpdate(info); };
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
 
-  //  target_position_ = link_->WorldPose().Pos();
-  target_position_ = {0, 0, 0.6};
+  target_position_ = link_->WorldPose().Pos();
 }
 
 void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
@@ -229,6 +232,25 @@ bool Position3dPlugin::GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs:
   res.pos.x = pos.X();
   res.pos.y = pos.Y();
   res.pos.z = pos.Z();
+  return true;
+}
+
+bool Position3dPlugin::GetActionSpace(peter_msgs::ActionSpaceDescriptionRequest &req,
+                                      peter_msgs::ActionSpaceDescriptionResponse &res)
+{
+  peter_msgs::SubspaceDescription action_space;
+  action_space.dimensions = 3;
+  action_space.name = "position_3d";
+  // pretend it's a box constraint, so is 0.15 is the max speed, the max along any dimension to remain in that
+  // sphere is ~0.087
+  auto const dimension_wise_max = this->max_vel_ / std::sqrt(3);
+  action_space.lower_bounds.push_back(-dimension_wise_max);
+  action_space.lower_bounds.push_back(-dimension_wise_max);
+  action_space.lower_bounds.push_back(-dimension_wise_max);
+  action_space.upper_bounds.push_back(dimension_wise_max);
+  action_space.upper_bounds.push_back(dimension_wise_max);
+  action_space.upper_bounds.push_back(dimension_wise_max);
+  res.subspaces.push_back(action_space);
   return true;
 }
 

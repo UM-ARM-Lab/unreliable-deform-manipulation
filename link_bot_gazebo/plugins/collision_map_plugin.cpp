@@ -29,21 +29,8 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
   }
 
   auto get_occupancy = [&](peter_msgs::ComputeOccupancyRequest &req, peter_msgs::ComputeOccupancyResponse &res) {
-    // TODO: make this faster
-    if (req.request_new) {
-      compute_sdf(req.h_rows, req.w_cols, req.center, req.resolution, req.robot_name, req.min_z, req.max_z);
-    }
-    res.h_rows = req.h_rows;
-    res.w_cols = req.w_cols;
-    res.res = std::vector<float>(2, req.resolution);
+    compute_occupancy_grid(req.h_rows, req.w_cols, req.c_channels, req.center, req.resolution, req.robot_name);
 
-    auto const grid_00_x = req.center.x - static_cast<float>(req.w_cols) * req.resolution / 2.0;
-    auto const grid_00_y = req.center.y - static_cast<float>(req.h_rows) * req.resolution / 2.0;
-    auto const origin_x_col = static_cast<int>(-grid_00_x / req.resolution);
-    auto const origin_y_row = static_cast<int>(-grid_00_y / req.resolution);
-
-    std::vector<int> origin_vec{origin_y_row, origin_x_col};
-    res.origin = origin_vec;
     auto const grid_float = [&]() {
       auto const &data = grid_.GetImmutableRawData();
       std::vector<float> flat;
@@ -61,6 +48,10 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
     col_dim.label = "col";
     col_dim.size = grid_.GetNumYCells();
     col_dim.stride = 1;
+    std_msgs::MultiArrayDimension channel_dim;
+    channel_dim.label = "channel";
+    channel_dim.size = grid_.GetNumZCells();
+    channel_dim.stride = 1;
     return true;
   };
 
@@ -92,41 +83,47 @@ void CollisionMapPlugin::QueueThread()
   }
 }
 
-void CollisionMapPlugin::compute_sdf(int64_t h_rows, int64_t w_cols, geometry_msgs::Point center, float resolution,
-                                     std::string const &robot_name, float min_z, float max_z, bool verbose)
+void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels,
+                                                geometry_msgs::Point center, float resolution,
+                                                std::string const &robot_name, bool verbose)
 {
-  Eigen::Isometry3d origin_transform = Eigen::Isometry3d::Identity();
   auto const x_width = resolution * w_cols;
   auto const y_height = resolution * h_rows;
-  origin_transform.translation() = Eigen::Vector3d{center.x - x_width / 2, center.y - y_height / 2, 0};
-  // hard coded for 1-cell in Z
-  grid_ = sdf_tools::CollisionMapGrid(origin_transform, "/gazebo_world", resolution, w_cols, h_rows, 1l, oob_value);
+  auto const z_size = resolution * c_channels;
+  Eigen::Isometry3d origin_transform = Eigen::Isometry3d::Identity();
+  origin_transform.translation() =
+      Eigen::Vector3d{center.x - x_width / 2, center.y - y_height / 2, center.z - z_size / 2};
+
+  grid_ = sdf_tools::CollisionMapGrid(origin_transform, "/world", resolution, w_cols, h_rows, c_channels, oob_value);
   ignition::math::Vector3d start, end;
-  start.Z(max_z);
-  end.Z(min_z);
+  start.Z(5.0);
 
   std::string entityName;
   double dist{0};
 
   auto const t0 = std::chrono::steady_clock::now();
 
-
+  // lock physics engine will creating/testing collision
+  boost::recursive_mutex::scoped_lock lock(*engine_->GetPhysicsUpdateMutex());
   for (auto x_idx{0l}; x_idx < grid_.GetNumXCells(); ++x_idx) {
     for (auto y_idx{0l}; y_idx < grid_.GetNumYCells(); ++y_idx) {
-      auto const grid_location = grid_.GridIndexToLocation(x_idx, y_idx, 0);
-      start.X(grid_location(0));
-      end.X(grid_location(0));
-      start.Y(grid_location(1));
-      end.Y(grid_location(1));
-      auto ray_shape = engine_->CreateShape("ray", gazebo::physics::CollisionPtr());
-      auto ray = boost::dynamic_pointer_cast<gazebo::physics::RayShape>(ray_shape);
-      ray->SetPoints(start, end);
-      ray->GetIntersection(dist, entityName);
-      if (not entityName.empty() and (robot_name.empty() or entityName.find(robot_name) != 0)) {
-        grid_.SetValue(x_idx, y_idx, 0, occupied_value);
-      }
-      else {
-        grid_.SetValue(x_idx, y_idx, 0, unoccupied_value);
+      for (auto z_idx{0l}; z_idx < grid_.GetNumZCells(); ++z_idx) {
+        auto const grid_location = grid_.GridIndexToLocation(x_idx, y_idx, z_idx);
+        start.X(grid_location(0));
+        end.X(grid_location(0));
+        start.Y(grid_location(1));
+        end.Y(grid_location(1));
+        end.Z(grid_location(2));
+        auto ray_shape = engine_->CreateShape("ray", gazebo::physics::CollisionPtr());
+        auto ray = boost::dynamic_pointer_cast<gazebo::physics::RayShape>(ray_shape);
+        ray->SetPoints(start, end);
+        ray->GetIntersection(dist, entityName);
+        if (not entityName.empty() and (robot_name.empty() or entityName.find(robot_name) != 0)) {
+          grid_.SetValue(x_idx, y_idx, z_idx, occupied_value);
+        }
+        else {
+          grid_.SetValue(x_idx, y_idx, z_idx, unoccupied_value);
+        }
       }
     }
   }

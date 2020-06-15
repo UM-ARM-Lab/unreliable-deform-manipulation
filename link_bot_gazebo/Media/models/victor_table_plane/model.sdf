@@ -18,7 +18,6 @@
                         </ode>
                     </friction>
                 </surface>
-                <max_contacts>50</max_contacts>
             </collision>
             <visual name="visual">
                 <cast_shadows>false</cast_shadows>

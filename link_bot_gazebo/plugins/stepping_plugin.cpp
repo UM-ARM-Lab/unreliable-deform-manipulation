@@ -36,10 +36,10 @@ class SteppingPlugin : public WorldPlugin {
     if (!ros::isInitialized()) {
       auto argc = 0;
       char **argv = nullptr;
-      ros::init(argc, argv, "linkbot_model_plugin", ros::init_options::NoSigintHandler);
+      ros::init(argc, argv, "stepping_plugin", ros::init_options::NoSigintHandler);
     }
 
-    ros_node_ = std::make_unique<ros::NodeHandle>("linkbot_model_plugin");
+    ros_node_ = std::make_unique<ros::NodeHandle>("stepping_plugin");
     auto cb = [&](peter_msgs::WorldControlRequest &req, peter_msgs::WorldControlResponse &res) {
       step_count_ = req.steps;
       msgs::WorldControl gz_msg;
