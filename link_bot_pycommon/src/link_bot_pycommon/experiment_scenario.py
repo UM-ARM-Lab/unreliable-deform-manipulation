@@ -1,3 +1,4 @@
+import multiprocessing
 from typing import Dict, Optional, List
 
 import matplotlib.pyplot as plt
@@ -10,8 +11,7 @@ from link_bot_data.visualization import plot_extents
 from link_bot_pycommon.animation_player import Player
 from link_bot_pycommon.pycommon import trim_reconverging
 from moonshine.moonshine_utils import remove_batch, numpify, dict_of_sequences_to_sequence_of_dicts_tf
-from peter_msgs.srv import GetPosition3DRequest, WorldControlRequest, Position3DEnableRequest, Position3DActionRequest
-from std_srvs.srv import EmptyRequest
+from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
 
 
 class ExperimentScenario:
@@ -366,53 +366,52 @@ class ExperimentScenario:
         return sample_object_position(rng, xy_range)
 
     @staticmethod
-    def get_movable_object_positions(movable_object_services: Dict):
+    def get_movable_object_positions(movable_objects_services: Dict):
         positions = {}
-        for object_name, services in movable_object_services.items():
+        for object_name, services in movable_objects_services.items():
             position_response = services['get_position'](GetPosition3DRequest())
             positions[object_name] = position_response
         return positions
 
     @staticmethod
-    def move_objects_randomly(env_rng, service_provider, movable_object_services):
-        random_object_positions = sample_object_positions(env_rng, movable_object_services.keys())
-        ExperimentScenario.move_objects(service_provider, movable_object_services, random_object_positions)
+    def move_objects_randomly(env_rng, service_provider, movable_objects_services, movable_objects):
+        random_object_positions = sample_object_positions(env_rng, movable_objects)
+        ExperimentScenario.move_objects(service_provider, movable_objects_services, random_object_positions)
 
     @staticmethod
-    def move_objects_to_positions(service_provider, movable_object_services: Dict, object_positions: Dict):
+    def move_objects_to_positions(service_provider, movable_objects_services: Dict, object_positions: Dict):
         object_moves = {}
         for name, (x, y) in object_positions.items():
             move = Vector3()
             move.x = x
             move.y = y
             object_moves[name] = move
-        return ExperimentScenario.move_objects(service_provider, movable_object_services, object_moves)
+        return ExperimentScenario.move_objects(service_provider, movable_objects_services, object_moves)
 
     @staticmethod
-    def move_objects(service_provider, movable_object_services: Dict, object_moves: Dict[str, Vector3]):
+    def move_objects(service_provider, movable_objects_services: Dict, object_moves: Dict[str, Vector3]):
+        # Move the objects, call services in parallel
+        ExperimentScenario.call_moves(movable_objects_services, object_moves)
+
         for object_name, pose in object_moves.items():
-            movable_object_services = movable_object_services[object_name]
+            movable_object_services = movable_objects_services[object_name]
             enable_req = Position3DEnableRequest()
-            enable_req.enable = True
+            enable_req.enable = False
             movable_object_services['enable'](enable_req)
 
-        # Move the objects
-        for object_name, position in object_moves.items():
-            movable_object_services = movable_object_services[object_name]
-            move_action_req = Position3DActionRequest()
-            move_action_req.position = position
-            movable_object_services['action'](move_action_req)
+    @staticmethod
+    def call_moves(movable_objects_services, object_moves):
+        with multiprocessing.Pool(len(object_moves)) as pool:
+            args = [(movable_objects_services[name], name, move) for name, move in object_moves.items()]
+            pool.map(func=ExperimentScenario.call_move, iterable=args)
 
-        # let the move actually occur
-        step = WorldControlRequest()
-        move_wait_duration = 5.00
-        step.steps = int(move_wait_duration / service_provider.max_step_size)
-        service_provider.world_control(step)  # this will block until stepping is complete
-
-        # stop the objects
-        for object_name, pose in object_moves.items():
-            movable_object_services = movable_object_services[object_name]
-            movable_object_services['stop'](EmptyRequest())
+    @staticmethod
+    def call_move(args):
+        movable_object_services, object_name, position = args
+        move_action_req = Position3DActionRequest()
+        move_action_req.position = position
+        move_action_req.timeout = 5.0
+        movable_object_services['action'](move_action_req)
 
 
 def sample_object_position(env_rng, xy_range: Dict) -> Vector3:
@@ -424,6 +423,6 @@ def sample_object_position(env_rng, xy_range: Dict) -> Vector3:
     return position
 
 
-def sample_object_positions(env_rng, movable_objects) -> Dict[str, Vector3]:
+def sample_object_positions(env_rng, movable_objects: Dict) -> Dict[str, Vector3]:
     random_object_positions = {name: sample_object_position(env_rng, xy_range) for name, xy_range in movable_objects.items()}
     return random_object_positions

@@ -11,9 +11,9 @@
   "max_step_size": 0.01,
   "dt": 1.0,
   "steps_per_traj": 50,
-  "trajs_per_file": 16,
-  "no_obstacles": false,
-  "movable_obstacles": {
+  "trajs_per_file": 32,
+  "no_objects": false,
+  "movable_objects": {
     "moving_box1": {
       "x": [
         -0.70,

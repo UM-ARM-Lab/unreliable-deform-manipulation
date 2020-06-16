@@ -52,10 +52,10 @@ def get_environment_for_extents_3d(extent,
                                    robot_name=robot_name)
     origin = np.array([env_h_rows // 2, env_w_cols // 2, env_c_channels // 2], np.int32)
     return {
-        'full_env/env': grid,
-        'full_env/res': res,
-        'full_env/origin': origin,
-        'full_env/extent': extent,
+        'env': grid,
+        'res': res,
+        'origin': origin,
+        'extent': extent,
     }
 
 

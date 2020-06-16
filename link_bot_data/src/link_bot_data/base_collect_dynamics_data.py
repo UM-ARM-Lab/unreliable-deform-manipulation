@@ -112,7 +112,7 @@ def generate_trajs(service_provider,
         }
 
     for traj_idx in range(args.trajs):
-        service_provider.move_objects_randomly(env_rng, service_provider, movable_object_services)
+        scenario.move_objects_randomly(env_rng, service_provider, movable_object_services, params.movable_objects)
 
         # Generate a new trajectory
         example, global_t_step = generate_traj(scenario=scenario,

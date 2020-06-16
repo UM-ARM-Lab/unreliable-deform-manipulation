@@ -9,8 +9,6 @@ class GazeboServices(Services):
         self.max_step_size = None
 
     def setup_env(self, verbose: int, real_time_rate: float, max_step_size: float):
-        self.wait(verbose)
-
         # set up physics
         get_physics_msg = GetPhysicsPropertiesRequest()
         current_physics = self.get_physics.call(get_physics_msg)

@@ -12,8 +12,8 @@
   "dt": 1.0,
   "steps_per_traj": 10,
   "trajs_per_file": 64,
-  "no_obstacles": true,
-  "movable_obstacles": {
+  "no_objects": true,
+  "movable_objects": {
   }
 }
 

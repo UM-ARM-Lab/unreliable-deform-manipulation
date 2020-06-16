@@ -90,7 +90,6 @@ class Position3dPlugin : public ModelPlugin {
   double total_mass_{0.0};
   std::string name_;
   bool gravity_compensation_{false};
-  ignition::math::Vector3d push_pos_{0, 0, 0};
   double z_integral_{0.0};
 };
 

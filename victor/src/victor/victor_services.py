@@ -22,7 +22,6 @@ class VictorServices(Services):
                   real_time_rate: float,
                   reset_gripper_to: Optional,
                   max_step_size: Optional[float] = None):
-        self.wait(verbose)
         self.reset_world(verbose, verbose, reset_gripper_to)
 
     def move_objects(self,

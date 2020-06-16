@@ -37,10 +37,6 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       name_ = model_->GetScopedName();
     }
 
-    if (sdf->HasElement("push_z")) {
-      push_pos_.Z(sdf->GetElement("push_z")->Get<double>());
-    }
-
     if (!sdf->HasElement("kP_pos")) {
       printf("using default kP_pos=%f\n", kP_pos_);
     }
@@ -237,8 +233,6 @@ void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
     auto const max_i = total_mass_ * model_->GetWorld()->Gravity().Length();
     auto const z_comp = kI_vel_ * z_integral_;
 
-    gzerr << force.Z () << " " << vel_error.Z() << " " << z_comp << '\n';
-
     if (vel_error.Z() < 0 and z_comp < max_i) {
       z_integral_ += -vel_error.Z();
     }
@@ -249,7 +243,7 @@ void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
   }
 
   if (enabled_) {
-    link_->AddForceAtRelativePosition(force, push_pos_);
+    link_->AddForce(force);
     link_->AddRelativeTorque({torque, 0, 0});
   }
 }

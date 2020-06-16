@@ -29,17 +29,6 @@ class Services:
         self.get_physics = rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('gazebo/set_physics_properties', SetPhysicsProperties)
 
-        self.services_to_wait_for = [
-            'reset',
-            'states_description',
-            'world_control',
-            'occupancy',
-            'gazebo/pause_physics',
-            'gazebo/unpause_physics',
-            'gazebo/get_physics_properties',
-            'gazebo/set_physics_properties',
-        ]
-
     def get_action_description(self):
         req = ActionSpaceDescriptionRequest()
         res = self.action_description(req)
@@ -74,16 +63,6 @@ class Services:
         stop_msg = TriggerVideoRecordingRequest()
         stop_msg.record = False
         self.record(stop_msg)
-
-    def wait(self, verbose):
-        if verbose >= 1:
-            print(Fore.CYAN + "Waiting for services..." + Fore.RESET)
-        for s in self.services_to_wait_for:
-            if verbose >= 3:
-                print("Waiting for {}".format(s))
-            rospy.wait_for_service(s)
-        if verbose >= 1:
-            print(Fore.CYAN + "Done waiting for services" + Fore.RESET)
 
     def setup_env(self, verbose: int, real_time_rate: float, max_step_size: float):
         raise NotImplementedError()
