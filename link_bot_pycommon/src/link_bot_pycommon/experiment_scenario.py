@@ -65,6 +65,15 @@ class ExperimentScenario:
     def plot_goal(ax, goal, color, label=None, **kwargs):
         raise NotImplementedError()
 
+    def plot_environment_rviz(self, data: Dict):
+        raise NotImplementedError()
+
+    def plot_state_rviz(self, data: Dict, **kwargs):
+        raise NotImplementedError()
+
+    def plot_action_rviz(self, data: Dict, **kwargs):
+        raise NotImplementedError()
+
     @staticmethod
     def state_to_points(state: Dict):
         raise NotImplementedError()

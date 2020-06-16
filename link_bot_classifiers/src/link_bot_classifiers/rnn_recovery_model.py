@@ -94,16 +94,16 @@ class RNNRecoveryModel(MyKerasModel):
         # this will produce images even for "null" data,
         # but are masked out in the RNN, and not actually used in the computation
         local_env, local_env_origin = get_local_env(center_point=local_env_center_point,
-                                                    full_env=environment['full_env/env'],
-                                                    full_env_origin=environment['full_env/origin'],
-                                                    res=environment['full_env/res'],
+                                                    full_env=environment['env'],
+                                                    full_env_origin=environment['origin'],
+                                                    res=environment['res'],
                                                     local_h_rows=self.local_env_h_rows,
                                                     local_w_cols=self.local_env_w_cols)
 
         concat_args = []
         for planned_state in start_states.values():
             planned_rope_image = raster_differentiable(state=planned_state,
-                                                       res=environment['full_env/res'],
+                                                       res=environment['res'],
                                                        origin=local_env_origin,
                                                        h=self.local_env_h_rows,
                                                        w=self.local_env_w_cols,

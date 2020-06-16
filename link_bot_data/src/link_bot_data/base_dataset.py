@@ -100,21 +100,3 @@ class BaseDataset:
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
         # No-Op
         return dataset
-
-
-def make_name_singular(feature_name):
-    if "/" in feature_name:
-        base_feature_name, postfix = feature_name.split("/")
-        if not base_feature_name.endswith("_s"):
-            raise ValueError("time-indexed feature name {} doesn't end with _s ".format(base_feature_name))
-        base_feature_name_singular = base_feature_name[:-2]
-        feature_name_singular = "{}/{}".format(base_feature_name_singular, postfix)
-        next_feature_name_singular = "{}_next/{}".format(base_feature_name_singular, postfix)
-    else:
-        base_feature_name = feature_name
-        if not base_feature_name.endswith("_s"):
-            raise ValueError("time-indexed feature name {} doesn't end with _s ".format(base_feature_name))
-        base_feature_name_singular = base_feature_name[:-2]
-        feature_name_singular = base_feature_name_singular
-        next_feature_name_singular = "{}_next".format(base_feature_name_singular)
-    return feature_name_singular, next_feature_name_singular

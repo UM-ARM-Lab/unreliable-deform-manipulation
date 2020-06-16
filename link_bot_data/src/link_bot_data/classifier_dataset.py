@@ -23,10 +23,10 @@ class ClassifierDataset(BaseDataset):
         self.cache_negative = False
 
         self.feature_names = [
-            'full_env/env',
-            'full_env/origin',
-            'full_env/extent',
-            'full_env/res',
+            'env',
+            'origin',
+            'extent',
+            'res',
             'traj_idx',
             'prediction_start_t',
             'classifier_start_t',

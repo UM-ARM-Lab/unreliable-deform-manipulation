@@ -101,9 +101,9 @@ def visualize_classifier_example(args,
 
 
 def transition_plot(example, label, title):
-    full_env = example['full_env/env'].numpy()
-    full_env_extent = example['full_env/extent'].numpy()
-    res = example['full_env/res'].numpy()
+    full_env = example['env'].numpy()
+    full_env_extent = example['extent'].numpy()
+    res = example['res'].numpy()
     state = example['link_bot'].numpy()
     action = example['action'].numpy()
     next_state = example['link_bot_next'].numpy()

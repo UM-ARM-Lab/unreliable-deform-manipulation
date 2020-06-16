@@ -121,9 +121,9 @@ class RNNImageClassifier(MyKerasModel):
         """
         actions_batch_time = tf.reshape(padded_actions, [-1] + padded_actions.shape.as_list()[2:])
         batch_and_time = batch_size * time
-        env_batch_time = tf.tile(environment['full_env/env'], [time, 1, 1])
-        env_origin_batch_time = tf.tile(environment['full_env/origin'], [time, 1])
-        env_res_batch_time = tf.tile(environment['full_env/res'], [time])
+        env_batch_time = tf.tile(environment['env'], [time, 1, 1])
+        env_origin_batch_time = tf.tile(environment['origin'], [time, 1])
+        env_res_batch_time = tf.tile(environment['res'], [time])
 
         # this will produce images even for "null" data,
         # but are masked out in the RNN, and not actually used in the computation

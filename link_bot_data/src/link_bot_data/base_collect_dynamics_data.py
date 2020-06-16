@@ -47,32 +47,33 @@ def generate_traj(scenario: ExperimentScenario,
     feature = dict_of_float_tensors_to_bytes_feature(environment)
     feature['traj_idx'] = float_tensor_to_bytes_feature(traj_idx)
 
-    action_dict = None
-    actions = {k: [] for k in action_description.keys()}
+    delta_position = None
+    actions = {'delta_position': []}
     states = {k: [] for k in states_description.keys()}
     time_indices = []
     for time_idx in range(params.steps_per_traj):
         state_dict = get_states_dict(service_provider)
-        action_dict = scenario.sample_action(environment=environment,
-                                             service_provider=service_provider,
-                                             state=state_dict,
-                                             last_action=action_dict,
-                                             params=params,
-                                             action_rng=action_rng)
+        delta_position = scenario.sample_action(environment=environment,
+                                                service_provider=service_provider,
+                                                state=state_dict,
+                                                last_action=delta_position,
+                                                params=params,
+                                                action_rng=action_rng)
 
-        for action_name, action in action_dict.items():
-            actions[action_name].append(action)
+        current_position = scenario.state_to_gripper_position(state_dict)
+        actions['delta_position'].append(delta_position)
         for state_name, state in state_dict.items():
             states[state_name].append(state)
         time_indices.append(time_idx)
 
-        scenario.execute_action(action_dict)
+        absolute_action = current_position + delta_position
+        scenario.execute_action({'position': absolute_action, 'timeout': [params.dt]})
 
         global_t_step += 1
 
     feature.update(dict_of_float_tensors_to_bytes_feature(states))
     feature.update(dict_of_float_tensors_to_bytes_feature(actions))
-    feature['time_indices'] = float_tensor_to_bytes_feature(time_indices)
+    feature['time_idx'] = float_tensor_to_bytes_feature(time_indices)
 
     if verbose:
         print(Fore.GREEN + "Trajectory {} Complete".format(traj_idx) + Fore.RESET)

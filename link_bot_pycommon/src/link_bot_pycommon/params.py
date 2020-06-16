@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional, Dict
+from typing import List, Dict
 
 import numpy as np
 from dataclasses_json import dataclass_json

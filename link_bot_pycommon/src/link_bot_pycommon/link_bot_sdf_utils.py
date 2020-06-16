@@ -95,7 +95,7 @@ def extent_to_center(extent_3d):
 
 def environment_to_occupancy_msg(environment: Dict) -> OccupancyStamped:
     occupancy = Float32MultiArray()
-    env = environment['full_env/env']
+    env = environment['env']
     occupancy.data = env.astype(np.float32).flatten().tolist()
     h_rows, w_cols, c_channels = env.shape
     occupancy.layout.dim.append(MultiArrayDimension(label='x', size=h_rows, stride=h_rows * w_cols * c_channels))
@@ -103,10 +103,10 @@ def environment_to_occupancy_msg(environment: Dict) -> OccupancyStamped:
     occupancy.layout.dim.append(MultiArrayDimension(label='z', size=c_channels, stride=c_channels))
     msg = OccupancyStamped()
     msg.occupancy = occupancy
-    msg.scale = environment['full_env/res']
+    msg.scale = environment['res']
     msg.header.stamp = rospy.Time.now()
     msg.header.frame_id = 'world'
-    min_x, max_x, min_y, max_y, min_z, max_z = environment['full_env/extent']
+    min_x, max_x, min_y, max_y, min_z, max_z = environment['extent']
     cx = (max_x - min_x) / 2
     cy = (max_y - min_y) / 2
     cz = (max_z - min_z) / 2

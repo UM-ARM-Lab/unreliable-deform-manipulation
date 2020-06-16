@@ -4,20 +4,24 @@ import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from matplotlib import colors
 
 import rospy
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, Point
 from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_planned
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
 from link_bot_pycommon.params import CollectDynamicsParams
 from link_bot_pycommon.pycommon import quaternion_from_euler
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
+from mps_shape_completion_msgs.msg import OccupancyStamped
 from peter_msgs.srv import Position3DAction, Position3DActionRequest, SetRopeConfiguration, Position3DEnableRequest, \
     SetRopeConfigurationRequest
 from std_srvs.srv import Empty
+from visualization_msgs.msg import MarkerArray, Marker
 
 
 class LinkBotScenario(ExperimentScenario):
@@ -29,6 +33,10 @@ class LinkBotScenario(ExperimentScenario):
         self.object_enable_srv = rospy.ServiceProxy(f"{object_name}/enable", Empty)
         self.get_object_srv = rospy.ServiceProxy(f"{object_name}/get", Empty)
         self.set_rope_config_srv = rospy.ServiceProxy("set_rope_config", SetRopeConfiguration)
+
+        self.env_viz_srv = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10)
+        self.state_viz_srv = rospy.Publisher("state_viz", MarkerArray, queue_size=10)
+        self.action_viz_srv = rospy.Publisher("action_viz", MarkerArray, queue_size=10)
 
         # self.movable_object_names = movable_object_names
         # self.movable_object_services = {}
@@ -74,6 +82,17 @@ class LinkBotScenario(ExperimentScenario):
         })
 
     @staticmethod
+    def random_delta(state: Dict, action_rng: np.random.RandomState, environment, max_delta_pos=0.1):
+        # sample a random point inside the bounds and generate an action in that direction of some max length
+        target_pos = LinkBotScenario.random_pos(action_rng, environment)
+        current_pos = LinkBotScenario.state_to_gripper_position(state)
+        delta = target_pos - current_pos
+        d = np.linalg.norm(delta)
+        v = min(max_delta_pos, d)
+        delta = delta / d * v
+        return [delta[0], delta[1], 0]
+
+    @staticmethod
     def random_pos(action_rng: np.random.RandomState, environment):
         x_min, x_max, y_min, y_max, z_min, z_max = environment['extent']
         pos = action_rng.uniform([x_min, y_min, z_min], [x_max, y_max, z_max])
@@ -90,15 +109,11 @@ class LinkBotScenario(ExperimentScenario):
         if last_action is not None and action_rng.uniform(0, 1) < 0.80:
             return last_action
         else:
-            pos = LinkBotScenario.random_pos(action_rng, environment)
-            return {
-                'position': pos,
-                'timeout': [params.dt],
-            }
+            return LinkBotScenario.random_delta(state, action_rng, environment)
 
     @staticmethod
     def plot_state_simple(ax, state: Dict, **kwargs):
-        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+        link_bot_points = np.reshape(state['link_bot'], [-1, 3])[:, :2]
         x = link_bot_points[0, 0]
         y = link_bot_points[0, 1]
         color = kwargs.get('color')
@@ -115,7 +130,7 @@ class LinkBotScenario(ExperimentScenario):
                    label: Optional[str] = None,
                    linewidth=4,
                    **kwargs):
-        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+        link_bot_points = np.reshape(state['link_bot'], [-1, 3])[:, :2]
         xs = link_bot_points[:, 0]
         ys = link_bot_points[:, 1]
         scatt_c = color if isinstance(color, str) else np.reshape(color, [1, -1])
@@ -131,10 +146,91 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def plot_action(ax, state: Dict, action, color, s: int, zorder: int, linewidth=1, **kwargs):
-        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
-        artist = plot_arrow(ax, link_bot_points[-1, 0], link_bot_points[-1, 1], action[0], action[1], zorder=zorder,
+        link_bot_points = np.reshape(state['link_bot'], [-1, 3])[:, :2]
+        dx = action[0]
+        dy = action[1]
+        artist = plot_arrow(ax, link_bot_points[-1, 0], link_bot_points[-1, 1], dx, dy, zorder=zorder,
                             linewidth=linewidth, color=color, **kwargs)
         return artist
+
+    def plot_environment_rviz(self, data: Dict):
+        msg = environment_to_occupancy_msg(data)
+        self.env_viz_srv.publish(msg)
+
+    def plot_state_rviz(self, data: Dict, **kwargs):
+        r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
+
+        link_bot_points = np.reshape(data['link_bot'], [-1, 3])
+
+        msg = MarkerArray()
+        lines = Marker()
+        lines.action = Marker.ADD  # create or modify
+        lines.type = Marker.LINE_STRIP
+        lines.header.frame_id = "/world"
+        lines.header.stamp = rospy.Time.now()
+        lines.ns = "link_bot"
+        lines.id = 0
+
+        lines.pose.position.x = 0
+        lines.pose.position.y = 0
+        lines.pose.position.z = 0
+        lines.pose.orientation.x = 0
+        lines.pose.orientation.y = 0
+        lines.pose.orientation.z = 0
+        lines.pose.orientation.w = 1
+
+        lines.scale.x = 0.01
+
+        lines.color.r = r
+        lines.color.g = g
+        lines.color.b = b
+        lines.color.a = a
+
+        spheres = Marker()
+        spheres.action = Marker.ADD  # create or modify
+        spheres.type = Marker.SPHERE_LIST
+        spheres.header.frame_id = "/world"
+        spheres.header.stamp = rospy.Time.now()
+        spheres.ns = "link_bot"
+        spheres.id = 1
+
+        spheres.scale.x = 0.02
+        spheres.scale.y = 0.02
+        spheres.scale.z = 0.02
+
+        spheres.pose.position.x = 0
+        spheres.pose.position.y = 0
+        spheres.pose.position.z = 0
+        spheres.pose.orientation.x = 0
+        spheres.pose.orientation.y = 0
+        spheres.pose.orientation.z = 0
+        spheres.pose.orientation.w = 1
+
+        spheres.color.r = r
+        spheres.color.g = g
+        spheres.color.b = b
+        spheres.color.a = a
+
+        for i, (x, y, z) in enumerate(link_bot_points):
+            point = Point()
+            point.x = x
+            point.y = y
+            point.z = z
+
+            spheres.points.append(point)
+            lines.points.append(point)
+
+        msg.markers.append(spheres)
+        msg.markers.append(lines)
+        self.state_viz_srv.publish(msg)
+
+    def plot_action_rviz(self, data: Dict, **kwargs):
+        r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
+
+        link_bot_points = np.reshape(data['link_bot'], [-1, 3])
+
+        msg = MarkerArray()
+        self.action_viz_srv.publish(msg)
 
     @staticmethod
     def state_to_points(state: Dict):
@@ -147,9 +243,9 @@ class LinkBotScenario(ExperimentScenario):
                [2, 2],
                [0, 0]])
         """
-        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+        link_bot_points = np.reshape(state['link_bot'], [-1, 3])[:, :2]
         if 'gripper' in state:
-            gripper_position = np.reshape(state['gripper'], [-1, 2])
+            gripper_position = np.reshape(state['gripper'], [-1, 3])[:, :2]
             points = np.concatenate([link_bot_points, gripper_position], axis=0)
             return points
         else:
@@ -157,7 +253,7 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def state_to_gripper_position(state: Dict):
-        gripper_position = np.reshape(state['gripper'], [-1, 2])
+        gripper_position = np.reshape(state['gripper'], [3])
         return gripper_position
 
     @staticmethod
@@ -167,36 +263,34 @@ class LinkBotScenario(ExperimentScenario):
         """
         Uses the first point in the link_bot subspace as the thing which we want to move to goal
         :param state: A dictionary of numpy arrays
-        :param goal: Assumed to be a point in 2D
+        :param goal: Assumed to be a point in 3D
         :return:
         """
-        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+        link_bot_points = np.reshape(state['link_bot'], [-1, 3])[:, :2]
         tail_point = link_bot_points[0]
         distance = np.linalg.norm(tail_point - goal)
         return distance
 
     @staticmethod
     def distance_to_goal_differentiable(state, goal):
-        link_bot_points = tf.reshape(state['link_bot'], [-1, 2])
+        link_bot_points = tf.reshape(state['link_bot'], [-1, 3])[:, :2]
         tail_point = link_bot_points[0]
         distance = tf.linalg.norm(tail_point - goal)
         return distance
 
     @staticmethod
     def distance(s1, s2):
-        # NOTE: using R^22 distance angles the rope shape more, so we don't use it.
-        link_bot_points1 = np.reshape(s1['link_bot'], [-1, 2])
+        link_bot_points1 = np.reshape(s1['link_bot'], [-1, 3])[:, :2]
         tail_point1 = link_bot_points1[0]
-        link_bot_points2 = np.reshape(s2['link_bot'], [-1, 2])
+        link_bot_points2 = np.reshape(s2['link_bot'], [-1, 3])[:, :2]
         tail_point2 = link_bot_points2[0]
         return np.linalg.norm(tail_point1 - tail_point2)
 
     @staticmethod
     def distance_differentiable(s1, s2):
-        # NOTE: using R^22 distance angles the rope shape more, so we don't use it.
-        link_bot_points1 = tf.reshape(s1['link_bot'], [-1, 2])
+        link_bot_points1 = tf.reshape(s1['link_bot'], [-1, 3])
         tail_point1 = link_bot_points1[0]
-        link_bot_points2 = tf.reshape(s2['link_bot'], [-1, 2])
+        link_bot_points2 = tf.reshape(s2['link_bot'], [-1, 3])
         tail_point2 = link_bot_points2[0]
         return tf.linalg.norm(tail_point1 - tail_point2)
 
@@ -212,7 +306,7 @@ class LinkBotScenario(ExperimentScenario):
     @staticmethod
     def sample_goal(state, goal):
         link_bot_state = state['link_bot']
-        goal_points = np.reshape(link_bot_state, [-1, 2])
+        goal_points = np.reshape(link_bot_state, [-1, 3])
         goal_points -= goal_points[0]
         goal_points += goal
         goal_state = goal_points.flatten()
@@ -242,8 +336,8 @@ class LinkBotScenario(ExperimentScenario):
         if reference_rope_state is None:
             reference_rope_state = tf.identity(rope_state)
         batch_size = rope_state.shape[0]
-        rope_points = tf.reshape(rope_state, [batch_size, -1, 2])
-        reference_rope_points = tf.reshape(reference_rope_state, [batch_size, -1, 2])
+        rope_points = tf.reshape(rope_state, [batch_size, -1, 3])
+        reference_rope_points = tf.reshape(reference_rope_state, [batch_size, -1, 3])
         n_points = rope_points.shape[1]
         # rotate so the link from head to previous node is along positive X axis
         deltas = reference_rope_points[:, 1:] - reference_rope_points[:, :-1]
@@ -266,14 +360,17 @@ class LinkBotScenario(ExperimentScenario):
     @classmethod
     def plot_environment(cls, ax, environment: Dict):
         occupancy = environment['env']
-        extent = environment['extent']
+        assert len(occupancy.shape) == 3
+        assert occupancy.shape[-1] == 1
+        occupancy = occupancy[:, :, 0]
+        extent = environment['extent'][:4]
         ax.imshow(np.flipud(occupancy), extent=extent, cmap='Greys')
 
     @staticmethod
     def update_artist(artist, state, **kwargs):
         """ artist: Whatever was returned by plot_state """
         line, scatt, txt = artist
-        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+        link_bot_points = np.reshape(state['link_bot'], [-1, 3])[:, :2]
         xs = link_bot_points[:, 0]
         ys = link_bot_points[:, 1]
         line.set_data(xs, ys)
@@ -288,12 +385,14 @@ class LinkBotScenario(ExperimentScenario):
     @staticmethod
     def update_action_artist(artist, state, action):
         """ artist: Whatever was returned by plot_state """
-        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
-        update_arrow(artist, link_bot_points[-1, 0], link_bot_points[-1, 1], action[0], action[1])
+        link_bot_points = np.reshape(state['link_bot'], [-1, 3])[:, :2]
+        dx = action[0]
+        dy = action[1]
+        update_arrow(artist, link_bot_points[-1, 0], link_bot_points[-1, 1], dx, dy)
 
     @staticmethod
     def publish_state_marker(marker_provider: MarkerProvider, state):
-        link_bot_points = np.reshape(state['link_bot'], [-1, 2])
+        link_bot_points = np.reshape(state['link_bot'], [-1, 3])[:, :2]
         tail_point = link_bot_points[0]
         marker_provider.publish_marker(id=0, rgb=[1, 0, 0], scale=0.05, x=tail_point[0], y=tail_point[1])
 
@@ -303,7 +402,7 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def local_environment_center(state):
-        link_bot_points = tf.reshape(state['link_bot'], [-1, 2])
+        link_bot_points = tf.reshape(state['link_bot'], [-1, 3])[:, :2]
         head_point_where_gripper_is = link_bot_points[-1]
         return head_point_where_gripper_is
 
@@ -319,7 +418,7 @@ class LinkBotScenario(ExperimentScenario):
         elif add_planned('link_bot') in state:
             link_bot_state = state[add_planned('link_bot')]
         b = int(link_bot_state.shape[0])
-        link_bot_points = tf.reshape(link_bot_state, [b, -1, 2])
+        link_bot_points = tf.reshape(link_bot_state, [b, -1, 3])[:, :2]
         head_point_where_gripper_is = link_bot_points[:, -1]
         return head_point_where_gripper_is
 
@@ -365,7 +464,7 @@ class LinkBotScenario(ExperimentScenario):
     def put_state_local_frame(state_key, state):
         batch_size, time, _ = state.shape
         if state_key in ['link_bot', 'gripper']:
-            points = tf.reshape(state, [batch_size, time, -1, 2])
+            points = tf.reshape(state, [batch_size, time, -1, 3])[:, :2]
             points = points - points[:, :, tf.newaxis, 0]
             state_in_local_frame = tf.reshape(points, [batch_size, time, -1])
             return state_in_local_frame

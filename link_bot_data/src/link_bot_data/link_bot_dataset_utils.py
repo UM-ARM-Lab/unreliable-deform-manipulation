@@ -67,10 +67,10 @@ def deserialize(parsed_dataset, n_parallel_calls=None):
 
     def _deserialize(serialized_dict):
         deserialized_dict = {}
-        for key, serialized_tensor in serialized_dict.items():
-            deserialized_tensor = tf.io.parse_tensor(serialized_tensor, tf.float32)
-            deserialized_tensor = tf.ensure_shape(deserialized_tensor, inferred_shapes[key])
-            deserialized_dict[key] = deserialized_tensor
+        for _key, _serialized_tensor in serialized_dict.items():
+            _deserialized_tensor = tf.io.parse_tensor(_serialized_tensor, tf.float32)
+            _deserialized_tensor = tf.ensure_shape(_deserialized_tensor, inferred_shapes[_key])
+            deserialized_dict[_key] = _deserialized_tensor
         return deserialized_dict
 
     deserialized_dataset = parsed_dataset.map(_deserialize, num_parallel_calls=n_parallel_calls)
