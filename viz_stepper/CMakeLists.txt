@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.0.0)
 project(viz_stepper)
 
 find_package(Qt5 COMPONENTS Core Widgets REQUIRED)

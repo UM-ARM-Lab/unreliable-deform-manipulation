@@ -38,16 +38,6 @@ class LinkBotScenario(ExperimentScenario):
         self.state_viz_srv = rospy.Publisher("state_viz", MarkerArray, queue_size=10)
         self.action_viz_srv = rospy.Publisher("action_viz", MarkerArray, queue_size=10)
 
-        # self.movable_object_names = movable_object_names
-        # self.movable_object_services = {}
-        # for object_name in self.movable_object_names:
-        #     self.movable_object_services[object_name] = {
-        #         'enable': rospy.ServiceProxy(f'{object_name}/enable', Position3DEnable),
-        #         'get_position': rospy.ServiceProxy(f'{object_name}/get', GetPosition3D),
-        #         'action': rospy.ServiceProxy(f'{object_name}/set', Position3DAction),
-        #         'stop': rospy.ServiceProxy(f'{object_name}/stop', Empty),
-        #     }
-
     def enable_object(self):
         enable_object = Position3DEnableRequest()
         enable_object.enable = True
@@ -332,26 +322,19 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def to_rope_local_frame_tf(rope_state, reference_rope_state=None):
-        from tensorflow_graphics.geometry import transformation
         if reference_rope_state is None:
+            # identity applies the identity transformation, i.e. copies
             reference_rope_state = tf.identity(rope_state)
+
         batch_size = rope_state.shape[0]
         rope_points = tf.reshape(rope_state, [batch_size, -1, 3])
         reference_rope_points = tf.reshape(reference_rope_state, [batch_size, -1, 3])
-        n_points = rope_points.shape[1]
-        # rotate so the link from head to previous node is along positive X axis
-        deltas = reference_rope_points[:, 1:] - reference_rope_points[:, :-1]
-        last_dxs = deltas[:, -1, 0]
-        last_dys = deltas[:, -1, 1]
-        angles_of_last_link = -tf.expand_dims(tf.atan2(last_dys, last_dxs), axis=1)
-        rotation_matrix = transformation.rotation_matrix_2d.from_euler(angles_of_last_link)
-        rotation_matrix_tiled = tf.tile(tf.expand_dims(rotation_matrix, axis=1), [1, n_points, 1, 1])
-        rotated_points = transformation.rotation_matrix_2d.rotate(rope_points, rotation_matrix_tiled)
-        reference_rotated_points = transformation.rotation_matrix_2d.rotate(reference_rope_points, rotation_matrix_tiled)
-        # translate so head is at 0,0
-        rotated_points -= reference_rotated_points[:, tf.newaxis, -1]
-        rotated_vectors = tf.reshape(rotated_points, [batch_size, -1])
-        return rotated_vectors
+
+        # translate
+        rope_points -= reference_rope_points[:, tf.newaxis, -1]
+
+        rope_points = tf.reshape(rope_points, [batch_size, -1])
+        return rope_points
 
     @staticmethod
     def plot_goal(ax, goal, color='g', label=None, **kwargs):
@@ -464,7 +447,7 @@ class LinkBotScenario(ExperimentScenario):
     def put_state_local_frame(state_key, state):
         batch_size, time, _ = state.shape
         if state_key in ['link_bot', 'gripper']:
-            points = tf.reshape(state, [batch_size, time, -1, 3])[:, :2]
+            points = tf.reshape(state, [batch_size, time, -1, 3])
             points = points - points[:, :, tf.newaxis, 0]
             state_in_local_frame = tf.reshape(points, [batch_size, time, -1])
             return state_in_local_frame

@@ -53,7 +53,7 @@ class Position3dPlugin : public ModelPlugin {
   physics::LinkPtr link_;
   physics::CollisionPtr collision_;
   std::string link_name_;
-  bool enabled_{false};
+  bool enabled_{true};
   std::unique_ptr<ros::NodeHandle> private_ros_node_;
   ros::NodeHandle ros_node_;
   ros::CallbackQueue queue_;
@@ -71,6 +71,7 @@ class Position3dPlugin : public ModelPlugin {
   double kD_pos_{0.0};
   double max_vel_{0.0};
   double kP_vel_{0.0};
+  double kI_vel_{0.0};
   double kD_vel_{0.0};
   double kP_rot_{0.0};
   double kD_rot_{0.0};
@@ -88,6 +89,9 @@ class Position3dPlugin : public ModelPlugin {
   double rot_error_{0};
   double total_mass_{0.0};
   std::string name_;
+  bool gravity_compensation_{false};
+  ignition::math::Vector3d push_pos_{0, 0, 0};
+  double z_integral_{0.0};
 };
 
 }  // namespace gazebo

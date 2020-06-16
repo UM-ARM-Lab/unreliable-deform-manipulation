@@ -22,6 +22,6 @@ class CollectDynamicsParams:
     max_step_size: float
     dt: float
     steps_per_traj: int
-    movable_obstacles: Dict[str, Dict[str, List[float]]]
+    movable_objects: Dict[str, Dict[str, List[float]]]
     trajs_per_file: int
-    no_obstacles: bool
+    no_objects: bool

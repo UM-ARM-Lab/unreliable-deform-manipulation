@@ -61,6 +61,7 @@ def plot_2d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset, scenario: Exp
 def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset, scenario: ExperimentScenario):
     for i, example in enumerate(tf_dataset):
         example = numpify(example)
+
         scenario.plot_environment_rviz(example)
 
         time_steps = example['time_idx']
@@ -123,7 +124,7 @@ def main():
         i = 0
         for _ in tf_dataset:
             i += 1
-        print(i)
+        print(f'num examples {i}')
 
 
 if __name__ == '__main__':

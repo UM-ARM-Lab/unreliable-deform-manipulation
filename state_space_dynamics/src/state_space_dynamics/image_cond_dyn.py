@@ -8,7 +8,6 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.params import FullEnvParams
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
 from moonshine.image_functions import raster_differentiable
 from moonshine.matrix_operations import batch_outer_product
@@ -25,7 +24,6 @@ class ImageCondDynamics(MyKerasModel):
         self.scenario = scenario
         self.initial_epoch = 0
 
-        self.full_env_params = FullEnvParams.from_json(self.hparams['dynamics_dataset_hparams']['full_env_params'])
         self.rope_image_k = self.hparams['rope_image_k']
         if not self.hparams['use_full_env']:
             self.local_env_h_rows = self.hparams['local_env_h_rows']

@@ -13,13 +13,13 @@ from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 class UnconstrainedDynamicsNN(MyKerasModel):
 
-    def compute_loss(self, dataset_element, outputs):
+    def compute_loss(self, example, outputs):
         return {
-            'loss': self.scenario.dynamics_loss_function(dataset_element, outputs)
+            'loss': self.scenario.dynamics_loss_function(example, outputs)
         }
 
-    def compute_metrics(self, dataset_element, outputs):
-        return self.scenario.dynamics_metrics_function(dataset_element, outputs)
+    def compute_metrics(self, example, outputs):
+        return self.scenario.dynamics_metrics_function(example, outputs)
 
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams=hparams, batch_size=batch_size)
@@ -31,6 +31,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
         self.state_key = self.hparams['state_key']
+        self.action_key = self.hparams['action_key']
         # TODO: support multiple state keys
         self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
@@ -46,10 +47,9 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         plt.show(block=True)
 
     @tf.function
-    def call(self, dataset_element, training, mask=None):
-        input_dict, _ = dataset_element
-        states = input_dict[self.state_key]
-        actions = input_dict['action']
+    def call(self, example, training, mask=None):
+        states = example[self.state_key]
+        actions = example[self.action_key]
         input_sequence_length = actions.shape[1]
         s_0 = states[:, 0]
 
@@ -62,6 +62,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
                 s_t_w_time = tf.expand_dims(s_t, axis=1)
                 s_t_local = self.scenario.put_state_local_frame(self.state_key, s_t_w_time)
                 s_t_local = tf.squeeze(s_t_local, axis=1)
+                # self.debug_plot(s_t_local)
                 _state_action_t = self.concat([s_t_local, action_t])
             else:
                 _state_action_t = self.concat([s_t, action_t])
@@ -98,8 +99,8 @@ class UDNNWrapper(BaseDynamicsFunction):
             raise RuntimeError("Failed to restore!!!")
         self.states_keys = [self.net.state_key]
 
-    def propagate_from_dataset_element(self, dataset_element, training=False):
-        return self.net(dataset_element, training=training)
+    def propagate_from_example(self, example, training=False):
+        return self.net(example, training=training)
 
     def propagate_differentiable(self, environment: Dict, start_states: Dict, actions) -> List[Dict]:
         del environment  # unused
@@ -110,7 +111,7 @@ class UDNNWrapper(BaseDynamicsFunction):
         test_x = {
             # must be batch, T, n_state
             self.net.state_key: state,
-            # must be batch, T, 2
+            # must be batch, T, n_action
             'action': actions,
         }
         test_x = add_batch(test_x)

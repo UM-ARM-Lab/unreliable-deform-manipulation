@@ -26,13 +26,19 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
   }
 
+  model_ = parent;
+
   // Get sdf parameters
   {
-    if (!sdf->HasElement("name")) {
-      ROS_FATAL_STREAM("The position 3d plugin requires a `name` parameter tag");
+    if (sdf->HasElement("object_name")) {
+      name_ = sdf->GetElement("object_name")->Get<std::string>();
     }
     else {
-      name_ = sdf->GetElement("name")->Get<std::string>();
+      name_ = model_->GetScopedName();
+    }
+
+    if (sdf->HasElement("push_z")) {
+      push_pos_.Z(sdf->GetElement("push_z")->Get<double>());
     }
 
     if (!sdf->HasElement("kP_pos")) {
@@ -61,6 +67,13 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     }
     else {
       kP_vel_ = sdf->GetElement("kP_vel")->Get<double>();
+    }
+
+    if (!sdf->HasElement("kI_vel")) {
+      printf("using default kI_vel=%f\n", kI_vel_);
+    }
+    else {
+      kI_vel_ = sdf->GetElement("kI_vel")->Get<double>();
     }
 
     if (!sdf->HasElement("kD_vel")) {
@@ -112,6 +125,10 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       max_torque_ = sdf->GetElement("max_torque")->Get<double>();
     }
 
+    if (sdf->HasElement("gravity_compensation")) {
+      gravity_compensation_ = sdf->GetElement("gravity_compensation")->Get<bool>();
+    }
+
     if (sdf->HasElement("link")) {
       this->link_name_ = sdf->Get<std::string>("link");
     }
@@ -120,8 +137,6 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       return;
     }
   }
-
-  model_ = parent;
 
   link_ = model_->GetLink(link_name_);
   if (!link_) {
@@ -218,11 +233,23 @@ void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
   auto const rot_vel_error = rot_vel_.X() - target_rot_vel;
   auto const torque = rot_vel_pid_.Update(rot_vel_error, dt);
 
-  // gravity compensation... where does this constant come from?!
-  force.Z(force.Z() + total_mass_ * 12 * target_position_.Z());
+  if (gravity_compensation_) {
+    auto const max_i = total_mass_ * model_->GetWorld()->Gravity().Length();
+    auto const z_comp = kI_vel_ * z_integral_;
+
+    gzerr << force.Z () << " " << vel_error.Z() << " " << z_comp << '\n';
+
+    if (vel_error.Z() < 0 and z_comp < max_i) {
+      z_integral_ += -vel_error.Z();
+    }
+    else if (vel_error.Z() > 0 and z_comp > 0) {
+      z_integral_ += -vel_error.Z();
+    }
+    force.Z(force.Z() + z_comp);
+  }
 
   if (enabled_) {
-    link_->AddForce(force);
+    link_->AddForceAtRelativePosition(force, push_pos_);
     link_->AddRelativeTorque({torque, 0, 0});
   }
 }

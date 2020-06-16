@@ -71,5 +71,11 @@ class DynamicsDataset(BaseDataset):
             example['time_idx'] = tf.cast(example['time_idx'], tf.int64)
             return example
 
+        def _drop_last_action(example):
+            for k in self.action_feature_names:
+                example[k] = example[k][:-1]
+            return example
+
         dataset = dataset.map(_make_time_int)
+        dataset = dataset.map(_drop_last_action)
         return dataset

@@ -19,9 +19,11 @@ from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_shape
 from link_bot_pycommon.params import CollectDynamicsParams, Environment
 from link_bot_pycommon.ros_pycommon import get_states_dict
-
-
 # TODO: make this a class, to reduce number of arguments passed
+from peter_msgs.srv import Position3DEnable, GetPosition3D, Position3DAction
+from std_srvs.srv import Empty
+
+
 def generate_traj(scenario: ExperimentScenario,
                   params: CollectDynamicsParams,
                   service_provider,
@@ -31,7 +33,7 @@ def generate_traj(scenario: ExperimentScenario,
                   verbose: int,
                   action_description: Dict,
                   states_description: Dict):
-    if params.no_obstacles:
+    if params.no_objects:
         rows, cols, channels = extent_to_env_shape(params.extent, params.res)
         origin = np.array([rows // 2, cols // 2, channels // 2], dtype=np.int32)
         env = np.zeros([rows, cols, channels], dtype=np.float32)
@@ -61,9 +63,13 @@ def generate_traj(scenario: ExperimentScenario,
                                                 action_rng=action_rng)
 
         current_position = scenario.state_to_gripper_position(state_dict)
-        actions['delta_position'].append(delta_position)
+
+        if time_idx < params.steps_per_traj - 1:  # skip the last action
+            actions['delta_position'].append(delta_position)
+
         for state_name, state in state_dict.items():
             states[state_name].append(state)
+
         time_indices.append(time_idx)
 
         absolute_action = current_position + delta_position
@@ -83,13 +89,6 @@ def generate_traj(scenario: ExperimentScenario,
     return example, global_t_step
 
 
-def rearrange_environment(service_provider, params: CollectDynamicsParams, env_rng):
-    if params.movable_obstacles is not None:
-        if len(params.movable_obstacles) > 0:
-            movable_obstacles = params.movable_obstacles
-            service_provider.move_objects_randomly(env_rng, movable_obstacles)
-
-
 def generate_trajs(service_provider,
                    scenario: ExperimentScenario,
                    params: CollectDynamicsParams,
@@ -102,9 +101,18 @@ def generate_trajs(service_provider,
     examples = np.ndarray([params.trajs_per_file], dtype=object)
     global_t_step = 0
     last_record_t = perf_counter()
+
+    movable_object_services = {}
+    for object_name in params.movable_objects:
+        movable_object_services[object_name] = {
+            'enable': rospy.ServiceProxy(f'{object_name}/enable', Position3DEnable),
+            'get_position': rospy.ServiceProxy(f'{object_name}/get', GetPosition3D),
+            'action': rospy.ServiceProxy(f'{object_name}/set', Position3DAction),
+            'stop': rospy.ServiceProxy(f'{object_name}/stop', Empty),
+        }
+
     for traj_idx in range(args.trajs):
-        # Might not do anything, depends on args
-        rearrange_environment(service_provider, params, env_rng)
+        service_provider.move_objects_randomly(env_rng, service_provider, movable_object_services)
 
         # Generate a new trajectory
         example, global_t_step = generate_traj(scenario=scenario,

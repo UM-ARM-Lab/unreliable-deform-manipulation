@@ -363,7 +363,7 @@ class ExperimentScenario:
             'x': [-w / 2 + padding, w / 2 - padding],
             'y': [-h / 2 + padding, h / 2 - padding],
         }
-        return sample_obstacle_position(rng, xy_range)
+        return sample_object_position(rng, xy_range)
 
     @staticmethod
     def get_movable_object_positions(movable_object_services: Dict):
@@ -374,8 +374,8 @@ class ExperimentScenario:
         return positions
 
     @staticmethod
-    def move_objects_randomly(env_rng, service_provider, movable_object_services, movable_obstacles):
-        random_object_positions = sample_obstacle_positions(env_rng, movable_obstacles)
+    def move_objects_randomly(env_rng, service_provider, movable_object_services):
+        random_object_positions = sample_object_positions(env_rng, movable_object_services.keys())
         ExperimentScenario.move_objects(service_provider, movable_object_services, random_object_positions)
 
     @staticmethod
@@ -415,7 +415,7 @@ class ExperimentScenario:
             movable_object_services['stop'](EmptyRequest())
 
 
-def sample_obstacle_position(env_rng, xy_range: Dict) -> Vector3:
+def sample_object_position(env_rng, xy_range: Dict) -> Vector3:
     x_range = xy_range['x']
     y_range = xy_range['y']
     position = Vector3()
@@ -424,6 +424,6 @@ def sample_obstacle_position(env_rng, xy_range: Dict) -> Vector3:
     return position
 
 
-def sample_obstacle_positions(env_rng, movable_obstacles) -> Dict[str, Vector3]:
-    random_object_positions = {name: sample_obstacle_position(env_rng, xy_range) for name, xy_range in movable_obstacles.items()}
+def sample_object_positions(env_rng, movable_objects) -> Dict[str, Vector3]:
+    random_object_positions = {name: sample_object_position(env_rng, xy_range) for name, xy_range in movable_objects.items()}
     return random_object_positions

@@ -8,7 +8,6 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.params import FullEnvParams
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
 from moonshine.image_functions import raster_differentiable
 from moonshine.moonshine_utils import add_batch, remove_batch, \

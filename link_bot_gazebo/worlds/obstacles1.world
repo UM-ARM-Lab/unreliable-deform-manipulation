@@ -18,11 +18,6 @@
             <uri>model://victor_table_plane</uri>
         </include>
         <include>
-            <uri>model://my_camera</uri>
-            <pose frame=''>0 0 1.0 0 1.565065 1.565065</pose>
-            <name>my_camera</name>
-        </include>
-        <include>
             <uri>model://sun</uri>
         </include>
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
@@ -77,6 +72,6 @@
             <uri>model://movable_box</uri>
             <pose>0.65 -0.65 0 0 0 0</pose>
             <name>moving_box9</name>
-        </include>
+       </include>
     </world>
 </sdf>
