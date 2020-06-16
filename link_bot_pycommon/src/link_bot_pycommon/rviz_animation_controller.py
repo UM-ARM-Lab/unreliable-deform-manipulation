@@ -3,34 +3,38 @@ from time import sleep
 import numpy as np
 
 import rospy
-from std_msgs.msg import Empty, Int64
+from std_msgs.msg import Empty, Int64, Float32
+from peter_msgs.srv import GetFloat32, GetFloat32Request
 
 
 class RvizAnimationController:
 
     def __init__(self, time_steps):
         self.epsilon = 1e-3
-        self.playing = False
         self.time_steps = np.array(time_steps, dtype=np.int64)
         self.fwd_sub = rospy.Subscriber("rviz_anim/forward", Empty, self.on_fwd)
         self.bwd_sub = rospy.Subscriber("rviz_anim/backward", Empty, self.on_bwd)
         self.play_pause_sub = rospy.Subscriber("rviz_anim/play_pause", Empty, self.on_play_pause)
         self.done_sub = rospy.Subscriber("rviz_anim/done", Empty, self.on_done)
+        self.period_srv = rospy.ServiceProxy("rviz_anim/period", GetFloat32)
         self.time_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10)
         self.max_time_pub = rospy.Publisher("rviz_anim/max_time", Int64, queue_size=10)
         self.idx = 0
         self.max_idx = self.time_steps.shape[0]
-        self.period = 1.0
+        self.period = self.period_srv(GetFloat32Request()).data
+        self.playing = True
         self.should_step = False
         self.fwd = True
         self.done = False
 
     def on_fwd(self, msg):
         self.should_step = True
+        self.playing = False
         self.fwd = True
 
     def on_bwd(self, msg):
         self.should_step = True
+        self.playing = False
         self.fwd = False
 
     def on_play_pause(self, msg):
@@ -43,7 +47,7 @@ class RvizAnimationController:
             sleep(self.period)
         else:
             while not self.should_step and not self.playing:
-                sleep(self.epsilon)
+                pass
 
         if self.idx < self.max_idx - 1 and self.fwd:
             self.idx += 1
