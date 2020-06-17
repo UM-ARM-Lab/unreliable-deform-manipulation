@@ -82,7 +82,7 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
 }
 void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels,
                                                 geometry_msgs::Point center, float resolution,
-                                                std::string const &robot_name, bool verbose)
+                                                std::string const &robot_name)
 {
   auto const x_width = resolution * w_cols;
   auto const y_height = resolution * h_rows;
@@ -95,7 +95,7 @@ void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, 
 
   auto const t0 = std::chrono::steady_clock::now();
 
-  // lock physics engine will creating/testing collision
+  // lock physics engine while creating/testing collision. not sure this is necessary.
   {
     boost::recursive_mutex::scoped_lock lock(*engine_->GetPhysicsUpdateMutex());
 
@@ -150,8 +150,8 @@ void nearCallback(void *_data, dGeomID _o1, dGeomID _o2)
     int n = dCollide(_o1, _o2, 1, &contact, sizeof(contact));
     if (n > 0) {
       auto const ode_collision = static_cast<physics::ODECollision *>(dGeomGetData(_o2));
-      if (ode_collision) {
-        if (intersection) {
+      if (intersection) {
+        if (ode_collision) {
           intersection->name = ode_collision->GetScopedName();
           intersection->in_collision = true;
         }

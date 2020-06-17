@@ -77,6 +77,6 @@
             <uri>model://movable_box</uri>
             <pose>0.65 -0.65 0 0 0 0</pose>
             <name>moving_box9</name>
-       </include>
+        </include>
     </world>
 </sdf>

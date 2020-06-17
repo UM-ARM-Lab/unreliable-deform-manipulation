@@ -30,9 +30,6 @@
                     </box>
                 </geometry>
                 <surface>
-                    <contact>
-                        <category_bitmask>0</category_bitmask>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>5.0</mu>
