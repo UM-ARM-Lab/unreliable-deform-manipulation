@@ -16,6 +16,8 @@ namespace gazebo {
 #pragma ide diagnostic ignored "cppcoreguidelines-pro-type-vararg"
 void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 {
+  model_ = parent;
+
   // Make sure the ROS node for Gazebo has already been initialized
   if (!ros::isInitialized()) {
     auto argc = 0;
@@ -52,8 +54,6 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
     register_object_pub_.publish(register_object);
   }
 
-  model_ = parent;
-
   {
     if (!sdf->HasElement("rope_length")) {
       printf("using default rope length=%f\n", length_);
@@ -73,8 +73,7 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 }
 #pragma clang diagnostic pop
 
-bool RopePlugin::StateServiceCallback(peter_msgs::LinkBotStateRequest &req,
-                                                   peter_msgs::LinkBotStateResponse &res)
+bool RopePlugin::StateServiceCallback(peter_msgs::LinkBotStateRequest &req, peter_msgs::LinkBotStateResponse &res)
 {
   // get all links named "link_%d" where d is in [1, num_links)
   for (auto const &link : model_->GetLinks()) {
@@ -104,8 +103,7 @@ bool RopePlugin::StateServiceCallback(peter_msgs::LinkBotStateRequest &req,
   return true;
 }
 
-bool RopePlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req,
-                                                       peter_msgs::GetObjectResponse &res)
+bool RopePlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
 {
   res.object.name = "link_bot";
   std::vector<float> state_vector;
@@ -148,7 +146,7 @@ bool RopePlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req,
 }
 
 bool RopePlugin::SetRopeConfigCallback(peter_msgs::SetRopeConfigurationRequest &req,
-                                                    peter_msgs::SetRopeConfigurationResponse &res)
+                                       peter_msgs::SetRopeConfigurationResponse &res)
 {
   auto const gripper_pose = req.gripper_poses[0];
   ignition::math::Pose3d pose{

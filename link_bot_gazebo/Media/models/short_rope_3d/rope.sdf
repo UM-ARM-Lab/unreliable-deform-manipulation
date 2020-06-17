@@ -4,20 +4,20 @@
         <pose frame="">0 0 0 0 0 0</pose>
         
         <link name="link_1">
-        <pose frame="">0.05 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.03 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
             <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.02
             </mass>
             <inertia>
-                <ixx>4.666666666666667e-06
+                <ixx>1.82e-06
                 </ixx>
                 <ixy>0</ixy>
                 <ixz>0</ixz>
-                <iyy>4.666666666666667e-06
+                <iyy>1.82e-06
                 </iyy>
                 <iyz>0</iyz>
-                <izz>1.0000000000000002e-06
+                <izz>6.4e-07
                 </izz>
             </inertia>
         </inertial>
@@ -25,8 +25,8 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05</length>
-                    <radius>0.01</radius>
+                    <length>0.03</length>
+                    <radius>0.008</radius>
                 </cylinder>
             </geometry>
             <surface>
@@ -46,10 +46,10 @@
         </collision>
 
         <collision name="link_1_collision_ball1">
-            <pose frame="">0 0 0.025 0 0 0</pose>
+            <pose frame="">0 0 0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -69,10 +69,10 @@
         </collision>
 
         <collision name="link_1_collision_ball2">
-            <pose frame="">0 0 -0.025 0 0 0</pose>
+            <pose frame="">0 0 -0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -98,9 +98,9 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05
+                    <length>0.03
                     </length>
-                    <radius>0.01
+                    <radius>0.008
                     </radius>
                 </cylinder>
             </geometry>
@@ -115,20 +115,20 @@
         </link>
         
         <link name="link_2">
-        <pose frame="">0.1 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.06 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
             <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.02
             </mass>
             <inertia>
-                <ixx>4.666666666666667e-06
+                <ixx>1.82e-06
                 </ixx>
                 <ixy>0</ixy>
                 <ixz>0</ixz>
-                <iyy>4.666666666666667e-06
+                <iyy>1.82e-06
                 </iyy>
                 <iyz>0</iyz>
-                <izz>1.0000000000000002e-06
+                <izz>6.4e-07
                 </izz>
             </inertia>
         </inertial>
@@ -136,8 +136,8 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05</length>
-                    <radius>0.01</radius>
+                    <length>0.03</length>
+                    <radius>0.008</radius>
                 </cylinder>
             </geometry>
             <surface>
@@ -157,10 +157,10 @@
         </collision>
 
         <collision name="link_2_collision_ball1">
-            <pose frame="">0 0 0.025 0 0 0</pose>
+            <pose frame="">0 0 0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -180,10 +180,10 @@
         </collision>
 
         <collision name="link_2_collision_ball2">
-            <pose frame="">0 0 -0.025 0 0 0</pose>
+            <pose frame="">0 0 -0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -209,9 +209,9 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05
+                    <length>0.03
                     </length>
-                    <radius>0.01
+                    <radius>0.008
                     </radius>
                 </cylinder>
             </geometry>
@@ -226,20 +226,20 @@
         </link>
         
         <link name="link_3">
-        <pose frame="">0.15000000000000002 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.09 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
             <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.02
             </mass>
             <inertia>
-                <ixx>4.666666666666667e-06
+                <ixx>1.82e-06
                 </ixx>
                 <ixy>0</ixy>
                 <ixz>0</ixz>
-                <iyy>4.666666666666667e-06
+                <iyy>1.82e-06
                 </iyy>
                 <iyz>0</iyz>
-                <izz>1.0000000000000002e-06
+                <izz>6.4e-07
                 </izz>
             </inertia>
         </inertial>
@@ -247,8 +247,8 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05</length>
-                    <radius>0.01</radius>
+                    <length>0.03</length>
+                    <radius>0.008</radius>
                 </cylinder>
             </geometry>
             <surface>
@@ -268,10 +268,10 @@
         </collision>
 
         <collision name="link_3_collision_ball1">
-            <pose frame="">0 0 0.025 0 0 0</pose>
+            <pose frame="">0 0 0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -291,10 +291,10 @@
         </collision>
 
         <collision name="link_3_collision_ball2">
-            <pose frame="">0 0 -0.025 0 0 0</pose>
+            <pose frame="">0 0 -0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -320,9 +320,9 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05
+                    <length>0.03
                     </length>
-                    <radius>0.01
+                    <radius>0.008
                     </radius>
                 </cylinder>
             </geometry>
@@ -337,20 +337,20 @@
         </link>
         
         <link name="link_4">
-        <pose frame="">0.2 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.12 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
             <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.02
             </mass>
             <inertia>
-                <ixx>4.666666666666667e-06
+                <ixx>1.82e-06
                 </ixx>
                 <ixy>0</ixy>
                 <ixz>0</ixz>
-                <iyy>4.666666666666667e-06
+                <iyy>1.82e-06
                 </iyy>
                 <iyz>0</iyz>
-                <izz>1.0000000000000002e-06
+                <izz>6.4e-07
                 </izz>
             </inertia>
         </inertial>
@@ -358,8 +358,8 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05</length>
-                    <radius>0.01</radius>
+                    <length>0.03</length>
+                    <radius>0.008</radius>
                 </cylinder>
             </geometry>
             <surface>
@@ -379,10 +379,10 @@
         </collision>
 
         <collision name="link_4_collision_ball1">
-            <pose frame="">0 0 0.025 0 0 0</pose>
+            <pose frame="">0 0 0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -402,10 +402,10 @@
         </collision>
 
         <collision name="link_4_collision_ball2">
-            <pose frame="">0 0 -0.025 0 0 0</pose>
+            <pose frame="">0 0 -0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -431,9 +431,9 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05
+                    <length>0.03
                     </length>
-                    <radius>0.01
+                    <radius>0.008
                     </radius>
                 </cylinder>
             </geometry>
@@ -448,20 +448,20 @@
         </link>
         
         <link name="link_5">
-        <pose frame="">0.25 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.15 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
             <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.02
             </mass>
             <inertia>
-                <ixx>4.666666666666667e-06
+                <ixx>1.82e-06
                 </ixx>
                 <ixy>0</ixy>
                 <ixz>0</ixz>
-                <iyy>4.666666666666667e-06
+                <iyy>1.82e-06
                 </iyy>
                 <iyz>0</iyz>
-                <izz>1.0000000000000002e-06
+                <izz>6.4e-07
                 </izz>
             </inertia>
         </inertial>
@@ -469,8 +469,8 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05</length>
-                    <radius>0.01</radius>
+                    <length>0.03</length>
+                    <radius>0.008</radius>
                 </cylinder>
             </geometry>
             <surface>
@@ -490,10 +490,10 @@
         </collision>
 
         <collision name="link_5_collision_ball1">
-            <pose frame="">0 0 0.025 0 0 0</pose>
+            <pose frame="">0 0 0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -513,10 +513,10 @@
         </collision>
 
         <collision name="link_5_collision_ball2">
-            <pose frame="">0 0 -0.025 0 0 0</pose>
+            <pose frame="">0 0 -0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -542,9 +542,9 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05
+                    <length>0.03
                     </length>
-                    <radius>0.01
+                    <radius>0.008
                     </radius>
                 </cylinder>
             </geometry>
@@ -559,20 +559,20 @@
         </link>
         
         <link name="link_6">
-        <pose frame="">0.30000000000000004 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.18 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
             <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.02
             </mass>
             <inertia>
-                <ixx>4.666666666666667e-06
+                <ixx>1.82e-06
                 </ixx>
                 <ixy>0</ixy>
                 <ixz>0</ixz>
-                <iyy>4.666666666666667e-06
+                <iyy>1.82e-06
                 </iyy>
                 <iyz>0</iyz>
-                <izz>1.0000000000000002e-06
+                <izz>6.4e-07
                 </izz>
             </inertia>
         </inertial>
@@ -580,8 +580,8 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05</length>
-                    <radius>0.01</radius>
+                    <length>0.03</length>
+                    <radius>0.008</radius>
                 </cylinder>
             </geometry>
             <surface>
@@ -601,10 +601,10 @@
         </collision>
 
         <collision name="link_6_collision_ball1">
-            <pose frame="">0 0 0.025 0 0 0</pose>
+            <pose frame="">0 0 0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -624,10 +624,10 @@
         </collision>
 
         <collision name="link_6_collision_ball2">
-            <pose frame="">0 0 -0.025 0 0 0</pose>
+            <pose frame="">0 0 -0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -653,9 +653,9 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05
+                    <length>0.03
                     </length>
-                    <radius>0.01
+                    <radius>0.008
                     </radius>
                 </cylinder>
             </geometry>
@@ -670,20 +670,20 @@
         </link>
         
         <link name="link_7">
-        <pose frame="">0.35000000000000003 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.21 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
             <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.02
             </mass>
             <inertia>
-                <ixx>4.666666666666667e-06
+                <ixx>1.82e-06
                 </ixx>
                 <ixy>0</ixy>
                 <ixz>0</ixz>
-                <iyy>4.666666666666667e-06
+                <iyy>1.82e-06
                 </iyy>
                 <iyz>0</iyz>
-                <izz>1.0000000000000002e-06
+                <izz>6.4e-07
                 </izz>
             </inertia>
         </inertial>
@@ -691,8 +691,8 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05</length>
-                    <radius>0.01</radius>
+                    <length>0.03</length>
+                    <radius>0.008</radius>
                 </cylinder>
             </geometry>
             <surface>
@@ -712,10 +712,10 @@
         </collision>
 
         <collision name="link_7_collision_ball1">
-            <pose frame="">0 0 0.025 0 0 0</pose>
+            <pose frame="">0 0 0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -735,10 +735,10 @@
         </collision>
 
         <collision name="link_7_collision_ball2">
-            <pose frame="">0 0 -0.025 0 0 0</pose>
+            <pose frame="">0 0 -0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -764,9 +764,9 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05
+                    <length>0.03
                     </length>
-                    <radius>0.01
+                    <radius>0.008
                     </radius>
                 </cylinder>
             </geometry>
@@ -781,20 +781,20 @@
         </link>
         
         <link name="link_8">
-        <pose frame="">0.4 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.24 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
             <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.02
             </mass>
             <inertia>
-                <ixx>4.666666666666667e-06
+                <ixx>1.82e-06
                 </ixx>
                 <ixy>0</ixy>
                 <ixz>0</ixz>
-                <iyy>4.666666666666667e-06
+                <iyy>1.82e-06
                 </iyy>
                 <iyz>0</iyz>
-                <izz>1.0000000000000002e-06
+                <izz>6.4e-07
                 </izz>
             </inertia>
         </inertial>
@@ -802,8 +802,8 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05</length>
-                    <radius>0.01</radius>
+                    <length>0.03</length>
+                    <radius>0.008</radius>
                 </cylinder>
             </geometry>
             <surface>
@@ -823,10 +823,10 @@
         </collision>
 
         <collision name="link_8_collision_ball1">
-            <pose frame="">0 0 0.025 0 0 0</pose>
+            <pose frame="">0 0 0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -846,10 +846,10 @@
         </collision>
 
         <collision name="link_8_collision_ball2">
-            <pose frame="">0 0 -0.025 0 0 0</pose>
+            <pose frame="">0 0 -0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -875,9 +875,9 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05
+                    <length>0.03
                     </length>
-                    <radius>0.01
+                    <radius>0.008
                     </radius>
                 </cylinder>
             </geometry>
@@ -892,20 +892,20 @@
         </link>
         
         <link name="link_9">
-        <pose frame="">0.45 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.27 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
             <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.02
             </mass>
             <inertia>
-                <ixx>4.666666666666667e-06
+                <ixx>1.82e-06
                 </ixx>
                 <ixy>0</ixy>
                 <ixz>0</ixz>
-                <iyy>4.666666666666667e-06
+                <iyy>1.82e-06
                 </iyy>
                 <iyz>0</iyz>
-                <izz>1.0000000000000002e-06
+                <izz>6.4e-07
                 </izz>
             </inertia>
         </inertial>
@@ -913,8 +913,8 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05</length>
-                    <radius>0.01</radius>
+                    <length>0.03</length>
+                    <radius>0.008</radius>
                 </cylinder>
             </geometry>
             <surface>
@@ -934,10 +934,10 @@
         </collision>
 
         <collision name="link_9_collision_ball1">
-            <pose frame="">0 0 0.025 0 0 0</pose>
+            <pose frame="">0 0 0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -957,10 +957,10 @@
         </collision>
 
         <collision name="link_9_collision_ball2">
-            <pose frame="">0 0 -0.025 0 0 0</pose>
+            <pose frame="">0 0 -0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -986,9 +986,9 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05
+                    <length>0.03
                     </length>
-                    <radius>0.01
+                    <radius>0.008
                     </radius>
                 </cylinder>
             </geometry>
@@ -1003,20 +1003,20 @@
         </link>
         
         <link name="link_10">
-        <pose frame="">0.5 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.3 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
             <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.02
             </mass>
             <inertia>
-                <ixx>4.666666666666667e-06
+                <ixx>1.82e-06
                 </ixx>
                 <ixy>0</ixy>
                 <ixz>0</ixz>
-                <iyy>4.666666666666667e-06
+                <iyy>1.82e-06
                 </iyy>
                 <iyz>0</iyz>
-                <izz>1.0000000000000002e-06
+                <izz>6.4e-07
                 </izz>
             </inertia>
         </inertial>
@@ -1024,8 +1024,8 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05</length>
-                    <radius>0.01</radius>
+                    <length>0.03</length>
+                    <radius>0.008</radius>
                 </cylinder>
             </geometry>
             <surface>
@@ -1045,10 +1045,10 @@
         </collision>
 
         <collision name="link_10_collision_ball1">
-            <pose frame="">0 0 0.025 0 0 0</pose>
+            <pose frame="">0 0 0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -1068,10 +1068,10 @@
         </collision>
 
         <collision name="link_10_collision_ball2">
-            <pose frame="">0 0 -0.025 0 0 0</pose>
+            <pose frame="">0 0 -0.015 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01</radius>
+                    <radius>0.008</radius>
                 </sphere>
             </geometry>
             <surface>
@@ -1097,9 +1097,9 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <cylinder>
-                    <length>0.05
+                    <length>0.03
                     </length>
-                    <radius>0.01
+                    <radius>0.008
                     </radius>
                 </cylinder>
             </geometry>
@@ -1117,7 +1117,7 @@
         <joint name="joint_1" type="universal">
             <child>link_2</child>
             <parent>link_1</parent>
-            <pose>0 0 0.025 0 0 0 </pose>
+            <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
@@ -1128,7 +1128,7 @@
                 </limit>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0</friction>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1141,8 +1141,8 @@
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.002</damping>
-                    <friction>0</friction>
+                    <damping>0.001</damping>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1155,7 +1155,7 @@
         <joint name="joint_2" type="universal">
             <child>link_3</child>
             <parent>link_2</parent>
-            <pose>0 0 0.025 0 0 0 </pose>
+            <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
@@ -1166,7 +1166,7 @@
                 </limit>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0</friction>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1179,8 +1179,8 @@
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.002</damping>
-                    <friction>0</friction>
+                    <damping>0.001</damping>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1193,7 +1193,7 @@
         <joint name="joint_3" type="universal">
             <child>link_4</child>
             <parent>link_3</parent>
-            <pose>0 0 0.025 0 0 0 </pose>
+            <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
@@ -1204,7 +1204,7 @@
                 </limit>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0</friction>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1217,8 +1217,8 @@
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.002</damping>
-                    <friction>0</friction>
+                    <damping>0.001</damping>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1231,7 +1231,7 @@
         <joint name="joint_4" type="universal">
             <child>link_5</child>
             <parent>link_4</parent>
-            <pose>0 0 0.025 0 0 0 </pose>
+            <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
@@ -1242,7 +1242,7 @@
                 </limit>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0</friction>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1255,8 +1255,8 @@
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.002</damping>
-                    <friction>0</friction>
+                    <damping>0.001</damping>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1269,7 +1269,7 @@
         <joint name="joint_5" type="universal">
             <child>link_6</child>
             <parent>link_5</parent>
-            <pose>0 0 0.025 0 0 0 </pose>
+            <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
@@ -1280,7 +1280,7 @@
                 </limit>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0</friction>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1293,8 +1293,8 @@
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.002</damping>
-                    <friction>0</friction>
+                    <damping>0.001</damping>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1307,7 +1307,7 @@
         <joint name="joint_6" type="universal">
             <child>link_7</child>
             <parent>link_6</parent>
-            <pose>0 0 0.025 0 0 0 </pose>
+            <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
@@ -1318,7 +1318,7 @@
                 </limit>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0</friction>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1331,8 +1331,8 @@
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.002</damping>
-                    <friction>0</friction>
+                    <damping>0.001</damping>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1345,7 +1345,7 @@
         <joint name="joint_7" type="universal">
             <child>link_8</child>
             <parent>link_7</parent>
-            <pose>0 0 0.025 0 0 0 </pose>
+            <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
@@ -1356,7 +1356,7 @@
                 </limit>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0</friction>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1369,8 +1369,8 @@
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.002</damping>
-                    <friction>0</friction>
+                    <damping>0.001</damping>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1383,7 +1383,7 @@
         <joint name="joint_8" type="universal">
             <child>link_9</child>
             <parent>link_8</parent>
-            <pose>0 0 0.025 0 0 0 </pose>
+            <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
@@ -1394,7 +1394,7 @@
                 </limit>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0</friction>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1407,8 +1407,8 @@
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.002</damping>
-                    <friction>0</friction>
+                    <damping>0.001</damping>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1421,7 +1421,7 @@
         <joint name="joint_9" type="universal">
             <child>link_10</child>
             <parent>link_9</parent>
-            <pose>0 0 0.025 0 0 0 </pose>
+            <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
@@ -1432,7 +1432,7 @@
                 </limit>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0</friction>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1445,8 +1445,8 @@
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.002</damping>
-                    <friction>0</friction>
+                    <damping>0.001</damping>
+                    <friction>0.01</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1457,7 +1457,7 @@
         </joint>
         
         <link name='head'>
-        <pose frame=''>0.525 0 0 0 0 0 </pose>
+        <pose frame=''>0.315 0 0 0 0 0 </pose>
         <inertial>
             <pose frame=''>0 0 0 0 0 0</pose>
             <mass>0.1</mass>
@@ -1474,7 +1474,7 @@
             <pose frame=''>0 0 0 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01 </radius>
+                    <radius>0.008 </radius>
                 </sphere>
             </geometry>
             <surface>
@@ -1495,7 +1495,7 @@
             <pose frame=''>0 0 0 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius>0.01
+                    <radius>0.008
                     </radius>
                 </sphere>
             </geometry>
@@ -1515,21 +1515,21 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.0</damping>
-                    <friction>0.1</friction>
+                    <damping>0.001</damping>
+                    <friction>0.01</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.0</damping>
-                    <friction>0.1</friction>
+                    <damping>0.001</damping>
+                    <friction>0.01</friction>
                 </dynamics>
             </axis2>
         </joint>
         <plugin name='rope_plugin' filename='librope_plugin.so'>
             <num_links>10</num_links>
-            <rope_length>0.5</rope_length>
+            <rope_length>0.3</rope_length>
         </plugin>
         <plugin name='position_3d_plugin' filename='libposition_3d_plugin.so'>
             <name>gripper</name>

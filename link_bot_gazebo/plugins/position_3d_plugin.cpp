@@ -20,13 +20,13 @@ Position3dPlugin::~Position3dPlugin()
 
 void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 {
+  model_ = parent;
+
   // setup ROS stuff
   if (!ros::isInitialized()) {
     int argc = 0;
     ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
   }
-
-  model_ = parent;
 
   // Get sdf parameters
   {

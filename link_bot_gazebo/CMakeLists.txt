@@ -41,3 +41,7 @@ target_include_directories(my_camera_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(my_camera_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} CameraPlugin)
 add_dependencies(my_camera_plugin ${catkin_EXPORTED_TARGETS})
 
+add_library(kinematic_victor_plugin SHARED plugins/kinematic_victor_plugin.cpp)
+target_include_directories(kinematic_victor_plugin PUBLIC ${catkin_INCLUDE_DIRS} include)
+target_link_libraries(kinematic_victor_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+add_dependencies(kinematic_victor_plugin ${catkin_EXPORTED_TARGETS})
