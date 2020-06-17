@@ -17,10 +17,24 @@ const sdf_tools::COLLISION_CELL CollisionMapPlugin::oob_value{-10000};
 const sdf_tools::COLLISION_CELL CollisionMapPlugin::occupied_value{1};
 const sdf_tools::COLLISION_CELL CollisionMapPlugin::unoccupied_value{0};
 
+/**
+ * This plugin moves a sphere along a grid in the world and checks for collision using raw ODE functions
+ * TODOS:
+ *  1. spawn the sphere in this code, rather than require it already be in the world
+ *  1. set the sphere radius to match resolution
+ */
+
 void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
 {
-  this->world_ = world;
-  this->engine_ = world->Physics();
+  world_ = world;
+  engine_ = world->Physics();
+  engine_->InitForThread();
+
+  ode_ = boost::dynamic_pointer_cast<physics::ODEPhysics>(engine_);
+
+  m_ = world_->ModelByName("collision_sphere");
+  auto c = m_->GetChildCollision("collision");
+  ode_collision_ = boost::dynamic_pointer_cast<physics::ODECollision>(c);
 
   if (!ros::isInitialized()) {
     auto argc = 0;
@@ -66,6 +80,47 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
   gzlog << "Finished loading collision map plugin!\n";
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
 }
+void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels,
+                                                geometry_msgs::Point center, float resolution,
+                                                std::string const &robot_name, bool verbose)
+{
+  auto const x_width = resolution * w_cols;
+  auto const y_height = resolution * h_rows;
+  auto const z_size = resolution * c_channels;
+  Eigen::Isometry3d origin_transform = Eigen::Isometry3d::Identity();
+  origin_transform.translation() =
+      Eigen::Vector3d{center.x - x_width / 2, center.y - y_height / 2, center.z - z_size / 2};
+
+  grid_ = sdf_tools::CollisionMapGrid(origin_transform, "/world", resolution, w_cols, h_rows, c_channels, oob_value);
+
+  auto const t0 = std::chrono::steady_clock::now();
+
+  // lock physics engine will creating/testing collision
+  {
+    boost::recursive_mutex::scoped_lock lock(*engine_->GetPhysicsUpdateMutex());
+
+    for (auto x_idx{0l}; x_idx < grid_.GetNumXCells(); ++x_idx) {
+      for (auto y_idx{0l}; y_idx < grid_.GetNumYCells(); ++y_idx) {
+        for (auto z_idx{0l}; z_idx < grid_.GetNumZCells(); ++z_idx) {
+          auto const grid_location = grid_.GridIndexToLocation(x_idx, y_idx, z_idx);
+          m_->SetWorldPose({grid_location[0], grid_location[1], grid_location[2], 0, 0, 0});
+          MyIntersection intersection;
+          dSpaceCollide2(ode_collision_->GetCollisionId(), (dGeomID)(ode_->GetSpaceId()), &intersection, &nearCallback);
+          if (intersection.in_collision and (intersection.name.find(robot_name) != 0)) {
+            grid_.SetValue(x_idx, y_idx, z_idx, occupied_value);
+          }
+          else {
+            grid_.SetValue(x_idx, y_idx, z_idx, unoccupied_value);
+          }
+        }
+      }
+    }
+  }
+
+  auto const t1 = std::chrono::steady_clock::now();
+  std::chrono::duration<double> const time_to_compute_occupancy_grid = t1 - t0;
+  gzlog << "Time to compute occupancy grid: " << time_to_compute_occupancy_grid.count() << std::endl;
+}
 
 CollisionMapPlugin::~CollisionMapPlugin()
 {
@@ -83,104 +138,28 @@ void CollisionMapPlugin::QueueThread()
   }
 }
 
-void nearCallback(void *data, dGeomID _o1, dGeomID _o2)
+void nearCallback(void *_data, dGeomID _o1, dGeomID _o2)
 {
-  dContactGeom contact;
+  auto intersection = static_cast<MyIntersection *>(_data);
 
   if (dGeomIsSpace(_o1) || dGeomIsSpace(_o2)) {
-    dSpaceCollide2(_o1, _o2, nullptr, &nearCallback);
+    dSpaceCollide2(_o1, _o2, _data, &nearCallback);
   }
   else {
+    dContactGeom contact;
     int n = dCollide(_o1, _o2, 1, &contact, sizeof(contact));
     if (n > 0) {
-      std::cout << contact.g1 << " " << contact.g2 << "\n";
+      auto const ode_collision = static_cast<physics::ODECollision *>(dGeomGetData(_o2));
+      if (ode_collision) {
+        if (intersection) {
+          intersection->name = ode_collision->GetScopedName();
+          intersection->in_collision = true;
+        }
+        else {
+          intersection->in_collision = false;
+        }
+      }
     }
-  }
-}
-
-void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels,
-                                                geometry_msgs::Point center, float resolution,
-                                                std::string const &robot_name, bool verbose)
-{
-  auto const x_width = resolution * w_cols;
-  auto const y_height = resolution * h_rows;
-  auto const z_size = resolution * c_channels;
-  Eigen::Isometry3d origin_transform = Eigen::Isometry3d::Identity();
-  origin_transform.translation() =
-      Eigen::Vector3d{center.x - x_width / 2, center.y - y_height / 2, center.z - z_size / 2};
-
-  grid_ = sdf_tools::CollisionMapGrid(origin_transform, "/world", resolution, w_cols, h_rows, c_channels, oob_value);
-
-  auto const t0 = std::chrono::steady_clock::now();
-  std::string entityName;
-  double dist{0};
-
-  // lock physics engine will creating/testing collision
-  {
-    boost::recursive_mutex::scoped_lock lock(*engine_->GetPhysicsUpdateMutex());
-    engine_->InitForThread();
-
-    physics::BasePtr basePtr;
-    basePtr.reset(new physics::Base(physics::BasePtr()));
-    basePtr->SetName("world_root_element");
-    basePtr->SetWorld(world_);
-
-    physics::ModelPtr m(new physics::Model(basePtr));
-    m->SetName("test_ray");
-    auto l = engine_->CreateLink(m);
-    auto ode_c = boost::make_shared<physics::ODECollision>(l);
-    auto s = boost::make_shared<physics::ODERayShape>(ode_c);
-
-    ignition::math::Vector3d start, end;
-    start.Z(0.1);
-    end.Z(0.01);
-    start.X(0.1);
-    start.Y(0);
-    end.X(1);
-    end.Y(0);
-    s->SetPoints(start, end);
-
-    ode_c->SetShape(s);
-    s->SetWorld(world_);
-
-    auto ode = boost::dynamic_pointer_cast<physics::ODEPhysics>(engine_);
-
-    dSpaceCollide2(ode_c->GetCollisionId(), (dGeomID)(ode->GetSpaceId()), nullptr, &nearCallback);
-
-    //    world_->RemoveModel(m);
-
-    //    auto shape = engine->CreateShape("ray", physics::CollisionPtr());
-
-    //    for (auto x_idx{0l}; x_idx < grid_.GetNumXCells(); ++x_idx) {
-    //      for (auto y_idx{0l}; y_idx < grid_.GetNumYCells(); ++y_idx) {
-    //        for (auto z_idx{0l}; z_idx < grid_.GetNumZCells(); ++z_idx) {
-    //          auto const grid_location = grid_.GridIndexToLocation(x_idx, y_idx, z_idx);
-    //          ignition::math::Vector3d start, end;
-    //          start.X(grid_location(0));
-    //          start.Y(grid_location(1));
-    //          start.Z(5.0);
-    //          end.X(grid_location(0));
-    //          end.Y(grid_location(1));
-    //          end.Z(grid_location(2));
-    //
-    //          ray->SetPoints(start, end);
-    //
-    //          ray->GetIntersection(dist, entityName);
-    //          if (not entityName.empty() and (robot_name.empty() or entityName.find(robot_name) != 0)) {
-    //            grid_.SetValue(x_idx, y_idx, z_idx, occupied_value);
-    //          }
-    //          else {
-    //            grid_.SetValue(x_idx, y_idx, z_idx, unoccupied_value);
-    //          }
-    //        }
-    //      }
-    //    }
-  }
-
-  auto const t1 = std::chrono::steady_clock::now();
-  std::chrono::duration<double> const time_to_compute_occupancy_grid = t1 - t0;
-  if (verbose) {
-    gzlog << "Time to compute occupancy grid_: " << time_to_compute_occupancy_grid.count() << std::endl;
   }
 }
 

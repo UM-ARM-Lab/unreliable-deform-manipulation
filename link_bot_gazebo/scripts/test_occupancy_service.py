@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-# noinspection PyUnresolvedReferences
 from time import sleep
+
+import numpy as np
 
 import rospy
 from link_bot_gazebo import gazebo_services
@@ -13,15 +14,15 @@ pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10)
 
 services = gazebo_services.GazeboServices()
 
-res = 0.01
+res = 0.03
 while True:
     try:
-        environment = get_environment_for_extents_3d([-0.5, 0.5, -0.5, 0.5, 0.01, 0.05],
+        environment = get_environment_for_extents_3d([-1, 1, -1, 1, 0.01, 0.25],
                                                      res=res,
                                                      service_provider=services,
                                                      robot_name='link_bot')
         msg = environment_to_occupancy_msg(environment)
-        print(msg.header)
+        print(msg.header.stamp)
         pub.publish(msg)
         sleep(1.0)
     except rospy.ServiceException:

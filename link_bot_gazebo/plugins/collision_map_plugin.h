@@ -11,17 +11,17 @@
 #include <gazebo/common/common.hh>
 #include <gazebo/gazebo.hh>
 #include <gazebo/msgs/msgs.hh>
+#include <gazebo/physics/ode/ODECollision.hh>
+#include <gazebo/physics/ode/ODEPhysics.hh>
+#include <gazebo/physics/ode/ODERayShape.hh>
+#include <gazebo/physics/ode/ODESphereShape.hh>
+#include <gazebo/physics/ode/ODETypes.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/transport.hh>
 #include <ignition/math/Vector3.hh>
 #include <iostream>
 #include <sdf/sdf.hh>
 #include <sdf_tools/collision_map.hpp>
-
-#include <gazebo/physics/ode/ODECollision.hh>
-#include <gazebo/physics/ode/ODEPhysics.hh>
-#include <gazebo/physics/ode/ODERayShape.hh>
-#include <gazebo/physics/ode/ODETypes.hh>
 
 namespace gazebo {
 
@@ -32,6 +32,9 @@ class CollisionMapPlugin : public WorldPlugin {
   std::thread ros_queue_thread_;
   physics::PhysicsEnginePtr engine_;
   physics::WorldPtr world_;
+  physics::ODEPhysicsPtr ode_;
+  physics::ModelPtr m_;
+  physics::ODECollisionPtr ode_collision_;
 
   sdf_tools::CollisionMapGrid grid_;
 
@@ -51,4 +54,12 @@ class CollisionMapPlugin : public WorldPlugin {
   void compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels, geometry_msgs::Point center,
                               float resolution, std::string const &robot_name, bool verbose = true);
 };
+
 }  // namespace gazebo
+
+void nearCallback(void *_data, dGeomID _o1, dGeomID _o2);
+
+struct MyIntersection {
+  std::string name;
+  bool in_collision{false};
+};
