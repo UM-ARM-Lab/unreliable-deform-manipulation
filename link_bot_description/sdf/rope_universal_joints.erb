@@ -93,6 +93,7 @@ n_colors = colors.length%>
                     <ode>
                         <kp>1e15</kp>
                         <kd>1e13</kd>
+                        <max_vel>0</max_vel>
                     </ode>
                 </contact>
             </surface>
@@ -135,7 +136,7 @@ n_colors = colors.length%>
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.0001</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -149,7 +150,7 @@ n_colors = colors.length%>
                     <velocity>5</velocity>
                 </limit>
                 <dynamics>
-                    <damping>0.002</damping>
+                    <damping>0.0001</damping>
                     <friction>0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -221,17 +222,25 @@ n_colors = colors.length%>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.0</damping>
-                    <friction>0.0</friction>
+                    <damping>0.001</damping>
+                    <friction>1.0</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.0</damping>
-                    <friction>0.0</friction>
+                    <damping>0.001</damping>
+                    <friction>1.0</friction>
                 </dynamics>
             </axis2>
+            <physics>
+                <ode>
+                    <cfm_damping>true</cfm_damping>
+                    <limit>
+                        <cfm>100</cfm>
+                    </limit>
+                </ode>
+            </physics>
         </joint>
         <plugin name='rope_plugin' filename='librope_plugin.so'>
             <num_links><%=n_links%></num_links>
