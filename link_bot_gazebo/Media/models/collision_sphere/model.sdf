@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+    <model name="collision_sphere">
+        <link name="link_1">
+            <kinematic>true</kinematic>
+            <visual name="visual">
+                <pose>0 0 0 0 0 0</pose>
+                <geometry>
+                    <box>
+                        <size>0.01 0.01 0.01</size>
+                    </box>
+                </geometry>
+            </visual>
+            <collision name="collision">
+                <pose>0 0 0 0 0 0</pose>
+                <geometry>
+                    <box>
+                        <size>0.01 0.01 0.01</size>
+                    </box>
+                </geometry>
+            </collision>
+            <sensor name='my_contact' type='contact'>
+                <contact>
+                    <collision>collision</collision>
+                </contact>
+                <plugin name="collision_plugin" filename="libcollision_plugin.so"/>
+            </sensor>
+        </link>
+    </model>
+</sdf>
+

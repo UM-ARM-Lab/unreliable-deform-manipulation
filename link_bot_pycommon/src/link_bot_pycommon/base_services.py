@@ -1,9 +1,6 @@
 from typing import Optional, Dict
 
-from colorama import Fore
-
 import rospy
-import std_srvs
 from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingRequest
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from geometry_msgs.msg import Pose
@@ -11,6 +8,7 @@ from ignition.markers import MarkerProvider
 from peter_msgs.srv import ComputeOccupancy, WorldControl, GetObjects, \
     StateSpaceDescription, StateSpaceDescriptionRequest, ActionSpaceDescription, \
     ActionSpaceDescriptionRequest
+from std_srvs.srv import Empty
 
 
 class Services:
@@ -18,10 +16,10 @@ class Services:
     def __init__(self):
         self.compute_occupancy = rospy.ServiceProxy('occupancy', ComputeOccupancy)
         self.world_control = rospy.ServiceProxy('world_control', WorldControl)
-        self.pause = rospy.ServiceProxy('gazebo/pause_physics', std_srvs.srv.Empty)
-        self.unpause = rospy.ServiceProxy('gazebo/unpause_physics', std_srvs.srv.Empty)
+        self.pause = rospy.ServiceProxy('gazebo/pause_physics', Empty)
+        self.unpause = rospy.ServiceProxy('gazebo/unpause_physics', Empty)
         self.record = rospy.ServiceProxy('video_recorder', TriggerVideoRecording)
-        self.reset = rospy.ServiceProxy("reset", std_srvs.srv.Empty)
+        self.reset = rospy.ServiceProxy("reset", Empty)
         self.action_description = rospy.ServiceProxy("link_bot/actions", ActionSpaceDescription)
         self.get_objects = rospy.ServiceProxy("objects", GetObjects)
         self.states_description = rospy.ServiceProxy("states_description", StateSpaceDescription)

@@ -1,0 +1,13 @@
+<launch>
+    <arg name="verbose" default="true"/>
+    <arg name="gui" default="true"/>
+
+    <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/test_collision.world"/>
+        <arg name="verbose" default="$(arg verbose)"/>
+        <arg name="paused" default="true"/>
+        <arg name="gui" value="$(arg gui)"/>
+    </include>
+</launch>

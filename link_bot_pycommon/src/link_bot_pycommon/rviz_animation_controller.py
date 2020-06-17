@@ -19,6 +19,9 @@ class RvizAnimationController:
         self.period_srv = rospy.ServiceProxy("rviz_anim/period", GetFloat32)
         self.time_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10)
         self.max_time_pub = rospy.Publisher("rviz_anim/max_time", Int64, queue_size=10)
+
+        rospy.wait_for_service("rviz_anim/period")
+
         self.idx = 0
         self.max_idx = self.time_steps.shape[0]
         self.period = self.period_srv(GetFloat32Request()).data

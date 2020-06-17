@@ -62,7 +62,10 @@ class DynamicsDataset(BaseDataset):
             example_t[feature_name] = example[feature_name][:, t]
 
         for feature_name in self.action_feature_names:
-            example_t[feature_name] = example[feature_name][:, t]
+            if t < example[feature_name].shape[0]:
+                example_t[feature_name] = example[feature_name][:, t]
+            else:
+                example_t[feature_name] = example[feature_name][:, t - 1]
 
         return example_t
 
@@ -77,5 +80,4 @@ class DynamicsDataset(BaseDataset):
             return example
 
         dataset = dataset.map(_make_time_int)
-        dataset = dataset.map(_drop_last_action)
         return dataset

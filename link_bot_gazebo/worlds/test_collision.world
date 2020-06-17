@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+    <world name="default">
+        <gui>
+            <camera name='user_camera'>
+                <projection_type>orthographic</projection_type>
+                <pose frame=''>0 0 1.02 0 1.565065 1.565065</pose>
+            </camera>
+        </gui>
+        <physics name="ode" type="ode">
+            <ode>
+                <constraints>
+                    <contact_max_correcting_vel>0</contact_max_correcting_vel>
+                </constraints>
+            </ode>
+        </physics>
+        <include>
+            <uri>model://victor_table_plane</uri>
+        </include>
+        <include>
+            <uri>model://sun</uri>
+        </include>
+        <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
+        <include>
+            <uri>model://movable_box</uri>
+            <pose>0 0 0 0 0 0.6</pose>
+            <name>box</name>
+        </include>
+    </world>
+</sdf>

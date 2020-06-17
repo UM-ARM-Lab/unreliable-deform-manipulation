@@ -40,3 +40,12 @@ add_library(my_camera_plugin SHARED plugins/my_camera_plugin.cpp)
 target_include_directories(my_camera_plugin PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(my_camera_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} CameraPlugin)
 add_dependencies(my_camera_plugin ${catkin_EXPORTED_TARGETS})
+
+add_library(test_ray_plugin SHARED plugins/test_ray_plugin.cpp)
+target_include_directories(test_ray_plugin PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(test_ray_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+
+add_library(collision_plugin SHARED plugins/ContactPlugin.cpp)
+target_include_directories(collision_plugin PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(collision_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+

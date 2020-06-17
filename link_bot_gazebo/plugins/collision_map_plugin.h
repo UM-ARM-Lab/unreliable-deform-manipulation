@@ -18,6 +18,11 @@
 #include <sdf/sdf.hh>
 #include <sdf_tools/collision_map.hpp>
 
+#include <gazebo/physics/ode/ODECollision.hh>
+#include <gazebo/physics/ode/ODEPhysics.hh>
+#include <gazebo/physics/ode/ODERayShape.hh>
+#include <gazebo/physics/ode/ODETypes.hh>
+
 namespace gazebo {
 
 class CollisionMapPlugin : public WorldPlugin {
@@ -26,6 +31,7 @@ class CollisionMapPlugin : public WorldPlugin {
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
   physics::PhysicsEnginePtr engine_;
+  physics::WorldPtr world_;
 
   sdf_tools::CollisionMapGrid grid_;
 
@@ -42,7 +48,7 @@ class CollisionMapPlugin : public WorldPlugin {
  private:
   void QueueThread();
 
-  void compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels, geometry_msgs::Point center, float resolution,
-                   std::string const &robot_name, bool verbose = true);
+  void compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels, geometry_msgs::Point center,
+                              float resolution, std::string const &robot_name, bool verbose = true);
 };
 }  // namespace gazebo
