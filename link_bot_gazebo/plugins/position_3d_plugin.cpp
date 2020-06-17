@@ -188,6 +188,7 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
   private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
 
+  gzwarn << "[" << model_->GetScopedName() << "] Waiting for object server\n";
   while (register_object_pub_.getNumSubscribers() < 1) {
   }
 
