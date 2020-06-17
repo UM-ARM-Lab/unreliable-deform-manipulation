@@ -3,8 +3,7 @@
     <world name="default">
         <gui>
             <camera name='user_camera'>
-                <projection_type>orthographic</projection_type>
-                <pose frame=''>0 0 1.02 0 1.565065 1.565065</pose>
+                <pose frame=''>0.340167 -0.663027 1.429263 0 0.933065 1.893055</pose>
             </camera>
         </gui>
         <physics name="ode" type="ode">

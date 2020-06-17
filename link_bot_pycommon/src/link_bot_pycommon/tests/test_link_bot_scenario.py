@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import tensorflow as tf
 
-from link_bot_pycommon.link_bot_scenario import LinkBotScenario
+from link_bot_pycommon.fishing_3d import LinkBotScenario
 from moonshine.tests.testing_utils import assert_close_tf
 
 

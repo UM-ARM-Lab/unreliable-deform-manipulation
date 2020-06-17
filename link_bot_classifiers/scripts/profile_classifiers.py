@@ -9,7 +9,7 @@ from link_bot_classifiers.collision_checker_classifier import CollisionCheckerCl
 from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_classifiers.rnn_image_classifier import RNNImageClassifierWrapper
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.link_bot_scenario import LinkBotScenario
+from link_bot_pycommon.fishing_3d import LinkBotScenario
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1.0)

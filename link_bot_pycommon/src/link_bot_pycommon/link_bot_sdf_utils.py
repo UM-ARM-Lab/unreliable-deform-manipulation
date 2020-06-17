@@ -141,6 +141,24 @@ def batch_point_to_idx_tf(x,
     return row, col
 
 
+def point_to_idx_3d_in_env(x: float,
+                           y: float,
+                           z: float,
+                           environment: Dict):
+    return point_to_idx_3d(x, y, z, resolution=environment['res'], origin=environment['origin'])
+
+
+def point_to_idx_3d(x: float,
+                    y: float,
+                    z: float,
+                    resolution: float,
+                    origin: np.ndarray):
+    row = int(y / resolution + origin[0])
+    col = int(x / resolution + origin[1])
+    channel = int(z / resolution + origin[2])
+    return row, col, channel
+
+
 def point_to_idx(x: float,
                  y: float,
                  resolution: float,

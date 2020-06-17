@@ -374,25 +374,29 @@ class ExperimentScenario:
         return positions
 
     @staticmethod
-    def move_objects_randomly(env_rng, service_provider, movable_objects_services, movable_objects):
+    def move_objects_randomly(env_rng, movable_objects_services, movable_objects):
         random_object_positions = sample_object_positions(env_rng, movable_objects)
-        ExperimentScenario.move_objects(service_provider, movable_objects_services, random_object_positions)
+        ExperimentScenario.move_objects(movable_objects_services, random_object_positions)
 
     @staticmethod
-    def move_objects_to_positions(service_provider, movable_objects_services: Dict, object_positions: Dict):
+    def move_objects_to_positions(movable_objects_services: Dict, object_positions: Dict, timeout: float = 5.0):
         object_moves = {}
         for name, (x, y) in object_positions.items():
-            move = Vector3()
-            move.x = x
-            move.y = y
+            position = Vector3()
+            position.x = x
+            position.y = y
+            move = {
+                'position': position,
+                'timeout': timeout,
+            }
             object_moves[name] = move
-        return ExperimentScenario.move_objects(service_provider, movable_objects_services, object_moves)
+        return ExperimentScenario.move_objects(movable_objects_services, object_moves)
 
     @staticmethod
-    def move_objects(service_provider, movable_objects_services: Dict, object_moves: Dict[str, Vector3]):
-        # Move the objects, call services in parallel
+    def move_objects(movable_objects_services: Dict, object_moves: Dict):
         ExperimentScenario.call_moves(movable_objects_services, object_moves)
 
+        # disable controller so objects can move around
         for object_name, pose in object_moves.items():
             movable_object_services = movable_objects_services[object_name]
             enable_req = Position3DEnableRequest()
@@ -401,16 +405,22 @@ class ExperimentScenario:
 
     @staticmethod
     def call_moves(movable_objects_services, object_moves):
+        for name, move in object_moves.items():
+            services = movable_objects_services[name]
+            ExperimentScenario.call_move((services, name, move))
+
+    @staticmethod
+    def call_moves_async(movable_objects_services, object_moves):
         with multiprocessing.Pool(len(object_moves)) as pool:
             args = [(movable_objects_services[name], name, move) for name, move in object_moves.items()]
             pool.map(func=ExperimentScenario.call_move, iterable=args)
 
     @staticmethod
     def call_move(args):
-        movable_object_services, object_name, position = args
+        movable_object_services, object_name, move = args
         move_action_req = Position3DActionRequest()
-        move_action_req.position = position
-        move_action_req.timeout = 5.0
+        move_action_req.position = move['position']
+        move_action_req.timeout = move['timeout']
         movable_object_services['action'](move_action_req)
 
 

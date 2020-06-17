@@ -18,10 +18,10 @@ from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_shape
 from link_bot_pycommon.params import CollectDynamicsParams, Environment
-from link_bot_pycommon.ros_pycommon import get_states_dict
+from link_bot_pycommon.ros_pycommon import get_states_dict, make_movable_object_services
+
+
 # TODO: make this a class, to reduce number of arguments passed
-from peter_msgs.srv import Position3DEnable, GetPosition3D, Position3DAction
-from std_srvs.srv import Empty
 
 
 def generate_traj(scenario: ExperimentScenario,
@@ -104,15 +104,10 @@ def generate_trajs(service_provider,
 
     movable_object_services = {}
     for object_name in params.movable_objects:
-        movable_object_services[object_name] = {
-            'enable': rospy.ServiceProxy(f'{object_name}/enable', Position3DEnable),
-            'get_position': rospy.ServiceProxy(f'{object_name}/get', GetPosition3D),
-            'action': rospy.ServiceProxy(f'{object_name}/set', Position3DAction),
-            'stop': rospy.ServiceProxy(f'{object_name}/stop', Empty),
-        }
+        movable_object_services[object_name] = make_movable_object_services(object_name)
 
     for traj_idx in range(args.trajs):
-        scenario.move_objects_randomly(env_rng, service_provider, movable_object_services, params.movable_objects)
+        scenario.move_objects_randomly(env_rng, movable_object_services, params.movable_objects)
 
         # Generate a new trajectory
         example, global_t_step = generate_traj(scenario=scenario,

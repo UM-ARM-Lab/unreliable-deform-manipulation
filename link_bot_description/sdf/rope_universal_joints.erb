@@ -39,8 +39,8 @@ n_colors = colors.length%>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
+                        <mu>0.10</mu>
+                        <mu2>0.10</mu2>
                     </ode>
                 </friction>
                 <contact>
@@ -62,8 +62,8 @@ n_colors = colors.length%>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
+                        <mu>0.10</mu>
+                        <mu2>0.10</mu2>
                     </ode>
                 </friction>
                 <contact>
@@ -85,8 +85,8 @@ n_colors = colors.length%>
             <surface>
                 <friction>
                     <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
+                        <mu>0.10</mu>
+                        <mu2>0.10</mu2>
                     </ode>
                 </friction>
                 <contact>
@@ -182,16 +182,18 @@ n_colors = colors.length%>
                 </sphere>
             </geometry>
             <surface>
+                <contact>
+                    <ode>
+                        <kp>1e15</kp>
+                        <kd>1e13</kd>
+                    </ode>
+                </contact>
                 <friction>
                     <ode>
                         <mu>0.0</mu>
                         <mu2>0.0</mu2>
                     </ode>
                 </friction>
-                <contact>
-                    <ode>
-                    </ode>
-                </contact>
             </surface>
         </collision>
         <visual name='head_visual'>
@@ -220,14 +222,14 @@ n_colors = colors.length%>
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.0</damping>
-                    <friction>0.1</friction>
+                    <friction>0.0</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.0</damping>
-                    <friction>0.1</friction>
+                    <friction>0.0</friction>
                 </dynamics>
             </axis2>
         </joint>
@@ -236,13 +238,12 @@ n_colors = colors.length%>
             <rope_length><%=length%></rope_length>
         </plugin>
         <plugin name='position_3d_plugin' filename='libposition_3d_plugin.so'>
-            <name>gripper</name>
+            <object_name>gripper</object_name>
             <gravity_compensation>true</gravity_compensation>
             <kP_pos>5</kP_pos>
-            <kI_pos>0.0</kI_pos>
             <kD_pos>0.0</kD_pos>
             <kP_vel>200.0</kP_vel>
-            <kI_vel>0.0</kI_vel>
+            <kI_vel>0.05</kI_vel>
             <kD_vel>0.0</kD_vel>
             <max_force>2.0</max_force>
             <max_vel>0.15</max_vel>

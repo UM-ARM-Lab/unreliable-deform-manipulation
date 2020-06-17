@@ -803,14 +803,6 @@
                     <friction>0</friction>
                 </dynamics>
             </axis>
-            <physics>
-                <ode>
-                    <limit>
-                        <cfm>0</cfm>
-                        <erp>0.2</erp>
-                    </limit>
-                </ode>
-            </physics>
         </joint>
         <plugin name='rope_plugin' filename='librope_plugin.so'>
             <num_links>10</num_links>

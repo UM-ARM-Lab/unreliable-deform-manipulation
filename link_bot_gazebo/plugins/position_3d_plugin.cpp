@@ -240,6 +240,7 @@ void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
       z_integral_ += -vel_error.Z();
     }
     force.Z(force.Z() + z_comp);
+    gzerr << z_comp << " " << max_i << '\n';
   }
 
   if (enabled_) {
