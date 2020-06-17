@@ -1,67 +1,12 @@
 <launch>
-	<!-- -->
 	<arg name="gui" default="true"/>
 	<arg name="world" default="victor_table"/>
 
-	<!-- Startup simulation world -->
 	<include file="$(find gazebo_ros)/launch/empty_world.launch">
 		<arg name="world_name" value="$(find victor_3d_rope)/worlds/$(arg world).world"/>
-		<arg name="paused" value="false"/>
+		<arg name="paused" value="true"/>
 		<arg name="gui" value="$(arg gui)"/>
-		<arg name="physics" value="ode"/>
 		<arg name="verbose" value="true"/>
 	</include>
-
-	<!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
-	<!-- <include file="$(find victor_moveit_config)/launch/planning_context.launch">
-		<arg name="load_robot_description" value="true"/>
-	</include> -->
-	<arg name="model" default="$(find victor_description)/urdf/victor.urdf.xacro"/>
-    <param name="robot_description" command="$(find xacro)/xacro --xacro-ns --inorder $(arg model)"/>
-
-	<!-- Push robot_description to factory and spawn robot in gazebo -->
-	<!-- <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" 
-          args="-urdf -param robot_description -model victor -J victor_left_arm_joint_4 -1.0 -J victor_right_arm_joint_4 -1.0 -unpause" 
-          respawn="false" output="screen" /> -->
-
-	<!-- Robot state publisher -->
-	<node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
-		<param name="publish_frequency" type="double" value="120.0" />
-		<param name="tf_prefix" type="string" value="" />
-	</node>
-
-	<!--<node name="camera_body_transform" pkg="tf" type="static_transform_publisher" args="0 0 1.5 0 0.15 0 /victor_root /kinect2_victor_head 10"/>-->
-	<!-- <node name="gazebo_mocap" pkg="mps_simulation" type="gazebo_mocap"/>
-	<node name="camera_body_transform" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 1 /mocap_kinect2_victor_head /kinect2_victor_head 10"/>
-	<node name="camera_optical_transform" pkg="tf" type="static_transform_publisher" args="0 0 0 -1.57079632679 0 -1.57079632679 /kinect2_victor_head /kinect2_victor_head_optical_frame 10"/>
-	<node name="table_transform" pkg="tf" type="static_transform_publisher" args="0 0 1 0 0 -0.7071068 0.7071068 mocap_table table_surface 10"/>
-	<node name="world_transform" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 1 world world_origin 10"/> -->
-
-	<!-- joint_state_controller -->
-	<!-- publishes to /joint_states, does not actuate anything -->
-	<rosparam file="$(find victor_3d_rope)/launch/gazebo_joint_state_controller.yaml" command="load"/>
-	<node name="joint_state_controller_spawner" pkg="controller_manager" type="controller_manager" args="spawn joint_state_controller" respawn="false" output="screen"/>
-
-	<!-- Load joint controller configurations from YAML file to parameter server -->
-	<rosparam file="$(find victor_3d_rope)/launch/gazebo_controllers.yaml" command="load"/>
-	<!-- <node name="independent_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
-	      output="screen" args="right_arm_controller left_arm_controller"/> -->
-    <node name="dual_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
-          output="screen" args="dual_arm_controller"/>
-
-	<!-- Load the motion planner -->
-	<!-- <param name="move_group/moveit_controller_manager" value="moveit_simple_controller_manager/MoveItSimpleControllerManager"/> -->
-	<!-- <rosparam file="$(find victor_3d_rope)/launch/moveit_controllers.yaml" command="load"/> -->
-	<!-- <include file="$(find victor_moveit_config)/launch/move_group.launch">
-		<arg name="allow_trajectory_execution" value="true"/>
-		<arg name="fake_execution" value="false"/>
-		<arg name="info" value="true"/>
-	</include> -->
-
-	<!-- Load the motion planner gui -->
-	<!-- <node name="$(anon rviz)" pkg="rviz" type="rviz" respawn="false" if="$(arg gui)"
-        args="-d $(find mps_simulation)/config/manip.rviz" output="screen">
-        <rosparam command="load" file="$(find victor_moveit_config)/config/kinematics.yaml"/>
-    </node> -->
 
 </launch>
