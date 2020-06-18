@@ -30,6 +30,10 @@ class KinematicVictorPlugin : public ModelPlugin {
 
   event::ConnectionPtr update_connection_;
   physics::ModelPtr model_;
+  physics::WorldPtr world_;
+
+  bool interrupted_{false};
+
   std::unique_ptr<ros::NodeHandle> private_ros_node_;
   ros::NodeHandle ros_node_;
   ros::CallbackQueue queue_;
@@ -38,6 +42,7 @@ class KinematicVictorPlugin : public ModelPlugin {
   std::thread private_ros_queue_thread_;
   ros::ServiceServer action_service_;
   ros::Publisher joint_states_pub_;
+  ros::Subscriber interrupt_sub_;
 };
 
 }  // namespace gazebo

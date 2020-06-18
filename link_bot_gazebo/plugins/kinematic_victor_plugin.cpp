@@ -1,6 +1,7 @@
 #include "kinematic_victor_plugin.h"
 
 #include <sensor_msgs/JointState.h>
+#include <std_msgs/Empty.h>
 
 #include <functional>
 
@@ -28,6 +29,7 @@ KinematicVictorPlugin::~KinematicVictorPlugin()
 void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 {
   model_ = parent;
+  world_ = parent->GetWorld();
 
   // setup ROS stuff
   if (!ros::isInitialized()) {
@@ -43,6 +45,8 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   action_service_ = ros_node_.advertiseService(action_so);
   joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 10);
+  auto interrupt_callback = [this](std_msgs::EmptyConstPtr const &msg) { this->interrupted_ = true; };
+  interrupt_sub_ = ros_node_.subscribe<std_msgs::Empty>("interrupt_trajectory", 10, interrupt_callback);
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
   private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
@@ -68,12 +72,18 @@ void KinematicVictorPlugin::OnUpdate()
 
 bool KinematicVictorPlugin::OnAction(peter_msgs::JointTrajRequest &req, peter_msgs::JointTrajResponse &res)
 {
+  interrupted_ = false;
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
   auto const steps = static_cast<unsigned int>(req.settling_time_seconds / seconds_per_step);
   for (auto const &point : req.traj.points) {
     for (auto pair : enumerate(req.traj.joint_names)) {
       auto const &[joint_idx, joint_name] = pair;
-      model_->GetWorld()->Step(steps);
+      for (auto t{0}; t <= steps; ++t) {
+        world_->Step(1);
+        if (interrupted_) {
+          return true;
+        }
+      }
       auto joint = model_->GetJoint(joint_name);
       if (joint) {
         joint->SetPosition(0, point.positions[joint_idx]);
