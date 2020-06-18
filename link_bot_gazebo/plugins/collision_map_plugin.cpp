@@ -33,9 +33,6 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
   ode_ = boost::dynamic_pointer_cast<physics::ODEPhysics>(engine_);
 
   world_->InsertModelFile("model://collision_sphere");
-  m_ = world_->ModelByName("collision_sphere");
-  auto c = m_->GetChildCollision("collision");
-  ode_collision_ = boost::dynamic_pointer_cast<physics::ODECollision>(c);
 
   if (!ros::isInitialized()) {
     auto argc = 0;
@@ -95,6 +92,10 @@ void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, 
   grid_ = sdf_tools::CollisionMapGrid(origin_transform, "/world", resolution, w_cols, h_rows, c_channels, oob_value);
 
   auto const t0 = std::chrono::steady_clock::now();
+
+  m_ = world_->ModelByName("collision_sphere");
+  auto c = m_->GetChildCollision("collision");
+  ode_collision_ = boost::dynamic_pointer_cast<physics::ODECollision>(c);
 
   // lock physics engine while creating/testing collision. not sure this is necessary.
   {

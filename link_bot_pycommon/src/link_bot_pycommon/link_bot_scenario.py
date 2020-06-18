@@ -49,6 +49,7 @@ class LinkBotScenario(ExperimentScenario):
         req.position.y = action['position'][1]
         req.position.z = action['position'][2]
         req.timeout = action['timeout'][0]
+
         _ = self.set_srv(req)
 
     def reset_rope(self, x, y, yaw, joint_angles):

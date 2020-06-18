@@ -2,13 +2,14 @@
     <arg name="world_name"/>
     <arg name="verbose" default="false"/>
     <arg name="gui" default="true"/>
+    <arg name="pause" default="false"/>
 
     <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name" value="$(find link_bot_gazebo)/worlds/$(arg world_name).world"/>
         <arg name="verbose" default="$(arg verbose)"/>
-        <arg name="paused" default="false"/>
+        <arg name="paused" default="$(arg pause)"/>
         <arg name="gui" value="$(arg gui)"/>
     </include>
 </launch>

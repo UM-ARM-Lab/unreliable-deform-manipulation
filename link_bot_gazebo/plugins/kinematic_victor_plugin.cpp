@@ -1,5 +1,7 @@
 #include "kinematic_victor_plugin.h"
 
+#include <sensor_msgs/JointState.h>
+
 #include <functional>
 
 #define create_service_options(type, name, bind) \
@@ -29,7 +31,7 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   if (!joint_) {
     gzerr << "No joint " << joint_name << '\n';
     gzerr << "Possible Joint Nams:" << '\n';
-    for (auto const j : model_->GetJoints()) {
+    for (auto const &j : model_->GetJoints()) {
       gzerr << j->GetName() << '\n';
     }
   }
@@ -47,9 +49,28 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
   private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   action_service_ = private_ros_node_->advertiseService(action_so);
+  joint_states_pub_ = private_ros_node_->advertise<sensor_msgs::JointState>("joint_states", 10);
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
   private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
+
+  auto update = [this](common::UpdateInfo const &info) { OnUpdate(); };
+  this->update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
+}
+
+void KinematicVictorPlugin::OnUpdate()
+{
+  sensor_msgs::JointState msg;
+  for (auto const &j : model_->GetJoints()) {
+    // FIXME: why is this not equal to physics::Joint::HINGE_JOINT??
+    if (j->GetType() == 576) {  // revolute
+      msg.name.push_back(j->GetName());
+      msg.position.push_back(j->Position(0));
+      msg.velocity.push_back(j->GetVelocity(0));
+      msg.effort.push_back(j->GetForce(0));
+    }
+  }
+  joint_states_pub_.publish(msg);
 }
 
 bool KinematicVictorPlugin::OnAction(peter_msgs::JointTrajRequest &req, peter_msgs::JointTrajResponse &res)

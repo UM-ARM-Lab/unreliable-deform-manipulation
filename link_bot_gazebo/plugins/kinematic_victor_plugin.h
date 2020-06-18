@@ -26,6 +26,8 @@ class KinematicVictorPlugin : public ModelPlugin {
 
   void PrivateQueueThread();
 
+  void OnUpdate();
+
   event::ConnectionPtr update_connection_;
   physics::ModelPtr model_;
   std::unique_ptr<ros::NodeHandle> private_ros_node_;
@@ -35,6 +37,7 @@ class KinematicVictorPlugin : public ModelPlugin {
   std::thread ros_queue_thread_;
   std::thread private_ros_queue_thread_;
   ros::ServiceServer action_service_;
+  ros::Publisher joint_states_pub_;
   physics::JointPtr joint_;
 };
 

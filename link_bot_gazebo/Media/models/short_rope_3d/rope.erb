@@ -131,12 +131,10 @@ n_colors = colors.length%>
                 <limit>
                     <lower>-2.0</lower>
                     <upper>2.0</upper>
-                    <effort>10</effort>
-                    <velocity>5</velocity>
                 </limit>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.01</friction>
+                    <friction>0.002</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -145,12 +143,10 @@ n_colors = colors.length%>
                 <limit>
                     <lower>-2.0</lower>
                     <upper>2.0</upper>
-                    <effort>10</effort>
-                    <velocity>5</velocity>
                 </limit>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.01</friction>
+                    <friction>0.002</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -220,14 +216,14 @@ n_colors = colors.length%>
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.01</friction>
+                    <friction>0.002</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.01</friction>
+                    <friction>0.002</friction>
                 </dynamics>
             </axis2>
         </joint>
@@ -236,12 +232,12 @@ n_colors = colors.length%>
             <rope_length><%=length%></rope_length>
         </plugin>
         <plugin name='position_3d_plugin' filename='libposition_3d_plugin.so'>
-            <name>gripper</name>
+            <object_name>gripper</object_name>
+            <gravity_compensation>true</gravity_compensation>
             <kP_pos>5</kP_pos>
-            <kI_pos>0.0</kI_pos>
             <kD_pos>0.0</kD_pos>
             <kP_vel>200.0</kP_vel>
-            <kI_vel>0.0</kI_vel>
+            <kI_vel>0.05</kI_vel>
             <kD_vel>0.0</kD_vel>
             <max_force>2.0</max_force>
             <max_vel>0.15</max_vel>

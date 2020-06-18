@@ -44,6 +44,11 @@ class Fishing3DScenario(ExperimentScenario):
         req.position.y = action['position'][1]
         req.position.z = action['position'][2]
         req.timeout = action['timeout'][0]
+        # I think Dale's going to write something which takes in a desired point in 3D
+        # and computes a joint-space trajectory to send to gazebo. I could write a similar plugin
+        # which simply takes a desired point in 3D and linearly interpolates a kinematic link's position
+        # along that path
+
         _ = self.set_srv(req)
 
     def reset_rope(self, x, y, yaw, joint_angles):
@@ -67,7 +72,7 @@ class Fishing3DScenario(ExperimentScenario):
         })
 
     @staticmethod
-    def random_delta(state: Dict, action_rng: np.random.RandomState, environment, max_delta_pos=0.1):
+    def random_delta(state: Dict, action_rng: np.random.RandomState, environment, max_delta_pos=0.05):
         # sample a random point inside the bounds and generate an action in that direction of some max length
         target_pos = Fishing3DScenario.random_pos(action_rng, environment)
         current_pos = Fishing3DScenario.state_to_gripper_position(state)
