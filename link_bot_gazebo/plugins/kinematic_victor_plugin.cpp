@@ -4,6 +4,8 @@
 
 #include <functional>
 
+#include "enumerate.h"
+
 #define create_service_options(type, name, bind) \
   ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &queue_)
 
@@ -26,15 +28,6 @@ KinematicVictorPlugin::~KinematicVictorPlugin()
 void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 {
   model_ = parent;
-  std::string joint_name{"victor::victor_right_arm_joint_1"};
-  joint_ = model_->GetJoint(joint_name);
-  if (!joint_) {
-    gzerr << "No joint " << joint_name << '\n';
-    gzerr << "Possible Joint Nams:" << '\n';
-    for (auto const &j : model_->GetJoints()) {
-      gzerr << j->GetName() << '\n';
-    }
-  }
 
   // setup ROS stuff
   if (!ros::isInitialized()) {
@@ -48,8 +41,8 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   auto action_so = create_service_options_private(peter_msgs::JointTraj, "joint_traj", pos_action_bind);
 
   private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
-  action_service_ = private_ros_node_->advertiseService(action_so);
-  joint_states_pub_ = private_ros_node_->advertise<sensor_msgs::JointState>("joint_states", 10);
+  action_service_ = ros_node_.advertiseService(action_so);
+  joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 10);
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
   private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
@@ -75,12 +68,23 @@ void KinematicVictorPlugin::OnUpdate()
 
 bool KinematicVictorPlugin::OnAction(peter_msgs::JointTrajRequest &req, peter_msgs::JointTrajResponse &res)
 {
-  if (joint_) {
-    joint_->SetPosition(0, req.joint_angle);
+  auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
+  auto const steps = static_cast<unsigned int>(req.settling_time_seconds / seconds_per_step);
+  for (auto const &point : req.traj.points) {
+    for (auto pair : enumerate(req.traj.joint_names)) {
+      auto const &[joint_idx, joint_name] = pair;
+      model_->GetWorld()->Step(steps);
+      auto joint = model_->GetJoint(joint_name);
+      if (joint) {
+        joint->SetPosition(0, point.positions[joint_idx]);
+      }
+      else {
+        gzerr << "Joint trajectory message set position for non-existant joint " << joint_name << "\n";
+      }
+    }
   }
-  //  model_->GetWorld()->Step(1);
   return true;
-}
+}  // namespace gazebo
 
 void KinematicVictorPlugin::QueueThread()
 {

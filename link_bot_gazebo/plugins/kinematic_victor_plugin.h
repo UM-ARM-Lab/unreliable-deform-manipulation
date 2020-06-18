@@ -38,7 +38,6 @@ class KinematicVictorPlugin : public ModelPlugin {
   std::thread private_ros_queue_thread_;
   ros::ServiceServer action_service_;
   ros::Publisher joint_states_pub_;
-  physics::JointPtr joint_;
 };
 
 }  // namespace gazebo
