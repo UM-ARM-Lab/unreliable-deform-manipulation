@@ -4,1113 +4,1113 @@
         <pose frame="">0 0 0 0 0 0</pose>
         
         <link name="link_1">
-        <pose frame="">0.015 0 0 3.14159 -1.57079 3.14159</pose>
-        <inertial>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <mass>0.03
-            </mass>
-            <inertia>
-                <ixx>2.7299999999999997e-06
-                </ixx>
-                <ixy>0</ixy>
-                <ixz>0</ixz>
-                <iyy>2.7299999999999997e-06
-                </iyy>
-                <iyz>0</iyz>
-                <izz>9.600000000000001e-07
-                </izz>
-            </inertia>
-        </inertial>
-        <collision name="link_1_collision">
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03</length>
-                    <radius>0.008</radius>
-                </cylinder>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <pose frame="">0.015 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.03
+                </mass>
+                <inertia>
+                    <ixx>2.7299999999999997e-06
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>2.7299999999999997e-06
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>9.600000000000001e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_1_collision">
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03</length>
+                        <radius>0.008</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_1_collision_ball1">
-            <pose frame="">0 0 0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_1_collision_ball1">
+                <pose frame="">0 0 0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_1_collision_ball2">
-            <pose frame="">0 0 -0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_1_collision_ball2">
+                <pose frame="">0 0 -0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
 
 
-        <visual name="link_1_visual">
-            <cast_shadows>0</cast_shadows>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03
-                    </length>
-                    <radius>0.008
-                    </radius>
-                </cylinder>
-            </geometry>
-            <material>
-                <script>
-                    <name>Gazebo/Orange </name>
-                    <uri>file://media/materials/scripts/gazebo.material</uri>
-                </script>
-            </material>
-        </visual>
-        <self_collide>1</self_collide>
+            <visual name="link_1_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03
+                        </length>
+                        <radius>0.008
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Orange </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
         </link>
         
         <link name="link_2">
-        <pose frame="">0.045 0 0 3.14159 -1.57079 3.14159</pose>
-        <inertial>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <mass>0.03
-            </mass>
-            <inertia>
-                <ixx>2.7299999999999997e-06
-                </ixx>
-                <ixy>0</ixy>
-                <ixz>0</ixz>
-                <iyy>2.7299999999999997e-06
-                </iyy>
-                <iyz>0</iyz>
-                <izz>9.600000000000001e-07
-                </izz>
-            </inertia>
-        </inertial>
-        <collision name="link_2_collision">
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03</length>
-                    <radius>0.008</radius>
-                </cylinder>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <pose frame="">0.045 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.03
+                </mass>
+                <inertia>
+                    <ixx>2.7299999999999997e-06
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>2.7299999999999997e-06
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>9.600000000000001e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_2_collision">
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03</length>
+                        <radius>0.008</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_2_collision_ball1">
-            <pose frame="">0 0 0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_2_collision_ball1">
+                <pose frame="">0 0 0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_2_collision_ball2">
-            <pose frame="">0 0 -0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_2_collision_ball2">
+                <pose frame="">0 0 -0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
 
 
-        <visual name="link_2_visual">
-            <cast_shadows>0</cast_shadows>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03
-                    </length>
-                    <radius>0.008
-                    </radius>
-                </cylinder>
-            </geometry>
-            <material>
-                <script>
-                    <name>Gazebo/Yellow </name>
-                    <uri>file://media/materials/scripts/gazebo.material</uri>
-                </script>
-            </material>
-        </visual>
-        <self_collide>1</self_collide>
+            <visual name="link_2_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03
+                        </length>
+                        <radius>0.008
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Yellow </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
         </link>
         
         <link name="link_3">
-        <pose frame="">0.075 0 0 3.14159 -1.57079 3.14159</pose>
-        <inertial>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <mass>0.03
-            </mass>
-            <inertia>
-                <ixx>2.7299999999999997e-06
-                </ixx>
-                <ixy>0</ixy>
-                <ixz>0</ixz>
-                <iyy>2.7299999999999997e-06
-                </iyy>
-                <iyz>0</iyz>
-                <izz>9.600000000000001e-07
-                </izz>
-            </inertia>
-        </inertial>
-        <collision name="link_3_collision">
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03</length>
-                    <radius>0.008</radius>
-                </cylinder>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <pose frame="">0.075 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.03
+                </mass>
+                <inertia>
+                    <ixx>2.7299999999999997e-06
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>2.7299999999999997e-06
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>9.600000000000001e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_3_collision">
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03</length>
+                        <radius>0.008</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_3_collision_ball1">
-            <pose frame="">0 0 0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_3_collision_ball1">
+                <pose frame="">0 0 0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_3_collision_ball2">
-            <pose frame="">0 0 -0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_3_collision_ball2">
+                <pose frame="">0 0 -0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
 
 
-        <visual name="link_3_visual">
-            <cast_shadows>0</cast_shadows>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03
-                    </length>
-                    <radius>0.008
-                    </radius>
-                </cylinder>
-            </geometry>
-            <material>
-                <script>
-                    <name>Gazebo/Green </name>
-                    <uri>file://media/materials/scripts/gazebo.material</uri>
-                </script>
-            </material>
-        </visual>
-        <self_collide>1</self_collide>
+            <visual name="link_3_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03
+                        </length>
+                        <radius>0.008
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Green </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
         </link>
         
         <link name="link_4">
-        <pose frame="">0.105 0 0 3.14159 -1.57079 3.14159</pose>
-        <inertial>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <mass>0.03
-            </mass>
-            <inertia>
-                <ixx>2.7299999999999997e-06
-                </ixx>
-                <ixy>0</ixy>
-                <ixz>0</ixz>
-                <iyy>2.7299999999999997e-06
-                </iyy>
-                <iyz>0</iyz>
-                <izz>9.600000000000001e-07
-                </izz>
-            </inertia>
-        </inertial>
-        <collision name="link_4_collision">
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03</length>
-                    <radius>0.008</radius>
-                </cylinder>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <pose frame="">0.105 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.03
+                </mass>
+                <inertia>
+                    <ixx>2.7299999999999997e-06
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>2.7299999999999997e-06
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>9.600000000000001e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_4_collision">
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03</length>
+                        <radius>0.008</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_4_collision_ball1">
-            <pose frame="">0 0 0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_4_collision_ball1">
+                <pose frame="">0 0 0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_4_collision_ball2">
-            <pose frame="">0 0 -0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_4_collision_ball2">
+                <pose frame="">0 0 -0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
 
 
-        <visual name="link_4_visual">
-            <cast_shadows>0</cast_shadows>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03
-                    </length>
-                    <radius>0.008
-                    </radius>
-                </cylinder>
-            </geometry>
-            <material>
-                <script>
-                    <name>Gazebo/Blue </name>
-                    <uri>file://media/materials/scripts/gazebo.material</uri>
-                </script>
-            </material>
-        </visual>
-        <self_collide>1</self_collide>
+            <visual name="link_4_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03
+                        </length>
+                        <radius>0.008
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Blue </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
         </link>
         
         <link name="link_5">
-        <pose frame="">0.135 0 0 3.14159 -1.57079 3.14159</pose>
-        <inertial>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <mass>0.03
-            </mass>
-            <inertia>
-                <ixx>2.7299999999999997e-06
-                </ixx>
-                <ixy>0</ixy>
-                <ixz>0</ixz>
-                <iyy>2.7299999999999997e-06
-                </iyy>
-                <iyz>0</iyz>
-                <izz>9.600000000000001e-07
-                </izz>
-            </inertia>
-        </inertial>
-        <collision name="link_5_collision">
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03</length>
-                    <radius>0.008</radius>
-                </cylinder>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <pose frame="">0.135 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.03
+                </mass>
+                <inertia>
+                    <ixx>2.7299999999999997e-06
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>2.7299999999999997e-06
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>9.600000000000001e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_5_collision">
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03</length>
+                        <radius>0.008</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_5_collision_ball1">
-            <pose frame="">0 0 0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_5_collision_ball1">
+                <pose frame="">0 0 0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_5_collision_ball2">
-            <pose frame="">0 0 -0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_5_collision_ball2">
+                <pose frame="">0 0 -0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
 
 
-        <visual name="link_5_visual">
-            <cast_shadows>0</cast_shadows>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03
-                    </length>
-                    <radius>0.008
-                    </radius>
-                </cylinder>
-            </geometry>
-            <material>
-                <script>
-                    <name>Gazebo/Purple </name>
-                    <uri>file://media/materials/scripts/gazebo.material</uri>
-                </script>
-            </material>
-        </visual>
-        <self_collide>1</self_collide>
+            <visual name="link_5_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03
+                        </length>
+                        <radius>0.008
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Purple </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
         </link>
         
         <link name="link_6">
-        <pose frame="">0.16499999999999998 0 0 3.14159 -1.57079 3.14159</pose>
-        <inertial>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <mass>0.03
-            </mass>
-            <inertia>
-                <ixx>2.7299999999999997e-06
-                </ixx>
-                <ixy>0</ixy>
-                <ixz>0</ixz>
-                <iyy>2.7299999999999997e-06
-                </iyy>
-                <iyz>0</iyz>
-                <izz>9.600000000000001e-07
-                </izz>
-            </inertia>
-        </inertial>
-        <collision name="link_6_collision">
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03</length>
-                    <radius>0.008</radius>
-                </cylinder>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <pose frame="">0.16499999999999998 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.03
+                </mass>
+                <inertia>
+                    <ixx>2.7299999999999997e-06
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>2.7299999999999997e-06
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>9.600000000000001e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_6_collision">
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03</length>
+                        <radius>0.008</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_6_collision_ball1">
-            <pose frame="">0 0 0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_6_collision_ball1">
+                <pose frame="">0 0 0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_6_collision_ball2">
-            <pose frame="">0 0 -0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_6_collision_ball2">
+                <pose frame="">0 0 -0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
 
 
-        <visual name="link_6_visual">
-            <cast_shadows>0</cast_shadows>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03
-                    </length>
-                    <radius>0.008
-                    </radius>
-                </cylinder>
-            </geometry>
-            <material>
-                <script>
-                    <name>Gazebo/White </name>
-                    <uri>file://media/materials/scripts/gazebo.material</uri>
-                </script>
-            </material>
-        </visual>
-        <self_collide>1</self_collide>
+            <visual name="link_6_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03
+                        </length>
+                        <radius>0.008
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/White </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
         </link>
         
         <link name="link_7">
-        <pose frame="">0.195 0 0 3.14159 -1.57079 3.14159</pose>
-        <inertial>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <mass>0.03
-            </mass>
-            <inertia>
-                <ixx>2.7299999999999997e-06
-                </ixx>
-                <ixy>0</ixy>
-                <ixz>0</ixz>
-                <iyy>2.7299999999999997e-06
-                </iyy>
-                <iyz>0</iyz>
-                <izz>9.600000000000001e-07
-                </izz>
-            </inertia>
-        </inertial>
-        <collision name="link_7_collision">
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03</length>
-                    <radius>0.008</radius>
-                </cylinder>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <pose frame="">0.195 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.03
+                </mass>
+                <inertia>
+                    <ixx>2.7299999999999997e-06
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>2.7299999999999997e-06
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>9.600000000000001e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_7_collision">
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03</length>
+                        <radius>0.008</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_7_collision_ball1">
-            <pose frame="">0 0 0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_7_collision_ball1">
+                <pose frame="">0 0 0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_7_collision_ball2">
-            <pose frame="">0 0 -0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_7_collision_ball2">
+                <pose frame="">0 0 -0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
 
 
-        <visual name="link_7_visual">
-            <cast_shadows>0</cast_shadows>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03
-                    </length>
-                    <radius>0.008
-                    </radius>
-                </cylinder>
-            </geometry>
-            <material>
-                <script>
-                    <name>Gazebo/Black </name>
-                    <uri>file://media/materials/scripts/gazebo.material</uri>
-                </script>
-            </material>
-        </visual>
-        <self_collide>1</self_collide>
+            <visual name="link_7_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03
+                        </length>
+                        <radius>0.008
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Black </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
         </link>
         
         <link name="link_8">
-        <pose frame="">0.22499999999999998 0 0 3.14159 -1.57079 3.14159</pose>
-        <inertial>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <mass>0.03
-            </mass>
-            <inertia>
-                <ixx>2.7299999999999997e-06
-                </ixx>
-                <ixy>0</ixy>
-                <ixz>0</ixz>
-                <iyy>2.7299999999999997e-06
-                </iyy>
-                <iyz>0</iyz>
-                <izz>9.600000000000001e-07
-                </izz>
-            </inertia>
-        </inertial>
-        <collision name="link_8_collision">
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03</length>
-                    <radius>0.008</radius>
-                </cylinder>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <pose frame="">0.22499999999999998 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.03
+                </mass>
+                <inertia>
+                    <ixx>2.7299999999999997e-06
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>2.7299999999999997e-06
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>9.600000000000001e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_8_collision">
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03</length>
+                        <radius>0.008</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_8_collision_ball1">
-            <pose frame="">0 0 0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_8_collision_ball1">
+                <pose frame="">0 0 0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_8_collision_ball2">
-            <pose frame="">0 0 -0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_8_collision_ball2">
+                <pose frame="">0 0 -0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
 
 
-        <visual name="link_8_visual">
-            <cast_shadows>0</cast_shadows>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03
-                    </length>
-                    <radius>0.008
-                    </radius>
-                </cylinder>
-            </geometry>
-            <material>
-                <script>
-                    <name>Gazebo/Red </name>
-                    <uri>file://media/materials/scripts/gazebo.material</uri>
-                </script>
-            </material>
-        </visual>
-        <self_collide>1</self_collide>
+            <visual name="link_8_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03
+                        </length>
+                        <radius>0.008
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Red </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
         </link>
         
         <link name="link_9">
-        <pose frame="">0.255 0 0 3.14159 -1.57079 3.14159</pose>
-        <inertial>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <mass>0.03
-            </mass>
-            <inertia>
-                <ixx>2.7299999999999997e-06
-                </ixx>
-                <ixy>0</ixy>
-                <ixz>0</ixz>
-                <iyy>2.7299999999999997e-06
-                </iyy>
-                <iyz>0</iyz>
-                <izz>9.600000000000001e-07
-                </izz>
-            </inertia>
-        </inertial>
-        <collision name="link_9_collision">
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03</length>
-                    <radius>0.008</radius>
-                </cylinder>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <pose frame="">0.255 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.03
+                </mass>
+                <inertia>
+                    <ixx>2.7299999999999997e-06
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>2.7299999999999997e-06
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>9.600000000000001e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_9_collision">
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03</length>
+                        <radius>0.008</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_9_collision_ball1">
-            <pose frame="">0 0 0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_9_collision_ball1">
+                <pose frame="">0 0 0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_9_collision_ball2">
-            <pose frame="">0 0 -0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_9_collision_ball2">
+                <pose frame="">0 0 -0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
 
 
-        <visual name="link_9_visual">
-            <cast_shadows>0</cast_shadows>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03
-                    </length>
-                    <radius>0.008
-                    </radius>
-                </cylinder>
-            </geometry>
-            <material>
-                <script>
-                    <name>Gazebo/Orange </name>
-                    <uri>file://media/materials/scripts/gazebo.material</uri>
-                </script>
-            </material>
-        </visual>
-        <self_collide>1</self_collide>
+            <visual name="link_9_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03
+                        </length>
+                        <radius>0.008
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Orange </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
         </link>
         
         <link name="link_10">
-        <pose frame="">0.28500000000000003 0 0 3.14159 -1.57079 3.14159</pose>
-        <inertial>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <mass>0.03
-            </mass>
-            <inertia>
-                <ixx>2.7299999999999997e-06
-                </ixx>
-                <ixy>0</ixy>
-                <ixz>0</ixz>
-                <iyy>2.7299999999999997e-06
-                </iyy>
-                <iyz>0</iyz>
-                <izz>9.600000000000001e-07
-                </izz>
-            </inertia>
-        </inertial>
-        <collision name="link_10_collision">
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03</length>
-                    <radius>0.008</radius>
-                </cylinder>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <pose frame="">0.28500000000000003 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.03
+                </mass>
+                <inertia>
+                    <ixx>2.7299999999999997e-06
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>2.7299999999999997e-06
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>9.600000000000001e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_10_collision">
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03</length>
+                        <radius>0.008</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_10_collision_ball1">
-            <pose frame="">0 0 0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_10_collision_ball1">
+                <pose frame="">0 0 0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_10_collision_ball2">
-            <pose frame="">0 0 -0.015 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius>0.008</radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_10_collision_ball2">
+                <pose frame="">0 0 -0.015 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.008</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
 
 
-        <visual name="link_10_visual">
-            <cast_shadows>0</cast_shadows>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length>0.03
-                    </length>
-                    <radius>0.008
-                    </radius>
-                </cylinder>
-            </geometry>
-            <material>
-                <script>
-                    <name>Gazebo/Yellow </name>
-                    <uri>file://media/materials/scripts/gazebo.material</uri>
-                </script>
-            </material>
-        </visual>
-        <self_collide>1</self_collide>
+            <visual name="link_10_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.03
+                        </length>
+                        <radius>0.008
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Yellow </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
         </link>
         
         
@@ -1120,30 +1120,24 @@
             <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
             <physics>
                 <ode>
+                    <cfm>0.001</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
         </joint>
@@ -1154,30 +1148,24 @@
             <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
             <physics>
                 <ode>
+                    <cfm>0.001</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
         </joint>
@@ -1188,30 +1176,24 @@
             <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
             <physics>
                 <ode>
+                    <cfm>0.001</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
         </joint>
@@ -1222,30 +1204,24 @@
             <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
             <physics>
                 <ode>
+                    <cfm>0.001</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
         </joint>
@@ -1256,30 +1232,24 @@
             <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
             <physics>
                 <ode>
+                    <cfm>0.001</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
         </joint>
@@ -1290,30 +1260,24 @@
             <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
             <physics>
                 <ode>
+                    <cfm>0.001</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
         </joint>
@@ -1324,30 +1288,24 @@
             <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
             <physics>
                 <ode>
+                    <cfm>0.001</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
         </joint>
@@ -1358,30 +1316,24 @@
             <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
             <physics>
                 <ode>
+                    <cfm>0.001</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
         </joint>
@@ -1392,30 +1344,24 @@
             <pose>0 0 0.015 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
             <physics>
                 <ode>
+                    <cfm>0.001</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
         </joint>
@@ -1470,6 +1416,7 @@
                     </script>
                 </material>
             </visual>
+
             <self_collide>1</self_collide>
             <kinematic>true</kinematic>
         </link>
@@ -1480,15 +1427,15 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
             </axis2>
         </joint>
@@ -1531,8 +1478,7 @@
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
-                        <radius>0.008
-                        </radius>
+                        <radius>0.008</radius>
                     </sphere>
                 </geometry>
                 <material>
@@ -1552,15 +1498,15 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping>0.0015</damping>
+                    <friction>0.0</friction>
                 </dynamics>
             </axis2>
         </joint>
@@ -1569,7 +1515,6 @@
             <rope_length>0.3</rope_length>
         </plugin>
         <plugin name='dual_gripper_plugin' filename='libdual_gripper_plugin.so'>
-            <object_name>gripper</object_name>
         </plugin>
     </model>
 </sdf>

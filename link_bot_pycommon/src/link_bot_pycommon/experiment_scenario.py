@@ -23,7 +23,7 @@ class ExperimentScenario:
             return other == self.simple_name()
         raise NotImplementedError()
 
-    def nudge(self):
+    def nudge(self, state: Dict, environment: Dict):
         raise NotImplementedError()
 
     @staticmethod
@@ -422,6 +422,13 @@ class ExperimentScenario:
         move_action_req.position = move['position']
         move_action_req.timeout = move['timeout']
         movable_object_services['action'](move_action_req)
+
+    def action_to_dataset_action(self, state: Dict, random_action: Dict):
+        raise NotImplementedError()
+
+    @staticmethod
+    def dataset_action_keys():
+        raise NotImplementedError()
 
 
 def sample_object_position(env_rng, xy_range: Dict) -> Vector3:

@@ -9,7 +9,6 @@ from typing import List, Union
 
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
 
 
 def yaw_diff(a, b):
@@ -101,45 +100,12 @@ def make_random_rope_configuration(extent, n_state, link_length, max_angle_rad, 
     return rope_configuration
 
 
-def make_rope_configuration(head_x, head_y, theta_1, theta_2, l=0):
-    print(Fore.YELLOW + "WARNING: This function is deprecated" + Fore.RESET)
-    rope_configuration = np.zeros(6)
-    rope_configuration[4] = head_x
-    rope_configuration[5] = head_y
-    rope_configuration[2] = rope_configuration[4] + np.cos(theta_1) * l
-    rope_configuration[3] = rope_configuration[5] + np.sin(theta_1) * l
-    rope_configuration[0] = rope_configuration[2] + np.cos(theta_2) * l
-    rope_configuration[1] = rope_configuration[3] + np.sin(theta_2) * l
-    return rope_configuration
-
-
-def make_rope_configurations(head_xs, head_ys, theta_1s, theta_2s, l=0.5):
-    print(Fore.YELLOW + "WARNING: This function is deprecated" + Fore.RESET)
-    n = head_xs.shape[0]
-    rope_configurations = np.zeros((n, 6))
-    rope_configurations[:, 4] = head_xs
-    rope_configurations[:, 5] = head_ys
-    rope_configurations[:, 2] = rope_configurations[:, 4] + np.cos(theta_1s) * l
-    rope_configurations[:, 3] = rope_configurations[:, 5] + np.sin(theta_1s) * l
-    rope_configurations[:, 0] = rope_configurations[:, 2] + np.cos(theta_2s) * l
-    rope_configurations[:, 1] = rope_configurations[:, 3] + np.sin(theta_2s) * l
-    return rope_configurations
-
-
 def flatten_points(points):
     return np.array([[p.x, p.y] for p in points]).flatten()
 
 
 def flatten_named_points(points):
     return np.array([[p.point.x, p.point.y] for p in points]).flatten()
-
-
-def get_head_from_named_points(named_points):
-    for named_point in named_points:
-        if named_point.name == 'head':
-            head_point = np.array([named_point.point.x, named_point.point.y])
-            return head_point
-    raise ValueError("No head found in points {}".format(named_points))
 
 
 def transpose_2d_lists(l):

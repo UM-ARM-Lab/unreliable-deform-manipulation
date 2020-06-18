@@ -13,7 +13,6 @@ from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus
 from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.params import SimParams
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 from link_bot_pycommon.ros_pycommon import get_states_dict
 from peter_msgs.msg import Action, sys

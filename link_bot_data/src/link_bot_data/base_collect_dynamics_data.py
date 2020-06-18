@@ -22,8 +22,6 @@ from link_bot_pycommon.ros_pycommon import get_states_dict, make_movable_object_
 
 
 # TODO: make this a class, to reduce number of arguments passed
-
-
 def generate_traj(scenario: ExperimentScenario,
                   params: CollectDynamicsParams,
                   service_provider,
@@ -31,7 +29,6 @@ def generate_traj(scenario: ExperimentScenario,
                   global_t_step: int,
                   action_rng: np.random.RandomState,
                   verbose: int,
-                  action_description: Dict,
                   states_description: Dict):
     if params.no_objects:
         rows, cols, channels = extent_to_env_shape(params.extent, params.res)
@@ -49,31 +46,31 @@ def generate_traj(scenario: ExperimentScenario,
     feature = dict_of_float_tensors_to_bytes_feature(environment)
     feature['traj_idx'] = float_tensor_to_bytes_feature(traj_idx)
 
-    delta_position = None
+    random_action = None
     actions = {'delta_position': []}
     states = {k: [] for k in states_description.keys()}
     time_indices = []
     for time_idx in range(params.steps_per_traj):
-        state_dict = get_states_dict(service_provider)
-        delta_position = scenario.sample_action(environment=environment,
-                                                service_provider=service_provider,
-                                                state=state_dict,
-                                                last_action=delta_position,
-                                                params=params,
-                                                action_rng=action_rng)
+        state = get_states_dict(service_provider)
+        random_action = scenario.sample_action(environment=environment,
+                                               service_provider=service_provider,
+                                               state=state,
+                                               last_action=random_action,
+                                               params=params,
+                                               action_rng=action_rng)
 
-        current_position = scenario.state_to_gripper_position(state_dict)
+        dataset_action = scenario.action_to_dataset_action(state, random_action)
 
-        if time_idx < params.steps_per_traj - 1:  # skip the last action
-            actions['delta_position'].append(delta_position)
+        if time_idx < params.steps_per_traj - 1:  # skip the last random_action
+            for action_name, action in dataset_action.items():
+                actions[action_name].append(action)
 
-        for state_name, state in state_dict.items():
-            states[state_name].append(state)
+        for state_name, state_component in state.items():
+            states[state_name].append(state_component)
 
         time_indices.append(time_idx)
 
-        absolute_action = current_position + delta_position
-        scenario.execute_action({'position': absolute_action, 'timeout': [params.dt]})
+        scenario.execute_action(random_action)
 
         global_t_step += 1
 
@@ -96,7 +93,6 @@ def generate_trajs(service_provider,
                    full_output_directory,
                    env_rng: np.random.RandomState,
                    action_rng: np.random.RandomState,
-                   action_description: Dict,
                    states_description: Dict):
     examples = np.ndarray([params.trajs_per_file], dtype=object)
     global_t_step = 0
@@ -117,7 +113,6 @@ def generate_trajs(service_provider,
                                                global_t_step=global_t_step,
                                                action_rng=action_rng,
                                                verbose=args.verbose,
-                                               action_description=action_description,
                                                states_description=states_description)
         current_record_traj_idx = traj_idx % params.trajs_per_file
         examples[current_record_traj_idx] = example
@@ -156,7 +151,6 @@ def generate(service_provider, params: CollectDynamicsParams, args):
         os.mkdir(full_output_directory)
 
     states_description = service_provider.get_states_description()
-    action_description = service_provider.get_action_description()
 
     if args.seed is None:
         args.seed = np.random.randint(0, 10000)
@@ -168,7 +162,7 @@ def generate(service_provider, params: CollectDynamicsParams, args):
             'n_trajs': args.trajs,
             'data_collection_params': params.to_json(),
             'states_description': states_description,
-            'action_description': action_description,
+            'action_description': scenario.dataset_action_keys(),
             'scenario': args.scenario,
         }
         json.dump(options, of, indent=2)
@@ -188,5 +182,4 @@ def generate(service_provider, params: CollectDynamicsParams, args):
                    full_output_directory=full_output_directory,
                    env_rng=env_rng,
                    action_rng=action_rng,
-                   action_description=action_description,
                    states_description=states_description)

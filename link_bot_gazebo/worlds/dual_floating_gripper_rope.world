@@ -3,7 +3,7 @@
     <world name="default">
         <gui>
             <camera name='user_camera'>
-                <pose frame=''>-.03 -0.7 0.8 0 0.74 1.6</pose>
+                <pose frame=''>0.2 -2.5 2.3 0 0.74 1.6</pose>
             </camera>
         </gui>
         <include>

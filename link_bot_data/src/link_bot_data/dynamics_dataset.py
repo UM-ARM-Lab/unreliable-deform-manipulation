@@ -18,17 +18,10 @@ class DynamicsDataset(BaseDataset):
         self.step_size = step_size
         self.scenario = get_scenario(self.hparams['scenario'])
 
-        self.state_feature_names = [
-            'time_idx',
-        ]
-        self.states_description = self.hparams['states_description']
-        for k in self.states_description.keys():
-            self.state_feature_names.append('{}'.format(k))
+        self.state_feature_names = list(self.hparams['states_description'].keys())
+        self.state_feature_names.append('time_idx')
 
-        self.action_feature_names = ['delta_position']
-        # self.action_description = self.hparams['action_description']
-        # for k in self.action_description.keys():
-        #     self.action_feature_names.append('{}'.format(k))
+        self.action_feature_names = list(self.hparams['actions_description'].keys())
 
         self.constant_feature_names = [
             'env',

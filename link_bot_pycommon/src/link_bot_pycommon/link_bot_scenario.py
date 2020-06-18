@@ -66,7 +66,7 @@ class LinkBotScenario(ExperimentScenario):
         req.joint_angles.extend(joint_angles)
         self.set_rope_config_srv(req)
 
-    def nudge(self):
+    def nudge(self, state: Dict, environment: Dict):
         self.execute_action({
             'position': [np.random.randn(), np.random.randn(), 0],
             'timeout': [0.5],

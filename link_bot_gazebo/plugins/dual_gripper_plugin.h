@@ -1,16 +1,17 @@
 #pragma once
 
-#include <thread>
-
 #include <peter_msgs/DualGripperTrajectory.h>
 #include <peter_msgs/GetDualGripperPoints.h>
+#include <peter_msgs/GetObject.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
+#include <std_msgs/String.h>
 
 #include <gazebo/common/Events.hh>
 #include <gazebo/common/Plugin.hh>
 #include <gazebo/common/Time.hh>
 #include <gazebo/physics/physics.hh>
+#include <thread>
 
 namespace gazebo {
 
@@ -23,6 +24,10 @@ class DualGripperPlugin : public ModelPlugin {
   bool OnAction(peter_msgs::DualGripperTrajectoryRequest &req, peter_msgs::DualGripperTrajectoryResponse &res);
 
   bool OnGet(peter_msgs::GetDualGripperPointsRequest &req, peter_msgs::GetDualGripperPointsResponse &res);
+
+  bool GetGripper1Callback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
+
+  bool GetGripper2Callback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
 
  private:
   void QueueThread();
@@ -49,6 +54,9 @@ class DualGripperPlugin : public ModelPlugin {
   ros::ServiceServer get_service_;
   ros::Publisher joint_states_pub_;
   ros::Subscriber interrupt_sub_;
+  ros::Publisher register_object_pub_;
+  ros::ServiceServer get_gripper1_service_;
+  ros::ServiceServer get_gripper2_service_;
 };
 
 }  // namespace gazebo

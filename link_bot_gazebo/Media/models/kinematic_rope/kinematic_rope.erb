@@ -5,120 +5,121 @@ radius = ENV['radius'].to_f
 link_length = length/n_links
 link_mass = mass/n_links
 colors = ["Red", "Orange", "Yellow", "Green", "Blue", "Purple", "White", "Black"]
+joint_damping = 0.0015
 n_colors = colors.length%>
 <sdf version="1.6">
     <model name="link_bot">
         <pose frame="">0 0 0 0 0 0</pose>
         <% for i in 1..n_links %>
         <link name="link_<%=i%>">
-        <pose frame=""><%=(i-1)*link_length + link_length/2 %> 0 0 3.14159 -1.57079 3.14159</pose>
-        <inertial>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <mass><%=link_mass%>
-            </mass>
-            <inertia>
-                <ixx><%=1.0/12.0*link_mass*(3*radius*radius + link_length*link_length)%>
-                </ixx>
-                <ixy>0</ixy>
-                <ixz>0</ixz>
-                <iyy><%=1.0/12.0*link_mass*(3*radius*radius + link_length*link_length)%>
-                </iyy>
-                <iyz>0</iyz>
-                <izz><%=0.5*link_mass*radius*radius%>
-                </izz>
-            </inertia>
-        </inertial>
-        <collision name="link_<%=i%>_collision">
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length><%=link_length%></length>
-                    <radius><%=radius%></radius>
-                </cylinder>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <pose frame=""><%=(i-1)*link_length + link_length/2 %> 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass><%=link_mass%>
+                </mass>
+                <inertia>
+                    <ixx><%=1.0/12.0*link_mass*(3*radius*radius + link_length*link_length)%>
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy><%=1.0/12.0*link_mass*(3*radius*radius + link_length*link_length)%>
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz><%=0.5*link_mass*radius*radius%>
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_<%=i%>_collision">
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length><%=link_length%></length>
+                        <radius><%=radius%></radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_<%=i%>_collision_ball1">
-            <pose frame="">0 0 <%=link_length/2%> 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius><%=radius%></radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_<%=i%>_collision_ball1">
+                <pose frame="">0 0 <%=link_length/2%> 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius><%=radius%></radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
-        <collision name="link_<%=i%>_collision_ball2">
-            <pose frame="">0 0 <%=-link_length/2%> 0 0 0</pose>
-            <geometry>
-                <sphere>
-                    <radius><%=radius%></radius>
-                </sphere>
-            </geometry>
-            <surface>
-                <friction>
-                    <ode>
-                        <mu>0.20</mu>
-                        <mu2>0.20</mu2>
-                    </ode>
-                </friction>
-                <contact>
-                    <ode>
-                        <kp>1e15</kp>
-                        <kd>1e13</kd>
-                    </ode>
-                </contact>
-            </surface>
-        </collision>
+            <collision name="link_<%=i%>_collision_ball2">
+                <pose frame="">0 0 <%=-link_length/2%> 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius><%=radius%></radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>0.20</mu>
+                            <mu2>0.20</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
 
 
 
-        <visual name="link_<%=i%>_visual">
-            <cast_shadows>0</cast_shadows>
-            <pose frame="">0 0 0 0 0 0</pose>
-            <geometry>
-                <cylinder>
-                    <length><%=link_length%>
-                    </length>
-                    <radius><%=radius%>
-                    </radius>
-                </cylinder>
-            </geometry>
-            <material>
-                <script>
-                    <name>Gazebo/<%=colors[i%n_colors]%> </name>
-                    <uri>file://media/materials/scripts/gazebo.material</uri>
-                </script>
-            </material>
-        </visual>
-        <self_collide>1</self_collide>
+            <visual name="link_<%=i%>_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length><%=link_length%>
+                        </length>
+                        <radius><%=radius%>
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/<%=colors[i%n_colors]%> </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
         </link>
         <%end%>
         <% for i in 1..n_links-1 %>
@@ -128,30 +129,24 @@ n_colors = colors.length%>
             <pose>0 0 <%=link_length/2%> 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping><%=joint_damping%></damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
-                <limit>
-                    <lower>-2.0</lower>
-                    <upper>2.0</upper>
-                </limit>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping><%=joint_damping%></damping>
+                    <friction>0.0</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
             <physics>
                 <ode>
+                    <cfm>0.001</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
         </joint>
@@ -206,6 +201,7 @@ n_colors = colors.length%>
                     </script>
                 </material>
             </visual>
+
             <self_collide>1</self_collide>
             <kinematic>true</kinematic>
         </link>
@@ -216,15 +212,15 @@ n_colors = colors.length%>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping><%=joint_damping%></damping>
+                    <friction>0.0</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping><%=joint_damping%></damping>
+                    <friction>0.0</friction>
                 </dynamics>
             </axis2>
         </joint>
@@ -267,8 +263,7 @@ n_colors = colors.length%>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
-                        <radius><%=radius%>
-                        </radius>
+                        <radius><%=radius%></radius>
                     </sphere>
                 </geometry>
                 <material>
@@ -288,15 +283,15 @@ n_colors = colors.length%>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping><%=joint_damping%></damping>
+                    <friction>0.0</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.002</friction>
+                    <damping><%=joint_damping%></damping>
+                    <friction>0.0</friction>
                 </dynamics>
             </axis2>
         </joint>
@@ -305,7 +300,6 @@ n_colors = colors.length%>
             <rope_length><%=length%></rope_length>
         </plugin>
         <plugin name='dual_gripper_plugin' filename='libdual_gripper_plugin.so'>
-            <object_name>gripper</object_name>
         </plugin>
     </model>
 </sdf>

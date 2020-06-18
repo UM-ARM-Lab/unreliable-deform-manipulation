@@ -45,6 +45,7 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
 
+  gzwarn << "[" << model_->GetScopedName() << "] Waiting for object server\n";
   while (register_object_pub_.getNumSubscribers() < 1) {
   }
 
@@ -90,14 +91,6 @@ bool RopePlugin::StateServiceCallback(peter_msgs::LinkBotStateRequest &req, pete
     }
   }
 
-  auto const link = model_->GetLink("head");
-  geometry_msgs::Point pt;
-  pt.x = link->WorldPose().Pos().X();
-  pt.y = link->WorldPose().Pos().Y();
-  pt.z = link->WorldPose().Pos().Z();
-  res.points.emplace_back(pt);
-  res.link_names.emplace_back("head");
-
   res.header.stamp = ros::Time::now();
 
   return true;
@@ -125,22 +118,6 @@ bool RopePlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req, pet
     named_point.name = link_name;
     res.object.points.emplace_back(named_point);
   }
-
-  auto const link = model_->GetLink("head");
-  peter_msgs::NamedPoint head_point;
-  geometry_msgs::Point pt;
-  float const x = link->WorldPose().Pos().X();
-  float const y = link->WorldPose().Pos().Y();
-  float const z = link->WorldPose().Pos().Z();
-  state_vector.push_back(x);
-  state_vector.push_back(y);
-  state_vector.push_back(z);
-  head_point.point.x = x;
-  head_point.point.y = y;
-  head_point.point.z = z;
-  res.object.state_vector = state_vector;
-  head_point.name = "head";
-  res.object.points.emplace_back(head_point);
 
   return true;
 }

@@ -65,15 +65,39 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   };
   auto get_so = create_service_options_private(peter_msgs::GetDualGripperPoints, "get_dual_gripper_points", get_bind);
 
+  auto get_gripper1_bind = [this](auto &&req, auto &&res) { return GetGripper1Callback(req, res); };
+  auto get_gripper1_so = create_service_options(peter_msgs::GetObject, "gripper1", get_gripper1_bind);
+
+  auto get_gripper2_bind = [this](auto &&req, auto &&res) { return GetGripper2Callback(req, res); };
+  auto get_gripper2_so = create_service_options(peter_msgs::GetObject, "gripper2", get_gripper2_bind);
+
   private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   action_service_ = ros_node_.advertiseService(action_so);
   get_service_ = ros_node_.advertiseService(get_so);
   joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 10);
   auto interrupt_callback = [this](std_msgs::EmptyConstPtr const &msg) { this->interrupted_ = true; };
   interrupt_sub_ = ros_node_.subscribe<std_msgs::Empty>("interrupt_trajectory", 10, interrupt_callback);
+  register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
+  get_gripper1_service_ = ros_node_.advertiseService(get_gripper1_so);
+  get_gripper2_service_ = ros_node_.advertiseService(get_gripper2_so);
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
   private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
+
+  gzwarn << "[" << model_->GetScopedName() << "] Waiting for object server\n";
+  while (register_object_pub_.getNumSubscribers() < 1) {
+  }
+
+  {
+    std_msgs::String register_object;
+    register_object.data = "gripper1";
+    register_object_pub_.publish(register_object);
+  }
+  {
+    std_msgs::String register_object;
+    register_object.data = "gripper2";
+    register_object_pub_.publish(register_object);
+  }
 
   auto update = [this](common::UpdateInfo const &info) { OnUpdate(); };
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
@@ -131,6 +155,45 @@ bool DualGripperPlugin::OnGet(peter_msgs::GetDualGripperPointsRequest &req,
   }
   return true;
 }
+
+bool DualGripperPlugin::GetGripper1Callback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
+{
+  if (gripper1_) {
+    res.object.name = "gripper1";
+    res.object.state_vector.push_back(gripper1_->WorldPose().Pos().X());
+    res.object.state_vector.push_back(gripper1_->WorldPose().Pos().Y());
+    res.object.state_vector.push_back(gripper1_->WorldPose().Pos().Z());
+    geometry_msgs::Point gripper1_point;
+    gripper1_point.x = gripper1_->WorldPose().Pos().X();
+    gripper1_point.y = gripper1_->WorldPose().Pos().Y();
+    gripper1_point.z = gripper1_->WorldPose().Pos().Z();
+    peter_msgs::NamedPoint gripper1_named_point;
+    gripper1_named_point.point = gripper1_point;
+    gripper1_named_point.name = "gripper1";
+    res.object.points.push_back(gripper1_named_point);
+  }
+  return true;
+}
+
+bool DualGripperPlugin::GetGripper2Callback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
+{
+  if (gripper2_) {
+    res.object.name = "gripper2";
+    res.object.state_vector.push_back(gripper2_->WorldPose().Pos().X());
+    res.object.state_vector.push_back(gripper2_->WorldPose().Pos().Y());
+    res.object.state_vector.push_back(gripper2_->WorldPose().Pos().Z());
+    geometry_msgs::Point gripper2_point;
+    gripper2_point.x = gripper2_->WorldPose().Pos().X();
+    gripper2_point.y = gripper2_->WorldPose().Pos().Y();
+    gripper2_point.z = gripper2_->WorldPose().Pos().Z();
+    peter_msgs::NamedPoint gripper2_named_point;
+    gripper2_named_point.point = gripper2_point;
+    gripper2_named_point.name = "gripper2";
+    res.object.points.push_back(gripper2_named_point);
+  }
+  return true;
+}
+
 void DualGripperPlugin::QueueThread()
 {
   double constexpr timeout = 0.01;
