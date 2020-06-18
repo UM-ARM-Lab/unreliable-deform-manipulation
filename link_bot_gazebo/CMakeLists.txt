@@ -74,3 +74,9 @@ add_library(gazebo_ros_moveit_planning_scene plugins/gazebo_ros_moveit_planning_
 target_include_directories(gazebo_ros_moveit_planning_scene PUBLIC ${catkin_INCLUDE_DIRS} include)
 add_dependencies(gazebo_ros_moveit_planning_scene ${catkin_EXPORTED_TARGETS})
 target_link_libraries(gazebo_ros_moveit_planning_scene ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES})
+
+
+add_library(dual_gripper_plugin plugins/dual_gripper_plugin.cpp)
+target_include_directories(dual_gripper_plugin PUBLIC ${catkin_INCLUDE_DIRS} include)
+add_dependencies(dual_gripper_plugin ${catkin_EXPORTED_TARGETS})
+target_link_libraries(dual_gripper_plugin ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES})

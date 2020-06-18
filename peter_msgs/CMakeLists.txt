@@ -45,6 +45,8 @@ add_service_files(
         ActionSpaceDescription.srv
         GetFloat32.srv
         JointTraj.srv
+        DualGripperTrajectory.srv
+        GetDualGripperPoints.srv
 )
 
 generate_messages(

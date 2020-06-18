@@ -1,0 +1,4 @@
+geometry_msgs/Point[] gripper1_points
+geometry_msgs/Point[] gripper2_points
+float32 settling_time_seconds
+---
