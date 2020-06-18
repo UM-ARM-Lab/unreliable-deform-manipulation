@@ -1,0 +1,20 @@
+<launch>
+    <arg name="world_name"/>
+    <arg name="verbose" default="false"/>
+    <arg name="gui" default="true"/>
+    <arg name="pause" default="false"/>
+
+    <arg name="model" default="$(find victor_description)/urdf/victor.urdf.xacro"/>
+    <param name="robot_description" command="$(find xacro)/xacro --xacro-ns --inorder $(arg model)"/>
+    <node pkg="tf" type="static_transform_publisher" name="mocap_to_robot_tf_publisher" args="0 0 0 0 0 0 1 mocap_world victor_root 100" if="$(arg set_default_robot_tf)"/>
+
+    <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/$(arg world_name).world"/>
+        <arg name="verbose" default="$(arg verbose)"/>
+        <arg name="paused" default="$(arg pause)"/>
+        <arg name="gui" value="$(arg gui)"/>
+    </include>
+
+</launch>

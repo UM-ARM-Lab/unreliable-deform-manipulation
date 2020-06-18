@@ -1,0 +1,12 @@
+sensor_msgs/Image rgb_image
+sensor_msgs/Image depth_image
+float64 max_depth
+sensor_msgs/Image predicted_segmentation
+sensor_msgs/Image true_segmentation
+float64[9] intrinsic_matrix
+float64[12] true_pose
+bool has_gt
+bool has_prediction
+int32 count
+float64 size_m
+string class_name

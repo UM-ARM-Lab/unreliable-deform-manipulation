@@ -1,0 +1,2 @@
+peter_msgs/Vector2 gripper1_delta_pos
+float64 max_time_per_step

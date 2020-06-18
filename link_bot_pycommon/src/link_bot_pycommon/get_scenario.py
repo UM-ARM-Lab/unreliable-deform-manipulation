@@ -1,4 +1,4 @@
-from link_bot_pycommon.fishing_3d import Fishing3DScenario
+from link_bot_pycommon.fishing_3d_scenario import Fishing3DScenario
 from link_bot_pycommon.link_bot_scenario import LinkBotScenario
 
 

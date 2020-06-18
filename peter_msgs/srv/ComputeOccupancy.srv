@@ -1,0 +1,9 @@
+bool request_new
+string robot_name
+geometry_msgs/Point center
+int64 w_cols
+int64 h_rows
+int64 c_channels
+float32 resolution
+---
+float32[] grid
