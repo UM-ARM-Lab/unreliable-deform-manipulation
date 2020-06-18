@@ -1,0 +1,18 @@
+<launch>
+    <!-- <group ns="link_bot">
+        <param name="n_state"       type="int"      value="11"/>
+        <param name="rope_length"   type="double"   value="$(eval 18.0 * 0.0254)"/>
+        <param name="max_speed"     type="double"   value="0.15"/>
+    </group> -->
+    
+    <arg name="pi_div2" value="$(eval pi/2)"/>
+    <rosparam subst_value="true" param="left_arm_home">
+        [-1.81695, -1.426, 0.749328, -1.55009, 2.84299, 0.258032, -1.96989]
+    </rosparam>
+    <rosparam subst_value="true" param="right_arm_home">
+        [-1.5708, 1.27796, -0.853131, 1.59958, -0.331705, 0.243396, -1.80012]
+    </rosparam>
+
+    <node name="world_interaction" pkg="victor_3d_rope_shim" type="world_interaction">
+    </node>
+</launch>
