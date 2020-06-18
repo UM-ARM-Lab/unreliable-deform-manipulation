@@ -19,11 +19,6 @@
         <include>
             <uri>model://sun</uri>
         </include>
-        <include>
-            <uri>model://collision_sphere</uri>
-            <pose>0 0 0 0 0 0</pose>
-            <name>collision_sphere</name>
-        </include>
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
         <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
     </world>

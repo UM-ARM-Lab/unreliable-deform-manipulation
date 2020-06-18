@@ -20,8 +20,8 @@ const sdf_tools::COLLISION_CELL CollisionMapPlugin::unoccupied_value{0};
 /**
  * This plugin moves a sphere along a grid in the world and checks for collision using raw ODE functions
  * TODOS:
- *  1. spawn the sphere in this code, rather than require it already be in the world
  *  1. set the sphere radius to match resolution
+ *  1. make it faster
  */
 
 void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
@@ -32,6 +32,7 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
 
   ode_ = boost::dynamic_pointer_cast<physics::ODEPhysics>(engine_);
 
+  world_->InsertModelFile("model://collision_sphere");
   m_ = world_->ModelByName("collision_sphere");
   auto c = m_->GetChildCollision("collision");
   ode_collision_ = boost::dynamic_pointer_cast<physics::ODECollision>(c);
