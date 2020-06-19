@@ -96,8 +96,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper1_local = gripper1 - gripper1
         gripper2_local = gripper2 - gripper1
 
-        rope_points = tf.reshape(state, [batch_size, -1, 3])
-        rope_points_local = rope_points - gripper1[:, tf.newaxis, 0]
+        rope_points = tf.reshape(rope, [batch_size, -1, 3])
+        rope_points_local = rope_points - gripper1[:, tf.newaxis]
         rope_local = tf.reshape(rope_points_local, [batch_size, -1])
 
         return {

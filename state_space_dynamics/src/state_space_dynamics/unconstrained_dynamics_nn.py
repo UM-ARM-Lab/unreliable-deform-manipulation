@@ -39,38 +39,28 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         self.state_dimensions = [self.dataset_states_description[k] for k in self.state_keys]
         self.total_state_dimensions = sum(self.state_dimensions)
 
-        self.dense_layers.append(layers.Dense(self.n_state, activation=None))
+        self.dense_layers.append(layers.Dense(self.total_state_dimensions, activation=None))
 
     def debug_plot(self, s):
-        import matplotlib.pyplot as plt
-        plt.figure()
-        ax = plt.gca()
-        self.scenario.plot_state(ax, {'link_bot': s[0]})
-        plt.axis("equal")
-        plt.xlim([-1, 1])
-        plt.ylim([-1, 1])
-        plt.show(block=True)
+        self.scenario.plot_state_rviz({'link_bot': s['link_bot'][0]})
 
-    # @tf.function
+    @tf.function
     def call(self, example, training, mask=None):
-        actions = [example[k] for k in self.action_keys]
-        input_sequence_length = actions[0].shape[1]
-        s_0 = [example[k][:, 0] for k in self.state_keys]
-        print(s_0)
+        actions = {k: example[k] for k in self.action_keys}
+        input_sequence_length = actions[self.action_keys[0]].shape[1]
+        s_0 = {k: example[k][:, 0] for k in self.state_keys}
 
         pred_states = [s_0]
         for t in range(input_sequence_length):
             s_t = pred_states[-1]
-            action_t = actions[:, t]
+            action_t = {k: a[:, t] for k, a in actions.items()}
 
             if self.hparams['use_local_frame']:
                 s_t_local = self.scenario.put_state_local_frame(s_t)
-                self.debug_plot(s_t_local)
-                states_and_actions = list(s_t_local.values())
-                states_and_actions.append(action_t)
+                # self.debug_plot(s_t_local)
+                states_and_actions = list(s_t_local.values()) + list(action_t.values())
             else:
-                states_and_actions = list(s_t.values())
-                states_and_actions.append(action_t)
+                states_and_actions = list(s_t.values()) + list(action_t.values())
 
             # concat into one big state-action vector
             z_t = self.concat(states_and_actions)

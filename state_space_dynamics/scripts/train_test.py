@@ -6,6 +6,7 @@ import pathlib
 import numpy as np
 import tensorflow as tf
 
+import rospy
 import state_space_dynamics
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.get_scenario import get_scenario
@@ -99,7 +100,7 @@ def main():
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--take', type=int)
-    train_parser.add_argument('--epochs', type=int, default=10)
+    train_parser.add_argument('--epochs', type=int, default=100)
     train_parser.add_argument('--ensemble-idx', type=int)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
@@ -120,6 +121,8 @@ def main():
     eval_parser.set_defaults(func=eval_main)
 
     args = parser.parse_args()
+
+    rospy.init_node("train_test")
 
     if args.seed is None:
         seed = np.random.randint(0, 10000)
