@@ -2,6 +2,7 @@ from typing import Dict, Optional
 
 import numpy as np
 import ros_numpy
+import tensorflow as tf
 
 import rospy
 from geometry_msgs.msg import Point
@@ -83,6 +84,31 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper1_position': gripper1_position,
             'gripper2_position': gripper2_position,
         }
+
+    @staticmethod
+    def put_state_local_frame(state: Dict):
+        gripper1 = state['gripper1']
+        gripper2 = state['gripper2']
+        rope = state['link_bot']
+
+        batch_size = gripper1.shape[0]
+
+        gripper1_local = gripper1 - gripper1
+        gripper2_local = gripper2 - gripper1
+
+        rope_points = tf.reshape(state, [batch_size, -1, 3])
+        rope_points_local = rope_points - gripper1[:, tf.newaxis, 0]
+        rope_local = tf.reshape(rope_points_local, [batch_size, -1])
+
+        return {
+            'gripper1': gripper1_local,
+            'gripper2': gripper2_local,
+            'link_bot': rope_local,
+        }
+
+    @staticmethod
+    def integrate_dynamics(s_t: Dict, delta_s_t: Dict):
+        return {k: s_t[k] + delta_s_t[k] for k in s_t.keys()}
 
     def action_to_dataset_action(self, state: Dict, random_action: Dict):
         target_gripper1_position = random_action['gripper1_position']

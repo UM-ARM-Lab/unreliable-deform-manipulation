@@ -6,7 +6,8 @@ import tensorflow.keras.layers as layers
 from colorama import Fore
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts_tf
+from moonshine.moonshine_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts_tf, \
+    sequence_of_dicts_to_dict_of_tensors
 from shape_completion_training.my_keras_model import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -30,10 +31,14 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         self.dense_layers = []
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
-        self.state_key = self.hparams['state_key']
-        self.action_key = self.hparams['action_key']
-        # TODO: support multiple state keys
-        self.n_state = self.hparams['dynamics_dataset_hparams']['states_description'][self.state_key]
+
+        self.state_keys = self.hparams['state_keys']
+        self.action_keys = self.hparams['action_keys']
+        self.dataset_states_description = self.hparams['dynamics_dataset_hparams']['states_description']
+        self.dataset_actions_description = self.hparams['dynamics_dataset_hparams']['action_description']
+        self.state_dimensions = [self.dataset_states_description[k] for k in self.state_keys]
+        self.total_state_dimensions = sum(self.state_dimensions)
+
         self.dense_layers.append(layers.Dense(self.n_state, activation=None))
 
     def debug_plot(self, s):
@@ -46,12 +51,12 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         plt.ylim([-1, 1])
         plt.show(block=True)
 
-    @tf.function
+    # @tf.function
     def call(self, example, training, mask=None):
-        states = example[self.state_key]
-        actions = example[self.action_key]
-        input_sequence_length = actions.shape[1]
-        s_0 = states[:, 0]
+        actions = [example[k] for k in self.action_keys]
+        input_sequence_length = actions[0].shape[1]
+        s_0 = [example[k][:, 0] for k in self.state_keys]
+        print(s_0)
 
         pred_states = [s_0]
         for t in range(input_sequence_length):
@@ -59,27 +64,37 @@ class UnconstrainedDynamicsNN(MyKerasModel):
             action_t = actions[:, t]
 
             if self.hparams['use_local_frame']:
-                s_t_w_time = tf.expand_dims(s_t, axis=1)
-                s_t_local = self.scenario.put_state_local_frame(self.state_key, s_t_w_time)
-                s_t_local = tf.squeeze(s_t_local, axis=1)
-                # self.debug_plot(s_t_local)
-                _state_action_t = self.concat([s_t_local, action_t])
+                s_t_local = self.scenario.put_state_local_frame(s_t)
+                self.debug_plot(s_t_local)
+                states_and_actions = list(s_t_local.values())
+                states_and_actions.append(action_t)
             else:
-                _state_action_t = self.concat([s_t, action_t])
-            z_t = _state_action_t
+                states_and_actions = list(s_t.values())
+                states_and_actions.append(action_t)
+
+            # concat into one big state-action vector
+            z_t = self.concat(states_and_actions)
             for dense_layer in self.dense_layers:
                 z_t = dense_layer(z_t)
 
             if self.hparams['residual']:
-                ds_t = z_t
-                s_t_plus_1_flat = self.scenario.integrate_dynamics(s_t, ds_t)
+                delta_s_t = self.vector_to_state_dict(z_t)
+                s_t_plus_1 = self.scenario.integrate_dynamics(s_t, delta_s_t)
             else:
-                s_t_plus_1_flat = z_t
+                s_t_plus_1 = self.vector_to_state_dict(z_t)
 
-            pred_states.append(s_t_plus_1_flat)
+            pred_states.append(s_t_plus_1)
 
-        pred_states = tf.stack(pred_states, axis=1)
-        return {self.state_key: pred_states}
+        pred_states_dict = sequence_of_dicts_to_dict_of_tensors(pred_states, axis=1)
+        return pred_states_dict
+
+    def vector_to_state_dict(self, z):
+        start_idx = 0
+        state_vectors = []
+        for dim in self.state_dimensions:
+            state_vectors.append(z[:, start_idx:start_idx + dim])
+            start_idx += dim
+        return dict(zip(self.state_keys, state_vectors))
 
 
 class UDNNWrapper(BaseDynamicsFunction):

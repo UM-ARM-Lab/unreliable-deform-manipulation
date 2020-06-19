@@ -180,10 +180,6 @@ class Base3DScenario(ExperimentScenario):
         return dynamics_points_metrics_function(dataset_element, predictions)
 
     @staticmethod
-    def integrate_dynamics(s_t, ds_t):
-        return s_t + ds_t
-
-    @staticmethod
     def get_environment_from_state_dict(start_states: Dict):
         return {}
 
@@ -199,13 +195,3 @@ class Base3DScenario(ExperimentScenario):
             'extent': example['extent'],
         }
 
-    @staticmethod
-    def put_state_local_frame(state_key, state):
-        batch_size, time, _ = state.shape
-        if state_key in ['link_bot', 'gripper']:
-            points = tf.reshape(state, [batch_size, time, -1, 3])
-            points = points - points[:, :, tf.newaxis, 0]
-            state_in_local_frame = tf.reshape(points, [batch_size, time, -1])
-            return state_in_local_frame
-        else:
-            raise NotImplementedError()

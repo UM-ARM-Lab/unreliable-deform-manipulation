@@ -354,7 +354,7 @@ class ExperimentScenario:
         return update, n_frames
 
     @staticmethod
-    def put_state_local_frame(state_key, state):
+    def put_state_local_frame(state : Dict):
         raise NotImplementedError()
 
     @staticmethod
