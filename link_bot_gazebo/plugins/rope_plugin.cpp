@@ -99,7 +99,6 @@ bool RopePlugin::StateServiceCallback(peter_msgs::LinkBotStateRequest &req, pete
 bool RopePlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
 {
   res.object.name = "link_bot";
-  std::vector<float> state_vector;
   for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx) {
     std::stringstream ss;
     ss << "link_" << link_idx;
@@ -109,9 +108,9 @@ bool RopePlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req, pet
     float const x = link->WorldPose().Pos().X();
     float const y = link->WorldPose().Pos().Y();
     float const z = link->WorldPose().Pos().Z();
-    state_vector.push_back(x);
-    state_vector.push_back(y);
-    state_vector.push_back(z);
+    res.object.state_vector.push_back(x);
+    res.object.state_vector.push_back(y);
+    res.object.state_vector.push_back(z);
     named_point.point.x = x;
     named_point.point.y = y;
     named_point.point.z = z;

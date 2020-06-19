@@ -21,7 +21,7 @@ class DynamicsDataset(BaseDataset):
         self.state_feature_names = list(self.hparams['states_description'].keys())
         self.state_feature_names.append('time_idx')
 
-        self.action_feature_names = list(self.hparams['actions_description'].keys())
+        self.action_feature_names = list(self.hparams['action_description'].keys())
 
         self.constant_feature_names = [
             'env',
@@ -55,7 +55,7 @@ class DynamicsDataset(BaseDataset):
             example_t[feature_name] = example[feature_name][:, t]
 
         for feature_name in self.action_feature_names:
-            if t < example[feature_name].shape[0]:
+            if t < example[feature_name].shape[1]:
                 example_t[feature_name] = example[feature_name][:, t]
             else:
                 example_t[feature_name] = example[feature_name][:, t - 1]

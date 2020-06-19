@@ -3,8 +3,8 @@ from time import sleep
 import numpy as np
 
 import rospy
-from std_msgs.msg import Empty, Int64, Float32
 from peter_msgs.srv import GetFloat32, GetFloat32Request
+from std_msgs.msg import Empty, Int64
 
 
 class RvizAnimationController:
@@ -25,7 +25,7 @@ class RvizAnimationController:
         self.idx = 0
         self.max_idx = self.time_steps.shape[0]
         self.period = self.period_srv(GetFloat32Request()).data
-        self.playing = True
+        self.playing = True # FIXME: make this stick across instantiations for this class -- rosparam?
         self.should_step = False
         self.fwd = True
         self.done = False
@@ -50,7 +50,7 @@ class RvizAnimationController:
             sleep(self.period)
         else:
             while not self.should_step and not self.playing:
-                pass
+                sleep(0.01)
 
         if self.idx < self.max_idx - 1 and self.fwd:
             self.idx += 1

@@ -427,7 +427,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def dataset_action_keys():
+    def dataset_action_description():
         raise NotImplementedError()
 
 

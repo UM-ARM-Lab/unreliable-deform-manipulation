@@ -6,6 +6,7 @@ from matplotlib import colors
 
 import rospy
 from geometry_msgs.msg import Point
+from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
@@ -17,9 +18,9 @@ from visualization_msgs.msg import MarkerArray, Marker
 class Base3DScenario(ExperimentScenario):
     def __init__(self):
         super().__init__()
-        self.env_viz_srv = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10)
-        self.state_viz_srv = rospy.Publisher("state_viz", MarkerArray, queue_size=10)
-        self.action_viz_srv = rospy.Publisher("action_viz", MarkerArray, queue_size=10)
+        self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10)
+        self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10)
+        self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10)
 
     @staticmethod
     def random_pos(action_rng: np.random.RandomState, environment):
@@ -29,7 +30,7 @@ class Base3DScenario(ExperimentScenario):
 
     def plot_environment_rviz(self, data: Dict):
         msg = environment_to_occupancy_msg(data)
-        self.env_viz_srv.publish(msg)
+        self.env_viz_pub.publish(msg)
 
     def plot_state_rviz(self, data: Dict, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
@@ -96,14 +97,20 @@ class Base3DScenario(ExperimentScenario):
 
         msg.markers.append(spheres)
         msg.markers.append(lines)
-        self.state_viz_srv.publish(msg)
+        self.state_viz_pub.publish(msg)
 
     def plot_action_rviz(self, data: Dict, **kwargs):
-        # TODO:
-        r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
-        link_bot_points = np.reshape(data['link_bot'], [-1, 3])
+        r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
+        s1 = np.reshape(data['gripper1'], [3])
+        s2 = np.reshape(data['gripper2'], [3])
+        a1 = np.reshape(data['gripper1_delta'], [3])
+        a2 = np.reshape(data['gripper2_delta'], [3])
+
         msg = MarkerArray()
-        self.action_viz_srv.publish(msg)
+        msg.markers.append(rviz_arrow(s1, a1, 1, r, g, b, a))
+        msg.markers.append(rviz_arrow(s2, a2, 2, r, g, b, a))
+
+        self.action_viz_pub.publish(msg)
 
     @staticmethod
     def get_subspace_weight(subspace_name: str):

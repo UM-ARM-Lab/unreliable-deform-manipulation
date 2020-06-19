@@ -47,8 +47,13 @@ def generate_traj(scenario: ExperimentScenario,
     feature['traj_idx'] = float_tensor_to_bytes_feature(traj_idx)
 
     random_action = None
-    actions = {'delta_position': []}
+    actions = {k: [] for k in scenario.dataset_action_description().keys()}
     states = {k: [] for k in states_description.keys()}
+    # sanity check!
+    for k in scenario.dataset_action_description().keys():
+        if k in states_description.keys():
+            rospy.logerr(f"Duplicate key {k} is both a state and an action")
+
     time_indices = []
     for time_idx in range(params.steps_per_traj):
         state = get_states_dict(service_provider)
@@ -162,7 +167,7 @@ def generate(service_provider, params: CollectDynamicsParams, args):
             'n_trajs': args.trajs,
             'data_collection_params': params.to_json(),
             'states_description': states_description,
-            'action_description': scenario.dataset_action_keys(),
+            'action_description': scenario.dataset_action_description(),
             'scenario': args.scenario,
         }
         json.dump(options, of, indent=2)

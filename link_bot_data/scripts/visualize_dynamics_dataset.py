@@ -59,6 +59,7 @@ def plot_2d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset, scenario: Exp
 
 
 def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset, scenario: ExperimentScenario):
+    rospy.loginfo("Don't forget to start the viz_stepper")
     for i, example in enumerate(tf_dataset):
         example = numpify(example)
 
@@ -79,7 +80,7 @@ def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset, scenario: Exp
 
 def main():
     plt.style.use("slides")
-    np.set_printoptions(suppress=True, linewidth=250, precision=3)
+    np.set_printoptions(suppress=True, linewidth=250, precision=5)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')

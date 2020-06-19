@@ -140,7 +140,7 @@ bool DualGripperPlugin::OnAction(peter_msgs::DualGripperTrajectoryRequest &req,
     }
   }
   return true;
-}  // namespace gazebo
+}
 
 bool DualGripperPlugin::OnGet(peter_msgs::GetDualGripperPointsRequest &req,
                               peter_msgs::GetDualGripperPointsResponse &res)
@@ -209,4 +209,5 @@ void DualGripperPlugin::PrivateQueueThread()
     private_queue_.callAvailable(ros::WallDuration(timeout));
   }
 }
+
 }  // namespace gazebo

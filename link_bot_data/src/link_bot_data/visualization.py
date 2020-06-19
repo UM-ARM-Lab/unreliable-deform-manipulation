@@ -1,5 +1,10 @@
 import numpy as np
-from link_bot_pycommon.pycommon import vector_to_points_2d
+import ros_numpy
+
+import rospy
+from geometry_msgs.msg import Point, Quaternion
+from link_bot_pycommon.pycommon import vector_to_points_2d, quaternion_from_euler
+from visualization_msgs.msg import Marker
 
 
 def plot_rope_configuration(ax, rope_configuration, linewidth=None, linestyle=None, s=1, label=None, scatt=True, **kwargs):
@@ -51,6 +56,33 @@ def plot_extents(ax, extent, linewidth=6, **kwargs):
                    linewidth=linewidth,
                    **kwargs)[0]
     return line
+
+
+def rviz_arrow(position, delta_position, id, r, g, b, a):
+    arrow = Marker()
+    arrow.action = Marker.ADD  # create or modify
+    arrow.type = Marker.ARROW
+    arrow.header.frame_id = "/world"
+    arrow.header.stamp = rospy.Time.now()
+    arrow.ns = "link_bot"
+    arrow.id = id
+
+    arrow.scale.x = np.linalg.norm(delta_position)
+    arrow.scale.y = 0.01
+    arrow.scale.z = 0.01
+
+    arrow.pose.position = ros_numpy.msgify(Point, position)
+    y_rotation = -np.arctan2(delta_position[2], np.linalg.norm(delta_position))
+    z_rotation = np.arctan2(delta_position[1], delta_position[0])
+    q = quaternion_from_euler(0, y_rotation, z_rotation)
+    arrow.pose.orientation = ros_numpy.msgify(Quaternion, q)
+
+    arrow.color.r = r
+    arrow.color.g = g
+    arrow.color.b = b
+    arrow.color.a = a
+
+    return arrow
 
 
 if __name__ == '__main__':
