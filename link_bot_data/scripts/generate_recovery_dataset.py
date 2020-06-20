@@ -86,6 +86,7 @@ def main():
         examples = []
         total_count = 0
         for out_example in generate_recovery_examples(fwd_models, classifier_model, tf_dataset, dataset, labeling_params):
+            # FIXME: is there an extra time/batch dimension?
             for batch_idx in range(out_example['traj_idx'].shape[0]):
                 out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
                 features = {}

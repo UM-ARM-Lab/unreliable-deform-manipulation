@@ -151,18 +151,17 @@ def trajectory_plot(ax,
                     actual_states: Optional[List[Dict]] = None,
                     predicted_states: Optional[List[Dict]] = None):
     scenario.plot_environment(ax, environment)
-    T = len(predicted_states)
+    T = len(actual_states)
     for time_idx in range(T):
         # don't plot NULL states
         actual_color = cm.Reds_r(time_idx / T)
         planned_color = cm.Blues_r(time_idx / T)
-        if not state_dict_is_null(predicted_states[time_idx]):
-            if actual_states is not None:
-                actual_s_t = actual_states[time_idx]
-                scenario.plot_state(ax, actual_s_t, color=actual_color, s=20, zorder=2, label='actual state', alpha=0.5)
-            if predicted_states is not None:
-                planned_s_t = predicted_states[time_idx]
-                scenario.plot_state(ax, planned_s_t, color=planned_color, s=5, zorder=3, label='planned state', alpha=0.5)
+        if actual_states is not None:
+            actual_s_t = actual_states[time_idx]
+            scenario.plot_state(ax, actual_s_t, color=actual_color, s=20, zorder=2, label='actual state', alpha=0.5)
+        if predicted_states is not None:
+            planned_s_t = predicted_states[time_idx]
+            scenario.plot_state(ax, planned_s_t, color=planned_color, s=5, zorder=3, label='planned state', alpha=0.5)
 
 
 def trajectory_image_from_example(example, model_hparams, title, accept_probabilities=None, end_idx=None):

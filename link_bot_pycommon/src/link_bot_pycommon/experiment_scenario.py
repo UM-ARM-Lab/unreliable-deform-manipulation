@@ -15,8 +15,8 @@ from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Positi
 
 
 class ExperimentScenario:
-    def __init__(self):
-        pass
+    def __init__(self, params : Dict):
+        self.params = params
 
     def __eq__(self, other):
         if isinstance(other, str):
@@ -34,7 +34,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def sample_action(environment: Dict, service_provider, state, last_action, params, action_rng):
+    def sample_action(environment: Dict, state, last_action, params: Dict, action_rng):
         raise NotImplementedError()
 
     @staticmethod
@@ -68,7 +68,7 @@ class ExperimentScenario:
     def plot_environment_rviz(self, data: Dict):
         raise NotImplementedError()
 
-    def plot_state_rviz(self, data: Dict, **kwargs):
+    def plot_state_rviz(self, data: Dict, label: str, **kwargs):
         raise NotImplementedError()
 
     def plot_action_rviz(self, data: Dict, **kwargs):
@@ -354,7 +354,7 @@ class ExperimentScenario:
         return update, n_frames
 
     @staticmethod
-    def put_state_local_frame(state : Dict):
+    def put_state_local_frame(state: Dict):
         raise NotImplementedError()
 
     @staticmethod
@@ -423,11 +423,12 @@ class ExperimentScenario:
         move_action_req.timeout = move['timeout']
         movable_object_services['action'](move_action_req)
 
-    def action_to_dataset_action(self, state: Dict, random_action: Dict):
+    @staticmethod
+    def action_description():
         raise NotImplementedError()
 
     @staticmethod
-    def dataset_action_description():
+    def put_action_local_frame(state: Dict, action:Dict):
         raise NotImplementedError()
 
 

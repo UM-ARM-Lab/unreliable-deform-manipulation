@@ -15,7 +15,8 @@ from link_bot_pycommon.base_services import Services
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 from link_bot_pycommon.ros_pycommon import get_states_dict
-from peter_msgs.msg import Action, sys
+from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts
+from peter_msgs.msg import sys
 
 
 def get_environment_common(w_m: float, h_m: float, res: float, service_provider: Services, scenario: ExperimentScenario):
@@ -33,17 +34,12 @@ def get_environment_common(w_m: float, h_m: float, res: float, service_provider:
     return environment
 
 
-def execute_actions(service_provider, scenario, dt, actions):
+def execute_actions(service_provider, scenario, actions: Dict):
     start_states = get_states_dict(service_provider)
     actual_path = [start_states]
-    for t in range(actions.shape[0]):
-        action_request = Action()
-        action_request.max_time_per_step = dt
-        action_request.action = actions[t]
-        action_response = scenario.execute_action(action_request)
-        state_t = {}
-        for named_object in action_response.objects.objects:
-            state_t[named_object.name] = np.array(named_object.state_vector)
+    for action in dict_of_sequences_to_sequence_of_dicts(actions):
+        scenario.execute_action(action)
+        state_t = get_states_dict(service_provider)
         actual_path.append(state_t)
     return actual_path
 
@@ -56,7 +52,6 @@ class PlanAndExecute:
                  n_plans_per_env: int,
                  verbose: int,
                  planner_params: Dict,
-                 sim_params: SimParams,
                  service_provider: Services,
                  no_execution: bool,
                  seed: int,
@@ -67,7 +62,6 @@ class PlanAndExecute:
         self.recovery_actions_model = recovery_actions_model
         self.n_total_plans = n_total_plans
         self.n_plans_per_env = n_plans_per_env
-        self.sim_params = sim_params
         self.planner_params = planner_params
         self.verbose = verbose
         self.service_provider = service_provider
@@ -247,4 +241,4 @@ class PlanAndExecute:
         :param actions: currently a numpy array, [time, n_action]
         :return: the states, a list of Dicts
         """
-        return execute_actions(self.service_provider, self.planner.scenario, self.planner.fwd_model.dt, actions)
+        return execute_actions(self.service_provider, self.planner.scenario, actions)

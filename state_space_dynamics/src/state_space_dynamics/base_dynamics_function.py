@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.params import CollectDynamicsParams
 
 
 class BaseDynamicsFunction:
@@ -19,13 +20,14 @@ class BaseDynamicsFunction:
         self.scenario = scenario
         self.hparams = json.load(model_hparams_file.open('r'))
         self.batch_size = batch_size
-        self.n_action = self.hparams['dynamics_dataset_hparams']['n_action']
-        self.dt = self.hparams['dynamics_dataset_hparams']['dt']
-        self.max_step_size = self.sim_params.max_step_size
+        data_params = CollectDynamicsParams.from_json(self.hparams['dynamics_dataset_hparams']['data_collection_params'])
+        self.dt = data_params.dt
+        self.max_step_size = data_params.max_step_size
         self.states_description = self.hparams['dynamics_dataset_hparams']['states_description']
         self.states_keys = None
+        self.action_keys = None
 
-    def propagate_from_dataset_element(self, dataset_element):
+    def propagate_from_example(self, dataset_element):
         raise NotImplementedError()
 
     # TODO: make propagate use the "environment" dict abstraction

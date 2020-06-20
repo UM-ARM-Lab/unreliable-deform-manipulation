@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from geometry_msgs.msg import Point
 from link_bot_gazebo.dual_gripper_action_forwarder_lib import interpolate_dual_gripper_trajectory
-from peter_msgs.srv import DualGripperTrajectoryRequest
+from peter_msgs.srv import DualGripperTrajectoryRequest, GetDualGripperPointsResponse
 
 
 def make_point(x, y, z):
@@ -24,16 +24,15 @@ class TestDualGripperActionForwarder(TestCase):
         in_req = DualGripperTrajectoryRequest()
         in_req.settling_time_seconds = 1.0
 
-        in_req.gripper1_points.append(in_gripper1_start)
         in_req.gripper1_points.append(in_gripper1_end)
-
-        in_req.gripper2_points.append(in_gripper2_start)
         in_req.gripper2_points.append(in_gripper2_end)
 
-        out_req = interpolate_dual_gripper_trajectory(step_size=0.01, start_end_trajectory_request=in_req)
+        get_res = GetDualGripperPointsResponse()
+        get_res.gripper1 = in_gripper1_start
+        get_res.gripper2 = in_gripper2_start
+        out_req = interpolate_dual_gripper_trajectory(step_size=0.01, get_response=get_res, start_end_trajectory_request=in_req)
 
-        self.assertEqual(len(out_req.gripper1_points), 10)
-        self.assertEqual(len(out_req.gripper2_points), 10)
+        self.assertEqual(len(out_req.gripper1_points), len(out_req.gripper2_points))
         self.assertEqual(out_req.settling_time_seconds, 1.0)
         self.assertEqual(out_req.gripper1_points[0], in_gripper1_start)
         self.assertEqual(out_req.gripper1_points[-1], in_gripper1_end)

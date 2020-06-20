@@ -19,7 +19,7 @@ class RigidTranslationModel(BaseDynamicsFunction):
         self.B = tf.constant(np.array(b), dtype=tf.float32)
         self.states_keys = self.hparams['states_keys']
 
-    def propagate_from_dataset_element(self, dataset_element):
+    def propagate_from_example(self, dataset_element):
         inputs, _ = dataset_element
         batch_states = {key: inputs[key] for key in self.states_keys}
         batch_states = dict_of_sequences_to_sequence_of_dicts(batch_states)

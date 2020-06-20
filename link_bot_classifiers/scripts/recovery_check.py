@@ -12,15 +12,17 @@ import tensorflow as tf
 from colorama import Fore
 
 import rospy
-from link_bot_classifiers.analysis_utils import predict_and_execute, load_models
+from link_bot_classifiers.analysis_utils import load_models, predict_and_execute, setup
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
+from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.link_bot_sdf_utils import env_from_occupancy_data
 from link_bot_pycommon.pycommon import paths_to_json, paths_from_json
 from link_bot_pycommon.ros_pycommon import get_states_dict
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import listify, numpify, dict_of_sequences_to_sequence_of_dicts
+from moonshine.moonshine_utils import listify, numpify, dict_of_sequences_to_sequence_of_dicts, \
+    sequence_of_dicts_to_dict_of_tensors
 
 limit_gpu_mem(4)
 
@@ -44,17 +46,26 @@ def save_data(args, basedir, environment, actuals, predictions, accept_probabili
     return filename
 
 
-def test_config(args):
+def test_params(args):
     rospy.init_node("recovery_check")
 
     now = time.time()
-    basedir = pathlib.Path(f"results/recovery_check/{args.test_config.stem}_{int(now)}")
+    basedir = pathlib.Path(f"results/recovery_check/{args.test_params.stem}_{int(now)}")
     basedir.mkdir(exist_ok=True, parents=True)
 
-    test_config = json.load(args.test_config.open("r"))
-    random_actions = sample_actions(args.n_actions_sampled, args.action_sequence_length)
-    start_configs = [test_config['start_config']] * args.n_actions_sampled
-    results = predict_and_execute(args.classifier_model_dir, args.fwd_model_dir, test_config, start_configs, random_actions)
+    test_params = json.load(args.test_params.open("r"))
+
+    classifier_model, fwd_model = load_models(args.classifier_model_dir, args.fwd_model_dir)
+    service_provider = GazeboServices()
+    environment = setup(service_provider, fwd_model, test_params)
+    state = get_states_dict(service_provider, fwd_model.states_keys)
+    start_states = [state, state]
+    n_start_states = len(start_states)
+    random_actions = sample_actions(fwd_model.scenario, environment, state, len(start_states), args.n_actions_sampled,
+                                    args.action_sequence_length)
+    start_states = sequence_of_dicts_to_dict_of_tensors(start_states)
+    results = predict_and_execute(service_provider, classifier_model, fwd_model, environment, start_states,
+                                  random_actions, args.action_sequence_length, args.n_actions_sampled, n_start_states)
     fwd_model, classifier_model, environment, actuals, predictions, accept_probabilities = results
 
     filename = save_data(args, basedir, environment, actuals, predictions, accept_probabilities, random_actions)
@@ -159,23 +170,42 @@ def get_state_and_environment(classifier_model, scenario, service_provider):
     return environment, state_dict
 
 
-def sample_actions(n_samples, horizon):
-    return tf.random.uniform(shape=[n_samples, horizon, 2], minval=-0.15, maxval=0.15)
+def sample_actions(scenario, environment, state, n_start_states, n_samples, horizon):
+    action_rng = np.random.RandomState(0)
+    action_sequences = []
+    action = None
+    for i in range(n_start_states):
+        action_sequences_for_start_state = []
+        for j in range(n_samples):
+            action_sequence = []
+            for t in range(horizon):
+                action = scenario.sample_action(environment=environment,
+                                                state=state,
+                                                last_action=action,
+                                                params={},
+                                                action_rng=action_rng)
+                action_sequence.append(action)
+            action_sequence_dict = sequence_of_dicts_to_dict_of_tensors(action_sequence)
+            action_sequences_for_start_state.append(action_sequence_dict)
+        action_sequence_for_start_state_dict = sequence_of_dicts_to_dict_of_tensors(action_sequences_for_start_state)
+        action_sequences.append(action_sequence_for_start_state_dict)
+    action_sequences_dict = sequence_of_dicts_to_dict_of_tensors(action_sequences)
+    return action_sequences_dict
 
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     subparsers = parser.add_subparsers()
-    test_config_parser = subparsers.add_parser('test_config')
-    test_config_parser.add_argument('test_config', help="json file describing the test", type=pathlib.Path)
-    test_config_parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')
-    test_config_parser.add_argument("classifier_model_dir", help="classifier", type=pathlib.Path)
-    test_config_parser.add_argument('--n-actions-sampled', type=int, default=25)
-    test_config_parser.add_argument('--action-sequence-length', type=int, default=1)
-    test_config_parser.set_defaults(func=test_config)
+    generate_parser = subparsers.add_parser('generate')
+    generate_parser.add_argument('test_params', help="json file describing the test", type=pathlib.Path)
+    generate_parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')
+    generate_parser.add_argument("--classifier-model-dir", help="classifier", type=pathlib.Path)
+    generate_parser.add_argument('--n-actions-sampled', type=int, default=25, help='n actions sampled')
+    generate_parser.add_argument('--action-sequence-length', type=int, default=1, help='action sequence length')
+    generate_parser.set_defaults(func=test_params)
     load_parser = subparsers.add_parser('load')
     load_parser.add_argument('load_from', help="json file with previously generated results", type=pathlib.Path)
-    load_parser.add_argument('--no-plot', action='store_true')
+    load_parser.add_argument('--no-plot', action='store_true', help='no plot')
     load_parser.set_defaults(func=load_main)
 
     np.set_printoptions(suppress=True, precision=3)

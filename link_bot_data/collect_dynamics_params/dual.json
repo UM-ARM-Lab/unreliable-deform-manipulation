@@ -12,7 +12,10 @@
   "dt": 1.0,
   "steps_per_traj": 10,
   "trajs_per_file": 16,
+  "settling_time": 0.2,
   "no_objects": true,
+  "min_dist_between_grippers": 0.04,
+  "max_dist_between_grippers": 0.28,
   "movable_objects": {
   }
 }

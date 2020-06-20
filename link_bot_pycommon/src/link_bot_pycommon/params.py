@@ -25,3 +25,6 @@ class CollectDynamicsParams:
     movable_objects: Dict[str, Dict[str, List[float]]]
     trajs_per_file: int
     no_objects: bool
+    settling_time: float
+    min_dist_between_grippers: float
+    max_dist_between_grippers: float

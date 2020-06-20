@@ -16,8 +16,8 @@ from visualization_msgs.msg import MarkerArray, Marker
 
 
 class Base3DScenario(ExperimentScenario):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, params: Dict):
+        super().__init__(params)
         self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10)
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10)
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10)
@@ -32,7 +32,7 @@ class Base3DScenario(ExperimentScenario):
         msg = environment_to_occupancy_msg(data)
         self.env_viz_pub.publish(msg)
 
-    def plot_state_rviz(self, data: Dict, **kwargs):
+    def plot_state_rviz(self, data: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
 
         link_bot_points = np.reshape(data['link_bot'], [-1, 3])
@@ -43,7 +43,7 @@ class Base3DScenario(ExperimentScenario):
         lines.type = Marker.LINE_STRIP
         lines.header.frame_id = "/world"
         lines.header.stamp = rospy.Time.now()
-        lines.ns = "link_bot"
+        lines.ns = label
         lines.id = 0
 
         lines.pose.position.x = 0
@@ -66,7 +66,7 @@ class Base3DScenario(ExperimentScenario):
         spheres.type = Marker.SPHERE_LIST
         spheres.header.frame_id = "/world"
         spheres.header.stamp = rospy.Time.now()
-        spheres.ns = "link_bot"
+        spheres.ns = label
         spheres.id = 1
 
         spheres.scale.x = 0.02
@@ -107,8 +107,8 @@ class Base3DScenario(ExperimentScenario):
         a2 = np.reshape(data['gripper2_delta'], [3])
 
         msg = MarkerArray()
-        msg.markers.append(rviz_arrow(s1, a1, 1, r, g, b, a))
-        msg.markers.append(rviz_arrow(s2, a2, 2, r, g, b, a))
+        msg.markers.append(rviz_arrow(s1, a1, r, g, b, a, idx=0))
+        msg.markers.append(rviz_arrow(s2, a2, r, g, b, a, idx=1))
 
         self.action_viz_pub.publish(msg)
 
@@ -164,9 +164,6 @@ class Base3DScenario(ExperimentScenario):
         rope_points = tf.reshape(rope_points, [batch_size, -1])
         return rope_points
 
-    def simple_name(self):
-        return "link_bot"
-
     @staticmethod
     def robot_name():
         return "link_bot"
@@ -194,4 +191,3 @@ class Base3DScenario(ExperimentScenario):
             'res': example['res'],
             'extent': example['extent'],
         }
-

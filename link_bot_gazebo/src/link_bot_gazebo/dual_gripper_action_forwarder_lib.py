@@ -5,14 +5,16 @@ import ros_numpy
 import rospy
 from geometry_msgs.msg import Point
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, \
-    DualGripperTrajectoryResponse
+    DualGripperTrajectoryResponse, GetDualGripperPointsRequest
 
 
-def interpolate_dual_gripper_trajectory(step_size, start_end_trajectory_request):
-    current_gripper1_point = ros_numpy.numpify(start_end_trajectory_request.gripper1_points[0])
-    target_gripper1_point = ros_numpy.numpify(start_end_trajectory_request.gripper1_points[1])
-    current_gripper2_point = ros_numpy.numpify(start_end_trajectory_request.gripper2_points[0])
-    target_gripper2_point = ros_numpy.numpify(start_end_trajectory_request.gripper2_points[1])
+def interpolate_dual_gripper_trajectory(step_size, get_response, start_end_trajectory_request):
+    current_gripper1_point = ros_numpy.numpify(get_response.gripper1)
+    target_gripper1_point = ros_numpy.numpify(start_end_trajectory_request.gripper1_points[0])
+
+    current_gripper2_point = ros_numpy.numpify(get_response.gripper2)
+    target_gripper2_point = ros_numpy.numpify(start_end_trajectory_request.gripper2_points[0])
+
     waypoint_traj_req = DualGripperTrajectoryRequest()
     waypoint_traj_req.settling_time_seconds = start_end_trajectory_request.settling_time_seconds
     gripper1_displacement = current_gripper1_point - target_gripper1_point
@@ -37,6 +39,10 @@ class DualGripperActionForwarder:
         rospy.spin()
 
     def in_srv_cb(self, req):
-        waypoint_traj_req = interpolate_dual_gripper_trajectory(step_size=self.step_size, start_end_trajectory_request=req)
+        get_req = GetDualGripperPointsRequest()
+        get_res = self.get_srv(get_req)
+        waypoint_traj_req = interpolate_dual_gripper_trajectory(step_size=self.step_size,
+                                                                get_response=get_res,
+                                                                start_end_trajectory_request=req)
         self.out_srv(waypoint_traj_req)
         return DualGripperTrajectoryResponse()

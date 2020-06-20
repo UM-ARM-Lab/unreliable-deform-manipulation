@@ -199,7 +199,7 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
         else:
             raise RuntimeError("Failed to restore!!!")
 
-    def propagate_from_dataset_element(self, dataset_element, training=False):
+    def propagate_from_example(self, dataset_element, training=False):
         return self.net(dataset_element, training=training)
 
     def propagate_differentiable(self,

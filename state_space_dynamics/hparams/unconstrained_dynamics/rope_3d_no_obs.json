@@ -14,8 +14,6 @@
     1024,
     1024
   ],
-  "use_local_frame": true,
-  "residual": true,
   "learning_rate": 0.001,
   "epochs": 400
 }

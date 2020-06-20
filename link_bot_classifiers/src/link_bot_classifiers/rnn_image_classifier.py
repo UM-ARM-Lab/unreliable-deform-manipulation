@@ -13,7 +13,6 @@ from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_classifiers.visualization import trajectory_image
 from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.params import FullEnvParams
 from link_bot_pycommon.pycommon import make_dict_float32
 from moonshine import classifier_losses_and_metrics
 from moonshine.action_smear_layer import smear_action_differentiable
@@ -246,7 +245,6 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         self.model_hparams = json.load(model_hparams_file.open('r'))
         self.dataset_labeling_params = self.model_hparams['classifier_dataset_hparams']['labeling_params']
         self.horizon = self.dataset_labeling_params['classifier_horizon']
-        self.full_env_params = FullEnvParams.from_json(self.model_hparams['classifier_dataset_hparams']['full_env_params'])
         self.net = RNNImageClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(model=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)

@@ -4,8 +4,7 @@ from typing import List
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
-from link_bot_data.link_bot_dataset_utils import add_planned, balance
-from link_bot_pycommon.params import FullEnvParams
+from link_bot_data.link_bot_dataset_utils import add_planned
 
 
 class ClassifierDataset(BaseDataset):
@@ -14,7 +13,6 @@ class ClassifierDataset(BaseDataset):
         super(ClassifierDataset, self).__init__(dataset_dirs)
         self.no_balance = no_balance
         self.load_true_states = load_true_states
-        self.full_env_params = FullEnvParams.from_json(self.hparams['full_env_params'])
         self.labeling_params = self.hparams['labeling_params']
         self.label_state_key = self.hparams['labeling_params']['state_key']
         self.horizon = self.hparams['labeling_params']['classifier_horizon']

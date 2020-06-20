@@ -58,14 +58,14 @@ def plot_extents(ax, extent, linewidth=6, **kwargs):
     return line
 
 
-def rviz_arrow(position, delta_position, id, r, g, b, a):
+def rviz_arrow(position, delta_position, r: float, g: float, b: float, a: float, label: str = 'arrow', idx: int = 0):
     arrow = Marker()
     arrow.action = Marker.ADD  # create or modify
     arrow.type = Marker.ARROW
     arrow.header.frame_id = "/world"
     arrow.header.stamp = rospy.Time.now()
-    arrow.ns = "link_bot"
-    arrow.id = id
+    arrow.ns = label
+    arrow.id = idx
 
     arrow.scale.x = np.linalg.norm(delta_position)
     arrow.scale.y = 0.01

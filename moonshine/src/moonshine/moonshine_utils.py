@@ -36,6 +36,14 @@ def listify(x):
             return _listify(x_np)
         elif isinstance(x, dict):
             return {k: _listify(v) for k, v in x.items()}
+        elif isinstance(x, np.int64):
+            return int(x)
+        elif isinstance(x, np.int32):
+            return int(x)
+        elif isinstance(x, np.float64):
+            return float(x)
+        elif isinstance(x, np.float32):
+            return float(x)
         elif isinstance(x, int):
             return x
         elif isinstance(x, float):

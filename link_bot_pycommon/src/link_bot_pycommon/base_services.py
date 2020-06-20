@@ -20,24 +20,11 @@ class Services:
         self.unpause = rospy.ServiceProxy('gazebo/unpause_physics', Empty)
         self.record = rospy.ServiceProxy('video_recorder', TriggerVideoRecording)
         self.reset = rospy.ServiceProxy("reset", Empty)
-        self.action_description = rospy.ServiceProxy("link_bot/actions", ActionSpaceDescription)
         self.get_objects = rospy.ServiceProxy("objects", GetObjects)
         self.states_description = rospy.ServiceProxy("states_description", StateSpaceDescription)
         self.marker_provider = MarkerProvider()
         self.get_physics = rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('gazebo/set_physics_properties', SetPhysicsProperties)
-
-    def get_action_description(self):
-        req = ActionSpaceDescriptionRequest()
-        res = self.action_description(req)
-        actions_dict = {}
-        for subspace in res.subspaces:
-            actions_dict[subspace.name] = {
-                'dim': subspace.dimensions,
-                'lower_bounds': subspace.lower_bounds,
-                'upper_bounds': subspace.upper_bounds,
-            }
-        return actions_dict
 
     def move_objects(self, object_moves: Dict[str, Pose]):
         pass

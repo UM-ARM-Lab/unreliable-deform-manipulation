@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import argparse
-import json
 import pathlib
 import time
 from time import perf_counter
@@ -9,13 +8,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from link_bot_classifiers.visualization import visualize_classifier_example, classifier_example_title
-from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import add_planned
+from link_bot_classifiers.visualization import trajectory_plot
+from link_bot_data.recovery_dataset import RecoveryDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import remove_batch, dict_of_sequences_to_sequence_of_dicts, numpify
+from moonshine.moonshine_utils import numpify, dict_of_sequences_to_sequence_of_dicts, remove_batch
 
 limit_gpu_mem(1)
 
@@ -42,23 +40,21 @@ def main():
     parser.add_argument('--no-plot', action='store_true', help='only print statistics')
 
     args = parser.parse_args()
-    args.batch_size = 1
 
     np.random.seed(args.seed)
     tf.random.set_seed(args.seed)
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
+    dataset = RecoveryDataset(args.dataset_dirs, load_true_states=True)
 
-    visualize_dataset(args, classifier_dataset)
+    visualize_dataset(args, dataset)
 
 
-def visualize_dataset(args, classifier_dataset):
-    dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
-    scenario = get_scenario(classifier_dataset.hparams['scenario'])
-    model_hparams = json.load(args.model_hparams.open("r"))
+def visualize_dataset(args, dataset):
+    tf_dataset = dataset.get_datasets(mode=args.mode, take=args.take)
+
+    scenario = get_scenario(dataset.hparams['scenario'])
     if args.shuffle:
-        dataset = dataset.shuffle(buffer_size=512)
-    dataset = dataset.batch(1)
+        tf_dataset = tf_dataset.shuffle(buffer_size=512)
     now = int(time.time())
     outdir = pathlib.Path('results') / f'anim_{now}'
     outdir.mkdir(parents=True)
@@ -67,7 +63,7 @@ def visualize_dataset(args, classifier_dataset):
     positive_count = 0
     negative_count = 0
     count = 0
-    iterator = iter(dataset)
+    iterator = iter(tf_dataset)
     t0 = perf_counter()
     while not done:
         iter_t0 = perf_counter()
@@ -79,32 +75,10 @@ def visualize_dataset(args, classifier_dataset):
         if args.perf:
             print("{:6.4f}".format(iter_dt))
 
-        example = remove_batch(example)
-
-        is_close = example['is_close'].numpy().squeeze()
-        n_close = np.count_nonzero(is_close)
-        n_far = is_close.shape[0] - n_close
-        positive_count += n_close
-        negative_count += n_far
-        reconverging = n_far > 0 and is_close[-1]
-        environment = numpify(scenario.get_environment_from_example(example))
-        predictions = {}
-        for state_key in classifier_dataset.state_keys:
-            predictions[state_key] = example[add_planned(state_key)]
-        predictions = dict_of_sequences_to_sequence_of_dicts(predictions)
-
-        if args.only_reconverging and not reconverging:
-            continue
-
         if count == 0:
             print_dict(example)
 
-        if reconverging:
-            reconverging_count += 1
-
         count += 1
-
-        title = classifier_example_title(example)
 
         # Print statistics intermittently
         if count % 100 == 0:
@@ -113,27 +87,23 @@ def visualize_dataset(args, classifier_dataset):
         #############################
         # Show Visualization
         #############################
-        # print(example['traj_idx'].numpy()[0],
-        #       example['prediction_start_t'].numpy(),
-        #       example['classifier_start_t'].numpy(),
-        #       example['classifier_end_t'].numpy())
-        # if example['prediction_start_t'].numpy() < 1.0:
-        #     continue
-
-        valid_seq_length = (example['classifier_end_t'] - example['classifier_start_t'] + 1).numpy()
-        if args.at_least_length and valid_seq_length < args.at_least_length:
-            continue
-
-        _ = visualize_classifier_example(args=args,
-                                         scenario=scenario,
-                                         outdir=outdir,
-                                         model_hparams=model_hparams,
-                                         classifier_dataset=classifier_dataset,
-                                         example=example,
-                                         example_idx=count,
-                                         title=title,
-                                         fps=args.fps)
         if not args.no_plot:
+            plt.figure()
+            ax = plt.gca()
+            actual_states = {}
+            for state_key in dataset.state_keys:
+                actual_states[state_key] = remove_batch(numpify(example[state_key]))
+            actual_states = dict_of_sequences_to_sequence_of_dicts(actual_states)
+
+            # FIXME: why does environment have a time dimension???
+            environment = remove_batch(numpify(scenario.get_environment_from_example(example)))
+            environment['env'] = tf.expand_dims(environment['env'], axis=2)
+            trajectory_plot(ax, scenario, environment, actual_states)
+
+            handles, labels = ax.get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            ax.legend(by_label.values(), by_label.keys())
+
             plt.show()
         else:
             plt.close()

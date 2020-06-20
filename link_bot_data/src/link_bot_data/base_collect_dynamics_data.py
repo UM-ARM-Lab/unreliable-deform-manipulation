@@ -46,36 +46,33 @@ def generate_traj(scenario: ExperimentScenario,
     feature = dict_of_float_tensors_to_bytes_feature(environment)
     feature['traj_idx'] = float_tensor_to_bytes_feature(traj_idx)
 
-    random_action = None
-    actions = {k: [] for k in scenario.dataset_action_description().keys()}
+    action = None
+    actions = {k: [] for k in scenario.action_description().keys()}
     states = {k: [] for k in states_description.keys()}
     # sanity check!
-    for k in scenario.dataset_action_description().keys():
+    for k in scenario.action_description().keys():
         if k in states_description.keys():
             rospy.logerr(f"Duplicate key {k} is both a state and an action")
 
     time_indices = []
     for time_idx in range(params.steps_per_traj):
         state = get_states_dict(service_provider)
-        random_action = scenario.sample_action(environment=environment,
-                                               service_provider=service_provider,
-                                               state=state,
-                                               last_action=random_action,
-                                               params=params,
-                                               action_rng=action_rng)
+        action = scenario.sample_action(environment=environment,
+                                        state=state,
+                                        last_action=action,
+                                        params=params.to_dict(),
+                                        action_rng=action_rng)
 
-        dataset_action = scenario.action_to_dataset_action(state, random_action)
-
-        if time_idx < params.steps_per_traj - 1:  # skip the last random_action
-            for action_name, action in dataset_action.items():
-                actions[action_name].append(action)
+        if time_idx < params.steps_per_traj - 1:  # skip the last action
+            for action_name, action_component in action.items():
+                actions[action_name].append(action_component)
 
         for state_name, state_component in state.items():
             states[state_name].append(state_component)
 
         time_indices.append(time_idx)
 
-        scenario.execute_action(random_action)
+        scenario.execute_action(action)
 
         global_t_step += 1
 
@@ -103,10 +100,7 @@ def generate_trajs(service_provider,
     global_t_step = 0
     last_record_t = perf_counter()
 
-    movable_object_services = {}
-    for object_name in params.movable_objects:
-        movable_object_services[object_name] = make_movable_object_services(object_name)
-
+    movable_object_services = {k: make_movable_object_services(k) for k in params.movable_objects}
     for traj_idx in range(args.trajs):
         scenario.move_objects_randomly(env_rng, movable_object_services, params.movable_objects)
 
@@ -146,7 +140,7 @@ def generate_trajs(service_provider,
 
 def generate(service_provider, params: CollectDynamicsParams, args):
     rospy.init_node('collect_dynamics_data')
-    scenario = get_scenario(args.scenario)
+    scenario = get_scenario(args.scenario, params.to_dict())
 
     assert args.trajs % params.trajs_per_file == 0, "num trajs must be multiple of {}".format(params.trajs_per_file)
 
@@ -167,7 +161,7 @@ def generate(service_provider, params: CollectDynamicsParams, args):
             'n_trajs': args.trajs,
             'data_collection_params': params.to_json(),
             'states_description': states_description,
-            'action_description': scenario.dataset_action_description(),
+            'action_description': scenario.action_description(),
             'scenario': args.scenario,
         }
         json.dump(options, of, indent=2)

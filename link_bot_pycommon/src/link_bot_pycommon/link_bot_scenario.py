@@ -91,7 +91,6 @@ class LinkBotScenario(ExperimentScenario):
 
     @staticmethod
     def sample_action(environment: Dict,
-                      service_provider,
                       state,
                       last_action: Optional[Dict],
                       params: CollectDynamicsParams,
@@ -148,7 +147,7 @@ class LinkBotScenario(ExperimentScenario):
         msg = environment_to_occupancy_msg(data)
         self.env_viz_srv.publish(msg)
 
-    def plot_state_rviz(self, data: Dict, **kwargs):
+    def plot_state_rviz(self, data: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
 
         link_bot_points = np.reshape(data['link_bot'], [-1, 3])
@@ -159,7 +158,7 @@ class LinkBotScenario(ExperimentScenario):
         lines.type = Marker.LINE_STRIP
         lines.header.frame_id = "/world"
         lines.header.stamp = rospy.Time.now()
-        lines.ns = "link_bot"
+        lines.ns = label
         lines.id = 0
 
         lines.pose.position.x = 0
@@ -182,8 +181,8 @@ class LinkBotScenario(ExperimentScenario):
         spheres.type = Marker.SPHERE_LIST
         spheres.header.frame_id = "/world"
         spheres.header.stamp = rospy.Time.now()
-        spheres.ns = "link_bot"
-        spheres.id = 1
+        spheres.ns = label
+        spheres.id = 0
 
         spheres.scale.x = 0.02
         spheres.scale.y = 0.02

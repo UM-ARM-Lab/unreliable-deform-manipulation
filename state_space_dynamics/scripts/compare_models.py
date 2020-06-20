@@ -7,15 +7,16 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 from colorama import Fore, Style
-from matplotlib.animation import FuncAnimation
 from tabulate import tabulate
 
+import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import listify, numpify, dict_of_sequences_to_sequence_of_dicts, remove_batch
+from moonshine.moonshine_utils import listify, numpify, remove_batch
 from state_space_dynamics import model_utils
 
 limit_gpu_mem(2)
@@ -25,7 +26,7 @@ def load_dataset_and_models(args):
     comparison_info = json.load(args.comparison.open("r"))
     models = {}
     for name, model_info in comparison_info.items():
-        model_dir = model_info['model_dir']
+        model_dir = pathlib.Path(model_info['model_dir'])
         model, _ = model_utils.load_generic_model(model_dir)
         models[name] = model
 
@@ -37,7 +38,7 @@ def load_dataset_and_models(args):
 
     if args.shuffle:
         tf_dataset = tf_dataset.shuffle(buffer_size=1024)
-    return tf_dataset, models
+    return tf_dataset, dataset, models
 
 
 def generate(args):
@@ -45,16 +46,26 @@ def generate(args):
     base_folder.mkdir(parents=True)
     print("Using output directory: {}".format(base_folder))
 
-    tf_dataset, models = load_dataset_and_models(args)
+    tf_dataset, dataset, models = load_dataset_and_models(args)
 
     all_data = []
     for example_idx, dataset_element in enumerate(tf_dataset):
-        data_per_model_for_element = {}
+        data_per_model_for_element = {
+            'time_steps': dataset.desired_sequence_length,
+            'action_keys': dataset.action_feature_names,
+            'dataset_element': dataset_element,
+            'environment': {
+                'env': dataset_element['env'],
+                'res': dataset_element['res'],
+                'origin': dataset_element['origin'],
+                'extent': dataset_element['extent'],
+            }
+        }
         print(f'running prediction for example {example_idx}')
+
         for model_name, model in models.items():
-            predictions = model.propagate_from_dataset_element(dataset_element)
+            predictions = model.propagate_from_example(dataset_element)
             data_per_model_for_element[model_name] = {
-                'dataset_element': dataset_element,
                 'predictions': predictions,
                 'scenario': model.scenario.simple_name(),
             }
@@ -71,6 +82,7 @@ def viz_main(args):
 
 
 def viz(data_filename, fps, no_plot, save):
+    rospy.init_node("compare_models")
     plt.style.use("slides")
 
     # Load the results
@@ -81,32 +93,24 @@ def viz(data_filename, fps, no_plot, save):
     all_metrics = {}
     for example_idx, datum in enumerate(saved_data):
         print(example_idx)
-        # Plotting
-        if no_plot and not save:
-            fig = plt.figure()
-            ax = plt.gca()
-            update_funcs = []
-            frames = None
 
+        # use the first (or any) model data to get the ground truth and
+        dataset_element = numpify(datum.pop("dataset_element"))
+        environment = numpify(datum.pop("environment"))
+        action_keys = datum.pop("action_keys")
+        actions = {k: dataset_element[k] for k in action_keys}
+
+        models_scenarios = []
+        models_predictions = []
+        time_steps = np.arange(datum.pop('time_steps'))
         for model_name, data_for_model in datum.items():
             scenario = get_scenario(data_for_model['scenario'])
-            dataset_element = (numpify(data_for_model['dataset_element'][0]), numpify(data_for_model['dataset_element'][1]))
-            inputs = remove_batch(numpify(data_for_model['dataset_element'][0]))
-            outputs = remove_batch(numpify(data_for_model['dataset_element'][1]))
-            predictions = remove_batch(numpify(data_for_model['predictions']))
-            actions = inputs['action']
-            actual = dict_of_sequences_to_sequence_of_dicts(outputs)
-            predictions = dict_of_sequences_to_sequence_of_dicts(predictions)
-            extent = inputs['full_env/extent']
-            environment = {
-                'full_env/env': inputs['full_env/env'],
-                'full_env/extent': extent,
-            }
 
             # Metrics
             metrics_for_model = {}
-            metrics = scenario.dynamics_metrics_function(dataset_element, numpify(data_for_model['predictions']))
-            loss = scenario.dynamics_loss_function(dataset_element, numpify(data_for_model['predictions']))
+            predictions = numpify(data_for_model['predictions'])
+            metrics = scenario.dynamics_metrics_function(dataset_element, predictions)
+            loss = scenario.dynamics_loss_function(dataset_element, predictions)
             metrics['loss'] = loss
             for metric_name, metric_value in metrics.items():
                 if metric_name not in metrics_for_model:
@@ -121,35 +125,25 @@ def viz(data_filename, fps, no_plot, save):
                     all_metrics[model_name][metric_name] = []
                 all_metrics[model_name][metric_name].append(mean_metric_value)
 
-            # Plotting
-            if no_plot and not save:
-                update, frames = scenario.animate_predictions_on_axes(ax=ax,
-                                                                      fig=fig,
-                                                                      environment=environment,
-                                                                      actions=actions,
-                                                                      actual=actual,
-                                                                      predictions=predictions,
-                                                                      example_idx=example_idx,
-                                                                      prediction_label_name=model_name,
-                                                                      prediction_color=None)
-                update_funcs.append(update)
+            models_scenarios.append(scenario)
+            models_predictions.append(predictions)
 
-        if no_plot and not save:
-            def update(t):
-                for update_func in update_funcs:
-                    update_func(t)
-
-            handles, labels = plt.gca().get_legend_handles_labels()
-            by_label = dict(zip(labels, handles))
-            plt.legend(by_label.values(), by_label.keys())
-            anim = FuncAnimation(fig, update, interval=1000 / fps, repeat=True, frames=frames)
-            if not no_plot:
-                plt.show()
-            if save:
-                filename = base_folder / '{}_anim_{}.gif'.format(model_name, example_idx)
-                print(f"Saving {filename.as_posix()}")
-                anim.save(filename, writer='imagemagick', dpi=100)
-            plt.close(fig)
+        if not no_plot and not save:
+            models_scenarios[0].plot_environment_rviz(remove_batch(environment))
+            anim = RvizAnimationController(time_steps)
+            while not anim.done:
+                t = anim.t()
+                for scenario, predictions in zip(models_scenarios, models_predictions):
+                    prediction_t = scenario.index_state_time(predictions, t)
+                    actual_t = scenario.index_state_time(dataset_element, t)
+                    action_t = scenario.index_action_time(actions, t)
+                    state_action_t = {}
+                    state_action_t.update(prediction_t)
+                    state_action_t.update(action_t)
+                    scenario.plot_state_rviz(prediction_t, label='prediction', color='#ff0000aa')
+                    scenario.plot_state_rviz(actual_t, label='actual', color='#0000ff88')
+                    scenario.plot_action_rviz(state_action_t, color='gray')
+                    anim.step()
 
     metrics_by_model = {}
     for model_name, metrics_for_model in all_metrics.items():
@@ -190,7 +184,7 @@ def main():
     gen_parser.add_argument('--sequence-length', type=int, default=10, help='seq length')
     gen_parser.add_argument('--no-plot', action='store_true', help='no plot')
     gen_parser.add_argument('--mode', choices=['train', 'test', 'val'], default='test', help='mode')
-    gen_parser.add_argument('--take', type=int, default=10, help='number of examples to visualize')
+    gen_parser.add_argument('--take', type=int, default=100, help='number of examples to visualize')
     gen_parser.add_argument('--shard', type=int, help='shard only a subset of the data')
     gen_parser.add_argument('--shuffle', action='store_true')
     gen_parser.add_argument('--save', action='store_true')

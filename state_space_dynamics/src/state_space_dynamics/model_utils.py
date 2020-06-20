@@ -83,11 +83,13 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
         self.models, _ = load_ensemble(fwd_model_dirs)
         self.n_models = len(self.models)
         self.states_keys = self.models[0].states_keys
+        self.dynamics_data_params = self.models[0].dynamics_data_params
+        self.full_env_params = self.models[0].full_env_params
 
-    def propagate_from_dataset_element(self, dataset_element):
+    def propagate_from_example(self, dataset_element):
         all_predictions = {}
         for fwd_model in self.models:
-            prediction = fwd_model.propagate_from_dataset_element(dataset_element)
+            prediction = fwd_model.propagate_from_example(dataset_element)
             for k, v in prediction.items():
                 if k not in all_predictions:
                     all_predictions[k] = []
@@ -142,13 +144,9 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
                                          actions: tf.Variable) -> Dict:
         all_predictions = []
         for fwd_model in self.models:
-            net_input = {
-                # must be batch, T, n_state
-                fwd_model.net.state_key: start_states[fwd_model.net.state_key],
-                # must be batch, T, 2
-                'action': actions,
-            }
-            predictions = fwd_model.net((net_input, None), training=False)
+            net_input = {k: start_states[k] for k in fwd_model.states_keys}
+            net_input.update({k: actions[k] for k in fwd_model.action_keys})
+            predictions = fwd_model.net(net_input, training=False)
             all_predictions.append(predictions)
 
         # restructure data to be one List of dicts, where each dict has all the states/keys of the original dicts, but averaged
@@ -156,7 +154,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
         ensemble_predictions = {state_key: [] for state_key in self.states_keys}
         ensemble_predictions['stdev'] = []
 
-        T = int(actions.shape[1]) + 1
+        T = int(next(iter(actions.values())).shape[1]) + 1
         for t in range(T):
             all_stdevs_t = []
             for state_key in self.states_keys:

@@ -1,0 +1,16 @@
+{
+  "start_config": {
+    "gripper1": [
+      0,
+      0,
+      0.1
+    ],
+    "gripper2": [
+      0,
+      0,
+      0.1
+    ]
+  },
+  "object_positions": {
+  }
+}
