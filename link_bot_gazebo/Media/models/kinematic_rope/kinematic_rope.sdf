@@ -1661,7 +1661,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1689,7 +1689,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1717,7 +1717,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1745,7 +1745,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1773,7 +1773,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1801,7 +1801,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1829,7 +1829,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1857,7 +1857,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1885,7 +1885,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1913,7 +1913,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1941,7 +1941,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1969,7 +1969,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -1997,7 +1997,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -2025,7 +2025,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.001</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -2103,6 +2103,12 @@
                     <friction>0.0</friction>
                 </dynamics>
             </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.01</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
         </joint>
         <link name='gripper2'>
             <pose frame=''>0 0 0 0 0 0 </pose>
@@ -2174,6 +2180,12 @@
                     <friction>0.0</friction>
                 </dynamics>
             </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.01</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
         </joint>
         <plugin name='rope_plugin' filename='librope_plugin.so'>
             <num_links>15</num_links>

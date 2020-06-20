@@ -29,7 +29,7 @@ def collect_trajectory(scenario: ExperimentScenario,
                        global_t_step: int,
                        action_rng: np.random.RandomState,
                        verbose: int,
-                       states_description: Dict):
+                       ):
     if params['no_objects']:
         rows, cols, channels = extent_to_env_shape(params['extent'], params['res'])
         origin = np.array([rows // 2, cols // 2, channels // 2], dtype=np.int32)
@@ -46,12 +46,11 @@ def collect_trajectory(scenario: ExperimentScenario,
     feature = dict_of_float_tensors_to_bytes_feature(environment)
     feature['traj_idx'] = float_tensor_to_bytes_feature(traj_idx)
 
-    action = None
-    actions = {k: [] for k in scenario.action_description().keys()}
-    states = {k: [] for k in states_description.keys()}
+    actions = {k: [] for k in scenario.actions_description().keys()}
+    states = {k: [] for k in scenario.states_description().keys()}
     # sanity check!
-    for k in scenario.action_description().keys():
-        if k in states_description.keys():
+    for k in scenario.actions_description().keys():
+        if k in scenario.states_description().keys():
             rospy.logerr(f"Duplicate key {k} is both a state and an action")
 
     time_indices = []
@@ -60,7 +59,6 @@ def collect_trajectory(scenario: ExperimentScenario,
         state = scenario.get_state()
         action = scenario.sample_action(environment=environment,
                                         state=state,
-                                        last_action=action,
                                         params=params,
                                         action_rng=action_rng)
 
@@ -100,7 +98,7 @@ def generate_trajs(service_provider,
                    full_output_directory,
                    env_rng: np.random.RandomState,
                    action_rng: np.random.RandomState,
-                   states_description: Dict):
+                   ):
     examples = np.ndarray([params['trajs_per_file']], dtype=object)
     global_t_step = 0
     last_record_t = perf_counter()
@@ -117,7 +115,7 @@ def generate_trajs(service_provider,
                                                     global_t_step=global_t_step,
                                                     action_rng=action_rng,
                                                     verbose=args.verbose,
-                                                    states_description=states_description)
+                                                    )
         current_record_traj_idx = traj_idx % params['trajs_per_file']
         examples[current_record_traj_idx] = example
 
@@ -147,14 +145,12 @@ def generate(service_provider, params: Dict, args):
     rospy.init_node('collect_dynamics_data')
     scenario = get_scenario({'scenario': args.scenario, 'data_collection_params': params})
 
-    assert args.trajs % params['trajs_per_file'] == 0, "num trajs must be multiple of {}".format(params['trajs_per_file'])
+    assert args.trajs % params['trajs_per_file'] == 0, f"num trajs must be multiple of {params['trajs_per_file']}"
 
     full_output_directory = data_directory(args.outdir, args.trajs)
     if not os.path.isdir(full_output_directory) and args.verbose:
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)
-
-    states_description = service_provider.get_states_description()
 
     if args.seed is None:
         args.seed = np.random.randint(0, 10000)
@@ -165,8 +161,8 @@ def generate(service_provider, params: Dict, args):
             'seed': args.seed,
             'n_trajs': args.trajs,
             'data_collection_params': params,
-            'states_description': states_description,
-            'action_description': scenario.action_description(),
+            'states_description': scenario.states_description(),
+            'action_description': scenario.actions_description(),
             'scenario': args.scenario,
         }
         json.dump(options, of, indent=2)
@@ -185,5 +181,4 @@ def generate(service_provider, params: Dict, args):
                    args=args,
                    full_output_directory=full_output_directory,
                    env_rng=env_rng,
-                   action_rng=action_rng,
-                   states_description=states_description)
+                   action_rng=action_rng)

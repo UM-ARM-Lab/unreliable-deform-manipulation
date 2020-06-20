@@ -14,8 +14,8 @@
   "trajs_per_file": 16,
   "settling_time": 0.2,
   "no_objects": true,
-  "min_dist_between_grippers": 0.04,
-  "max_dist_between_grippers": 0.28,
+  "max_dist_between_gripper_and_link": 0.0105,
+  "max_distance_gripper_can_move": 0.05,
   "movable_objects": {
   }
 }

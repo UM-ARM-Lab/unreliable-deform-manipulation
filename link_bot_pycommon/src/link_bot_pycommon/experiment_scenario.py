@@ -33,8 +33,10 @@ class ExperimentScenario:
     def execute_action(self, action: Dict):
         raise NotImplementedError()
 
-    @staticmethod
-    def sample_action(environment: Dict, state, last_action, params: Dict, action_rng):
+    def sample_action(self,
+                      environment: Dict,
+                      state: Dict,
+                      params: Dict, action_rng):
         raise NotImplementedError()
 
     @staticmethod
@@ -424,7 +426,11 @@ class ExperimentScenario:
         movable_object_services['action'](move_action_req)
 
     @staticmethod
-    def action_description():
+    def states_description():
+        raise NotImplementedError()
+
+    @staticmethod
+    def actions_description():
         raise NotImplementedError()
 
     @staticmethod

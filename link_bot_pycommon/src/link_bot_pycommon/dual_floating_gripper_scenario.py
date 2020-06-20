@@ -1,4 +1,5 @@
-from typing import Dict, Optional
+from copy import deepcopy
+from typing import Dict
 
 import numpy as np
 import ros_numpy
@@ -18,6 +19,8 @@ from visualization_msgs.msg import MarkerArray
 class DualFloatingGripperRopeScenario(Base3DScenario):
     def __init__(self, params: Dict):
         super().__init__(params)
+        self.last_state = None
+        self.last_action = None
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
         self.interrupt = rospy.Publisher("interrupt_trajectory", Empty, queue_size=10)
         self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
@@ -32,25 +35,21 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.nudge_rng = np.random.RandomState(0)
 
     def random_nearby_position_action(self, state: Dict, action_rng: np.random.RandomState, environment):
-        while True:
-            target_gripper1_pos = Base3DScenario.random_pos(action_rng, environment)
-            target_gripper2_pos = Base3DScenario.random_pos(action_rng, environment)
-            current_gripper1_pos, current_gripper2_pos = DualFloatingGripperRopeScenario.state_to_gripper_position(state)
+        target_gripper1_pos = Base3DScenario.random_pos(action_rng, environment)
+        target_gripper2_pos = Base3DScenario.random_pos(action_rng, environment)
+        current_gripper1_pos, current_gripper2_pos = DualFloatingGripperRopeScenario.state_to_gripper_position(state)
 
-            gripper1_displacement = target_gripper1_pos - current_gripper1_pos
-            gripper1_displacement = gripper1_displacement / np.linalg.norm(
-                gripper1_displacement) * self.params['max_delta_pos'] * action_rng.uniform(0, 1)
-            target_gripper1_pos = current_gripper1_pos + gripper1_displacement
+        gripper1_displacement = target_gripper1_pos - current_gripper1_pos
+        gripper1_displacement = gripper1_displacement / np.linalg.norm(
+            gripper1_displacement) * self.params['max_distance_gripper_can_move'] * action_rng.uniform(0, 1)
+        target_gripper1_pos = current_gripper1_pos + gripper1_displacement
 
-            gripper2_displacement = target_gripper2_pos - current_gripper2_pos
-            gripper2_displacement = gripper2_displacement / np.linalg.norm(
-                gripper2_displacement) * self.params['max_delta_pos'] * action_rng.uniform(0, 1)
-            target_gripper2_pos = current_gripper2_pos + gripper2_displacement
+        gripper2_displacement = target_gripper2_pos - current_gripper2_pos
+        gripper2_displacement = gripper2_displacement / np.linalg.norm(
+            gripper2_displacement) * self.params['max_distance_gripper_can_move'] * action_rng.uniform(0, 1)
+        target_gripper2_pos = current_gripper2_pos + gripper2_displacement
 
-            # TODO: this won't prevent overstretching with obstacles...
-            distance_between_grippers = np.linalg.norm(target_gripper2_pos - target_gripper1_pos)
-            if self.params['min_dist_between_grippers'] < distance_between_grippers < self.params['max_dist_between_grippers']:
-                return target_gripper1_pos, target_gripper2_pos
+        return target_gripper1_pos, target_gripper2_pos
 
     def settle(self):
         req = WorldControlRequest()
@@ -74,14 +73,25 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def sample_action(self,
                       environment: Dict,
                       state,
-                      last_action: Optional[Dict],
                       params: Dict,
                       action_rng):
-        gripper1_position, gripper2_position = self.random_nearby_position_action(state, action_rng, environment)
-        return {
-            'gripper1_position': gripper1_position,
-            'gripper2_position': gripper2_position,
-        }
+        # move in the same direction as the previous action with 80% probability
+        if self.last_action is not None and action_rng.uniform(0, 1) < 0.8:
+            last_delta_gripper_1 = state['gripper1'] - self.last_state['gripper1']
+            last_delta_gripper_2 = state['gripper2'] - self.last_state['gripper2']
+            action = {
+                'gripper1_position': state['gripper1'] + last_delta_gripper_1,
+                'gripper2_position': state['gripper2'] + last_delta_gripper_2
+            }
+        else:
+            gripper1_position, gripper2_position = self.random_nearby_position_action(state, action_rng, environment)
+            action = {
+                'gripper1_position': gripper1_position,
+                'gripper2_position': gripper2_position,
+            }
+        self.last_state = deepcopy(state)
+        self.last_action = deepcopy(action)
+        return action
 
     @staticmethod
     def put_state_local_frame(state: Dict):
@@ -172,7 +182,22 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         }
 
     @staticmethod
-    def action_description():
+    def states_description():
+        # should match the keys of the dict return from action_to_dataset_action
+        n_links = 15
+        # +2 for joints to the grippers
+        n_joints = n_links - 1 + 2
+        return {
+            'gripper1': 3,
+            'gripper2': 3,
+            'link_bot': n_links * 3,
+            'model_pose': 3 + 4,
+            'joint_angles_axis1': 2 * n_joints,
+            'joint_angles_axis2': 2 * n_joints,
+        }
+
+    @staticmethod
+    def actions_description():
         # should match the keys of the dict return from action_to_dataset_action
         return {
             'gripper1_position': 3,
@@ -201,9 +226,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         rope_state_vector = new_state['link_bot']
         link_point = np.array([rope_state_vector[-3], rope_state_vector[-2], rope_state_vector[-1]])
         distance_between_gripper1_and_link = np.linalg.norm(gripper1_point - link_point)
-        rope_is_overstretched = distance_between_gripper1_and_link
+        rope_is_overstretched = distance_between_gripper1_and_link > self.params['max_dist_between_gripper_and_link']
 
         if rope_is_overstretched:
+            rospy.logwarn("safety policy reversing last action")
             action = {
                 'gripper1_position': previous_state['gripper1'],
                 'gripper2_position': previous_state['gripper2'],

@@ -2,6 +2,7 @@
 from __future__ import print_function, division
 
 import argparse
+import json
 import pathlib
 
 import numpy as np
@@ -32,7 +33,8 @@ def main():
 
     args = parser.parse_args()
 
-    collect_dynamics_params = args.collect_dynamics_params.open("r").read()
+    with args.collect_dynamics_params.open("r") as f:
+        collect_dynamics_params = json.load(f)
 
     # Start Services
     if args.service_provider == 'victor':
