@@ -9,7 +9,6 @@ import tensorflow as tf
 import rospy
 import state_space_dynamics
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
@@ -43,9 +42,8 @@ def train_main(args, seed: int):
                                                              trials_directory=trials_directory,
                                                              write_summary=False)
     model_class = state_space_dynamics.get_model(model_hparams['model_class'])
-    scenario = get_scenario(train_dataset.hparams['scenario'])
 
-    model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
+    model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=train_dataset.scenario)
     runner = ModelRunner(model=model,
                          training=True,
                          trial_path=trial_path,
@@ -85,7 +83,7 @@ def eval_main(args, seed: int):
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
     validation_metrics = runner.val_epoch(test_tf_dataset)
     for name, value in validation_metrics.items():
-        print(f"{name}: {value:.3f}")
+        print(f"{name}: {value}")
 
 
 def main():

@@ -5,6 +5,7 @@ import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
 from link_bot_pycommon.get_scenario import get_scenario
+from link_bot_pycommon.params import CollectDynamicsParams
 
 
 class DynamicsDataset(BaseDataset):
@@ -16,7 +17,8 @@ class DynamicsDataset(BaseDataset):
         super(DynamicsDataset, self).__init__(dataset_dirs)
 
         self.step_size = step_size
-        self.scenario = get_scenario(self.hparams['scenario'])
+        self.data_collection_params = CollectDynamicsParams.from_json(self.hparams['data_collection_params'])
+        self.scenario = get_scenario(self.hparams['scenario'], self.data_collection_params)
 
         self.state_feature_names = list(self.hparams['states_description'].keys())
         self.state_feature_names.append('time_idx')
