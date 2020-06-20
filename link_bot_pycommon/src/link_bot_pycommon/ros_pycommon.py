@@ -126,6 +126,7 @@ def trajectory_execution_response_to_numpy(trajectory_execution_result) -> List[
 
 
 def get_states_dict(service_provider, state_keys=None):
+    # TODO: have the scenario take in the full states (structure information, get rid of state_vector) and return the state dict
     start_states = {}
     objects_response = service_provider.get_objects()
     if state_keys is not None:

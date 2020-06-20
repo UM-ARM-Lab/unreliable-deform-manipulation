@@ -8,7 +8,9 @@ import rospy
 from geometry_msgs.msg import Point
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from mps_shape_completion_msgs.msg import OccupancyStamped
-from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints
+from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, WorldControlRequest, \
+    WorldControl, SetRopeState, SetRopeStateRequest, SetDualGripperPoints, GetRopeState, GetRopeStateRequest, \
+    GetDualGripperPointsRequest
 from std_msgs.msg import Empty
 from visualization_msgs.msg import MarkerArray
 
@@ -16,10 +18,13 @@ from visualization_msgs.msg import MarkerArray
 class DualFloatingGripperRopeScenario(Base3DScenario):
     def __init__(self, params: Dict):
         super().__init__(params)
-        self.settling_time_seconds = 0.1  # TODO: get this from the data collection params?
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
         self.interrupt = rospy.Publisher("interrupt_trajectory", Empty, queue_size=10)
-        self.get_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
+        self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
+        self.set_rope_srv = rospy.ServiceProxy("set_rope_state", SetRopeState)
+        self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
+        self.set_grippers_srv = rospy.ServiceProxy("set_dual_gripper_points", SetDualGripperPoints)
+        self.world_control_srv = rospy.ServiceProxy("world_control", WorldControl)
 
         self.env_viz_srv = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10)
         self.state_viz_srv = rospy.Publisher("state_viz", MarkerArray, queue_size=10)
@@ -47,12 +52,17 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             if self.params['min_dist_between_grippers'] < distance_between_grippers < self.params['max_dist_between_grippers']:
                 return target_gripper1_pos, target_gripper2_pos
 
+    def settle(self):
+        req = WorldControlRequest()
+        req.seconds = self.params['settling_time']
+        self.world_control_srv(req)
+
     def execute_action(self, action: Dict):
         target_gripper1_point = ros_numpy.msgify(Point, action['gripper1_position'])
         target_gripper2_point = ros_numpy.msgify(Point, action['gripper2_position'])
 
         req = DualGripperTrajectoryRequest()
-        req.settling_time_seconds = self.settling_time_seconds
+        req.settling_time_seconds = self.params['settling_time']
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
         _ = self.action_srv(req)
@@ -120,6 +130,47 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper_position2 = np.reshape(state['gripper2'], [3])
         return gripper_position1, gripper_position2
 
+    def teleport_to_state(self, state: Dict):
+        rope_req = SetRopeStateRequest()
+        rope_req.joint_angles_axis1 = state['joint_angles_axis1'].tolist()
+        rope_req.joint_angles_axis2 = state['joint_angles_axis2'].tolist()
+        rope_req.model_pose.position.x = state['model_pose'][0]
+        rope_req.model_pose.position.y = state['model_pose'][1]
+        rope_req.model_pose.position.z = state['model_pose'][2]
+        rope_req.model_pose.orientation.w = state['model_pose'][3]
+        rope_req.model_pose.orientation.x = state['model_pose'][4]
+        rope_req.model_pose.orientation.y = state['model_pose'][5]
+        rope_req.model_pose.orientation.z = state['model_pose'][6]
+        self.set_rope_srv(rope_req)
+
+    def get_state(self):
+        grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
+        rope_res = self.get_rope_srv(GetRopeStateRequest())
+        rope_state_vector = []
+        for p in rope_res.points:
+            rope_state_vector.append(p.x)
+            rope_state_vector.append(p.y)
+            rope_state_vector.append(p.z)
+
+        model_pose = [
+            rope_res.model_pose.position.x,
+            rope_res.model_pose.position.y,
+            rope_res.model_pose.position.z,
+            rope_res.model_pose.orientation.w,
+            rope_res.model_pose.orientation.x,
+            rope_res.model_pose.orientation.y,
+            rope_res.model_pose.orientation.z,
+        ]
+
+        return {
+            'gripper1': ros_numpy.numpify(grippers_res.gripper1),
+            'gripper2': ros_numpy.numpify(grippers_res.gripper2),
+            'link_bot': np.array(rope_state_vector, np.float32),
+            'model_pose': model_pose,
+            'joint_angles_axis1': np.array(rope_res.joint_angles_axis1, np.float32),
+            'joint_angles_axis2': np.array(rope_res.joint_angles_axis2, np.float32),
+        }
+
     @staticmethod
     def action_description():
         # should match the keys of the dict return from action_to_dataset_action
@@ -134,7 +185,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             state_t[feature_name] = state[feature_name][:, t]
         return state_t
 
-    def index_action_time(self, action, t):
+    @staticmethod
+    def index_action_time(action, t):
         action_t = {}
         for feature_name in ['gripper1_delta', 'gripper2_delta']:
             if t < action[feature_name].shape[1]:
@@ -142,6 +194,21 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             else:
                 action_t[feature_name] = action[feature_name][:, t - 1]
         return action_t
+
+    def safety_policy(self, previous_state: Dict, new_state: Dict, environment: Dict):
+        gripper1_point = new_state['gripper1']
+        # the last link connects to gripper 1 at the moment
+        rope_state_vector = new_state['link_bot']
+        link_point = np.array([rope_state_vector[-3], rope_state_vector[-2], rope_state_vector[-1]])
+        distance_between_gripper1_and_link = np.linalg.norm(gripper1_point - link_point)
+        rope_is_overstretched = distance_between_gripper1_and_link
+
+        if rope_is_overstretched:
+            action = {
+                'gripper1_position': previous_state['gripper1'],
+                'gripper2_position': previous_state['gripper2'],
+            }
+            self.execute_action(action)
 
     def __repr__(self):
         return "DualFloatingGripperRope"

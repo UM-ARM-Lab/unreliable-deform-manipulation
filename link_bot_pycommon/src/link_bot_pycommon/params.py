@@ -28,3 +28,4 @@ class CollectDynamicsParams:
     settling_time: float
     min_dist_between_grippers: float
     max_dist_between_grippers: float
+

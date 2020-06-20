@@ -1,14 +1,13 @@
-#include <atomic>
-#include <memory>
-
 #include <peter_msgs/WorldControl.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <ros/subscribe_options.h>
 
+#include <atomic>
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
 #include <ignition/math/Pose3.hh>
+#include <memory>
 
 namespace gazebo {
 class SteppingPlugin : public WorldPlugin {
@@ -20,6 +19,7 @@ class SteppingPlugin : public WorldPlugin {
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
   std::atomic<int> step_count_{0};
+  double seconds_per_step_{0.0};
 
   void QueueThread()
   {
@@ -30,20 +30,29 @@ class SteppingPlugin : public WorldPlugin {
   }
 
  public:
-  void Load(physics::WorldPtr _parent, sdf::ElementPtr /*_sdf*/) override
+  void Load(physics::WorldPtr parent, sdf::ElementPtr /*_sdf*/) override
   {
     // set up ros topic
     if (!ros::isInitialized()) {
       auto argc = 0;
-      char **argv = nullptr;
-      ros::init(argc, argv, "stepping_plugin", ros::init_options::NoSigintHandler);
+      ros::init(argc, nullptr, "stepping_plugin", ros::init_options::NoSigintHandler);
     }
+
+    seconds_per_step_ = parent->Physics()->GetMaxStepSize();
 
     ros_node_ = std::make_unique<ros::NodeHandle>("stepping_plugin");
     auto cb = [&](peter_msgs::WorldControlRequest &req, peter_msgs::WorldControlResponse &res) {
+      auto steps = [this, req]() {
+        if (req.seconds > 0) {
+          return static_cast<unsigned int>(req.seconds / seconds_per_step_);
+        }
+        else {
+          return req.steps;
+        }
+      }();
       step_count_ = req.steps;
       msgs::WorldControl gz_msg;
-      gz_msg.set_multi_step(req.steps);
+      gz_msg.set_multi_step(steps);
       pub_->Publish(gz_msg);
       while (step_count_ != 0)
         ;
@@ -57,7 +66,7 @@ class SteppingPlugin : public WorldPlugin {
 
     // set up gazebo topic
     transport::NodePtr node(new transport::Node());
-    node->Init(_parent->Name());
+    node->Init(parent->Name());
 
     pub_ = node->Advertise<msgs::WorldControl>("~/world_control");
 

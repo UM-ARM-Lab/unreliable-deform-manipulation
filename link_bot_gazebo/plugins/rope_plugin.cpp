@@ -25,23 +25,27 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
     ros::init(argc, argv, "rope_plugin", ros::init_options::NoSigintHandler);
   }
 
-  auto set_config_bind = [this](auto &&req, auto &&res) { return SetRopeConfigCallback(req, res); };
-  auto config_so = ros::AdvertiseServiceOptions::create<peter_msgs::SetRopeConfiguration>(
-      "set_rope_config", set_config_bind, ros::VoidPtr(), &queue_);
+  auto set_state_bind = [this](auto &&req, auto &&res) { return SetRopeState(req, res); };
+  auto set_state_so = ros::AdvertiseServiceOptions::create<peter_msgs::SetRopeState>("set_rope_state", set_state_bind,
+                                                                                     ros::VoidPtr(), &queue_);
 
-  auto state_bind = [this](auto &&req, auto &&res) { return StateServiceCallback(req, res); };
+  auto get_state_bind = [this](auto &&req, auto &&res) { return GetRopeState(req, res); };
+  auto get_state_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetRopeState>("get_rope_state", get_state_bind,
+                                                                                     ros::VoidPtr(), &queue_);
+
+  auto state_bind = [this](auto &&req, auto &&res) { return StateService(req, res); };
   auto service_so = ros::AdvertiseServiceOptions::create<peter_msgs::LinkBotState>("link_bot_state", state_bind,
                                                                                    ros::VoidPtr(), &queue_);
   constexpr auto link_bot_service_name{"link_bot"};
-  auto get_object_link_bot_bind = [this](auto &&req, auto &&res) { return GetObjectLinkBotCallback(req, res); };
+  auto get_object_link_bot_bind = [this](auto &&req, auto &&res) { return GetObjectRope(req, res); };
   auto get_object_link_bot_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>(
       link_bot_service_name, get_object_link_bot_bind, ros::VoidPtr(), &queue_);
 
-  set_configuration_service_ = ros_node_.advertiseService(config_so);
+  set_state_service_ = ros_node_.advertiseService(set_state_so);
+  get_state_service_ = ros_node_.advertiseService(get_state_so);
   register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
   state_service_ = ros_node_.advertiseService(service_so);
   get_object_link_bot_service_ = ros_node_.advertiseService(get_object_link_bot_so);
-  objects_service_ = ros_node_.serviceClient<peter_msgs::GetObjects>("objects");
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
 
@@ -74,7 +78,7 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 }
 #pragma clang diagnostic pop
 
-bool RopePlugin::StateServiceCallback(peter_msgs::LinkBotStateRequest &req, peter_msgs::LinkBotStateResponse &res)
+bool RopePlugin::StateService(peter_msgs::LinkBotStateRequest &req, peter_msgs::LinkBotStateResponse &res)
 {
   // get all links named "link_%d" where d is in [1, num_links)
   for (auto const &link : model_->GetLinks()) {
@@ -96,7 +100,7 @@ bool RopePlugin::StateServiceCallback(peter_msgs::LinkBotStateRequest &req, pete
   return true;
 }
 
-bool RopePlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
+bool RopePlugin::GetObjectRope(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
 {
   res.object.name = "link_bot";
   for (auto link_idx{1U}; link_idx <= num_links_; ++link_idx) {
@@ -121,21 +125,48 @@ bool RopePlugin::GetObjectLinkBotCallback(peter_msgs::GetObjectRequest &req, pet
   return true;
 }
 
-bool RopePlugin::SetRopeConfigCallback(peter_msgs::SetRopeConfigurationRequest &req,
-                                       peter_msgs::SetRopeConfigurationResponse &res)
+bool RopePlugin::SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::SetRopeStateResponse &res)
 {
-  auto const gripper_pose = req.gripper_poses[0];
-  ignition::math::Pose3d pose{
-      gripper_pose.position.x,    gripper_pose.position.y,    gripper_pose.position.z,    gripper_pose.orientation.w,
-      gripper_pose.orientation.x, gripper_pose.orientation.y, gripper_pose.orientation.z,
-  };
-  model_->SetWorldPose(pose);
   for (auto pair : enumerate(model_->GetJoints())) {
     auto const &[i, joint] = pair;
-    if (i < req.joint_angles.size()) {
-      joint->SetPosition(0, req.joint_angles[i]);
+    if (i < req.joint_angles_axis1.size()) {
+      joint->SetPosition(0, req.joint_angles_axis1[i]);
+      joint->SetPosition(1, req.joint_angles_axis2[i]);
     }
   }
+  ignition::math::Pose3d pose{req.model_pose.position.x,    req.model_pose.position.y,    req.model_pose.position.z,
+                              req.model_pose.orientation.w, req.model_pose.orientation.x, req.model_pose.orientation.y,
+                              req.model_pose.orientation.z};
+  model_->SetWorldPose(pose);
+  return true;
+}
+
+bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &req, peter_msgs::GetRopeStateResponse &res)
+{
+  for (auto const &joint : model_->GetJoints()) {
+    res.joint_angles_axis1.push_back(joint->Position(0));
+    res.joint_angles_axis2.push_back(joint->Position(1));
+  }
+  for (auto const &link : model_->GetLinks()) {
+    auto const name = link->GetName();
+    int link_idx;
+    auto const n_matches = sscanf(name.c_str(), "link_%d", &link_idx);
+    // TODO: is sccanf really the most modern way to do this? use boost regex?
+    if (n_matches == 1 and link_idx >= 1 and link_idx <= num_links_) {
+      geometry_msgs::Point pt;
+      pt.x = link->WorldPose().Pos().X();
+      pt.y = link->WorldPose().Pos().Y();
+      pt.z = link->WorldPose().Pos().Z();
+      res.points.emplace_back(pt);
+    }
+  }
+  res.model_pose.position.x = model_->WorldPose().Pos().X();
+  res.model_pose.position.y = model_->WorldPose().Pos().Y();
+  res.model_pose.position.z = model_->WorldPose().Pos().Z();
+  res.model_pose.orientation.x = model_->WorldPose().Rot().X();
+  res.model_pose.orientation.y = model_->WorldPose().Rot().Y();
+  res.model_pose.orientation.z = model_->WorldPose().Rot().Z();
+  res.model_pose.orientation.w = model_->WorldPose().Rot().W();
   return true;
 }
 

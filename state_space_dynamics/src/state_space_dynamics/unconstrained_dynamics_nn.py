@@ -6,7 +6,6 @@ import tensorflow.keras.layers as layers
 from colorama import Fore
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.params import CollectDynamicsParams
 from moonshine.moonshine_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts_tf, \
     sequence_of_dicts_to_dict_of_tensors
 from shape_completion_training.my_keras_model import MyKerasModel
@@ -90,8 +89,6 @@ class UDNNWrapper(BaseDynamicsFunction):
         self.net = UnconstrainedDynamicsNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(model=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
-        self.dynamics_data_params = CollectDynamicsParams.from_json(
-            self.hparams['dynamics_dataset_hparams']['data_collection_params'])
 
         status = self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
         if self.manager.latest_checkpoint:

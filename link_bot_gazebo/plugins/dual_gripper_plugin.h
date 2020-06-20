@@ -2,6 +2,7 @@
 
 #include <peter_msgs/DualGripperTrajectory.h>
 #include <peter_msgs/GetDualGripperPoints.h>
+#include <peter_msgs/SetDualGripperPoints.h>
 #include <peter_msgs/GetObject.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
@@ -24,6 +25,8 @@ class DualGripperPlugin : public ModelPlugin {
   bool OnAction(peter_msgs::DualGripperTrajectoryRequest &req, peter_msgs::DualGripperTrajectoryResponse &res);
 
   bool OnGet(peter_msgs::GetDualGripperPointsRequest &req, peter_msgs::GetDualGripperPointsResponse &res);
+
+  bool OnSet(peter_msgs::SetDualGripperPointsRequest &req, peter_msgs::SetDualGripperPointsResponse &res);
 
   bool GetGripper1Callback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
 
@@ -52,6 +55,7 @@ class DualGripperPlugin : public ModelPlugin {
   std::thread private_ros_queue_thread_;
   ros::ServiceServer action_service_;
   ros::ServiceServer get_service_;
+  ros::ServiceServer set_service_;
   ros::Publisher joint_states_pub_;
   ros::Subscriber interrupt_sub_;
   ros::Publisher register_object_pub_;

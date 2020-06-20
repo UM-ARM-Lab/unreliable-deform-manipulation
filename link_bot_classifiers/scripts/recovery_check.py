@@ -27,25 +27,6 @@ from moonshine.moonshine_utils import listify, numpify, dict_of_sequences_to_seq
 limit_gpu_mem(4)
 
 
-def save_data(args, basedir, environment, actuals, predictions, accept_probabilities, random_actions):
-    data = {
-        'environment': environment,
-        'actuals': actuals,
-        'predictions': predictions,
-        'accept_probabilities': accept_probabilities,
-        'random_actions': random_actions,
-    }
-    filename = basedir / 'saved_data.json'
-    print(Fore.GREEN + f'saving {filename.as_posix()}' + Fore.RESET)
-    data_and_model_info = {
-        'data': listify(data),
-        'classifier_model_dir': paths_to_json(args.classifier_model_dir),
-        'fwd_model_dir': paths_to_json(args.fwd_model_dir),
-    }
-    json.dump(data_and_model_info, filename.open("w"))
-    return filename
-
-
 def test_params(args):
     rospy.init_node("recovery_check")
 
@@ -55,13 +36,23 @@ def test_params(args):
 
     test_params = json.load(args.test_params.open("r"))
 
+    # Load and setup
     classifier_model, fwd_model = load_models(args.classifier_model_dir, args.fwd_model_dir)
     service_provider = GazeboServices()
     environment = setup(service_provider, fwd_model, test_params)
-    state = get_states_dict(service_provider, fwd_model.states_keys)
-    start_states = [state, state]
-    n_start_states = len(start_states)
-    random_actions = sample_actions(fwd_model.scenario, environment, state, len(start_states), args.n_actions_sampled,
+
+    # Teleport the rope to the desired starting state, then get the actual resulting state
+    # which could be numerically slightly different, due to small jitter and settling
+    desired_start_states = test_params['start_states']
+    start_states = []
+    for desired_start_state in desired_start_states:
+        # TODO:
+        # fwd_model.scenario.teleport_to_state(numpify(desired_start_state))
+        # fwd_model.scenario.settle()
+        start_states.append(fwd_model.scenario.get_state())
+
+    n_start_states = 1
+    random_actions = sample_actions(fwd_model.scenario, environment, start_states, args.n_actions_sampled,
                                     args.action_sequence_length)
     start_states = sequence_of_dicts_to_dict_of_tensors(start_states)
     results = predict_and_execute(service_provider, classifier_model, fwd_model, environment, start_states,
@@ -75,6 +66,26 @@ def test_params(args):
 
 def load_main(args):
     load_and_compare_predictions_to_actual(args.load_from, args.no_plot)
+
+
+def save_data(args, basedir, environment, actuals, predictions, accept_probabilities, random_actions):
+    data = {
+        'environment': environment,
+        'actuals': actuals,
+        'predictions': predictions,
+        'accept_probabilities': accept_probabilities,
+        'random_actions': random_actions,
+    }
+    filename = basedir / 'saved_data.json'
+    print(Fore.GREEN + f'saving {filename.as_posix()}' + Fore.RESET)
+    classifier_model_dir = paths_to_json(args.classifier_model_dir)
+    data_and_model_info = {
+        'data': listify(data),
+        'classifier_model_dir': classifier_model_dir,
+        'fwd_model_dir': paths_to_json(args.fwd_model_dir),
+    }
+    json.dump(data_and_model_info, filename.open("w"))
+    return filename
 
 
 def load_and_compare_predictions_to_actual(load_from: pathlib.Path, no_plot):
@@ -107,7 +118,12 @@ def compare_predictions_to_actual(basedir: pathlib.Path,
                                   actuals: List,
                                   accepts_probabilities,
                                   no_plot: bool):
-    labeling_params = classifier.model_hparams['classifier_dataset_hparams']['labeling_params']
+    if classifier is not None:
+        labeling_params = classifier.model_hparams['classifier_dataset_hparams']['labeling_params']
+    else:
+        labeling_params = {
+            'state_key': 'link_bot'
+        }
     labeling_params['threshold'] = 0.05
     key = labeling_params['state_key']
     all_predictions_are_far = []
@@ -124,19 +140,23 @@ def compare_predictions_to_actual(basedir: pathlib.Path,
         min_stdevs.append(min_stdev)
         max_stdevs.append(max_stdev)
         median_stdevs.append(median_stdev)
-        is_close = np.linalg.norm(prediction[key] - actual[key], axis=1) < labeling_params['threshold']
+        distance = np.linalg.norm(prediction[key] - actual[key], axis=1)
+        print(distance)
+        is_close = distance < labeling_params['threshold']
         # [1:] because start state will match perfectly
         last_prediction_is_close = is_close[-1]
         prediction_is_far = np.logical_not(last_prediction_is_close)
         prediction_seq = dict_of_sequences_to_sequence_of_dicts(prediction)
         actual_seq = dict_of_sequences_to_sequence_of_dicts(actual)
 
-        prediction_is_rejected = accept_probabilities[-1] < 0.5
-        classifier_says = 'reject' if prediction_is_rejected else 'accept'
-        print(f"action sequence {i}, "
-              + f"1-step prediction is close to ground truth? {is_close[1]}, classifier says: {classifier_says}")
-        all_predictions_are_far.append(prediction_is_far)
-        all_predictions_are_rejected.append(prediction_is_rejected)
+        if accepts_probabilities is not None:
+            prediction_is_rejected = accept_probabilities[-1] < 0.5
+            classifier_says = 'reject' if prediction_is_rejected else 'accept'
+            print(f"action sequence {i}, "
+                  + f"1-step prediction is close to ground truth? {is_close[1]}, classifier says: {classifier_says}")
+            all_predictions_are_far.append(prediction_is_far)
+            all_predictions_are_rejected.append(prediction_is_rejected)
+
         if not no_plot:
             anim = classifier.scenario.animate_predictions(environment=environment,
                                                            actions=actions,
@@ -149,14 +169,14 @@ def compare_predictions_to_actual(basedir: pathlib.Path,
             anim.save(outfilename, writer='imagemagick', dpi=100)
             plt.close()
 
-    print(f"mean min stdev {np.mean(min_stdevs):.4f}")
-    print(f"min min stdev {np.min(min_stdevs):.4f}")
-    print(f"mean max stdev {np.mean(max_stdevs):.4f}")
-    print(f"min max stdev {np.min(max_stdevs):.4f}")
-    print(f"mean median stdev {np.mean(median_stdevs):.4f}")
-
-    if np.all(all_predictions_are_rejected):
-        print("needs recovery!")
+    # print(f"mean min stdev {np.mean(min_stdevs):.4f}")
+    # print(f"min min stdev {np.min(min_stdevs):.4f}")
+    # print(f"mean max stdev {np.mean(max_stdevs):.4f}")
+    # print(f"min max stdev {np.min(max_stdevs):.4f}")
+    # print(f"mean median stdev {np.mean(median_stdevs):.4f}")
+    #
+    # if np.all(all_predictions_are_rejected):
+    #     print("needs recovery!")
 
 
 def get_state_and_environment(classifier_model, scenario, service_provider):
@@ -170,17 +190,17 @@ def get_state_and_environment(classifier_model, scenario, service_provider):
     return environment, state_dict
 
 
-def sample_actions(scenario, environment, state, n_start_states, n_samples, horizon):
+def sample_actions(scenario, environment, start_states, n_samples, horizon):
     action_rng = np.random.RandomState(0)
     action_sequences = []
     action = None
-    for i in range(n_start_states):
+    for i, start_state in enumerate(start_states):
         action_sequences_for_start_state = []
         for j in range(n_samples):
             action_sequence = []
             for t in range(horizon):
                 action = scenario.sample_action(environment=environment,
-                                                state=state,
+                                                state=start_state,
                                                 last_action=action,
                                                 params={},
                                                 action_rng=action_rng)
@@ -200,8 +220,8 @@ def main():
     generate_parser.add_argument('test_params', help="json file describing the test", type=pathlib.Path)
     generate_parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')
     generate_parser.add_argument("--classifier-model-dir", help="classifier", type=pathlib.Path)
-    generate_parser.add_argument('--n-actions-sampled', type=int, default=25, help='n actions sampled')
-    generate_parser.add_argument('--action-sequence-length', type=int, default=1, help='action sequence length')
+    generate_parser.add_argument('--n-actions-sampled', type=int, default=10, help='n actions sampled')
+    generate_parser.add_argument('--action-sequence-length', type=int, default=3, help='action sequence length')
     generate_parser.set_defaults(func=test_params)
     load_parser = subparsers.add_parser('load')
     load_parser.add_argument('load_from', help="json file with previously generated results", type=pathlib.Path)

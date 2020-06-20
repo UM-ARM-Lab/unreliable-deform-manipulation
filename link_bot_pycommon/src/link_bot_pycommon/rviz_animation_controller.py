@@ -9,7 +9,7 @@ from std_msgs.msg import Empty, Int64
 
 class RvizAnimationController:
 
-    def __init__(self, time_steps):
+    def __init__(self, time_steps, start_playing=True):
         self.epsilon = 1e-3
         self.time_steps = np.array(time_steps, dtype=np.int64)
         self.fwd_sub = rospy.Subscriber("rviz_anim/forward", Empty, self.on_fwd)
@@ -25,7 +25,7 @@ class RvizAnimationController:
         self.idx = 0
         self.max_idx = self.time_steps.shape[0]
         self.period = self.period_srv(GetFloat32Request()).data
-        self.playing = True # FIXME: make this stick across instantiations for this class -- rosparam?
+        self.playing = start_playing
         self.should_step = False
         self.fwd = True
         self.done = False

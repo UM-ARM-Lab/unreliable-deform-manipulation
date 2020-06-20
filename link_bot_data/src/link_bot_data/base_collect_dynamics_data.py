@@ -17,29 +17,29 @@ from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_shape
-from link_bot_pycommon.params import CollectDynamicsParams, Environment
-from link_bot_pycommon.ros_pycommon import get_states_dict, make_movable_object_services
+from link_bot_pycommon.ros_pycommon import make_movable_object_services
 
 
 # TODO: make this a class, to reduce number of arguments passed
-def generate_traj(scenario: ExperimentScenario,
-                  params: CollectDynamicsParams,
-                  service_provider,
-                  traj_idx: int,
-                  global_t_step: int,
-                  action_rng: np.random.RandomState,
-                  verbose: int,
-                  states_description: Dict):
-    if params.no_objects:
-        rows, cols, channels = extent_to_env_shape(params.extent, params.res)
+# TODO: can this share more structure with plan & execute?
+def collect_trajectory(scenario: ExperimentScenario,
+                       params: Dict,
+                       service_provider,
+                       traj_idx: int,
+                       global_t_step: int,
+                       action_rng: np.random.RandomState,
+                       verbose: int,
+                       states_description: Dict):
+    if params['no_objects']:
+        rows, cols, channels = extent_to_env_shape(params['extent'], params['res'])
         origin = np.array([rows // 2, cols // 2, channels // 2], dtype=np.int32)
         env = np.zeros([rows, cols, channels], dtype=np.float32)
-        environment = Environment(env=env, res=params.res, origin=origin, extent=params.extent).to_dict()
+        environment = {'env': env, 'res': params['res'], 'origin': origin, 'extent': params['extent']}
     else:
         # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
         # over the course of this function
-        environment = ros_pycommon.get_environment_for_extents_3d(extent=params.extent,
-                                                                  res=params.res,
+        environment = ros_pycommon.get_environment_for_extents_3d(extent=params['extent'],
+                                                                  res=params['res'],
                                                                   service_provider=service_provider,
                                                                   robot_name=scenario.robot_name())
 
@@ -55,24 +55,29 @@ def generate_traj(scenario: ExperimentScenario,
             rospy.logerr(f"Duplicate key {k} is both a state and an action")
 
     time_indices = []
-    for time_idx in range(params.steps_per_traj):
-        state = get_states_dict(service_provider)
+    for time_idx in range(params['steps_per_traj']):
+        # get current state and sample action
+        state = scenario.get_state()
         action = scenario.sample_action(environment=environment,
                                         state=state,
                                         last_action=action,
-                                        params=params.to_dict(),
+                                        params=params,
                                         action_rng=action_rng)
 
-        if time_idx < params.steps_per_traj - 1:  # skip the last action
+        # add collect for the dataset
+        if time_idx < params['steps_per_traj'] - 1:  # skip the last action
             for action_name, action_component in action.items():
                 actions[action_name].append(action_component)
-
         for state_name, state_component in state.items():
             states[state_name].append(state_component)
-
         time_indices.append(time_idx)
 
+        # execute action
         scenario.execute_action(action)
+
+        # apply safety policy
+        new_state = scenario.get_state()
+        scenario.safety_policy(previous_state=state, new_state=new_state, environment=environment)
 
         global_t_step += 1
 
@@ -90,40 +95,40 @@ def generate_traj(scenario: ExperimentScenario,
 
 def generate_trajs(service_provider,
                    scenario: ExperimentScenario,
-                   params: CollectDynamicsParams,
+                   params: Dict,
                    args,
                    full_output_directory,
                    env_rng: np.random.RandomState,
                    action_rng: np.random.RandomState,
                    states_description: Dict):
-    examples = np.ndarray([params.trajs_per_file], dtype=object)
+    examples = np.ndarray([params['trajs_per_file']], dtype=object)
     global_t_step = 0
     last_record_t = perf_counter()
 
-    movable_object_services = {k: make_movable_object_services(k) for k in params.movable_objects}
+    movable_object_services = {k: make_movable_object_services(k) for k in params['movable_objects']}
     for traj_idx in range(args.trajs):
-        scenario.move_objects_randomly(env_rng, movable_object_services, params.movable_objects)
+        scenario.move_objects_randomly(env_rng, movable_object_services, params['movable_objects'])
 
         # Generate a new trajectory
-        example, global_t_step = generate_traj(scenario=scenario,
-                                               params=params,
-                                               service_provider=service_provider,
-                                               traj_idx=traj_idx,
-                                               global_t_step=global_t_step,
-                                               action_rng=action_rng,
-                                               verbose=args.verbose,
-                                               states_description=states_description)
-        current_record_traj_idx = traj_idx % params.trajs_per_file
+        example, global_t_step = collect_trajectory(scenario=scenario,
+                                                    params=params,
+                                                    service_provider=service_provider,
+                                                    traj_idx=traj_idx,
+                                                    global_t_step=global_t_step,
+                                                    action_rng=action_rng,
+                                                    verbose=args.verbose,
+                                                    states_description=states_description)
+        current_record_traj_idx = traj_idx % params['trajs_per_file']
         examples[current_record_traj_idx] = example
 
         # Save the data
-        if current_record_traj_idx == params.trajs_per_file - 1:
+        if current_record_traj_idx == params['trajs_per_file'] - 1:
             # Construct the dataset where each trajectory has been serialized into one big string
             # since TFRecords don't really support hierarchical data structures
             serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
 
             end_traj_idx = traj_idx + args.start_idx_offset
-            start_traj_idx = end_traj_idx - params.trajs_per_file + 1
+            start_traj_idx = end_traj_idx - params['trajs_per_file'] + 1
             full_filename = os.path.join(full_output_directory,
                                          "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
             writer = tf.data.experimental.TFRecordWriter(full_filename, compression_type='ZLIB')
@@ -138,11 +143,11 @@ def generate_trajs(service_provider,
             sys.stdout.flush()
 
 
-def generate(service_provider, params: CollectDynamicsParams, args):
+def generate(service_provider, params: Dict, args):
     rospy.init_node('collect_dynamics_data')
-    scenario = get_scenario(args.scenario, params.to_dict())
+    scenario = get_scenario({'scenario': args.scenario, 'data_collection_params': params})
 
-    assert args.trajs % params.trajs_per_file == 0, "num trajs must be multiple of {}".format(params.trajs_per_file)
+    assert args.trajs % params['trajs_per_file'] == 0, "num trajs must be multiple of {}".format(params['trajs_per_file'])
 
     full_output_directory = data_directory(args.outdir, args.trajs)
     if not os.path.isdir(full_output_directory) and args.verbose:
@@ -159,7 +164,7 @@ def generate(service_provider, params: CollectDynamicsParams, args):
         options = {
             'seed': args.seed,
             'n_trajs': args.trajs,
-            'data_collection_params': params.to_json(),
+            'data_collection_params': params,
             'states_description': states_description,
             'action_description': scenario.action_description(),
             'scenario': args.scenario,
@@ -172,7 +177,7 @@ def generate(service_provider, params: CollectDynamicsParams, args):
 
     service_provider.setup_env(verbose=args.verbose,
                                real_time_rate=args.real_time_rate,
-                               max_step_size=params.max_step_size)
+                               max_step_size=params['max_step_size'])
 
     generate_trajs(service_provider=service_provider,
                    scenario=scenario,

@@ -16,37 +16,34 @@ add_message_files(
         NamedPoint.msg
         NamedPoints.msg
         Objects.msg
-        SubspaceDescription.msg
-        WheelSpeeds.msg
-        Vector2.msg
         ReconstructionInputs.msg
+        SubspaceDescription.msg
+        Vector2.msg
+        WheelSpeeds.msg
 )
 
 add_service_files(
         FILES
         ComputeOccupancy.srv
+        DualGripperTrajectory.srv
         ExecuteAction.srv
+        GetDualGripperPoints.srv
+        GetFloat32.srv
         GetObject.srv
         GetObjects.srv
-        GetPosition2D.srv
+        GetPosition3D.srv
+        GetRopeState.srv
         LinkBotReset.srv
         LinkBotState.srv
         LinkBotTrajectory.srv
         ListObjects.srv
-        Position2DEnable.srv
-        Position2DAction.srv
-        SetRopeConfiguration.srv
-        StateSpaceDescription.srv
-        Reconstruction.srv
-        WorldControl.srv
-        GetPosition3D.srv
-        Position3DEnable.srv
         Position3DAction.srv
-        ActionSpaceDescription.srv
-        GetFloat32.srv
-        JointTraj.srv
-        DualGripperTrajectory.srv
-        GetDualGripperPoints.srv
+        Position3DEnable.srv
+        Reconstruction.srv
+        SetRopeState.srv
+        SetDualGripperPoints.srv
+        StateSpaceDescription.srv
+        WorldControl.srv
 )
 
 generate_messages(
@@ -54,7 +51,7 @@ generate_messages(
         geometry_msgs
         sensor_msgs
         std_msgs
-        trajectory_msgs
-)
+        trajectory_msgs)
+
 
 catkin_package(CATKIN_DEPENDS geometry_msgs sensor_msgs std_msgs trajectory_msgs message_runtime)

@@ -6,7 +6,6 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.params import CollectDynamicsParams
 
 
 class BaseDynamicsFunction:
@@ -20,9 +19,9 @@ class BaseDynamicsFunction:
         self.scenario = scenario
         self.hparams = json.load(model_hparams_file.open('r'))
         self.batch_size = batch_size
-        data_params = CollectDynamicsParams.from_json(self.hparams['dynamics_dataset_hparams']['data_collection_params'])
-        self.dt = data_params.dt
-        self.max_step_size = data_params.max_step_size
+        self.data_collection_params = self.hparams['dynamics_dataset_hparams']['data_collection_params']
+        self.dt = self.data_collection_params['dt']
+        self.max_step_size = self.data_collection_params['max_step_size']
         self.states_description = self.hparams['dynamics_dataset_hparams']['states_description']
         self.states_keys = None
         self.action_keys = None

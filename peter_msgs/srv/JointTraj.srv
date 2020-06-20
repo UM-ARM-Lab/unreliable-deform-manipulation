@@ -1,3 +1,0 @@
-trajectory_msgs/JointTrajectory traj
-float32 settling_time_seconds
----

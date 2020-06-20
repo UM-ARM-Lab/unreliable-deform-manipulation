@@ -65,6 +65,11 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   };
   auto get_so = create_service_options_private(peter_msgs::GetDualGripperPoints, "get_dual_gripper_points", get_bind);
 
+  auto set_bind = [this](peter_msgs::SetDualGripperPointsRequest &req, peter_msgs::SetDualGripperPointsResponse &res) {
+    return OnSet(req, res);
+  };
+  auto set_so = create_service_options_private(peter_msgs::SetDualGripperPoints, "set_dual_gripper_points", set_bind);
+
   auto get_gripper1_bind = [this](auto &&req, auto &&res) { return GetGripper1Callback(req, res); };
   auto get_gripper1_so = create_service_options(peter_msgs::GetObject, "gripper1", get_gripper1_bind);
 
@@ -74,6 +79,7 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
   action_service_ = ros_node_.advertiseService(action_so);
   get_service_ = ros_node_.advertiseService(get_so);
+  set_service_ = ros_node_.advertiseService(set_so);
   joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 10);
   auto interrupt_callback = [this](std_msgs::EmptyConstPtr const &msg) { this->interrupted_ = true; };
   interrupt_sub_ = ros_node_.subscribe<std_msgs::Empty>("interrupt_trajectory", 10, interrupt_callback);
@@ -152,6 +158,21 @@ bool DualGripperPlugin::OnGet(peter_msgs::GetDualGripperPointsRequest &req,
     res.gripper2.x = gripper2_->WorldPose().Pos().X();
     res.gripper2.y = gripper2_->WorldPose().Pos().Y();
     res.gripper2.z = gripper2_->WorldPose().Pos().Z();
+  }
+  return true;
+}
+
+bool DualGripperPlugin::OnSet(peter_msgs::SetDualGripperPointsRequest &req,
+                              peter_msgs::SetDualGripperPointsResponse &res)
+{
+  if (gripper1_ and gripper2_) {
+    ignition::math::Pose3d gripper1_pose;
+    gripper1_pose.Set(req.gripper1.x, req.gripper1.y, req.gripper1.z, 0, 0, 0);
+    gripper1_->SetWorldPose(gripper1_pose);
+
+    ignition::math::Pose3d gripper2_pose;
+    gripper2_pose.Set(req.gripper2.x, req.gripper2.y, req.gripper2.z, 0, 0, 0);
+    gripper2_->SetWorldPose(gripper2_pose);
   }
   return true;
 }

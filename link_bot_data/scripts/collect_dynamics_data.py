@@ -10,7 +10,6 @@ import rospy
 from link_bot_data import base_collect_dynamics_data
 from link_bot_gazebo import gazebo_services
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.params import CollectDynamicsParams
 from moonshine.gpu_config import limit_gpu_mem
 from victor import victor_services
 
@@ -33,7 +32,7 @@ def main():
 
     args = parser.parse_args()
 
-    collect_dynamics_params = CollectDynamicsParams.from_json(args.collect_dynamics_params.open("r").read())
+    collect_dynamics_params = args.collect_dynamics_params.open("r").read()
 
     # Start Services
     if args.service_provider == 'victor':

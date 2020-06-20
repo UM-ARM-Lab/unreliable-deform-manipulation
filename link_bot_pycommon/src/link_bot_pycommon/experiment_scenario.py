@@ -15,7 +15,7 @@ from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Positi
 
 
 class ExperimentScenario:
-    def __init__(self, params : Dict):
+    def __init__(self, params: Dict):
         self.params = params
 
     def __eq__(self, other):
@@ -428,7 +428,17 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def put_action_local_frame(state: Dict, action:Dict):
+    def put_action_local_frame(state: Dict, action: Dict):
+        raise NotImplementedError()
+
+    @staticmethod
+    def teleport_to_state(state: Dict):
+        raise NotImplementedError()
+
+    def get_state(self):
+        raise NotImplementedError()
+
+    def safety_policy(self, previous_state: Dict, new_state: Dict, environment: Dict):
         raise NotImplementedError()
 
 

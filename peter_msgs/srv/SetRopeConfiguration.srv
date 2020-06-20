@@ -1,4 +1,0 @@
-geometry_msgs/Pose[] gripper_poses
-float64[] rope_position
-float64[] joint_angles
----
