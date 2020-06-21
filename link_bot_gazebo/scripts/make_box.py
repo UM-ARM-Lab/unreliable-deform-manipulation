@@ -16,6 +16,7 @@ def main():
     parser.add_argument('depth', type=float, help='y')
     parser.add_argument('height', type=float, help='z')
     parser.add_argument('outdir', type=pathlib.Path, help='mass')
+    parser.add_argument('--kinematic', action='store_true', help='kinematic')
 
     args = parser.parse_args()
 
@@ -35,6 +36,7 @@ def write_model_sdf(sdf_filename, args, model_name):
     <sdf version="1.6">
         <model name="moving_box">
             <link name="link_1">
+                <kinematic>0</kinematic>
                 <pose>0 0 0 0 0 0</pose>
                 <inertial>
                     <inertia>
@@ -104,6 +106,8 @@ def write_model_sdf(sdf_filename, args, model_name):
     model = sdf.find('model')
     model.set('name', model_name)
     link = model.find('link')
+    kinematic = model.find('kinematic')
+    kinematic.text = args.kinematic
     pose = link.find('pose')
     pose.text = f"0 0 {args.height / 2} 0 0 0 0"
     inertial = link.find('inertial')

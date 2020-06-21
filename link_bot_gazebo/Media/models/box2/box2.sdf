@@ -1,6 +1,7 @@
 <sdf version="1.6">
         <model name="box2">
             <link name="link_1">
+                <kinematic>1</kinematic>
                 <pose>0 0 0.105 0 0 0 0</pose>
                 <inertial>
                     <inertia>

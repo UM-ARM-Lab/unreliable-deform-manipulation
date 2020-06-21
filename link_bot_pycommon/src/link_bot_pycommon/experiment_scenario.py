@@ -4,6 +4,8 @@ from typing import Dict, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
 
+import rospy
+from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from geometry_msgs.msg import Vector3
 from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_planned
@@ -17,6 +19,7 @@ from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Positi
 class ExperimentScenario:
     def __init__(self, params: Dict):
         self.params = params
+        self.gz_set_state_srv = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
 
     def __eq__(self, other):
         if isinstance(other, str):
@@ -375,10 +378,12 @@ class ExperimentScenario:
             positions[object_name] = position_response
         return positions
 
-    @staticmethod
-    def move_objects_randomly(env_rng, movable_objects_services, movable_objects):
+    def move_objects_randomly(self, env_rng, movable_objects_services, movable_objects, kinematic: bool):
         random_object_positions = sample_object_positions(env_rng, movable_objects)
-        ExperimentScenario.move_objects(movable_objects_services, random_object_positions)
+        if kinematic:
+            self.move_objects_kinematic(movable_objects_services, random_object_positions)
+        else:
+            ExperimentScenario.move_objects(movable_objects_services, random_object_positions)
 
     @staticmethod
     def move_objects_to_positions(movable_objects_services: Dict, object_positions: Dict, timeout: float = 5.0):
@@ -394,12 +399,23 @@ class ExperimentScenario:
             object_moves[name] = move
         return ExperimentScenario.move_objects(movable_objects_services, object_moves)
 
+    def move_objects_kinematic(self, movable_objects_services: Dict, object_moves: Dict):
+        del movable_objects_services
+        for object_name, move in object_moves.items():
+            state_req = SetModelStateRequest()
+            state_req.model_state.model_name = object_name
+            state_req.model_state.pose.position.x = move['position'].x
+            state_req.model_state.pose.position.y = move['position'].y
+            state_req.model_state.pose.position.z = move['position'].z
+
+            self.gz_set_state_srv(state_req)
+
     @staticmethod
     def move_objects(movable_objects_services: Dict, object_moves: Dict):
         ExperimentScenario.call_moves(movable_objects_services, object_moves)
 
         # disable controller so objects can move around
-        for object_name, pose in object_moves.items():
+        for object_name, _ in object_moves.items():
             movable_object_services = movable_objects_services[object_name]
             enable_req = Position3DEnableRequest()
             enable_req.enable = False

@@ -87,7 +87,6 @@ def main():
     parser.add_argument('--sequence-length', type=int, help='number of time steps per example')
     parser.add_argument('--mode', choices=['train', 'test', 'val', 'all'], default='train', help='train test or val')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
-    parser.add_argument('--show-env', action='store_true', help='show env, assumed to be constant')
 
     args = parser.parse_args()
 

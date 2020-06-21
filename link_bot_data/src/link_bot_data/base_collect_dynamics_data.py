@@ -105,7 +105,7 @@ def generate_trajs(service_provider,
 
     movable_object_services = {k: make_movable_object_services(k) for k in params['movable_objects']}
     for traj_idx in range(args.trajs):
-        scenario.move_objects_randomly(env_rng, movable_object_services, params['movable_objects'])
+        scenario.move_objects_randomly(env_rng, movable_object_services, params['movable_objects'], params['kinematic_objects'])
 
         # Generate a new trajectory
         example, global_t_step = collect_trajectory(scenario=scenario,

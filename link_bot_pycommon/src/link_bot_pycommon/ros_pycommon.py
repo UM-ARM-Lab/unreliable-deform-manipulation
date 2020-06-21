@@ -32,7 +32,7 @@ def get_occupancy(service_provider,
     request.request_new = True
     response = service_provider.compute_occupancy(request)
     grid = np.array(response.grid).reshape([env_w_cols, env_h_rows, env_c_channels])
-    # this makes it so we can index with row, col, channel
+    # NOTE: this makes it so we can index with row (y), col (x), channel (z)
     grid = np.transpose(grid, [1, 0, 2])
     return grid, response
 
