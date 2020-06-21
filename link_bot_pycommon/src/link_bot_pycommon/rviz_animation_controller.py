@@ -52,10 +52,14 @@ class RvizAnimationController:
             while not self.should_step and not self.playing:
                 sleep(0.01)
 
-        if self.idx < self.max_idx - 1 and self.fwd:
-            self.idx += 1
-        elif self.idx > 0 and not self.fwd:
-            self.idx -= 1
+        if self.fwd:
+            if self.idx < self.max_idx - 1:
+                self.idx += 1
+            else:
+                self.playing = False
+        else:
+            if self.idx > 0:
+                self.idx -= 1
 
         t_msg = Int64()
         t_msg.data = self.time_steps[self.idx]

@@ -150,7 +150,7 @@ n_colors = colors.length%>
         </joint>
         <% end %>
         <link name='gripper1'>
-            <pose frame=''><%=n_links * link_length%> 0 0 0 0 0 </pose>
+            <pose frame=''>0 0 0 0 0 0 </pose>
             <inertial>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <mass>0.1</mass>
@@ -205,7 +205,7 @@ n_colors = colors.length%>
         </link>
         <joint name="gripper1_joint" type="universal">
             <child>gripper1</child>
-            <parent>link_<%=n_links%></parent>
+            <parent>link_1</parent>
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
@@ -229,7 +229,7 @@ n_colors = colors.length%>
             </physics>
         </joint>
         <link name='gripper2'>
-            <pose frame=''>0 0 0 0 0 0 </pose>
+            <pose frame=''><%=n_links * link_length%> 0 0 0 0 0 </pose>
             <inertial>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <mass>0.1</mass>
@@ -282,7 +282,7 @@ n_colors = colors.length%>
         </link>
         <joint name="gripper2_joint" type="universal">
             <child>gripper2</child>
-            <parent>link_1</parent>
+            <parent>link_<%=n_links%></parent>
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>

@@ -126,7 +126,6 @@ def sample_actions(scenario: ExperimentScenario, environment: Dict, start_states
                                                 state=start_state,
                                                 params={},
                                                 action_rng=action_rng)
-                print(action)
                 action_sequence.append(action)
             action_sequences_for_start_state.append(action_sequence)
         action_sequences.append(action_sequences_for_start_state)

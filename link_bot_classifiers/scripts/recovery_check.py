@@ -98,6 +98,7 @@ def load_and_compare_predictions_to_actual(load_from: pathlib.Path, no_plot):
     }
 
     key = labeling_params['state_key']
+    min_dist = np.finfo(np.float32).max
     for i, (prediction, actual, actions) in enumerate(zip(predictions, actuals, action_sequences)):
         scenario.plot_environment_rviz(environment)
 
@@ -105,18 +106,22 @@ def load_and_compare_predictions_to_actual(load_from: pathlib.Path, no_plot):
         time_steps = np.arange(n_states)
         anim = RvizAnimationController(time_steps)
 
-        while not anim.done:
-            t = anim.t()
+        for t in range(n_states):
+            # while not anim.done:
+            #     t = anim.t()
             actual_t = numpify(actual[t])
             pred_t = numpify(prediction[t])
             scenario.plot_state_rviz(actual_t, label='actual', color='#ff0000aa')
             scenario.plot_state_rviz(pred_t, label='pred', color='#0000ffaa')
 
-            distance = np.linalg.norm(pred_t[key] - actual_t[key])
-            print(distance)
+            if t > 0:
+                distance = np.linalg.norm(pred_t[key] - actual_t[key])
+                min_dist = min(min_dist, distance)
 
             # this will return after some amount of time either because the animation is "playing" or because the user stepped forward
-            anim.step()
+            # anim.step()
+
+    print(min_dist)
 
 
 def main():
@@ -125,8 +130,8 @@ def main():
     generate_parser = subparsers.add_parser('generate')
     generate_parser.add_argument('test_params', help="json file describing the test", type=pathlib.Path)
     generate_parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')
-    generate_parser.add_argument('--n-actions-sampled', type=int, default=1, help='n actions sampled')
-    generate_parser.add_argument('--action-sequence-length', type=int, default=10, help='action sequence length')
+    generate_parser.add_argument('--n-actions-sampled', type=int, default=25, help='n actions sampled')
+    generate_parser.add_argument('--action-sequence-length', type=int, default=1, help='action sequence length')
     generate_parser.set_defaults(func=test_params)
     load_parser = subparsers.add_parser('load')
     load_parser.add_argument('load_from', help="json file with previously generated results", type=pathlib.Path)
