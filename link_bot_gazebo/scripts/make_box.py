@@ -63,21 +63,21 @@ def write_model_sdf(sdf_filename, args, model_name):
                     <surface>
                         <friction>
                             <ode>
-                                <mu>5.0</mu>
-                                <mu2>5.0</mu2>
+                                <mu>0.2</mu>
+                                <mu2>0.2</mu2>
                             </ode>
                         </friction>
                     </surface>
                 </collision>
             </link>
             <plugin name='position_3d_plugin' filename='libposition_3d_plugin.so'>
-                <kP_pos>5</kP_pos>
+                <kP_pos>15</kP_pos>
                 <kI_pos>0.0</kI_pos>
                 <kD_pos>0.0</kD_pos>
                 <kP_vel>100.0</kP_vel>
                 <kI_vel>0.0</kI_vel>
                 <kD_vel>0.0</kD_vel>
-                <max_force>15.0</max_force>
+                <max_force>40.0</max_force>
                 <max_vel>0.5</max_vel>
                 <kP_rot>0.1</kP_rot>
                 <kI_rot>0.0</kI_rot>
