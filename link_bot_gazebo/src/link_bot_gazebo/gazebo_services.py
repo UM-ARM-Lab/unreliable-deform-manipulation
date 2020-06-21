@@ -1,8 +1,8 @@
 from gazebo_msgs.srv import SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
-from link_bot_pycommon.base_services import Services
+from link_bot_pycommon.base_services import BaseServices
 
 
-class GazeboServices(Services):
+class GazeboServices(BaseServices):
 
     def __init__(self):
         super().__init__()

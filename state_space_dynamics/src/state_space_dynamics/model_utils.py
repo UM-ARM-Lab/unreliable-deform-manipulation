@@ -14,7 +14,7 @@ from state_space_dynamics.rigid_translation_model import RigidTranslationModel
 from state_space_dynamics.unconstrained_dynamics_nn import UDNNWrapper
 
 
-def load_generic_model(model_dir) -> [BaseDynamicsFunction, Tuple[str]]:
+def load_generic_model(model_dir) -> Tuple[BaseDynamicsFunction, Tuple[str]]:
     """
     Loads a model which exposes a unified model API (predict, dt, n_state, etc...)
     :param model_dir: directory which specifies which model should loaded (TF assumes latest checkpoint)
@@ -142,7 +142,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
     @tf.function
     def propagate_differentiable_batched(self,
                                          start_states: Dict,
-                                         actions: tf.Variable) -> Dict:
+                                         actions: Dict) -> Dict:
         all_predictions = []
         for fwd_model in self.models:
             net_input = {k: start_states[k] for k in fwd_model.states_keys}

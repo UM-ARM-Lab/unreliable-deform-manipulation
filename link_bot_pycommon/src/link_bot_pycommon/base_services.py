@@ -11,7 +11,7 @@ from peter_msgs.srv import ComputeOccupancy, WorldControl, GetObjects, \
 from std_srvs.srv import Empty
 
 
-class Services:
+class BaseServices:
 
     def __init__(self):
         self.compute_occupancy = rospy.ServiceProxy('occupancy', ComputeOccupancy)

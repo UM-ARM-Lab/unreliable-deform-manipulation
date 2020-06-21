@@ -160,7 +160,7 @@ def from_numpy(np_state_or_control: np.ndarray,
             out[i] = np.float64(np_state_or_control[i])
 
 
-def compound_to_numpy(state_space_description, state):
+def compound_to_numpy(state_space_description, state) -> Dict:
     np_states = {}
     for name, subspace_description in state_space_description.items():
         idx = subspace_description['idx']

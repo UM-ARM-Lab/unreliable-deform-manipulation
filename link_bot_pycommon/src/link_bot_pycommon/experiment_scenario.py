@@ -447,6 +447,14 @@ class ExperimentScenario:
     def safety_policy(self, previous_state: Dict, new_state: Dict, environment: Dict):
         raise NotImplementedError()
 
+    @staticmethod
+    def index_state_time(state, t):
+        raise NotImplementedError()
+
+    @staticmethod
+    def index_action_time(action, t):
+        raise NotImplementedError()
+
 
 def sample_object_position(env_rng, xy_range: Dict) -> Vector3:
     x_range = xy_range['x']

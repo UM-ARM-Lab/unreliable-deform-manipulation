@@ -11,15 +11,13 @@ from ompl import base as ob
 from link_bot_classifiers.rnn_recovery_model import RNNRecoveryModelWrapper
 from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus
-from link_bot_pycommon.base_services import Services
+from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 from link_bot_pycommon.ros_pycommon import get_states_dict
-from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts
-from peter_msgs.msg import sys
 
 
-def get_environment_common(w_m: float, h_m: float, res: float, service_provider: Services, scenario: ExperimentScenario):
+def get_environment_common(w_m: float, h_m: float, res: float, service_provider: BaseServices, scenario: ExperimentScenario):
     full_env_data = get_occupancy_data(env_w_m=w_m,
                                        env_h_m=h_m,
                                        res=res,
@@ -34,10 +32,9 @@ def get_environment_common(w_m: float, h_m: float, res: float, service_provider:
     return environment
 
 
-def execute_actions(service_provider, scenario, actions: Dict):
-    start_states = get_states_dict(service_provider)
-    actual_path = [start_states]
-    for action in dict_of_sequences_to_sequence_of_dicts(actions):
+def execute_actions(service_provider: BaseServices, scenario: ExperimentScenario, start_state: Dict, actions: List[Dict]):
+    actual_path = [start_state]
+    for action in actions:
         scenario.execute_action(action)
         state_t = get_states_dict(service_provider)
         actual_path.append(state_t)
@@ -52,7 +49,7 @@ class PlanAndExecute:
                  n_plans_per_env: int,
                  verbose: int,
                  planner_params: Dict,
-                 service_provider: Services,
+                 service_provider: BaseServices,
                  no_execution: bool,
                  seed: int,
                  recovery_actions_model: Optional[RNNRecoveryModelWrapper] = None,
@@ -89,7 +86,7 @@ class PlanAndExecute:
 
     def plan_and_execute_once(self):
         # get start states
-        start_states = get_states_dict(self.service_provider)
+        start_state = self.planner.scenario.get_state()
 
         # get the environment, which here means anything which is assumed constant during planning
         # This includes the occupancy map but can also include things like the initial state of the tether
@@ -100,7 +97,7 @@ class PlanAndExecute:
                                              service_provider=self.service_provider,
                                              scenario=self.planner.scenario)
 
-        environment.update(self.planner.scenario.get_environment_from_state_dict(start_states))
+        environment.update(self.planner.scenario.get_environment_from_state_dict(start_state))
 
         # generate a random target
         goal = self.get_goal(self.planner_params['goal_w_m'], self.planner_params['goal_h_m'], environment)
@@ -112,13 +109,13 @@ class PlanAndExecute:
                                                       self.planner_params['goal_threshold'])
 
         if self.verbose >= 1:
-            print(Fore.CYAN + "Planning from {} to {}".format(start_states, goal) + Fore.RESET)
+            print(Fore.CYAN + "Planning from {} to {}".format(start_state, goal) + Fore.RESET)
 
         ############
         # Planning #
         ############
         t0 = time.time()
-        planner_result = self.planner.plan(start_states, environment, goal)
+        planner_result = self.planner.plan(start_state, environment, goal)
         planner_data = ob.PlannerData(self.planner.si)
         self.planner.planner.getPlannerData(planner_data)
 
@@ -127,20 +124,12 @@ class PlanAndExecute:
 
         self.on_after_plan()
 
-        if planner_result.planner_status == MyPlannerStatus.Failure:
-            print("failure!")
-            self.on_planner_failure(start_states, goal, environment, planner_data)
-            self.n_failures += 1
-            #  nudging hopefully fixes things
-            if self.sim_params.nudge is not None:
-                self.planner.scenario.nudge()
-            return False
-        elif planner_result.planner_status == MyPlannerStatus.NotProgressing:
+        if planner_result.planner_status in [MyPlannerStatus.Failure, MyPlannerStatus.NotProgressing]:
             if self.recovery_actions_model is not None:
                 print("performing recovery action!")
                 current_state = get_states_dict(self.service_provider)
                 recovery_actions = self.recovery_actions_model.sample(environment, current_state)
-                self.execute_actions(recovery_actions)
+                self.execute_actions(start_state, recovery_actions)
             return False
         elif planner_result.planner_status in [MyPlannerStatus.Solved, MyPlannerStatus.Timeout]:
             planning_time = time.time() - t0
@@ -155,7 +144,7 @@ class PlanAndExecute:
                 if self.verbose >= 2:
                     print(Fore.CYAN + "Executing Plan.".format(goal) + Fore.RESET)
 
-                actual_path = self.execute_actions(planner_result.actions)
+                actual_path = self.execute_actions(start_state, planner_result.actions)
                 self.on_execution_complete(planner_result.path,
                                            planner_result.actions,
                                            goal,
@@ -177,7 +166,7 @@ class PlanAndExecute:
     def on_plan_complete(self,
                          planned_path: List[Dict],
                          goal,
-                         planned_actions: np.ndarray,
+                         planned_actions: List[Dict],
                          environment: Dict,
                          planner_data: ob.PlannerData,
                          planning_time: float,
@@ -186,7 +175,7 @@ class PlanAndExecute:
 
     def on_execution_complete(self,
                               planned_path: List[Dict],
-                              planned_actions: np.ndarray,
+                              planned_actions: List[Dict],
                               goal,
                               actual_path: List[Dict],
                               environment: Dict,
@@ -209,36 +198,7 @@ class PlanAndExecute:
         pass
 
     def randomize_environment(self):
-        if self.sim_params.randomize_obstacles:
-            # generate a new environment by rearranging the obstacles
-            movable_obstacles = self.planner_params['movable_obstacles']
-            self.service_provider.move_objects_randomly(self.env_rng, movable_obstacles)
-            #
-            # state = get_states_dict(self.service_provider)
-            # gripper_pos = self.planner.scenario.state_to_gripper_position(state)
-            # obstacle_name = self.obstacles_nearest_to(movable_obstacles, gripper_pos)
-            # pose = Pose()
-            # pose.position.x = gripper_pos[0, 0]
-            # pose.position.y = gripper_pos[0, 1]
-            # object_position = {
-            #     obstacle_name: pose,
-            # }
-            # self.service_provider.move_objects(object_position)
+        raise NotImplementedError()
 
-    def obstacles_nearest_to(self, movable_obstacles, gripper_pos):
-        positions = self.service_provider.get_movable_object_positions(movable_obstacles)
-        min_d = sys.maxsize
-        min_d_name = next(iter(movable_obstacles.keys()))
-        for name, position in positions.items():
-            d = np.linalg.norm(gripper_pos - np.array([position.x, position.y]))
-            if d < min_d:
-                min_d = d
-                min_d_name = name
-        return min_d_name
-
-    def execute_actions(self, actions):
-        """
-        :param actions: currently a numpy array, [time, n_action]
-        :return: the states, a list of Dicts
-        """
-        return execute_actions(self.service_provider, self.planner.scenario, actions)
+    def execute_actions(self, start_state: Dict, actions: Optional[List[Dict]]) -> List[Dict]:
+        return execute_actions(self.service_provider, self.planner.scenario, start_state, actions)

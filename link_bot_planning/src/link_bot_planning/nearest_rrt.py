@@ -6,7 +6,7 @@ from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_planning.viz_object import VizObject
-from link_bot_pycommon.base_services import Services
+from link_bot_pycommon.base_services import BaseServices
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
@@ -16,7 +16,7 @@ class NearestRRT(MyPlanner):
                  fwd_model: BaseDynamicsFunction,
                  classifier_model: BaseConstraintChecker,
                  planner_params: Dict,
-                 service_provider: Services,
+                 service_provider: BaseServices,
                  scenario: ExperimentScenario,
                  viz_object: VizObject,
                  seed: int,

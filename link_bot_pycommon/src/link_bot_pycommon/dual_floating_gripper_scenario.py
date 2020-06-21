@@ -204,7 +204,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper2_position': 3,
         }
 
-    def index_state_time(self, state, t):
+    @staticmethod
+    def index_state_time(state, t):
         state_t = {}
         for feature_name in ['gripper1', 'gripper2', 'link_bot']:
             state_t[feature_name] = state[feature_name][:, t]

@@ -47,6 +47,7 @@ def main():
     fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir)
 
     service_provider = GazeboServices()
+    service_provider.setup_env(verbose=0, real_time_rate=0, max_step_size=fwd_model.data_collection_params['max_step_size'])
     environment = get_environment_for_extents_3d(extent=fwd_model.data_collection_params['extent'],
                                                  res=fwd_model.data_collection_params['res'],
                                                  service_provider=service_provider,

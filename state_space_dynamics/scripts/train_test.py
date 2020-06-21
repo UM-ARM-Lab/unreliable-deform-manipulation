@@ -85,6 +85,20 @@ def eval_main(args, seed: int):
     for name, value in validation_metrics.items():
         print(f"{name}: {value}")
 
+    # more metrics that can't be epressed as just an average over metrics on each batch
+    all_errors = None
+    for batch in test_tf_dataset:
+        outputs = runner.model(batch, training=False)
+        errors_for_batch = tf.linalg.norm(outputs['link_bot'] - batch['link_bot'], axis=2)
+        if all_errors is not None:
+            all_errors = tf.concat([all_errors, errors_for_batch], axis=0)
+        else:
+            all_errors = errors_for_batch
+    print(f"50th percentile {np.percentile(all_errors.numpy(), 50)}")
+    print(f"90th percentile {np.percentile(all_errors.numpy(), 90)}")
+    print(f"99th percentile {np.percentile(all_errors.numpy(), 99)}")
+    print(f"max {np.max(all_errors.numpy())}")
+
 
 def main():
     np.set_printoptions(linewidth=250, precision=4, suppress=True, threshold=10000)

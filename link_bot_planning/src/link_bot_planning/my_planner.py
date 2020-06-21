@@ -1,7 +1,7 @@
 import sys
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,7 +15,7 @@ from link_bot_planning.state_spaces import ValidRopeConfigurationCompoundSampler
     compound_to_numpy, ompl_control_to_model_action, compound_from_numpy
 from link_bot_planning.timeout_or_not_progressing import TimeoutOrNotProgressing
 from link_bot_planning.viz_object import VizObject
-from link_bot_pycommon.base_services import Services
+from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -38,7 +38,7 @@ class MyPlannerStatus(Enum):
 @dataclass
 class PlannerResult:
     path: Optional[List[Dict]]
-    actions: Optional[np.ndarray]
+    actions: Optional[List[Dict]]
     planner_status: MyPlannerStatus
 
 
@@ -48,7 +48,7 @@ class MyPlanner:
                  fwd_model: BaseDynamicsFunction,
                  classifier_model: BaseConstraintChecker,
                  params: Dict,
-                 service_provider: Services,
+                 service_provider: BaseServices,
                  scenario: ExperimentScenario,
                  viz_object: VizObject,
                  seed: int,
@@ -301,11 +301,11 @@ class MyPlanner:
 
         if planner_status:
             ompl_path = self.ss.getSolutionPath()
-            controls_np, planned_path = self.convert_path(ompl_path)
+            actions, planned_path = self.convert_path(ompl_path)
             self.goal = None
             return PlannerResult(planner_status=planner_status,
                                  path=planned_path,
-                                 actions=controls_np)
+                                 actions=actions)
         self.goal = None
         return PlannerResult(planner_status=planner_status,
                              path=None,
@@ -341,18 +341,18 @@ class MyPlanner:
 
         return sampler
 
-    def convert_path(self, ompl_path: oc.PathControl):
+    def convert_path(self, ompl_path: oc.PathControl) -> Tuple[List[Dict], List[Dict]]:
         planned_path = []
         for time_idx, state in enumerate(ompl_path.getStates()):
             np_state = compound_to_numpy(self.state_space_description, state)
             planned_path.append(np_state)
 
-        np_controls = np.ndarray((ompl_path.getControlCount(), self.n_action))
-        for time_idx, (control, duration) in enumerate(zip(ompl_path.getControls(), ompl_path.getControlDurations())):
-            # duration is always be 1 for control::RRT, not so for control::SST
-            np_controls[time_idx] = ompl_control_to_model_action(control, self.n_action).squeeze()
+        actions = []
+        for time_idx, action in enumerate(ompl_path.getControls()):
+            action_np = compound_to_numpy(self.action_space_description, action)
+            actions.append(action_np)
 
-        return np_controls, planned_path
+        return actions, planned_path
 
 
 def interpret_planner_status(planner_status: ob.PlannerStatus, ptc: TimeoutOrNotProgressing):

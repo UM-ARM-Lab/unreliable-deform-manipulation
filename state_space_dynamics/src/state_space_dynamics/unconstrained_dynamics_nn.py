@@ -14,14 +14,6 @@ from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 class UnconstrainedDynamicsNN(MyKerasModel):
 
-    def compute_loss(self, example, outputs):
-        return {
-            'loss': self.scenario.dynamics_loss_function(example, outputs)
-        }
-
-    def compute_metrics(self, example, outputs):
-        return self.scenario.dynamics_metrics_function(example, outputs)
-
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams=hparams, batch_size=batch_size)
         self.scenario = scenario
@@ -80,6 +72,14 @@ class UnconstrainedDynamicsNN(MyKerasModel):
             state_vectors.append(z[:, start_idx:start_idx + dim])
             start_idx += dim
         return dict(zip(self.states_keys, state_vectors))
+
+    def compute_loss(self, example, outputs):
+        return {
+            'loss': self.scenario.dynamics_loss_function(example, outputs)
+        }
+
+    def compute_metrics(self, example, outputs):
+        return self.scenario.dynamics_metrics_function(example, outputs)
 
 
 class UDNNWrapper(BaseDynamicsFunction):

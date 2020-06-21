@@ -4,8 +4,8 @@ import numpy as np
 
 import rospy
 from link_bot_pycommon import link_bot_sdf_utils
-from link_bot_pycommon.base_services import Services
-from link_bot_pycommon.link_bot_sdf_utils import extent_to_center, extent_to_env_shape
+from link_bot_pycommon.base_services import BaseServices
+from link_bot_pycommon.link_bot_sdf_utils import extent_to_center, extent_to_env_shape, env_from_occupancy_data
 from peter_msgs.msg import LinkBotAction
 from peter_msgs.srv import ComputeOccupancyRequest, LinkBotTrajectoryRequest, Position3DEnable, GetPosition3D, Position3DAction
 from std_srvs.srv import Empty
@@ -39,7 +39,7 @@ def get_occupancy(service_provider,
 
 def get_environment_for_extents_3d(extent,
                                    res: float,
-                                   service_provider: Services,
+                                   service_provider: BaseServices,
                                    robot_name: str):
     cx, cy, cz = extent_to_center(extent)
     env_h_rows, env_w_cols, env_c_channels = extent_to_env_shape(extent, res)
@@ -70,7 +70,7 @@ def get_environment_for_extents_3d(extent,
 def get_occupancy_data(env_h_m: float,
                        env_w_m: float,
                        res: float,
-                       service_provider: Services,
+                       service_provider: BaseServices,
                        robot_name: str):
     """
     :param env_h_m:  meters
@@ -150,3 +150,14 @@ def make_movable_object_services(object_name):
         'action': rospy.ServiceProxy(f'{object_name}/set', Position3DAction),
         'stop': rospy.ServiceProxy(f'{object_name}/stop', Empty),
     }
+
+
+def get_state_and_environment(classifier_model, scenario, service_provider):
+    full_env_data = ros_pycommon.get_occupancy_data(env_w_m=classifier_model.full_env_params.w,
+                                                    env_h_m=classifier_model.full_env_params.h,
+                                                    res=classifier_model.full_env_params.res,
+                                                    service_provider=service_provider,
+                                                    robot_name=scenario.robot_name())
+    environment = env_from_occupancy_data(full_env_data)
+    state_dict = get_states_dict(service_provider)
+    return environment, state_dict

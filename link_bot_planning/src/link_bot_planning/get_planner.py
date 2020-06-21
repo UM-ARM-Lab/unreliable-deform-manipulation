@@ -6,11 +6,11 @@ from link_bot_classifiers import classifier_utils
 from state_space_dynamics import model_utils
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_planning.nearest_rrt import NearestRRT
-from link_bot_pycommon.base_services import Services
+from link_bot_pycommon.base_services import BaseServices
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
-def get_planner(planner_params: Dict, service_provider: Services, seed: int, verbose: int):
+def get_planner(planner_params: Dict, service_provider: BaseServices, seed: int, verbose: int):
     fwd_model_dirs = planner_params['fwd_model_dir']
 
     fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dirs)
@@ -42,7 +42,7 @@ def get_planner_with_model(planner_class_str: str,
                            fwd_model: BaseDynamicsFunction,
                            classifier_model_dir: pathlib.Path,
                            planner_params: Dict,
-                           service_provider: Services,
+                           service_provider: BaseServices,
                            seed: int,
                            verbose: int):
     scenario = get_scenario(planner_params['scenario'])
