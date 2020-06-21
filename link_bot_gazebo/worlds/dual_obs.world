@@ -3,16 +3,11 @@
     <world name="default">
         <gui>
             <camera name='user_camera'>
-                <pose frame=''>-.03 -0.7 0.8 0 0.74 1.6</pose>
+                <pose frame=''>0.2 -2.5 2.3 0 0.74 1.6</pose>
             </camera>
         </gui>
         <include>
             <uri>model://my_ground_plane</uri>
-        </include>
-        <include>
-            <uri>model://my_camera</uri>
-            <pose frame=''>0 0 1.0 0 1.5707 1.5707</pose>
-            <name>my_camera</name>
         </include>
         <include>
             <uri>model://sun</uri>
@@ -28,8 +23,13 @@
         </physics>
 
         <include>
-            <pose>0 0 0.01 -1.5707 -1.5707 0</pose>
-            <uri>model://short_rope_3d</uri>
+            <pose>0 0 0.5 0 0 3.14159</pose>
+            <uri>model://kinematic_rope</uri>
+        </include>
+
+        <include>
+            <pose>0 0 0 0 0 0</pose>
+            <uri>model://box2</uri>
         </include>
     </world>
 </sdf>

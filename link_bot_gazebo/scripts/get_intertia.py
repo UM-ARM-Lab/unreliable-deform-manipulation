@@ -3,30 +3,7 @@
 import argparse
 
 from link_bot_pycommon.args import my_formatter
-
-
-def sphere(args):
-    return [
-        2.0 / 3 * args.mass * args.radius ** 2,
-        2.0 / 3 * args.mass * args.radius ** 2,
-        2.0 / 3 * args.mass * args.radius ** 2,
-    ]
-
-
-def cylinder(args):
-    return [
-        1.0 / 12 * args.mass * (3 * args.radius ** 2 + args.length ** 2),
-        1.0 / 12 * args.mass * (3 * args.radius ** 2 + args.length ** 2),
-        1.0 / 2 * args.mass * args.radius ** 2,
-    ]
-
-
-def box(args):
-    return [
-        1.0 / 12 * args.mass * (args.z ** 2 + args.y ** 2),
-        1.0 / 12 * args.mass * (args.x ** 2 + args.y ** 2),
-        1.0 / 12 * args.mass * (args.x ** 2 + args.z ** 2),
-    ]
+from link_bot_pycommon.inertia_matrices import sphere, cylinder, box
 
 
 def main():

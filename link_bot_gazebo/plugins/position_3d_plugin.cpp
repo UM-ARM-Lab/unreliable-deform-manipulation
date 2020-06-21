@@ -350,4 +350,5 @@ void Position3dPlugin::PrivateQueueThread()
     private_queue_.callAvailable(ros::WallDuration(timeout));
   }
 }
+
 }  // namespace gazebo

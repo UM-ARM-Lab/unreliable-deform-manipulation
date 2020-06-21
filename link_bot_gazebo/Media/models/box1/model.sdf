@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<sdf version="1.4">
+<sdf version="1.6">
     <model name="moving_box">
         <link name="link_1">
             <inertial>
