@@ -17,7 +17,7 @@ services = gazebo_services.GazeboServices()
 res = 0.03
 while True:
     try:
-        environment = get_environment_for_extents_3d([-1, 1, -1, 1, 0.01, 0.25],
+        environment = get_environment_for_extents_3d([-0.3, 0.3, -0.3, 0.3, 0.1, 0.6],
                                                      res=res,
                                                      service_provider=services,
                                                      robot_name='link_bot')

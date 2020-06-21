@@ -245,7 +245,7 @@ void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
 
   if (enabled_) {
     link_->AddForce(force);
-    link_->AddRelativeTorque({torque, 0, 0});
+//    link_->AddRelativeTorque({torque, 0, 0});
   }
 }
 

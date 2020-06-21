@@ -58,7 +58,14 @@ def plot_extents(ax, extent, linewidth=6, **kwargs):
     return line
 
 
-def rviz_arrow(position, delta_position, r: float, g: float, b: float, a: float, label: str = 'arrow', idx: int = 0):
+def rviz_arrow(position: np.ndarray,
+               target_position: np.ndarray,
+               r: float,
+               g: float,
+               b: float,
+               a: float,
+               label: str = 'arrow',
+               idx: int = 0):
     arrow = Marker()
     arrow.action = Marker.ADD  # create or modify
     arrow.type = Marker.ARROW
@@ -67,6 +74,7 @@ def rviz_arrow(position, delta_position, r: float, g: float, b: float, a: float,
     arrow.ns = label
     arrow.id = idx
 
+    delta_position = target_position - position
     arrow.scale.x = np.linalg.norm(delta_position)
     arrow.scale.y = 0.01
     arrow.scale.z = 0.01

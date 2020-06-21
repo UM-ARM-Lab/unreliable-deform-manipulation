@@ -34,9 +34,45 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.action_viz_srv = rospy.Publisher("action_viz", MarkerArray, queue_size=10)
         self.nudge_rng = np.random.RandomState(0)
 
+    def sample_action(self,
+                      environment: Dict,
+                      state,
+                      params: Dict,
+                      action_rng):
+        while True:
+            # move in the same direction as the previous action with 80% probability
+            if self.last_action is not None and action_rng.uniform(0, 1) < 0.8:
+                last_delta_gripper_1 = state['gripper1'] - self.last_state['gripper1']
+                last_delta_gripper_2 = state['gripper2'] - self.last_state['gripper2']
+                gripper1_position = state['gripper1'] + last_delta_gripper_1
+                gripper2_position = state['gripper2'] + last_delta_gripper_2
+            else:
+                gripper1_position, gripper2_position = self.random_nearby_position_action(state, action_rng, environment)
+
+            out_of_bounds = self.is_out_of_bounds(gripper1_position) or self.is_out_of_bounds(gripper2_position)
+            gripper_collision = np.linalg.norm(gripper2_position - gripper1_position) < self.params[
+                'min_distance_between_grippers']
+
+            if not out_of_bounds and not gripper_collision:
+                action = {
+                    'gripper1_position': gripper1_position,
+                    'gripper2_position': gripper2_position,
+                }
+                self.last_state = deepcopy(state)
+                self.last_action = deepcopy(action)
+                return action
+
+    def is_out_of_bounds(self, p):
+        x, y, z = p
+        extent = self.params['action_sample_extent']
+        x_min, x_max, y_min, y_max, z_min, z_max = extent
+        return x < x_min or x > x_max \
+               or y < y_min or y > y_max \
+               or z < z_min or z > z_max
+
     def random_nearby_position_action(self, state: Dict, action_rng: np.random.RandomState, environment):
-        target_gripper1_pos = Base3DScenario.random_pos(action_rng, environment)
-        target_gripper2_pos = Base3DScenario.random_pos(action_rng, environment)
+        target_gripper1_pos = Base3DScenario.random_pos(action_rng, self.params['action_sample_extent'])
+        target_gripper2_pos = Base3DScenario.random_pos(action_rng, self.params['action_sample_extent'])
         current_gripper1_pos, current_gripper2_pos = DualFloatingGripperRopeScenario.state_to_gripper_position(state)
 
         gripper1_displacement = target_gripper1_pos - current_gripper1_pos
@@ -69,29 +105,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def nudge(self, state: Dict, environment: Dict):
         nudge_action = self.random_nearby_position_action(state, self.nudge_rng, environment)
         self.execute_action(nudge_action)
-
-    def sample_action(self,
-                      environment: Dict,
-                      state,
-                      params: Dict,
-                      action_rng):
-        # move in the same direction as the previous action with 80% probability
-        if self.last_action is not None and action_rng.uniform(0, 1) < 0.8:
-            last_delta_gripper_1 = state['gripper1'] - self.last_state['gripper1']
-            last_delta_gripper_2 = state['gripper2'] - self.last_state['gripper2']
-            action = {
-                'gripper1_position': state['gripper1'] + last_delta_gripper_1,
-                'gripper2_position': state['gripper2'] + last_delta_gripper_2
-            }
-        else:
-            gripper1_position, gripper2_position = self.random_nearby_position_action(state, action_rng, environment)
-            action = {
-                'gripper1_position': gripper1_position,
-                'gripper2_position': gripper2_position,
-            }
-        self.last_state = deepcopy(state)
-        self.last_action = deepcopy(action)
-        return action
 
     @staticmethod
     def put_state_local_frame(state: Dict):

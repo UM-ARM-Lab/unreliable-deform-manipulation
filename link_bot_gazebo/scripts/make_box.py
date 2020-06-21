@@ -22,7 +22,7 @@ def main():
     args.outdir.mkdir(exist_ok=True, parents=False)
 
     # x size is width, y size is depth, z size is height
-    model_name = f"box_{int(args.width * 100)}_{int(args.depth * 100)}_{int(args.height * 100)}"
+    model_name = args.outdir.stem
     sdf_filename = args.outdir / (model_name + ".sdf")
     config_filename = args.outdir / "model.config"
 
@@ -67,6 +67,12 @@ def write_model_sdf(sdf_filename, args, model_name):
                                 <mu2>0.2</mu2>
                             </ode>
                         </friction>
+                        <contact>
+                            <ode>
+                                <kp>1e15</kp>
+                                <kd>1e13</kd>
+                            </ode>
+                        </contact>
                     </surface>
                 </collision>
             </link>

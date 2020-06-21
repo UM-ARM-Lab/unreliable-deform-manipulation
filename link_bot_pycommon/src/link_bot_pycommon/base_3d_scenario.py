@@ -23,8 +23,8 @@ class Base3DScenario(ExperimentScenario):
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10)
 
     @staticmethod
-    def random_pos(action_rng: np.random.RandomState, environment):
-        x_min, x_max, y_min, y_max, z_min, z_max = environment['extent']
+    def random_pos(action_rng: np.random.RandomState, extent):
+        x_min, x_max, y_min, y_max, z_min, z_max = extent
         pos = action_rng.uniform([x_min, y_min, z_min], [x_max, y_max, z_max])
         return pos
 
@@ -103,8 +103,8 @@ class Base3DScenario(ExperimentScenario):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
         s1 = np.reshape(data['gripper1'], [3])
         s2 = np.reshape(data['gripper2'], [3])
-        a1 = np.reshape(data['gripper1_delta'], [3])
-        a2 = np.reshape(data['gripper2_delta'], [3])
+        a1 = np.reshape(data['gripper1_position'], [3])
+        a2 = np.reshape(data['gripper2_position'], [3])
 
         msg = MarkerArray()
         msg.markers.append(rviz_arrow(s1, a1, r, g, b, a, idx=0))

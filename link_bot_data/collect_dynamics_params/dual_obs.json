@@ -1,0 +1,72 @@
+{
+  "extent": [
+    -0.3,
+    0.3,
+    -0.3,
+    0.3,
+    0.0,
+    0.6
+  ],
+  "action_sample_extent": [
+    -0.25,
+    0.25,
+    -0.25,
+    0.25,
+    0.05,
+    0.50
+  ],
+  "res": 0.03,
+  "max_step_size": 0.002,
+  "dt": 1.0,
+  "steps_per_traj": 10,
+  "trajs_per_file": 16,
+  "settling_time": 0.2,
+  "no_objects": true,
+  "max_dist_between_gripper_and_link": 0.022,
+  "max_distance_gripper_can_move": 0.05,
+  "min_distance_between_grippers": 0.05,
+  "movable_objects": {
+    "box1": {
+      "x": [
+        -0.3,
+        0.3
+      ],
+      "y": [
+        -0.3,
+        0.3
+      ]
+    },
+    "box2": {
+      "x": [
+        -0.3,
+        0.3
+      ],
+      "y": [
+        -0.3,
+        0.3
+      ]
+    },
+    "box3": {
+      "x": [
+        -0.3,
+        0.3
+      ],
+      "y": [
+        -0.3,
+        0.3
+      ]
+    },
+    "box4": {
+      "x": [
+        -0.3,
+        0.3
+      ],
+      "y": [
+        -0.3,
+        0.3
+      ]
+    }
+  }
+}
+
+
