@@ -13,6 +13,13 @@ def indeces_to_point(rowcols, resolution, origin):
     return (rowcols - origin) * resolution
 
 
+def idx_to_point_3d_in_env(row: int,
+                           col: int,
+                           channel: int,
+                           env: Dict):
+    return idx_to_point_3d(row=row, col=col, channel=channel, resolution=env['res'], origin=env['origin'])
+
+
 def idx_to_point_3d(row: int,
                     col: int,
                     channel: int,

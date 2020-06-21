@@ -18,8 +18,7 @@ from link_bot_pycommon.pycommon import quaternion_from_euler
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
 from mps_shape_completion_msgs.msg import OccupancyStamped
-from peter_msgs.srv import Position3DAction, Position3DActionRequest, SetRopeConfiguration, Position3DEnableRequest, \
-    SetRopeConfigurationRequest
+from peter_msgs.srv import Position3DAction, Position3DActionRequest, Position3DEnableRequest
 from std_srvs.srv import Empty
 from visualization_msgs.msg import MarkerArray, Marker
 
@@ -32,7 +31,7 @@ class LinkBotScenario(ExperimentScenario):
         self.stop_object_srv = rospy.ServiceProxy(f"{object_name}/stop", Empty)
         self.object_enable_srv = rospy.ServiceProxy(f"{object_name}/enable", Empty)
         self.get_object_srv = rospy.ServiceProxy(f"{object_name}/get", Empty)
-        self.set_rope_config_srv = rospy.ServiceProxy("set_rope_config", SetRopeConfiguration)
+        # self.set_rope_config_srv = rospy.ServiceProxy("set_rope_config", SetRopeConfiguration)
 
         self.env_viz_srv = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10)
         self.state_viz_srv = rospy.Publisher("state_viz", MarkerArray, queue_size=10)

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <geometry_msgs/Pose.h>
-#include <peter_msgs/ActionSpaceDescription.h>
 #include <peter_msgs/GetObject.h>
 #include <peter_msgs/GetPosition3D.h>
 #include <peter_msgs/ModelsEnable.h>
@@ -39,8 +38,6 @@ class Position3dPlugin : public ModelPlugin {
 
   bool GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs::GetPosition3DResponse &res);
 
-  bool GetActionSpace(peter_msgs::ActionSpaceDescriptionRequest &req, peter_msgs::ActionSpaceDescriptionResponse &res);
-
   bool GetObjectCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
 
  private:
@@ -64,7 +61,6 @@ class Position3dPlugin : public ModelPlugin {
   ros::ServiceServer action_service_;
   ros::ServiceServer stop_service_;
   ros::ServiceServer get_position_service_;
-  ros::ServiceServer action_space_service_;
   ros::ServiceServer get_object_service_;
   ros::Publisher register_object_pub_;
   double kP_pos_{0.0};

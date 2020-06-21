@@ -168,10 +168,6 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   };
   auto get_pos_so = create_service_options(peter_msgs::GetPosition3D, "get", get_pos_bind);
 
-  auto action_space_bind = [this](peter_msgs::ActionSpaceDescriptionRequest &req,
-                                  peter_msgs::ActionSpaceDescriptionResponse &res) { return GetActionSpace(req, res); };
-  auto action_space_so = create_service_options(peter_msgs::ActionSpaceDescription, "actions", action_space_bind);
-
   auto get_object_bind = [this](auto &&req, auto &&res) { return GetObjectCallback(req, res); };
   auto get_object_so = create_service_options(peter_msgs::GetObject, name_, get_object_bind);
 
@@ -180,7 +176,6 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   action_service_ = private_ros_node_->advertiseService(pos_action_so);
   stop_service_ = private_ros_node_->advertiseService(stop_so);
   get_position_service_ = private_ros_node_->advertiseService(get_pos_so);
-  action_space_service_ = private_ros_node_->advertiseService(action_space_so);
 
   register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
   get_object_service_ = ros_node_.advertiseService(get_object_so);
@@ -285,30 +280,6 @@ bool Position3dPlugin::GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs:
   res.pos.x = pos.X();
   res.pos.y = pos.Y();
   res.pos.z = pos.Z();
-  return true;
-}
-
-bool Position3dPlugin::GetActionSpace(peter_msgs::ActionSpaceDescriptionRequest &req,
-                                      peter_msgs::ActionSpaceDescriptionResponse &res)
-{
-  peter_msgs::SubspaceDescription action_space;
-  action_space.dimensions = 3;
-  action_space.name = "position";
-  action_space.lower_bounds.push_back(-10);
-  action_space.lower_bounds.push_back(-10);
-  action_space.lower_bounds.push_back(-10);
-  action_space.upper_bounds.push_back(10);
-  action_space.upper_bounds.push_back(10);
-  action_space.upper_bounds.push_back(10);
-
-  peter_msgs::SubspaceDescription timeout_space;
-  timeout_space.dimensions = 1;
-  timeout_space.name = "timeout";
-  timeout_space.lower_bounds.push_back(-10);
-  timeout_space.upper_bounds.push_back(10);
-
-  res.subspaces.push_back(action_space);
-  res.subspaces.push_back(timeout_space);
   return true;
 }
 

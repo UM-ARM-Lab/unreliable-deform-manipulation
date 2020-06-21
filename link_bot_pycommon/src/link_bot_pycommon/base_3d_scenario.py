@@ -4,9 +4,12 @@ import numpy as np
 import tensorflow as tf
 from matplotlib import colors
 
+import geometry_msgs.msg
 import rospy
+import tf2_ros
 from geometry_msgs.msg import Point
 from link_bot_data.visualization import rviz_arrow
+from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
@@ -21,6 +24,7 @@ class Base3DScenario(ExperimentScenario):
         self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10)
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10)
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10)
+        self.broadcaster = tf2_ros.StaticTransformBroadcaster()
 
     @staticmethod
     def random_pos(action_rng: np.random.RandomState, extent):
@@ -29,8 +33,25 @@ class Base3DScenario(ExperimentScenario):
         return pos
 
     def plot_environment_rviz(self, data: Dict):
+        self.send_occupancy_tf(data)
+
         msg = environment_to_occupancy_msg(data)
         self.env_viz_pub.publish(msg)
+
+    def send_occupancy_tf(self, data):
+        static_transformStamped = geometry_msgs.msg.TransformStamped()
+        static_transformStamped.header.stamp = rospy.Time.now()
+        static_transformStamped.header.frame_id = "world"
+        static_transformStamped.child_frame_id = "occupancy"
+        origin_x, origin_y, origin_z = link_bot_sdf_utils.idx_to_point_3d_in_env(0, 0, 0, data)
+        static_transformStamped.transform.translation.x = origin_x
+        static_transformStamped.transform.translation.y = origin_y
+        static_transformStamped.transform.translation.z = origin_z
+        static_transformStamped.transform.rotation.x = 0
+        static_transformStamped.transform.rotation.y = 0
+        static_transformStamped.transform.rotation.z = 0
+        static_transformStamped.transform.rotation.w = 1
+        self.broadcaster.sendTransform(static_transformStamped)
 
     def plot_state_rviz(self, data: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))

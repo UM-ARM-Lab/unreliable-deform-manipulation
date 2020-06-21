@@ -65,16 +65,15 @@ target_include_directories(my_camera_plugin PUBLIC ${catkin_INCLUDE_DIRS} includ
 target_link_libraries(my_camera_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} CameraPlugin)
 add_dependencies(my_camera_plugin ${catkin_EXPORTED_TARGETS})
 
-add_library(kinematic_victor_plugin SHARED plugins/kinematic_victor_plugin.cpp)
-target_include_directories(kinematic_victor_plugin PUBLIC ${catkin_INCLUDE_DIRS} include)
-target_link_libraries(kinematic_victor_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
-add_dependencies(kinematic_victor_plugin ${catkin_EXPORTED_TARGETS})
+# add_library(kinematic_victor_plugin SHARED plugins/kinematic_victor_plugin.cpp)
+# target_include_directories(kinematic_victor_plugin PUBLIC ${catkin_INCLUDE_DIRS} include)
+# target_link_libraries(kinematic_victor_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+# add_dependencies(kinematic_victor_plugin ${catkin_EXPORTED_TARGETS})
 
 add_library(gazebo_ros_moveit_planning_scene plugins/gazebo_ros_moveit_planning_scene.cpp)
 target_include_directories(gazebo_ros_moveit_planning_scene PUBLIC ${catkin_INCLUDE_DIRS} include)
 add_dependencies(gazebo_ros_moveit_planning_scene ${catkin_EXPORTED_TARGETS})
 target_link_libraries(gazebo_ros_moveit_planning_scene ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES})
-
 
 add_library(dual_gripper_plugin plugins/dual_gripper_plugin.cpp)
 target_include_directories(dual_gripper_plugin PUBLIC ${catkin_INCLUDE_DIRS} include)

@@ -2,7 +2,6 @@
 
 #include <thread>
 
-#include <peter_msgs/JointTraj.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 
