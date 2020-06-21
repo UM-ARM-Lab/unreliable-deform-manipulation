@@ -18,14 +18,14 @@
   "res": 0.03,
   "max_step_size": 0.002,
   "dt": 1.0,
-  "steps_per_traj": 10,
+  "steps_per_traj": 25,
   "trajs_per_file": 16,
   "settling_time": 0.2,
   "kinematic_objects": true,
   "no_objects": false,
   "max_dist_between_gripper_and_link": 0.022,
   "max_distance_gripper_can_move": 0.05,
-  "min_distance_between_grippers": 0.05,
+  "min_distance_between_grippers": 0.1,
   "movable_objects": {
     "box1": {
       "x": [

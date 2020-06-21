@@ -5,9 +5,7 @@ from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingR
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from geometry_msgs.msg import Pose
 from ignition.markers import MarkerProvider
-from peter_msgs.srv import ComputeOccupancy, WorldControl, GetObjects, \
-    StateSpaceDescription, StateSpaceDescriptionRequest, ActionSpaceDescription, \
-    ActionSpaceDescriptionRequest
+from peter_msgs.srv import ComputeOccupancy, WorldControl, GetObjects, StateSpaceDescription, StateSpaceDescriptionRequest
 from std_srvs.srv import Empty
 
 
