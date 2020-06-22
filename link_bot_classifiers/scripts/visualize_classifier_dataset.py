@@ -77,6 +77,9 @@ def visualize_dataset(args, classifier_dataset):
         example = remove_batch(example)
 
         is_close = example['is_close'].numpy().squeeze()
+        count += is_close.shape[0]
+
+        print(is_close)
         n_close = np.count_nonzero(is_close)
         n_far = is_close.shape[0] - n_close
         positive_count += n_close
@@ -92,7 +95,6 @@ def visualize_dataset(args, classifier_dataset):
         if reconverging:
             reconverging_count += 1
 
-        count += 1
 
         # Print statistics intermittently
         if count % 100 == 0:
@@ -101,9 +103,14 @@ def visualize_dataset(args, classifier_dataset):
         #############################
         # Show Visualization
         #############################
-        visualize_classifier_example_3d(scenario=classifier_dataset.scenario,
-                                        example=example,
-                                        n_time_steps=classifier_dataset.horizon)
+        if args.display_type == 'just_count':
+            continue
+        elif args.display_type == '3d':
+            visualize_classifier_example_3d(scenario=classifier_dataset.scenario,
+                                            example=example,
+                                            n_time_steps=classifier_dataset.horizon)
+        else:
+            raise NotImplementedError()
     total_dt = perf_counter() - t0
     print_stats_and_timing(args, count, reconverging_count, negative_count, positive_count, total_dt)
 

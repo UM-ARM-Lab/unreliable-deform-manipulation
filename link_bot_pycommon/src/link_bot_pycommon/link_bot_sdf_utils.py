@@ -78,8 +78,8 @@ def compute_extent_3d(rows: int,
 
 def extent_to_env_size(extent_3d):
     min_x, max_x, min_y, max_y, min_z, max_z = extent_3d
-    env_h_m = abs(max_x - min_x)
-    env_w_m = abs(max_y - min_y)
+    env_h_m = abs(max_y - min_y)
+    env_w_m = abs(max_x - min_x)
     env_c_m = abs(max_z - min_z)
     return env_h_m, env_w_m, env_c_m
 
@@ -106,10 +106,10 @@ def environment_to_occupancy_msg(environment: Dict) -> OccupancyStamped:
     # NOTE: The plugin assumes data is ordered [x,y,z] so tranpose here
     env = np.transpose(env, [1, 0, 2])
     occupancy.data = env.astype(np.float32).flatten().tolist()
-    h_rows, w_cols, c_channels = env.shape
-    occupancy.layout.dim.append(MultiArrayDimension(label='x', size=w_cols, stride=h_rows * w_cols * c_channels))
-    occupancy.layout.dim.append(MultiArrayDimension(label='y', size=h_rows, stride=w_cols * c_channels))
-    occupancy.layout.dim.append(MultiArrayDimension(label='z', size=c_channels, stride=c_channels))
+    x_shape, y_shape, z_shape = env.shape
+    occupancy.layout.dim.append(MultiArrayDimension(label='x', size=x_shape, stride=x_shape * y_shape * z_shape))
+    occupancy.layout.dim.append(MultiArrayDimension(label='y', size=y_shape, stride=y_shape * z_shape))
+    occupancy.layout.dim.append(MultiArrayDimension(label='z', size=z_shape, stride=z_shape))
     msg = OccupancyStamped()
     msg.occupancy = occupancy
     msg.scale = environment['res']
