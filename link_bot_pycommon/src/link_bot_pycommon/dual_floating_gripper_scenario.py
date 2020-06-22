@@ -124,6 +124,17 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         }
 
     @staticmethod
+    def local_environment_center_differentiable(state):
+        """
+        :param state: Dict of batched states
+        :return:
+        """
+        rope_vector = state['link_bot']
+        rope_points = tf.reshape(rope_vector, [rope_vector.shape[0], -1, 3])
+        center = tf.reduce_mean(rope_points, axis=1)
+        return center
+
+    @staticmethod
     def integrate_dynamics(s_t: Dict, delta_s_t: Dict):
         return {k: s_t[k] + delta_s_t[k] for k in s_t.keys()}
 

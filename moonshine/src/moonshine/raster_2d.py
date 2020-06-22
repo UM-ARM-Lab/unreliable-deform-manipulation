@@ -1,8 +1,7 @@
 import tensorflow as tf
 
 
-@tf.function
-def raster_differentiable(state, res, origin, h, w, k, batch_size: int):
+def raster_2d(state, res, origin, h, w, k, batch_size: int):
     res = res[0]
     n_points = int(int(state.shape[1]) / 2)
     points = tf.reshape(state, [batch_size, n_points, 2])

@@ -10,45 +10,46 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_classifiers.visualization import trajectory_image
+from link_bot_classifiers.visualization import visualize_classifier_example_3d
 from link_bot_data.link_bot_dataset_utils import add_predicted, NULL_PAD_VALUE
+from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
 from link_bot_pycommon.pycommon import make_dict_float32
 from moonshine import classifier_losses_and_metrics
-from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function
-from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
-from moonshine.raster_2d import raster_differentiable
+from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
 from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, flatten_batch_and_time, \
     sequence_of_dicts_to_dict_of_sequences, remove_batch
+from moonshine.raster_3d import raster_3d
 from shape_completion_training.my_keras_model import MyKerasModel
 
 
 class NNClassifier(MyKerasModel):
-    def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
+    def __init__(self, hparams: Dict, batch_size: int, scenario: Base3DScenario):
         super().__init__(hparams, batch_size)
         self.scenario = scenario
 
         self.classifier_dataset_hparams = self.hparams['classifier_dataset_hparams']
         self.dynamics_dataset_hparams = self.classifier_dataset_hparams['fwd_model_hparams']['dynamics_dataset_hparams']
-        self.n_action = self.dynamics_dataset_hparams['n_action']
         self.local_env_h_rows = self.hparams['local_env_h_rows']
         self.local_env_w_cols = self.hparams['local_env_w_cols']
+        self.local_env_c_channels = self.hparams['local_env_c_channels']
         self.rope_image_k = self.hparams['rope_image_k']
 
         # TODO: add stdev to states keys?
-        self.states_keys = self.hparams['states_keys']
+        self.state_keys = self.hparams['states_keys']
 
         self.conv_layers = []
         self.pool_layers = []
         for n_filters, kernel_size in self.hparams['conv_filters']:
-            conv = layers.Conv2D(n_filters,
+            conv = layers.Conv3D(n_filters,
                                  kernel_size,
                                  activation='relu',
                                  kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
                                  bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']),
                                  activity_regularizer=keras.regularizers.l1(self.hparams['activity_reg']))
-            pool = layers.MaxPool2D(2)
+            pool = layers.MaxPool3D(2)
             self.conv_layers.append(conv)
             self.pool_layers.append(pool)
 
@@ -56,15 +57,12 @@ class NNClassifier(MyKerasModel):
             self.batch_norm = layers.BatchNormalization()
 
         self.dense_layers = []
-        self.dropout_layers = []
         for hidden_size in self.hparams['fc_layer_sizes']:
-            dropout = layers.Dropout(rate=self.hparams['dropout_rate'])
             dense = layers.Dense(hidden_size,
                                  activation='relu',
                                  kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
                                  bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']),
                                  activity_regularizer=keras.regularizers.l1(self.hparams['activity_reg']))
-            self.dropout_layers.append(dropout)
             self.dense_layers.append(dense)
 
         self.mask = layers.Masking(mask_value=NULL_PAD_VALUE)
@@ -73,31 +71,24 @@ class NNClassifier(MyKerasModel):
         self.sigmoid = layers.Activation("sigmoid")
 
         loss_type = self.hparams['loss_type']
-        if loss_type == 'sequence':
-            self.loss_function = classifier_losses_and_metrics.binary_classification_sequence_loss_function
-        elif loss_type == 'weighted_sequence':
+        if loss_type == 'weighted_sequence':
             self.loss_function = classifier_losses_and_metrics.negative_weighted_binary_classification_sequence_loss_function
-        elif loss_type == 'from_label':
-            self.loss_function = classifier_losses_and_metrics.binary_classification_loss_function
-        elif loss_type == 'reconverging':
-            self.loss_function = classifier_losses_and_metrics.reconverging_weighted_binary_classification_sequence_loss_function
         else:
             raise NotImplementedError()
 
-    def make_traj_images_from_input_dict(self, input_dict, batch_size):
+    def make_traj_voxel_grids_from_input_dict(self, input_dict, batch_size, time):
         # First flatten batch & time
-        transposed_states_dict = {k: tf.transpose(input_dict[add_predicted(k)], [1, 0, 2]) for k in self.states_keys}
+        transposed_states_dict = {k: tf.transpose(input_dict[add_predicted(k)], [1, 0, 2]) for k in self.state_keys}
         states_dict_batch_time = flatten_batch_and_time(transposed_states_dict)
-        padded_action = tf.pad(input_dict['action'], [[0, 0], [0, 1], [0, 0]])
-        time = int(padded_action.shape[1])
+
         local_env_center_point_batch_time = self.scenario.local_environment_center_differentiable(states_dict_batch_time)
-        images_batch_and_time = self.make_traj_images(environment=self.scenario.get_environment_from_example(input_dict),
-                                                      states_dict_batch_time=states_dict_batch_time,
-                                                      local_env_center_point_batch_time=local_env_center_point_batch_time,
-                                                      padded_actions=padded_action,
-                                                      batch_size=batch_size,
-                                                      time=time)
-        return images_batch_and_time, padded_action, time
+        voxel_grids_batch_and_time = self.make_traj_voxel_grids(
+            environment=self.scenario.get_environment_from_example(input_dict),
+            states_dict_batch_time=states_dict_batch_time,
+            local_env_center_point_batch_time=local_env_center_point_batch_time,
+            batch_size=batch_size,
+            time=time)
+        return voxel_grids_batch_and_time, time
 
     def compute_loss(self, dataset_element, outputs):
         return {
@@ -107,54 +98,48 @@ class NNClassifier(MyKerasModel):
     def calculate_metrics(self, dataset_element, outputs):
         return binary_classification_sequence_metrics_function(dataset_element, outputs)
 
-    @tf.function
-    def make_traj_images(self,
-                         environment,
-                         states_dict_batch_time,
-                         local_env_center_point_batch_time,
-                         padded_actions,
-                         batch_size,
-                         time):
+    # @tf.function
+    def make_traj_voxel_grids(self,
+                              environment,
+                              states_dict_batch_time,
+                              local_env_center_point_batch_time,
+                              batch_size,
+                              time):
         """
         :return: [batch, time, h, w, 1 + n_points]
         """
-        actions_batch_time = tf.reshape(padded_actions, [-1] + padded_actions.shape.as_list()[2:])
         batch_and_time = batch_size * time
-        env_batch_time = tf.tile(environment['env'], [time, 1, 1])
+        env_batch_time = tf.tile(environment['env'], [time, 1, 1, 1])
         env_origin_batch_time = tf.tile(environment['origin'], [time, 1])
         env_res_batch_time = tf.tile(environment['res'], [time])
 
-        # this will produce images even for "null" data,
-        # but are masked out in the RNN, and not actually used in the computation
         local_env_batch_time, local_env_origin_batch_time = get_local_env(center_point=local_env_center_point_batch_time,
                                                                           full_env=env_batch_time,
                                                                           full_env_origin=env_origin_batch_time,
                                                                           res=env_res_batch_time,
                                                                           local_h_rows=self.local_env_h_rows,
-                                                                          local_w_cols=self.local_env_w_cols)
+                                                                          local_w_cols=self.local_env_w_cols,
+                                                                          local_c_channels=self.local_env_c_channels)
 
         concat_args = []
         for planned_state in states_dict_batch_time.values():
-            planned_rope_image = raster_differentiable(state=planned_state,
-                                                       res=env_res_batch_time,
-                                                       origin=local_env_origin_batch_time,
-                                                       h=self.local_env_h_rows,
-                                                       w=self.local_env_w_cols,
-                                                       k=self.rope_image_k,
-                                                       batch_size=batch_and_time)
-            concat_args.append(planned_rope_image)
-
-        if self.hparams['action_in_image']:
-            action_image = smear_action_differentiable(actions_batch_time, self.local_env_h_rows, self.local_env_w_cols)
-            concat_args.append(action_image)
+            planned_rope_voxel_grid = raster_3d(state=planned_state,
+                                                res=env_res_batch_time,
+                                                origin=local_env_origin_batch_time,
+                                                h=self.local_env_h_rows,
+                                                w=self.local_env_w_cols,
+                                                c=self.local_env_c_channels,
+                                                k=self.rope_image_k,
+                                                batch_size=batch_and_time)
+            concat_args.append(planned_rope_voxel_grid)
 
         concat_args.append(tf.expand_dims(local_env_batch_time, axis=3))
-        images_batch_time = tf.concat(concat_args, axis=3)
-        return images_batch_time
+        voxel_grids_batch_time = tf.concat(concat_args, axis=3)
+        return voxel_grids_batch_time
 
-    def _conv(self, images, time, batch_size):
+    def _conv(self, voxel_grids, time, batch_size):
         # merge batch & time dimensions
-        conv_z = images
+        conv_z = voxel_grids
         for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
             conv_h = conv_layer(conv_z)
             conv_z = pool_layer(conv_h)
@@ -164,43 +149,41 @@ class NNClassifier(MyKerasModel):
 
         return out_conv_z
 
-    def debug_plot(self, input_dict, images, padded_action, time):
-        import matplotlib.pyplot as plt
-        fig, axes = plt.subplots(nrows=1, ncols=time)
-        trajectory_image(axes=axes,
-                         image=images[0],
-                         actions=padded_action[0],
-                         labels=input_dict['is_close'][0],
-                         )
-        # print(mask[0].numpy())
-        for t in range(time):
-            axes[t].set_aspect("equal")
-        plt.show(block=True)
+    def debug_plot(self, input_dict, voxel_grids, time):
+        visualize_classifier_example_3d(scenario=self.scenario,
+                                        example=input_dict,
+                                        n_time_steps=time)
+        # plot the occupancy grid
+        environment = {
+            'env': voxel_grids,
+        }
+        msg = environment_to_occupancy_msg(environment)
+        self.scenario.env_viz_pub.publish(msg)
 
-    @tf.function
+    # @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
-        batch_size = int(input_dict['action'].shape[0])
-        images_batch_and_time, padded_action, time = self.make_traj_images_from_input_dict(input_dict, batch_size)
+        # FIXME: how to get time/batch size without just knowing a using key that happens to have the right shape?
+        batch_size = input_dict['batch_size']
+        time = input_dict['time'][0]
+        voxel_grids_batch_and_time = self.make_traj_voxel_grids_from_input_dict(input_dict, batch_size, time)
 
-        images = tf.reshape(images_batch_and_time, [time, batch_size, self.local_env_h_rows, self.local_env_w_cols, -1])
-        images = tf.transpose(images, [1, 0, 2, 3, 4])  # undo transpose
-        conv_output = self._conv(images_batch_and_time, time, batch_size)
+        voxel_grids = tf.reshape(voxel_grids_batch_and_time, [time, batch_size, self.local_env_h_rows, self.local_env_w_cols, -1])
+        voxel_grids = tf.transpose(voxel_grids, [1, 0, 2, 3, 4])  # undo transpose
+        conv_output = self._conv(voxel_grids_batch_and_time, time, batch_size)
         conv_output = tf.transpose(conv_output, [1, 0, 2])  # undo transpose
 
-        concat_args = [conv_output, padded_action]
-        for state_key in self.states_keys:
-            planned_state_key = add_predicted(state_key)
-            state = input_dict[planned_state_key]
-            if self.hparams['use_local_frame']:
-                state = self.scenario.put_state_local_frame(state_key, state)
-            concat_args.append(state)
+        states = {k: input_dict[add_predicted(k)] for k in self.state_keys}
+        states = self.scenario.put_state_local_frame(states)
+        actions = {k: input_dict[k] for k in self.action_keys}
+        actions = self.scenario.put_action_local_frame(states, actions)
+        concat_args = [conv_output, list(states.values()), list(actions.values())]
 
         if self.hparams['stdev']:
             stdevs = input_dict[add_predicted('stdev')]
             concat_args.append(stdevs)
 
         # uncomment to debug, also comment out the tf.function's
-        # self.debug_plot(input_dict, images, padded_action, time)
+        self.debug_plot(input_dict, voxel_grids, time)
 
         conv_output = tf.concat(concat_args, axis=2)
 
@@ -208,13 +191,13 @@ class NNClassifier(MyKerasModel):
             conv_output = self.batch_norm(conv_output, training=training)
 
         z = conv_output
-        for dropout_layer, dense_layer in zip(self.dropout_layers, self.dense_layers):
-            d = dropout_layer(z, training=training)
-            z = dense_layer(d)
+        for dense_layer in self.dense_layers:
+            z = dense_layer(z)
         out_d = z
 
+        # TODO: remove masking, no longer used I believe
         # doesn't matter which state_key we use, they're all null padded the same way
-        state_key_for_mask = add_predicted(self.states_keys[0])
+        state_key_for_mask = add_predicted(self.state_keys[0])
         state_for_mask = input_dict[state_key_for_mask]
         mask = self.mask(state_for_mask)._keras_mask
         out_h = self.lstm(out_d, mask=mask)
@@ -229,11 +212,11 @@ class NNClassifier(MyKerasModel):
             'logits': valid_accept_logits,
             'probabilities': valid_accept_probabilities,
             'mask': mask,
-            'images': images,
+            'voxel_grids': voxel_grids,
         }
 
 
-class RNNImageClassifierWrapper(BaseConstraintChecker):
+class NNClassifierWrapper(BaseConstraintChecker):
 
     def __init__(self, path: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
         super().__init__(scenario)
@@ -270,7 +253,7 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         if self.net.hparams['stdev']:
             net_inputs[add_predicted('stdev')] = tf.convert_to_tensor(predictions['stdev'], tf.float32)
 
-        for state_key in self.net.states_keys:
+        for state_key in self.net.state_keys:
             planned_state_key = add_predicted(state_key)
             net_inputs[planned_state_key] = tf.convert_to_tensor(predictions[state_key], tf.float32)
 
@@ -293,7 +276,7 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         if self.net.hparams['stdev']:
             net_inputs[add_predicted('stdev')] = tf.convert_to_tensor(states_sequences_dict['stdev'], tf.float32)
 
-        for state_key in self.net.states_keys:
+        for state_key in self.net.state_keys:
             planned_state_key = add_predicted(state_key)
             net_inputs[planned_state_key] = tf.convert_to_tensor(states_sequences_dict[state_key], tf.float32)
 
@@ -314,4 +297,4 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         return accept_probabilities
 
 
-model = RNNImageClassifierWrapper
+model = NNClassifierWrapper

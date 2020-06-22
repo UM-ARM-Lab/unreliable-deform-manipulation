@@ -5,7 +5,7 @@ from time import perf_counter
 import numpy as np
 import tensorflow as tf
 
-from moonshine.raster_2d import raster_differentiable
+from moonshine.raster_2d import raster_2d
 
 
 def main():
@@ -22,11 +22,11 @@ def main():
         origin = tf.convert_to_tensor([[100.0, 100.0]] * batch_size, dtype=tf.float32)
         state = tf.convert_to_tensor([np.random.randn(22)] * batch_size, dtype=tf.float32)
         # warmup
-        raster_differentiable(state, res, origin, h, w, k, batch_size)
+        raster_2d(state, res, origin, h, w, k, batch_size)
 
         t0 = perf_counter()
         for i in range(int(n / batch_size)):
-            raster_differentiable(state, res, origin, h, w, k, batch_size)
+            raster_2d(state, res, origin, h, w, k, batch_size)
         dt = perf_counter() - t0
         table_data.append([batch_size, dt])
     print(tabulate(table_data, headers=headers, tablefmt='fancygrid', floatfmt='.4f'))

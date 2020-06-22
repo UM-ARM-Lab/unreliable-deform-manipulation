@@ -107,6 +107,16 @@ def flatten_concat_pairs(ex_pos, ex_neg):
     return flat_pair
 
 
+def batch_tf_dataset(dataset: tf.data.Dataset, batch_size: int, drop_remainder: bool = True):
+    def _add_batch(example: Dict):
+        example['batch_size'] = batch_size
+        return example
+
+    dataset = dataset.batch(batch_size, drop_remainder=drop_remainder)
+    dataset = dataset.map(_add_batch)
+    return dataset
+
+
 def balance(dataset, labeling_params: Dict, cache_negative: bool = True):
     def _label_is(label_is):
         def __filter(transition):
@@ -156,8 +166,22 @@ def data_directory(outdir: pathlib.Path, *names):
     return full_output_directory
 
 
+PREDICTED_PREFIX = 'predicted/'
+
+
+def remove_predicted(k: str):
+    if k.startswith(PREDICTED_PREFIX):
+        return k[len(PREDICTED_PREFIX):]
+    else:
+        return k
+
+
+def remove_predicted_from_dict(d: Dict):
+    return {remove_predicted(k): v for k, v in d.items()}
+
+
 def add_predicted(feature_name):
-    return "predicted/" + feature_name
+    return PREDICTED_PREFIX + feature_name
 
 
 def null_pad(sequence, start=None, end=None):
@@ -170,7 +194,6 @@ def null_pad(sequence, start=None, end=None):
     if end is not None and end + 1 < len(sequence):
         new_sequence[end + 1:] = NULL_PAD_VALUE
     return new_sequence
-
 
 
 def is_reconverging(labels, label_threshold=0.5):

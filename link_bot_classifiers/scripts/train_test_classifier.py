@@ -8,7 +8,8 @@ import tensorflow as tf
 
 import link_bot_classifiers
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_pycommon.get_scenario import get_scenario
+from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
+from link_bot_pycommon.pycommon import paths_to_json
 from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
@@ -31,6 +32,7 @@ def train_main(args, seed: int):
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
+    model_hparams['datasets'] = paths_to_json(args.dataset_dirs)
     trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
     trials_directory = pathlib.Path('trials').absolute()
     group_name = args.log if trial_path is None else None
@@ -40,9 +42,8 @@ def train_main(args, seed: int):
                                                              trials_directory=trials_directory,
                                                              write_summary=False)
     model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
-    scenario = get_scenario(model_hparams['scenario'])
 
-    model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=scenario)
+    model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=train_dataset.scenario)
 
     runner = ModelRunner(model=model,
                          training=True,
@@ -58,8 +59,8 @@ def train_main(args, seed: int):
     # to mix up examples so each batch is diverse
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=2048, seed=seed, reshuffle_each_iteration=True)
 
-    train_tf_dataset = train_tf_dataset.batch(args.batch_size, drop_remainder=True)
-    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    train_tf_dataset = batch_tf_dataset(train_tf_dataset, args.batch_size, drop_remainder=True)
+    val_tf_dataset = batch_tf_dataset(val_tf_dataset, args.batch_size, drop_remainder=True)
 
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)  # to mix up batches
 
@@ -76,8 +77,6 @@ def eval_main(args, seed: int):
     _, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
                                                     trials_directory=pathlib.Path('trials'))
     model = link_bot_classifiers.get_model(params['model_class'])
-    scenario = get_scenario(params['scenario'])
-    net = model(hparams=params, batch_size=args.batch_size, scenario=scenario)
 
     ###############
     # Dataset
@@ -90,6 +89,7 @@ def eval_main(args, seed: int):
     ###############
     test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
+    net = model(hparams=params, batch_size=args.batch_size, scenario=test_dataset.scenario)
     runner = ModelRunner(model=net,
                          training=False,
                          trial_path=args.checkpoint.absolute(),

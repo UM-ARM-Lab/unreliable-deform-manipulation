@@ -14,8 +14,8 @@ from link_bot_classifiers.base_recovery_actions_model import BaseRecoveryActions
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine import classifier_losses_and_metrics
-from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
-from moonshine.raster_2d import raster_differentiable
+from moonshine.get_local_environment import get_local_env_and_origin_2d_tf as get_local_env
+from moonshine.raster_2d import raster_2d
 from moonshine.moonshine_utils import add_batch, remove_batch, numpify
 from shape_completion_training.my_keras_model import MyKerasModel
 
@@ -102,13 +102,13 @@ class RNNRecoveryModel(MyKerasModel):
 
         concat_args = []
         for planned_state in start_states.values():
-            planned_rope_image = raster_differentiable(state=planned_state,
-                                                       res=environment['res'],
-                                                       origin=local_env_origin,
-                                                       h=self.local_env_h_rows,
-                                                       w=self.local_env_w_cols,
-                                                       k=self.rope_image_k,
-                                                       batch_size=batch_size)
+            planned_rope_image = raster_2d(state=planned_state,
+                                           res=environment['res'],
+                                           origin=local_env_origin,
+                                           h=self.local_env_h_rows,
+                                           w=self.local_env_w_cols,
+                                           k=self.rope_image_k,
+                                           batch_size=batch_size)
             concat_args.append(planned_rope_image)
 
         concat_args.append(tf.expand_dims(local_env, axis=3))
@@ -211,11 +211,10 @@ class RNNRecoveryModel(MyKerasModel):
         conv_output = self._conv(images, batch_size)
         concat_args = [conv_output]
         for k, v in start_state.items():
-            if self.hparams['use_local_frame']:
-                # note this assumes all state vectors are[x1,y1,...,xn,yn]
-                points = tf.reshape(v, [batch_size, -1, 2])
-                points = points - points[:, :, tf.newaxis, 0]
-                v = tf.reshape(points, [batch_size, -1])
+            # note this assumes all state vectors are[x1,y1,...,xn,yn]
+            points = tf.reshape(v, [batch_size, -1, 2])
+            points = points - points[:, :, tf.newaxis, 0]
+            v = tf.reshape(points, [batch_size, -1])
             concat_args.append(v)
         conv_output = tf.concat(concat_args, axis=1)
         if self.hparams['batch_norm']:

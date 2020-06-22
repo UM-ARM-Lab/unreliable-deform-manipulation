@@ -8,8 +8,8 @@ from colorama import Fore
 from tensorflow import keras
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.get_local_environment import get_local_env_and_origin_differentiable
-from moonshine.raster_2d import raster_differentiable
+from moonshine.get_local_environment import get_local_env_and_origin_2d_tf
+from moonshine.raster_2d import raster_2d
 from moonshine.matrix_operations import batch_outer_product
 from moonshine.moonshine_utils import add_batch, remove_batch, \
     dict_of_sequences_to_sequence_of_dicts_tf
@@ -100,12 +100,12 @@ class ImageCondDynamics(MyKerasModel):
 
     @tf.function
     def get_local_env(self, center_point, full_env_origin, full_env, res):
-        local_env, local_env_origin = get_local_env_and_origin_differentiable(center_point=center_point,
-                                                                              full_env=full_env,
-                                                                              full_env_origin=full_env_origin,
-                                                                              res=res,
-                                                                              local_h_rows=self.local_env_h_rows,
-                                                                              local_w_cols=self.local_env_w_cols)
+        local_env, local_env_origin = get_local_env_and_origin_2d_tf(center_point=center_point,
+                                                                     full_env=full_env,
+                                                                     full_env_origin=full_env_origin,
+                                                                     res=res,
+                                                                     local_h_rows=self.local_env_h_rows,
+                                                                     local_w_cols=self.local_env_w_cols)
         return local_env, local_env_origin
 
     @tf.function
@@ -145,8 +145,8 @@ class ImageCondDynamics(MyKerasModel):
                 env_h_rows = self.local_env_h_rows
                 env_w_cols = self.local_env_w_cols
 
-            rope_image_t = raster_differentiable(s_t, res, env_origin, env_h_rows, env_w_cols, k=self.rope_image_k,
-                                                 batch_size=self.batch_size)
+            rope_image_t = raster_2d(s_t, res, env_origin, env_h_rows, env_w_cols, k=self.rope_image_k,
+                                     batch_size=self.batch_size)
 
             env = tf.expand_dims(env, axis=3)
 

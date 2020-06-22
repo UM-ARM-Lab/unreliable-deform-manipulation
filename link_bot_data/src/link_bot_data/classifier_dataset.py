@@ -1,5 +1,5 @@
 import pathlib
-from typing import List
+from typing import List, Dict
 
 import tensorflow as tf
 
@@ -56,3 +56,12 @@ class ClassifierDataset(BaseDataset):
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
 
         return features_description
+
+    def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
+        def _add_time(example: Dict):
+            # this function is called before batching occurs, so the first dimension should be time
+            example['time'] = example[add_predicted(self.state_keys[0])].shape[0]
+            return example
+
+        dataset = dataset.map(_add_time)
+        return dataset

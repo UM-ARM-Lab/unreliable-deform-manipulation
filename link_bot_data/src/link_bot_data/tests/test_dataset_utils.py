@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 from link_bot_data.link_bot_dataset_utils import is_reconverging, null_pad, NULL_PAD_VALUE, num_reconverging, \
-    num_reconverging_subsequences
+    num_reconverging_subsequences, add_predicted, remove_predicted, remove_predicted_from_dict
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import remove_batch
 
@@ -51,6 +51,23 @@ class MyTestCase(unittest.TestCase):
                                    np.array([1, 0, 0, 1]))
         np.testing.assert_allclose(null_pad(np.array([1, 0, 0, 1]), start=None, end=0),
                                    np.array([1, NULL_PAD_VALUE, NULL_PAD_VALUE, NULL_PAD_VALUE]))
+
+    def test_add_remove_predicted(self):
+        k = "test"
+        out_k = remove_predicted(add_predicted(k))
+        self.assertEqual(k, out_k)
+
+    def test_add_remove_predicted_dict(self):
+        d = {
+            add_predicted("test1"): 1,
+            "test2": 2,
+        }
+        expected_d = {
+            "test1": 1,
+            "test2": 2,
+        }
+        out_d = remove_predicted_from_dict(d)
+        self.assertEqual(expected_d, out_d)
 
 
 if __name__ == '__main__':

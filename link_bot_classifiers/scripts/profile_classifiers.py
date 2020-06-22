@@ -7,7 +7,7 @@ import numpy as np
 
 from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier, DEFAULT_INFLATION_RADIUS
 from link_bot_classifiers.none_classifier import NoneClassifier
-from link_bot_classifiers.nn_classifier import RNNImageClassifierWrapper
+from link_bot_classifiers.nn_classifier import NNClassifierWrapper
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.fishing_3d_scenario import LinkBotScenario
 from moonshine.gpu_config import limit_gpu_mem
@@ -23,7 +23,7 @@ def main():
 
     scenario = LinkBotScenario()
     rnn_path = pathlib.Path("log_data/rope_6_seq/May_24_11-31-38_617a0bee2a")
-    rnn_classifier = RNNImageClassifierWrapper(rnn_path, batch_size=1, scenario=scenario)
+    rnn_classifier = NNClassifierWrapper(rnn_path, batch_size=1, scenario=scenario)
     cc_path = pathlib.Path("log_data/collision")
     cc_classifier = CollisionCheckerClassifier(cc_path, inflation_radius=DEFAULT_INFLATION_RADIUS, scenario=scenario)
     none_classifier = NoneClassifier(scenario)
