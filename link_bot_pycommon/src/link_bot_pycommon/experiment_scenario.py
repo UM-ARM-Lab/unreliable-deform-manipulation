@@ -8,7 +8,7 @@ import rospy
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from geometry_msgs.msg import Vector3
 from ignition.markers import MarkerProvider
-from link_bot_data.link_bot_dataset_utils import add_planned
+from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_data.visualization import plot_extents
 from link_bot_pycommon.animation_player import Player
 from link_bot_pycommon.pycommon import trim_reconverging
@@ -173,7 +173,7 @@ class ExperimentScenario:
         predictions = {}
         actual = {}
         for state_key in state_keys:
-            predictions[state_key] = dataset_element[add_planned(state_key)]
+            predictions[state_key] = dataset_element[add_predicted(state_key)]
             actual[state_key] = dataset_element[state_key]
 
         predictions = numpify(dict_of_sequences_to_sequence_of_dicts_tf(predictions))
@@ -442,11 +442,11 @@ class ExperimentScenario:
         movable_object_services['action'](move_action_req)
 
     @staticmethod
-    def states_description():
+    def states_description() -> Dict:
         raise NotImplementedError()
 
     @staticmethod
-    def actions_description():
+    def actions_description() -> Dict:
         raise NotImplementedError()
 
     @staticmethod

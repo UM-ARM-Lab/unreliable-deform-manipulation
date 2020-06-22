@@ -1,107 +1,67 @@
-from typing import Dict, Callable
+from typing import Dict
 
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from link_bot_classifiers.visualization import trajectory_plot
+from link_bot_classifiers.visualization import visualize_classifier_example_3d
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import add_planned, null_diverged, null_previous_states
-from link_bot_pycommon.get_scenario import get_scenario
-from moonshine.moonshine_utils import gather_dict, add_batch, remove_batch, numpify
+from link_bot_data.link_bot_dataset_utils import add_predicted
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from moonshine.moonshine_utils import gather_dict, add_batch, remove_batch, index_dict_of_batched_vectors_tf
+from state_space_dynamics.model_utils import EnsembleDynamicsFunction
 
-
-# TODO: planned -> predicted whenever we're talking about applying the dynamics model
-#  so like add_planned should be add_predicted or something
 
 class PredictionActualExample:
     def __init__(self,
-                 inputs: Dict,
-                 outputs: Dict,
-                 actions: tf.Tensor,
+                 example: Dict,
+                 actual_states: Dict,
+                 actions: Dict,
                  predictions: Dict,
-                 prediction_start_t: int,
+                 start_t: int,
                  labeling_params: Dict,
                  actual_prediction_horizon: int,
                  batch_size: int):
-        self.inputs = inputs
-        self.outputs = outputs
+        self.dataset_element = example
+        self.actual_states = actual_states
         self.actions = actions
         self.predictions = predictions
-        self.prediction_start_t = prediction_start_t
+        self.prediction_start_t = start_t
         self.labeling_params = labeling_params
         self.actual_prediction_horizon = actual_prediction_horizon
         self.batch_size = batch_size
 
 
-def predictions_vs_actual_generator(fwd_model,
-                                    tf_dataset,
-                                    batch_size: int,
-                                    dataset: DynamicsDataset,
-                                    prediction_function: Callable,
-                                    labeling_params: Dict):
-    return predictions_vs_actual_generator_for_horizon(fwd_model,
-                                           tf_dataset,
-                                           batch_size,
-                                           dataset,
-                                           prediction_function,
-                                           labeling_params,
-                                           labeling_params['classifier_horizon'])
-
-
-def predictions_vs_actual_generator_for_horizon(fwd_model,
-                                    tf_dataset,
-                                    batch_size: int,
-                                    dataset: DynamicsDataset,
-                                    prediction_function: Callable,
-                                    labeling_params: Dict,
-                                    classifier_horizon: int):
-    prediction_horizon = labeling_params['prediction_horizon']
-    assert classifier_horizon >= 2
-    assert prediction_horizon <= dataset.desired_sequence_length
-    for dataset_element in tf_dataset.batch(batch_size):
-        inputs, outputs = dataset_element
-        actual_batch_size = int(inputs['traj_idx'].shape[0])
-
-        for prediction_start_t in range(0, dataset.max_sequence_length - classifier_horizon - 1, labeling_params['start_step']):
-            prediction_end_t = min(prediction_start_t + prediction_horizon, dataset.max_sequence_length)
-            actual_prediction_horizon = prediction_end_t - prediction_start_t
-            outputs_from_start_t = {k: v[:, prediction_start_t:prediction_end_t] for k, v in outputs.items()}
-            actions_from_start_t = inputs['action'][:, prediction_start_t:prediction_end_t]
-
-            predictions_from_start_t = prediction_function(states_description=dataset.states_description,
-                                                           fwd_model=fwd_model,
-                                                           dataset_element=dataset_element,
-                                                           batch_size=actual_batch_size,
-                                                           prediction_start_t=prediction_start_t,
-                                                           prediction_horizon=prediction_horizon,
-                                                           classifier_horizon=classifier_horizon)
-            yield PredictionActualExample(inputs=inputs,
-                                          actions=actions_from_start_t,
-                                          outputs=outputs_from_start_t,
-                                          predictions=predictions_from_start_t,
-                                          prediction_start_t=prediction_start_t,
-                                          labeling_params=labeling_params,
-                                          actual_prediction_horizon=actual_prediction_horizon,
-                                          batch_size=actual_batch_size)
-
-
-def add_model_predictions(fwd_model,
-                          tf_dataset: tf.data.TFRecordDataset,
+def add_model_predictions(fwd_model: EnsembleDynamicsFunction,
+                          tf_dataset: tf.data.Dataset,
                           dataset: DynamicsDataset,
                           labeling_params: Dict):
-    batch_size = 1024
-    for prediction_actual in predictions_vs_actual_generator(fwd_model=fwd_model,
-                                                             tf_dataset=tf_dataset,
-                                                             batch_size=batch_size,
-                                                             dataset=dataset,
-                                                             prediction_function=predict_subsequence,
-                                                             labeling_params=labeling_params):
-        yield from generate_mer_classifier_examples(prediction_actual)
+    batch_size = 256
+    classifier_horizon = labeling_params['classifier_horizon']
+    scenario = fwd_model.scenario
+    assert classifier_horizon >= 2
+    for example in tf_dataset.batch(batch_size):
+        actual_batch_size = int(example['traj_idx'].shape[0])
+
+        for start_t in range(0, dataset.sequence_length - classifier_horizon - 1, labeling_params['start_step']):
+            prediction_end_t = dataset.sequence_length
+            actual_prediction_horizon = prediction_end_t - start_t
+            actual_states_from_start_t = {k: example[k][:, start_t:prediction_end_t] for k in fwd_model.state_keys}
+            actions_from_start_t = {k: example[k][:, start_t:prediction_end_t - 1] for k in fwd_model.action_keys}
+
+            predictions_from_start_t = fwd_model.propagate_differentiable_batched(actual_states_from_start_t,
+                                                                                  actions_from_start_t)
+            prediction_actual = PredictionActualExample(example=example,
+                                                        actions=actions_from_start_t,
+                                                        actual_states=actual_states_from_start_t,
+                                                        predictions=predictions_from_start_t,
+                                                        start_t=start_t,
+                                                        labeling_params=labeling_params,
+                                                        actual_prediction_horizon=actual_prediction_horizon,
+                                                        batch_size=actual_batch_size)
+            yield from generate_mer_classifier_examples(scenario, prediction_actual)
 
 
-def generate_mer_classifier_examples(prediction_actual: PredictionActualExample):
-    inputs = prediction_actual.inputs
+def generate_mer_classifier_examples(scenario: ExperimentScenario, prediction_actual: PredictionActualExample):
     labeling_params = prediction_actual.labeling_params
     prediction_horizon = prediction_actual.actual_prediction_horizon
     classifier_horizon = labeling_params['classifier_horizon']
@@ -109,21 +69,21 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
     for classifier_start_t in range(0, prediction_horizon - classifier_horizon):
         classifier_end_t = classifier_start_t + classifier_horizon
 
-        full_env = inputs['full_env/env']
-        full_env_origin = inputs['full_env/origin']
-        full_env_extent = inputs['full_env/extent']
-        full_env_res = inputs['full_env/res']
-        traj_idx = inputs['traj_idx']
+        full_env = prediction_actual.dataset_element['env']
+        full_env_origin = prediction_actual.dataset_element['origin']
+        full_env_extent = prediction_actual.dataset_element['extent']
+        full_env_res = prediction_actual.dataset_element['res']
+        traj_idx = prediction_actual.dataset_element['traj_idx']
         prediction_start_t = prediction_actual.prediction_start_t
         prediction_start_t_batched = tf.cast(tf.stack([prediction_start_t] * prediction_actual.batch_size, axis=0), tf.float32)
         classifier_start_t_batched = tf.cast(tf.stack([classifier_start_t] * prediction_actual.batch_size, axis=0), tf.float32)
         classifier_end_t_batched = tf.cast(tf.stack([classifier_end_t] * prediction_actual.batch_size, axis=0), tf.float32)
         out_example = {
-            'full_env/env': full_env,
-            'full_env/origin': full_env_origin,
-            'full_env/extent': full_env_extent,
-            'full_env/res': full_env_res,
-            'traj_idx': tf.squeeze(traj_idx),
+            'env': full_env,
+            'origin': full_env_origin,
+            'extent': full_env_extent,
+            'res': full_env_res,
+            'traj_idx': traj_idx,
             'prediction_start_t': prediction_start_t_batched,
             'classifier_start_t': classifier_start_t_batched,
             'classifier_end_t': classifier_end_t_batched,
@@ -132,24 +92,27 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
         # this slice gives arrays of fixed length (ex, 5) which must be null padded from out_example_end_idx onwards
         state_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon)
         action_slice = slice(classifier_start_t, classifier_start_t + classifier_horizon - 1)
-        sliced_outputs = {}
-        for name, output in prediction_actual.outputs.items():
-            output_from_cst = output[:, state_slice]
-            out_example[name] = output_from_cst
-            sliced_outputs[name] = output_from_cst
+        sliced_actual = {}
+        for key, actual_state_component in prediction_actual.actual_states.items():
+            actual_state_component_sliced = actual_state_component[:, state_slice]
+            out_example[key] = actual_state_component_sliced
+            sliced_actual[key] = actual_state_component_sliced
 
         sliced_predictions = {}
-        for name, prediction in prediction_actual.predictions.items():
-            pred_from_cst = prediction[:, state_slice]
-            out_example[add_planned(name)] = pred_from_cst
-            sliced_predictions[name] = pred_from_cst
+        for key, prediction_component in prediction_actual.predictions.items():
+            prediction_component_sliced = prediction_component[:, state_slice]
+            out_example[add_predicted(key)] = prediction_component_sliced
+            sliced_predictions[key] = prediction_component_sliced
 
         # action
-        actions = prediction_actual.actions[:, action_slice]
-        out_example['action'] = actions
+        sliced_actions = {}
+        for key, action_component in prediction_actual.actions.items():
+            action_component_sliced = action_component[:, action_slice]
+            out_example[key] = action_component_sliced
+            sliced_actions[key] = action_component_sliced
 
         # compute label
-        is_close = compute_is_close_tf(actual_states_dict=sliced_outputs, predicted_states_dict=sliced_predictions,
+        is_close = compute_is_close_tf(actual_states_dict=sliced_actual, predicted_states_dict=sliced_predictions,
                                        labeling_params=labeling_params)
         out_example['is_close'] = tf.cast(is_close, dtype=tf.float32)
 
@@ -161,25 +124,15 @@ def generate_mer_classifier_examples(prediction_actual: PredictionActualExample)
 
         def debug():
             # Visualize example
-            print(tf.squeeze(traj_idx)[0].numpy(),
-                  prediction_start_t_batched[0].numpy(),
-                  classifier_start_t_batched[0].numpy(),
-                  classifier_end_t_batched[0].numpy(),
-                  is_close[0].numpy(),
-                  valid_indices.numpy())
-            plt.figure()
-            ax = plt.gca()
-            environment = numpify({
-                'full_env/env': full_env[0],
-                'full_env/origin': full_env_origin[0],
-                'full_env/extent': full_env_extent[0],
-                'full_env/res': full_env_res[0],
-            })
-            actual_states = [{'link_bot': sliced_outputs['link_bot'][0][0]}, {'link_bot': sliced_outputs['link_bot'][0][1]}]
-            planned_states = [{'link_bot': sliced_predictions['link_bot'][0][0]},
-                              {'link_bot': sliced_predictions['link_bot'][0][1]}]
-            trajectory_plot(ax, get_scenario("link_bot"), environment, actual_states, planned_states)
-            plt.show()
+            for batch_idx in range(prediction_actual.batch_size):
+                visualize_classifier_example_3d(scenario=scenario,
+                                                environment=index_dict_of_batched_vectors_tf(out_example, batch_idx),
+                                                actions=index_dict_of_batched_vectors_tf(sliced_actions, batch_idx),
+                                                actual=index_dict_of_batched_vectors_tf(sliced_actual, batch_idx),
+                                                prediction=index_dict_of_batched_vectors_tf(sliced_predictions, batch_idx),
+                                                time_steps=np.arange(classifier_horizon))
+
+        # debug()
 
         yield valid_out_example
 
@@ -199,47 +152,3 @@ def compute_is_close_tf(actual_states_dict: Dict, predicted_states_dict: Dict, l
 def compute_label_np(actual_states_dict: Dict, predicted_states_dict: Dict, labeling_params: Dict):
     is_close = remove_batch(compute_is_close_tf(*add_batch(actual_states_dict, predicted_states_dict), labeling_params))
     return is_close.numpy()
-
-
-def predict_subsequence(states_description,
-                        fwd_model,
-                        dataset_element,
-                        batch_size,
-                        prediction_start_t,
-                        prediction_horizon,
-                        classifier_horizon):
-    del batch_size  # unused
-    inputs, outputs = dataset_element
-
-    # build inputs to the network
-    actions = inputs['action'][:, prediction_start_t:prediction_start_t + prediction_horizon - 1]  # one fewer actions than states
-    start_states_t = {}
-    for name in states_description.keys():
-        start_state_t = tf.expand_dims(inputs[name][:, prediction_start_t], axis=1)
-        start_states_t[name] = start_state_t
-
-    # call the network
-    predictions = fwd_model.propagate_differentiable_batched(start_states_t, actions)
-    return predictions
-
-
-def predict_and_nullify(dataset, fwd_model, dataset_element, labeling_params, batch_size, start_t):
-    inputs, outputs = dataset_element
-    actions = inputs['action']
-    start_states_t = {}
-    for name in dataset.states_description.keys():
-        start_state_t = tf.expand_dims(inputs[name][:, start_t], axis=1)
-        start_states_t[name] = start_state_t
-    predictions_from_start_t = fwd_model.propagate_differentiable_batched(start_states_t, actions[:, start_t:])
-    if labeling_params['discard_diverged']:
-        # null out all the predictions past divergence
-        predictions_from_start_t, last_valid_ts = null_diverged(outputs,
-                                                                predictions_from_start_t,
-                                                                start_t,
-                                                                labeling_params)
-    else:
-        # an array of size batch equal to the time-sequence length of outputs
-        last_valid_ts = np.ones(batch_size) * (dataset.desired_sequence_length - 1)
-    # when start_t > 0, this output will need to be padded so that all outputs are the same size
-    all_predictions = null_previous_states(predictions_from_start_t, dataset.desired_sequence_length)
-    return all_predictions, last_valid_ts

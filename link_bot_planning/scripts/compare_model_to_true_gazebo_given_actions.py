@@ -72,7 +72,7 @@ def main():
                                        service_provider=service_provider,
                                        robot_name=scenario.robot_name())
 
-    start_states = get_states_dict(service_provider, fwd_model.states_keys)
+    start_states = get_states_dict(service_provider, fwd_model.state_keys)
 
     actions = np.genfromtxt(args.actions, delimiter=',')
     T = actions.shape[0]

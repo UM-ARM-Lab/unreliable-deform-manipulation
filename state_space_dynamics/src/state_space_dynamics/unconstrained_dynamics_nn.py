@@ -24,11 +24,11 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
 
-        self.states_keys = self.hparams['state_keys']
+        self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
         self.dataset_states_description = self.hparams['dynamics_dataset_hparams']['states_description']
         self.dataset_actions_description = self.hparams['dynamics_dataset_hparams']['action_description']
-        self.state_dimensions = [self.dataset_states_description[k] for k in self.states_keys]
+        self.state_dimensions = [self.dataset_states_description[k] for k in self.state_keys]
         self.total_state_dimensions = sum(self.state_dimensions)
 
         self.dense_layers.append(layers.Dense(self.total_state_dimensions, activation=None))
@@ -40,7 +40,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
     def call(self, example, training, mask=None):
         actions = {k: example[k] for k in self.action_keys}
         input_sequence_length = actions[self.action_keys[0]].shape[1]
-        s_0 = {k: example[k][:, 0] for k in self.states_keys}
+        s_0 = {k: example[k][:, 0] for k in self.state_keys}
 
         pred_states = [s_0]
         for t in range(input_sequence_length):
@@ -71,7 +71,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         for dim in self.state_dimensions:
             state_vectors.append(z[:, start_idx:start_idx + dim])
             start_idx += dim
-        return dict(zip(self.states_keys, state_vectors))
+        return dict(zip(self.state_keys, state_vectors))
 
     def compute_loss(self, example, outputs):
         return {
@@ -98,20 +98,15 @@ class UDNNWrapper(BaseDynamicsFunction):
         else:
             raise RuntimeError("Failed to restore!!!")
 
-        self.states_keys = self.net.states_keys
+        self.state_keys = self.net.state_keys
         self.action_keys = self.net.action_keys
-        # FIXME: these are just placeholders, and should not be used
-        self.full_env_params = {
-            'res': 0.1,
-            'extent': [0, 1, 0, 1, 0, 1],
-        }
 
     def propagate_from_example(self, example, training=False):
         return self.net(example, training=training)
 
     def propagate_differentiable(self, environment: Dict, start_states: Dict, actions) -> List[Dict]:
         del environment  # unused
-        net_inputs = {k: tf.expand_dims(start_states[k], axis=0) for k in self.states_keys}
+        net_inputs = {k: tf.expand_dims(start_states[k], axis=0) for k in self.state_keys}
         net_inputs.update({k: tf.expand_dims(actions[k], axis=0) for k in self.action_keys})
         net_inputs = add_batch(net_inputs)
         # the network returns a dictionary where each value is [T, n_state]

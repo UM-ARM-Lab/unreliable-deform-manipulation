@@ -8,6 +8,7 @@ from time import perf_counter
 import tensorflow as tf
 from colorama import Fore
 
+import rospy
 from link_bot_data.base_dataset import DEFAULT_VAL_SPLIT, DEFAULT_TEST_SPLIT
 from link_bot_data.classifier_dataset_utils import add_model_predictions
 from link_bot_data.dynamics_dataset import DynamicsDataset
@@ -40,6 +41,8 @@ def main():
 
     dataset = DynamicsDataset([args.dataset_dir])
 
+    rospy.init_node("make_classifier_dataset")
+
     success = mkdir_and_ask(args.out_dir, parents=True)
     if not success:
         print(Fore.RED + "Aborting" + Fore.RESET)
@@ -58,7 +61,7 @@ def main():
     classifier_dataset_hparams['fwd_model_hparams'] = fwd_models.hparams
     classifier_dataset_hparams['using_ensemble'] = using_ensemble
     classifier_dataset_hparams['labeling_params'] = labeling_params
-    classifier_dataset_hparams['state_keys'] = fwd_models.states_keys
+    classifier_dataset_hparams['state_keys'] = fwd_models.state_keys
     json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
     val_split = int(args.total_take * DEFAULT_VAL_SPLIT) if args.total_take is not None else None

@@ -9,7 +9,7 @@ from matplotlib import colors
 import rospy
 from geometry_msgs.msg import Pose, Point
 from ignition.markers import MarkerProvider
-from link_bot_data.link_bot_dataset_utils import add_planned
+from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
@@ -397,8 +397,8 @@ class LinkBotScenario(ExperimentScenario):
         link_bot_state = None
         if 'link_bot' in state:
             link_bot_state = state['link_bot']
-        elif add_planned('link_bot') in state:
-            link_bot_state = state[add_planned('link_bot')]
+        elif add_predicted('link_bot') in state:
+            link_bot_state = state[add_predicted('link_bot')]
         b = int(link_bot_state.shape[0])
         link_bot_points = tf.reshape(link_bot_state, [b, -1, 3])[:, :2]
         head_point_where_gripper_is = link_bot_points[:, -1]

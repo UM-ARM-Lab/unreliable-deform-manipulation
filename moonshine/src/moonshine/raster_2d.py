@@ -1,26 +1,8 @@
 import tensorflow as tf
-from scipy import ndimage
-
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE
-
 
 
 @tf.function
 def raster_differentiable(state, res, origin, h, w, k, batch_size: int):
-    """
-    Even though this data is batched, we use singular and reserve plural for sequences in time
-    Args:
-        state: [batch, n]
-        res: [batch] scalar float
-        origin: [batch, 2] index (so int, or technically float is fine too)
-        h: scalar int
-        w: scalar int
-        k: scalar float, should be very large, like 1000
-
-    Returns:
-     [batch, h, w, n_points]
-    """
-
     res = res[0]
     n_points = int(int(state.shape[1]) / 2)
     points = tf.reshape(state, [batch_size, n_points, 2])
@@ -66,53 +48,3 @@ def raster_differentiable(state, res, origin, h, w, k, batch_size: int):
     # TODO: figure out whether to do clipping or normalization, right now we don't do either
     ########################################################################################
     return rope_images
-
-
-# Numpy is only used be the one function below
-import numpy as np
-
-
-def old_raster_wrapped(state, res, origin, h, w, k):
-    rope_images = tf.numpy_function(old_raster, [state, res, origin, h, w], tf.float32)
-    rope_images.set_shape([state.shape[0], h, w, 1])
-    return rope_images
-
-
-def old_raster(state, res, origin, h, w):
-    """
-    state: [batch, n]
-    res: [batch] scalar float
-    origin: [batch, 2] index (so int, or technically float is fine too)
-    h: scalar int
-    w: scalar int
-    return: [batch, h, w, n_points]
-    """
-    b = int(state.shape[0])
-    points = np.reshape(state, [b, -1, 2])
-    n_points = int(points.shape[1])
-
-    # FIXME: PERFORMANCE HACK
-    if state[0, 0] == NULL_PAD_VALUE:
-        empty_image = np.zeros([b, h, w, n_points], dtype=np.float32)
-        return empty_image
-
-    res = res[0]  # NOTE: assume constant resolution
-
-    # points[:,1] is y, origin[0] is row index, so yes this is correct
-    row_y_indices = (points[:, :, 1] / res + origin[:, 0:1]).astype(np.int64).flatten()
-    col_x_indices = (points[:, :, 0] / res + origin[:, 1:2]).astype(np.int64).flatten()
-    channel_indices = np.tile(np.arange(n_points), b)
-    batch_indices = np.repeat(np.arange(b), n_points)
-
-    # filter out invalid indices, which can happen during training
-    state_images = np.zeros([b, h, w, n_points], dtype=np.float32)
-    valid_indices = np.where(np.all([row_y_indices >= 0,
-                                     row_y_indices < h,
-                                     col_x_indices >= 0,
-                                     col_x_indices < w], axis=0))
-
-    state_images[batch_indices[valid_indices],
-                 row_y_indices[valid_indices],
-                 col_x_indices[valid_indices],
-                 channel_indices[valid_indices]] = 1.0
-    return state_images

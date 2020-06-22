@@ -5,7 +5,7 @@ from time import perf_counter
 import numpy as np
 import tensorflow as tf
 
-from moonshine.image_functions import raster_differentiable
+from moonshine.raster_2d import raster_differentiable
 
 
 def main():

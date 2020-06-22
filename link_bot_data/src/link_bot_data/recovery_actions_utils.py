@@ -20,7 +20,7 @@ def generate_recovery_examples(fwd_model,
         # iterate over every subsequence of length actions_sequence_horizon
         for start_t in range(0, dataset.max_sequence_length - action_sequence_horizon - 1, labeling_params['start_step']):
             end_t = min(start_t + action_sequence_horizon, dataset.max_sequence_length)
-            states_from_start_t = {k: outputs[k][:, start_t:end_t] for k in fwd_model.states_keys}
+            states_from_start_t = {k: outputs[k][:, start_t:end_t] for k in fwd_model.state_keys}
             actions_from_start_t = inputs['action'][:, start_t:end_t]
 
             in_example = (inputs,

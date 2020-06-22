@@ -1,4 +1,6 @@
 {
   "threshold": 0.05,
-  "state_key": "link_bot"
+  "state_key": "link_bot",
+  "classifier_horizon": 5,
+  "start_step": 1
 }

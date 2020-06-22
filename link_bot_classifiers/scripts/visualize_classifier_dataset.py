@@ -11,7 +11,7 @@ import tensorflow as tf
 
 from link_bot_classifiers.visualization import visualize_classifier_example, classifier_example_title
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import add_planned
+from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
@@ -26,7 +26,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('model_hparams', type=pathlib.Path, help='classifier model hparams')
-    parser.add_argument('display_type', choices=['just_count', 'image', 'anim', 'plot'])
+    parser.add_argument('display_type', choices=['just_count', 'image', 'anim', '2d', '3d', 'sanity_check'])
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--save', action='store_true')
@@ -90,7 +90,7 @@ def visualize_dataset(args, classifier_dataset):
         environment = numpify(scenario.get_environment_from_example(example))
         predictions = {}
         for state_key in classifier_dataset.state_keys:
-            predictions[state_key] = example[add_planned(state_key)]
+            predictions[state_key] = example[add_predicted(state_key)]
         predictions = dict_of_sequences_to_sequence_of_dicts(predictions)
 
         if args.only_reconverging and not reconverging:

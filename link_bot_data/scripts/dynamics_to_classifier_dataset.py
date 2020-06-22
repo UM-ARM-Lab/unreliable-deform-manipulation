@@ -18,7 +18,7 @@ def main():
 
     dataset = LinkBotStateSpaceDataset(args.dataset_dirs)
 
-    states_description = dataset.states_description
+    states_description = dataset.state_keys
     actual_state_keys = states_description.keys()
     planned_state_keys = fwd_model.hparams['states_keys']
 

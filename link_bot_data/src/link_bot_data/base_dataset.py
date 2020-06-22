@@ -27,19 +27,12 @@ class BaseDataset:
                     self.hparams[k] = v
                 elif self.hparams[k] == v:
                     pass
-                elif k == 'sequence_length':
-                    # always use the minimum of different sequence lengths
-                    self.hparams[k] = min(self.hparams[k], hparams[k])
                 else:
                     msg = "Datasets have differing values for the hparam {}, using value {}".format(k, self.hparams[k])
                     print(Fore.RED + msg + Fore.RESET)
 
-        self.desired_sequence_length = None
-        self.max_sequence_length = self.hparams.get('sequence_length', None)
-
     def get_datasets(self,
                      mode: str,
-                     sequence_length: Optional[int] = None,
                      n_parallel_calls: int = tf.data.experimental.AUTOTUNE,
                      do_not_process: bool = False,
                      shard: Optional[int] = None,
@@ -62,7 +55,6 @@ class BaseDataset:
             for dataset_dir in self.dataset_dirs:
                 all_filenames.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
 
-        self.desired_sequence_length = sequence_length if sequence_length is not None else self.max_sequence_length
         all_filenames = sorted(all_filenames)
         return self.get_datasets_from_records(all_filenames,
                                               n_parallel_calls=n_parallel_calls,

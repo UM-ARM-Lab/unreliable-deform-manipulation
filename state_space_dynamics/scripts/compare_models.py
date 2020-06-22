@@ -52,7 +52,7 @@ def generate(args):
     for example_idx, dataset_element in enumerate(tf_dataset):
         data_per_model_for_element = {
             'time_steps': dataset.desired_sequence_length,
-            'action_keys': dataset.action_feature_names,
+            'action_keys': dataset.action_keys,
             'dataset_element': dataset_element,
             'environment': {
                 'env': dataset_element['env'],

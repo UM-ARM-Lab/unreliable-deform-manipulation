@@ -9,7 +9,7 @@ import tensorflow as tf
 from tensorflow_probability import distributions as tfd
 
 from link_bot_classifiers.rnn_recovery_model import RNNRecoveryModelWrapper
-from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, add_planned
+from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, add_predicted
 from link_bot_data.recovery_dataset import RecoveryDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import paths_from_json
@@ -98,7 +98,7 @@ def generate_examples():
             'prediction_start_t': 0,
             'classifier_start_t': 0,
             'classifier_end_t': 0,
-            add_planned('link_bot'): points_i,
+            add_predicted('link_bot'): points_i,
             'action': actions_i,
             'is_close': np.ones([n_actions + 1], dtype=np.float32),
             'mask': np.ones([n_actions + 1], dtype=np.float32),
@@ -179,7 +179,7 @@ def main_sample(args):
             'full_env/res': example['full_env/res'],
             'full_env/origin': example['full_env/origin'],
         }
-        state = {k: example[add_planned(k)][0] for k in test_dataset.state_keys}
+        state = {k: example[add_predicted(k)][0] for k in test_dataset.state_keys}
 
         actions_i = recovery_actions_model.sample(environment, state)
         sampled_actions.append(actions_i)
@@ -208,7 +208,7 @@ def main_viz_dataset(args):
     starting_points = []
     gt_actions = []
     for example in tf_dataset:
-        starting_points.append(example[add_planned('link_bot')][0])
+        starting_points.append(example[add_predicted('link_bot')][0])
         gt_actions.append(example['action'])
 
     starting_points = tf.stack(starting_points, axis=0)

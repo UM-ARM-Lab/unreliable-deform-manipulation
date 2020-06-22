@@ -84,7 +84,8 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
         super().__init__(fwd_model_dirs[0], batch_size, scenario)
         self.models, _ = load_ensemble(fwd_model_dirs)
         self.n_models = len(self.models)
-        self.states_keys = self.models[0].states_keys
+        self.state_keys = self.models[0].state_keys
+        self.action_keys = self.models[0].action_keys
         self.data_collection_params = self.models[0].data_collection_params
 
     def propagate_from_example(self, dataset_element):
@@ -124,7 +125,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
         for t in range(T):
             merged_predictions = {}
             all_stdevs = []
-            for state_key in self.states_keys:
+            for state_key in self.state_keys:
                 predictions_for_state_key = []
                 for model_idx in range(self.n_models):
                     predictions_for_state_key.append(all_predictions[model_idx][t][state_key])
@@ -145,20 +146,20 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
                                          actions: Dict) -> Dict:
         all_predictions = []
         for fwd_model in self.models:
-            net_input = {k: start_states[k] for k in fwd_model.states_keys}
+            net_input = {k: start_states[k] for k in fwd_model.state_keys}
             net_input.update({k: actions[k] for k in fwd_model.action_keys})
             predictions = fwd_model.net(net_input, training=False)
             all_predictions.append(predictions)
 
         # restructure data to be one List of dicts, where each dict has all the states/keys of the original dicts, but averaged
         # and with an additional state/key for stdev
-        ensemble_predictions = {state_key: [] for state_key in self.states_keys}
+        ensemble_predictions = {state_key: [] for state_key in self.state_keys}
         ensemble_predictions['stdev'] = []
 
         T = int(next(iter(actions.values())).shape[1]) + 1
         for t in range(T):
             all_stdevs_t = []
-            for state_key in self.states_keys:
+            for state_key in self.state_keys:
                 predictions_t_key = []
                 for model_idx in range(self.n_models):
                     # [batch, N]

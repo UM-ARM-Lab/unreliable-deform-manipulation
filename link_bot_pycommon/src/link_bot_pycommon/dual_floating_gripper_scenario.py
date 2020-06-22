@@ -195,7 +195,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         }
 
     @staticmethod
-    def states_description():
+    def states_description() -> Dict:
         # should match the keys of the dict return from action_to_dataset_action
         n_links = 15
         # +2 for joints to the grippers
@@ -210,7 +210,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         }
 
     @staticmethod
-    def actions_description():
+    def actions_description() -> Dict:
         # should match the keys of the dict return from action_to_dataset_action
         return {
             'gripper1_position': 3,
@@ -221,13 +221,15 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def index_state_time(state, t):
         state_t = {}
         for feature_name in ['gripper1', 'gripper2', 'link_bot']:
+            assert state[feature_name].ndim == 3
             state_t[feature_name] = state[feature_name][:, t]
         return state_t
 
     @staticmethod
     def index_action_time(action, t):
         action_t = {}
-        for feature_name in ['gripper1_delta', 'gripper2_delta']:
+        for feature_name in ['gripper1_position', 'gripper2_position']:
+            assert action[feature_name].ndim == 3
             if t < action[feature_name].shape[1]:
                 action_t[feature_name] = action[feature_name][:, t]
             else:

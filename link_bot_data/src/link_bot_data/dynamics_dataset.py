@@ -18,10 +18,10 @@ class DynamicsDataset(BaseDataset):
         self.step_size = step_size
         self.scenario = get_scenario(self.hparams)
 
-        self.state_feature_names = list(self.hparams['states_description'].keys())
-        self.state_feature_names.append('time_idx')
+        self.state_keys = list(self.hparams['states_description'].keys())
+        self.state_keys.append('time_idx')
 
-        self.action_feature_names = list(self.hparams['action_description'].keys())
+        self.action_keys = list(self.hparams['action_description'].keys())
 
         self.constant_feature_names = [
             'env',
@@ -33,14 +33,16 @@ class DynamicsDataset(BaseDataset):
 
         self.int64_keys = ['time_idx']
 
+        self.sequence_length = self.hparams['data_collection_params']['steps_per_traj']
+
     def make_features_description(self):
         features_description = {}
         for feature_name in self.constant_feature_names:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
 
-        for feature_name in self.state_feature_names:
+        for feature_name in self.state_keys:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
-        for feature_name in self.action_feature_names:
+        for feature_name in self.action_keys:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
 
         return features_description
@@ -51,10 +53,10 @@ class DynamicsDataset(BaseDataset):
         for feature_name in self.constant_feature_names:
             example_t[feature_name] = example[feature_name]
 
-        for feature_name in self.state_feature_names:
+        for feature_name in self.state_keys:
             example_t[feature_name] = example[feature_name][:, t]
 
-        for feature_name in self.action_feature_names:
+        for feature_name in self.action_keys:
             if t < example[feature_name].shape[1]:
                 example_t[feature_name] = example[feature_name][:, t]
             else:
@@ -68,7 +70,7 @@ class DynamicsDataset(BaseDataset):
             return example
 
         def _drop_last_action(example):
-            for k in self.action_feature_names:
+            for k in self.action_keys:
                 example[k] = example[k][:-1]
             return example
 

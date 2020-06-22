@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>864</width>
+    <width>476</width>
     <height>37</height>
    </rect>
   </property>
@@ -20,7 +20,7 @@
    <enum>Qt::StrongFocus</enum>
   </property>
   <property name="windowTitle">
-   <string>Glowsuit Command Station</string>
+   <string>Viz Stepper</string>
   </property>
   <property name="styleSheet">
    <string notr="true"/>
@@ -50,7 +50,7 @@
    <item>
     <widget class="QPushButton" name="play_pause_button">
      <property name="text">
-      <string>[]</string>
+      <string>play</string>
      </property>
     </widget>
    </item>

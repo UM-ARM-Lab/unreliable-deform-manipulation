@@ -4,7 +4,7 @@ from typing import List
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
-from link_bot_data.link_bot_dataset_utils import add_planned
+from link_bot_data.link_bot_dataset_utils import add_predicted
 
 
 class ClassifierDataset(BaseDataset):
@@ -38,9 +38,9 @@ class ClassifierDataset(BaseDataset):
                 self.feature_names.append(k)
 
         for k in self.state_keys:
-            self.feature_names.append(add_planned(k))
+            self.feature_names.append(add_predicted(k))
 
-        self.feature_names.append(add_planned('stdev'))
+        self.feature_names.append(add_predicted('stdev'))
 
     def make_features_description(self):
         features_description = {}

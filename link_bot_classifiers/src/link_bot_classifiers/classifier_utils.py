@@ -3,7 +3,7 @@ import pathlib
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier, DEFAULT_INFLATION_RADIUS
 from link_bot_classifiers.none_classifier import NoneClassifier
-from link_bot_classifiers.rnn_image_classifier import RNNImageClassifierWrapper
+from link_bot_classifiers.nn_classifier import RNNImageClassifierWrapper
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from shape_completion_training.model.filepath_tools import load_trial
 

@@ -8,7 +8,7 @@ import progressbar
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
-from moonshine.image_functions import add_traj_image
+from moonshine.raster_2d import add_traj_image
 from moonshine.old_image_functions import add_traj_image_to_example as add_traj_image_to_example_old
 
 

@@ -23,7 +23,7 @@ class BaseDynamicsFunction:
         self.dt = self.data_collection_params['dt']
         self.max_step_size = self.data_collection_params['max_step_size']
         self.states_description = self.hparams['dynamics_dataset_hparams']['states_description']
-        self.states_keys = None
+        self.state_keys = None
         self.action_keys = None
 
     def propagate_from_example(self, dataset_element):

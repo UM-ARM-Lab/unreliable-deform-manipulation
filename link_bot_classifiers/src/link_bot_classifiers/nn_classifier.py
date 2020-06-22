@@ -11,20 +11,20 @@ from tensorflow import keras
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_classifiers.visualization import trajectory_image
-from link_bot_data.link_bot_dataset_utils import add_planned, NULL_PAD_VALUE
+from link_bot_data.link_bot_dataset_utils import add_predicted, NULL_PAD_VALUE
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import make_dict_float32
 from moonshine import classifier_losses_and_metrics
 from moonshine.action_smear_layer import smear_action_differentiable
 from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
-from moonshine.image_functions import raster_differentiable
+from moonshine.raster_2d import raster_differentiable
 from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, flatten_batch_and_time, \
     sequence_of_dicts_to_dict_of_sequences, remove_batch
 from shape_completion_training.my_keras_model import MyKerasModel
 
 
-class RNNImageClassifier(MyKerasModel):
+class NNClassifier(MyKerasModel):
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams, batch_size)
         self.scenario = scenario
@@ -86,7 +86,7 @@ class RNNImageClassifier(MyKerasModel):
 
     def make_traj_images_from_input_dict(self, input_dict, batch_size):
         # First flatten batch & time
-        transposed_states_dict = {k: tf.transpose(input_dict[add_planned(k)], [1, 0, 2]) for k in self.states_keys}
+        transposed_states_dict = {k: tf.transpose(input_dict[add_predicted(k)], [1, 0, 2]) for k in self.states_keys}
         states_dict_batch_time = flatten_batch_and_time(transposed_states_dict)
         padded_action = tf.pad(input_dict['action'], [[0, 0], [0, 1], [0, 0]])
         time = int(padded_action.shape[1])
@@ -189,14 +189,14 @@ class RNNImageClassifier(MyKerasModel):
 
         concat_args = [conv_output, padded_action]
         for state_key in self.states_keys:
-            planned_state_key = add_planned(state_key)
+            planned_state_key = add_predicted(state_key)
             state = input_dict[planned_state_key]
             if self.hparams['use_local_frame']:
                 state = self.scenario.put_state_local_frame(state_key, state)
             concat_args.append(state)
 
         if self.hparams['stdev']:
-            stdevs = input_dict[add_planned('stdev')]
+            stdevs = input_dict[add_predicted('stdev')]
             concat_args.append(stdevs)
 
         # uncomment to debug, also comment out the tf.function's
@@ -214,7 +214,7 @@ class RNNImageClassifier(MyKerasModel):
         out_d = z
 
         # doesn't matter which state_key we use, they're all null padded the same way
-        state_key_for_mask = add_planned(self.states_keys[0])
+        state_key_for_mask = add_predicted(self.states_keys[0])
         state_for_mask = input_dict[state_key_for_mask]
         mask = self.mask(state_for_mask)._keras_mask
         out_h = self.lstm(out_d, mask=mask)
@@ -245,7 +245,7 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         self.model_hparams = json.load(model_hparams_file.open('r'))
         self.dataset_labeling_params = self.model_hparams['classifier_dataset_hparams']['labeling_params']
         self.horizon = self.dataset_labeling_params['classifier_horizon']
-        self.net = RNNImageClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
+        self.net = NNClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(model=self.net)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
 
@@ -268,10 +268,10 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         net_inputs.update(environment)
 
         if self.net.hparams['stdev']:
-            net_inputs[add_planned('stdev')] = tf.convert_to_tensor(predictions['stdev'], tf.float32)
+            net_inputs[add_predicted('stdev')] = tf.convert_to_tensor(predictions['stdev'], tf.float32)
 
         for state_key in self.net.states_keys:
-            planned_state_key = add_planned(state_key)
+            planned_state_key = add_predicted(state_key)
             net_inputs[planned_state_key] = tf.convert_to_tensor(predictions[state_key], tf.float32)
 
         predictions = self.net(net_inputs, training=False)
@@ -291,10 +291,10 @@ class RNNImageClassifierWrapper(BaseConstraintChecker):
         net_inputs.update(environment)
 
         if self.net.hparams['stdev']:
-            net_inputs[add_planned('stdev')] = tf.convert_to_tensor(states_sequences_dict['stdev'], tf.float32)
+            net_inputs[add_predicted('stdev')] = tf.convert_to_tensor(states_sequences_dict['stdev'], tf.float32)
 
         for state_key in self.net.states_keys:
-            planned_state_key = add_planned(state_key)
+            planned_state_key = add_predicted(state_key)
             net_inputs[planned_state_key] = tf.convert_to_tensor(states_sequences_dict[state_key], tf.float32)
 
         predictions = remove_batch(self.net(add_batch(net_inputs), training=False))

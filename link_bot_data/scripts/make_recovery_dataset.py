@@ -60,7 +60,7 @@ def main():
     classifier_dataset_hparams['fwd_model_hparams'] = fwd_models.hparams
     classifier_dataset_hparams['using_ensemble'] = using_ensemble
     classifier_dataset_hparams['labeling_params'] = labeling_params
-    classifier_dataset_hparams['state_keys'] = fwd_models.states_keys
+    classifier_dataset_hparams['state_keys'] = fwd_models.state_keys
     json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
     classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, fwd_models.scenario)

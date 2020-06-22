@@ -9,6 +9,7 @@ import tensorflow as tf
 import rospy
 import state_space_dynamics
 from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_pycommon.pycommon import paths_to_json
 from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
@@ -30,6 +31,7 @@ def train_main(args, seed: int):
     model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
+    model_hparams['datasets'] = paths_to_json(args.dataset_dirs)
     trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
     group_name = args.log if trial_path is None else None
     trials_directory = pathlib.Path('trials')

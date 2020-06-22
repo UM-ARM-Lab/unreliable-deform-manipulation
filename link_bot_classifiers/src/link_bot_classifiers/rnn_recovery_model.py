@@ -11,11 +11,11 @@ from tensorflow import keras
 from tensorflow_probability import distributions as tfd
 
 from link_bot_classifiers.base_recovery_actions_model import BaseRecoveryActionsModels
-from link_bot_data.link_bot_dataset_utils import add_planned
+from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine import classifier_losses_and_metrics
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable as get_local_env
-from moonshine.image_functions import raster_differentiable
+from moonshine.raster_2d import raster_differentiable
 from moonshine.moonshine_utils import add_batch, remove_batch, numpify
 from shape_completion_training.my_keras_model import MyKerasModel
 
@@ -195,7 +195,7 @@ class RNNRecoveryModel(MyKerasModel):
 
     def state_encoder(self, input_dict, batch_size, training):
         # get only the start states
-        start_state = {k: input_dict[add_planned(k)][:, 0] for k in self.states_keys}
+        start_state = {k: input_dict[add_predicted(k)][:, 0] for k in self.states_keys}
         # tile to the number of actions
         local_env_center_point = self.scenario.local_environment_center_differentiable(start_state)
         images = self.make_trajectory_images(environment=self.scenario.get_environment_from_example(input_dict),
@@ -255,7 +255,7 @@ class RNNRecoveryModelWrapper(BaseRecoveryActionsModels):
 
     def sample(self, environment: Dict, state: Dict):
         input_dict = environment
-        input_dict.update({add_planned(k): tf.expand_dims(v, axis=0) for k, v in state.items()})
+        input_dict.update({add_predicted(k): tf.expand_dims(v, axis=0) for k, v in state.items()})
         input_dict = add_batch(input_dict)
         input_dict = {k: tf.cast(v, tf.float32) for k, v in input_dict.items()}
         output = self.net.sample(input_dict)

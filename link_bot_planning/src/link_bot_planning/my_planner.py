@@ -105,7 +105,7 @@ class MyPlanner:
         self.subspaces = []
         self.subspace_bounds = []
         subspace_idx = None
-        for subspace_idx, state_key in enumerate(self.fwd_model.states_keys):
+        for subspace_idx, state_key in enumerate(self.fwd_model.state_keys):
             weight = self.scenario.get_subspace_weight(state_key)
             n_state = self.fwd_model.states_description[state_key]
             subspace_description = {

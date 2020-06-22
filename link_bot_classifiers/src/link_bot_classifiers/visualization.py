@@ -7,11 +7,36 @@ from matplotlib import cm
 from matplotlib import pyplot as plt
 
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import add_planned, state_dict_is_null
+from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_data.visualization import plot_rope_configuration, plot_arrow
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import numpify, dict_of_sequences_to_sequence_of_dicts
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from moonshine.moonshine_utils import numpify, dict_of_sequences_to_sequence_of_dicts, add_batch, remove_batch
+
+
+def visualize_classifier_example_3d(scenario: ExperimentScenario,
+                                    environment: Dict,
+                                    actions: Dict,
+                                    actual: Dict,
+                                    prediction: Dict,
+                                    time_steps):
+    scenario.plot_environment_rviz(environment)
+    anim = RvizAnimationController(time_steps)
+    while not anim.done:
+        t = anim.t()
+        actual_t = remove_batch(scenario.index_state_time(add_batch(actual), t))
+        pred_t = remove_batch(scenario.index_state_time(add_batch(prediction), t))
+        action_t = remove_batch(scenario.index_action_time(add_batch(actions), t))
+        scenario.plot_state_rviz(actual_t, label='actual', color='#ff0000aa')
+        scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffaa')
+        state_action_t = {}
+        state_action_t.update(actual_t)
+        state_action_t.update(action_t)
+        scenario.plot_action_rviz(state_action_t)
+
+        # this will return when either the animation is "playing" or because the user stepped forward
+        anim.step()
 
 
 def plot_classifier_data(
@@ -92,7 +117,7 @@ def visualize_classifier_example(args,
             print(Fore.CYAN + f"Saving {filename}" + Fore.RESET)
             anim.save(filename, writer='imagemagick', dpi=100, fps=fps)
         return anim
-    elif args.display_type == 'plot':
+    elif args.display_type == '2d':
         fig = plt.figure()
         ax = plt.gca()
         assert example["is_close"].shape[0] == 2
@@ -128,7 +153,7 @@ def trajectory_plot_from_dataset(ax, classifier_dataset, example, scenario, titl
     planned_states = {}
     for state_key in classifier_dataset.state_keys:
         actual_states[state_key] = numpify(example[state_key])
-        planned_states[state_key] = numpify(example[add_planned(state_key)])
+        planned_states[state_key] = numpify(example[add_predicted(state_key)])
     environment = numpify(scenario.get_environment_from_example(example))
     actual_states = dict_of_sequences_to_sequence_of_dicts(actual_states)
     planned_states = dict_of_sequences_to_sequence_of_dicts(planned_states)

@@ -24,6 +24,7 @@ class RvizAnimationController:
 
         self.idx = 0
         self.max_idx = self.time_steps.shape[0]
+        self.max_t = self.time_steps[-1]
         self.period = self.period_srv(GetFloat32Request()).data
         self.playing = start_playing
         self.should_step = False

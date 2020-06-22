@@ -31,7 +31,7 @@ def plot_2d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
         dataset.scenario.plot_environment(ax, environment)
 
         first_state = {}
-        for state_key in dataset.state_feature_names:
+        for state_key in dataset.state_keys:
             states = example[state_key]
             first_state[state_key] = states[0]
         action_artist = dataset.scenario.plot_action(ax, first_state, actions[0], color='m', s=20, zorder=3)
@@ -41,7 +41,7 @@ def plot_2d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
         def update(t):
             action_t = actions[t]
             state_t = {}
-            for _state_key in dataset.state_feature_names:
+            for _state_key in dataset.state_keys:
                 state = example[_state_key][t]
                 state_t[_state_key] = state
             dataset.scenario.update_action_artist(action_artist, state_t, action_t)

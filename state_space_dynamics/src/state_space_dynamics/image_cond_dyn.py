@@ -9,7 +9,7 @@ from tensorflow import keras
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.get_local_environment import get_local_env_and_origin_differentiable
-from moonshine.image_functions import raster_differentiable
+from moonshine.raster_2d import raster_differentiable
 from moonshine.matrix_operations import batch_outer_product
 from moonshine.moonshine_utils import add_batch, remove_batch, \
     dict_of_sequences_to_sequence_of_dicts_tf
