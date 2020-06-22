@@ -1,21 +1,18 @@
 #!/usr/bin/env python
 import argparse
-import json
 import pathlib
-import time
 from time import perf_counter
 
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from link_bot_classifiers.visualization import visualize_classifier_example, classifier_example_title
+import rospy
+from link_bot_classifiers.visualization import visualize_classifier_example_3d
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted
-from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import remove_batch, dict_of_sequences_to_sequence_of_dicts, numpify
+from moonshine.moonshine_utils import remove_batch
 
 limit_gpu_mem(1)
 
@@ -25,7 +22,6 @@ def main():
     np.set_printoptions(suppress=True, linewidth=200, precision=3)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
-    parser.add_argument('model_hparams', type=pathlib.Path, help='classifier model hparams')
     parser.add_argument('display_type', choices=['just_count', 'image', 'anim', '2d', '3d', 'sanity_check'])
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
     parser.add_argument('--shuffle', action='store_true')
@@ -47,28 +43,27 @@ def main():
     np.random.seed(args.seed)
     tf.random.set_seed(args.seed)
 
+    rospy.init_node("visualize_classifier_data")
+
     classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
 
     visualize_dataset(args, classifier_dataset)
 
 
 def visualize_dataset(args, classifier_dataset):
-    dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
-    scenario = get_scenario(classifier_dataset.hparams['scenario'])
-    model_hparams = json.load(args.model_hparams.open("r"))
-    if args.shuffle:
-        dataset = dataset.shuffle(buffer_size=512)
-    dataset = dataset.batch(1)
-    now = int(time.time())
-    outdir = pathlib.Path('results') / f'anim_{now}'
-    outdir.mkdir(parents=True)
-    done = False
+    tf_dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
+
+    tf_dataset = tf_dataset.batch(1)
+
+    iterator = iter(tf_dataset)
+    t0 = perf_counter()
+
     reconverging_count = 0
     positive_count = 0
     negative_count = 0
     count = 0
-    iterator = iter(dataset)
-    t0 = perf_counter()
+
+    done = False
     while not done:
         iter_t0 = perf_counter()
         try:
@@ -87,11 +82,6 @@ def visualize_dataset(args, classifier_dataset):
         positive_count += n_close
         negative_count += n_far
         reconverging = n_far > 0 and is_close[-1]
-        environment = numpify(scenario.get_environment_from_example(example))
-        predictions = {}
-        for state_key in classifier_dataset.state_keys:
-            predictions[state_key] = example[add_predicted(state_key)]
-        predictions = dict_of_sequences_to_sequence_of_dicts(predictions)
 
         if args.only_reconverging and not reconverging:
             continue
@@ -104,8 +94,6 @@ def visualize_dataset(args, classifier_dataset):
 
         count += 1
 
-        title = classifier_example_title(example)
-
         # Print statistics intermittently
         if count % 100 == 0:
             print_stats_and_timing(args, count, reconverging_count, negative_count, positive_count)
@@ -113,30 +101,9 @@ def visualize_dataset(args, classifier_dataset):
         #############################
         # Show Visualization
         #############################
-        # print(example['traj_idx'].numpy()[0],
-        #       example['prediction_start_t'].numpy(),
-        #       example['classifier_start_t'].numpy(),
-        #       example['classifier_end_t'].numpy())
-        # if example['prediction_start_t'].numpy() < 1.0:
-        #     continue
-
-        valid_seq_length = (example['classifier_end_t'] - example['classifier_start_t'] + 1).numpy()
-        if args.at_least_length and valid_seq_length < args.at_least_length:
-            continue
-
-        _ = visualize_classifier_example(args=args,
-                                         scenario=scenario,
-                                         outdir=outdir,
-                                         model_hparams=model_hparams,
-                                         classifier_dataset=classifier_dataset,
-                                         example=example,
-                                         example_idx=count,
-                                         title=title,
-                                         fps=args.fps)
-        if not args.no_plot:
-            plt.show()
-        else:
-            plt.close()
+        visualize_classifier_example_3d(scenario=classifier_dataset.scenario,
+                                        example=example,
+                                        n_time_steps=classifier_dataset.horizon)
     total_dt = perf_counter() - t0
     print_stats_and_timing(args, count, reconverging_count, negative_count, positive_count, total_dt)
 

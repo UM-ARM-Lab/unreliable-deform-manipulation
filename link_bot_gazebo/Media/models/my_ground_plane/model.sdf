@@ -20,6 +20,8 @@
                     <contact>
                         <ode>
                             <min_depth>0.005</min_depth>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>

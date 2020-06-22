@@ -15,15 +15,17 @@ from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
 from mps_shape_completion_msgs.msg import OccupancyStamped
+from std_msgs.msg import Bool
 from visualization_msgs.msg import MarkerArray, Marker
 
 
 class Base3DScenario(ExperimentScenario):
     def __init__(self, params: Dict):
         super().__init__(params)
-        self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10)
-        self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10)
-        self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10)
+        self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10, latch=True)
+        self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
+        self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10, latch=True)
+        self.label_viz_pub = rospy.Publisher("mybool", Bool, queue_size=10, latch=True)
         self.broadcaster = tf2_ros.StaticTransformBroadcaster()
 
     @staticmethod
@@ -132,6 +134,11 @@ class Base3DScenario(ExperimentScenario):
         msg.markers.append(rviz_arrow(s2, a2, r, g, b, a, idx=1))
 
         self.action_viz_pub.publish(msg)
+
+    def plot_is_close(self, label_t):
+        msg = Bool()
+        msg.data = bool(label_t)
+        self.label_viz_pub.publish(msg)
 
     @staticmethod
     def get_subspace_weight(subspace_name: str):

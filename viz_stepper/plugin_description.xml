@@ -1,0 +1,7 @@
+<library path="lib/libmerrrt_widget">
+    <class name="merrrt_widget/Merrrt"
+           type="merrrt_widget::MerrrtWidget"
+           base_class_type="rviz::Panel">
+        <description>merrrt widget</description>
+    </class>
+</library>

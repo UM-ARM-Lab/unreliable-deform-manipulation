@@ -7,13 +7,12 @@ import tensorflow as tf
 
 import rospy
 from geometry_msgs.msg import Point
+from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
-from mps_shape_completion_msgs.msg import OccupancyStamped
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, WorldControlRequest, \
     WorldControl, SetRopeState, SetRopeStateRequest, SetDualGripperPoints, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest
 from std_msgs.msg import Empty
-from visualization_msgs.msg import MarkerArray
 
 
 class DualFloatingGripperRopeScenario(Base3DScenario):
@@ -29,9 +28,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.set_grippers_srv = rospy.ServiceProxy("set_dual_gripper_points", SetDualGripperPoints)
         self.world_control_srv = rospy.ServiceProxy("world_control", WorldControl)
 
-        self.env_viz_srv = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10)
-        self.state_viz_srv = rospy.Publisher("state_viz", MarkerArray, queue_size=10)
-        self.action_viz_srv = rospy.Publisher("action_viz", MarkerArray, queue_size=10)
         self.nudge_rng = np.random.RandomState(0)
 
     def sample_action(self,
@@ -218,6 +214,14 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         }
 
     @staticmethod
+    def index_predicted_state_time(state, t):
+        state_t = {}
+        for feature_name in ['gripper1', 'gripper2', 'link_bot']:
+            assert state[add_predicted(feature_name)].ndim == 3
+            state_t[feature_name] = state[add_predicted(feature_name)][:, t]
+        return state_t
+
+    @staticmethod
     def index_state_time(state, t):
         state_t = {}
         for feature_name in ['gripper1', 'gripper2', 'link_bot']:
@@ -235,6 +239,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             else:
                 action_t[feature_name] = action[feature_name][:, t - 1]
         return action_t
+
+    @staticmethod
+    def index_label_time(example: Dict, t: int):
+        return example['is_close'][:, t]
 
     def safety_policy(self, previous_state: Dict, new_state: Dict, environment: Dict):
         gripper1_point = new_state['gripper1']

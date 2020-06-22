@@ -79,6 +79,9 @@ class ExperimentScenario:
     def plot_action_rviz(self, data: Dict, **kwargs):
         raise NotImplementedError()
 
+    def plot_is_close(self, label_t):
+        raise NotImplementedError()
+
     @staticmethod
     def state_to_points(state: Dict):
         raise NotImplementedError()
@@ -464,11 +467,19 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def index_state_time(state, t):
+    def index_state_time(state: Dict, t: int):
         raise NotImplementedError()
 
     @staticmethod
-    def index_action_time(action, t):
+    def index_predicted_state_time(state: Dict, t: int):
+        raise NotImplementedError()
+
+    @staticmethod
+    def index_action_time(action: Dict, t: int):
+        raise NotImplementedError()
+
+    @staticmethod
+    def index_label_time(example: Dict, t: int):
         raise NotImplementedError()
 
 

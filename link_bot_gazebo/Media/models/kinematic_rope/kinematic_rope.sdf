@@ -39,7 +39,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -62,7 +62,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -85,7 +85,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -148,7 +148,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -171,7 +171,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -194,7 +194,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -257,7 +257,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -280,7 +280,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -303,7 +303,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -366,7 +366,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -389,7 +389,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -412,7 +412,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -475,7 +475,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -498,7 +498,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -521,7 +521,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -584,7 +584,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -607,7 +607,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -630,7 +630,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -693,7 +693,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -716,7 +716,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -739,7 +739,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -802,7 +802,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -825,7 +825,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -848,7 +848,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -911,7 +911,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -934,7 +934,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -957,7 +957,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1020,7 +1020,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1043,7 +1043,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1066,7 +1066,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1129,7 +1129,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1152,7 +1152,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1175,7 +1175,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1238,7 +1238,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1261,7 +1261,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1284,7 +1284,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1347,7 +1347,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1370,7 +1370,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1393,7 +1393,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1456,7 +1456,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1479,7 +1479,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1502,7 +1502,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1565,7 +1565,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1588,7 +1588,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -1611,7 +1611,7 @@
                     <contact>
                         <ode>
                             <kp>1e15</kp>
-                            <kd>1e13</kd>
+                            <kd>1e11</kd>
                         </ode>
                     </contact>
                 </surface>

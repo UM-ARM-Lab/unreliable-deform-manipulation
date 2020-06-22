@@ -9,8 +9,13 @@
 
   <depend>roscpp</depend>
   <depend>peter_msgs</depend>
+  <depend>rviz</depend>
 
   <build_depend>message_generation</build_depend>
 
   <exec_depend>message_runtime</exec_depend>
+
+  <export>
+    <rviz plugin="${prefix}/plugin_description.xml"/>
+  </export>
 </package>

@@ -126,11 +126,8 @@ def generate_mer_classifier_examples(scenario: ExperimentScenario, prediction_ac
             # Visualize example
             for batch_idx in range(prediction_actual.batch_size):
                 visualize_classifier_example_3d(scenario=scenario,
-                                                environment=index_dict_of_batched_vectors_tf(out_example, batch_idx),
-                                                actions=index_dict_of_batched_vectors_tf(sliced_actions, batch_idx),
-                                                actual=index_dict_of_batched_vectors_tf(sliced_actual, batch_idx),
-                                                prediction=index_dict_of_batched_vectors_tf(sliced_predictions, batch_idx),
-                                                time_steps=np.arange(classifier_horizon))
+                                                example=index_dict_of_batched_vectors_tf(out_example, batch_idx),
+                                                n_time_steps=classifier_horizon)
 
         # debug()
 
