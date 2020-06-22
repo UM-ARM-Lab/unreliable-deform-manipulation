@@ -1,0 +1,37 @@
+<launch>
+    <arg name="world_name"  default="victor_table_rope"/>
+    <arg name="verbose"     default="false"/>
+    <arg name="gui"         default="true"/>
+    <arg name="pause"       default="true"/>
+    <arg name="debug"       default="false"/>
+
+    <!-- Allows users to have slightly modified versions of Victor's URDF -->
+    <arg name="model"                       default="$(find victor_description)/urdf/victor.urdf.xacro"/>
+    <param name="robot_description"         command="$(find xacro)/xacro --xacro-ns --inorder $(arg model)"/>
+
+    <include file="$(find victor_moveit_config)/launch/planning_context.launch">
+        <arg name="load_robot_description" value="false"/>
+    </include>
+    <node pkg="robot_state_publisher"     type="robot_state_publisher"    name="robot_state_publisher"/>
+
+    <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name"  value="$(find link_bot_gazebo)/worlds/$(arg world_name).world"/>
+        <arg name="verbose"     default="$(arg verbose)"/>
+        <arg name="paused"      default="$(arg pause)"/>
+        <arg name="gui"         value="$(arg gui)"/>
+        <arg name="debug"       default="$(arg debug)"/>
+    </include>
+
+    <include file="$(find victor_3d_rope_shim)/launch/static_transforms.launch">
+        <arg name="use_sim_time"    value="true"/>
+        <arg name="use_mocap_shims" value="false"/>
+    </include>
+    <group ns="static_transform_publishers">
+        <node pkg="tf2_ros" type="static_transform_publisher" name="rename_origin" required="true"
+              args="0 0 0 0 0 0 world world_origin">
+            <param name="use_sim_time" value="true"/>
+        </node>
+    </group>
+</launch>

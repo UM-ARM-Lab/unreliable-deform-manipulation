@@ -73,31 +73,44 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
   // load parameters
   if (_sdf->HasElement("robotNamespace")) {
     this->robot_namespace_ = _sdf->GetElement("robotNamespace")->Get<std::string>() + "/";
-  } else {
+  }
+  else {
     this->robot_namespace_ = "";
   }
 
   if (!_sdf->HasElement("robotName")) {
     this->robot_name_ = _model->GetName();
-  } else {
+  }
+  else {
     this->robot_name_ = _sdf->GetElement("robotName")->Get<std::string>();
   }
 
   if (!_sdf->HasElement("topicName")) {
     this->topic_name_ = "planning_scene";
-  }  else {
+  }
+  else {
     this->topic_name_ = _sdf->GetElement("topicName")->Get<std::string>();
   }
 
   if (!_sdf->HasElement("sceneName")) {
     this->scene_name_ = "";
-  } else {
+  }
+  else {
     this->scene_name_ = _sdf->GetElement("sceneName")->Get<std::string>();
+  }
+
+  if (!_sdf->HasElement("frameId")) {
+    this->frame_id_ = "world";
+  }
+  else {
+    this->frame_id_ = _sdf->GetElement("frameId")->Get<std::string>();
+    ROS_WARN_STREAM("Using non-standard frame id " << this->frame_id_);
   }
 
   if (!_sdf->HasElement("updatePeriod")) {
     this->publish_period_ = ros::Duration(0.0);
-  } else {
+  }
+  else {
     this->publish_period_ = ros::Duration(_sdf->GetElement("updatePeriod")->Get<double>());
   }
 
@@ -118,18 +131,30 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
       this->topic_name_, 1,
       boost::bind(&GazeboRosMoveItPlanningScene::subscriber_connected, this));
 
-  // Custom Callback Queue for service
+  // Custom Callback Queue for services
   this->callback_queue_thread_ = boost::thread(
       boost::bind(&GazeboRosMoveItPlanningScene::QueueThread, this));
 
-  // Create service server
-  ros::AdvertiseServiceOptions aso;
-  boost::function<bool(std_srvs::Empty::Request&, std_srvs::Empty::Response&)> srv_cb =
-    boost::bind(&GazeboRosMoveItPlanningScene::PublishPlanningSceneCB, this, _1, _2);
-  aso.init("publish_planning_scene", srv_cb);
-  aso.callback_queue = &this->queue_;
+  // Create a service server for triggering a full planning scene publish
+  {
+    ros::AdvertiseServiceOptions aso;
+    boost::function<bool(std_srvs::Empty::Request&, std_srvs::Empty::Response&)> srv_cb =
+      boost::bind(&GazeboRosMoveItPlanningScene::PublishPlanningSceneCB, this, _1, _2);
+    aso.init("gazebo/publish_planning_scene", srv_cb);
+    aso.callback_queue = &this->queue_;
 
-  publish_planning_scene_service_ = this->rosnode_->advertiseService(aso);
+    publish_planning_scene_service_ = this->rosnode_->advertiseService(aso);
+  }
+  // Create a service server for returning the full planning scene
+  {
+    ros::AdvertiseServiceOptions aso;
+    boost::function<bool(moveit_msgs::GetPlanningScene::Request&, moveit_msgs::GetPlanningScene::Response&)> srv_cb =
+      boost::bind(&GazeboRosMoveItPlanningScene::GetPlanningSceneCB, this, _1, _2);
+    aso.init("gazebo/get_planning_scene", srv_cb);
+    aso.callback_queue = &this->queue_;
+
+    get_planning_scene_service_ = this->rosnode_->advertiseService(aso);
+  }
 
   // Publish the full scene on the next update
   publish_full_scene_ = true;
@@ -144,6 +169,7 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
 void GazeboRosMoveItPlanningScene::subscriber_connected()
 {
   boost::mutex::scoped_lock lock(this->mutex_);
+  // Set flag to re-publish full scene
   publish_full_scene_ = true;
 }
 
@@ -153,10 +179,35 @@ bool GazeboRosMoveItPlanningScene::PublishPlanningSceneCB(
     std_srvs::Empty::Request& req,
     std_srvs::Empty::Response& resp)
 {
+  (void)req;
+  (void)resp;
   boost::mutex::scoped_lock lock(this->mutex_);
 
   // Set flag to re-publish full scene
   publish_full_scene_ = true;
+  return true;
+}
+
+bool GazeboRosMoveItPlanningScene::GetPlanningSceneCB(
+               moveit_msgs::GetPlanningScene::Request& req,
+               moveit_msgs::GetPlanningScene::Response& resp)
+{
+  // FIXME: only return the components that are requested?
+  (void)req;
+
+  // Set the re-publish full scene flag to true
+  {
+    boost::mutex::scoped_lock lock(this->mutex_);
+    publish_full_scene_ = true;
+  }
+  // FIXME: This is sloppy and probably has threading problems
+  // Busy wait for a publish to occur
+  while (publish_full_scene_)
+  {
+  }
+  // Retrieve and return the updated scene
+  boost::mutex::scoped_lock lock(this->mutex_);
+  resp.scene = planning_scene_msg_;  
 
   return true;
 }
@@ -167,22 +218,31 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
 {
   boost::mutex::scoped_lock lock(this->mutex_);
 
+  BuildMessage();
+
+  planning_scene_pub_.publish(planning_scene_msg_);
+
+  // no more full scene
+  publish_full_scene_ = false;
+}
+
+void GazeboRosMoveItPlanningScene::BuildMessage()
+{
   using namespace gazebo::common;
   using namespace gazebo::physics;
 
   if(!publish_full_scene_) {
     if(publish_period_.isZero() || (ros::Time::now() - last_publish_time_) < publish_period_) {
       return;
-    } else {
+    }
+  else {
       last_publish_time_ = ros::Time::now();
     }
   }
 
   // Iterate through the tracked models and clear their dynamic information
   // This also sets objects to be removed if they currently aren't in the scene
-  for(std::map<std::string,moveit_msgs::CollisionObject>::iterator object_it = collision_object_map_.begin();
-      object_it != collision_object_map_.end();
-      ++object_it)
+  for(auto object_it = collision_object_map_.begin(); object_it != collision_object_map_.end(); ++object_it)
   {
     // Convenience reference
     moveit_msgs::CollisionObject &object = object_it->second;
@@ -207,9 +267,7 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
 #else
   std::vector<ModelPtr> models = this->world_->GetModels();
 #endif
-  for(std::vector<ModelPtr>::const_iterator model_it = models.begin();
-      model_it != models.end();
-      ++model_it)
+  for(auto model_it = models.cbegin(); model_it != models.end(); ++model_it)
   {
     const ModelPtr &model = *model_it;
     const std::string model_name = model->GetName();
@@ -225,9 +283,7 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
     //  object.primitives, and
     //  object.planes
     std::vector<LinkPtr> links = model->GetLinks();
-    for(std::vector<LinkPtr>::const_iterator link_it = links.begin();
-        link_it != links.end();
-        ++link_it)
+    for(auto link_it = links.cbegin(); link_it != links.end(); ++link_it)
     {
       const LinkPtr &link = *link_it;
       const std::string id = get_id(link);
@@ -246,12 +302,13 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
 
         moveit_msgs::CollisionObject new_object;
         new_object.id = id;
-        new_object.header.frame_id = "world";
+        new_object.header.frame_id = this->frame_id_;
         new_object.operation = moveit_msgs::CollisionObject::ADD;
 
         collision_object_map_[id] = new_object;
         ROS_DEBUG_STREAM_NAMED("GazeboRosMoveItPlanningScene","Adding object: "<<id);
-      } else {
+      }
+      else {
         collision_object_map_[id].operation = moveit_msgs::CollisionObject::MOVE;
         ROS_DEBUG_STREAM_NAMED("GazeboRosMoveItPlanningScene","Moving object: "<<id);
       }
@@ -265,20 +322,20 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
       ignition::math::Pose3d link_pose = link->GetWorldPose().Ign();
 #endif
       geometry_msgs::Pose link_pose_msg;
-      link_pose_msg.position.x = link_pose.Pos().X();
-      link_pose_msg.position.y = link_pose.Pos().Y();
-      link_pose_msg.position.z = link_pose.Pos().Z();
-      link_pose_msg.orientation.x = link_pose.Rot().X();
-      link_pose_msg.orientation.y = link_pose.Rot().Y();
-      link_pose_msg.orientation.z = link_pose.Rot().Z();
-      link_pose_msg.orientation.w = link_pose.Rot().W();
-      //ROS_DEBUG_STREAM_NAMED("GazeboRosMoveItPlanningScene",model_name << " (link): " <<link_pose_msg);
+      {
+        link_pose_msg.position.x = link_pose.Pos().X();
+        link_pose_msg.position.y = link_pose.Pos().Y();
+        link_pose_msg.position.z = link_pose.Pos().Z();
+        link_pose_msg.orientation.x = link_pose.Rot().X();
+        link_pose_msg.orientation.y = link_pose.Rot().Y();
+        link_pose_msg.orientation.z = link_pose.Rot().Z();
+        link_pose_msg.orientation.w = link_pose.Rot().W();
+        //ROS_DEBUG_STREAM_NAMED("GazeboRosMoveItPlanningScene",model_name << " (link): " <<link_pose_msg);
+      }
 
       // Get all the collision objects for this link
-      std::vector<CollisionPtr> collisions = link->GetCollisions();
-      for(std::vector<CollisionPtr>::const_iterator coll_it = collisions.begin();
-          coll_it != collisions.end();
-          ++coll_it)
+      const auto &collisions = link->GetCollisions();
+      for(auto coll_it = collisions.cbegin(); coll_it != collisions.end(); ++coll_it)
       {
         const CollisionPtr &collision = *coll_it;
         const ShapePtr shape = collision->GetShape();
@@ -290,14 +347,16 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
         ignition::math::Pose3d collision_pose = collision->GetInitialRelativePose().Ign() + link_pose;
 #endif
         geometry_msgs::Pose collision_pose_msg;
-        collision_pose_msg.position.x = collision_pose.Pos().X();
-        collision_pose_msg.position.y = collision_pose.Pos().Y();
-        collision_pose_msg.position.z = collision_pose.Pos().Z();
-        collision_pose_msg.orientation.x = collision_pose.Rot().X();
-        collision_pose_msg.orientation.y = collision_pose.Rot().Y();
-        collision_pose_msg.orientation.z = collision_pose.Rot().Z();
-        collision_pose_msg.orientation.w = collision_pose.Rot().W();
-        //ROS_DEBUG_STREAM_NAMED("GazeboRosMoveItPlanningScene",model_name << " (collision): " <<collision_pose_msg);
+        {
+          collision_pose_msg.position.x = collision_pose.Pos().X();
+          collision_pose_msg.position.y = collision_pose.Pos().Y();
+          collision_pose_msg.position.z = collision_pose.Pos().Z();
+          collision_pose_msg.orientation.x = collision_pose.Rot().X();
+          collision_pose_msg.orientation.y = collision_pose.Rot().Y();
+          collision_pose_msg.orientation.z = collision_pose.Rot().Z();
+          collision_pose_msg.orientation.w = collision_pose.Rot().W();
+          //ROS_DEBUG_STREAM_NAMED("GazeboRosMoveItPlanningScene",model_name << " (collision): " <<collision_pose_msg);
+        }
 
         // Always add pose information
         if(shape->HasType(Base::MESH_SHAPE)) {
@@ -325,7 +384,7 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
           for(unsigned m=0; m < n_submeshes; m++) {
 
             const SubMesh *submesh = mesh->GetSubMesh(m);
-            unsigned n_vertices = submesh->GetVertexCount();
+            // unsigned n_vertices = submesh->GetVertexCount();
 
             switch(submesh->GetPrimitiveType()) 
             {
@@ -333,6 +392,7 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
               case SubMesh::LINES:
               case SubMesh::LINESTRIPS:
                 // These aren't supported
+                gzerr << "Unsupported primitive type " << submesh->GetPrimitiveType() << "." << std::endl;
                 break;
               case SubMesh::TRIANGLES:
               case SubMesh::TRISTRIPS:
@@ -344,14 +404,17 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
                 break;
             };
           }
-        } else if(shape->HasType(Base::PLANE_SHAPE)) {
+        }
+        else if(shape->HasType(Base::PLANE_SHAPE)) {
           object.plane_poses.push_back(collision_pose_msg);
-        } else { //if (!shape->HasType(Base::MESH_SHAPE)) {
+        }
+        else {
           object.primitive_poses.push_back(collision_pose_msg);
         }
 
         // Only add geometric info if we haven't published it before
-        if(object.operation == moveit_msgs::CollisionObject::ADD || object.operation == moveit_msgs::CollisionObject::APPEND)
+        if(object.operation == moveit_msgs::CollisionObject::ADD || 
+           object.operation == moveit_msgs::CollisionObject::APPEND)
         {
           if(shape->HasType(Base::MESH_SHAPE))
           {
@@ -489,7 +552,8 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
               primitive_msg.dimensions[1] = box_shape->GetSize().Ign().Y();
               primitive_msg.dimensions[2] = box_shape->GetSize().Ign().Z();
 #endif
-            } else if(shape->HasType(Base::CYLINDER_SHAPE)) {
+            }
+            else if(shape->HasType(Base::CYLINDER_SHAPE)) {
 
               boost::shared_ptr<CylinderShape> cylinder_shape = boost::dynamic_pointer_cast<CylinderShape>(shape);
 
@@ -498,7 +562,8 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
               primitive_msg.dimensions[0] = cylinder_shape->GetLength();
               primitive_msg.dimensions[1] = cylinder_shape->GetRadius();
 
-            } else if(shape->HasType(Base::SPHERE_SHAPE)) {
+            }
+            else if(shape->HasType(Base::SPHERE_SHAPE)) {
 
               boost::shared_ptr<SphereShape> sphere_shape = boost::dynamic_pointer_cast<SphereShape>(shape);
 
@@ -506,7 +571,8 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
               primitive_msg.dimensions.resize(1);
               primitive_msg.dimensions[0] = sphere_shape->GetRadius();
 
-            } else {
+            }
+            else {
               // HEIGHTMAP_SHAPE, MAP_SHAPE, MULTIRAY_SHAPE, RAY_SHAPE
               // Unsupported
               continue;
@@ -524,15 +590,14 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
     }
   }
 
-  // Clear the list of collision objects
+  // Clear the list of collision objects, then rebuild
   planning_scene_msg_.name = scene_name_;
   planning_scene_msg_.robot_model_name = robot_name_;
   planning_scene_msg_.is_diff = true;
   planning_scene_msg_.world.collision_objects.clear();
 
   // Iterate through the objects we're already tracking
-  for(std::map<std::string,moveit_msgs::CollisionObject>::iterator object_it = collision_object_map_.begin();
-      object_it != collision_object_map_.end();)
+  for(auto object_it = collision_object_map_.begin(); object_it != collision_object_map_.end(); ++object_it)
   {
     // Update stamp
     object_it->second.header.stamp = ros::Time::now();
@@ -543,17 +608,9 @@ void GazeboRosMoveItPlanningScene::UpdateCB()
     if(object_it->second.operation == moveit_msgs::CollisionObject::REMOVE) {
       // Actually remove the collision object from the map
       ROS_DEBUG_STREAM_NAMED("GazeboRosMoveItPlanningScene","Removing object: "<<object_it->second.id);
-      collision_object_map_.erase(object_it++);
-    } else {
-      ++object_it;
+      collision_object_map_.erase(object_it);
     }
-
   }
-
-  planning_scene_pub_.publish(planning_scene_msg_);
-
-  // no more full scene
-  publish_full_scene_ = false;
 }
 
 // Custom Callback Queue

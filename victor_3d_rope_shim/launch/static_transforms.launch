@@ -1,35 +1,36 @@
 <launch>
-    <arg name="use_sim_time" default="false"/>
+    <arg name="use_sim_time"    default="false"/>
+    <arg name="use_mocap_shims" default="true"/>
 
-    <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_victor_static_transform.launch">
+    <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_victor_static_transform.launch" if="$(arg use_mocap_shims)">
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
     </include>
 
-    <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_tables_static_transform.launch">
+    <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_tables_static_transform.launch" if="$(arg use_mocap_shims)">
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
     </include>
 
-    <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_kinect_static_transforms.launch">
+    <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_kinect_static_transforms.launch" if="$(arg use_mocap_shims)">
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
     </include>
 
     <!-- Task specific transforms -->
     <group ns="static_transform_publishers">
         <node pkg="tf2_ros" type="static_transform_publisher" name="active_table_broadcaster" required="true"
-              args="0 0 0 0 0 0 clear_table_surface table_surface">
+              args="0 0 0 0 0 0 clear_table_surface table_surface" if="$(arg use_mocap_shims)">
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>
 
         <node pkg="tf2_ros" type="static_transform_publisher" name="left_tool_frame_broadcaster" required="true"
-              args="0.0 0.0 0.3556
-                    0   0   -0.382683432365090   0.923879532511287
+              args="0.0 0.0 0.13
+                    0 0 0 1
                     victor_left_gripper_palm_surface victor_left_tool">
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>
 
         <node pkg="tf2_ros" type="static_transform_publisher" name="right_tool_frame_broadcaster" required="true"
-              args="0.0 0.0 0.3556
-                    0   0   -0.382683432365090   0.923879532511287
+              args="0.0 0.0 0.13
+                    0 0 0 1
                     victor_right_gripper_palm_surface victor_right_tool">
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>

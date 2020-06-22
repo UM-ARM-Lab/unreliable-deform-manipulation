@@ -28,6 +28,18 @@
                 <name>victor</name>
                 <uri>model://victor</uri>
             </include>
+            <include>
+                <!-- The pose of gripper2 (to be attached to Victor's right gripper) -->
+                <pose>1.0 -0.3 0.95 0 0 1.57079632679</pose>
+                <uri>model://kinematic_rope</uri>
+            </include>
+            <plugin name="gazebo_ros_moveit_planning_scene" filename="libgazebo_ros_moveit_planning_scene.so">
+                <topicName>gazebo/planning_scene</topicName>
+                <robotName>victor</robotName>
+                <frameId>victor_root</frameId>
+                <updatePeriod>0.1</updatePeriod>
+            </plugin>
         </model>
+        <plugin name="gazebo_ros_tf_plugin" filename="libgazebo_ros_tf_plugin.so"/>
     </world>
 </sdf>

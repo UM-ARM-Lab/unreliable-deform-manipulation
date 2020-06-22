@@ -22,6 +22,7 @@
 #ifndef GAZEBO_ROS_MOVEIT_PLANNING_SCENE_H
 #define GAZEBO_ROS_MOVEIT_PLANNING_SCENE_H
 
+#include <atomic>
 #include <string>
 
 // Custom Callback Queue
@@ -40,6 +41,7 @@
 
 #include <std_srvs/Empty.h>
 #include <moveit_msgs/PlanningScene.h>
+#include <moveit_msgs/GetPlanningScene.h>
 
 namespace gazebo
 {
@@ -104,10 +106,15 @@ class GazeboRosMoveItPlanningScene : public ModelPlugin
 
   protected: void subscriber_connected();
 
-  /// \brief publish the complete planning scene
+  /// \brief publish the complete planning scene next iteration
   private: bool PublishPlanningSceneCB(
                std_srvs::Empty::Request& req,
                std_srvs::Empty::Response& resp);
+
+  /// \brief Retrieve the current planning scene
+  private: bool GetPlanningSceneCB(
+               moveit_msgs::GetPlanningScene::Request& req,
+               moveit_msgs::GetPlanningScene::Response& resp);
 
   /// \brief The custom callback queue thread function.
   private: void QueueThread();
@@ -122,6 +129,7 @@ class GazeboRosMoveItPlanningScene : public ModelPlugin
   private: boost::scoped_ptr<ros::NodeHandle> rosnode_;
   private: ros::Publisher planning_scene_pub_;
            ros::ServiceServer publish_planning_scene_service_;
+           ros::ServiceServer get_planning_scene_service_;
 
   /// \brief A mutex to lock access to fields that are used in ROS message callbacks
   private: boost::mutex mutex_;
@@ -130,6 +138,7 @@ class GazeboRosMoveItPlanningScene : public ModelPlugin
   private: std::string topic_name_;
   /// \brief The MoveIt scene name
   private: std::string scene_name_;
+  private: std::string frame_id_;
   private: std::string robot_name_;
   private: std::string model_name_;
 
@@ -143,6 +152,7 @@ class GazeboRosMoveItPlanningScene : public ModelPlugin
   /// \brief Container for the planning scene.
   private: moveit_msgs::PlanningScene planning_scene_msg_;
            std::map<std::string, moveit_msgs::CollisionObject> collision_object_map_;
+           void BuildMessage();
 
   // Pointer to the update event connection
   private: event::ConnectionPtr update_connection_;
@@ -150,7 +160,7 @@ class GazeboRosMoveItPlanningScene : public ModelPlugin
   private: event::ConnectionPtr delete_connection_;
 
   private:
-           bool publish_full_scene_;
+           std::atomic<bool> publish_full_scene_;
 
            ros::Duration publish_period_;
            ros::Time last_publish_time_;

@@ -3082,6 +3082,12 @@
             </physics>
         </joint>
         <plugin name='kinematic_victor' filename='libkinematic_victor_plugin.so'>
+            <arm name="left">
+                <initial_positions>-1.81695, -1.426, 0.749328, -1.55009, 2.84299, 0.258032, 2.742499</initial_positions>
+            </arm>
+            <arm name="right">
+                <initial_positions>-1.5708, 1.27796, -0.853131, 1.59958, -0.331705, 0.243396, 2.912269</initial_positions>
+            </arm>
         </plugin>
     </model>
 </sdf>

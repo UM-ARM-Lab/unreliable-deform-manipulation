@@ -18,6 +18,7 @@
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit_msgs/DisplayTrajectory.h>
+#include <moveit_msgs/GetPlanningScene.h>
 #include <pluginlib/class_loader.h>
 #include <boost/scoped_ptr.hpp>
 
@@ -42,11 +43,18 @@ Eigen::MatrixXd cleanZeros(Eigen::MatrixXd const& input, double const threshold 
   return (input.cwiseAbs().array() < threshold).select(0, input);
 }
 
-std::pair<Eigen::Translation3d, Eigen::Translation3d> toGripperPositions(pm::Action const& action)
+// std::pair<Eigen::Translation3d, Eigen::Translation3d> toGripperPositions(pm::Action const& action)
+// {
+//   MPS_ASSERT(action.action.size() == 6);
+//   return { Eigen::Translation3d(action.action[0], action.action[1], action.action[2]),
+//            Eigen::Translation3d(action.action[3], action.action[4], action.action[5]) };
+// }
+
+std::pair<Eigen::Translation3d, Eigen::Translation3d> toGripperPositions(geometry_msgs::Point const& g1,
+                                                                         geometry_msgs::Point const& g2)
 {
-  MPS_ASSERT(action.action.size() == 6);
-  return { Eigen::Translation3d(action.action[0], action.action[1], action.action[2]),
-           Eigen::Translation3d(action.action[3], action.action[4], action.action[5]) };
+  return { Eigen::Translation3d(g1.x, g1.y, g1.z),
+           Eigen::Translation3d(g2.x, g2.y, g2.z) };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,11 +108,11 @@ trajectory_msgs::JointTrajectory MergeTrajectories(trajectory_msgs::JointTraject
     ROS_INFO_STREAM("Merging trajectories of starting sizes " << traj_a.points.size() << " and " << traj_b.points.size());
     if (traj_a.points.size() != mergable_size)
     {
-      ROS_WARN_STREAM("Merging trajectories of uneven length, discarding " << mergable_size - traj_a.points.size() << " points from traj_a");
+      ROS_WARN_STREAM("Merging trajectories of uneven length, discarding " << traj_a.points.size() - mergable_size << " points from traj_a");
     }
     if (traj_b.points.size() != mergable_size)
     {
-      ROS_WARN_STREAM("Merging trajectories of uneven length, discarding " << mergable_size - traj_b.points.size() << " points from traj_b");
+      ROS_WARN_STREAM("Merging trajectories of uneven length, discarding " << traj_b.points.size() - mergable_size << " points from traj_b");
     }
   }
 
@@ -148,9 +156,11 @@ VictorInterface::VictorInterface(ros::NodeHandle nh,
   , left_tool_frame_("victor_left_tool")
   , right_tool_frame_("victor_right_tool")
   , worldTrobot(lookupTransform(*tf_buffer_, world_frame_, robot_frame_, ros::Time(0), ros::Duration(5)))
-  , worldTtable(lookupTransform(*tf_buffer_, world_frame_, table_frame_, ros::Time(0), ros::Duration(5)))
   , robotTworld(worldTrobot.inverse(Eigen::Isometry))
+  , worldTtable(lookupTransform(*tf_buffer_, world_frame_, table_frame_, ros::Time(0), ros::Duration(5)))
   , tableTworld(worldTtable.inverse(Eigen::Isometry))
+  , robotTtable(robotTworld * worldTtable)
+  , tableTrobot(robotTtable.inverse(Eigen::Isometry))
   , model_loader_(std::make_unique<robot_model_loader::RobotModelLoader>())
   , robot_model_(model_loader_->getModel())
   , talker_(nh_.advertise<std_msgs::String>("polly", 10, false))
@@ -171,88 +181,94 @@ VictorInterface::VictorInterface(ros::NodeHandle nh,
   auto const right_flange_name = right_arm_->arm->getLinkModels().back()->getName();
   right_tool_offset_ = lookupTransform(*tf_buffer_, right_flange_name, right_tool_frame_, ros::Time(0), ros::Duration(5));
 
-  // Create obstacles to guard other stuff in the room
+  // Retrieve the planning scene obstacles if possible, otherwise default to a saved set
   {
-    // NB: PlannningScene assumes everything is defined relative to the
-    //     robot base frame, so we have to deal with that here
-    auto constexpr wall_width = 0.1;
-    // Table
+    auto const topic = ROSHelpers::GetParam<std::string>(ph_, "get_planning_scene_topic", "get_planning_scene");
+    ros::ServiceClient client = nh_.serviceClient<moveit_msgs::GetPlanningScene>(topic);
+    if (!client.waitForExistence(ros::Duration(3)))
     {
-      // TODO: confirm measurements/make ROS params
-      // auto const table = std::make_shared<shapes::Box>(30 * 0.0254, 42 * 0.0254, 0.1);
-      auto const table = std::make_shared<shapes::Box>(40 * 0.0254, 44 * 0.0254, worldTtable.translation().z());
-      Pose const pose(Eigen::Translation3d(0.0, 0.0, -table->size[2] / 2.0));
-      scene_->staticObstacles.push_back({ table, robotTworld * worldTtable * pose });
-    }
-    // Protect Andrew's monitors
-    {
-      auto const wall = std::make_shared<shapes::Box>(5, wall_width, 3);
-      Pose const pose(Eigen::Translation3d(2.8 + wall_width / 2, 1.1, 1.5));
-      scene_->staticObstacles.push_back({ wall, robotTworld * pose });
-    }
-    // Protect Dale's monitors
-    {
-      auto const wall = std::make_shared<shapes::Box>(5, wall_width, 3);
-      Pose const pose(Eigen::Translation3d(2.8 + wall_width / 2, -1.1, 1.5));
-      scene_->staticObstacles.push_back({ wall, robotTworld * pose });
-    }
-    // Protect stuff behind Victor
-    {
-      auto const wall = std::make_shared<shapes::Box>(0.1, 2.2 + wall_width, 3);
-      Pose const pose(Eigen::Translation3d(0.3, 0.0, 1.5));
-      scene_->staticObstacles.push_back({ wall, robotTworld * pose });
-    }
-  }
-
-  // Create obstacles on the table
-  if (false)
-  {
-    // Table wall near Victor (negative x)
-    {
-      auto const wall = std::make_shared<shapes::Box>(7 * 0.0254, 44 * 0.0254, 4 * 0.0254);
-      Pose const pose(Eigen::Translation3d(-16.5 * 0.0254, 0.0, wall->size[2] / 2.0));
-      scene_->staticObstacles.push_back({ wall, robotTworld * worldTtable * pose });
-    }
-    // Table wall away from Victor (positive x)
-    {
-      auto const wall = std::make_shared<shapes::Box>(7 * 0.0254, 44 * 0.0254, 4 * 0.0254);
-      Pose const pose(Eigen::Translation3d(16.5 * 0.0254, 0.0, wall->size[2] / 2.0));
-      scene_->staticObstacles.push_back({ wall, robotTworld * worldTtable * pose });
-    }
-    // Table wall to Victor's right (negative y)
-    {
-      auto const wall = std::make_shared<shapes::Box>(26 * 0.0254, 3 * 0.0254, 4 * 0.0254);
-      Pose const pose(Eigen::Translation3d(0.0, -20.5 * 0.0254, wall->size[2] / 2.0));
-      scene_->staticObstacles.push_back({ wall, robotTworld * worldTtable * pose });
-    }
-    // Table wall to Victor's right (positive y)
-    {
-      auto const wall = std::make_shared<shapes::Box>(26 * 0.0254, 3 * 0.0254, 4 * 0.0254);
-      Pose const pose(Eigen::Translation3d(0.0, 20.5 * 0.0254, wall->size[2] / 2.0));
-      scene_->staticObstacles.push_back({ wall, robotTworld * worldTtable * pose });
-    }
-
-// Other obstacles on the table
-#if 0
-    obstacles_client_ = nh_.serviceClient<pm::GetObstacles>("obstacles");
-    {
-      auto const obstacle_bloat_dist = ROSHelpers::GetParam(ph_, "obstacle_bloat_dist_planning_scene", 0.025);
-      pm::GetObstacles obstacles_srv;
-      MPS_ASSERT(obstacles_client_.call(obstacles_srv));
-      MPS_ASSERT(obstacles_srv.response.header.frame_id == table_frame_);
-      for (auto const& rect : obstacles_srv.response.rect)
+      ROS_WARN_STREAM("Service [" << nh_.getNamespace() << topic << " was not available. Defaulting to a saved set");
+      
+      // NB: PlannningScene assumes everything is defined relative to the
+      //     robot base frame, so we have to deal with that here
+      auto constexpr wall_width = 0.1;
+      // Table
       {
-        auto const box = std::make_shared<shapes::Box>(rect.dimensions[0] + obstacle_bloat_dist,
-                                                       rect.dimensions[1] + obstacle_bloat_dist, 3.5 * 0.0254);
-        Pose const pose(Eigen::Translation3d(rect.center[0], rect.center[1], box->size[2] / 2.0));
-        scene_->staticObstacles.push_back(
-            { box, robotTworld * worldTtable * pose });
+        // TODO: confirm measurements/make ROS params
+        // auto const table = std::make_shared<shapes::Box>(30 * 0.0254, 42 * 0.0254, 0.1);
+        auto const table = std::make_shared<shapes::Box>(40 * 0.0254, 44 * 0.0254, worldTtable.translation().z());
+        Pose const pose(Eigen::Translation3d(0.0, 0.0, -table->size[2] / 2.0));
+        scene_->staticObstacles.push_back({ table, robotTworld * worldTtable * pose });
       }
+      // Protect Andrew's monitors
+      {
+        auto const wall = std::make_shared<shapes::Box>(5, wall_width, 3);
+        Pose const pose(Eigen::Translation3d(2.8 + wall_width / 2, 1.1, 1.5));
+        scene_->staticObstacles.push_back({ wall, robotTworld * pose });
+      }
+      // Protect Dale's monitors
+      {
+        auto const wall = std::make_shared<shapes::Box>(5, wall_width, 3);
+        Pose const pose(Eigen::Translation3d(2.8 + wall_width / 2, -1.1, 1.5));
+        scene_->staticObstacles.push_back({ wall, robotTworld * pose });
+      }
+      // Protect stuff behind Victor
+      {
+        auto const wall = std::make_shared<shapes::Box>(0.1, 2.2 + wall_width, 3);
+        Pose const pose(Eigen::Translation3d(0.3, 0.0, 1.5));
+        scene_->staticObstacles.push_back({ wall, robotTworld * pose });
+      }
+
+      // Create obstacles on the table
+      if (false)
+      {
+        // Table wall near Victor (negative x)
+        {
+          auto const wall = std::make_shared<shapes::Box>(7 * 0.0254, 44 * 0.0254, 4 * 0.0254);
+          Pose const pose(Eigen::Translation3d(-16.5 * 0.0254, 0.0, wall->size[2] / 2.0));
+          scene_->staticObstacles.push_back({ wall, robotTworld * worldTtable * pose });
+        }
+        // Table wall away from Victor (positive x)
+        {
+          auto const wall = std::make_shared<shapes::Box>(7 * 0.0254, 44 * 0.0254, 4 * 0.0254);
+          Pose const pose(Eigen::Translation3d(16.5 * 0.0254, 0.0, wall->size[2] / 2.0));
+          scene_->staticObstacles.push_back({ wall, robotTworld * worldTtable * pose });
+        }
+        // Table wall to Victor's right (negative y)
+        {
+          auto const wall = std::make_shared<shapes::Box>(26 * 0.0254, 3 * 0.0254, 4 * 0.0254);
+          Pose const pose(Eigen::Translation3d(0.0, -20.5 * 0.0254, wall->size[2] / 2.0));
+          scene_->staticObstacles.push_back({ wall, robotTworld * worldTtable * pose });
+        }
+        // Table wall to Victor's right (positive y)
+        {
+          auto const wall = std::make_shared<shapes::Box>(26 * 0.0254, 3 * 0.0254, 4 * 0.0254);
+          Pose const pose(Eigen::Translation3d(0.0, 20.5 * 0.0254, wall->size[2] / 2.0));
+          scene_->staticObstacles.push_back({ wall, robotTworld * worldTtable * pose });
+        }
+      }
+    
+      planning_scene_ = std::make_shared<planning_scene::PlanningScene>(robot_model_, scene_->computeCollisionWorld());
     }
-#endif
+    else
+    {
+      planning_scene_ = std::make_shared<planning_scene::PlanningScene>(robot_model_, scene_->computeCollisionWorld());
+      
+      // TODO: Is this request really what we want for a more generic task?
+      moveit_msgs::GetPlanningSceneRequest req;
+      req.components.components = 
+        moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_NAMES | 
+        moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_GEOMETRY |
+        moveit_msgs::PlanningSceneComponents::OCTOMAP |
+        moveit_msgs::PlanningSceneComponents::TRANSFORMS |
+        moveit_msgs::PlanningSceneComponents::OBJECT_COLORS;
+      
+      moveit_msgs::GetPlanningSceneResponse resp;
+      client.call(req, resp);
+      planning_scene_->processPlanningSceneWorldMsg(resp.scene.world);      
+    }
   }
 
-  planning_scene_ = std::make_shared<planning_scene::PlanningScene>(robot_model_, scene_->computeCollisionWorld());
   planning_scene_publisher_ = nh.advertise<moveit_msgs::PlanningScene>("planning_scene", 1, true);
 
   // Disable collisions between the static obstacles and Victor's non-moving parts
@@ -586,7 +602,8 @@ trajectory_msgs::JointTrajectory VictorInterface::plan(robot_state::RobotState c
 
   /* Re-construct the planning context */
   planning_scene_->setCurrentState(start_state);
-  ROS_WARN("The following line of code will like give an error message, but can probably be ignored: https://github.com/ros-planning/moveit/issues/659");
+  ROS_WARN("The following line of code will likely give a 'Found empty JointState message' error,"
+           " but can probably be ignored: https://github.com/ros-planning/moveit/issues/659");
   auto context = planner_instance->getPlanningContext(planning_scene_, req, res.error_code_);
   /* Call the Planner */
   context->solve(res);
@@ -663,7 +680,10 @@ void VictorInterface::followTrajectory(trajectory_msgs::JointTrajectory const& t
     tol.acceleration = 1.0;
     goal.goal_tolerance.push_back(tol);
   }
-  goal.goal_time_tolerance = ros::Duration(10.0);
+  // FIXME: Relatively arbitrary duration here - what works for both sim and real?
+  //        Or take this as a ROS param
+  ROS_WARN("Arbitrary goal_time_tolerance, verify this works on Gazebo and fake/real Victor");
+  goal.goal_time_tolerance = ros::Duration(1.0);
   ROS_INFO("Sending goal ...");
   trajectory_client_->sendGoalAndWait(goal);
 
@@ -681,6 +701,15 @@ void VictorInterface::gotoHome()
   followTrajectory(traj);
   ROS_INFO("At home");
   arc_helpers::Sleep(0.5);
+}
+
+void VictorInterface::moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions)
+{
+  std::pair<Eigen::Translation3d, Eigen::Translation3d> table_frame{
+    (tableTrobot * gripper_positions.first).translation(), 
+    (tableTrobot * gripper_positions.second).translation()
+  };
+  moveInTableFrame(table_frame);
 }
 
 void VictorInterface::moveInTableFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions)
@@ -876,7 +905,7 @@ void VictorInterface::moveInTableFrameJacobianIk(
   auto const left_cmd = [&]
   {
     auto const flange_home_frame = home_state_.getGlobalLinkTransform(left_arm_->arm->getLinkModels().back());
-    trajectory_msgs::JointTrajectory left_cmd;
+    trajectory_msgs::JointTrajectory cmd;
     MPS_ASSERT(left_arm_->jacobianPath3D(
       left_path,
       flange_home_frame.rotation(),
@@ -884,13 +913,13 @@ void VictorInterface::moveInTableFrameJacobianIk(
       left_tool_offset_,
       current_state,
       planning_scene_,
-      left_cmd));
-    return left_cmd;
+      cmd));
+    return cmd;
   }();
   auto const right_cmd = [&]
   {
     auto const flange_home_frame = home_state_.getGlobalLinkTransform(right_arm_->arm->getLinkModels().back());
-    trajectory_msgs::JointTrajectory right_cmd;
+    trajectory_msgs::JointTrajectory cmd;
     MPS_ASSERT(right_arm_->jacobianPath3D(
       right_path,
       flange_home_frame.rotation(),
@@ -898,8 +927,8 @@ void VictorInterface::moveInTableFrameJacobianIk(
       right_tool_offset_,
       current_state,
       planning_scene_,
-      right_cmd));
-    return right_cmd;
+      cmd));
+    return cmd;
   }();
   
   // Debugging - visualize JacobianIK result tip in table frame
@@ -1018,45 +1047,32 @@ VictorShim::VictorShim(ros::NodeHandle nh, ros::NodeHandle ph)
     victor_ = std::make_shared<VictorInterface>(nh, ph, tf_buffer_);
   }
 
-  // LinkBot control/exection
+  // DualGripper control/exection
   {
-    execute_action_srv_ = nh.advertiseService("execute_action", &VictorShim::executeAction, this);
     execute_traj_srv_ = nh.advertiseService("link_bot_execute_trajectory", &VictorShim::executeTrajectory, this);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool VictorShim::executeAction(pm::ExecuteAction::Request& req, pm::ExecuteAction::Response& res)
+bool VictorShim::executeTrajectory(pm::DualGripperTrajectory::Request& req, 
+                                   pm::DualGripperTrajectory::Response& res)
 {
-  ROS_INFO("Executing action");
-  // TODO: read/use req.action.max_time_per_step?
-  victor_->moveInTableFrame(toGripperPositions(req.action));
-  // TODO: get the state of the rope from external sensors
-  // res.objects.objects = getLinkBotStateNamed(true);
-  // TODO: populate needs_reset
-  // res.needs_reset
-  ROS_INFO("Done action");
-  return true;
-}
+  (void)res;
 
-bool VictorShim::executeTrajectory(pm::LinkBotTrajectory::Request& req, pm::LinkBotTrajectory::Response& res)
-{
-  ROS_INFO("Executing trajectory");
-  // res.actual_path.resize(req.gripper1_traj.size() + 1);
-  // // TODO: get the state of the rope from external sensors
-  // // res.actual_path[0].objects = getLinkBotStateNamed(true);
-  // for (auto idx = 0ul; idx < req.gripper1_traj.size(); ++idx)
-  // {
-  //     pm::ExecuteAction::Request step_req;
-  //     pm::ExecuteAction::Response step_res;
-  //     step_req.action = req.gripper1_traj[idx];
-  //     executeAction(step_req, step_res);
-  //     res.actual_path[idx + 1] = step_res.objects;
-  // }
-  throw_arc_exception(std::logic_error, "executeTrajectory is not implemented");
-  // TODO populate needs_reset
-  // res.needs_reset
+  if (req.gripper1_points.size() != req.gripper2_points.size())
+  {
+    ROS_WARN("Mismatched gripper trajectory sizes, doing nothing.");
+    return false;
+  }
+
+  // NB: positions are assumed to be in `victor_root` frame.
+  ROS_INFO_STREAM("Executing dual gripper trajectory of length " << req.gripper1_points.size());
+  for (size_t idx = 0; idx < req.gripper1_points.size(); ++idx)
+  {
+    victor_->moveInRobotFrame(toGripperPositions(req.gripper1_points[idx], req.gripper2_points[idx]));
+  }
+
   ROS_INFO("Done trajectory");
   return true;
 }

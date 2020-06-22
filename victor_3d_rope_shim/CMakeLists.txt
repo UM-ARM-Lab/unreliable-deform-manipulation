@@ -38,7 +38,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-set(FLAGS -O3 -g -Wall -Wextra -Wpedantic -Wconversion -Werror=return-type -Werror=missing-field-initializers)
+set(FLAGS -O3 -g -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Werror=return-type -Werror=missing-field-initializers)
 
 add_executable(world_interaction
   src/world_interaction.cpp

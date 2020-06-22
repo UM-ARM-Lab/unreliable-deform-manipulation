@@ -24,7 +24,7 @@ const sdf_tools::COLLISION_CELL CollisionMapPlugin::unoccupied_value{0};
  *  1. make it faster
  */
 
-void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr _sdf)
+void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
 {
   world_ = world;
   engine_ = world->Physics();

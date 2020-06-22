@@ -8,8 +8,7 @@
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/robot_state/robot_state.h>
-#include <peter_msgs/ExecuteAction.h>
-#include <peter_msgs/LinkBotTrajectory.h>
+#include <peter_msgs/DualGripperTrajectory.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
@@ -45,9 +44,11 @@ public:
   std::string const left_tool_frame_;
   std::string const right_tool_frame_;
   Pose const worldTrobot;
-  Pose const worldTtable;
   Pose const robotTworld;
+  Pose const worldTtable;
   Pose const tableTworld;
+  Pose const robotTtable;
+  Pose const tableTrobot;
   Pose left_tool_offset_;  // TODO: should be const
   Pose right_tool_offset_;  // TODO: should be const
 
@@ -81,6 +82,7 @@ public:
   void followTrajectory(trajectory_msgs::JointTrajectory const& traj);
   void waitForNewState();
   void gotoHome();
+  void moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions);
   void moveInTableFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions);
   void moveInTableFrameJacobianIk(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions);
 
@@ -92,23 +94,23 @@ class VictorShim
 public:
   std::shared_ptr<VictorInterface> victor_;
 
-  ros::ServiceServer pause_srv_;
-  ros::ServiceServer unpause_srv_;
-  ros::ServiceServer reset_srv_;
-  ros::ServiceServer get_physics_properties_srv_;
-  ros::ServiceServer set_physics_properties_srv_;
-  ros::ServiceServer step_simulation_srv_;
+  // ros::ServiceServer pause_srv_;
+  // ros::ServiceServer unpause_srv_;
+  // ros::ServiceServer reset_srv_;
+  // ros::ServiceServer get_physics_properties_srv_;
+  // ros::ServiceServer set_physics_properties_srv_;
+  // ros::ServiceServer step_simulation_srv_;
 
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
-  ros::ServiceServer execute_action_srv_;
   ros::ServiceServer execute_traj_srv_;
+  
   VictorShim(ros::NodeHandle nh, ros::NodeHandle ph);
 
   // Victor control/exection
-  bool executeAction(peter_msgs::ExecuteAction::Request& req, peter_msgs::ExecuteAction::Response& res);
-  bool executeTrajectory(peter_msgs::LinkBotTrajectory::Request& req, peter_msgs::LinkBotTrajectory::Response& res);
+  bool executeTrajectory(peter_msgs::DualGripperTrajectory::Request& req,
+                         peter_msgs::DualGripperTrajectory::Response& res);
 };
 
 #endif  // VICTOR_SHIM_HPP

@@ -27,7 +27,7 @@ DualGripperPlugin::~DualGripperPlugin()
   private_ros_queue_thread_.join();
 }
 
-void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
+void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr /*sdf*/)
 {
   model_ = parent;
   world_ = parent->GetWorld();
@@ -81,7 +81,7 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   get_service_ = ros_node_.advertiseService(get_so);
   set_service_ = ros_node_.advertiseService(set_so);
   joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 10);
-  auto interrupt_callback = [this](std_msgs::EmptyConstPtr const &msg) { this->interrupted_ = true; };
+  auto interrupt_callback = [this](std_msgs::EmptyConstPtr const &/*msg*/) { this->interrupted_ = true; };
   interrupt_sub_ = ros_node_.subscribe<std_msgs::Empty>("interrupt_trajectory", 10, interrupt_callback);
   register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
   get_gripper1_service_ = ros_node_.advertiseService(get_gripper1_so);
@@ -105,7 +105,7 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     register_object_pub_.publish(register_object);
   }
 
-  auto update = [this](common::UpdateInfo const &info) { OnUpdate(); };
+  auto update = [this](common::UpdateInfo const &/*info*/) { OnUpdate(); };
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
 }
 
@@ -121,6 +121,7 @@ void DualGripperPlugin::OnUpdate()
       msg.effort.push_back(j->GetForce(0));
     }
   }
+  msg.header.stamp = ros::Time::now();
   joint_states_pub_.publish(msg);
 }
 
