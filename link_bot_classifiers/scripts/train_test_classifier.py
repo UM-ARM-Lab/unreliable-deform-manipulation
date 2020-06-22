@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 
 import link_bot_classifiers
+import rospy
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
 from link_bot_pycommon.pycommon import paths_to_json
@@ -15,14 +16,14 @@ from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
 
-limit_gpu_mem(3)
+limit_gpu_mem(10)
 
 
 def train_main(args, seed: int):
     ###############
     # Datasets
     ###############
-    train_dataset = ClassifierDataset(args.dataset_dirs)
+    train_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
     val_dataset = ClassifierDataset(args.dataset_dirs)
 
     ###############
@@ -111,7 +112,7 @@ def main():
     train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
-    train_parser.add_argument('--batch-size', type=int, default=64)
+    train_parser.add_argument('--batch-size', type=int, default=1)
     train_parser.add_argument('--take', type=int)
     train_parser.add_argument('--debug', action='store_true')
     train_parser.add_argument('--epochs', type=int, default=10)
@@ -128,7 +129,7 @@ def main():
     eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
-    eval_parser.add_argument('--batch-size', type=int, default=64)
+    eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.add_argument('--seed', type=int, default=None)
     eval_parser.set_defaults(func=eval_main)
@@ -142,6 +143,8 @@ def main():
     print("Using seed {}".format(seed))
     np.random.seed(seed)
     tf.random.set_seed(seed)
+
+    rospy.init_node("train_test_classifier")
 
     if args == argparse.Namespace():
         parser.print_usage()

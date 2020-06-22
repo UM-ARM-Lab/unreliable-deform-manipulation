@@ -100,7 +100,7 @@ def extent_to_center(extent_3d):
     return cx, cy, cz
 
 
-def environment_to_occupancy_msg(environment: Dict) -> OccupancyStamped:
+def environment_to_occupancy_msg(environment: Dict, frame: str = 'occupancy') -> OccupancyStamped:
     occupancy = Float32MultiArray()
     env = environment['env']
     # NOTE: The plugin assumes data is ordered [x,y,z] so tranpose here
@@ -114,7 +114,7 @@ def environment_to_occupancy_msg(environment: Dict) -> OccupancyStamped:
     msg.occupancy = occupancy
     msg.scale = environment['res']
     msg.header.stamp = rospy.Time.now()
-    msg.header.frame_id = 'occupancy'
+    msg.header.frame_id = frame
     return msg
 
 

@@ -7,7 +7,7 @@ from matplotlib import colors
 import geometry_msgs.msg
 import rospy
 import tf2_ros
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, TransformStamped
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -41,7 +41,7 @@ class Base3DScenario(ExperimentScenario):
         self.env_viz_pub.publish(msg)
 
     def send_occupancy_tf(self, data):
-        static_transformStamped = geometry_msgs.msg.TransformStamped()
+        static_transformStamped = TransformStamped()
         static_transformStamped.header.stamp = rospy.Time.now()
         static_transformStamped.header.frame_id = "world"
         static_transformStamped.child_frame_id = "occupancy"

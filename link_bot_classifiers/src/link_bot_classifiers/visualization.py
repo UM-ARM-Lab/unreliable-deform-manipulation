@@ -229,6 +229,17 @@ def trajectory_image(axes, image, actions=None, labels=None, accept_probabilitie
         axes[t].set_yticks([])
 
 
+def voxle_grid_to_cmap(voxel_grid, cmap=cm.viridis, binary_threshold=0.5):
+    h, w, c, n = voxel_grid.shape
+    new_image = np.zeros([h, w, c])
+    for channel_idx in range():
+        channel = np.take(state_image, indices=channel_idx, axis=-1)
+        color = cmap(channel_idx / n_channels)[:3]
+        rows, cols = np.where(channel > binary_threshold)
+        new_image[rows, cols] = color
+    return new_image
+
+
 def state_image_to_cmap(state_image: np.ndarray, cmap=cm.viridis, binary_threshold=0.1):
     h, w, n_channels = state_image.shape
     new_image = np.zeros([h, w, 3])
