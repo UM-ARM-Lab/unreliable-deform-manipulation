@@ -1,9 +1,9 @@
 {
   "extent": [
-    -0.3,
-    0.3,
-    -0.3,
-    0.3,
+    -0.75,
+    0.75,
+    -0.4,
+    0.4,
     0.0,
     0.6
   ],
@@ -12,8 +12,8 @@
     0.25,
     -0.25,
     0.25,
-    0.05,
-    0.50
+    0.25,
+    0.60
   ],
   "res": 0.03,
   "max_step_size": 0.002,
@@ -21,7 +21,7 @@
   "steps_per_traj": 25,
   "trajs_per_file": 16,
   "settling_time": 0.2,
-  "kinematic_objects": true,
+  "kinematic_objects": false,
   "no_objects": false,
   "max_dist_between_gripper_and_link": 0.022,
   "max_distance_gripper_can_move": 0.05,

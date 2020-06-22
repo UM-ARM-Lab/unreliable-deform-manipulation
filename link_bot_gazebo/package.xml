@@ -15,6 +15,7 @@
   <depend>trajectory_msgs</depend>
   <depend>moveit_msgs</depend>
   <depend>gazebo_msgs</depend>
+  <depend>control_msgs</depend>
   <depend>gazebo_ros</depend>
   <depend>sdf_tools</depend>
 

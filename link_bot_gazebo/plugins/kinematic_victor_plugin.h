@@ -1,7 +1,7 @@
 #pragma once
 
-#include <thread>
-
+#include <actionlib/server/simple_action_server.h>
+#include <control_msgs/FollowJointTrajectoryAction.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 
@@ -9,8 +9,11 @@
 #include <gazebo/common/Plugin.hh>
 #include <gazebo/common/Time.hh>
 #include <gazebo/physics/physics.hh>
+#include <thread>
 
 namespace gazebo {
+
+using TrajServer = actionlib::SimpleActionServer<control_msgs::FollowJointTrajectoryAction>;
 
 class KinematicVictorPlugin : public ModelPlugin {
  public:
@@ -18,7 +21,7 @@ class KinematicVictorPlugin : public ModelPlugin {
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
 
-  bool OnAction(peter_msgs::JointTrajRequest &req, peter_msgs::JointTrajResponse &res);
+  void FollowJointTrajectory(const TrajServer::GoalConstPtr &goal);
 
  private:
   void QueueThread();
@@ -31,17 +34,15 @@ class KinematicVictorPlugin : public ModelPlugin {
   physics::ModelPtr model_;
   physics::WorldPtr world_;
 
-  bool interrupted_{false};
-
   std::unique_ptr<ros::NodeHandle> private_ros_node_;
   ros::NodeHandle ros_node_;
   ros::CallbackQueue queue_;
   ros::CallbackQueue private_queue_;
   std::thread ros_queue_thread_;
   std::thread private_ros_queue_thread_;
-  ros::ServiceServer action_service_;
   ros::Publisher joint_states_pub_;
-  ros::Subscriber interrupt_sub_;
+
+  std::unique_ptr<TrajServer> follow_traj_server_;
 };
 
 }  // namespace gazebo

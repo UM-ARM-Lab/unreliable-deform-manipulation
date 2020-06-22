@@ -28,16 +28,6 @@
                 <name>victor</name>
                 <uri>model://victor</uri>
             </include>
-            <include>
-                <name>link_bot</name>
-                <pose>0.7 -1.184 1.252 0 0 0</pose>
-                <uri>model://short_rope_3d</uri>
-            </include>
-            <joint name="left_gripper_joint" type="fixed">
-                <parent>link_bot::head</parent>
-                <child>victor::victor_right_arm_link_7</child>
-                <pose>0.01 0.01 0.01 0 0 0</pose>
-            </joint>
         </model>
     </world>
 </sdf>

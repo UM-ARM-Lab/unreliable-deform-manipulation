@@ -37,16 +37,11 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
   }
 
-  auto pos_action_bind = [this](peter_msgs::JointTrajRequest &req, peter_msgs::JointTrajResponse &res) {
-    return OnAction(req, res);
-  };
-  auto action_so = create_service_options_private(peter_msgs::JointTraj, "joint_traj", pos_action_bind);
-
   private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
-  action_service_ = ros_node_.advertiseService(action_so);
   joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 10);
-  auto interrupt_callback = [this](std_msgs::EmptyConstPtr const &msg) { this->interrupted_ = true; };
-  interrupt_sub_ = ros_node_.subscribe<std_msgs::Empty>("interrupt_trajectory", 10, interrupt_callback);
+  auto execute = [this](const TrajServer::GoalConstPtr &goal) { this->FollowJointTrajectory(goal); };
+  follow_traj_server_ = std::make_unique<TrajServer>(*private_ros_node_, "follow_joint_trajectory", execute, false);
+  follow_traj_server_->start();
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
   private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
@@ -70,31 +65,30 @@ void KinematicVictorPlugin::OnUpdate()
   joint_states_pub_.publish(msg);
 }
 
-bool KinematicVictorPlugin::OnAction(peter_msgs::JointTrajRequest &req, peter_msgs::JointTrajResponse &res)
+void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr &goal)
 {
-  interrupted_ = false;
+  auto result = control_msgs::FollowJointTrajectoryResult();
+  result.error_code = control_msgs::FollowJointTrajectoryResult::SUCCESSFUL;
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
-  auto const steps = static_cast<unsigned int>(req.settling_time_seconds / seconds_per_step);
-  for (auto const &point : req.traj.points) {
-    for (auto pair : enumerate(req.traj.joint_names)) {
+  auto const settling_time_seconds = goal->goal_time_tolerance.toSec();
+  auto const steps = static_cast<unsigned int>(settling_time_seconds / seconds_per_step);
+  for (auto const &point : goal->trajectory.points) {
+    for (auto const &pair : enumerate(goal->trajectory.joint_names)) {
       auto const &[joint_idx, joint_name] = pair;
-      for (auto t{0}; t <= steps; ++t) {
-        world_->Step(1);
-        if (interrupted_) {
-          return true;
-        }
-      }
+      // Step the world
+      world_->Step(steps);
       auto joint = model_->GetJoint(joint_name);
       if (joint) {
         joint->SetPosition(0, point.positions[joint_idx]);
       }
       else {
-        gzerr << "Joint trajectory message set position for non-existent joint " << joint_name << "\n";
+        result.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_JOINTS;
+        follow_traj_server_->setSucceeded(result);
       }
     }
   }
-  return true;
-}  // namespace gazebo
+  follow_traj_server_->setSucceeded(result);
+}
 
 void KinematicVictorPlugin::QueueThread()
 {
