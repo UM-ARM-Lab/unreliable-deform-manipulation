@@ -5,7 +5,7 @@ import numpy as np
 import rospy
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_services import BaseServices
-from link_bot_pycommon.link_bot_sdf_utils import extent_to_center, extent_to_env_shape, env_from_occupancy_data
+from link_bot_pycommon.link_bot_sdf_utils import extent_to_center, extent_to_env_shape
 from peter_msgs.msg import LinkBotAction
 from peter_msgs.srv import ComputeOccupancyRequest, LinkBotTrajectoryRequest, Position3DEnable, GetPosition3D, Position3DAction
 from std_srvs.srv import Empty
@@ -150,14 +150,3 @@ def make_movable_object_services(object_name):
         'action': rospy.ServiceProxy(f'{object_name}/set', Position3DAction),
         'stop': rospy.ServiceProxy(f'{object_name}/stop', Empty),
     }
-
-
-def get_state_and_environment(classifier_model, scenario, service_provider):
-    full_env_data = ros_pycommon.get_occupancy_data(env_w_m=classifier_model.full_env_params.w,
-                                                    env_h_m=classifier_model.full_env_params.h,
-                                                    res=classifier_model.full_env_params.res,
-                                                    service_provider=service_provider,
-                                                    robot_name=scenario.robot_name())
-    environment = env_from_occupancy_data(full_env_data)
-    state_dict = get_states_dict(service_provider)
-    return environment, state_dict

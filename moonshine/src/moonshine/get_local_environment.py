@@ -30,12 +30,7 @@ def get_local_env_and_origin_3d_tf(center_point,
 
     batch_size = int(full_env.shape[0])
 
-    full_h_rows = int(full_env.shape[1])
-    full_w_cols = int(full_env.shape[2])
-    full_c_channels = int(full_env.shape[3])
-
     local_center = tf.stack([local_h_rows / 2, local_w_cols / 2, local_c_channels / 2], axis=0)
-    full_center = tf.stack([full_h_rows / 2, full_w_cols / 2, full_c_channels / 2], axis=0)
 
     center_cols = center_point[:, 0] / res + full_env_origin[:, 1]
     center_rows = center_point[:, 1] / res + full_env_origin[:, 0]
@@ -43,7 +38,7 @@ def get_local_env_and_origin_3d_tf(center_point,
 
     center_point_coordinates = tf.stack([center_rows, center_cols, center_channels], axis=1)
     local_env_origin = full_env_origin - center_point_coordinates + local_center
-    local_to_full_offset = tf.cast(full_center - local_env_origin, tf.int64)
+    local_to_full_offset = tf.cast(full_env_origin - local_env_origin, tf.int64)
 
     local_env_pixel_row_indices = tf.cast(tf.range(0, local_h_rows), dtype=tf.int64)
     local_env_pixel_col_indices = tf.cast(tf.range(0, local_w_cols), dtype=tf.int64)

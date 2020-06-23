@@ -1,10 +1,10 @@
-from typing import Optional, List, Tuple, Dict
+from typing import Dict
 
 import numpy as np
 import tensorflow as tf
-from colorama import Fore
 
 import rospy
+from geometry_msgs.msg import TransformStamped
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from std_msgs.msg import MultiArrayDimension, Float32MultiArray
 
@@ -118,6 +118,22 @@ def environment_to_occupancy_msg(environment: Dict, frame: str = 'occupancy') ->
     return msg
 
 
+def send_occupancy_tf(broadcaster, environment: Dict, frame: str = 'occupancy'):
+    static_transformStamped = TransformStamped()
+    static_transformStamped.header.stamp = rospy.Time.now()
+    static_transformStamped.header.frame_id = "world"
+    static_transformStamped.child_frame_id = frame
+    origin_x, origin_y, origin_z = idx_to_point_3d_in_env(0, 0, 0, environment)
+    static_transformStamped.transform.translation.x = origin_x
+    static_transformStamped.transform.translation.y = origin_y
+    static_transformStamped.transform.translation.z = origin_z
+    static_transformStamped.transform.rotation.x = 0
+    static_transformStamped.transform.rotation.y = 0
+    static_transformStamped.transform.rotation.z = 0
+    static_transformStamped.transform.rotation.w = 1
+    broadcaster.sendTransform(static_transformStamped)
+
+
 def compute_extent(rows: int,
                    cols: int,
                    resolution: float,
@@ -170,6 +186,7 @@ def point_to_idx(x: float,
     return row, col
 
 
+# TODO: remove
 class OccupancyData:
 
     def __init__(self,
@@ -196,95 +213,3 @@ class OccupancyData:
                              resolution=self.resolution,
                              origin=np.copy(self.origin))
         return copy
-
-
-def batch_occupancy_data(occupancy_data_s: List[OccupancyData]) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    data_s = []
-    res_s = []
-    origin_s = []
-    extent_s = []
-    for data in occupancy_data_s:
-        data_s.append(data.data)
-        res_s.append(data.resolution)
-        origin_s.append(data.origin)
-        extent_s.append(data.extent)
-
-    return np.array(data_s), np.array(res_s), np.array(origin_s), np.array(extent_s)
-
-
-def unbatch_occupancy_data(data: np.ndarray,
-                           resolution: np.ndarray,
-                           origin: np.ndarray) -> List[OccupancyData]:
-    batch_size = data.shape[0]
-    datas = []
-    for i in range(batch_size):
-        occupancy_data = OccupancyData(data[i], resolution[i], origin[i])
-        datas.append(occupancy_data)
-
-    return datas
-
-
-class SDF:
-
-    def __init__(self,
-                 sdf: np.ndarray,
-                 gradient: Optional[np.ndarray],
-                 resolution: np.ndarray,
-                 origin: np.ndarray):
-        self.sdf = sdf.astype(np.float32)
-        if gradient is not None:
-            self.gradient = gradient.astype(np.float32)
-        self.resolution = resolution.astype(np.float32)
-        # Origin means the indeces (row/col) of the world point (0, 0)
-        self.origin = origin.astype(np.float32)
-        self.extent = compute_extent(sdf.shape[0], sdf.shape[1], resolution, origin)
-        # NOTE: when displaying an SDF as an image, matplotlib assumes rows increase going down,
-        #  but rows correspond to y which increases going up
-        self.image = np.flipud(sdf)
-
-    def save(self, sdf_filename):
-        np.savez(sdf_filename,
-                 sdf=self.sdf,
-                 sdf_gradient=self.gradient,
-                 sdf_resolution=self.resolution,
-                 sdf_origin=self.origin)
-
-    @staticmethod
-    def load(filename):
-        with np.load(filename) as npz:
-            sdf = npz['sdf']
-            grad = npz['sdf_gradient']
-            res = npz['sdf_resolution'].reshape(2)
-            origin = npz['sdf_origin'].reshape(2)
-            return SDF(sdf=sdf, gradient=grad, resolution=res, origin=origin)
-
-    def __repr__(self):
-        return "SDF: size={}x{} origin=({},{}) resolution=({},{})".format(self.sdf.shape[0],
-                                                                          self.sdf.shape[1],
-                                                                          self.origin[0],
-                                                                          self.origin[1],
-                                                                          self.resolution[0],
-                                                                          self.resolution[1])
-
-
-def load_sdf(filename):
-    npz = np.load(filename)
-    sdf = npz['sdf']
-    grad = npz['sdf_gradient']
-    res = npz['sdf_resolution'].reshape(2)
-    if 'sdf_origin' in npz:
-        origin = npz['sdf_origin'].reshape(2)
-    else:
-        origin = np.array(sdf.shape, dtype=np.int32).reshape(2) // 2
-        print(Fore.YELLOW + "WARNING: sdf npz file does not specify its origin, assume origin {}".format(origin) + Fore.RESET)
-    return sdf, grad, res, origin
-
-
-def env_from_occupancy_data(occupancy_data: OccupancyData):
-    environment = {
-        'full_env/env': occupancy_data.data,
-        'full_env/origin': occupancy_data.origin,
-        'full_env/res': occupancy_data.resolution,
-        'full_env/extent': occupancy_data.extent,
-    }
-    return environment
