@@ -1,18 +1,26 @@
 import pathlib
+import struct
 from typing import Optional, Dict, List
 
 import numpy as np
+import tensorflow as tf
 from colorama import Fore
 from matplotlib import cm
 from matplotlib import pyplot as plt
 
+import rospy
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_data.visualization import plot_rope_configuration, plot_arrow
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.link_bot_sdf_utils import idx_to_point_3d_in_env
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify, dict_of_sequences_to_sequence_of_dicts, add_batch, remove_batch
+from mps_shape_completion_msgs.msg import OccupancyStamped
+from sensor_msgs import point_cloud2
+from sensor_msgs.msg import PointField
+from std_msgs.msg import Header
 
 
 def visualize_classifier_example_3d(scenario: ExperimentScenario,
@@ -229,15 +237,35 @@ def trajectory_image(axes, image, actions=None, labels=None, accept_probabilitie
         axes[t].set_yticks([])
 
 
-def voxle_grid_to_cmap(voxel_grid, cmap=cm.viridis, binary_threshold=0.5):
-    h, w, c, n = voxel_grid.shape
-    new_image = np.zeros([h, w, c])
-    for channel_idx in range():
-        channel = np.take(state_image, indices=channel_idx, axis=-1)
-        color = cmap(channel_idx / n_channels)[:3]
-        rows, cols = np.where(channel > binary_threshold)
-        new_image[rows, cols] = color
-    return new_image
+def voxel_grid_to_colored_point_cloud(voxel_grids, environment, frame: str, cmap=cm.viridis, binary_threshold=0.5):
+    h, w, c, n = voxel_grids.shape
+    points = []
+    for idx in range(n):
+        voxel_grid = voxel_grids[:, :, :, idx]
+        r, g, b = cmap(idx / n)[:3]
+        r = int(255 * r)
+        g = int(255 * g)
+        b = int(255 * b)
+        a = 255
+        # row, col, channel
+        indices = tf.where(voxel_grid > binary_threshold).numpy()
+        for row, col, channel in indices:
+            x, y, z = idx_to_point_3d_in_env(row, col, channel, environment)
+            rgb = struct.unpack('I', struct.pack('BBBB', b, g, r, a))[0]
+            pt = [x, y, z, rgb]
+            points.append(pt)
+
+    header = Header()
+    header.frame_id = frame
+    header.stamp = rospy.Time.now()
+    fields = [PointField('x', 0, PointField.FLOAT32, 1),
+              PointField('y', 4, PointField.FLOAT32, 1),
+              PointField('z', 8, PointField.FLOAT32, 1),
+              PointField('rgb', 12, PointField.UINT32, 1)]
+
+    msg = point_cloud2.create_cloud(header, fields, points)
+
+    return msg
 
 
 def state_image_to_cmap(state_image: np.ndarray, cmap=cm.viridis, binary_threshold=0.1):

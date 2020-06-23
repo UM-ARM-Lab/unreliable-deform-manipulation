@@ -21,7 +21,6 @@ class Test(unittest.TestCase):
         k = 100000
         batch_size = state.shape[0]
 
-        # image = raster_3d_np(state, res, origin, h, w, c, k, batch_size)
         image = raster_3d(state, res, origin, h, w, c, k, batch_size)
 
         self.assertAlmostEqual(image[0, 0, 0, 0, 0].numpy(), 0)

@@ -10,9 +10,7 @@ from colorama import Fore
 from tensorflow import keras
 
 import rospy
-from geometry_msgs.msg import TransformStamped
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_classifiers.visualization import visualize_classifier_example_3d
 from link_bot_data.link_bot_dataset_utils import add_predicted, NULL_PAD_VALUE
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
@@ -24,10 +22,11 @@ from moonshine import classifier_losses_and_metrics
 from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
 from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, flatten_batch_and_time, \
-    sequence_of_dicts_to_dict_of_sequences, remove_batch, index_dict_of_batched_vectors_tf
+    sequence_of_dicts_to_dict_of_sequences, remove_batch
 from moonshine.raster_3d import raster_3d
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from shape_completion_training.my_keras_model import MyKerasModel
+from visualization_msgs.msg import Marker
 
 
 class NNClassifier(MyKerasModel):
@@ -36,6 +35,7 @@ class NNClassifier(MyKerasModel):
         self.scenario = scenario
 
         self.debug_pub = rospy.Publisher('classifier_debug', OccupancyStamped, queue_size=10, latch=True)
+        self.debug_pub2 = rospy.Publisher('classifier_debug2', Marker, queue_size=10, latch=True)
 
         self.classifier_dataset_hparams = self.hparams['classifier_dataset_hparams']
         self.dynamics_dataset_hparams = self.classifier_dataset_hparams['fwd_model_hparams']['dynamics_dataset_hparams']
@@ -90,9 +90,12 @@ class NNClassifier(MyKerasModel):
         states_dict_batch_time = flatten_batch_and_time(transposed_states_dict)
 
         local_env_center_point_batch_time = self.scenario.local_environment_center_differentiable(states_dict_batch_time)
+
+        # self.debug2(local_env_center_point_batch_time, time)
+
         voxel_grids_batch_and_time, local_env_origins_batch_and_time = self.make_traj_voxel_grids(
             environment=self.scenario.get_environment_from_example(input_dict),
-            states_dict_batch_time=states_dict_batch_time,
+            predicted_state_batch_time=states_dict_batch_time,
             local_env_center_point_batch_time=local_env_center_point_batch_time,
             batch_size=batch_size,
             time=time)
@@ -106,10 +109,9 @@ class NNClassifier(MyKerasModel):
     def calculate_metrics(self, dataset_element, outputs):
         return binary_classification_sequence_metrics_function(dataset_element, outputs)
 
-    # @tf.function
     def make_traj_voxel_grids(self,
                               environment,
-                              states_dict_batch_time,
+                              predicted_state_batch_time,
                               local_env_center_point_batch_time,
                               batch_size,
                               time):
@@ -127,11 +129,12 @@ class NNClassifier(MyKerasModel):
                                                                           res=env_res_batch_time,
                                                                           local_h_rows=self.local_env_h_rows,
                                                                           local_w_cols=self.local_env_w_cols,
-                                                                          local_c_channels=self.local_env_c_channels)
+                                                                          local_c_channels=self.local_env_c_channels,
+                                                                          batch_size=batch_and_time)
 
         concat_args = []
-        for planned_state in states_dict_batch_time.values():
-            planned_rope_voxel_grid = raster_3d(state=planned_state,
+        for predicted_state in predicted_state_batch_time.values():
+            planned_rope_voxel_grid = raster_3d(state=predicted_state,
                                                 res=env_res_batch_time,
                                                 origin=local_env_origin_batch_time,
                                                 h=self.local_env_h_rows,
@@ -152,77 +155,104 @@ class NNClassifier(MyKerasModel):
             conv_h = conv_layer(conv_z)
             conv_z = pool_layer(conv_h)
         out_conv_z = conv_z
-        out_conv_z = tf.reshape(out_conv_z, [time, batch_size, -1])
         # un-merge batch & time dimensions
+        out_conv_z_dim = out_conv_z.shape[1] * out_conv_z.shape[2] * out_conv_z.shape[3] * out_conv_z.shape[4]
+        out_conv_z = tf.reshape(out_conv_z, [time, batch_size, out_conv_z_dim])
 
         return out_conv_z
 
     def debug_plot(self, input_dict, voxel_grids, local_env_origins, time):
         # plot the occupancy grid
-        debug_env = tf.clip_by_value(tf.reduce_sum(voxel_grids, axis=5), 0, 1)
-        time_steps = np.arange(voxel_grids.shape[1])
+        input_dict.pop('batch_size')
+        time_steps = np.arange(time)
         anim = RvizAnimationController(time_steps)
         b = 0
+        full_env = {
+            'env': input_dict['env'][b],
+            'res': input_dict['res'][b],
+            'origin': input_dict['origin'][b],
+        }
+        self.scenario.plot_environment_rviz(full_env)
         while not anim.done:
             t = anim.t()
             environment = {
-                'env': debug_env[b, t],
+                'env': tf.cast(tf.reduce_any(voxel_grids[b, t] > 0.5, axis=3), tf.float32),
                 'res': input_dict['res'][b],
                 'origin': local_env_origins[b, t],
             }
 
-            static_transformStamped = TransformStamped()
-            static_transformStamped.header.stamp = rospy.Time.now()
-            static_transformStamped.header.frame_id = "world"
-            static_transformStamped.child_frame_id = "local_occupancy"
-            origin_x, origin_y, origin_z = link_bot_sdf_utils.idx_to_point_3d_in_env(0, 0, 0, environment)
-            static_transformStamped.transform.translation.x = origin_x
-            static_transformStamped.transform.translation.y = origin_y
-            static_transformStamped.transform.translation.z = origin_z
-            static_transformStamped.transform.rotation.x = 0
-            static_transformStamped.transform.rotation.y = 0
-            static_transformStamped.transform.rotation.z = 0
-            static_transformStamped.transform.rotation.w = 1
-            self.scenario.broadcaster.sendTransform(static_transformStamped)
-
+            # msg = voxel_grid_to_colored_point_cloud(voxel_grids[b, t], environment, frame='world')
             msg = environment_to_occupancy_msg(environment, frame='local_occupancy')
+            link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, environment, frame='local_occupancy')
             self.debug_pub.publish(msg)
+
+            actual_t = remove_batch(self.scenario.index_state_time(input_dict, t))
+            pred_t = remove_batch(self.scenario.index_predicted_state_time(input_dict, t))
+            action_t = remove_batch(self.scenario.index_action_time(input_dict, t))
+            label_t = remove_batch(self.scenario.index_label_time(input_dict, t)).numpy()
+            self.scenario.plot_state_rviz(actual_t, label='actual', color='#ff0000aa')
+            self.scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffaa')
+            state_action_t = {}
+            state_action_t.update(actual_t)
+            state_action_t.update(action_t)
+            self.scenario.plot_action_rviz(state_action_t)
+            self.scenario.plot_is_close(label_t)
 
             # this will return when either the animation is "playing" or because the user stepped forward
             anim.step()
 
-        input_dict.pop('batch_size')
-        visualize_classifier_example_3d(scenario=self.scenario,
-                                        example=index_dict_of_batched_vectors_tf(input_dict, 0),
-                                        n_time_steps=time)
+    def debug2(self, local_env_center_point_batch_time, time):
+        for i in range(time):
+            # for i in range(1):
+            m = Marker()
+            m.action = Marker.ADD
+            m.header.frame_id = 'world'
+            m.type = Marker.CUBE
+            m.scale.x = 0.01
+            m.scale.y = 0.01
+            m.scale.z = 0.01
+            m.id = i
+            m.pose.position.x = local_env_center_point_batch_time[i, 0]
+            m.pose.position.y = local_env_center_point_batch_time[i, 1]
+            m.pose.position.z = local_env_center_point_batch_time[i, 2]
+            m.pose.orientation.w = 1
+            m.color.r = 255
+            m.color.g = 255
+            m.color.a = 255
+            self.debug_pub2.publish(m)
 
-    # @tf.function
+    @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
-        # FIXME: how to get time/batch size without just knowing a using key that happens to have the right shape?
+        # FIXME: using  input_dict['batch_size'] breaks when decorated with tf.function!?
         batch_size = input_dict['batch_size']
         time = input_dict['time'][0]
-        voxel_grids_batch_and_time, local_env_origins_batch_and_time = self.make_traj_voxel_grids_from_input_dict(input_dict, batch_size, time)
 
-        voxel_grids = tf.reshape(voxel_grids_batch_and_time, [time, batch_size, self.local_env_h_rows, self.local_env_w_cols, self.local_env_c_channels, -1])
+        voxel_grids_batch_and_time, local_env_origins_batch_and_time = self.make_traj_voxel_grids_from_input_dict(input_dict,
+                                                                                                                  batch_size,
+                                                                                                                  time)
+
+        voxel_grids = tf.reshape(voxel_grids_batch_and_time,
+                                 [time, batch_size, self.local_env_h_rows, self.local_env_w_cols, self.local_env_c_channels, -1])
         local_env_origins = tf.reshape(local_env_origins_batch_and_time, [time, batch_size, 3])
         local_env_origins = tf.transpose(local_env_origins, [1, 0, 2])  # undo transpose
         voxel_grids = tf.transpose(voxel_grids, [1, 0, 2, 3, 4, 5])  # undo transpose
         conv_output = self._conv(voxel_grids_batch_and_time, time, batch_size)
         conv_output = tf.transpose(conv_output, [1, 0, 2])  # undo transpose
 
+        # uncomment to debug, also comment out the tf.function's
+        # self.debug_plot(input_dict, voxel_grids, local_env_origins, time)
+
         states = {k: input_dict[add_predicted(k)] for k in self.state_keys}
         states = self.scenario.put_state_local_frame(states)
         actions = {k: input_dict[k] for k in self.action_keys}
         all_but_last_states = {k: v[:, :-1] for k, v in states.items()}
         actions = self.scenario.put_action_local_frame(all_but_last_states, actions)
-        concat_args = [conv_output] + list(states.values()) + list(actions.values())
+        padded_actions = {k: tf.pad(v, [[0, 0], [0, 1], [0, 0]]) for k, v in actions.items()}
+        concat_args = [conv_output] + list(states.values()) + list(padded_actions.values())
 
         if self.hparams['stdev']:
             stdevs = input_dict[add_predicted('stdev')]
             concat_args.append(stdevs)
-
-        # uncomment to debug, also comment out the tf.function's
-        self.debug_plot(input_dict, voxel_grids, local_env_origins, time)
 
         conv_output = tf.concat(concat_args, axis=2)
 

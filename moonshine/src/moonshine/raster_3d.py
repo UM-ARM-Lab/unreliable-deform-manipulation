@@ -4,6 +4,7 @@ import tensorflow as tf
 from link_bot_pycommon.link_bot_sdf_utils import idx_to_point_3d
 
 
+# TODO if meshgrid is slow, we can pull out the construction of the pixel coordinates (or memoize?)
 def raster_3d(state, res, origin, h, w, c, k, batch_size: int):
     res = res[0]
     n_points = int(int(state.shape[1]) / 3)
@@ -20,7 +21,7 @@ def raster_3d(state, res, origin, h, w, c, k, batch_size: int):
     #             pixel_value = np.exp(-k * squared_distance)
     #             rope_images[batch_index, row, col, channel, point_idx] += pixel_value
 
-    points_y_x_z = tf.stack([points[:, :, 0], points[:, :, 1], points[:, :, 2]], axis=2)
+    points_y_x_z = tf.stack([points[:, :, 1], points[:, :, 0], points[:, :, 2]], axis=2)
     tiled_points_y_x_z = points_y_x_z[:, tf.newaxis, tf.newaxis, tf.newaxis]
     tiled_points_y_x_z = tf.tile(tiled_points_y_x_z, [1, h, w, c, 1, 1])
     # swap x and y
@@ -43,7 +44,7 @@ def raster_3d(state, res, origin, h, w, c, k, batch_size: int):
 
     squared_distances = tf.reduce_sum(tf.square(pixel_centers_y_x_z - tiled_points_y_x_z), axis=5)
     pixel_values = tf.exp(-k * squared_distances)
-    rope_images = tf.reshape(pixel_values, [batch_size, h, w, c, n_points])
+    rope_images = tf.transpose(tf.reshape(pixel_values, [batch_size, h, w, c, n_points]), [0, 2, 1, 3, 4])
     return rope_images
 
 

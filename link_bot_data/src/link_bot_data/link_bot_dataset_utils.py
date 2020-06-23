@@ -109,7 +109,7 @@ def flatten_concat_pairs(ex_pos, ex_neg):
 
 def batch_tf_dataset(dataset: tf.data.Dataset, batch_size: int, drop_remainder: bool = True):
     def _add_batch(example: Dict):
-        example['batch_size'] = batch_size
+        example['batch_size'] = tf.cast(batch_size, tf.int64)
         return example
 
     dataset = dataset.batch(batch_size, drop_remainder=drop_remainder)

@@ -104,16 +104,15 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     @staticmethod
     def put_state_local_frame(state: Dict):
-        rope_vector = state['link_bot']
-        rope_points = tf.reshape(rope_vector, [rope_vector.shape[0], -1, 3])
-        center = tf.reduce_mean(rope_points, axis=1)
+        rope = state['link_bot']
+        rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
+        rope_points = tf.reshape(rope, rope_points_shape)
+
+        center = tf.reduce_mean(rope_points, axis=-2)
 
         gripper1_local = state['gripper1'] - center
         gripper2_local = state['gripper2'] - center
 
-        rope = state['link_bot']
-        rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
-        rope_points = tf.reshape(rope, rope_points_shape)
         rope_points_local = rope_points - tf.expand_dims(center, axis=-2)
         rope_local = tf.reshape(rope_points_local, rope.shape)
 

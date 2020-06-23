@@ -10,7 +10,8 @@ def get_local_env_and_origin_3d_tf(center_point,
                                    res,
                                    local_h_rows: int,
                                    local_w_cols: int,
-                                   local_c_channels: int):
+                                   local_c_channels: int,
+                                   batch_size: int):
     """
     :param center_point: [batch, 3]
     :param full_env: [batch, h, w, c]
@@ -27,8 +28,6 @@ def get_local_env_and_origin_3d_tf(center_point,
     local_c_channels = tf.convert_to_tensor(local_c_channels, dtype=tf.float32)
 
     full_env_origin = tf.convert_to_tensor(full_env_origin, dtype=tf.float32)
-
-    batch_size = int(full_env.shape[0])
 
     local_center = tf.stack([local_h_rows / 2, local_w_cols / 2, local_c_channels / 2], axis=0)
 
