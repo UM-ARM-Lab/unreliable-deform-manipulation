@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import rospy
-from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from geometry_msgs.msg import Vector3
 from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_predicted
@@ -19,6 +18,7 @@ from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Positi
 class ExperimentScenario:
     def __init__(self, params: Dict):
         self.params = params
+        from gazebo_msgs.srv import SetModelState, SetModelStateRequest
         self.gz_set_state_srv = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
 
     def __eq__(self, other):
@@ -406,6 +406,7 @@ class ExperimentScenario:
         return ExperimentScenario.move_objects(movable_objects_services, object_moves)
 
     def move_objects_kinematic(self, movable_objects_services: Dict, object_moves: Dict):
+        from gazebo_msgs.srv import SetModelState, SetModelStateRequest
         del movable_objects_services
         for object_name, move in object_moves.items():
             state_req = SetModelStateRequest()
