@@ -145,7 +145,7 @@ class Base3DScenario(ExperimentScenario):
         time_steps = np.arange(len(actual_states))
         self.plot_environment_rviz(environment)
 
-        anim = RvizAnimationController(time_steps, start_playing=False)
+        anim = RvizAnimationController(time_steps, start_playing=True)
 
         while not anim.done:
             t = anim.t()
