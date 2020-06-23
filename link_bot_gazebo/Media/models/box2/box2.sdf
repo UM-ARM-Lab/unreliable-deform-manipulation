@@ -37,14 +37,14 @@
                         <contact>
                             <ode>
                                 <kp>1e15</kp>
-                                <kd>1e11</kd>
+                                <kd>1e12</kd>
                             </ode>
                         </contact>
                     </surface>
                 </collision>
             </link>
             <plugin name="position_3d_plugin" filename="libposition_3d_plugin.so">
-                <kP_pos>15</kP_pos>
+                <kP_pos>35</kP_pos>
                 <kI_pos>0.0</kI_pos>
                 <kD_pos>0.0</kD_pos>
                 <kP_vel>100.0</kP_vel>

@@ -43,6 +43,8 @@ def collect_trajectory(scenario: ExperimentScenario,
                                                                   service_provider=service_provider,
                                                                   robot_name=scenario.robot_name())
 
+    scenario.plot_environment_rviz(environment)
+
     feature = dict_of_float_tensors_to_bytes_feature(environment)
     feature['traj_idx'] = float_tensor_to_bytes_feature(traj_idx)
 

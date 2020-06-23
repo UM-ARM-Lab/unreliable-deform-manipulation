@@ -17,7 +17,7 @@
         <physics name="ode" type="ode">
             <ode>
                 <constraints>
-                    <contact_max_correcting_vel>0</contact_max_correcting_vel>
+                    <contact_max_correcting_vel>0.1</contact_max_correcting_vel>
                 </constraints>
             </ode>
         </physics>

@@ -392,7 +392,7 @@ class ExperimentScenario:
             ExperimentScenario.move_objects(movable_objects_services, random_object_positions)
 
     @staticmethod
-    def move_objects_to_positions(movable_objects_services: Dict, object_positions: Dict, timeout: float = 5.0):
+    def move_objects_to_positions(movable_objects_services: Dict, object_positions: Dict, timeout: float = 10.0):
         object_moves = {}
         for name, (x, y) in object_positions.items():
             position = Vector3()
