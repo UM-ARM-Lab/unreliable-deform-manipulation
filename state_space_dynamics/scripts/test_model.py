@@ -5,7 +5,6 @@ import pathlib
 
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 
 import rospy
 from link_bot_classifiers.analysis_utils import predict, execute
@@ -15,8 +14,7 @@ from link_bot_pycommon.pycommon import make_dict_tf_float32
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, remove_batch, add_batch, numpify, \
-    sequence_of_dicts_to_dict_of_tensors
+from moonshine.moonshine_utils import numpify
 from state_space_dynamics import model_utils
 
 limit_gpu_mem(1)
@@ -54,18 +52,18 @@ def main():
                                                  robot_name=fwd_model.scenario.robot_name())
     start_state = fwd_model.scenario.get_state()
     start_state = make_dict_tf_float32(start_state)
-    start_states = {k: v[tf.newaxis, :] for k, v in start_state.items()}
-    actions_dict = make_dict_tf_float32(sequence_of_dicts_to_dict_of_tensors(actions))
-    expanded_actions = {k: v[tf.newaxis, tf.newaxis, :] for k, v in actions_dict.items()}
+    start_states = [start_state]
+    expanded_actions = [[actions]]
     predicted_states = predict(fwd_model, environment, start_states, expanded_actions, n_actions, 1, 1)
 
     scenario = fwd_model.scenario
-    actual_states_lists = execute(service_provider, scenario, start_states, expanded_actions, 1, 1)
-    predicted_states_list = dict_of_sequences_to_sequence_of_dicts(predicted_states)
-    predicted_states_lists = [dict_of_sequences_to_sequence_of_dicts(p) for p in predicted_states_list]
+    actual_states_lists = execute(service_provider, scenario, start_states, expanded_actions)
 
-    # cheap visualization here
-    for actual_states_list, predicted_states_list in zip(actual_states_lists, predicted_states_lists):
+    visualize(actual_states_lists, environment, labeling_state_key, predicted_states, scenario, time_steps)
+
+
+def visualize(actual_states_lists, environment, labeling_state_key, predicted_states, scenario, time_steps):
+    for actual_states_list, predicted_states_list in zip(actual_states_lists, predicted_states):
         for actual_states, predicted_states in zip(actual_states_list, predicted_states_list):
             scenario.plot_environment_rviz(environment)
 
@@ -73,8 +71,8 @@ def main():
 
             while not anim.done:
                 t = anim.t()
-                s_t = remove_batch(scenario.index_state_time(add_batch(actual_states), t))
-                s_t_pred = remove_batch(scenario.index_state_time(add_batch(predicted_states), t))
+                s_t = actual_states[t]
+                s_t_pred = predicted_states[t]
                 scenario.plot_state_rviz(s_t, label='actual', color='#ff0000aa')
                 scenario.plot_state_rviz(s_t_pred, label='predicted', color='#0000ffaa')
 

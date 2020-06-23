@@ -26,6 +26,7 @@ from std_msgs.msg import Header
 def visualize_classifier_example_3d(scenario: ExperimentScenario,
                                     example: Dict,
                                     n_time_steps: int):
+    #TODO: de-duplicate this
     time_steps = np.arange(n_time_steps)
     scenario.plot_environment_rviz(example)
     anim = RvizAnimationController(time_steps)
@@ -37,10 +38,7 @@ def visualize_classifier_example_3d(scenario: ExperimentScenario,
         label_t = remove_batch(scenario.index_label_time(add_batch(example), t)).numpy()
         scenario.plot_state_rviz(actual_t, label='actual', color='#ff0000aa')
         scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffaa')
-        state_action_t = {}
-        state_action_t.update(actual_t)
-        state_action_t.update(action_t)
-        scenario.plot_action_rviz(state_action_t)
+        scenario.plot_action_rviz(actual_t, action_t)
         scenario.plot_is_close(label_t)
 
         # this will return when either the animation is "playing" or because the user stepped forward

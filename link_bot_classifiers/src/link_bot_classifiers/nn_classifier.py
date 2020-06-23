@@ -14,7 +14,6 @@ from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import add_predicted, NULL_PAD_VALUE
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
 from link_bot_pycommon.pycommon import make_dict_float32
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
@@ -192,10 +191,7 @@ class NNClassifier(MyKerasModel):
             label_t = remove_batch(self.scenario.index_label_time(input_dict, t)).numpy()
             self.scenario.plot_state_rviz(actual_t, label='actual', color='#ff0000aa')
             self.scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffaa')
-            state_action_t = {}
-            state_action_t.update(actual_t)
-            state_action_t.update(action_t)
-            self.scenario.plot_action_rviz(state_action_t)
+            self.scenario.plot_action_rviz(actual_t, action_t)
             self.scenario.plot_is_close(label_t)
 
             # this will return when either the animation is "playing" or because the user stepped forward
@@ -287,7 +283,7 @@ class NNClassifier(MyKerasModel):
 
 class NNClassifierWrapper(BaseConstraintChecker):
 
-    def __init__(self, path: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
+    def __init__(self, path: pathlib.Path, batch_size: int, scenario: Base3DScenario):
         super().__init__(scenario)
         model_hparams_file = path / 'hparams.json'
         if not model_hparams_file.exists():
@@ -297,8 +293,8 @@ class NNClassifierWrapper(BaseConstraintChecker):
         self.model_hparams = json.load(model_hparams_file.open('r'))
         self.dataset_labeling_params = self.model_hparams['classifier_dataset_hparams']['labeling_params']
         self.horizon = self.dataset_labeling_params['classifier_horizon']
-        self.net = NNClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
-        self.ckpt = tf.train.Checkpoint(model=self.net)
+        self.model = NNClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
+        self.ckpt = tf.train.Checkpoint(model=self.model)
         self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
 
         status = self.ckpt.restore(self.manager.latest_checkpoint)
@@ -319,14 +315,14 @@ class NNClassifierWrapper(BaseConstraintChecker):
         }
         net_inputs.update(environment)
 
-        if self.net.hparams['stdev']:
+        if self.model.hparams['stdev']:
             net_inputs[add_predicted('stdev')] = tf.convert_to_tensor(predictions['stdev'], tf.float32)
 
-        for state_key in self.net.state_keys:
+        for state_key in self.model.state_keys:
             planned_state_key = add_predicted(state_key)
             net_inputs[planned_state_key] = tf.convert_to_tensor(predictions[state_key], tf.float32)
 
-        predictions = self.net(net_inputs, training=False)
+        predictions = self.model(net_inputs, training=False)
         accept_probabilities = tf.squeeze(predictions['probabilities'], axis=2)
         return accept_probabilities
 
@@ -342,14 +338,14 @@ class NNClassifierWrapper(BaseConstraintChecker):
         }
         net_inputs.update(environment)
 
-        if self.net.hparams['stdev']:
+        if self.model.hparams['stdev']:
             net_inputs[add_predicted('stdev')] = tf.convert_to_tensor(states_sequences_dict['stdev'], tf.float32)
 
-        for state_key in self.net.state_keys:
+        for state_key in self.model.state_keys:
             planned_state_key = add_predicted(state_key)
             net_inputs[planned_state_key] = tf.convert_to_tensor(states_sequences_dict[state_key], tf.float32)
 
-        predictions = remove_batch(self.net(add_batch(net_inputs), training=False))
+        predictions = remove_batch(self.model(add_batch(net_inputs), training=False))
         accept_probabilities = tf.squeeze(predictions['probabilities'], axis=1)
         return accept_probabilities
 

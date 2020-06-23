@@ -76,10 +76,13 @@ class ExperimentScenario:
     def plot_state_rviz(self, data: Dict, label: str, **kwargs):
         raise NotImplementedError()
 
-    def plot_action_rviz(self, data: Dict, **kwargs):
+    def plot_action_rviz(self, state: Dict, action: Dict, **kwargs):
         raise NotImplementedError()
 
     def plot_is_close(self, label_t):
+        raise NotImplementedError()
+
+    def animate_rviz(self, environment, actual_states, predicted_states, actions, labels, accept_probabilities):
         raise NotImplementedError()
 
     @staticmethod

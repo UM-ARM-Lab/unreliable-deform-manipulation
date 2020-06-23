@@ -137,12 +137,9 @@ def viz(data_filename, fps, no_plot, save):
                     prediction_t = scenario.index_state_time(predictions, t)
                     actual_t = scenario.index_state_time(dataset_element, t)
                     action_t = scenario.index_action_time(actions, t)
-                    state_action_t = {}
-                    state_action_t.update(prediction_t)
-                    state_action_t.update(action_t)
                     scenario.plot_state_rviz(prediction_t, label='prediction', color='#ff0000aa')
                     scenario.plot_state_rviz(actual_t, label='actual', color='#0000ff88')
-                    scenario.plot_action_rviz(state_action_t, color='gray')
+                    scenario.plot_action_rviz(actual_t, action_t, color='gray')
                     anim.step()
 
     metrics_by_model = {}

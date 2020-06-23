@@ -1,11 +1,113 @@
 {
   "extent": [
-    -0.5,
-    1,
-    -0.5,
-    1,
-    0,
-    1
+    -0.75,
+    0.75,
+    -0.4,
+    0.4,
+    0.0,
+    0.6
   ],
-  "object_positions": {}
+  "fwd_model_dirs": [
+    "dy_trials/dual_no_obs2_ensemble/0/best_checkpoint",
+    "dy_trials/dual_no_obs2_ensemble/1/best_checkpoint"
+  ],
+  "classifier_model_dir": "trials/dual_obs3/June_23_02-45-42_0d1154c025/best_checkpoint",
+  "actions": [
+    {
+      "gripper1_position": [
+        0.0,
+        0.0,
+        0.11
+      ],
+      "gripper2_position": [
+        0.2,
+        0.0,
+        0.11
+      ]
+    },
+    {
+      "gripper1_position": [
+        0.0,
+        0.0,
+        0.14
+      ],
+      "gripper2_position": [
+        0.2,
+        0.0,
+        0.14
+      ]
+    },
+    {
+      "gripper1_position": [
+        0.0,
+        0.0,
+        0.17
+      ],
+      "gripper2_position": [
+        0.2,
+        0.0,
+        0.17
+      ]
+    },
+    {
+      "gripper1_position": [
+        0.0,
+        0.0,
+        0.19
+      ],
+      "gripper2_position": [
+        0.2,
+        0.0,
+        0.19
+      ]
+    },
+    {
+      "gripper1_position": [
+        0.0,
+        0.0,
+        0.21
+      ],
+      "gripper2_position": [
+        0.2,
+        0.0,
+        0.21
+      ]
+    },
+    {
+      "gripper1_position": [
+        0.0,
+        0.0,
+        0.23
+      ],
+      "gripper2_position": [
+        0.2,
+        0.0,
+        0.23
+      ]
+    },
+    {
+      "gripper1_position": [
+        0.0,
+        0.0,
+        0.25
+      ],
+      "gripper2_position": [
+        0.2,
+        0.0,
+        0.25
+      ]
+    },
+    {
+      "gripper1_position": [
+        0.0,
+        0.0,
+        0.27
+      ],
+      "gripper2_position": [
+        0.2,
+        0.0,
+        0.27
+      ]
+    }
+  ]
 }

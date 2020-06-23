@@ -4,6 +4,7 @@
 #include <rviz/panel.h>
 #include <rviz/rviz_export.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Float32.h>
 
 #include <QObject>
 #include <QWidget>
@@ -20,6 +21,7 @@ class MerrrtWidget : public rviz::Panel {
   explicit MerrrtWidget(QWidget *parent = nullptr);
 
   void BoolCallback(const std_msgs::Bool::ConstPtr &msg);
+  void OnAcceptProbability(const std_msgs::Float32::ConstPtr &msg);
 
   void load(const rviz::Config &config) override;
   void save(rviz::Config config) const override;
@@ -30,6 +32,7 @@ class MerrrtWidget : public rviz::Panel {
   Ui_MerrrtWidget ui;
   ros::NodeHandle ros_node_;
   ros::Subscriber bool_sub_;
+  ros::Subscriber accept_probability_sub_;
 };
 
 } // namespace merrrt_widget

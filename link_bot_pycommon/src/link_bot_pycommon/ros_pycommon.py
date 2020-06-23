@@ -55,8 +55,8 @@ def get_environment_for_extents_3d(extent,
     x_min = extent[0]
     y_min = extent[2]
     z_min = extent[4]
-    origin_row = - x_min / res
-    origin_col = -y_min / res
+    origin_row = -y_min / res
+    origin_col = -x_min / res
     origin_channel = -z_min / res
     origin = np.array([origin_row, origin_col, origin_channel], np.int32)
     return {

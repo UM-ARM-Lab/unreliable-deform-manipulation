@@ -130,6 +130,7 @@ def main():
     generate_parser = subparsers.add_parser('generate')
     generate_parser.add_argument('test_params', help="json file describing the test", type=pathlib.Path)
     generate_parser.add_argument("fwd_model_dir", help="load this saved forward model file", type=pathlib.Path, nargs='+')
+    generate_parser.add_argument("classifier_model_dir", help="classifier model", type=pathlib.Path, nargs='+')
     generate_parser.add_argument('--n-actions-sampled', type=int, default=25, help='n actions sampled')
     generate_parser.add_argument('--action-sequence-length', type=int, default=1, help='action sequence length')
     generate_parser.set_defaults(func=test_params)

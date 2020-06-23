@@ -11,10 +11,11 @@ from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
 from mps_shape_completion_msgs.msg import OccupancyStamped
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float32
 from visualization_msgs.msg import MarkerArray, Marker
 
 
@@ -25,6 +26,7 @@ class Base3DScenario(ExperimentScenario):
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10, latch=True)
         self.label_viz_pub = rospy.Publisher("mybool", Bool, queue_size=10, latch=True)
+        self.accept_probability_viz_pub = rospy.Publisher("accept_probability_viz", Float32, queue_size=10, latch=True)
         self.broadcaster = tf2_ros.StaticTransformBroadcaster()
 
     @staticmethod
@@ -109,7 +111,13 @@ class Base3DScenario(ExperimentScenario):
         msg.markers.append(lines)
         self.state_viz_pub.publish(msg)
 
-    def plot_action_rviz(self, data: Dict, **kwargs):
+    def plot_action_rviz(self, state: Dict, action: Dict, **kwargs):
+        state_action = {}
+        state_action.update(state)
+        state_action.update(action)
+        self.plot_action_rviz_internal(state_action, **kwargs)
+
+    def plot_action_rviz_internal(self, data: Dict, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
         s1 = np.reshape(data['gripper1'], [3])
         s2 = np.reshape(data['gripper2'], [3])
@@ -126,6 +134,35 @@ class Base3DScenario(ExperimentScenario):
         msg = Bool()
         msg.data = bool(label_t)
         self.label_viz_pub.publish(msg)
+
+    def plot_accept_probability(self, accept_probability_t):
+        msg = Float32()
+        msg.data = accept_probability_t
+        self.accept_probability_viz_pub.publish(msg)
+
+    def animate_rviz(self, environment, actual_states, predicted_states, actions, labels, accept_probabilities):
+        time_steps = np.arange(len(actual_states))
+        self.plot_environment_rviz(environment)
+
+        anim = RvizAnimationController(time_steps, start_playing=False)
+
+        while not anim.done:
+            t = anim.t()
+            s_t = actual_states[t]
+            s_t_pred = predicted_states[t]
+            self.plot_state_rviz(s_t, label='actual', color='#ff0000aa')
+            self.plot_state_rviz(s_t_pred, label='predicted', color='#0000ffaa')
+            if t < anim.max_t:
+                action_t = actions[t]
+                self.plot_action_rviz(s_t, action_t)
+
+            if labels is not None:
+                self.plot_is_close(labels[t])
+
+            if accept_probabilities is not None:
+                self.plot_accept_probability(accept_probabilities[t])
+
+            anim.step()
 
     @staticmethod
     def get_subspace_weight(subspace_name: str):

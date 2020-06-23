@@ -60,8 +60,7 @@ def predict(fwd_models: EnsembleDynamicsFunction,
 def execute(service_provider: BaseServices,
             scenario: ExperimentScenario,
             start_states: List[Dict],
-            random_actions: List[List[List[Dict]]],
-            ):
+            random_actions: List[List[List[Dict]]]):
     actual_state_sequences = []
     for start_state, actions_for_start_state in zip(start_states, random_actions):
         actual_state_sequences_for_start_state = []

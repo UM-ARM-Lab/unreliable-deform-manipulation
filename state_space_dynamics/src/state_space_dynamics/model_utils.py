@@ -140,7 +140,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
 
         return ensemble_predictions
 
-    @tf.function
+    # @tf.function
     def propagate_differentiable_batched(self,
                                          start_states: Dict,
                                          actions: Dict) -> Dict:

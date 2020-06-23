@@ -70,7 +70,7 @@ def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
             t = anim.t()
             example_t = remove_batch(dataset.index_time(add_batch(example), t))
             dataset.scenario.plot_state_rviz(example_t, label='')
-            dataset.scenario.plot_action_rviz(example_t, label='')
+            dataset.scenario.plot_action_rviz_internal(example_t, label='')
 
             # this will return when either the animation is "playing" or because the user stepped forward
             anim.step()
