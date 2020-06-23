@@ -67,9 +67,9 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, in_example, 
 
     # Check classifier
     environment_tiled = {k: tf.concat([v] * samples_and_time, axis=0) for k, v in environment.items()}
-    accept_probabilities = classifier_model.check_constraint_differentiable_batched_tf(environment=environment_tiled,
-                                                                                       predictions=predictions,
-                                                                                       actions=random_actions)
+    accept_probabilities = classifier_model.check_constraint_batched_tf(environment=environment_tiled,
+                                                                        predictions=predictions,
+                                                                        actions=random_actions)
     # reshape to separate batch from sampled actions
     accept_probabilities = tf.reshape(accept_probabilities,
                                       [batch_size, action_sequence_horizon, n_action_samples, classifier_horizon - 1])

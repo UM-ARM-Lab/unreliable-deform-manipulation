@@ -7,6 +7,7 @@ from matplotlib import colors
 import rospy
 import tf2_ros
 from geometry_msgs.msg import Point
+from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -159,8 +160,10 @@ class Base3DScenario(ExperimentScenario):
             if labels is not None:
                 self.plot_is_close(labels[t])
 
-            if accept_probabilities is not None:
-                self.plot_accept_probability(accept_probabilities[t])
+            if accept_probabilities and t > 0:
+                self.plot_accept_probability(accept_probabilities[t - 1])
+            else:
+                self.plot_accept_probability(NULL_PAD_VALUE)
 
             anim.step()
 

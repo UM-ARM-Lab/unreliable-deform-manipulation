@@ -1,7 +1,5 @@
 from typing import Dict, List
 
-import tensorflow as tf
-
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 
 
@@ -15,11 +13,11 @@ class BaseConstraintChecker:
     def check_constraint(self,
                          environment: Dict,
                          states_sequence: List[Dict],
-                         actions):
+                         actions: List[Dict]):
         raise NotImplementedError()
 
-    def check_constraint_differentiable(self,
-                                        environment: Dict,
-                                        states_sequence: List[Dict],
-                                        actions) -> tf.Tensor:
+    def check_constraint_tf(self,
+                            environment: Dict,
+                            states_sequence: List[Dict],
+                            actions: List[Dict]):
         raise NotImplementedError()

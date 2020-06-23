@@ -19,10 +19,10 @@ class NoneClassifier(BaseConstraintChecker):
                          actions: np.ndarray):
         return [1.0]
 
-    def check_constraint_differentiable(self,
-                                        environment: Dict,
-                                        states_sequence: List[Dict],
-                                        actions: tf.Variable) -> tf.Tensor:
+    def check_constraint_tf(self,
+                            environment: Dict,
+                            states_sequence: List[Dict],
+                            actions: tf.Variable) -> tf.Tensor:
         return tf.ones([], dtype=tf.float32)
 
 

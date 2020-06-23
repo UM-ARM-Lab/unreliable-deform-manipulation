@@ -15,13 +15,13 @@ from link_bot_data.link_bot_dataset_utils import add_predicted, NULL_PAD_VALUE
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
-from link_bot_pycommon.pycommon import make_dict_float32
+from link_bot_pycommon.pycommon import make_dict_float32, make_dict_tf_float32
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine import classifier_losses_and_metrics
 from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
-from moonshine.moonshine_utils import add_batch, dict_of_numpy_arrays_to_dict_of_tensors, flatten_batch_and_time, \
-    sequence_of_dicts_to_dict_of_sequences, remove_batch
+from moonshine.moonshine_utils import add_batch, flatten_batch_and_time, \
+    remove_batch
 from moonshine.raster_3d import raster_3d
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from shape_completion_training.my_keras_model import MyKerasModel
@@ -219,7 +219,6 @@ class NNClassifier(MyKerasModel):
 
     @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
-        # FIXME: using  input_dict['batch_size'] breaks when decorated with tf.function!?
         batch_size = input_dict['batch_size']
         time = input_dict['time'][0]
 
@@ -300,64 +299,54 @@ class NNClassifierWrapper(BaseConstraintChecker):
         status = self.ckpt.restore(self.manager.latest_checkpoint)
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
-            if self.manager.latest_checkpoint:
-                status.assert_existing_objects_matched()
         else:
             raise RuntimeError("Failed to restore!!!")
 
-    def check_constraint_differentiable_batched_tf(self,
-                                                   environment: Dict,
-                                                   predictions: Dict,
-                                                   actions) -> tf.Tensor:
+    def check_constraint_batched_tf(self,
+                                    environment: Dict,
+                                    predictions: Dict,
+                                    actions: Dict,
+                                    state_sequence_length: int):
         # construct network inputs
         net_inputs = {
-            'action': tf.convert_to_tensor(actions, tf.float32),
+            'batch_size': tf.constant(1, dtype=tf.int64),
+            'time': tf.cast([state_sequence_length], tf.int64),
         }
-        net_inputs.update(environment)
+        net_inputs.update(make_dict_tf_float32(environment))
 
-        if self.model.hparams['stdev']:
-            net_inputs[add_predicted('stdev')] = tf.convert_to_tensor(predictions['stdev'], tf.float32)
+        for action_key in self.model.action_keys:
+            net_inputs[action_key] = tf.cast(actions[action_key], tf.float32)
 
         for state_key in self.model.state_keys:
             planned_state_key = add_predicted(state_key)
-            net_inputs[planned_state_key] = tf.convert_to_tensor(predictions[state_key], tf.float32)
+            net_inputs[planned_state_key] = tf.cast(predictions[state_key], tf.float32)
+
+        if self.model.hparams['stdev']:
+            net_inputs[add_predicted('stdev')] = tf.cast(predictions['stdev'], tf.float32)
 
         predictions = self.model(net_inputs, training=False)
         accept_probabilities = tf.squeeze(predictions['probabilities'], axis=2)
         return accept_probabilities
 
-    def check_constraint_differentiable(self,
-                                        environment: Dict,
-                                        states_sequence: List[Dict],
-                                        actions) -> tf.Tensor:
-        environment = dict_of_numpy_arrays_to_dict_of_tensors(environment)
-        # construct network inputs
-        states_sequences_dict = sequence_of_dicts_to_dict_of_sequences(states_sequence)
-        net_inputs = {
-            'action': tf.convert_to_tensor(actions, tf.float32),
-        }
-        net_inputs.update(environment)
-
-        if self.model.hparams['stdev']:
-            net_inputs[add_predicted('stdev')] = tf.convert_to_tensor(states_sequences_dict['stdev'], tf.float32)
-
-        for state_key in self.model.state_keys:
-            planned_state_key = add_predicted(state_key)
-            net_inputs[planned_state_key] = tf.convert_to_tensor(states_sequences_dict[state_key], tf.float32)
-
-        predictions = remove_batch(self.model(add_batch(net_inputs), training=False))
-        accept_probabilities = tf.squeeze(predictions['probabilities'], axis=1)
-        return accept_probabilities
+    def check_constraint_tf(self,
+                            environment: Dict,
+                            states_sequence: List[Dict],
+                            actions: List[Dict]):
+        environment = add_batch(environment)
+        states_sequence = add_batch(states_sequence)
+        actions = add_batch(actions)
+        accept_probabilities_batched = self.check_constraint_batched_tf(environment, states_sequence, actions)
+        return remove_batch(accept_probabilities_batched)
 
     def check_constraint(self,
                          environment: Dict,
                          states_sequence: List[Dict],
-                         actions: np.ndarray):
+                         actions: List[Dict]):
         actions = tf.Variable(actions, dtype=tf.float32, name="actions")
         states_sequence = [make_dict_float32(s) for s in states_sequence]
-        accept_probabilities = self.check_constraint_differentiable(environment=environment,
-                                                                    states_sequence=states_sequence,
-                                                                    actions=actions)
+        accept_probabilities = self.check_constraint_tf(environment=environment,
+                                                        states_sequence=states_sequence,
+                                                        actions=actions)
         accept_probabilities = accept_probabilities.numpy()
         return accept_probabilities
 

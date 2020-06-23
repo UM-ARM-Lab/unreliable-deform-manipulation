@@ -42,10 +42,10 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
         self.local_w_cols = self.model_hparams['local_w_cols']
         self.horizon = 2
 
-    def check_constraint_differentiable(self,
-                                        environment: Dict,
-                                        states_sequence: List[Dict],
-                                        actions) -> tf.Tensor:
+    def check_constraint_tf(self,
+                            environment: Dict,
+                            states_sequence: List[Dict],
+                            actions) -> tf.Tensor:
         return check_collision(self.scenario, environment, states_sequence)
 
     def check_constraint(self,
@@ -53,7 +53,7 @@ class CollisionCheckerClassifier(BaseConstraintChecker):
                          states_sequence: List[Dict],
                          actions: np.ndarray):
         assert len(states_sequence) == 2
-        return self.check_constraint_differentiable(environment, states_sequence, actions).numpy()
+        return self.check_constraint_tf(environment, states_sequence, actions).numpy()
 
 
 model = CollisionCheckerClassifier

@@ -3,6 +3,7 @@ from typing import Dict, List
 import numpy as np
 import tensorflow as tf
 
+from link_bot_classifiers.nn_classifier import NNClassifierWrapper
 from link_bot_planning.plan_and_execute import execute_actions
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -13,7 +14,7 @@ from moonshine.moonshine_utils import numpify, sequence_of_dicts_to_dict_of_tens
 from state_space_dynamics.model_utils import EnsembleDynamicsFunction
 
 
-def predict(fwd_models: EnsembleDynamicsFunction,
+def predict(fwd_model: EnsembleDynamicsFunction,
             environment: Dict,
             start_states: List[Dict],
             actions: List[List[List[Dict]]],
@@ -37,7 +38,7 @@ def predict(fwd_models: EnsembleDynamicsFunction,
     start_states_tiled = {k: tf.concat([v] * n_actions_sampled, axis=0) for k, v in start_states.items()}
 
     # Actually do the predictions
-    predictions_dict = fwd_models.propagate_differentiable_batched(start_states=start_states_tiled, actions=actions_batched)
+    predictions_dict = fwd_model.propagate_differentiable_batched(start_states=start_states_tiled, actions=actions_batched)
 
     # break out the num actions and num start states
     n_states = n_actions + 1
@@ -55,6 +56,70 @@ def predict(fwd_models: EnsembleDynamicsFunction,
             predictions_i.append(predictions_ij)
         predictions_list.append(predictions_i)
     return predictions_list
+
+
+def predict_and_classify(fwd_model: EnsembleDynamicsFunction,
+                         classifier: NNClassifierWrapper,
+                         environment: Dict,
+                         start_states: List[Dict],
+                         actions: List[List[List[Dict]]],
+                         n_actions: int,
+                         n_actions_sampled: int,
+                         n_start_states: int):
+    state_sequence_length = n_actions + 1
+
+    # reformat the inputs to be efficiently batched
+    actions_dict = {}
+    for actions_for_start_state in actions:
+        for actions in actions_for_start_state:
+            for action in actions:
+                for k, v in action.items():
+                    if k not in actions_dict:
+                        actions_dict[k] = []
+                    actions_dict[k].append(v)
+
+    environment_batched = {k: tf.stack([v] * n_actions_sampled * n_start_states, axis=0) for k, v in environment.items()}
+    actions_batched = {k: tf.reshape(v, [n_actions_sampled * n_start_states, n_actions, -1]) for k, v in actions_dict.items()}
+    start_states = sequence_of_dicts_to_dict_of_tensors(start_states)
+    start_states = make_dict_tf_float32({k: tf.expand_dims(v, axis=1) for k, v in start_states.items()})
+    # copy from start states for each random action
+    start_states_tiled = {k: tf.concat([v] * n_actions_sampled, axis=0) for k, v in start_states.items()}
+
+    # Actually do the predictions
+    predictions_dict = fwd_model.propagate_differentiable_batched(start_states=start_states_tiled, actions=actions_batched)
+
+    # Run classifier
+    accept_probabilities = classifier.check_constraint_batched_tf(environment=environment_batched,
+                                                                  predictions=predictions_dict,
+                                                                  actions=actions_batched,
+                                                                  state_sequence_length=state_sequence_length)
+    accept_probabilities = tf.reshape(accept_probabilities, [n_start_states, n_actions_sampled, state_sequence_length - 1, -1])
+
+    # break out the num actions and num start states
+    state_sequence_length = n_actions + 1
+    predictions_dict = {k: tf.reshape(v, [n_start_states, n_actions_sampled, state_sequence_length, -1]) for k, v in
+                        predictions_dict.items()}
+
+    # invert structure to List[List[List[Dict]]] and return
+    predictions_list = []
+    accept_probabilities_list = []
+    for i in range(n_start_states):
+        predictions_i = []
+        accept_probabilities_i = []
+        for j in range(n_actions_sampled):
+            predictions_ij = []
+            accept_probabilities_ij = []
+            for t in range(n_actions + 1):
+                prediction_ijt = {k: predictions_dict[k][i, j, t] for k, v in predictions_dict.items()}
+                predictions_ij.append(prediction_ijt)
+                if t < n_actions:
+                    accept_probabilities_ij.append(accept_probabilities[i, j, t])
+            predictions_i.append(predictions_ij)
+            accept_probabilities_i.append(accept_probabilities_ij)
+        predictions_list.append(predictions_i)
+        accept_probabilities_list.append(accept_probabilities_i)
+
+    return predictions_list, accept_probabilities_list
 
 
 def execute(service_provider: BaseServices,
@@ -99,7 +164,7 @@ def predict_and_execute(service_provider,
                         n_actions_sampled: int,
                         n_start_states: int):
     # Prediction
-    predictions = predict(fwd_models=fwd_model,
+    predictions = predict(fwd_model=fwd_model,
                           environment=environment,
                           start_states=start_states,
                           actions=actions,

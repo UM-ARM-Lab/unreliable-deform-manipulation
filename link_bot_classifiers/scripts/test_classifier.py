@@ -8,13 +8,14 @@ import numpy as np
 
 import rospy
 from link_bot_classifiers import classifier_utils
-from link_bot_classifiers.analysis_utils import predict, execute
+from link_bot_classifiers.analysis_utils import execute, predict_and_classify
+from link_bot_data.classifier_dataset_utils import compute_is_close_tf
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import numpify
+from moonshine.moonshine_utils import numpify, sequence_of_dicts_to_dict_of_tensors
 from state_space_dynamics import model_utils
 
 limit_gpu_mem(9)
@@ -56,16 +57,26 @@ def main():
     start_state = fwd_model.scenario.get_state()
     start_state = make_dict_tf_float32(start_state)
     start_states = [start_state]
-    predicted_states = predict(fwd_model, environment, start_states, actions, n_actions, 1, 1)
+    predicted_states, accept_probabilities = predict_and_classify(fwd_model=fwd_model,
+                                                                  classifier=classifier,
+                                                                  environment=environment,
+                                                                  start_states=start_states,
+                                                                  actions=actions,
+                                                                  n_actions=n_actions,
+                                                                  n_start_states=1,
+                                                                  n_actions_sampled=1)
 
     scenario = fwd_model.scenario
     actual_states_lists = execute(service_provider, scenario, start_states, actions)
 
-    labeling_state_key = classifier.dataset_labeling_params['state_key']
-
-    for actual_states_list, predicted_states_list, actions_list in zip(actual_states_lists, predicted_states, actions):
-        for actual_states, predicted_states, actions in zip(actual_states_list, predicted_states_list, actions_list):
-            fwd_model.scenario.animate_rviz(environment, actual_states, predicted_states, actions, None, None)
+    actual_states = actual_states_lists[0][0]
+    predicted_states = predicted_states[0][0]
+    actions = actions[0][0]
+    accept_probabilities = accept_probabilities[0][0]
+    actual_states_dict = sequence_of_dicts_to_dict_of_tensors(actual_states)
+    predicted_states_dict = sequence_of_dicts_to_dict_of_tensors(predicted_states)
+    labels = compute_is_close_tf(actual_states_dict, predicted_states_dict, classifier.dataset_labeling_params)
+    fwd_model.scenario.animate_rviz(environment, actual_states, predicted_states, actions, labels, accept_probabilities)
 
 
 if __name__ == '__main__':

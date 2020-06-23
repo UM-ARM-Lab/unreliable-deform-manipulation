@@ -11,14 +11,14 @@ if __name__ == '__main__':
     rospy.wait_for_service('execute_dual_gripper_action')
 
     gripper1_point = Point()
-    gripper1_point.x = -0.1
+    gripper1_point.x = 0.0
     gripper1_point.y = 0.0
-    gripper1_point.z = 0.5
+    gripper1_point.z = 0.1
 
     gripper2_point = Point()
-    gripper2_point.x = 0.1
+    gripper2_point.x = 0.2
     gripper2_point.y = 0.0
-    gripper2_point.z = 0.5
+    gripper2_point.z = 0.1
 
     req = DualGripperTrajectoryRequest()
     req.gripper1_points.append(gripper1_point)

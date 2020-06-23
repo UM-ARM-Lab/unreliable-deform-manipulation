@@ -68,11 +68,11 @@ class TrajectorySmoother:
             constraint_costs = []
             for t in range(1, len(predictions)):
                 predictions_t = predictions[:t + 1]
-                constraint_prediction_t = self.classifier_model.check_constraint_differentiable(full_env=full_env,
-                                                                                                full_env_origin=full_env_origin,
-                                                                                                res=res,
-                                                                                                states_sequence=predictions_t,
-                                                                                                actions=actions)
+                constraint_prediction_t = self.classifier_model.check_constraint_tf(full_env=full_env,
+                                                                                    full_env_origin=full_env_origin,
+                                                                                    res=res,
+                                                                                    states_sequence=predictions_t,
+                                                                                    actions=actions)
                 # print(constraint_prediction_t)
                 # NOTE: this math maps (0 -> 1, 1->0)
                 if constraint_prediction_t < 0.5:
