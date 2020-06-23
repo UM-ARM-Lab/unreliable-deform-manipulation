@@ -36,8 +36,7 @@ def train_main(args, seed: int):
     group_name = args.log if trial_path is None else None
     trials_directory = pathlib.Path('trials')
     if args.ensemble_idx is not None:
-        trials_directory = trials_directory / args.log
-        group_name = str(args.ensemble_idx)
+        group_name = f"{group_name}_{args.ensemble_idx}"
     trial_path, params = filepath_tools.create_or_load_trial(group_name=group_name,
                                                              params=model_hparams,
                                                              trial_path=trial_path,
