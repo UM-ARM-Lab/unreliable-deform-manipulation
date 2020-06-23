@@ -45,10 +45,10 @@ class Base3DScenario(ExperimentScenario):
     def send_occupancy_tf(self, environment: Dict):
         link_bot_sdf_utils.send_occupancy_tf(self.broadcaster, environment)
 
-    def plot_state_rviz(self, data: Dict, label: str, **kwargs):
+    def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
 
-        link_bot_points = np.reshape(data['link_bot'], [-1, 3])
+        link_bot_points = np.reshape(state['link_bot'], [-1, 3])
 
         msg = MarkerArray()
         lines = Marker()
@@ -108,6 +108,19 @@ class Base3DScenario(ExperimentScenario):
             spheres.points.append(point)
             lines.points.append(point)
 
+        gripper1_point = Point()
+        gripper1_point.x = state['gripper1'][0]
+        gripper1_point.y = state['gripper1'][1]
+        gripper1_point.z = state['gripper1'][2]
+
+        gripper2_point = Point()
+        gripper2_point.x = state['gripper2'][0]
+        gripper2_point.y = state['gripper2'][1]
+        gripper2_point.z = state['gripper2'][2]
+
+        spheres.points.append(gripper1_point)
+        spheres.points.append(gripper2_point)
+
         msg.markers.append(spheres)
         msg.markers.append(lines)
         self.state_viz_pub.publish(msg)
@@ -154,8 +167,9 @@ class Base3DScenario(ExperimentScenario):
             self.plot_state_rviz(s_t, label='actual', color='#ff0000aa')
             self.plot_state_rviz(s_t_pred, label='predicted', color='#0000ffaa')
             if t < anim.max_t:
-                action_t = actions[t]
-                self.plot_action_rviz(s_t, action_t)
+                self.plot_action_rviz(s_t, actions[t])
+            else:
+                self.plot_action_rviz(actual_states[t - 1], actions[t - 1])
 
             if labels is not None:
                 self.plot_is_close(labels[t])

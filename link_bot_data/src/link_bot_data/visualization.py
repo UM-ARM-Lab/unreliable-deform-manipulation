@@ -1,9 +1,8 @@
 import numpy as np
-import ros_numpy
 
 import rospy
-from geometry_msgs.msg import Point, Quaternion
-from link_bot_pycommon.pycommon import vector_to_points_2d, quaternion_from_euler
+from geometry_msgs.msg import Point
+from link_bot_pycommon.pycommon import vector_to_points_2d
 from visualization_msgs.msg import Marker
 
 
@@ -74,16 +73,22 @@ def rviz_arrow(position: np.ndarray,
     arrow.ns = label
     arrow.id = idx
 
-    delta_position = target_position - position
-    arrow.scale.x = np.linalg.norm(delta_position)
-    arrow.scale.y = 0.01
-    arrow.scale.z = 0.01
+    arrow.scale.x = 0.01
+    arrow.scale.y = 0.02
+    arrow.scale.z = 0
 
-    arrow.pose.position = ros_numpy.msgify(Point, position)
-    y_rotation = -np.arctan2(delta_position[2], np.linalg.norm(delta_position))
-    z_rotation = np.arctan2(delta_position[1], delta_position[0])
-    q = quaternion_from_euler(0, y_rotation, z_rotation)
-    arrow.pose.orientation = ros_numpy.msgify(Quaternion, q)
+    arrow.pose.orientation.w = 1
+
+    start = Point()
+    start.x = position[0]
+    start.y = position[1]
+    start.z = position[2]
+    end = Point()
+    end.x = target_position[0]
+    end.y = target_position[1]
+    end.z = target_position[2]
+    arrow.points.append(start)
+    arrow.points.append(end)
 
     arrow.color.r = r
     arrow.color.g = g

@@ -11,12 +11,9 @@ import rospy
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
 from link_bot_pycommon.pycommon import paths_to_json
-from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
-
-limit_gpu_mem(10)
 
 
 def train_main(args, seed: int):

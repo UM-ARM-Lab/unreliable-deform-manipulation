@@ -15,98 +15,86 @@
   "actions": [
     {
       "gripper1_position": [
-        0.0,
-        0.0,
-        0.4
+        -0.2,
+        0.14,
+        0.33
       ],
       "gripper2_position": [
-        0.2,
-        0.0,
-        0.4
+        0.05,
+        0.14,
+        0.33
       ]
     },
     {
       "gripper1_position": [
-        0.0,
-        0.0,
+        -0.2,
+        0.14,
+        0.36
+      ],
+      "gripper2_position": [
+        0.05,
+        0.14,
+        0.36
+      ]
+    },
+    {
+      "gripper1_position": [
+        -0.2,
+        0.14,
+        0.39
+      ],
+      "gripper2_position": [
+        0.05,
+        0.14,
+        0.39
+      ]
+    },
+    {
+      "gripper1_position": [
+        -0.2,
+        0.14,
         0.42
       ],
       "gripper2_position": [
-        0.2,
-        0.0,
+        0.05,
+        0.14,
         0.42
       ]
     },
     {
       "gripper1_position": [
-        0.0,
-        0.0,
-        0.44
+        -0.2,
+        0.16,
+        0.45
       ],
       "gripper2_position": [
-        0.2,
-        0.0,
-        0.44
+        0.05,
+        0.16,
+        0.45
       ]
     },
     {
       "gripper1_position": [
-        0.0,
-        0.0,
-        0.46
-      ],
-      "gripper2_position": [
-        0.2,
-        0.0,
-        0.46
-      ]
-    },
-    {
-      "gripper1_position": [
-        0.0,
-        0.0,
+        -0.2,
+        0.17,
         0.48
       ],
       "gripper2_position": [
-        0.2,
-        0.0,
+        0.05,
+        0.17,
         0.48
       ]
     },
     {
       "gripper1_position": [
-        0.0,
-        0.0,
-        0.50
+        -0.2,
+        0.18,
+        0.51
       ],
       "gripper2_position": [
-        0.2,
-        0.0,
-        0.50
-      ]
-    },
-    {
-      "gripper1_position": [
-        0.0,
-        0.0,
-        0.52
-      ],
-      "gripper2_position": [
-        0.2,
-        0.0,
-        0.52
-      ]
-    },
-    {
-      "gripper1_position": [
-        0.0,
-        0.0,
-        0.54
-      ],
-      "gripper2_position": [
-        0.2,
-        0.0,
-        0.54
+        0.05,
+        0.18,
+        0.51
       ]
     }
   ]

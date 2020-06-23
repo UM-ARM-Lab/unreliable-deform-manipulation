@@ -4,11 +4,11 @@ import numpy as np
 import tensorflow as tf
 
 
-def numpify(x):
+def numpify(x, dtype=np.float32):
     if isinstance(x, np.ndarray):
         return x
     elif isinstance(x, list):
-        return np.array(x)
+        return np.array(x, dtype=dtype)
     elif isinstance(x, tf.Tensor):
         return x.numpy()
     elif isinstance(x, dict):

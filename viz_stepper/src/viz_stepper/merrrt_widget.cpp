@@ -23,6 +23,21 @@ void MerrrtWidget::BoolCallback(const std_msgs::Bool::ConstPtr &msg)
 }
 void MerrrtWidget::OnAcceptProbability(const std_msgs::Float32::ConstPtr &msg)
 {
+    auto const blue = 50;
+    auto red = 0;
+    auto green = 0;
+    if (msg->data >=0 and msg->data <= 1)
+    {
+        // *0.8 to cool the colors
+        auto const cool_factor = 0.7;
+        red = static_cast<int>(255 * (1 - msg->data) * cool_factor);
+        green = static_cast<int>(255 * msg->data * cool_factor);
+    }
+    else{
+        red = 0;
+        green = 0;
+    }
+    ui.accept_probability->setStyleSheet(QString("color: rgb(%1, %2, %3);").arg(red).arg(green).arg(blue));
     ui.accept_probability->setText(QString::number(msg->data));
 }
 

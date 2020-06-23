@@ -84,7 +84,6 @@ def main():
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')
     parser.add_argument('plot_type', choices=['2d', '3d', 'sanity_check', 'just_count'], default='2d')
     parser.add_argument('--take', type=int)
-    parser.add_argument('--sequence-length', type=int, help='number of time steps per example')
     parser.add_argument('--mode', choices=['train', 'test', 'val', 'all'], default='train', help='train test or val')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
 
@@ -97,10 +96,7 @@ def main():
 
     # load the dataset
     dataset = DynamicsDataset(args.dataset_dir)
-    tf_dataset = dataset.get_datasets(mode=args.mode,
-                                      sequence_length=args.sequence_length,
-                                      n_parallel_calls=1,
-                                      take=args.take)
+    tf_dataset = dataset.get_datasets(mode=args.mode, take=args.take)
 
     if args.shuffle:
         tf_dataset = tf_dataset.shuffle(1024, seed=1)

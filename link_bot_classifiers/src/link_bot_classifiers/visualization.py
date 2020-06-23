@@ -17,7 +17,6 @@ from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import idx_to_point_3d_in_env
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify, dict_of_sequences_to_sequence_of_dicts, add_batch, remove_batch
-from mps_shape_completion_msgs.msg import OccupancyStamped
 from sensor_msgs import point_cloud2
 from sensor_msgs.msg import PointField
 from std_msgs.msg import Header
@@ -26,7 +25,7 @@ from std_msgs.msg import Header
 def visualize_classifier_example_3d(scenario: ExperimentScenario,
                                     example: Dict,
                                     n_time_steps: int):
-    #TODO: de-duplicate this
+    # TODO: de-duplicate this
     time_steps = np.arange(n_time_steps)
     scenario.plot_environment_rviz(example)
     anim = RvizAnimationController(time_steps)

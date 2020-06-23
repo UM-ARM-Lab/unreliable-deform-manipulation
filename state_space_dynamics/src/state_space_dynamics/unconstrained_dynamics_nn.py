@@ -36,7 +36,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
     def debug_plot(self, s):
         self.scenario.plot_state_rviz({'link_bot': s['link_bot'][0]})
 
-    # @tf.function
+    @tf.function
     def call(self, example, training, mask=None):
         actions = {k: example[k] for k in self.action_keys}
         input_sequence_length = actions[self.action_keys[0]].shape[1]

@@ -13,12 +13,14 @@ if __name__ == '__main__':
     g = 0
     b = 0
     a = 1
-    s1 = np.array([0, 0, 0.0])
-    sleep(1)
+    s1 = np.array([0.5, 0.0, 0.0])
 
-    while True:
-        a1 = np.array([0.5, 0.5, 0.5])
-        msg = MarkerArray()
-        msg.markers.append(rviz_arrow(s1, a1, 1, r, g, b, a))
+    a1 = np.array([0.0, 0.0, 0.0])
+    msg = MarkerArray()
+    arrow = rviz_arrow(s1, a1, r, g, b, 1)
+    msg.markers.append(arrow)
+    print(msg)
+
+    for i in range(5):
         action_viz_pub.publish(msg)
-        sleep(0.1)
+        sleep(0.5)

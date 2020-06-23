@@ -14,12 +14,12 @@ from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
 from link_bot_pycommon.params import CollectDynamicsParams
-from link_bot_pycommon.pycommon import quaternion_from_euler
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from peter_msgs.srv import Position3DAction, Position3DActionRequest, Position3DEnableRequest
 from std_srvs.srv import Empty
+from tf.transformations import quaternion_from_euler
 from visualization_msgs.msg import MarkerArray, Marker
 
 

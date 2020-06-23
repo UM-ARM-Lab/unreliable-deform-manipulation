@@ -6,10 +6,10 @@ from time import perf_counter
 import numpy as np
 
 from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier, DEFAULT_INFLATION_RADIUS
-from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_classifiers.nn_classifier import NNClassifierWrapper
+from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.fishing_3d_scenario import LinkBotScenario
+from link_bot_pycommon.link_bot_scenario import LinkBotScenario
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1.0)
