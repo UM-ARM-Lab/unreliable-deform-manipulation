@@ -31,11 +31,11 @@ class PredictionActualExample:
         self.batch_size = batch_size
 
 
-def add_model_predictions(fwd_model: EnsembleDynamicsFunction,
-                          tf_dataset: tf.data.Dataset,
-                          dataset: DynamicsDataset,
-                          labeling_params: Dict):
-    batch_size = 256
+def generate_classifier_examples(fwd_model: EnsembleDynamicsFunction,
+                                 tf_dataset: tf.data.Dataset,
+                                 dataset: DynamicsDataset,
+                                 labeling_params: Dict):
+    batch_size = 512
     classifier_horizon = labeling_params['classifier_horizon']
     scenario = fwd_model.scenario
     assert classifier_horizon >= 2
@@ -58,10 +58,10 @@ def add_model_predictions(fwd_model: EnsembleDynamicsFunction,
                                                         labeling_params=labeling_params,
                                                         actual_prediction_horizon=actual_prediction_horizon,
                                                         batch_size=actual_batch_size)
-            yield from generate_mer_classifier_examples(scenario, prediction_actual)
+            yield from generate_classifier_examples_from_batch(scenario, prediction_actual)
 
 
-def generate_mer_classifier_examples(scenario: ExperimentScenario, prediction_actual: PredictionActualExample):
+def generate_classifier_examples_from_batch(scenario: ExperimentScenario, prediction_actual: PredictionActualExample):
     labeling_params = prediction_actual.labeling_params
     prediction_horizon = prediction_actual.actual_prediction_horizon
     classifier_horizon = labeling_params['classifier_horizon']

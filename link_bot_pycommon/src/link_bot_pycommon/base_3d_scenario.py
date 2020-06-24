@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import tensorflow as tf
@@ -154,11 +154,17 @@ class Base3DScenario(ExperimentScenario):
         msg.data = accept_probability_t
         self.accept_probability_viz_pub.publish(msg)
 
-    def animate_rviz(self, environment, actual_states, predicted_states, actions, labels, accept_probabilities):
+    def animate_rviz(self,
+                     environment: Dict,
+                     actual_states: List[Dict],
+                     predicted_states: List[Dict],
+                     actions: List[Dict],
+                     labels,
+                     accept_probabilities):
         time_steps = np.arange(len(actual_states))
         self.plot_environment_rviz(environment)
 
-        anim = RvizAnimationController(time_steps, start_playing=True)
+        anim = RvizAnimationController(time_steps)
 
         while not anim.done:
             t = anim.t()

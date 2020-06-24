@@ -9,9 +9,14 @@ MerrrtWidget::MerrrtWidget(QWidget *parent) : rviz::Panel(parent)
 {
   ui.setupUi(this);
   bool_sub_ = ros_node_.subscribe<std_msgs::Bool>("mybool", 10, &MerrrtWidget::BoolCallback, this);
+  stdev_sub_ = ros_node_.subscribe<std_msgs::Float32>("stdev", 10, &MerrrtWidget::StdevCallback, this);
   accept_probability_sub_ = ros_node_.subscribe<std_msgs::Float32>("accept_probability_viz", 10, &MerrrtWidget::OnAcceptProbability, this);
 }
 
+void MerrrtWidget::StdevCallback(const std_msgs::Float32::ConstPtr &msg)
+{
+    ui.stdev_label->setText(QString::number(msg->data));
+}
 void MerrrtWidget::BoolCallback(const std_msgs::Bool::ConstPtr &msg)
 {
   if (msg->data) {
@@ -21,6 +26,7 @@ void MerrrtWidget::BoolCallback(const std_msgs::Bool::ConstPtr &msg)
     ui.bool_indicator->setStyleSheet("background-color: rgb(250, 0, 0);");
   }
 }
+
 void MerrrtWidget::OnAcceptProbability(const std_msgs::Float32::ConstPtr &msg)
 {
     auto const blue = 50;

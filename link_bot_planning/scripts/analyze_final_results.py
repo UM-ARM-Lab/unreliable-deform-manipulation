@@ -11,7 +11,7 @@ from colorama import Style, Fore
 from scipy import stats
 from tabulate import tabulate
 
-from link_bot_data.classifier_dataset_utils import generate_mer_classifier_examples
+from link_bot_data.classifier_dataset_utils import generate_classifier_examples_from_batch
 from link_bot_planning.results_utils import labeling_params_from_planner_params
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
@@ -83,12 +83,12 @@ def error_viz_main(args):
             inputs['traj_idx'] = traj_idx
             planned_path_dict = sequence_of_dicts_to_dict_of_np_arrays(planned_path)
             actual_path_dict = sequence_of_dicts_to_dict_of_np_arrays(actual_path)
-            examples_generator = generate_mer_classifier_examples(inputs=inputs,
-                                                                  outputs=actual_path_dict,
-                                                                  predictions=planned_path_dict,
-                                                                  start_t=0,
-                                                                  labeling_params=labeling_params,
-                                                                  prediction_horizon=len(planned_path))
+            examples_generator = generate_classifier_examples_from_batch(inputs=inputs,
+                                                                         outputs=actual_path_dict,
+                                                                         predictions=planned_path_dict,
+                                                                         start_t=0,
+                                                                         labeling_params=labeling_params,
+                                                                         prediction_horizon=len(planned_path))
 
             # count number of not-close (diverged) time steps
 

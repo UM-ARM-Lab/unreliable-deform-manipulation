@@ -21,6 +21,7 @@ class MerrrtWidget : public rviz::Panel {
   explicit MerrrtWidget(QWidget *parent = nullptr);
 
   void BoolCallback(const std_msgs::Bool::ConstPtr &msg);
+  void StdevCallback(const std_msgs::Float32::ConstPtr &msg);
   void OnAcceptProbability(const std_msgs::Float32::ConstPtr &msg);
 
   void load(const rviz::Config &config) override;
@@ -32,6 +33,7 @@ class MerrrtWidget : public rviz::Panel {
   Ui_MerrrtWidget ui;
   ros::NodeHandle ros_node_;
   ros::Subscriber bool_sub_;
+  ros::Subscriber stdev_sub_;
   ros::Subscriber accept_probability_sub_;
 };
 

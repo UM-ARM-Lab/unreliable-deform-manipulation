@@ -8,11 +8,13 @@ import numpy as np
 import tensorflow as tf
 
 import rospy
-from link_bot_classifiers.visualization import visualize_classifier_example_3d
 from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_pycommon.pycommon import print_dict
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import remove_batch
+from moonshine.moonshine_utils import remove_batch, add_batch
+from std_msgs.msg import Float32
 
 limit_gpu_mem(1)
 
@@ -52,16 +54,24 @@ def main():
 
 def visualize_dataset(args, classifier_dataset):
     tf_dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
+    scenario = classifier_dataset.scenario
 
     tf_dataset = tf_dataset.batch(1)
 
     iterator = iter(tf_dataset)
     t0 = perf_counter()
 
+    stdev_pub_ = rospy.Publisher("stdev", Float32, queue_size=10)
+
     reconverging_count = 0
     positive_count = 0
     negative_count = 0
     count = 0
+
+    stdevs = []
+    labels = []
+    stdevs_for_negative = []
+    stdevs_for_positive = []
 
     done = False
     while not done:
@@ -95,9 +105,8 @@ def visualize_dataset(args, classifier_dataset):
         if reconverging:
             reconverging_count += 1
 
-
         # Print statistics intermittently
-        if count % 100 == 0:
+        if count % 1000 == 0:
             print_stats_and_timing(args, count, reconverging_count, negative_count, positive_count)
 
         #############################
@@ -106,12 +115,45 @@ def visualize_dataset(args, classifier_dataset):
         if args.display_type == 'just_count':
             continue
         elif args.display_type == '3d':
-            visualize_classifier_example_3d(scenario=classifier_dataset.scenario,
-                                            example=example,
-                                            n_time_steps=classifier_dataset.horizon)
+            # TODO: de-duplicate this
+            time_steps = np.arange(classifier_dataset.horizon)
+            scenario.plot_environment_rviz(example)
+            anim = RvizAnimationController(time_steps)
+            while not anim.done:
+                t = anim.t()
+                actual_t = remove_batch(scenario.index_state_time(add_batch(example), t))
+                pred_t = remove_batch(scenario.index_predicted_state_time(add_batch(example), t))
+                action_t = remove_batch(scenario.index_action_time(add_batch(example), t))
+                label_t = remove_batch(scenario.index_label_time(add_batch(example), t)).numpy()
+                scenario.plot_state_rviz(actual_t, label='actual', color='#ff0000aa')
+                scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffaa')
+                scenario.plot_action_rviz(actual_t, action_t)
+                scenario.plot_is_close(label_t)
+
+                stdev_t = example[add_predicted('stdev')][t, 0].numpy()
+                stdev_msg = Float32()
+                stdev_msg.data = stdev_t
+                stdev_pub_.publish(stdev_msg)
+
+                # this will return when either the animation is "playing" or because the user stepped forward
+                anim.step()
+
+                stdevs.append(stdev_t)
+                labels.append(label_t)
+                if label_t > 0.5:
+                    stdevs_for_positive.append(stdev_t)
+                else:
+                    stdevs_for_negative.append(stdev_t)
         else:
             raise NotImplementedError()
     total_dt = perf_counter() - t0
+
+    plt.figure()
+    plt.hist(stdevs_for_negative, label='stdevs for negative examples', alpha=0.8)
+    plt.hist(stdevs_for_positive, label='stdevs for positive examples', alpha=0.8)
+    plt.legend()
+    plt.show()
+
     print_stats_and_timing(args, count, reconverging_count, negative_count, positive_count, total_dt)
 
 

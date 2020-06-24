@@ -3,8 +3,12 @@ from time import sleep
 import numpy as np
 
 import rospy
-from peter_msgs.srv import GetFloat32, GetFloat32Request
-from std_msgs.msg import Empty, Int64
+from peter_msgs.srv import GetFloat32, GetFloat32Request, GetBool, GetBoolRequest
+from std_msgs.msg import Empty as EmptyMsg
+from std_msgs.msg import Int64
+from std_srvs.srv import Empty as EmptySrv
+from std_srvs.srv import EmptyRequest
+
 
 
 class RvizAnimationController:
@@ -12,13 +16,14 @@ class RvizAnimationController:
     def __init__(self, time_steps, start_playing=True):
         self.epsilon = 1e-3
         self.time_steps = np.array(time_steps, dtype=np.int64)
-        self.fwd_sub = rospy.Subscriber("rviz_anim/forward", Empty, self.on_fwd)
-        self.bwd_sub = rospy.Subscriber("rviz_anim/backward", Empty, self.on_bwd)
-        self.play_pause_sub = rospy.Subscriber("rviz_anim/play_pause", Empty, self.on_play_pause)
-        self.done_sub = rospy.Subscriber("rviz_anim/done", Empty, self.on_done)
+        self.fwd_sub = rospy.Subscriber("rviz_anim/forward", EmptyMsg, self.on_fwd)
+        self.bwd_sub = rospy.Subscriber("rviz_anim/backward", EmptyMsg, self.on_bwd)
+        self.play_pause_sub = rospy.Subscriber("rviz_anim/play_pause", EmptyMsg, self.on_play_pause)
+        self.done_sub = rospy.Subscriber("rviz_anim/done", EmptyMsg, self.on_done)
         self.period_srv = rospy.ServiceProxy("rviz_anim/period", GetFloat32)
         self.time_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10)
         self.max_time_pub = rospy.Publisher("rviz_anim/max_time", Int64, queue_size=10)
+        self.auto_play_srv = rospy.ServiceProxy("rviz_anim/auto_play", GetBool)
 
         rospy.wait_for_service("rviz_anim/period")
 
@@ -26,7 +31,8 @@ class RvizAnimationController:
         self.max_idx = self.time_steps.shape[0]
         self.max_t = self.time_steps[-1]
         self.period = self.period_srv(GetFloat32Request()).data
-        self.playing = start_playing
+        self.auto_play = self.auto_play_srv(GetBoolRequest()).data
+        self.playing = self.auto_play
         self.should_step = False
         self.fwd = True
         self.done = False
@@ -50,14 +56,17 @@ class RvizAnimationController:
             # don't use ros time because we don't want to rely on simulation time
             sleep(self.period)
         else:
-            while not self.should_step and not self.playing:
+            while not self.should_step and not self.playing and not self.done:
                 sleep(0.01)
 
         if self.fwd:
             if self.idx < self.max_idx - 1:
                 self.idx += 1
             else:
-                self.playing = False
+                if self.auto_play:
+                    self.done = True
+                else:
+                    self.playing = False
         else:
             if self.idx > 0:
                 self.idx -= 1

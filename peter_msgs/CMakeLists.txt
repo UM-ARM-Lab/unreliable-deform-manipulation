@@ -28,6 +28,7 @@ add_service_files(
         DualGripperTrajectory.srv
         ExecuteAction.srv
         GetDualGripperPoints.srv
+        GetBool.srv
         GetFloat32.srv
         GetObject.srv
         GetObjects.srv

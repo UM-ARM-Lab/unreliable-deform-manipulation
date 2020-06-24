@@ -1,8 +1,10 @@
 #include <peter_msgs/GetFloat32.h>
+#include <peter_msgs/GetBool.h>
 #include <std_msgs/Empty.h>
 #include <viz_stepper/viz_stepper.h>
 
 #include <QApplication>
+#include <QCheckBox>
 #include <QDoubleSpinBox>
 #include <QMainWindow>
 #include <QPushButton>
@@ -19,17 +21,25 @@ MainWidget::MainWidget(QWidget *parent) : QWidget(parent)
   connect(ui.play_pause_button, &QPushButton::clicked, this, &MainWidget::PlayPauseClicked);
   connect(ui.done_button, &QPushButton::clicked, this, &MainWidget::DoneClicked);
 
+  fwd_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/forward", 10);
+  bwd_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/backward", 10);
+  play_pause_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/play_pause", 10);
+  done_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/done", 10);
+
   auto period_bind = [this](peter_msgs::GetFloat32Request &req, peter_msgs::GetFloat32Response &res) {
     res.data = static_cast<float>(ui.period_spinbox->value());
     return true;
   };
   auto period_so = create_service_options(peter_msgs::GetFloat32, "rviz_anim/period", period_bind);
-
-  fwd_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/forward", 10);
-  bwd_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/backward", 10);
-  play_pause_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/play_pause", 10);
-  done_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/done", 10);
   period_srv_ = ros_node_.advertiseService(period_so);
+
+
+  auto auto_play_bind = [this](peter_msgs::GetBoolRequest &req, peter_msgs::GetBoolResponse &res) {
+    res.data = ui.auto_play_checkbox->isChecked();
+    return true;
+  };
+  auto auto_play_so = create_service_options(peter_msgs::GetBool, "rviz_anim/auto_play", auto_play_bind);
+  auto_play_srv_ = ros_node_.advertiseService(auto_play_so);
 
   // this is stupid why must I list this type here but not when I do this for services!?
   boost::function<void(const std_msgs::Int64::ConstPtr &)> time_cb = [this](const std_msgs::Int64::ConstPtr &msg) {

@@ -43,6 +43,7 @@ class MainWidget : public QWidget {
   ros::Publisher play_pause_pub_;
   ros::Publisher done_pub_;
   ros::ServiceServer period_srv_;
+  ros::ServiceServer auto_play_srv_;
   ros::Subscriber time_sub_;
   ros::Subscriber max_time_sub_;
 
