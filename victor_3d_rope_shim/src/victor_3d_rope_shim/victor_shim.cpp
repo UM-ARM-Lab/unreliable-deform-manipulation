@@ -61,7 +61,7 @@ std::pair<Eigen::Translation3d, Eigen::Translation3d> toGripperPositions(geometr
 
 Pose lookupTransform(tf2_ros::Buffer const& buffer,
                      std::string const& parent_frame,
-                     std::string const& child_frame, 
+                     std::string const& child_frame,
                      ros::Time const& target_time = ros::Time(0),
                      ros::Duration const& timeout = ros::Duration(0))
 {
@@ -97,7 +97,7 @@ trajectory_msgs::JointTrajectory MergeTrajectories(trajectory_msgs::JointTraject
     auto const traj_b_names = std::set<std::string>(traj_b.joint_names.begin(), traj_b.joint_names.end());
     std::vector<std::string> intersection(traj_a_names.size() + traj_b_names.size(), "");
     auto const end = std::set_intersection(traj_a_names.begin(), traj_a_names.end(),
-                                          traj_b_names.begin(), traj_b_names.end(), 
+                                          traj_b_names.begin(), traj_b_names.end(),
                                           intersection.begin());
     MPS_ASSERT(intersection.begin() == end && "Trajectories must be for different joints");
   }
@@ -143,8 +143,8 @@ trajectory_msgs::JointTrajectory MergeTrajectories(trajectory_msgs::JointTraject
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-VictorInterface::VictorInterface(ros::NodeHandle nh, 
-                                 ros::NodeHandle ph, 
+VictorInterface::VictorInterface(ros::NodeHandle nh,
+                                 ros::NodeHandle ph,
                                  std::shared_ptr<tf2_ros::Buffer> tf_buffer)
   // TOOD: ROS Param lookups
   : nh_(nh)
@@ -188,7 +188,7 @@ VictorInterface::VictorInterface(ros::NodeHandle nh,
     if (!client.waitForExistence(ros::Duration(3)))
     {
       ROS_WARN_STREAM("Service [" << nh_.getNamespace() << topic << " was not available. Defaulting to a saved set");
-      
+
       // NB: PlannningScene assumes everything is defined relative to the
       //     robot base frame, so we have to deal with that here
       auto constexpr wall_width = 0.1;
@@ -247,25 +247,25 @@ VictorInterface::VictorInterface(ros::NodeHandle nh,
           scene_->staticObstacles.push_back({ wall, robotTworld * worldTtable * pose });
         }
       }
-    
+
       planning_scene_ = std::make_shared<planning_scene::PlanningScene>(robot_model_, scene_->computeCollisionWorld());
     }
     else
     {
       planning_scene_ = std::make_shared<planning_scene::PlanningScene>(robot_model_, scene_->computeCollisionWorld());
-      
+
       // TODO: Is this request really what we want for a more generic task?
       moveit_msgs::GetPlanningSceneRequest req;
-      req.components.components = 
-        moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_NAMES | 
+      req.components.components =
+        moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_NAMES |
         moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_GEOMETRY |
         moveit_msgs::PlanningSceneComponents::OCTOMAP |
         moveit_msgs::PlanningSceneComponents::TRANSFORMS |
         moveit_msgs::PlanningSceneComponents::OBJECT_COLORS;
-      
+
       moveit_msgs::GetPlanningSceneResponse resp;
       client.call(req, resp);
-      planning_scene_->processPlanningSceneWorldMsg(resp.scene.world);      
+      planning_scene_->processPlanningSceneWorldMsg(resp.scene.world);
     }
   }
 
@@ -290,7 +290,7 @@ VictorInterface::VictorInterface(ros::NodeHandle nh,
   planning_scene_->setCurrentState(home_state_);
 
   joint_states_listener_ = std::make_shared<Listener<sensor_msgs::JointState>>(nh, "joint_states", true);
-  
+
   // Attach the cat toy/wand to Victor - actually attaches to the state in the planning scene (I think)
   // TODO: attach the wand to states directly where needed
   // NB: This code is old and should not be trusted, it was not in use when copied from old codebase
@@ -379,7 +379,7 @@ void VictorInterface::test()
       std::cerr << "robot_frame_jacobian:\n" << cleanZeros(robot_frame_jacobian) << std::endl;
     }
 
-    MPS_ASSERT(cleanZeros(moveit_jacobian).isApprox(cleanZeros(moveit_frame_jacobian)) && 
+    MPS_ASSERT(cleanZeros(moveit_jacobian).isApprox(cleanZeros(moveit_frame_jacobian)) &&
                "MoveIt and 'manual' Jacobian code should produce the same result");
   }
 
@@ -409,14 +409,14 @@ void VictorInterface::test()
     followTrajectory(traj);
   }
 
-  // Left arm, palm forward, near left side of table
+  // Left arm, palm forward, where the rope starts in Gazebo (gripper1)
   if (false)
   {
-    Eigen::Quaterniond const table_to_hand_rot =
-        Eigen::AngleAxisd(-90.0 * TO_RADIANS, Eigen::Vector3d::UnitX()) *
-        Eigen::AngleAxisd(-90.0 * TO_RADIANS, Eigen::Vector3d::UnitY());
-    Eigen::Translation3d const table_to_hand_trans(0.2, -0.4, 0.4);
-    Pose const world_target_pose = worldTtable * table_to_hand_trans * table_to_hand_rot;
+    Eigen::Quaterniond const root_to_tool_rot =
+        Eigen::AngleAxisd( 90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
+        Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ());
+    Eigen::Translation3d const root_to_tool(1.0, 0.3, 0.95);
+    Pose const world_target_pose = worldTrobot * root_to_tool * root_to_tool_rot;
     auto const ik_solutions = left_arm_->IK(world_target_pose, robotTworld, home_state_, planning_scene_);
     std::cerr << "IK Solutions at target: " << ik_solutions.size() << std::endl;
 
@@ -453,14 +453,14 @@ void VictorInterface::test()
     }
   }
 
-  // Right arm, palm forward, near the right side of the table
+  // Right arm, palm forward, where the rope starts in Gazebo (gripper2)
   if (false)
   {
-    Eigen::Quaterniond const table_to_hand_rot =
-        Eigen::AngleAxisd(-90.0 * TO_RADIANS, Eigen::Vector3d::UnitX()) *
-        Eigen::AngleAxisd(-90.0 * TO_RADIANS, Eigen::Vector3d::UnitY());
-    Eigen::Translation3d const table_to_hand_trans(0.2, 0.4, 0.4);
-    Pose const world_target_pose = worldTtable * table_to_hand_trans * table_to_hand_rot;
+    Eigen::Quaterniond const root_to_tool_rot =
+        Eigen::AngleAxisd( 90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
+        Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ());
+    Eigen::Translation3d const root_to_tool(1.0, -0.3, 0.95);
+    Pose const world_target_pose = worldTrobot * root_to_tool * root_to_tool_rot;
     auto const ik_solutions = right_arm_->IK(world_target_pose, robotTworld, home_state_, planning_scene_);
     std::cerr << "IK Solutions at target: " << ik_solutions.size() << std::endl;
 
@@ -683,7 +683,7 @@ void VictorInterface::followTrajectory(trajectory_msgs::JointTrajectory const& t
   // FIXME: Relatively arbitrary duration here - what works for both sim and real?
   //        Or take this as a ROS param
   ROS_WARN("Arbitrary goal_time_tolerance, verify this works on Gazebo and fake/real Victor");
-  goal.goal_time_tolerance = ros::Duration(1.0);
+  goal.goal_time_tolerance = ros::Duration(0.1);
   ROS_INFO("Sending goal ...");
   trajectory_client_->sendGoalAndWait(goal);
 
@@ -706,7 +706,7 @@ void VictorInterface::gotoHome()
 void VictorInterface::moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions)
 {
   std::pair<Eigen::Translation3d, Eigen::Translation3d> table_frame{
-    (tableTrobot * gripper_positions.first).translation(), 
+    (tableTrobot * gripper_positions.first).translation(),
     (tableTrobot * gripper_positions.second).translation()
   };
   moveInTableFrame(table_frame);
@@ -930,7 +930,7 @@ void VictorInterface::moveInTableFrameJacobianIk(
       cmd));
     return cmd;
   }();
-  
+
   // Debugging - visualize JacobianIK result tip in table frame
   if (true)
   {
@@ -1055,7 +1055,7 @@ VictorShim::VictorShim(ros::NodeHandle nh, ros::NodeHandle ph)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool VictorShim::executeTrajectory(pm::DualGripperTrajectory::Request& req, 
+bool VictorShim::executeTrajectory(pm::DualGripperTrajectory::Request& req,
                                    pm::DualGripperTrajectory::Response& res)
 {
   (void)res;
