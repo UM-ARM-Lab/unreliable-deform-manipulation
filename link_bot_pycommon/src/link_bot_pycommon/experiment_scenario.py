@@ -18,7 +18,7 @@ from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Positi
 class ExperimentScenario:
     def __init__(self, params: Dict):
         self.params = params
-        from gazebo_msgs.srv import SetModelState, SetModelStateRequest
+        from gazebo_msgs.srv import SetModelState
         self.gz_set_state_srv = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
 
     def __eq__(self, other):
@@ -41,6 +41,26 @@ class ExperimentScenario:
                       state: Dict,
                       params: Dict, action_rng):
         raise NotImplementedError()
+
+    def sample_actions(self,
+                       environment: Dict,
+                       start_state: Dict,
+                       params: Dict,
+                       n_action_sequences: int,
+                       action_sequence_length: int):
+        action_sequences = []
+        rng = np.random.RandomState()
+
+        for i in range(n_action_sequences):
+            action_sequence = []
+            for t in range(action_sequence_length):
+                action = self.sample_action(environment=environment,
+                                            state=start_state,
+                                            params=params,
+                                            action_rng=rng)
+                action_sequence.append(action)
+            action_sequences.append(action_sequence)
+        return action_sequences
 
     @staticmethod
     def local_environment_center(state):
@@ -406,7 +426,7 @@ class ExperimentScenario:
         return ExperimentScenario.move_objects(movable_objects_services, object_moves)
 
     def move_objects_kinematic(self, movable_objects_services: Dict, object_moves: Dict):
-        from gazebo_msgs.srv import SetModelState, SetModelStateRequest
+        from gazebo_msgs.srv import SetModelStateRequest
         del movable_objects_services
         for object_name, move in object_moves.items():
             state_req = SetModelStateRequest()

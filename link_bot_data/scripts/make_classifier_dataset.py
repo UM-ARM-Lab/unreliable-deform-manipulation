@@ -96,7 +96,7 @@ def main():
                 with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
                     writer.write(example)
                 total_count += 1
-            print(total_count, perf_counter() - t0)
+            print(f"Examples: {total_count:10d}, Time: {perf_counter() - t0:.3f}")
 
 
 if __name__ == '__main__':

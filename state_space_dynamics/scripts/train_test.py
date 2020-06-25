@@ -86,7 +86,7 @@ def eval_main(args, seed: int):
     for name, value in validation_metrics.items():
         print(f"{name}: {value}")
 
-    # more metrics that can't be epressed as just an average over metrics on each batch
+    # more metrics that can't be expressed as just an average over metrics on each batch
     all_errors = None
     for batch in test_tf_dataset:
         outputs = runner.model(batch, training=False)

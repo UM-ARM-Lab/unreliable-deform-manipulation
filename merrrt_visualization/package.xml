@@ -1,7 +1,7 @@
 <package format="2">
-  <name>viz_stepper</name>
+  <name>merrrt_visualization</name>
   <version>0.0.0</version>
-  <description>for stepping my visualizations</description>
+  <description>visualization</description>
   <maintainer email="pmitrano@umich.edu">Peter Mitrano</maintainer>
   <license>BSD</license>
 
@@ -16,6 +16,7 @@
   <exec_depend>message_runtime</exec_depend>
 
   <export>
-    <rviz plugin="${prefix}/plugin_description.xml"/>
+    <rviz plugin="${prefix}/merrrt_widget_description.xml"/>
+    <rviz plugin="${prefix}/rviz_animation_controller_description.xml"/>
   </export>
 </package>

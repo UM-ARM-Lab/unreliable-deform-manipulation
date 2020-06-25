@@ -2,8 +2,9 @@
 
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
-#include <std_msgs/Int64.h>
+#include <rviz/panel.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/Int64.h>
 
 #include <QObject>
 #include <QWidget>
@@ -11,19 +12,22 @@
 
 #include "ui_mainwidget.h"
 
-class MainWidget : public QWidget {
+namespace merrrt_visualization
+{
+class RVizAnimationController : public rviz::Panel
+{
   Q_OBJECT
 
- public:
-  explicit MainWidget(QWidget *parent = nullptr);
+public:
+  explicit RVizAnimationController(QWidget *parent = nullptr);
 
-  virtual ~MainWidget();
+  virtual ~RVizAnimationController();
 
   void TimeCallback(const std_msgs::Int64::ConstPtr &msg);
 
   void MaxTimeCallback(const std_msgs::Int64::ConstPtr &msg);
 
- public slots:
+public slots:
 
   void ForwardClicked();
 
@@ -33,7 +37,7 @@ class MainWidget : public QWidget {
 
   void DoneClicked();
 
- private:
+private:
   void QueueThread();
 
   Ui_MainWidget ui;
@@ -50,3 +54,5 @@ class MainWidget : public QWidget {
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
 };
+
+}  // namespace merrrt_visualization

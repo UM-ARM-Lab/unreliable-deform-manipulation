@@ -1,7 +1,7 @@
-#include <peter_msgs/GetFloat32.h>
+#include <merrrt_visualization/rviz_animation_controller.h>
 #include <peter_msgs/GetBool.h>
+#include <peter_msgs/GetFloat32.h>
 #include <std_msgs/Empty.h>
-#include <viz_stepper/viz_stepper.h>
 
 #include <QApplication>
 #include <QCheckBox>
@@ -10,16 +10,18 @@
 #include <QPushButton>
 #include <iostream>
 
-#define create_service_options(type, name, bind) \
+#define create_service_options(type, name, bind)                                                                       \
   ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &queue_)
 
-MainWidget::MainWidget(QWidget *parent) : QWidget(parent)
+namespace merrrt_visualization
+{
+RVizAnimationController::RVizAnimationController(QWidget *parent) : rviz::Panel(parent)
 {
   ui.setupUi(this);
-  connect(ui.forward_button, &QPushButton::clicked, this, &MainWidget::ForwardClicked);
-  connect(ui.backward_button, &QPushButton::clicked, this, &MainWidget::BackwardClicked);
-  connect(ui.play_pause_button, &QPushButton::clicked, this, &MainWidget::PlayPauseClicked);
-  connect(ui.done_button, &QPushButton::clicked, this, &MainWidget::DoneClicked);
+  connect(ui.forward_button, &QPushButton::clicked, this, &RVizAnimationController::ForwardClicked);
+  connect(ui.backward_button, &QPushButton::clicked, this, &RVizAnimationController::BackwardClicked);
+  connect(ui.play_pause_button, &QPushButton::clicked, this, &RVizAnimationController::PlayPauseClicked);
+  connect(ui.done_button, &QPushButton::clicked, this, &RVizAnimationController::DoneClicked);
 
   fwd_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/forward", 10);
   bwd_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/backward", 10);
@@ -32,7 +34,6 @@ MainWidget::MainWidget(QWidget *parent) : QWidget(parent)
   };
   auto period_so = create_service_options(peter_msgs::GetFloat32, "rviz_anim/period", period_bind);
   period_srv_ = ros_node_.advertiseService(period_so);
-
 
   auto auto_play_bind = [this](peter_msgs::GetBoolRequest &req, peter_msgs::GetBoolResponse &res) {
     res.data = ui.auto_play_checkbox->isChecked();
@@ -58,7 +59,7 @@ MainWidget::MainWidget(QWidget *parent) : QWidget(parent)
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
 }
 
-MainWidget::~MainWidget()
+RVizAnimationController::~RVizAnimationController()
 {
   queue_.clear();
   queue_.disable();
@@ -66,41 +67,48 @@ MainWidget::~MainWidget()
   ros_queue_thread_.join();
 }
 
-void MainWidget::TimeCallback(const std_msgs::Int64::ConstPtr &msg)
+void RVizAnimationController::TimeCallback(const std_msgs::Int64::ConstPtr &msg)
 {
   auto const text = QString::number(msg->data);
   ui.step_number_label->setText(text);
 }
 
-void MainWidget::MaxTimeCallback(const std_msgs::Int64::ConstPtr &msg)
+void RVizAnimationController::MaxTimeCallback(const std_msgs::Int64::ConstPtr &msg)
 {
   auto const text = QString::number(msg->data);
   ui.max_step_number_label->setText(text);
 }
 
-void MainWidget::DoneClicked() { done_pub_.publish(std_msgs::Empty()); }
+void RVizAnimationController::DoneClicked()
+{
+  done_pub_.publish(std_msgs::Empty());
+}
 
-void MainWidget::ForwardClicked() { fwd_pub_.publish(std_msgs::Empty()); }
+void RVizAnimationController::ForwardClicked()
+{
+  fwd_pub_.publish(std_msgs::Empty());
+}
 
-void MainWidget::BackwardClicked() { bwd_pub_.publish(std_msgs::Empty()); }
+void RVizAnimationController::BackwardClicked()
+{
+  bwd_pub_.publish(std_msgs::Empty());
+}
 
-void MainWidget::PlayPauseClicked() { play_pause_pub_.publish(std_msgs::Empty()); }
+void RVizAnimationController::PlayPauseClicked()
+{
+  play_pause_pub_.publish(std_msgs::Empty());
+}
 
-void MainWidget::QueueThread()
+void RVizAnimationController::QueueThread()
 {
   double constexpr timeout = 0.01;
-  while (ros_node_.ok()) {
+  while (ros_node_.ok())
+  {
     queue_.callAvailable(ros::WallDuration(timeout));
   }
 }
 
-int main(int argc, char **argv)
-{
-  ros::init(argc, argv, "viz_stepper");
+}  // namespace merrrt_visualization
 
-  QApplication app(argc, argv);
-
-  MainWidget main_widget;
-  main_widget.show();
-  return app.exec();
-}
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(merrrt_visualization::RVizAnimationController, rviz::Panel)

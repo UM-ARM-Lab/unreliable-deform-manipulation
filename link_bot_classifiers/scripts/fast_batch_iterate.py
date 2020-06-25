@@ -20,7 +20,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
-    parser.add_argument('--batch-size', type=int, default=4096)
+    parser.add_argument('--batch-size', type=int, default=2048)
     parser.add_argument('--take', type=int)
 
     args = parser.parse_args()

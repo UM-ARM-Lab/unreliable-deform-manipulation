@@ -1,5 +1,14 @@
 {
   "UDNN": {
-    "model_dir": "trials/dual_no_obs/June_19_10-59-18_24b3b53fb4/best_checkpoint"
+    "model_dir": [
+      "trials/dual_no_obs2_0/best_checkpoint",
+      "trials/dual_no_obs2_1/best_checkpoint",
+      "trials/dual_no_obs2_2/best_checkpoint",
+      "trials/dual_no_obs2_3/best_checkpoint",
+      "trials/dual_no_obs2_4/best_checkpoint",
+      "trials/dual_no_obs2_5/best_checkpoint",
+      "trials/dual_no_obs2_6/best_checkpoint",
+      "trials/dual_no_obs2_7/best_checkpoint"
+    ]
   }
 }

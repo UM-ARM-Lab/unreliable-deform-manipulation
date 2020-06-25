@@ -19,7 +19,7 @@ from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 from state_space_dynamics import model_utils
 
-limit_gpu_mem(8)
+limit_gpu_mem(6)
 
 
 def main():
@@ -29,7 +29,7 @@ def main():
     parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
     parser.add_argument('classifier_model_dir', type=pathlib.Path)
-    parser.add_argument('--max-examples-per-record', type=int, default=1, help="examples per file")
+    parser.add_argument('--max-examples-per-record', type=int, default=128, help="examples per file")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
 
@@ -38,7 +38,8 @@ def main():
     labeling_params = json.load(args.labeling_params.open("r"))
     dynamics_hparams = json.load((args.dataset_dir / 'hparams.json').open('r'))
     fwd_models, _ = model_utils.load_generic_model(args.fwd_model_dir)
-    compression_type = 'ZLIB'
+
+    record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
 
     dataset = DynamicsDataset([args.dataset_dir])
 
@@ -65,7 +66,6 @@ def main():
 
     classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, fwd_models.scenario)
 
-
     val_split = int(args.total_take * DEFAULT_VAL_SPLIT) if args.total_take is not None else None
     test_split = int(args.total_take * DEFAULT_TEST_SPLIT) if args.total_take is not None else None
     train_split = args.total_take - val_split - test_split if args.total_take is not None else None
@@ -75,15 +75,13 @@ def main():
         'train': train_split
     }
 
-    last_record = perf_counter()
+    t0 = perf_counter()
     for mode in ['train', 'test', 'val']:
         tf_dataset = dataset.get_datasets(mode=mode, take=take_split[mode])
 
         full_output_directory = args.out_dir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
-        current_example_count = 0
-        examples = []
         total_count = 0
         for out_example in generate_recovery_examples(fwd_models, classifier_model, tf_dataset, dataset, labeling_params):
             # FIXME: is there an extra time/batch dimension?
@@ -95,31 +93,12 @@ def main():
 
                 example_proto = tf.train.Example(features=tf.train.Features(feature=features))
                 example = example_proto.SerializeToString()
-                examples.append(example)
-                current_example_count += 1
+                record_filename = "example_{:09d}.tfrecords".format(total_count)
+                full_filename = full_output_directory / record_filename
+                with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
+                    writer.write(example)
                 total_count += 1
-
-                if current_example_count == args.max_examples_per_record:
-                    # save to a TF record
-                    serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
-
-                    end_example_idx = total_count
-                    start_example_idx = end_example_idx - len(examples)
-                    record_filename = "example_{:09d}_to_{:09d}.tfrecords".format(start_example_idx, end_example_idx - 1)
-                    full_filename = full_output_directory / record_filename
-                    if full_filename.exists():
-                        print(Fore.RED + "Error! Output file {} exists. Aborting.".format(full_filename) + Fore.RESET)
-                        return
-                    writer = tf.data.experimental.TFRecordWriter(str(full_filename), compression_type=compression_type)
-                    writer.write(serialized_dataset)
-                    now = perf_counter()
-                    dt_record = now - last_record
-                    print("saved {} ({:.3f}s)".format(full_filename, dt_record))
-                    last_record = now
-
-                    # empty and reset counter
-                    current_example_count = 0
-                    examples = []
+            print(total_count, perf_counter() - t0)
 
 
 if __name__ == '__main__':

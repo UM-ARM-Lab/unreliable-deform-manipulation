@@ -13,19 +13,43 @@
   "action_in_image": false,
   "rope_image_k": 1000,
   "rnn_size": 128,
-  "fc_layer_sizes": [128],
+  "fc_layer_sizes": [
+    128
+  ],
   "conv_filters": [
-    [32, [5, 5, 5]],
-    [32, [3, 3, 3]]
+    [
+      8,
+      [
+        5,
+        5,
+        5
+      ]
+    ],
+    [
+      8,
+      [
+        3,
+        3,
+        3
+      ]
+    ],
+    [
+      8,
+      [
+        3,
+        3,
+        3
+      ]
+    ]
   ],
   "loss_type": "weighted_sequence",
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
   "activity_reg": 0.05,
   "batch_norm": true,
-  "local_env_h_rows": 24,
-  "local_env_w_cols": 24,
-  "local_env_c_channels": 12,
+  "local_env_h_rows": 64,
+  "local_env_w_cols": 64,
+  "local_env_c_channels": 36,
   "learning_rate": 0.001,
   "flooding_level": 0.000,
   "stdev": true

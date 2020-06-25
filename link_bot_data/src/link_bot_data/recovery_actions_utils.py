@@ -2,65 +2,77 @@ from typing import Dict
 
 import tensorflow as tf
 
+from link_bot_classifiers.nn_classifier import NNClassifierWrapper
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from moonshine.moonshine_utils import gather_dict
+from state_space_dynamics.model_utils import EnsembleDynamicsFunction
 
 
-def generate_recovery_examples(fwd_model,
-                               classifier_model,
+def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
+                               classifier_model: NNClassifierWrapper,
                                tf_dataset: tf.data.Dataset,
                                dataset: DynamicsDataset,
                                labeling_params: Dict):
-    batch_size = 10
+    batch_size = 256
     action_sequence_horizon = labeling_params['action_sequence_horizon']
-    for dataset_element in tf_dataset.batch(batch_size):
-        inputs, outputs = dataset_element
-        actual_batch_size = int(inputs['traj_idx'].shape[0])
-        # iterate over every subsequence of length actions_sequence_horizon
-        for start_t in range(0, dataset.max_sequence_length - action_sequence_horizon - 1, labeling_params['start_step']):
-            end_t = min(start_t + action_sequence_horizon, dataset.max_sequence_length)
-            states_from_start_t = {k: outputs[k][:, start_t:end_t] for k in fwd_model.state_keys}
-            actions_from_start_t = inputs['action'][:, start_t:end_t]
+    for example in tf_dataset.batch(batch_size):
+        actual_batch_size = int(example['traj_idx'].shape[0])
+        # iterate over every subsequence of exactly length actions_sequence_horizon
+        for start_t in range(0, dataset.sequence_length - action_sequence_horizon - 1, labeling_params['start_step']):
+            end_t = start_t + action_sequence_horizon
+            print(start_t, end_t)
 
-            in_example = (inputs,
-                          actions_from_start_t,
-                          states_from_start_t,
-                          labeling_params,
-                          )
+            actual_states_from_start_t = {k: example[k][:, start_t:end_t] for k in fwd_model.state_keys}
+            actions_from_start_t = {k: example[k][:, start_t:end_t - 1] for k in fwd_model.action_keys}
+
+            data = (example,
+                    actions_from_start_t,
+                    actual_states_from_start_t,
+                    labeling_params,
+                    )
             constants = (actual_batch_size,
                          action_sequence_horizon,
                          classifier_model.horizon,
                          actual_batch_size,
                          start_t,
                          end_t)
-            out_examples = generate_recovery_actions_examples(fwd_model, classifier_model, in_example, constants)
+            out_examples = generate_recovery_actions_examples(fwd_model, classifier_model, data, constants)
             if out_examples is not None:
                 yield out_examples
 
 
-def generate_recovery_actions_examples(fwd_model, classifier_model, in_example, constants):
-    inputs, actual_actions, states, labeling_params = in_example
+def generate_recovery_actions_examples(fwd_model, classifier_model, data, constants):
+    example, actual_actions, actual_states, labeling_params = data
     actual_batch_size, action_sequence_horizon, classifier_horizon, batch_size, start_t, end_t = constants
+    print('classifier horizon =', classifier_horizon)
 
-    full_env = inputs['full_env/env']
-    full_env_origin = inputs['full_env/origin']
-    full_env_extent = inputs['full_env/extent']
-    full_env_res = inputs['full_env/res']
+    full_env = example['env']
+    full_env_origin = example['origin']
+    full_env_extent = example['extent']
+    full_env_res = example['res']
     environment = {
-        'full_env/env': full_env,
-        'full_env/origin': full_env_origin,
-        'full_env/extent': full_env_extent,
-        'full_env/res': full_env_res,
+        'env': full_env,
+        'origin': full_env_origin,
+        'extent': full_env_extent,
+        'res': full_env_res,
     }
 
     # Sample actions
-    n_action_samples = 25
+    n_action_samples = labeling_params['n_action_samples']
     n_actions = classifier_horizon - 1
-    action_dim = 2
     samples_and_time = n_action_samples * action_sequence_horizon
-    random_actions = tf.random.uniform(shape=[batch_size * samples_and_time, n_actions, action_dim], minval=-0.15, maxval=0.15)
-    start_states_tiled = {k: tf.tile(v[:, 0:1, :], [samples_and_time, 1, 1]) for k, v in states.items()}  # 0:1 to keep dim
+    # TODO: because sampling an action is state dependant, a more "correct" way to sample a sequence of actions is to:
+    #   sample 1 action, propagate, and repeat.
+    random_actions = []
+    for i in range(action_sequence_horizon):
+        actual_state = fwd_model.scenario.index_state_time(actual_states, i)
+        random_actions_for_start_state = fwd_model.scenario.sample_actions(environment=environment,
+                                                                           start_state=actual_state,
+                                                                           action_sequence_length=n_actions,
+                                                                           n_action_samples=n_action_samples)
+        random_actions.append(random_actions_for_start_state)
+    start_states_tiled = {k: tf.tile(v[:, 0:1, :], [samples_and_time, 1, 1]) for k, v in actual_states.items()}  # 0:1 to keep dim
 
     # Predict
     predictions = fwd_model.propagate_differentiable_batched(start_states=start_states_tiled, actions=random_actions)
@@ -88,18 +100,18 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, in_example, 
 
     # construct output examples dict
     out_examples = {
-        'full_env/env': full_env,
-        'full_env/origin': full_env_origin,
-        'full_env/extent': full_env_extent,
-        'full_env/res': full_env_res,
-        'traj_idx': inputs['traj_idx'][:, 0],
+        'env': full_env,
+        'origin': full_env_origin,
+        'extent': full_env_extent,
+        'res': full_env_res,
+        'traj_idx': example['traj_idx'][:, 0],
         'start_t': tf.stack([start_t] * batch_size),
         'end_t': tf.stack([end_t] * batch_size),
         'action': actual_actions[:, :, :-1],  # skip the last action
         'mask': mask,
     }
     # add true start states
-    out_examples.update(states)
+    out_examples.update(actual_states)
     out_examples = make_dict_tf_float32(out_examples)
 
     valid_indices = tf.where(valid_example)

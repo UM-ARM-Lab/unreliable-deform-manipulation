@@ -1,6 +1,6 @@
 <library path="lib/libmerrrt_widget">
-    <class name="merrrt_widget/Merrrt"
-           type="merrrt_widget::MerrrtWidget"
+    <class name="merrrt_visualization/Merrrt"
+           type="merrrt_visualization::MerrrtWidget"
            base_class_type="rviz::Panel">
         <description>merrrt widget</description>
     </class>

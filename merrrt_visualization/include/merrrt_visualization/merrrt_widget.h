@@ -11,13 +11,13 @@
 
 #include "ui_merrrt_widget.h"
 
-namespace merrrt_widget
+namespace merrrt_visualization
 {
-
-class MerrrtWidget : public rviz::Panel {
+class MerrrtWidget : public rviz::Panel
+{
   Q_OBJECT
 
- public:
+public:
   explicit MerrrtWidget(QWidget *parent = nullptr);
 
   void BoolCallback(const std_msgs::Bool::ConstPtr &msg);
@@ -27,9 +27,7 @@ class MerrrtWidget : public rviz::Panel {
   void load(const rviz::Config &config) override;
   void save(rviz::Config config) const override;
 
- public slots:
-
- private:
+private:
   Ui_MerrrtWidget ui;
   ros::NodeHandle ros_node_;
   ros::Subscriber bool_sub_;
@@ -37,4 +35,4 @@ class MerrrtWidget : public rviz::Panel {
   ros::Subscriber accept_probability_sub_;
 };
 
-} // namespace merrrt_widget
+}  // namespace merrrt_visualization

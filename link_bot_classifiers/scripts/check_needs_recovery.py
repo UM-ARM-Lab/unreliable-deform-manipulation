@@ -2,7 +2,6 @@
 import argparse
 import json
 import pathlib
-from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,7 +12,6 @@ from link_bot_classifiers.analysis_utils import execute, predict_and_classify
 from link_bot_data.classifier_dataset_utils import compute_is_close_tf
 from link_bot_gazebo.gazebo_services import GazeboServices
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from moonshine.gpu_config import limit_gpu_mem
@@ -56,7 +54,11 @@ def main():
     start_states = [start_state]
 
     # read actions from config
-    action_sequences = sample_actions(args, fwd_model.scenario, environment, start_state, fwd_model.data_collection_params)
+    action_sequences = fwd_model.scenario.sample_actions(environment=environment,
+                                                         start_state=start_state,
+                                                         params=fwd_model.data_collection_params,
+                                                         n_action_sequences=args.n_action_sequences,
+                                                         action_sequence_length=args.action_sequence_length)
 
     predicted_states, accept_probabilities = predict_and_classify(fwd_model=fwd_model,
                                                                   classifier=classifier,
@@ -79,22 +81,6 @@ def main():
         predicted_states_dict = sequence_of_dicts_to_dict_of_tensors(predicted_states)
         labels = compute_is_close_tf(actual_states_dict, predicted_states_dict, classifier.dataset_labeling_params)
         fwd_model.scenario.animate_rviz(environment, actual_states, predicted_states, actions, labels, accept_probabilities)
-
-
-def sample_actions(args, scenario: Base3DScenario, environment: Dict, start_state: Dict, params: Dict):
-    action_sequences = []
-    rng = np.random.RandomState()
-
-    for i in range(args.n_action_sequences):
-        action_sequence = []
-        for t in range(args.action_sequence_length):
-            action = scenario.sample_action(environment=environment,
-                                            state=start_state,
-                                            params=params,
-                                            action_rng=rng)
-            action_sequence.append(action)
-        action_sequences.append(action_sequence)
-    return action_sequences
 
 
 if __name__ == '__main__':

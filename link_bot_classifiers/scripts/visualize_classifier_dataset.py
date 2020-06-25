@@ -24,7 +24,7 @@ def main():
     np.set_printoptions(suppress=True, linewidth=200, precision=3)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
-    parser.add_argument('display_type', choices=['just_count', 'image', 'anim', '2d', '3d', 'sanity_check'])
+    parser.add_argument('display_type', choices=['just_count', 'image', 'anim', '2d', '3d', 'sanity_check', 'stdev'])
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--save', action='store_true')
@@ -89,7 +89,6 @@ def visualize_dataset(args, classifier_dataset):
         is_close = example['is_close'].numpy().squeeze()
         count += is_close.shape[0]
 
-        print(is_close)
         n_close = np.count_nonzero(is_close)
         n_far = is_close.shape[0] - n_close
         positive_count += n_close
@@ -138,6 +137,10 @@ def visualize_dataset(args, classifier_dataset):
                 # this will return when either the animation is "playing" or because the user stepped forward
                 anim.step()
 
+        elif args.display_type == 'stdev':
+            for t in range(1, classifier_dataset.horizon):
+                stdev_t = example[add_predicted('stdev')][t, 0].numpy()
+                label_t = example['is_close'][t]
                 stdevs.append(stdev_t)
                 labels.append(label_t)
                 if label_t > 0.5:
@@ -148,11 +151,14 @@ def visualize_dataset(args, classifier_dataset):
             raise NotImplementedError()
     total_dt = perf_counter() - t0
 
-    plt.figure()
-    plt.hist(stdevs_for_negative, label='stdevs for negative examples', alpha=0.8)
-    plt.hist(stdevs_for_positive, label='stdevs for positive examples', alpha=0.8)
-    plt.legend()
-    plt.show()
+    if args.display_type == 'stdev':
+        plt.figure()
+        plt.hist(stdevs_for_negative, label='negative examples', alpha=0.8, bins=100)
+        plt.hist(stdevs_for_positive, label='positive examples', alpha=0.8, bins=100)
+        plt.ylabel("count")
+        plt.xlabel("stdev")
+        plt.legend()
+        plt.show()
 
     print_stats_and_timing(args, count, reconverging_count, negative_count, positive_count, total_dt)
 

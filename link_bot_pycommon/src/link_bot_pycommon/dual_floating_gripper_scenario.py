@@ -43,7 +43,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                 gripper1_position = state['gripper1'] + last_delta_gripper_1
                 gripper2_position = state['gripper2'] + last_delta_gripper_2
             else:
-                gripper1_position, gripper2_position = self.random_nearby_position_action(state, action_rng, environment)
+                gripper1_position, gripper2_position = self.random_nearby_position_action(
+                    state, action_rng, environment)
 
             out_of_bounds = self.is_out_of_bounds(gripper1_position) or self.is_out_of_bounds(gripper2_position)
             gripper_collision = np.linalg.norm(gripper2_position - gripper1_position) < self.params[
@@ -63,8 +64,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         extent = self.params['action_sample_extent']
         x_min, x_max, y_min, y_max, z_min, z_max = extent
         return x < x_min or x > x_max \
-               or y < y_min or y > y_max \
-               or z < z_min or z > z_max
+            or y < y_min or y > y_max \
+            or z < z_min or z > z_max
 
     def random_nearby_position_action(self, state: Dict, action_rng: np.random.RandomState, environment):
         target_gripper1_pos = Base3DScenario.random_pos(action_rng, self.params['action_sample_extent'])
@@ -227,7 +228,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def index_predicted_state_time(state, t):
         state_t = {}
         for feature_name in ['gripper1', 'gripper2', 'link_bot']:
-            assert state[add_predicted(feature_name)].ndim == 3
             state_t[feature_name] = state[add_predicted(feature_name)][:, t]
         return state_t
 
@@ -235,7 +235,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def index_state_time(state, t):
         state_t = {}
         for feature_name in ['gripper1', 'gripper2', 'link_bot']:
-            assert state[feature_name].ndim == 3
             state_t[feature_name] = state[feature_name][:, t]
         return state_t
 
@@ -243,7 +242,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def index_action_time(action, t):
         action_t = {}
         for feature_name in ['gripper1_position', 'gripper2_position']:
-            assert action[feature_name].ndim == 3
             if t < action[feature_name].shape[1]:
                 action_t[feature_name] = action[feature_name][:, t]
             else:

@@ -3,9 +3,8 @@ from typing import Dict
 import numpy as np
 import tensorflow as tf
 
-from link_bot_classifiers.visualization import visualize_classifier_example_3d
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted
+from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.moonshine_utils import gather_dict, add_batch, remove_batch, index_dict_of_batched_vectors_tf
 from state_space_dynamics.model_utils import EnsembleDynamicsFunction
@@ -35,14 +34,21 @@ def generate_classifier_examples(fwd_model: EnsembleDynamicsFunction,
                                  tf_dataset: tf.data.Dataset,
                                  dataset: DynamicsDataset,
                                  labeling_params: Dict):
-    batch_size = 512
+    batch_size = 256
     classifier_horizon = labeling_params['classifier_horizon']
     scenario = fwd_model.scenario
     assert classifier_horizon >= 2
-    for example in tf_dataset.batch(batch_size):
+    tf_dataset = batch_tf_dataset(tf_dataset, batch_size, drop_remainder=False)
+
+    for idx, _ in enumerate(tf_dataset):
+        pass
+    n_total_batches = idx
+
+    for idx, example in enumerate(tf_dataset):
+        print(f"{idx} / {n_total_batches}")
         actual_batch_size = int(example['traj_idx'].shape[0])
 
-        for start_t in range(0, dataset.sequence_length - classifier_horizon - 1, labeling_params['start_step']):
+        for start_t in range(0, dataset.sequence_length - classifier_horizon + 1, labeling_params['start_step']):
             prediction_end_t = dataset.sequence_length
             actual_prediction_horizon = prediction_end_t - start_t
             actual_states_from_start_t = {k: example[k][:, start_t:prediction_end_t] for k in fwd_model.state_keys}
@@ -66,7 +72,7 @@ def generate_classifier_examples_from_batch(scenario: ExperimentScenario, predic
     prediction_horizon = prediction_actual.actual_prediction_horizon
     classifier_horizon = labeling_params['classifier_horizon']
 
-    for classifier_start_t in range(0, prediction_horizon - classifier_horizon):
+    for classifier_start_t in range(0, prediction_horizon - classifier_horizon + 1):
         classifier_end_t = classifier_start_t + classifier_horizon
 
         full_env = prediction_actual.dataset_element['env']
@@ -75,9 +81,12 @@ def generate_classifier_examples_from_batch(scenario: ExperimentScenario, predic
         full_env_res = prediction_actual.dataset_element['res']
         traj_idx = prediction_actual.dataset_element['traj_idx']
         prediction_start_t = prediction_actual.prediction_start_t
-        prediction_start_t_batched = tf.cast(tf.stack([prediction_start_t] * prediction_actual.batch_size, axis=0), tf.float32)
-        classifier_start_t_batched = tf.cast(tf.stack([classifier_start_t] * prediction_actual.batch_size, axis=0), tf.float32)
-        classifier_end_t_batched = tf.cast(tf.stack([classifier_end_t] * prediction_actual.batch_size, axis=0), tf.float32)
+        prediction_start_t_batched = tf.cast(
+            tf.stack([prediction_start_t] * prediction_actual.batch_size, axis=0), tf.float32)
+        classifier_start_t_batched = tf.cast(
+            tf.stack([classifier_start_t] * prediction_actual.batch_size, axis=0), tf.float32)
+        classifier_end_t_batched = tf.cast(
+            tf.stack([classifier_end_t] * prediction_actual.batch_size, axis=0), tf.float32)
         out_example = {
             'env': full_env,
             'origin': full_env_origin,
@@ -124,6 +133,7 @@ def generate_classifier_examples_from_batch(scenario: ExperimentScenario, predic
 
         def debug():
             # Visualize example
+            from link_bot_classifiers.visualization import visualize_classifier_example_3d
             for batch_idx in range(prediction_actual.batch_size):
                 visualize_classifier_example_3d(scenario=scenario,
                                                 example=index_dict_of_batched_vectors_tf(out_example, batch_idx),

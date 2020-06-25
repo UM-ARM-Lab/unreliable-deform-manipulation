@@ -1,0 +1,7 @@
+<library path="lib/librviz_animation_controller">
+    <class name="merrrt_visualization/AnimationController"
+           type="merrrt_visualization::RVizAnimationController"
+           base_class_type="rviz::Panel">
+        <description>rviz animation controller</description>
+    </class>
+</library>

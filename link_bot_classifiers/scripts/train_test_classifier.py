@@ -11,17 +11,21 @@ import rospy
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
 from link_bot_pycommon.pycommon import paths_to_json
+from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
+
+limit_gpu_mem(10.0)
 
 
 def train_main(args, seed: int):
     ###############
     # Datasets
     ###############
-    train_dataset = ClassifierDataset(args.dataset_dirs)
-    val_dataset = ClassifierDataset(args.dataset_dirs)
+    # set load_true_states=True when debugging
+    train_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=False)
+    val_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=False)
 
     ###############
     # Model
@@ -48,19 +52,21 @@ def train_main(args, seed: int):
                          params=model_hparams,
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
-                         val_every_n_batches=100)
+                         val_every_n_batches=200,
+                         mid_epoch_val_batches=32)
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
-    val_tf_dataset = val_dataset.get_datasets(mode='val')
+    val_tf_dataset = val_dataset.get_datasets(mode='val', take=args.take)
 
     # to mix up examples so each batch is diverse
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=2048, seed=seed, reshuffle_each_iteration=True)
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=50, seed=seed, reshuffle_each_iteration=False)
 
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, args.batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, args.batch_size, drop_remainder=True)
 
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)  # to mix up batches
+    # to mix up batches
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=128, seed=seed, reshuffle_each_iteration=True)
 
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
@@ -100,7 +106,7 @@ def eval_main(args, seed: int):
 
 
 def main():
-    np.set_printoptions(linewidth=250, precision=4, suppress=True, threshold=10000)
+    np.set_printoptions(linewidth=250, precision=4, suppress=True)
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers()
@@ -109,16 +115,16 @@ def main():
     train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
-    train_parser.add_argument('--batch-size', type=int, default=64)
+    train_parser.add_argument('--batch-size', type=int, default=8)
     train_parser.add_argument('--take', type=int)
     train_parser.add_argument('--debug', action='store_true')
     train_parser.add_argument('--epochs', type=int, default=10)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
-    train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches',
-                              default=100)
-    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs',
-                              default=1)
+    train_parser.add_argument('--log-scalars-every', type=int,
+                              help='loss/accuracy every this many steps/batches', default=100)
+    train_parser.add_argument('--validation-every', type=int,
+                              help='report validation every this many epochs', default=1)
     train_parser.add_argument('--seed', type=int, default=None)
     train_parser.set_defaults(func=train_main)
 

@@ -14,25 +14,25 @@ from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
+from link_bot_pycommon.pycommon import paths_from_json
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import listify, numpify, remove_batch
 from state_space_dynamics import model_utils
 
-limit_gpu_mem(2)
+limit_gpu_mem(0.5)
 
 
 def load_dataset_and_models(args):
     comparison_info = json.load(args.comparison.open("r"))
     models = {}
     for name, model_info in comparison_info.items():
-        model_dir = pathlib.Path(model_info['model_dir'])
+        model_dir = paths_from_json(model_info['model_dir'])
         model, _ = model_utils.load_generic_model(model_dir)
         models[name] = model
 
     dataset = DynamicsDataset(args.dataset_dirs)
     tf_dataset = dataset.get_datasets(mode=args.mode,
-                                      sequence_length=args.sequence_length,
                                       shard=args.shard,
                                       take=args.take).batch(1)
 
@@ -51,7 +51,7 @@ def generate(args):
     all_data = []
     for example_idx, dataset_element in enumerate(tf_dataset):
         data_per_model_for_element = {
-            'time_steps': dataset.desired_sequence_length,
+            'time_steps': dataset.sequence_length,
             'action_keys': dataset.action_keys,
             'dataset_element': dataset_element,
             'environment': {
@@ -65,6 +65,7 @@ def generate(args):
 
         for model_name, model in models.items():
             predictions = model.propagate_from_example(dataset_element)
+            print(predictions.keys())
             data_per_model_for_element[model_name] = {
                 'predictions': predictions,
                 'scenario': model.scenario.simple_name(),
