@@ -1,5 +1,6 @@
 ---
 float64[] joint_angles_axis1
 float64[] joint_angles_axis2
-geometry_msgs/Point[] points
+geometry_msgs/Point[] positions
+geometry_msgs/Point[] velocities
 geometry_msgs/Pose model_pose

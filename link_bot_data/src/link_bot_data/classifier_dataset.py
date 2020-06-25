@@ -38,6 +38,10 @@ class ClassifierDataset(BaseDataset):
             'is_close',
         ]
 
+        self.batch_metadata = {
+            'time': self.horizon
+        }
+
         if self.load_true_states:
             for k in self.state_keys:
                 self.feature_names.append(k)
@@ -60,8 +64,8 @@ class ClassifierDataset(BaseDataset):
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
         def _add_time(example: Dict):
             # this function is called before batching occurs, so the first dimension should be time
-            example['time'] = tf.cast(example[add_predicted(self.state_keys[0])].shape[0], tf.int64)
+            example['time'] = tf.cast(self.horizon, tf.int64)
             return example
 
-        dataset = dataset.map(_add_time)
+        # dataset = dataset.map(_add_time)
         return dataset

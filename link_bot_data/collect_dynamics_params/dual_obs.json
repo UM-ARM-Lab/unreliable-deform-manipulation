@@ -1,26 +1,26 @@
 {
   "extent": [
-    -0.6,
-    0.6,
+    -0.5,
+    0.5,
     -0.4,
     0.4,
     0.0,
     0.6
   ],
   "action_sample_extent": [
-    -0.5,
-    0.5,
+    -0.45,
+    0.45,
     -0.3,
     0.3,
-    0.25,
+    0.15,
     0.60
   ],
-  "res": 0.01,
+  "res": 0.02,
   "max_step_size": 0.002,
   "dt": 1.0,
   "steps_per_traj": 25,
   "trajs_per_file": 16,
-  "settling_time": 0.2,
+  "settling_time": 1.0,
   "kinematic_objects": false,
   "no_objects": false,
   "max_dist_between_gripper_and_link": 0.022,
@@ -69,5 +69,3 @@
     }
   }
 }
-
-

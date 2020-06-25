@@ -4,7 +4,6 @@
 #include <peter_msgs/GetObject.h>
 #include <peter_msgs/GetObjects.h>
 #include <peter_msgs/GetRopeState.h>
-#include <peter_msgs/LinkBotState.h>
 #include <peter_msgs/NamedPoints.h>
 #include <peter_msgs/SetRopeState.h>
 #include <ros/callback_queue.h>
@@ -25,15 +24,14 @@
 #include <string>
 #include <thread>
 
-namespace gazebo {
-
-class RopePlugin : public ModelPlugin {
- public:
+namespace gazebo
+{
+class RopePlugin : public ModelPlugin
+{
+public:
   void Load(physics::ModelPtr _parent, sdf::ElementPtr /*_sdf*/) override;
 
   ~RopePlugin() override;
-
-  bool StateService(peter_msgs::LinkBotStateRequest &req, peter_msgs::LinkBotStateResponse &res);
 
   bool GetObjectRope(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
 
@@ -41,15 +39,14 @@ class RopePlugin : public ModelPlugin {
 
   bool GetRopeState(peter_msgs::GetRopeStateRequest &req, peter_msgs::GetRopeStateResponse &res);
 
- private:
+private:
   void QueueThread();
 
   physics::ModelPtr model_;
   event::ConnectionPtr updateConnection_;
-  double length_{0.0};
-  unsigned int num_links_{0U};
+  double length_{ 0.0 };
+  unsigned int num_links_{ 0U };
   ros::NodeHandle ros_node_;
-  ros::ServiceServer state_service_;
   ros::ServiceServer set_state_service_;
   ros::ServiceServer get_state_service_;
   ros::ServiceServer get_object_link_bot_service_;

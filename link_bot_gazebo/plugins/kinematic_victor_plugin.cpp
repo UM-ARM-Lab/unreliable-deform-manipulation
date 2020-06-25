@@ -7,13 +7,14 @@
 
 #include "enumerate.h"
 
-#define create_service_options(type, name, bind) \
+#define create_service_options(type, name, bind)                                                                       \
   ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &queue_)
 
-#define create_service_options_private(type, name, bind) \
+#define create_service_options_private(type, name, bind)                                                               \
   ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &private_queue_)
 
-namespace gazebo {
+namespace gazebo
+{
 GZ_REGISTER_MODEL_PLUGIN(KinematicVictorPlugin)
 
 KinematicVictorPlugin::~KinematicVictorPlugin()
@@ -32,7 +33,8 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   world_ = parent->GetWorld();
 
   // setup ROS stuff
-  if (!ros::isInitialized()) {
+  if (!ros::isInitialized())
+  {
     int argc = 0;
     ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
   }
@@ -53,9 +55,11 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 void KinematicVictorPlugin::OnUpdate()
 {
   sensor_msgs::JointState msg;
-  for (auto const &j : model_->GetJoints()) {
+  for (auto const &j : model_->GetJoints())
+  {
     // FIXME: why is this not equal to physics::Joint::HINGE_JOINT??
-    if (j->GetType() == 576) {  // revolute
+    if (j->GetType() == 576)
+    {  // revolute
       msg.name.push_back(j->GetName());
       msg.position.push_back(j->Position(0));
       msg.velocity.push_back(j->GetVelocity(0));
@@ -72,16 +76,20 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
   auto const settling_time_seconds = goal->goal_time_tolerance.toSec();
   auto const steps = static_cast<unsigned int>(settling_time_seconds / seconds_per_step);
-  for (auto const &point : goal->trajectory.points) {
-    for (auto const &pair : enumerate(goal->trajectory.joint_names)) {
+  for (auto const &point : goal->trajectory.points)
+  {
+    for (auto const &pair : enumerate(goal->trajectory.joint_names))
+    {
       auto const &[joint_idx, joint_name] = pair;
       // Step the world
       world_->Step(steps);
       auto joint = model_->GetJoint(joint_name);
-      if (joint) {
+      if (joint)
+      {
         joint->SetPosition(0, point.positions[joint_idx]);
       }
-      else {
+      else
+      {
         result.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_JOINTS;
         follow_traj_server_->setSucceeded(result);
       }
@@ -93,7 +101,8 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
 void KinematicVictorPlugin::QueueThread()
 {
   double constexpr timeout = 0.01;
-  while (ros_node_.ok()) {
+  while (ros_node_.ok())
+  {
     queue_.callAvailable(ros::WallDuration(timeout));
   }
 }
@@ -101,7 +110,8 @@ void KinematicVictorPlugin::QueueThread()
 void KinematicVictorPlugin::PrivateQueueThread()
 {
   double constexpr timeout = 0.01;
-  while (private_ros_node_->ok()) {
+  while (private_ros_node_->ok())
+  {
     private_queue_.callAvailable(ros::WallDuration(timeout));
   }
 }

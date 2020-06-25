@@ -16,7 +16,8 @@ from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
 
-limit_gpu_mem(10.0)
+
+limit_gpu_mem(7.0)
 
 
 def train_main(args, seed: int):
@@ -53,7 +54,8 @@ def train_main(args, seed: int):
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
                          val_every_n_batches=200,
-                         mid_epoch_val_batches=32)
+                         mid_epoch_val_batches=32,
+                         batch_metadata=train_dataset.batch_metadata)
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
@@ -96,10 +98,10 @@ def eval_main(args, seed: int):
     net = model(hparams=params, batch_size=args.batch_size, scenario=test_dataset.scenario)
     runner = ModelRunner(model=net,
                          training=False,
+                         params=params,
                          trial_path=args.checkpoint.absolute(),
-                         trials_directory=pathlib.Path('trials'),
-                         write_summary=False,
-                         key_metric=AccuracyMetric)
+                         key_metric=AccuracyMetric,
+                         batch_metadata=test_dataset.batch_metadata)
     validation_metrics = runner.val_epoch(test_tf_dataset)
     for name, value in validation_metrics.items():
         print(f"{name}: {value:.3f}")
@@ -115,7 +117,7 @@ def main():
     train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
-    train_parser.add_argument('--batch-size', type=int, default=8)
+    train_parser.add_argument('--batch-size', type=int, default=32)
     train_parser.add_argument('--take', type=int)
     train_parser.add_argument('--debug', action='store_true')
     train_parser.add_argument('--epochs', type=int, default=10)

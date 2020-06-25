@@ -176,11 +176,18 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def get_state(self):
         grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
         rope_res = self.get_rope_srv(GetRopeStateRequest())
+
         rope_state_vector = []
-        for p in rope_res.points:
+        for p in rope_res.positions:
             rope_state_vector.append(p.x)
             rope_state_vector.append(p.y)
             rope_state_vector.append(p.z)
+
+        rope_velocity_vector = []
+        for v in rope_res.velocities:
+            rope_velocity_vector.append(v.x)
+            rope_velocity_vector.append(v.y)
+            rope_velocity_vector.append(v.z)
 
         model_pose = [
             rope_res.model_pose.position.x,
@@ -196,6 +203,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper1': ros_numpy.numpify(grippers_res.gripper1),
             'gripper2': ros_numpy.numpify(grippers_res.gripper2),
             'link_bot': np.array(rope_state_vector, np.float32),
+            'rope_velocities': np.array(rope_velocity_vector, np.float32),
             'model_pose': model_pose,
             'joint_angles_axis1': np.array(rope_res.joint_angles_axis1, np.float32),
             'joint_angles_axis2': np.array(rope_res.joint_angles_axis2, np.float32),

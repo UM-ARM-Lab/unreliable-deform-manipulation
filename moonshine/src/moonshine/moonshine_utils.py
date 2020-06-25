@@ -2,6 +2,7 @@ from typing import Dict
 
 import numpy as np
 import tensorflow as tf
+import contextlib
 
 
 def numpify(x, dtype=np.float32):
