@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 /*
  * Desc: A plugin which publishes the gazebo world state as a MoveIt! planning scene
  * Author: Jonathan Bohren
@@ -26,22 +26,22 @@
 #include <string>
 
 // Custom Callback Queue
+#include <geometry_msgs/Pose.h>
 #include <ros/callback_queue.h>
 #include <ros/subscribe_options.h>
-#include <geometry_msgs/Pose.h>
 
 #include <ros/ros.h>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 
+#include <gazebo/common/Events.hh>
+#include <gazebo/common/Plugin.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/TransportTypes.hh>
-#include <gazebo/common/Plugin.hh>
-#include <gazebo/common/Events.hh>
 
-#include <std_srvs/Empty.h>
-#include <moveit_msgs/PlanningScene.h>
 #include <moveit_msgs/GetPlanningScene.h>
+#include <moveit_msgs/PlanningScene.h>
+#include <std_srvs/Empty.h>
 
 namespace gazebo
 {
@@ -50,7 +50,7 @@ namespace gazebo
 /** \defgroup GazeboRosMoveItPlanningScene Plugin XML Reference and Example
 
   \brief Ros MoveIt Planning Scene Plugin.
-  
+
   This is a model plugin which broadcasts MoveIt PlanningScene messages so
   that the planning scene stays up-to-date with the world simulation.  This is
   useful if you want to "fake" perfect perception of the environment.
@@ -87,85 +87,112 @@ namespace gazebo
 
 /**
            .
- 
+
 */
 
 class GazeboRosMoveItPlanningScene : public ModelPlugin
 {
   /// \brief Constructor
-  public: GazeboRosMoveItPlanningScene();
+public:
+  GazeboRosMoveItPlanningScene();
 
   /// \brief Destructor
-  public: virtual ~GazeboRosMoveItPlanningScene();
+public:
+  virtual ~GazeboRosMoveItPlanningScene();
 
   // Documentation inherited
-  protected: void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
+protected:
+  void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
 
   // Documentation inherited
-  protected: virtual void UpdateCB();
+protected:
+  virtual void UpdateCB();
 
-  protected: void subscriber_connected();
+protected:
+  void subscriber_connected();
 
   /// \brief publish the complete planning scene next iteration
-  private: bool PublishPlanningSceneCB(
-               std_srvs::Empty::Request& req,
-               std_srvs::Empty::Response& resp);
+private:
+  bool PublishPlanningSceneCB(std_srvs::Empty::Request& req, std_srvs::Empty::Response& resp);
 
   /// \brief Retrieve the current planning scene
-  private: bool GetPlanningSceneCB(
-               moveit_msgs::GetPlanningScene::Request& req,
-               moveit_msgs::GetPlanningScene::Response& resp);
+private:
+  bool GetPlanningSceneCB(moveit_msgs::GetPlanningScene::Request& req, moveit_msgs::GetPlanningScene::Response& resp);
 
   /// \brief The custom callback queue thread function.
-  private: void QueueThread();
+private:
+  void QueueThread();
 
   /// \brief A pointer to the gazebo world.
-  private: physics::WorldPtr world_;
+private:
+  physics::WorldPtr world_;
 
   /// \brief A pointer to the Model of the robot doing the planning
-  private: physics::ModelPtr model_;
+private:
+  physics::ModelPtr model_;
 
   /// \brief A pointer to the ROS node.  A node will be instantiated if it does not exist.
-  private: boost::scoped_ptr<ros::NodeHandle> rosnode_;
-  private: ros::Publisher planning_scene_pub_;
-           ros::ServiceServer publish_planning_scene_service_;
-           ros::ServiceServer get_planning_scene_service_;
+private:
+  boost::scoped_ptr<ros::NodeHandle> rosnode_;
+
+private:
+  ros::Publisher planning_scene_pub_;
+  ros::ServiceServer publish_planning_scene_service_;
+  ros::ServiceServer get_planning_scene_service_;
 
   /// \brief A mutex to lock access to fields that are used in ROS message callbacks
-  private: boost::mutex mutex_;
+private:
+  boost::mutex mutex_;
 
   /// \brief ROS topic name inputs
-  private: std::string topic_name_;
+private:
+  std::string topic_name_;
   /// \brief The MoveIt scene name
-  private: std::string scene_name_;
-  private: std::string frame_id_;
-  private: std::string robot_name_;
-  private: std::string model_name_;
+private:
+  std::string scene_name_;
+
+private:
+  std::string frame_id_;
+
+private:
+  std::string robot_name_;
+
+private:
+  std::string model_name_;
 
   /// \brief for setting ROS name space
-  private: std::string robot_namespace_;
+private:
+  std::string robot_namespace_;
 
   // Custom Callback Queue
-  private: ros::CallbackQueue queue_;
+private:
+  ros::CallbackQueue queue_;
   /// \brief Thead object for the running callback Thread.
-  private: boost::thread callback_queue_thread_;
+private:
+  boost::thread callback_queue_thread_;
   /// \brief Container for the planning scene.
-  private: moveit_msgs::PlanningScene planning_scene_msg_;
-           std::map<std::string, moveit_msgs::CollisionObject> collision_object_map_;
-           void BuildMessage();
+private:
+  moveit_msgs::PlanningScene planning_scene_msg_;
+  std::map<std::string, moveit_msgs::CollisionObject> collision_object_map_;
+  void BuildMessage();
 
   // Pointer to the update event connection
-  private: event::ConnectionPtr update_connection_;
-  private: event::ConnectionPtr add_connection_;
-  private: event::ConnectionPtr delete_connection_;
+private:
+  event::ConnectionPtr update_connection_;
 
-  private:
-           std::atomic<bool> publish_full_scene_;
+private:
+  event::ConnectionPtr add_connection_;
 
-           ros::Duration publish_period_;
-           ros::Time last_publish_time_;
+private:
+  event::ConnectionPtr delete_connection_;
+
+private:
+  std::atomic<bool> publish_full_scene_;
+
+  ros::Duration publish_period_;
+  ros::Time last_publish_time_;
 };
 /** \} */
 /// @}
-}
+}  // namespace gazebo
 #endif

@@ -66,8 +66,9 @@ def collect_trajectory(scenario: ExperimentScenario,
         if time_idx < params['steps_per_traj'] - 1:  # skip the last action
             for action_name, action_component in action.items():
                 actions[action_name].append(action_component)
-        for state_name, state_component in state.items():
-            states[state_name].append(state_component)
+        for state_component_name in scenario.states_description().keys():
+            state_component = state[state_component_name]
+            states[state_component_name].append(state_component)
         time_indices.append(time_idx)
 
         # execute action

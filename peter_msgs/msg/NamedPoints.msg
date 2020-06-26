@@ -1,3 +1,3 @@
-peter_msgs/NamedPoint[] points # optional, not used at the moment
+peter_msgs/NamedPoint[] points
 float32[] state_vector
 string name

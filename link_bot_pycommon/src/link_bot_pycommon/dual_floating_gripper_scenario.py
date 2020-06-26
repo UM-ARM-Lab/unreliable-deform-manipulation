@@ -31,6 +31,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         self.nudge_rng = np.random.RandomState(0)
 
+        self.params['settling_time'] = rospy.get_param("traj_goal_time_tolerance")
+
     def sample_action(self,
                       environment: Dict,
                       state,
@@ -49,8 +51,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
             out_of_bounds = self.is_out_of_bounds(gripper1_position) or self.is_out_of_bounds(gripper2_position)
             min_d = self.params['min_distance_between_grippers']
-            gripper_collision = np.linalg.norm(gripper2_position - gripper1_position) < min_d
-            if not out_of_bounds and not gripper_collision:
+            grippers_too_close = np.linalg.norm(gripper2_position - gripper1_position) < min_d
+            if not out_of_bounds and not grippers_too_close:
                 action = {
                     'gripper1_position': gripper1_position,
                     'gripper2_position': gripper2_position,

@@ -2,6 +2,7 @@
 <sdf version="1.5">
     <model name="my_ground_plane">
         <static>true</static>
+            <allow_auto_disable>true</allow_auto_disable>
         <link name="link">
             <collision name="collision">
                 <geometry>

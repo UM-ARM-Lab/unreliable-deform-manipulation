@@ -16,6 +16,10 @@
 
     <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
 
+    <rosparam>
+    traj_goal_time_tolerance: 0.1
+    </rosparam>
+
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name"  value="$(find link_bot_gazebo)/worlds/$(arg world_name).world"/>
         <arg name="verbose"     default="$(arg verbose)"/>

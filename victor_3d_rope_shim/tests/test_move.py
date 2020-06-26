@@ -6,13 +6,12 @@ from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest
 
 if __name__ == "__main__":
     rospy.init_node("test_move")
-    rospy.wait_for_service("execute_dual_gripper_trajectory")
+    rospy.wait_for_service("execute_dual_gripper_action")
     try:
-        srv = rospy.ServiceProxy("execute_dual_gripper_trajectory", DualGripperTrajectory)
+        srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
         req = DualGripperTrajectoryRequest()
         req.gripper1_points.append(Point(1.1,  0.4, 1.05))
         req.gripper2_points.append(Point(1.1, -0.4, 1.05))
         resp = srv(req)
     except rospy.ServiceException as ex:
-        print("Service call faild: %s" %ex)
-
+        print("Service call faild: %s" % ex)

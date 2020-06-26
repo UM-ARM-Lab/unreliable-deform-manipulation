@@ -1,6 +1,7 @@
 
 <sdf version="1.6">
     <model name="link_bot">
+            <allow_auto_disable>true</allow_auto_disable>
         <pose frame="">0 0 0 0 0 0</pose>
 
         <link name="link_1">

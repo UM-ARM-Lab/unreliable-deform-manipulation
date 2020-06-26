@@ -32,8 +32,8 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr /*sdf*/)
   model_ = parent;
   world_ = parent->GetWorld();
 
-  gripper1_ = model_->GetLink("gripper1");
-  gripper2_ = model_->GetLink("gripper2");
+  gripper1_ = model_->GetLink("link_bot::gripper1");
+  gripper2_ = model_->GetLink("link_bot::gripper2");
   if (!gripper1_)
   {
     gzerr << "No link gripper1 found\n";
@@ -82,7 +82,8 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr /*sdf*/)
   auto get_gripper2_so = create_service_options(peter_msgs::GetObject, "gripper2", get_gripper2_bind);
 
   private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
-  action_service_ = ros_node_.advertiseService(action_so);
+  gzwarn << "Not advertizing action service\n";
+  // action_service_ = ros_node_.advertiseService(action_so);
   get_service_ = ros_node_.advertiseService(get_so);
   set_service_ = ros_node_.advertiseService(set_so);
   register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
@@ -155,8 +156,14 @@ bool DualGripperPlugin::OnGet(peter_msgs::GetDualGripperPointsRequest &req,
     res.gripper2.x = gripper2_->WorldPose().Pos().X();
     res.gripper2.y = gripper2_->WorldPose().Pos().Y();
     res.gripper2.z = gripper2_->WorldPose().Pos().Z();
+    return true;
   }
-  return true;
+  else
+  {
+    res.gripper1.x = -999;
+    res.gripper2.x = -999;
+    return false;
+  }
 }
 
 bool DualGripperPlugin::OnSet(peter_msgs::SetDualGripperPointsRequest &req,
@@ -191,8 +198,12 @@ bool DualGripperPlugin::GetGripper1Callback(peter_msgs::GetObjectRequest &req, p
     gripper1_named_point.point = gripper1_point;
     gripper1_named_point.name = "gripper1";
     res.object.points.push_back(gripper1_named_point);
+    return true;
   }
-  return true;
+  else
+  {
+    return false;
+  }
 }
 
 bool DualGripperPlugin::GetGripper2Callback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
@@ -211,8 +222,12 @@ bool DualGripperPlugin::GetGripper2Callback(peter_msgs::GetObjectRequest &req, p
     gripper2_named_point.point = gripper2_point;
     gripper2_named_point.name = "gripper2";
     res.object.points.push_back(gripper2_named_point);
+    return true;
   }
-  return true;
+  else
+  {
+    return false;
+  }
 }
 
 void DualGripperPlugin::QueueThread()

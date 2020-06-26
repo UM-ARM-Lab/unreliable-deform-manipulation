@@ -6,13 +6,13 @@
 
 #include <std_msgs/String.h>
 #include <std_srvs/Empty.h>
+#include <algorithm>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/eigen_helpers.hpp>
 #include <arc_utilities/path_utils.hpp>
 #include <arc_utilities/pretty_print.hpp>
 #include <arc_utilities/ros_helpers.hpp>
 #include <memory>
-#include <algorithm>
 
 #include <moveit/kinematic_constraints/utils.h>
 #include <moveit/planning_interface/planning_interface.h>
@@ -53,17 +53,13 @@ Eigen::MatrixXd cleanZeros(Eigen::MatrixXd const& input, double const threshold 
 std::pair<Eigen::Translation3d, Eigen::Translation3d> toGripperPositions(geometry_msgs::Point const& g1,
                                                                          geometry_msgs::Point const& g2)
 {
-  return { Eigen::Translation3d(g1.x, g1.y, g1.z),
-           Eigen::Translation3d(g2.x, g2.y, g2.z) };
+  return { Eigen::Translation3d(g1.x, g1.y, g1.z), Eigen::Translation3d(g2.x, g2.y, g2.z) };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-Pose lookupTransform(tf2_ros::Buffer const& buffer,
-                     std::string const& parent_frame,
-                     std::string const& child_frame,
-                     ros::Time const& target_time = ros::Time(0),
-                     ros::Duration const& timeout = ros::Duration(0))
+Pose lookupTransform(tf2_ros::Buffer const& buffer, std::string const& parent_frame, std::string const& child_frame,
+                     ros::Time const& target_time = ros::Time(0), ros::Duration const& timeout = ros::Duration(0))
 {
   // Wait for up to timeout amount of time, then try to lookup the transform,
   // letting TF2's exception handling throw if needed
@@ -96,23 +92,25 @@ trajectory_msgs::JointTrajectory MergeTrajectories(trajectory_msgs::JointTraject
     auto const traj_a_names = std::set<std::string>(traj_a.joint_names.begin(), traj_a.joint_names.end());
     auto const traj_b_names = std::set<std::string>(traj_b.joint_names.begin(), traj_b.joint_names.end());
     std::vector<std::string> intersection(traj_a_names.size() + traj_b_names.size(), "");
-    auto const end = std::set_intersection(traj_a_names.begin(), traj_a_names.end(),
-                                          traj_b_names.begin(), traj_b_names.end(),
-                                          intersection.begin());
+    auto const end = std::set_intersection(traj_a_names.begin(), traj_a_names.end(), traj_b_names.begin(),
+                                           traj_b_names.end(), intersection.begin());
     MPS_ASSERT(intersection.begin() == end && "Trajectories must be for different joints");
   }
 
   auto const mergable_size = std::min(traj_a.points.size(), traj_b.points.size());
   // Debugging
   {
-    ROS_INFO_STREAM("Merging trajectories of starting sizes " << traj_a.points.size() << " and " << traj_b.points.size());
+    ROS_INFO_STREAM("Merging trajectories of starting sizes " << traj_a.points.size() << " and "
+                                                              << traj_b.points.size());
     if (traj_a.points.size() != mergable_size)
     {
-      ROS_WARN_STREAM("Merging trajectories of uneven length, discarding " << traj_a.points.size() - mergable_size << " points from traj_a");
+      ROS_WARN_STREAM("Merging trajectories of uneven length, discarding " << traj_a.points.size() - mergable_size
+                                                                           << " points from traj_a");
     }
     if (traj_b.points.size() != mergable_size)
     {
-      ROS_WARN_STREAM("Merging trajectories of uneven length, discarding " << traj_b.points.size() - mergable_size << " points from traj_b");
+      ROS_WARN_STREAM("Merging trajectories of uneven length, discarding " << traj_b.points.size() - mergable_size
+                                                                           << " points from traj_b");
     }
   }
 
@@ -125,16 +123,17 @@ trajectory_msgs::JointTrajectory MergeTrajectories(trajectory_msgs::JointTraject
     trajectory_msgs::JointTrajectoryPoint& point_a = merged.points.at(idx);
     trajectory_msgs::JointTrajectoryPoint const& point_b = traj_b.points.at(idx);
 
-    MPS_ASSERT(point_a.positions.size()     == point_b.positions.size());
-    MPS_ASSERT(point_a.velocities.size()    == point_b.velocities.size());
+    MPS_ASSERT(point_a.positions.size() == point_b.positions.size());
+    MPS_ASSERT(point_a.velocities.size() == point_b.velocities.size());
     MPS_ASSERT(point_a.accelerations.size() == point_b.accelerations.size());
-    MPS_ASSERT(point_a.effort.size()        == point_b.effort.size());
-    MPS_ASSERT(point_a.time_from_start      == point_b.time_from_start);
+    MPS_ASSERT(point_a.effort.size() == point_b.effort.size());
+    MPS_ASSERT(point_a.time_from_start == point_b.time_from_start);
 
-    point_a.positions.insert(    point_a.positions.begin(),     point_b.positions.begin(),     point_b.positions.end());
-    point_a.velocities.insert(   point_a.velocities.begin(),    point_b.velocities.begin(),    point_b.velocities.end());
-    point_a.accelerations.insert(point_a.accelerations.begin(), point_b.accelerations.begin(), point_b.accelerations.end());
-    point_a.effort.insert(       point_a.effort.begin(),        point_b.effort.begin(),        point_b.effort.end());
+    point_a.positions.insert(point_a.positions.begin(), point_b.positions.begin(), point_b.positions.end());
+    point_a.velocities.insert(point_a.velocities.begin(), point_b.velocities.begin(), point_b.velocities.end());
+    point_a.accelerations.insert(point_a.accelerations.begin(), point_b.accelerations.begin(),
+                                 point_b.accelerations.end());
+    point_a.effort.insert(point_a.effort.begin(), point_b.effort.begin(), point_b.effort.end());
   }
 
   return merged;
@@ -143,9 +142,7 @@ trajectory_msgs::JointTrajectory MergeTrajectories(trajectory_msgs::JointTraject
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-VictorInterface::VictorInterface(ros::NodeHandle nh,
-                                 ros::NodeHandle ph,
-                                 std::shared_ptr<tf2_ros::Buffer> tf_buffer)
+VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer)
   // TOOD: ROS Param lookups
   : nh_(nh)
   , ph_(ph)
@@ -180,7 +177,8 @@ VictorInterface::VictorInterface(ros::NodeHandle nh,
   auto const left_flange_name = left_arm_->arm->getLinkModels().back()->getName();
   left_tool_offset_ = lookupTransform(*tf_buffer_, left_flange_name, left_tool_frame_, ros::Time(0), ros::Duration(5));
   auto const right_flange_name = right_arm_->arm->getLinkModels().back()->getName();
-  right_tool_offset_ = lookupTransform(*tf_buffer_, right_flange_name, right_tool_frame_, ros::Time(0), ros::Duration(5));
+  right_tool_offset_ =
+      lookupTransform(*tf_buffer_, right_flange_name, right_tool_frame_, ros::Time(0), ros::Duration(5));
 
   // Retrieve the planning scene obstacles if possible, otherwise default to a saved set
   {
@@ -258,11 +256,9 @@ VictorInterface::VictorInterface(ros::NodeHandle nh,
       // TODO: Is this request really what we want for a more generic task?
       moveit_msgs::GetPlanningSceneRequest req;
       req.components.components =
-        moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_NAMES |
-        moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_GEOMETRY |
-        moveit_msgs::PlanningSceneComponents::OCTOMAP |
-        moveit_msgs::PlanningSceneComponents::TRANSFORMS |
-        moveit_msgs::PlanningSceneComponents::OBJECT_COLORS;
+          moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_NAMES |
+          moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_GEOMETRY | moveit_msgs::PlanningSceneComponents::OCTOMAP |
+          moveit_msgs::PlanningSceneComponents::TRANSFORMS | moveit_msgs::PlanningSceneComponents::OBJECT_COLORS;
 
       moveit_msgs::GetPlanningSceneResponse resp;
       client.call(req, resp);
@@ -380,16 +376,16 @@ void VictorInterface::test()
       std::cerr << "robot_frame_jacobian:\n" << cleanZeros(robot_frame_jacobian) << std::endl;
     }
 
-    MPS_ASSERT(cleanZeros(moveit_jacobian).isApprox(cleanZeros(moveit_frame_jacobian)) &&
-               "MoveIt and 'manual' Jacobian code should produce the same result");
+    MPS_ASSERT(cleanZeros(moveit_jacobian).isApprox(cleanZeros(moveit_frame_jacobian)) && "MoveIt and 'manual' "
+                                                                                          "Jacobian code should "
+                                                                                          "produce the same result");
   }
 
   // Left arm, palm forward, where the rope starts in Gazebo (gripper1)
   if (false)
   {
-    Eigen::Quaterniond const root_to_tool_rot =
-        Eigen::AngleAxisd( 90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
-        Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ());
+    Eigen::Quaterniond const root_to_tool_rot = Eigen::AngleAxisd(90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
+                                                Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ());
     Eigen::Translation3d const root_to_tool(1.0, 0.3, 0.95);
     Pose const world_target_pose = worldTrobot * root_to_tool * root_to_tool_rot;
     auto const ik_solutions = left_arm_->IK(world_target_pose, robotTworld, home_state_, planning_scene_);
@@ -431,9 +427,8 @@ void VictorInterface::test()
   // Right arm, palm forward, where the rope starts in Gazebo (gripper2)
   if (false)
   {
-    Eigen::Quaterniond const root_to_tool_rot =
-        Eigen::AngleAxisd( 90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
-        Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ());
+    Eigen::Quaterniond const root_to_tool_rot = Eigen::AngleAxisd(90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
+                                                Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ());
     Eigen::Translation3d const root_to_tool(1.0, -0.3, 0.95);
     Pose const world_target_pose = worldTrobot * root_to_tool * root_to_tool_rot;
     auto const ik_solutions = right_arm_->IK(world_target_pose, robotTworld, home_state_, planning_scene_);
@@ -518,8 +513,12 @@ trajectory_msgs::JointTrajectory VictorInterface::plan(robot_state::RobotState c
   }
   try
   {
-    planner_plugin_loader.reset(new pluginlib::ClassLoader<planning_interface::PlannerManager>(
-      "moveit_core", "planning_interface::PlannerManager"));
+    planner_plugin_loader.reset(new pluginlib::ClassLoader<planning_interface::PlannerManager>("moveit_core", "planning"
+                                                                                                              "_interfa"
+                                                                                                              "ce::"
+                                                                                                              "PlannerM"
+                                                                                                              "anage"
+                                                                                                              "r"));
   }
   catch (pluginlib::PluginlibException& ex)
   {
@@ -553,8 +552,8 @@ trajectory_msgs::JointTrajectory VictorInterface::plan(robot_state::RobotState c
   req.group_name = "both_arms";
 
   req.goal_constraints.clear();
-  req.goal_constraints.push_back(kinematic_constraints::constructGoalConstraints(
-    goal_state, robot_model_->getJointModelGroup(req.group_name)));
+  req.goal_constraints.push_back(
+      kinematic_constraints::constructGoalConstraints(goal_state, robot_model_->getJointModelGroup(req.group_name)));
   req.allowed_planning_time = ALLOWED_PLANNING_TIME;
 
   /* Re-construct the planning context */
@@ -599,7 +598,7 @@ trajectory_msgs::JointTrajectory VictorInterface::plan(robot_state::RobotState c
   if (false)
   {
     ros::Publisher display_publisher =
-      nh_.advertise<moveit_msgs::DisplayTrajectory>("move_group/display_planned_path", 1, true);
+        nh_.advertise<moveit_msgs::DisplayTrajectory>("move_group/display_planned_path", 1, true);
     moveit_msgs::DisplayTrajectory display_trajectory;
     display_trajectory.trajectory_start = msg.trajectory_start;
     display_trajectory.trajectory.push_back(msg.trajectory);
@@ -660,8 +659,7 @@ void VictorInterface::gotoHome()
 void VictorInterface::moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions)
 {
   std::pair<Eigen::Translation3d, Eigen::Translation3d> table_frame{
-    (tableTrobot * gripper_positions.first).translation(),
-    (tableTrobot * gripper_positions.second).translation()
+    (tableTrobot * gripper_positions.first).translation(), (tableTrobot * gripper_positions.second).translation()
   };
   moveInTableFrame(table_frame);
 }
@@ -718,12 +716,12 @@ void VictorInterface::moveInTableFrameJacobianIk(
         tf_broadcaster_.sendTransform(transform);
       }
       {
-      geomsg::TransformStamped transform;
-      transform.header.frame_id = world_frame_;
-      transform.header.stamp = ros::Time::now();
-      transform.child_frame_id = "current_tool_pose_right";
-      transform.transform = ConvertTo<geomsg::Transform>(current_tool_poses.second);
-      tf_broadcaster_.sendTransform(transform);
+        geomsg::TransformStamped transform;
+        transform.header.frame_id = world_frame_;
+        transform.header.stamp = ros::Time::now();
+        transform.child_frame_id = "current_tool_pose_right";
+        transform.transform = ConvertTo<geomsg::Transform>(current_tool_poses.second);
+        tf_broadcaster_.sendTransform(transform);
       }
     }
     // Desired in table frame
@@ -773,27 +771,20 @@ void VictorInterface::moveInTableFrameJacobianIk(
   Eigen::Vector3d const right_delta = target_poses.first.translation() - current_tool_poses.first.translation();
   auto const max_dist = std::max(left_delta.norm(), right_delta.norm());
   auto const steps = static_cast<int>(std::ceil(max_dist / TRANSLATION_STEP_SIZE));
-  auto const left_path = [&]
-  {
+  auto const left_path = [&] {
     EigenHelpers::VectorVector3d path;
-    MPS_ASSERT(left_arm_->interpolate(
-      current_tool_poses.first.translation(),
-      target_poses.first.translation(),
-      path,
-      steps));
+    MPS_ASSERT(
+        left_arm_->interpolate(current_tool_poses.first.translation(), target_poses.first.translation(), path, steps));
     return path;
   }();
-  auto const right_path = [&]
-  {
+  auto const right_path = [&] {
     EigenHelpers::VectorVector3d path;
-    MPS_ASSERT(left_arm_->interpolate(
-      current_tool_poses.second.translation(),
-      target_poses.second.translation(),
-      path,
-      steps));
+    MPS_ASSERT(left_arm_->interpolate(current_tool_poses.second.translation(), target_poses.second.translation(), path,
+                                      steps));
     return path;
   }();
-  MPS_ASSERT(left_path.size() == right_path.size() && "Later code assumes these are of equal length for syncronization");
+  MPS_ASSERT(left_path.size() == right_path.size() && "Later code assumes these are of equal length for "
+                                                      "syncronization");
 
   // Debugging - visualize interpolated path in world frame
   if (true)
@@ -856,32 +847,18 @@ void VictorInterface::moveInTableFrameJacobianIk(
     vis_pub_.publish(msg);
   }
 
-  auto const left_cmd = [&]
-  {
+  auto const left_cmd = [&] {
     auto const flange_home_frame = home_state_.getGlobalLinkTransform(left_arm_->arm->getLinkModels().back());
     trajectory_msgs::JointTrajectory cmd;
-    MPS_ASSERT(left_arm_->jacobianPath3D(
-      left_path,
-      flange_home_frame.rotation(),
-      robotTworld,
-      left_tool_offset_,
-      current_state,
-      planning_scene_,
-      cmd));
+    MPS_ASSERT(left_arm_->jacobianPath3D(left_path, flange_home_frame.rotation(), robotTworld, left_tool_offset_,
+                                         current_state, planning_scene_, cmd));
     return cmd;
   }();
-  auto const right_cmd = [&]
-  {
+  auto const right_cmd = [&] {
     auto const flange_home_frame = home_state_.getGlobalLinkTransform(right_arm_->arm->getLinkModels().back());
     trajectory_msgs::JointTrajectory cmd;
-    MPS_ASSERT(right_arm_->jacobianPath3D(
-      right_path,
-      flange_home_frame.rotation(),
-      robotTworld,
-      right_tool_offset_,
-      current_state,
-      planning_scene_,
-      cmd));
+    MPS_ASSERT(right_arm_->jacobianPath3D(right_path, flange_home_frame.rotation(), robotTworld, right_tool_offset_,
+                                          current_state, planning_scene_, cmd));
     return cmd;
   }();
 
@@ -959,7 +936,7 @@ void VictorInterface::moveInTableFrameJacobianIk(
   // Merge the trajectories and then verify that the result is still collision free
   auto merged_cmd = MergeTrajectories(left_cmd, right_cmd);
   collision_detection::CollisionRequest collision_req;
-	collision_detection::CollisionResult collision_res;
+  collision_detection::CollisionResult collision_res;
   robot_state::RobotState state = current_state;
   for (size_t idx = 0; idx < merged_cmd.points.size(); ++idx)
   {
@@ -1003,14 +980,13 @@ VictorShim::VictorShim(ros::NodeHandle nh, ros::NodeHandle ph)
 
   // DualGripper control/exection
   {
-    execute_traj_srv_ = nh.advertiseService("execute_dual_gripper_trajectory", &VictorShim::executeTrajectory, this);
+    execute_traj_srv_ = nh.advertiseService("execute_dual_gripper_action", &VictorShim::executeTrajectory, this);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool VictorShim::executeTrajectory(pm::DualGripperTrajectory::Request& req,
-                                   pm::DualGripperTrajectory::Response& res)
+bool VictorShim::executeTrajectory(pm::DualGripperTrajectory::Request& req, pm::DualGripperTrajectory::Response& res)
 {
   (void)res;
 

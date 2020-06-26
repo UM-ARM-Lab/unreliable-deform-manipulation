@@ -2,6 +2,8 @@
 
 #include <std_srvs/EmptyRequest.h>
 
+#include <boost/regex.hpp>
+
 #include <cstdio>
 #include <gazebo/common/Time.hh>
 #include <gazebo/common/Timer.hh>
@@ -138,10 +140,8 @@ bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &req, peter_msgs::
   {
     auto const &[i, link] = pair;
     auto const name = link->GetName();
-    int link_idx;
-    auto const n_matches = sscanf(name.c_str(), "link_%d", &link_idx);
-    // TODO: is sccanf really the most modern way to do this? use boost regex?
-    if (n_matches == 1 and link_idx >= 1 and link_idx <= num_links_)
+    boost::regex e(".*link_\\d+");
+    if (boost::regex_match(name, e))
     {
       geometry_msgs::Point pt;
       pt.x = link->WorldPose().Pos().X();

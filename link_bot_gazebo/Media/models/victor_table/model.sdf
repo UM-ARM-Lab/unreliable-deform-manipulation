@@ -1,6 +1,7 @@
 <sdf version="1.6">
     <model name='table'>
         <static>1</static>
+        <allow_auto_disable>true</allow_auto_disable>
         <pose frame=''>0.8 0 -0.3 0 0 -1.5708</pose>
         <link name='link'>
             <collision name='surface'>

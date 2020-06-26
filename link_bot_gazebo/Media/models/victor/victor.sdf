@@ -1,5 +1,6 @@
 <?xml version='1.0'?>
 <sdf version='1.6'>
+    <allow_auto_disable>true</allow_auto_disable>
     <model name='victor'>
         <link name='victor_root'>
             <pose frame=''>0 0 0 0 -0 0</pose>
@@ -18,7 +19,6 @@
                     <izz>17</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_root_fixed_joint_lump__victor_pedestal_visual'>
                 <pose frame=''>0 0 0.9245 0 -0 0</pose>
@@ -64,139 +64,6 @@
                     </script>
                 </material>
             </visual>
-            <collision name='victor_root_fixed_joint_lump__victor_pedestal_collision'>
-                <pose frame=''>0 0 0.9245 0 -0 0</pose>
-                <geometry>
-                    <mesh>
-                        <uri>file://victor_description/meshes/baxter_pedestal/pedestal_collision.stl</uri>
-                    </mesh>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>1</mu>
-                            <mu2>1</mu2>
-                        </ode>
-                    </friction>
-                    <contact>
-                        <ode>
-                            <kp>1e+13</kp>
-                            <kd>1</kd>
-                        </ode>
-                    </contact>
-                </surface>
-            </collision>
-            <collision name='victor_root_fixed_joint_lump__victor_left_arm_mount_collision_2'>
-                <pose frame=''>-0.029192 0.129296 1.248 -1.5708 0 -0.785398</pose>
-                <geometry>
-                    <box>
-                        <size>0.31 0.31 0.032</size>
-                    </box>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>1</mu>
-                            <mu2>1</mu2>
-                        </ode>
-                    </friction>
-                    <contact>
-                        <ode>
-                            <kp>1e+13</kp>
-                            <kd>1</kd>
-                        </ode>
-                    </contact>
-                </surface>
-            </collision>
-            <collision name='victor_root_fixed_joint_lump__victor_base_plate_collision_1'>
-                <pose frame=''>0 0 1.063 0 -0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.2</radius>
-                        <length>0.7</length>
-                    </cylinder>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>1</mu>
-                            <mu2>1</mu2>
-                        </ode>
-                    </friction>
-                    <contact>
-                        <ode>
-                            <kp>1e+13</kp>
-                            <kd>1</kd>
-                        </ode>
-                    </contact>
-                </surface>
-            </collision>
-            <collision name='victor_root_fixed_joint_lump__victor_left_arm_link_0_collision_3'>
-                <pose frame=''>-0.02 0.138488 1.248 -1.5708 0 -0.785398</pose>
-                <geometry>
-                    <mesh>
-                        <uri>file://victor_description/meshes/iiwa7/collision/link_0.stl</uri>
-                    </mesh>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>1</mu>
-                            <mu2>1</mu2>
-                        </ode>
-                    </friction>
-                    <contact>
-                        <ode>
-                            <kp>100000</kp>
-                            <kd>1</kd>
-                        </ode>
-                    </contact>
-                </surface>
-            </collision>
-            <collision name='victor_root_fixed_joint_lump__victor_right_arm_mount_collision_4'>
-                <pose frame=''>-0.029192 -0.129296 1.248 1.5708 0 0.785398</pose>
-                <geometry>
-                    <box>
-                        <size>0.31 0.31 0.032</size>
-                    </box>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>1</mu>
-                            <mu2>1</mu2>
-                        </ode>
-                    </friction>
-                    <contact>
-                        <ode>
-                            <kp>1e+13</kp>
-                            <kd>1</kd>
-                        </ode>
-                    </contact>
-                </surface>
-            </collision>
-            <collision name='victor_root_fixed_joint_lump__victor_right_arm_link_0_collision_5'>
-                <pose frame=''>-0.02 -0.138488 1.248 1.5708 0 0.785398</pose>
-                <geometry>
-                    <mesh>
-                        <uri>file://victor_description/meshes/iiwa7/collision/link_0.stl</uri>
-                    </mesh>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>1</mu>
-                            <mu2>1</mu2>
-                        </ode>
-                    </friction>
-                    <contact>
-                        <ode>
-                            <kp>100000</kp>
-                            <kd>1</kd>
-                        </ode>
-                    </contact>
-                </surface>
-            </collision>
         </link>
         <link name='victor_left_arm_link_1'>
             <pose frame=''>0.086066 0.244555 1.248 -1.5708 0 -0.785398</pose>
@@ -212,7 +79,6 @@
                     <izz>0.02083</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_arm_link_1_visual'>
                 <pose frame=''>0 0 0.0075 0 -0 0</pose>
@@ -228,28 +94,6 @@
                     </script>
                 </material>
             </visual>
-            <collision name='victor_left_arm_link_1_collision'>
-                <pose frame=''>0 0 0.0075 0 -0 0</pose>
-                <geometry>
-                    <mesh>
-                        <uri>file://victor_description/meshes/iiwa7/collision/link_1.stl</uri>
-                    </mesh>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>1</mu>
-                            <mu2>1</mu2>
-                        </ode>
-                    </friction>
-                    <contact>
-                        <ode>
-                            <kp>100000</kp>
-                            <kd>1</kd>
-                        </ode>
-                    </contact>
-                </surface>
-            </collision>
         </link>
         <link name='victor_left_arm_link_2'>
             <pose frame=''>0.220416 0.378905 1.248 -3.14159 -0 2.35619</pose>
@@ -265,7 +109,6 @@
                     <izz>0.00779</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_arm_link_2_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -318,7 +161,6 @@
                     <izz>0.03042</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_arm_link_3_visual'>
                 <pose frame=''>0 0 -0.026 0 -0 0</pose>
@@ -371,7 +213,6 @@
                     <izz>0.007785</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_arm_link_4_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -424,7 +265,6 @@
                     <izz>0.01112</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_arm_link_5_visual'>
                 <pose frame=''>0 0 -0.026 0 -0 0</pose>
@@ -477,7 +317,6 @@
                     <izz>0.004527</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_arm_link_6_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -530,7 +369,6 @@
                     <izz>0.0232706</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_arm_link_7_visual'>
                 <pose frame=''>0 0 -0.0005 0 -0 0</pose>
@@ -680,7 +518,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_gripper_fingerA_dist_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -733,7 +570,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_gripper_fingerA_med_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -786,7 +622,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_gripper_fingerA_prox_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -839,7 +674,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_gripper_fingerB_base_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -892,7 +726,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_gripper_fingerB_dist_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -945,7 +778,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_gripper_fingerB_med_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -998,7 +830,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_gripper_fingerB_prox_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1051,7 +882,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_gripper_fingerC_base_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1098,7 +928,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_gripper_fingerC_dist_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1145,7 +974,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_gripper_fingerC_med_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1192,7 +1020,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_left_gripper_fingerC_prox_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1239,7 +1066,6 @@
                     <izz>0.02083</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_arm_link_1_visual'>
                 <pose frame=''>0 0 0.0075 0 -0 0</pose>
@@ -1255,28 +1081,6 @@
                     </script>
                 </material>
             </visual>
-            <collision name='victor_right_arm_link_1_collision'>
-                <pose frame=''>0 0 0.0075 0 -0 0</pose>
-                <geometry>
-                    <mesh>
-                        <uri>file://victor_description/meshes/iiwa7/collision/link_1.stl</uri>
-                    </mesh>
-                </geometry>
-                <surface>
-                    <friction>
-                        <ode>
-                            <mu>1</mu>
-                            <mu2>1</mu2>
-                        </ode>
-                    </friction>
-                    <contact>
-                        <ode>
-                            <kp>100000</kp>
-                            <kd>1</kd>
-                        </ode>
-                    </contact>
-                </surface>
-            </collision>
         </link>
         <link name='victor_right_arm_link_2'>
             <pose frame=''>0.220416 -0.378905 1.248 -0 -0 -2.35619</pose>
@@ -1292,7 +1096,6 @@
                     <izz>0.00779</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_arm_link_2_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1345,7 +1148,6 @@
                     <izz>0.03042</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_arm_link_3_visual'>
                 <pose frame=''>0 0 -0.026 0 -0 0</pose>
@@ -1398,7 +1200,6 @@
                     <izz>0.007785</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_arm_link_4_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1451,7 +1252,6 @@
                     <izz>0.01112</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_arm_link_5_visual'>
                 <pose frame=''>0 0 -0.026 0 -0 0</pose>
@@ -1504,7 +1304,6 @@
                     <izz>0.004527</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_arm_link_6_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1557,7 +1356,6 @@
                     <izz>0.0232706</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_arm_link_7_visual'>
                 <pose frame=''>0 0 -0.0005 0 -0 0</pose>
@@ -1708,7 +1506,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_gripper_fingerA_dist_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1761,7 +1558,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_gripper_fingerA_med_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1814,7 +1610,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_gripper_fingerA_prox_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1867,7 +1662,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_gripper_fingerB_base_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1920,7 +1714,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_gripper_fingerB_dist_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -1973,7 +1766,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_gripper_fingerB_med_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -2026,7 +1818,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_gripper_fingerB_prox_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -2079,7 +1870,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_gripper_fingerC_base_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -2126,7 +1916,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_gripper_fingerC_dist_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -2173,7 +1962,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_gripper_fingerC_med_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>
@@ -2220,7 +2008,6 @@
                     <izz>0.01</izz>
                 </inertia>
             </inertial>
-            <self_collide>1</self_collide>
             <kinematic>1</kinematic>
             <visual name='victor_right_gripper_fingerC_prox_visual'>
                 <pose frame=''>0 0 0 0 -0 0</pose>

@@ -12,5 +12,7 @@ def get_scenario(params: Dict) -> ExperimentScenario:
         return LinkBotScenario(data_collection_params)
     elif scenario_name == 'dual_floating_gripper_rope':
         return DualFloatingGripperRopeScenario(data_collection_params)
+    elif scenario_name == 'dual':
+        return DualFloatingGripperRopeScenario(data_collection_params)
     else:
         raise NotImplementedError()

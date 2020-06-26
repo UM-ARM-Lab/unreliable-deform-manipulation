@@ -20,7 +20,6 @@
   "dt": 1.0,
   "steps_per_traj": 25,
   "trajs_per_file": 16,
-  "settling_time": 1.0,
   "kinematic_objects": false,
   "no_objects": false,
   "max_dist_between_gripper_and_link": 0.022,

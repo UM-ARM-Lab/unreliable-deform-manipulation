@@ -35,6 +35,7 @@ def write_model_sdf(sdf_filename, args, model_name):
     sdf_config_str = """
     <sdf version="1.6">
         <model name="moving_box">
+            <allow_auto_disable>true</allow_auto_disable>
             <link name="link_1">
                 <kinematic>0</kinematic>
                 <pose>0 0 0 0 0 0</pose>
