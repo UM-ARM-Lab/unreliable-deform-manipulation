@@ -139,12 +139,15 @@ def eval_main(args, seed: int):
         test_batch.pop("batch_size")
         classifier_is_correct = tf.squeeze(tf.equal(probabilities > 0.5, tf.cast(labels, tf.bool)), axis=-1)
         for b in range(args.batch_size):
+            example = index_dict_of_batched_vectors_tf(test_batch, b)
 
             # if the classifier is correct at all time steps, ignore
             if tf.reduce_all(classifier_is_correct[b]):
                 continue
-
-            example = index_dict_of_batched_vectors_tf(test_batch, b)
+            predicted_rope_points = tf.reshape(example[add_predicted('link_bot')], [test_dataset.horizon, -1, 3])
+            predicted_rope_z = predicted_rope_points[:, :, 2]
+            # if tf.reduce_min(predicted_rope_z) > 0.02:
+            #     continue
 
             time_steps = np.arange(test_dataset.horizon)
             scenario.plot_environment_rviz(example)
