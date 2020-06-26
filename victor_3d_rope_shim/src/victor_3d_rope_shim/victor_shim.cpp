@@ -382,15 +382,18 @@ void VictorInterface::test()
   }
 
   // Left arm, palm forward, where the rope starts in Gazebo (gripper1)
-  if (false)
+  if (true)
   {
-    Eigen::Quaterniond const root_to_tool_rot = Eigen::AngleAxisd(90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
-                                                Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ());
+    Eigen::Quaterniond const root_to_tool_rot =
+        Eigen::AngleAxisd( 90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
+        Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ()) *
+        Eigen::AngleAxisd(-45.0 * TO_RADIANS, Eigen::Vector3d::UnitY());
     Eigen::Translation3d const root_to_tool(1.0, 0.3, 0.95);
     Pose const world_target_pose = worldTrobot * root_to_tool * root_to_tool_rot;
     auto const ik_solutions = left_arm_->IK(world_target_pose, robotTworld, home_state_, planning_scene_);
     std::cerr << "IK Solutions at target: " << ik_solutions.size() << std::endl;
 
+    // Visualization
     {
       geomsg::TransformStamped transform;
       transform.header.frame_id = world_frame_;
@@ -421,19 +424,26 @@ void VictorInterface::test()
       // std::cerr << "jacobian = [\n" << jacobian << "];\n";
       std::string asdf;
       std::cin >> asdf;
+      if (asdf == "done")
+      {
+        break;
+      }
     }
   }
 
   // Right arm, palm forward, where the rope starts in Gazebo (gripper2)
-  if (false)
+  if (true)
   {
-    Eigen::Quaterniond const root_to_tool_rot = Eigen::AngleAxisd(90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
-                                                Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ());
+    Eigen::Quaterniond const root_to_tool_rot =
+        Eigen::AngleAxisd( 90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
+        Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ()) *
+        Eigen::AngleAxisd(-45.0 * TO_RADIANS, Eigen::Vector3d::UnitY());
     Eigen::Translation3d const root_to_tool(1.0, -0.3, 0.95);
     Pose const world_target_pose = worldTrobot * root_to_tool * root_to_tool_rot;
     auto const ik_solutions = right_arm_->IK(world_target_pose, robotTworld, home_state_, planning_scene_);
     std::cerr << "IK Solutions at target: " << ik_solutions.size() << std::endl;
 
+    // Visualization
     {
       geomsg::TransformStamped transform;
       transform.header.frame_id = world_frame_;
@@ -464,6 +474,10 @@ void VictorInterface::test()
       // std::cerr << "jacobian = [\n" << jacobian << "];\n";
       std::string asdf;
       std::cin >> asdf;
+      if (asdf == "done")
+      {
+        break;
+      }
     }
   }
 }
