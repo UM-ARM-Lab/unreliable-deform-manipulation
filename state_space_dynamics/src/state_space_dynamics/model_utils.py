@@ -23,7 +23,7 @@ def load_generic_model(model_dir) -> Tuple[BaseDynamicsFunction, Tuple[str]]:
     # FIXME: remove batch_size=1 here? can I put it in base model?
     #  this API is super messy
     if isinstance(model_dir, list):
-        _, hparams_0 = load_trial(model_dir[0].absolute())
+        _, hparams_0 = load_trial(model_dir[0].parent.absolute())
         scenario_0 = get_scenario(hparams_0['dynamics_dataset_hparams'])
         fwd_model_dirs = [pathlib.Path(d) for d in model_dir]
         fwd_model = EnsembleDynamicsFunction(fwd_model_dirs, batch_size=1, scenario=scenario_0)
@@ -32,7 +32,7 @@ def load_generic_model(model_dir) -> Tuple[BaseDynamicsFunction, Tuple[str]]:
         model_path_info[-1] = model_path_info[-1][:-2]
         return fwd_model, model_path_info
     else:
-        _, hparams = load_trial(model_dir.absolute())
+        _, hparams = load_trial(model_dir.parent.absolute())
         scenario = get_scenario(hparams['dynamics_dataset_hparams'])
         model_type = hparams['model_class']
         if model_type == 'rigid':

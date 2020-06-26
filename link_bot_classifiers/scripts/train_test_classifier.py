@@ -3,19 +3,19 @@ import argparse
 import json
 import pathlib
 
-import numpy as np
-import tensorflow as tf
-
 import link_bot_classifiers
+import numpy as np
 import rospy
+import tensorflow as tf
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
 from link_bot_pycommon.pycommon import paths_to_json
+from moonshine.classifier_losses_and_metrics import \
+    binary_classification_sequence_metrics_function
 from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
-
 
 limit_gpu_mem(7.0)
 
@@ -39,11 +39,11 @@ def train_main(args, seed: int):
     trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
     trials_directory = pathlib.Path('trials').absolute()
     group_name = args.log if trial_path is None else None
-    trial_path, params = filepath_tools.create_or_load_trial(group_name=group_name,
-                                                             params=model_hparams,
-                                                             trial_path=trial_path,
-                                                             trials_directory=trials_directory,
-                                                             write_summary=False)
+    trial_path, _ = filepath_tools.create_or_load_trial(group_name=group_name,
+                                                        params=model_hparams,
+                                                        trial_path=trial_path,
+                                                        trials_directory=trials_directory,
+                                                        write_summary=False)
     model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
 
     model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=train_dataset.scenario)
@@ -80,8 +80,10 @@ def eval_main(args, seed: int):
     ###############
     # Model
     ###############
-    _, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
-                                                    trials_directory=pathlib.Path('trials'))
+    trials_directory = pathlib.Path('trials').absolute()
+    trial_path = args.checkpoint.parent.absolute()
+    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path,
+                                                    trials_directory=trials_directory)
     model = link_bot_classifiers.get_model(params['model_class'])
 
     ###############
@@ -93,15 +95,49 @@ def eval_main(args, seed: int):
     ###############
     # Evaluate
     ###############
-    test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    test_tf_dataset = batch_tf_dataset(test_tf_dataset, args.batch_size, drop_remainder=True)
 
     net = model(hparams=params, batch_size=args.batch_size, scenario=test_dataset.scenario)
     runner = ModelRunner(model=net,
                          training=False,
                          params=params,
-                         trial_path=args.checkpoint.absolute(),
+                         restore_from_name=args.checkpoint.name,
+                         trial_path=trial_path,
                          key_metric=AccuracyMetric,
                          batch_metadata=test_dataset.batch_metadata)
+
+    all_accuracies_over_time = []
+    for val_batch in test_tf_dataset:
+        val_batch.update(test_dataset.batch_metadata)
+        predictions, _ = runner.model.val_step(val_batch)
+        labels = tf.expand_dims(val_batch['is_close'][:, 1:], axis=2)
+        probabilities = predictions['probabilities']
+        accuracy_over_time = tf.keras.metrics.binary_accuracy(y_true=labels, y_pred=probabilities)
+        all_accuracies_over_time.append(accuracy_over_time)
+    all_accuracies_over_time = tf.concat(all_accuracies_over_time, axis=0)
+    mean_accuracies_over_time = tf.reduce_mean(all_accuracies_over_time, axis=0)
+    std_accuracies_over_time = tf.math.reduce_std(all_accuracies_over_time, axis=0)
+    print(mean_accuracies_over_time)
+
+    import matplotlib.pyplot as plt
+    plt.style.use("slides")
+    time_steps = np.arange(1, test_dataset.horizon)
+    plt.plot(time_steps, mean_accuracies_over_time, label='mean', color='r')
+    plt.plot(time_steps, mean_accuracies_over_time - std_accuracies_over_time, color='orange', alpha=0.5)
+    plt.plot(time_steps, mean_accuracies_over_time + std_accuracies_over_time, color='orange', alpha=0.5)
+    plt.fill_between(time_steps,
+                     mean_accuracies_over_time - std_accuracies_over_time,
+                     mean_accuracies_over_time + std_accuracies_over_time,
+                     label="68% confidence interval",
+                     color='r',
+                     alpha=0.3)
+    plt.ylim(0, 1.05)
+    plt.title("classifier accuracy versus horizon")
+    plt.xlabel("time step")
+    plt.xlabel("accuracy")
+    plt.legend()
+    plt.show()
+
     validation_metrics = runner.val_epoch(test_tf_dataset)
     for name, value in validation_metrics.items():
         print(f"{name}: {value:.3f}")

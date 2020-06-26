@@ -68,14 +68,12 @@ def binary_classification_sequence_loss_function(dataset_element, predictions):
 
 def binary_classification_sequence_metrics_function(dataset_element, predictions):
     labels = tf.expand_dims(dataset_element['is_close'][:, 1:], axis=2)
-    logits = predictions['logits']
     probabilities = predictions['probabilities']
     valid_indices = tf.where(predictions['mask'][:, 1:])
     valid_labels = tf.gather_nd(labels, valid_indices)
-    valid_logits = tf.gather_nd(logits, valid_indices)
     valid_probabilities = tf.gather_nd(probabilities, valid_indices)
-    accuracy_over_time = tf.keras.metrics.binary_accuracy(y_true=valid_labels, y_pred=valid_logits)
-    average_accuracy = tf.reduce_mean(accuracy_over_time)
+    accuracy = tf.keras.metrics.binary_accuracy(y_true=valid_labels, y_pred=valid_probabilities)
+    average_accuracy = tf.reduce_mean(accuracy)
 
     precision = metric.precision(y_true=valid_labels, y_pred=valid_probabilities)
     average_precision = tf.reduce_mean(precision)
