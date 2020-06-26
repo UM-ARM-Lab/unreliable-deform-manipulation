@@ -34,7 +34,6 @@ using ColorBuilder = arc_helpers::RGBAColorBuilder<std_msgs::ColorRGBA>;
 auto constexpr TO_RADIANS = M_PI / 180.0;
 auto constexpr TO_DEGREES = 180.0 / M_PI;
 auto constexpr ALLOWED_PLANNING_TIME = 10.0;
-auto constexpr TRANSLATION_STEP_SIZE = 0.001;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -163,6 +162,7 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
   , talker_(nh_.advertise<std_msgs::String>("polly", 10, false))
   , home_state_(robot_model_)
   , traj_goal_time_tolerance_(ROSHelpers::GetParam(ph_, "traj_goal_time_tolerance", 0.1))
+  , translation_step_size_(ROSHelpers::GetParamRequired<double>(ph_, "translation_step_size", __func__))
 {
   MPS_ASSERT(!robot_model_->getJointModelGroupNames().empty());
   vis_pub_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10, true);
@@ -382,7 +382,7 @@ void VictorInterface::test()
   }
 
   // Left arm, palm forward, where the rope starts in Gazebo (gripper1)
-  if (true)
+  if (false)
   {
     Eigen::Quaterniond const root_to_tool_rot =
         Eigen::AngleAxisd( 90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
@@ -432,7 +432,7 @@ void VictorInterface::test()
   }
 
   // Right arm, palm forward, where the rope starts in Gazebo (gripper2)
-  if (true)
+  if (false)
   {
     Eigen::Quaterniond const root_to_tool_rot =
         Eigen::AngleAxisd( 90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
@@ -782,25 +782,30 @@ void VictorInterface::moveInTableFrameJacobianIk(
 
   // Create paths for each tool with an equal number of waypoints
   Eigen::Vector3d const left_delta = target_poses.first.translation() - current_tool_poses.first.translation();
-  Eigen::Vector3d const right_delta = target_poses.first.translation() - current_tool_poses.first.translation();
+  Eigen::Vector3d const right_delta = target_poses.second.translation() - current_tool_poses.second.translation();
   auto const max_dist = std::max(left_delta.norm(), right_delta.norm());
-  if (max_dist < TRANSLATION_STEP_SIZE)
+  if (max_dist < translation_step_size_)
   {
     ROS_WARN_STREAM("Motion of distance " << max_dist << " requested. Ignoring.");
     return;
   }
-  auto const steps = static_cast<int>(std::ceil(max_dist / TRANSLATION_STEP_SIZE)) + 1;
-  auto const left_path = [&]
-  {
+  auto const steps = static_cast<int>(std::ceil(max_dist / translation_step_size_)) + 1;
+  auto const left_path = [&] {
     EigenHelpers::VectorVector3d path;
-    MPS_ASSERT(
-        left_arm_->interpolate(current_tool_poses.first.translation(), target_poses.first.translation(), path, steps));
+    MPS_ASSERT(left_arm_->interpolate(
+      current_tool_poses.first.translation(),
+      target_poses.first.translation(),
+      path,
+      steps));
     return path;
   }();
   auto const right_path = [&] {
     EigenHelpers::VectorVector3d path;
-    MPS_ASSERT(left_arm_->interpolate(current_tool_poses.second.translation(), target_poses.second.translation(), path,
-                                      steps));
+    MPS_ASSERT(left_arm_->interpolate(
+      current_tool_poses.second.translation(),
+      target_poses.second.translation(),
+      path,
+      steps));
     return path;
   }();
   MPS_ASSERT(left_path.size() == right_path.size() && "Later code assumes these are of equal length for synchronization");
@@ -869,15 +874,27 @@ void VictorInterface::moveInTableFrameJacobianIk(
   auto const left_cmd = [&] {
     auto const flange_home_frame = home_state_.getGlobalLinkTransform(left_arm_->arm->getLinkModels().back());
     trajectory_msgs::JointTrajectory cmd;
-    MPS_ASSERT(left_arm_->jacobianPath3D(left_path, flange_home_frame.rotation(), robotTworld, left_tool_offset_,
-                                         current_state, planning_scene_, cmd));
+    MPS_ASSERT(left_arm_->jacobianPath3D(
+      left_path,
+      (flange_home_frame * left_tool_offset_).rotation(),
+      robotTworld,
+      left_tool_offset_,
+      current_state,
+      planning_scene_,
+      cmd));
     return cmd;
   }();
   auto const right_cmd = [&] {
     auto const flange_home_frame = home_state_.getGlobalLinkTransform(right_arm_->arm->getLinkModels().back());
     trajectory_msgs::JointTrajectory cmd;
-    MPS_ASSERT(right_arm_->jacobianPath3D(right_path, flange_home_frame.rotation(), robotTworld, right_tool_offset_,
-                                          current_state, planning_scene_, cmd));
+    MPS_ASSERT(right_arm_->jacobianPath3D(
+      right_path,
+      (flange_home_frame * right_tool_offset_).rotation(),
+      robotTworld,
+      right_tool_offset_,
+      current_state,
+      planning_scene_,
+      cmd));
     return cmd;
   }();
 

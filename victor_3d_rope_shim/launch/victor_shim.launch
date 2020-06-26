@@ -15,7 +15,8 @@
     </rosparam>
 
     <node name="world_interaction" pkg="victor_3d_rope_shim" type="world_interaction">
-        <param name="get_planning_scene_topic" value="gazebo/get_planning_scene" if="$(arg gazebo)"/>
+        <param name="get_planning_scene_topic"  value="gazebo/get_planning_scene" if="$(arg gazebo)"/>
+        <param name="translation_step_size"     value="0.002"   type="double"/>
     </node>
     <node name="fake_control_mode_interface" pkg="victor_3d_rope_shim" type="minimal_fake_control_mode_interface.py" if="$(arg gazebo)"/>
 

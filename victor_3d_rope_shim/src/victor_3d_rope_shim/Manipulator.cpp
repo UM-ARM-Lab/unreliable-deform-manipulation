@@ -904,6 +904,10 @@ bool Manipulator::jacobianPath3D(
 	const Eigen::Quaterniond robotNominalToolOrientation(
 		(robotTworld * Eigen::Quaterniond(worldNominalToolOrientation)).rotation());
 
+	// std::cerr << "worldNominalToolOrientation:\n" << worldNominalToolOrientation << std::endl
+	// 		  << "robotTworld:\n" << robotTworld.matrix() << std::endl
+	// 		  << "robotNominalToolOrientation:\n" << robotNominalToolOrientation.toRotationMatrix() << std::endl;
+
 	// Initialize the command with the current state for the first target point
 	cmd.joint_names = arm->getActiveJointModelNames();
 	cmd.points.resize(worldGoalPoints.size());

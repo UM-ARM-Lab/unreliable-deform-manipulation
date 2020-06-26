@@ -68,6 +68,7 @@ public:
   std::unique_ptr<TrajectoryClient> trajectory_client_;
   ros::Duration const traj_goal_time_tolerance_;
   ros::ServiceClient obstacles_client_;
+  double const translation_step_size_;
 
   VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer);
 
