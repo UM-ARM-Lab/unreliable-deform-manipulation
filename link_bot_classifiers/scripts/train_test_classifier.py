@@ -8,14 +8,22 @@ import numpy as np
 import rospy
 import tensorflow as tf
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
+from link_bot_data.link_bot_dataset_utils import (add_predicted,
+                                                  batch_tf_dataset)
 from link_bot_pycommon.pycommon import paths_to_json
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.classifier_losses_and_metrics import \
     binary_classification_sequence_metrics_function
 from moonshine.gpu_config import limit_gpu_mem
+from moonshine.moonshine_utils import (add_batch,
+                                       index_dict_of_batched_vectors_tf,
+                                       remove_batch,
+                                       sequence_of_dicts_to_dict_of_sequences)
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
+from shape_completion_training.model.utils import reduce_mean_dict
 from shape_completion_training.model_runner import ModelRunner
+from std_msgs.msg import Float32
 
 limit_gpu_mem(7.0)
 
@@ -77,6 +85,9 @@ def train_main(args, seed: int):
 
 
 def eval_main(args, seed: int):
+    stdev_pub_ = rospy.Publisher("stdev", Float32, queue_size=10)
+    accept_probability_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)
+
     ###############
     # Model
     ###############
@@ -89,8 +100,9 @@ def eval_main(args, seed: int):
     ###############
     # Dataset
     ###############
-    test_dataset = ClassifierDataset(args.dataset_dirs)
+    test_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
+    scenario = test_dataset.scenario
 
     ###############
     # Evaluate
@@ -98,6 +110,7 @@ def eval_main(args, seed: int):
     test_tf_dataset = batch_tf_dataset(test_tf_dataset, args.batch_size, drop_remainder=True)
 
     net = model(hparams=params, batch_size=args.batch_size, scenario=test_dataset.scenario)
+    # This call to model runner restores the model
     runner = ModelRunner(model=net,
                          training=False,
                          params=params,
@@ -106,18 +119,72 @@ def eval_main(args, seed: int):
                          key_metric=AccuracyMetric,
                          batch_metadata=test_dataset.batch_metadata)
 
+    # Iterate over test set and compute metrics
     all_accuracies_over_time = []
-    for val_batch in test_tf_dataset:
-        val_batch.update(test_dataset.batch_metadata)
-        predictions, _ = runner.model.val_step(val_batch)
-        labels = tf.expand_dims(val_batch['is_close'][:, 1:], axis=2)
+    test_metrics = []
+    for test_batch in test_tf_dataset:
+        test_batch.update(test_dataset.batch_metadata)
+
+        predictions, test_batch_metrics = runner.model.val_step(test_batch)
+
+        test_metrics.append(test_batch_metrics)
+        labels = tf.expand_dims(test_batch['is_close'][:, 1:], axis=2)
+
         probabilities = predictions['probabilities']
         accuracy_over_time = tf.keras.metrics.binary_accuracy(y_true=labels, y_pred=probabilities)
         all_accuracies_over_time.append(accuracy_over_time)
+
+        # Visualization
+        test_batch.pop("time")
+        test_batch.pop("batch_size")
+        classifier_is_correct = tf.squeeze(tf.equal(probabilities > 0.5, tf.cast(labels, tf.bool)), axis=-1)
+        for b in range(args.batch_size):
+
+            # if the classifier is correct at all time steps, ignore
+            if tf.reduce_all(classifier_is_correct[b]):
+                continue
+
+            example = index_dict_of_batched_vectors_tf(test_batch, b)
+
+            time_steps = np.arange(test_dataset.horizon)
+            scenario.plot_environment_rviz(example)
+            anim = RvizAnimationController(time_steps)
+            while not anim.done:
+                t = anim.t()
+                actual_t = remove_batch(scenario.index_state_time(add_batch(example), t))
+                pred_t = remove_batch(scenario.index_predicted_state_time(add_batch(example), t))
+                action_t = remove_batch(scenario.index_action_time(add_batch(example), t))
+                label_t = remove_batch(scenario.index_label_time(add_batch(example), t)).numpy()
+                scenario.plot_state_rviz(actual_t, label='actual', color='#ff0000aa')
+                scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffaa')
+                scenario.plot_action_rviz(actual_t, action_t)
+                scenario.plot_is_close(label_t)
+
+                stdev_t = example[add_predicted('stdev')][t, 0].numpy()
+                stdev_msg = Float32()
+                stdev_msg.data = stdev_t
+                stdev_pub_.publish(stdev_msg)
+
+                if t > 0:
+                    accept_probability_t = predictions['probabilities'][b, t-1, 0].numpy()
+                else:
+                    accept_probability_t = -999
+                accept_probability_msg = Float32()
+                accept_probability_msg.data = accept_probability_t
+                accept_probability_pub_.publish(accept_probability_msg)
+
+                # this will return when either the animation is "playing" or because the user stepped forward
+                anim.step()
+
     all_accuracies_over_time = tf.concat(all_accuracies_over_time, axis=0)
     mean_accuracies_over_time = tf.reduce_mean(all_accuracies_over_time, axis=0)
     std_accuracies_over_time = tf.math.reduce_std(all_accuracies_over_time, axis=0)
-    print(mean_accuracies_over_time)
+
+    test_metrics = sequence_of_dicts_to_dict_of_sequences(test_metrics)
+    mean_test_metrics = reduce_mean_dict(test_metrics)
+    for metric_name, metric_value in mean_test_metrics.items():
+        metric_value_str = np.format_float_positional(metric_value, precision=4, unique=False, fractional=False)
+        print(f"{metric_name}: {metric_value_str}")
 
     import matplotlib.pyplot as plt
     plt.style.use("slides")
@@ -137,10 +204,6 @@ def eval_main(args, seed: int):
     plt.xlabel("accuracy")
     plt.legend()
     plt.show()
-
-    validation_metrics = runner.val_epoch(test_tf_dataset)
-    for name, value in validation_metrics.items():
-        print(f"{name}: {value:.3f}")
 
 
 def main():

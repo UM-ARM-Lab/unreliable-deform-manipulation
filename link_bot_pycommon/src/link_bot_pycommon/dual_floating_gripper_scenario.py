@@ -20,6 +20,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         super().__init__(params)
         self.last_state = None
         self.last_action = None
+        # TODO: rename to _trajectory, advertized by the victor shim
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
         self.interrupt = rospy.Publisher("interrupt_trajectory", Empty, queue_size=10)
         self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
