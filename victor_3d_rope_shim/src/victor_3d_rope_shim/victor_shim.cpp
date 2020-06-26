@@ -770,8 +770,14 @@ void VictorInterface::moveInTableFrameJacobianIk(
   Eigen::Vector3d const left_delta = target_poses.first.translation() - current_tool_poses.first.translation();
   Eigen::Vector3d const right_delta = target_poses.first.translation() - current_tool_poses.first.translation();
   auto const max_dist = std::max(left_delta.norm(), right_delta.norm());
-  auto const steps = static_cast<int>(std::ceil(max_dist / TRANSLATION_STEP_SIZE));
-  auto const left_path = [&] {
+  if (max_dist < TRANSLATION_STEP_SIZE)
+  {
+    ROS_WARN_STREAM("Motion of distance " << max_dist << " requested. Ignoring.");
+    return;
+  }
+  auto const steps = static_cast<int>(std::ceil(max_dist / TRANSLATION_STEP_SIZE)) + 1;
+  auto const left_path = [&]
+  {
     EigenHelpers::VectorVector3d path;
     MPS_ASSERT(
         left_arm_->interpolate(current_tool_poses.first.translation(), target_poses.first.translation(), path, steps));
@@ -783,8 +789,7 @@ void VictorInterface::moveInTableFrameJacobianIk(
                                       steps));
     return path;
   }();
-  MPS_ASSERT(left_path.size() == right_path.size() && "Later code assumes these are of equal length for "
-                                                      "syncronization");
+  MPS_ASSERT(left_path.size() == right_path.size() && "Later code assumes these are of equal length for synchronization");
 
   // Debugging - visualize interpolated path in world frame
   if (true)
