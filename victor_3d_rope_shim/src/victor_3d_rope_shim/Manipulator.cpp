@@ -911,7 +911,7 @@ bool Manipulator::jacobianPath3D(
 	cmd.points[0].time_from_start = ros::Duration(0);
 
 	// Iteratively follow the Jacobian to each other point in the path
-	ROS_INFO("Following Jacobian along path");
+	ROS_INFO_STREAM("Following Jacobian along path for manipulator " << palmName);
 	for (size_t idx = 1; idx < worldGoalPoints.size(); ++idx)
 	{
 		const Pose robotTgoal =

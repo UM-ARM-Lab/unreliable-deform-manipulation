@@ -3,13 +3,13 @@
 ## 18.04
 
 ```
- Localname                S SCM Version (Spec)     UID  (Spec)  URI  (Spec) [http(s)://...]
- ---------                - --- --------------     -----------  ---------------------------
- sdf_tools                  git melodic  (-)                        4b7a0ab808d0 git@github.com:UM-ARM-Lab/sdf_tools.git
- link_bot                   git victor_shim_gazebo_integration  (-) 025c46236972 git@github.com:UM-ARM-Lab/link_bot.git
- lightweight_vicon_bridge   git master  (-)                         6ed19db45b9b git@github.com:UM-ARM-Lab/lightweight_vicon_bridge.git
- kuka_iiwa_interface        git peter_3d_rope  (-)                  d75e01421417 git@github.com:UM-ARM-Lab/kuka_iiwa_interface
- arc_utilities              git master  (-)                         63dcf2e063f0 git@github.com:UM-ARM-Lab/arc_utilities.git
+ Localname                S SCM Version (Spec)                         UID  (Spec)  URI  (Spec) [http(s)://...]
+ ---------                - --- --------------                         -----------  ---------------------------
+ sdf_tools                  git melodic  (-)                           4b7a0ab808d0 git@github.com:UM-ARM-Lab/sdf_tools.git
+ link_bot                   git kinematic_victor_rope_integration  (-) 45945173c12d git@github.com:UM-ARM-Lab/link_bot.git
+ lightweight_vicon_bridge   git master  (-)                            6ed19db45b9b git@github.com:UM-ARM-Lab/lightweight_vicon_bridge.git
+ kuka_iiwa_interface        git peter_3d_rope  (-)                     d75e01421417 git@github.com:UM-ARM-Lab/kuka_iiwa_interface
+ arc_utilities              git master  (-)                            63dcf2e063f0 git@github.com:UM-ARM-Lab/arc_utilities.git
 
 ```
 
@@ -32,15 +32,16 @@ roslaunch victor_fake_hardware_interface fake_dual_arm_lcm_bridge.launch --scree
 roslaunch victor_3d_rope_shim static_transforms.launch --screen
 roslaunch victor_3d_rope_shim vicon_transform_replacements.launch --screen
 rcnew && rosrun arm_or_robots ros_trajectory_forwarder.py _world_frame:="world_origin"
-rviz
-watch 'cat /proc/cpuinfo | grep MHz | sort -r'
 roslaunch victor_3d_rope_shim victor_shim.launch --screen
+rviz
+rosrun victor_3d_rope_shim test_move.py
 ```
 
 # Nodes/etc open for Gazebo Victor
 ```
 roscore
 roslaunch link_bot_gazebo world.launch world_name:=victor_table_rope pause:=false --screen
+roslaunch victor_3d_rope_shim victor_shim.launch --screen
 rviz
-watch 'cat /proc/cpuinfo | grep MHz | sort -r'
+rosrun victor_3d_rope_shim test_move.py
 ```
