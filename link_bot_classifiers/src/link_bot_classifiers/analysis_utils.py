@@ -2,14 +2,15 @@ from typing import Dict, List
 
 import numpy as np
 import tensorflow as tf
-
 from link_bot_classifiers.nn_classifier import NNClassifierWrapper
+from link_bot_data.classifier_dataset_utils import \
+    batch_of_many_of_actions_sequences_to_dict
 from link_bot_planning.plan_and_execute import execute_actions
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import make_dict_tf_float32
-from link_bot_pycommon.ros_pycommon import make_movable_object_services, \
-    get_environment_for_extents_3d
+from link_bot_pycommon.ros_pycommon import (get_environment_for_extents_3d,
+                                            make_movable_object_services)
 from moonshine.moonshine_utils import numpify, sequence_of_dicts_to_dict_of_tensors
 from state_space_dynamics.model_utils import EnsembleDynamicsFunction
 
@@ -22,27 +23,21 @@ def predict(fwd_model: EnsembleDynamicsFunction,
             n_actions_sampled: int,
             n_start_states: int) -> List[List[List[Dict]]]:
     # reformat the inputs to be efficiently batched
-    actions_dict = {}
-    for actions_for_start_state in actions:
-        for actions in actions_for_start_state:
-            for action in actions:
-                for k, v in action.items():
-                    if k not in actions_dict:
-                        actions_dict[k] = []
-                    actions_dict[k].append(v)
+    actions_batched = batch_of_many_of_actions_sequences_to_dict(actions, n_actions_sampled, n_start_states, n_actions)
 
-    actions_batched = {k: tf.reshape(v, [n_actions_sampled * n_start_states, n_actions, -1]) for k, v in actions_dict.items()}
     start_states = sequence_of_dicts_to_dict_of_tensors(start_states)
     start_states = make_dict_tf_float32({k: tf.expand_dims(v, axis=1) for k, v in start_states.items()})
     # copy from start states for each random action
     start_states_tiled = {k: tf.concat([v] * n_actions_sampled, axis=0) for k, v in start_states.items()}
 
     # Actually do the predictions
-    predictions_dict = fwd_model.propagate_differentiable_batched(start_states=start_states_tiled, actions=actions_batched)
+    predictions_dict = fwd_model.propagate_differentiable_batched(
+        start_states=start_states_tiled, actions=actions_batched)
 
     # break out the num actions and num start states
     n_states = n_actions + 1
-    predictions_dict = {k: tf.reshape(v, [n_start_states, n_actions_sampled, n_states, -1]) for k, v in predictions_dict.items()}
+    predictions_dict = {k: tf.reshape(v, [n_start_states, n_actions_sampled, n_states, -1])
+                        for k, v in predictions_dict.items()}
 
     # invert structure to List[List[List[Dict]]] and return
     predictions_list = []
@@ -78,22 +73,26 @@ def predict_and_classify(fwd_model: EnsembleDynamicsFunction,
                         actions_dict[k] = []
                     actions_dict[k].append(v)
 
-    environment_batched = {k: tf.stack([v] * n_actions_sampled * n_start_states, axis=0) for k, v in environment.items()}
-    actions_batched = {k: tf.reshape(v, [n_actions_sampled * n_start_states, n_actions, -1]) for k, v in actions_dict.items()}
+    environment_batched = {k: tf.stack([v] * n_actions_sampled * n_start_states, axis=0)
+                           for k, v in environment.items()}
+    actions_batched = {k: tf.reshape(v, [n_actions_sampled * n_start_states, n_actions, -1])
+                       for k, v in actions_dict.items()}
     start_states = sequence_of_dicts_to_dict_of_tensors(start_states)
     start_states = make_dict_tf_float32({k: tf.expand_dims(v, axis=1) for k, v in start_states.items()})
     # copy from start states for each random action
     start_states_tiled = {k: tf.concat([v] * n_actions_sampled, axis=0) for k, v in start_states.items()}
 
     # Actually do the predictions
-    predictions_dict = fwd_model.propagate_differentiable_batched(start_states=start_states_tiled, actions=actions_batched)
+    predictions_dict = fwd_model.propagate_differentiable_batched(
+        start_states=start_states_tiled, actions=actions_batched)
 
     # Run classifier
     accept_probabilities = classifier.check_constraint_batched_tf(environment=environment_batched,
                                                                   predictions=predictions_dict,
                                                                   actions=actions_batched,
                                                                   state_sequence_length=state_sequence_length)
-    accept_probabilities = tf.reshape(accept_probabilities, [n_start_states, n_actions_sampled, state_sequence_length - 1, -1])
+    accept_probabilities = tf.reshape(
+        accept_probabilities, [n_start_states, n_actions_sampled, state_sequence_length - 1, -1])
 
     # break out the num actions and num start states
     state_sequence_length = n_actions + 1

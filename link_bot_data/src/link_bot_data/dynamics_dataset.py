@@ -33,6 +33,7 @@ class DynamicsDataset(BaseDataset):
 
         self.int64_keys = ['time_idx']
 
+        self.data_collection_params = self.hparams['data_collection_params']
         self.sequence_length = self.hparams['data_collection_params']['steps_per_traj']
 
     def make_features_description(self):

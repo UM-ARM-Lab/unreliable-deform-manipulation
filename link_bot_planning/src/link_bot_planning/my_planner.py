@@ -147,7 +147,8 @@ class MyPlanner:
         num_diverged_subspace.setBounds(num_diverged_bounds)
         self.subspace_bounds.append(num_diverged_bounds)
         self.state_space.addSubspace(num_diverged_subspace, weight=0)
-        self.state_space_description['num_diverged'] = {"idx": self.num_diverged_subspace_idx, "weight": 0, "n_state": 1}
+        self.state_space_description['num_diverged'] = {
+            "idx": self.num_diverged_subspace_idx, "weight": 0, "n_state": 1}
         self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
         control_bounds = ob.RealVectorBounds(2)
         control_bounds.setLow(0, -np.pi)
@@ -165,7 +166,8 @@ class MyPlanner:
         final_state = compound_to_numpy(self.state_space_description, motions[-1].getState())
         distance_to_goal = self.scenario.distance_to_goal(final_state, self.goal)
         self.min_distance_to_goal = min(self.min_distance_to_goal, distance_to_goal)
-        motions_valid = bool(np.squeeze(final_state['num_diverged'] < self.classifier_model.horizon - 1))  # yes, minus 1
+        motions_valid = bool(np.squeeze(final_state['num_diverged'] <
+                                        self.classifier_model.horizon - 1))  # yes, minus 1
         if self.verbose >= 3:
             print(final_state)
             print(motions_valid)
@@ -191,7 +193,6 @@ class MyPlanner:
         return np_u
 
     def predict(self, previous_states, previous_actions, new_action):
-        # TODO: check_constraint and propagate should take in "environment" instead of these three special variances
         new_actions = np.expand_dims(new_action, axis=0)
         last_previous_state = previous_states[-1]
         predicted_states = self.fwd_model.propagate(environment=self.environment,
@@ -234,7 +235,8 @@ class MyPlanner:
                                                                           actions=all_actions)
         final_classifier_probability = classifier_probabilities[-1]
         classifier_accept = final_classifier_probability > self.params['accept_threshold']
-        final_predicted_state['num_diverged'] = np.array([0.0]) if classifier_accept else last_previous_state['num_diverged'] + 1
+        final_predicted_state['num_diverged'] = np.array(
+            [0.0]) if classifier_accept else last_previous_state['num_diverged'] + 1
         return final_predicted_state
 
     def propagate(self, motions, control, duration, state_out):

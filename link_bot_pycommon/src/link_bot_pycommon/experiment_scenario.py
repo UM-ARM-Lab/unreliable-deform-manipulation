@@ -323,7 +323,8 @@ class ExperimentScenario:
                                                s=2,
                                                label=prediction_label_name,
                                                linewidth=1)
-        actual_artist = cls.plot_state(ax, actual[0], color='#00ff00', zorder=3, s=2, label='actual', alpha=0.6, linewidth=1)
+        actual_artist = cls.plot_state(ax, actual[0], color='#00ff00', zorder=3,
+                                       s=2, label='actual', alpha=0.6, linewidth=1)
         if show_previous_action:
             prev_actual_artist = cls.plot_state(ax, actual[0], color='#aaaa00', zorder=3, s=2, label='actual', alpha=0.6,
                                                 linewidth=1)
@@ -520,5 +521,6 @@ def sample_object_position(env_rng, xy_range: Dict) -> Dict:
 
 
 def sample_object_positions(env_rng, movable_objects: Dict) -> Dict[str, Dict]:
-    random_object_positions = {name: sample_object_position(env_rng, xy_range) for name, xy_range in movable_objects.items()}
+    random_object_positions = {name: sample_object_position(
+        env_rng, xy_range) for name, xy_range in movable_objects.items()}
     return random_object_positions

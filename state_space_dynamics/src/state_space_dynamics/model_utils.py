@@ -28,7 +28,8 @@ def load_generic_model(model_dir) -> Tuple[BaseDynamicsFunction, Tuple[str]]:
         fwd_model_dirs = [pathlib.Path(d) for d in model_dir]
         fwd_model = EnsembleDynamicsFunction(fwd_model_dirs, batch_size=1, scenario=scenario_0)
         model_path_info = list(fwd_model_dirs[0].parts[1:])
-        model_path_info[-1] = model_path_info[-1][:-2]  # remove the "-$n" so it's "dir/ensemble" instead of "dir/ensemble-$n"
+        # remove the "-$n" so it's "dir/ensemble" instead of "dir/ensemble-$n"
+        model_path_info[-1] = model_path_info[-1][:-2]
         return fwd_model, model_path_info
     else:
         _, hparams = load_trial(model_dir.absolute())
@@ -73,7 +74,7 @@ def load_ensemble(fwd_model_dirs: List[pathlib.Path]):
     model_info = None
     for fwd_model_dir in fwd_model_dirs:
         # just model_info overwrite and return the last one, they should all be identical anyways
-        fwd_model, model_path_info = load_generic_model(fwd_model_dir)
+        fwd_model, _ = load_generic_model(fwd_model_dir)
         fwd_models.append(fwd_model)
     return fwd_models, model_info
 
@@ -140,7 +141,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
 
         return ensemble_predictions
 
-    # @tf.function
+    @tf.function
     def propagate_differentiable_batched(self,
                                          start_states: Dict,
                                          actions: Dict) -> Dict:

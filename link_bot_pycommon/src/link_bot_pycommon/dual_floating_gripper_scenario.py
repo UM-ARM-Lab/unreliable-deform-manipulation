@@ -47,9 +47,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                     state, action_rng, environment)
 
             out_of_bounds = self.is_out_of_bounds(gripper1_position) or self.is_out_of_bounds(gripper2_position)
-            gripper_collision = np.linalg.norm(gripper2_position - gripper1_position) < self.params[
-                'min_distance_between_grippers']
-
+            min_d = self.params['min_distance_between_grippers']
+            gripper_collision = np.linalg.norm(gripper2_position - gripper1_position) < min_d
             if not out_of_bounds and not gripper_collision:
                 action = {
                     'gripper1_position': gripper1_position,
@@ -68,18 +67,19 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             or z < z_min or z > z_max
 
     def random_nearby_position_action(self, state: Dict, action_rng: np.random.RandomState, environment):
+        max_d = self.params['max_distance_gripper_can_move']
         target_gripper1_pos = Base3DScenario.random_pos(action_rng, self.params['action_sample_extent'])
         target_gripper2_pos = Base3DScenario.random_pos(action_rng, self.params['action_sample_extent'])
         current_gripper1_pos, current_gripper2_pos = DualFloatingGripperRopeScenario.state_to_gripper_position(state)
 
         gripper1_displacement = target_gripper1_pos - current_gripper1_pos
-        gripper1_displacement = gripper1_displacement / np.linalg.norm(
-            gripper1_displacement) * self.params['max_distance_gripper_can_move'] * action_rng.uniform(0, 1)
+        gripper1_displacement = gripper1_displacement / np.linalg.norm(gripper1_displacement)
+        gripper1_displacement = gripper1_displacement * max_d * action_rng.uniform(0, 1)
         target_gripper1_pos = current_gripper1_pos + gripper1_displacement
 
         gripper2_displacement = target_gripper2_pos - current_gripper2_pos
-        gripper2_displacement = gripper2_displacement / np.linalg.norm(
-            gripper2_displacement) * self.params['max_distance_gripper_can_move'] * action_rng.uniform(0, 1)
+        gripper2_displacement = gripper2_displacement / np.linalg.norm(gripper2_displacement)
+        gripper2_displacement = gripper2_displacement * max_d * action_rng.uniform(0, 1)
         target_gripper2_pos = current_gripper2_pos + gripper2_displacement
 
         return target_gripper1_pos, target_gripper2_pos

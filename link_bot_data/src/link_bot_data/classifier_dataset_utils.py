@@ -159,3 +159,18 @@ def compute_is_close_tf(actual_states_dict: Dict, predicted_states_dict: Dict, l
 def compute_label_np(actual_states_dict: Dict, predicted_states_dict: Dict, labeling_params: Dict):
     is_close = remove_batch(compute_is_close_tf(*add_batch(actual_states_dict, predicted_states_dict), labeling_params))
     return is_close.numpy()
+
+
+def batch_of_many_of_actions_sequences_to_dict(actions, n_actions_sampled, n_start_states, n_actions):
+    # reformat the inputs to be efficiently batched
+    actions_dict = {}
+    for actions_for_start_state in actions:
+        for actions in actions_for_start_state:
+            for action in actions:
+                for k, v in action.items():
+                    if k not in actions_dict:
+                        actions_dict[k] = []
+                    actions_dict[k].append(v)
+    actions_batched = {k: tf.reshape(v, [n_actions_sampled * n_start_states, n_actions, -1])
+                       for k, v in actions_dict.items()}
+    return actions_batched

@@ -160,7 +160,6 @@ class NNClassifier(MyKerasModel):
     def calculate_metrics(self, dataset_element, outputs):
         return binary_classification_sequence_metrics_function(dataset_element, outputs)
 
-    @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         batch_size = input_dict['batch_size']
         time = input_dict['time']
@@ -213,9 +212,9 @@ class NNClassifierWrapper(BaseConstraintChecker):
 
     def __init__(self, path: pathlib.Path, batch_size: int, scenario: Base3DScenario):
         super().__init__(scenario)
-        model_hparams_file = path / 'hparams.json'
+        model_hparams_file = path.parent / 'params.json'
         if not model_hparams_file.exists():
-            model_hparams_file = path.parent / 'params.json'
+            model_hparams_file = path / 'hparams.json'
             if not model_hparams_file.exists():
                 raise FileNotFoundError("no hparams file found!")
         self.model_hparams = json.load(model_hparams_file.open('r'))
@@ -235,11 +234,12 @@ class NNClassifierWrapper(BaseConstraintChecker):
                                     environment: Dict,
                                     predictions: Dict,
                                     actions: Dict,
+                                    batch_size: int,
                                     state_sequence_length: int):
         # construct network inputs
         net_inputs = {
-            'batch_size': tf.constant(1, dtype=tf.int64),
-            'time': tf.cast([state_sequence_length], tf.int64),
+            'batch_size': batch_size,
+            'time': state_sequence_length,
         }
         net_inputs.update(make_dict_tf_float32(environment))
 
@@ -266,7 +266,7 @@ class NNClassifierWrapper(BaseConstraintChecker):
         states_sequence_dict = sequence_of_dicts_to_dict_of_tensors(states_sequence)
         actions = add_batch(actions)
         accept_probabilities_batched = self.check_constraint_batched_tf(
-            environment, states_sequence_dict, actions, len(states_sequence))
+            environment, states_sequence_dict, actions, 1, len(states_sequence))
         return remove_batch(accept_probabilities_batched)
 
     def check_constraint(self,

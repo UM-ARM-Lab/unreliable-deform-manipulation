@@ -43,8 +43,6 @@ def collect_trajectory(scenario: ExperimentScenario,
                                                                   service_provider=service_provider,
                                                                   robot_name=scenario.robot_name())
 
-    scenario.plot_environment_rviz(environment)
-
     feature = dict_of_float_tensors_to_bytes_feature(environment)
     feature['traj_idx'] = float_tensor_to_bytes_feature(traj_idx)
 
@@ -107,7 +105,8 @@ def generate_trajs(service_provider,
 
     movable_object_services = {k: make_movable_object_services(k) for k in params['movable_objects']}
     for traj_idx in range(args.trajs):
-        scenario.move_objects_randomly(env_rng, movable_object_services, params['movable_objects'], params['kinematic_objects'])
+        scenario.move_objects_randomly(env_rng, movable_object_services,
+                                       params['movable_objects'], params['kinematic_objects'])
 
         # Generate a new trajectory
         example, global_t_step = collect_trajectory(scenario=scenario,

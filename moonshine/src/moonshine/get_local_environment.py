@@ -55,7 +55,8 @@ def get_local_env_and_origin_3d_tf(center_point,
     batch_z_indices_in_full_env_frame = batch_z_indices + local_to_full_offset[:, 2, tf.newaxis, tf.newaxis, tf.newaxis]
 
     tile_sizes = [1, local_h_rows, local_w_cols, local_c_channels]
-    batch_indices = tf.tile(tf.range(0, batch_size, dtype=tf.int64)[:, tf.newaxis, tf.newaxis, tf.newaxis], tile_sizes)
+    batch_int64 = tf.cast(batch_size, tf.int64)
+    batch_indices = tf.tile(tf.range(0, batch_int64, dtype=tf.int64)[:, tf.newaxis, tf.newaxis, tf.newaxis], tile_sizes)
     gather_indices = tf.stack(
         [batch_indices, batch_y_indices_in_full_env_frame, batch_x_indices_in_full_env_frame, batch_z_indices_in_full_env_frame],
         axis=4)
@@ -107,8 +108,10 @@ def get_local_env_and_origin_2d_tf(center_point,
     batch_y_indices_in_full_env_frame = batch_y_indices + local_to_full_offset[:, 0, tf.newaxis, tf.newaxis]
     batch_x_indices_in_full_env_frame = batch_x_indices + local_to_full_offset[:, 1, tf.newaxis, tf.newaxis]
 
-    batch_indices = tf.tile(tf.range(0, batch_size, dtype=tf.int64)[:, tf.newaxis, tf.newaxis], [1, local_h_rows, local_w_cols])
-    gather_indices = tf.stack([batch_indices, batch_y_indices_in_full_env_frame, batch_x_indices_in_full_env_frame], axis=3)
+    batch_indices = tf.tile(tf.range(0, batch_size, dtype=tf.int64)[
+                            :, tf.newaxis, tf.newaxis], [1, local_h_rows, local_w_cols])
+    gather_indices = tf.stack([batch_indices, batch_y_indices_in_full_env_frame,
+                               batch_x_indices_in_full_env_frame], axis=3)
     image = tf.expand_dims(full_env, axis=3)
     local_image = tf.gather_nd(image, gather_indices)
     local_env = tf.transpose(local_image[:, :, :, 0], [0, 2, 1])

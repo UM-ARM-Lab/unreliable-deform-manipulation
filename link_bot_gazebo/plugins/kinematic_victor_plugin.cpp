@@ -78,9 +78,8 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
   auto const steps = static_cast<unsigned int>(settling_time_seconds / seconds_per_step);
   for (auto const &point : goal->trajectory.points)
   {
-    for (auto const &pair : enumerate(goal->trajectory.joint_names))
+    for (auto const &[joint_idx, joint_name] : enumerate(goal->trajectory.joint_names))
     {
-      auto const &[joint_idx, joint_name] = pair;
       // Step the world
       world_->Step(steps);
       auto joint = model_->GetJoint(joint_name);

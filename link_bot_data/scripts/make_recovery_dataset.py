@@ -5,11 +5,11 @@ import logging
 import pathlib
 from time import perf_counter
 
+import rospy
 import tensorflow as tf
 from colorama import Fore
-
 from link_bot_classifiers import classifier_utils
-from link_bot_data.base_dataset import DEFAULT_VAL_SPLIT, DEFAULT_TEST_SPLIT
+from link_bot_data.base_dataset import DEFAULT_TEST_SPLIT, DEFAULT_VAL_SPLIT
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_data.recovery_actions_utils import generate_recovery_examples
@@ -29,11 +29,13 @@ def main():
     parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
     parser.add_argument('classifier_model_dir', type=pathlib.Path)
+    parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
     parser.add_argument('--max-examples-per-record', type=int, default=128, help="examples per file")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
-    parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
 
     args = parser.parse_args()
+
+    rospy.init_node("make_recovery_dataset")
 
     labeling_params = json.load(args.labeling_params.open("r"))
     dynamics_hparams = json.load((args.dataset_dir / 'hparams.json').open('r'))
@@ -43,10 +45,10 @@ def main():
 
     dataset = DynamicsDataset([args.dataset_dir])
 
-    success = mkdir_and_ask(args.out_dir, parents=True)
-    if not success:
-        print(Fore.RED + "Aborting" + Fore.RESET)
-        return
+    # success = mkdir_and_ask(args.out_dir, parents=True)
+    # if not success:
+    #     print(Fore.RED + "Aborting" + Fore.RESET)
+    #     return
 
     new_hparams_filename = args.out_dir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams
