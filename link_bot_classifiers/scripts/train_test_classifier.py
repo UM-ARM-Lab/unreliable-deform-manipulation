@@ -204,7 +204,7 @@ def eval_main(args, seed: int):
     plt.ylim(0, 1.05)
     plt.title("classifier accuracy versus horizon")
     plt.xlabel("time step")
-    plt.xlabel("accuracy")
+    plt.ylabel("accuracy")
     plt.legend()
     plt.show()
 

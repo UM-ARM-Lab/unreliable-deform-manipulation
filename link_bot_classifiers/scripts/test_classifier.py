@@ -49,7 +49,8 @@ def main():
     classifier = classifier_utils.load_generic_model(test_config['classifier_model_dir'], fwd_model.scenario)
 
     service_provider = GazeboServices()
-    service_provider.setup_env(verbose=0, real_time_rate=0, max_step_size=fwd_model.data_collection_params['max_step_size'])
+    service_provider.setup_env(verbose=0, real_time_rate=0,
+                               max_step_size=fwd_model.data_collection_params['max_step_size'])
     environment = get_environment_for_extents_3d(extent=test_config['extent'],
                                                  res=fwd_model.data_collection_params['res'],
                                                  service_provider=service_provider,

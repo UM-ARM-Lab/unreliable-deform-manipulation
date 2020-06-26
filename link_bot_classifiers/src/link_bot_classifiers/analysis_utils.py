@@ -90,7 +90,8 @@ def predict_and_classify(fwd_model: EnsembleDynamicsFunction,
     accept_probabilities = classifier.check_constraint_batched_tf(environment=environment_batched,
                                                                   predictions=predictions_dict,
                                                                   actions=actions_batched,
-                                                                  state_sequence_length=state_sequence_length)
+                                                                  state_sequence_length=state_sequence_length,
+                                                                  batch_size=n_start_states*n_actions_sampled)
     accept_probabilities = tf.reshape(
         accept_probabilities, [n_start_states, n_actions_sampled, state_sequence_length - 1, -1])
 

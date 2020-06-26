@@ -20,7 +20,7 @@ def load_generic_model(model_dir: pathlib.Path, scenario: ExperimentScenario) ->
     if isinstance(model_dir, list):
         assert len(model_dir) == 1
         model_dir = model_dir[0]
-    _, hparams = load_trial(model_dir.absolute())
+    _, hparams = load_trial(model_dir.parent.absolute())
     model_type = hparams['model_class']
     if model_type == 'rnn':
         return NNClassifierWrapper(model_dir, batch_size=1, scenario=scenario)
