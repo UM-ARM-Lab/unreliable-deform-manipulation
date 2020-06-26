@@ -43,6 +43,16 @@ class KinematicVictorPlugin : public ModelPlugin {
   ros::Publisher joint_states_pub_;
 
   std::unique_ptr<TrajServer> follow_traj_server_;
+  std::string left_flange_name_{"victor::victor_left_arm_link_7"};
+  std::string right_flange_name_{"victor::victor_right_arm_link_7"};
+  std::string gripper1_name_{"link_bot::gripper1"};
+  std::string gripper2_name_{"link_bot::gripper2"};
+  physics::LinkPtr left_flange_;
+  physics::LinkPtr right_flange_;
+  physics::LinkPtr gripper1_;
+  physics::LinkPtr gripper2_;
+  ignition::math::Pose3d left_flange_to_gripper1_;
+  ignition::math::Pose3d right_flange_to_gripper2_;
 };
 
 }  // namespace gazebo

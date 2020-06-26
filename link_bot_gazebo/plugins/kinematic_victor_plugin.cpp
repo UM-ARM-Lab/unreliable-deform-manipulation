@@ -50,6 +50,11 @@ KinematicVictorPlugin::~KinematicVictorPlugin()
 
 void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 {
+  if (!ros::isInitialized()) {
+    int argc = 0;
+    ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
+  }
+
   model_ = parent;
   world_ = model_->GetWorld();
 
@@ -97,13 +102,40 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     }
   }
 
+  // Mimic fixed joints between Victor's grippers and the grippers attached to the rope (if it exists)
+  {
+    left_flange_ = model_->GetLink(left_flange_name_);
+    right_flange_ = model_->GetLink(right_flange_name_);
+    gripper1_ = model_->GetLink(gripper1_name_);
+    gripper2_ = model_->GetLink(gripper2_name_);
+    if (!left_flange_)
+    {
+      ROS_ERROR_STREAM("Invalid link name for Victor left flange: " << left_flange_name_);
+    }
+    if (!right_flange_)
+    {
+      ROS_ERROR_STREAM("Invalid link name for Victor left flange: " << right_flange_name_);
+    }
+    if (!gripper1_)
+    {
+      ROS_ERROR_STREAM("Invalid link name for rope gripper1: " << gripper1_name_);
+    }
+    if (!gripper2_)
+    {
+      ROS_ERROR_STREAM("Invalid link name for rope gripper2: " << gripper2_name_);
+    }
+    if (left_flange_ && gripper1_)
+    {
+      left_flange_to_gripper1_ = gripper1_->WorldPose() - left_flange_->WorldPose();
+    }
+    if (right_flange_ && gripper2_)
+    {
+      right_flange_to_gripper2_ = gripper2_->WorldPose() - right_flange_->WorldPose();
+    }
+  }
+
   // Setup ROS stuff
   {
-    if (!ros::isInitialized()) {
-      int argc = 0;
-      ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
-    }
-
     private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
     joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 10);
     auto execute = [this](const TrajServer::GoalConstPtr &goal) { this->FollowJointTrajectory(goal); };
@@ -114,7 +146,7 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
 
     auto update = [this](common::UpdateInfo const &/*info*/) { OnUpdate(); };
-    this->update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
+    update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
   }
 }
 
@@ -152,6 +184,7 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
                   "  steps per point: " << steps <<
                   "  points: " << goal->trajectory.points.size());
   for (auto const &point : goal->trajectory.points) {
+    // Move Victor to the specified joint configuration
     for (auto const &pair : enumerate(goal->trajectory.joint_names)) {
       auto const &[joint_idx, joint_name] = pair;
       auto joint = model_->GetJoint("victor::" + joint_name);
@@ -159,12 +192,22 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
         joint->SetPosition(0, point.positions[joint_idx]);
       }
       else {
-        std::cerr << "Invalid joint: " << "victor::" + joint_name << std::endl;
+        gzerr << "Invalid joint: " << "victor::" + joint_name << std::endl;
         result.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_JOINTS;
         follow_traj_server_->setSucceeded(result);
         world_->SetPaused(false);
         return;
       }
+    }
+    // Move the rope kinematic grippers to match
+    if (left_flange_ && right_flange_ && gripper1_ && gripper2_)
+    {
+      // Note that in ignition math, adding on the right is equivalent to multiplying on the left in Eigen
+      auto const gripper1_pose = left_flange_to_gripper1_ + left_flange_->WorldPose();
+      auto const gripper2_pose = right_flange_to_gripper2_ + right_flange_->WorldPose();
+      // FIXME: only change the position, not the whole pose?
+      gripper1_->SetWorldPose(gripper1_pose);
+      gripper2_->SetWorldPose(gripper2_pose);
     }
     // Step the world
     world_->Step(steps);

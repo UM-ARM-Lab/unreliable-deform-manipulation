@@ -66,13 +66,13 @@ public:
   std::pair<Pose, Pose> home_state_tool_poses_world_frame_;
   std::pair<Pose, Pose> home_state_tool_poses_table_frame_;
   std::unique_ptr<TrajectoryClient> trajectory_client_;
+  ros::Duration const traj_goal_time_tolerance_;
   ros::ServiceClient obstacles_client_;
 
   VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer);
 
   void test();
 
-  //     robot_state::RobotState const& updateLastCommandedState();
   robot_state::RobotState getCurrentRobotState() const;
   std::pair<Pose, Pose> getToolTransforms() const;
   std::pair<Pose, Pose> getToolTransforms(robot_state::RobotState const& state) const;
@@ -105,7 +105,7 @@ public:
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
   ros::ServiceServer execute_traj_srv_;
-  
+
   VictorShim(ros::NodeHandle nh, ros::NodeHandle ph);
 
   // Victor control/exection

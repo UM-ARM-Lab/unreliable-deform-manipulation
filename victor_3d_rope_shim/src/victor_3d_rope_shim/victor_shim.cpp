@@ -165,6 +165,7 @@ VictorInterface::VictorInterface(ros::NodeHandle nh,
   , robot_model_(model_loader_->getModel())
   , talker_(nh_.advertise<std_msgs::String>("polly", 10, false))
   , home_state_(robot_model_)
+  , traj_goal_time_tolerance_(ROSHelpers::GetParam(ph_, "traj_goal_time_tolerance", 0.1))
 {
   MPS_ASSERT(!robot_model_->getJointModelGroupNames().empty());
   vis_pub_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10, true);
@@ -383,32 +384,6 @@ void VictorInterface::test()
                "MoveIt and 'manual' Jacobian code should produce the same result");
   }
 
-  // Palm down, near middle of table (when Victor is diagonal)
-  if (false)
-  {
-    std::vector<double> const joints = { -1.741, 0.663, 2.417, -1.565, 0.724, 1.048, 0.229 };
-    robot_state::RobotState state(home_state_);
-    state.setJointGroupPositions(left_arm_->arm, joints);
-    state.update();
-    auto const pose = state.getGlobalLinkTransform(left_arm_->arm->getLinkModels().back());
-    auto const ik_solns = left_arm_->IK(worldTrobot * pose, robotTworld, home_state_, planning_scene_);
-    std::cerr << "Found " << ik_solns.size() << " IK solutions for the left arm\n";
-
-    trajectory_msgs::JointTrajectory traj;
-    traj.joint_names = left_arm_->arm->getActiveJointModelNames();
-    traj.points.resize(ik_solns.size() + 1);
-    getCurrentRobotState().copyJointGroupPositions(left_arm_->arm, traj.points[0].positions);
-    traj.points[0].time_from_start = ros::Duration(0);
-
-    for (size_t idx = 0; idx < ik_solns.size(); ++idx)
-    {
-      traj.points[idx+1].positions = ik_solns[idx];
-      traj.points[idx+1].time_from_start = ros::Duration((double)idx);
-    }
-
-    followTrajectory(traj);
-  }
-
   // Left arm, palm forward, where the rope starts in Gazebo (gripper1)
   if (false)
   {
@@ -495,24 +470,6 @@ void VictorInterface::test()
       std::string asdf;
       std::cin >> asdf;
     }
-  }
-
-  // Jacobians don't work?
-  if (false)
-  {
-    std::vector<double> const bad_jacobian_servoing = { -1.373, 1.358, 0.0, 1.844, -0.132, -1.123, -0.765 };
-    robot_state::RobotState state(home_state_);
-    state.setJointGroupPositions(left_arm_->arm, bad_jacobian_servoing);
-    state.update();
-
-    trajectory_msgs::JointTrajectory traj;
-    traj.joint_names = left_arm_->arm->getActiveJointModelNames();
-    traj.points.resize(2);
-    getCurrentRobotState().copyJointGroupPositions(left_arm_->arm, traj.points[0].positions);
-    traj.points[0].time_from_start = ros::Duration(0);
-    traj.points[1].positions = bad_jacobian_servoing;
-    traj.points[1].time_from_start = ros::Duration(1);
-    followTrajectory(traj);
   }
 }
 
@@ -680,10 +637,7 @@ void VictorInterface::followTrajectory(trajectory_msgs::JointTrajectory const& t
     tol.acceleration = 1.0;
     goal.goal_tolerance.push_back(tol);
   }
-  // FIXME: Relatively arbitrary duration here - what works for both sim and real?
-  //        Or take this as a ROS param
-  ROS_WARN("Arbitrary goal_time_tolerance, verify this works on Gazebo and fake/real Victor");
-  goal.goal_time_tolerance = ros::Duration(0.1);
+  goal.goal_time_tolerance = traj_goal_time_tolerance_;
   ROS_INFO("Sending goal ...");
   trajectory_client_->sendGoalAndWait(goal);
 
@@ -1049,7 +1003,7 @@ VictorShim::VictorShim(ros::NodeHandle nh, ros::NodeHandle ph)
 
   // DualGripper control/exection
   {
-    execute_traj_srv_ = nh.advertiseService("link_bot_execute_trajectory", &VictorShim::executeTrajectory, this);
+    execute_traj_srv_ = nh.advertiseService("execute_dual_gripper_trajectory", &VictorShim::executeTrajectory, this);
   }
 }
 
