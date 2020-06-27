@@ -18,8 +18,6 @@ from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Positi
 class ExperimentScenario:
     def __init__(self, params: Dict):
         self.params = params
-        from gazebo_msgs.srv import SetModelState
-        self.gz_set_state_srv = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
 
     def __eq__(self, other):
         if isinstance(other, str):
@@ -408,7 +406,7 @@ class ExperimentScenario:
     def move_objects_randomly(self, env_rng, movable_objects_services, movable_objects, kinematic: bool):
         random_object_positions = sample_object_positions(env_rng, movable_objects)
         if kinematic:
-            self.move_objects_kinematic(movable_objects_services, random_object_positions)
+            raise NotImplementedError()
         else:
             ExperimentScenario.move_objects(movable_objects_services, random_object_positions)
 
@@ -425,18 +423,6 @@ class ExperimentScenario:
             }
             object_moves[name] = move
         return ExperimentScenario.move_objects(movable_objects_services, object_moves)
-
-    def move_objects_kinematic(self, movable_objects_services: Dict, object_moves: Dict):
-        from gazebo_msgs.srv import SetModelStateRequest
-        del movable_objects_services
-        for object_name, move in object_moves.items():
-            state_req = SetModelStateRequest()
-            state_req.model_state.model_name = object_name
-            state_req.model_state.pose.position.x = move['position'].x
-            state_req.model_state.pose.position.y = move['position'].y
-            state_req.model_state.pose.position.z = move['position'].z
-
-            self.gz_set_state_srv(state_req)
 
     @staticmethod
     def move_objects(movable_objects_services: Dict, object_moves: Dict):
