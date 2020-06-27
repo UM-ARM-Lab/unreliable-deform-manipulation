@@ -29,8 +29,11 @@ class Base3DScenario(ExperimentScenario):
         self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
         self.time_viz_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10, latch=True)
         self.accept_probability_viz_pub = rospy.Publisher("accept_probability_viz", Float32, queue_size=10, latch=True)
-        import tf2_ros
-        self.broadcaster = tf2_ros.StaticTransformBroadcaster()
+        try:
+            import tf2_ros
+            self.broadcaster = tf2_ros.StaticTransformBroadcaster()
+        except ImportError:
+            self.broadcaster = None
 
     @staticmethod
     def random_pos(action_rng: np.random.RandomState, extent):
