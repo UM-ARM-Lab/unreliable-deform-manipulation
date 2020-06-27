@@ -44,7 +44,11 @@ def train_main(args, seed: int):
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
     model_hparams['datasets'] = paths_to_json(args.dataset_dirs)
-    trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
+    trial_path = None
+    checkpoint_name = None
+    if args.checkpoint:
+        trial_path = args.checkpoint.parent.absolute()
+        checkpoint_name = args.checkpoint.name
     trials_directory = pathlib.Path('trials').absolute()
     group_name = args.log if trial_path is None else None
     trial_path, _ = filepath_tools.create_or_load_trial(group_name=group_name,

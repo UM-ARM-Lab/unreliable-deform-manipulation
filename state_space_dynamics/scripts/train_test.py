@@ -32,23 +32,28 @@ def train_main(args, seed: int):
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
     model_hparams['datasets'] = paths_to_json(args.dataset_dirs)
-    trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
-    group_name = args.log if trial_path is None else None
+    trial_path = None
+    checkpoint_name = None
+    if args.checkpoint:
+        trial_path = args.checkpoint.parent.absolute()
+        checkpoint_name = args.checkpoint.name
     trials_directory = pathlib.Path('trials')
+    group_name = args.log if trial_path is None else None
     if args.ensemble_idx is not None:
         group_name = f"{group_name}_{args.ensemble_idx}"
-    trial_path, params = filepath_tools.create_or_load_trial(group_name=group_name,
-                                                             params=model_hparams,
-                                                             trial_path=trial_path,
-                                                             trials_directory=trials_directory,
-                                                             write_summary=False)
+    trial_path, _ = filepath_tools.create_or_load_trial(group_name=group_name,
+                                                        params=model_hparams,
+                                                        trial_path=trial_path,
+                                                        trials_directory=trials_directory,
+                                                        write_summary=False)
     model_class = state_space_dynamics.get_model(model_hparams['model_class'])
 
     model = model_class(hparams=model_hparams, batch_size=args.batch_size, scenario=train_dataset.scenario)
     runner = ModelRunner(model=model,
                          training=True,
-                         trial_path=trial_path,
-                         params=model_hparams)
+                         params=model_hparams,
+                         restore_from_name=checkpoint_name,
+                         trial_path=trial_path)
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
@@ -71,13 +76,16 @@ def train_main(args, seed: int):
 def eval_main(args, seed: int):
     test_dataset = DynamicsDataset(args.dataset_dirs)
 
-    trial_path, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
-                                                             trials_directory=pathlib.Path('trials'))
+    trials_directory = pathlib.Path('trials').absolute()
+    trial_path = args.checkpoint.parent.absolute()
+    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path,
+                                                    trials_directory=trials_directory)
     model = state_space_dynamics.get_model(params['model_class'])
     net = model(hparams=params, batch_size=args.batch_size, scenario=test_dataset.scenario)
 
     runner = ModelRunner(model=net,
                          training=False,
+                         restore_from_name=args.checkpoint.name,
                          trial_path=trial_path,
                          params=params)
 
