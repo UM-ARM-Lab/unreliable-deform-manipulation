@@ -17,6 +17,7 @@ class BaseDataset:
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         self.dataset_dirs = dataset_dirs
         self.hparams = {}
+        self.batch_metadata = {}
         for dataset_dir in dataset_dirs:
             dataset_hparams_filename = dataset_dir / 'hparams.json'
 
@@ -73,7 +74,8 @@ class BaseDataset:
 
         # Given the member lists of states, actions, and constants set in the constructor, create a dict for parsing a feature
         features_description = self.make_features_description()
-        dataset = parse_and_deserialize(dataset, feature_description=features_description, n_parallel_calls=n_parallel_calls)
+        dataset = parse_and_deserialize(dataset, feature_description=features_description,
+                                        n_parallel_calls=n_parallel_calls)
 
         if take is not None:
             dataset = dataset.take(take)
