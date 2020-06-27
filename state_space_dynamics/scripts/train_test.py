@@ -52,16 +52,16 @@ def train_main(args, seed: int):
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
-    val_tf_dataset = val_dataset.get_datasets(mode='val', take=200)
+    val_tf_dataset = val_dataset.get_datasets(mode='val')
 
     # to mix up examples so each batch is diverse
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=2048, seed=seed, reshuffle_each_iteration=True)
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)
 
     train_tf_dataset = train_tf_dataset.batch(args.batch_size, drop_remainder=True)
     val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
 
     train_tf_dataset = train_tf_dataset.shuffle(
-        buffer_size=512, seed=seed, reshuffle_each_iteration=True)  # to mix up batches
+        buffer_size=128, seed=seed, reshuffle_each_iteration=True)  # to mix up batches
 
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
@@ -129,7 +129,7 @@ def main():
     eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
-    eval_parser.add_argument('--batch-size', type=int, default=64)
+    eval_parser.add_argument('--batch-size', type=int, default=16)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.add_argument('--seed', type=int, default=None)
     eval_parser.set_defaults(func=eval_main)
