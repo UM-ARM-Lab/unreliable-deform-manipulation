@@ -2870,10 +2870,10 @@
         </joint>
         <plugin name='kinematic_victor' filename='libkinematic_victor_plugin.so'>
             <arm name="left">
-                <initial_positions>-1.81695, -1.25162, -2.05265, 1.38003, 0.831492, 0.315415, 1.3882</initial_positions>
+                <initial_positions> -0.7853981633974481, 0.5759586531581284, 1.5707963267948966, -1.3089969389957472, 9.947598300641403e-14, 0.733038285837619, -0.2617993877991509</initial_positions>
             </arm>
             <arm name="right">
-                <initial_positions>-1.43215, 0.956264, 1.7202, -1.38003, 2.25085, 0.557458, -2.47785</initial_positions>
+                <initial_positions> -2.356194490192345, -0.5759586531581287, -1.5707963267948968, 1.3089969389957465, -1.9539925233402755e-14, -0.7330382858376183, 1.8325957145940466 </initial_positions>
             </arm>
         </plugin>
     </model>

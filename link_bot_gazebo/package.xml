@@ -20,6 +20,7 @@
   <depend>sdf_tools</depend>
   <depend>peter_msgs</depend>
   <depend>tf2_ros</depend>
+  <depend>victor_hardware_interface</depend>
 
   <build_depend>message_generation</build_depend>
   <build_depend>visualization_msgs</build_depend>

@@ -12,6 +12,7 @@ find_package(
         sensor_msgs
         trajectory_msgs
         tf2_ros
+        victor_hardware_interface
 )
 
 find_package(cnpy REQUIRED)
@@ -38,6 +39,7 @@ catkin_package(
         trajectory_msgs
         peter_msgs
         tf2_ros
+        victor_hardware_interface
 )
 
 include_directories(SYSTEM ${GAZEBO_INCLUDE_DIRS})
