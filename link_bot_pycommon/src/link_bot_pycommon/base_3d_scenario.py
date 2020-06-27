@@ -16,7 +16,7 @@ from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
 from mps_shape_completion_msgs.msg import OccupancyStamped
-from std_msgs.msg import Bool, Float32
+from std_msgs.msg import Bool, Float32, Int64
 from visualization_msgs.msg import MarkerArray, Marker
 
 
@@ -27,6 +27,8 @@ class Base3DScenario(ExperimentScenario):
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10, latch=True)
         self.label_viz_pub = rospy.Publisher("mybool", Bool, queue_size=10, latch=True)
+        self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
+        self.time_viz_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10, latch=True)
         self.accept_probability_viz_pub = rospy.Publisher("accept_probability_viz", Float32, queue_size=10, latch=True)
         self.broadcaster = tf2_ros.StaticTransformBroadcaster()
 
@@ -153,6 +155,16 @@ class Base3DScenario(ExperimentScenario):
         msg = Float32()
         msg.data = accept_probability_t
         self.accept_probability_viz_pub.publish(msg)
+
+    def plot_traj_idx_rviz(self, traj_idx):
+        msg = Float32()
+        msg.data = traj_idx
+        self.traj_idx_viz_pub.publish(msg)
+
+    def plot_time_idx_rviz(self, time_idx):
+        msg = Int64()
+        msg.data = time_idx
+        self.time_viz_pub.publish(msg)
 
     def animate_rviz(self,
                      environment: Dict,

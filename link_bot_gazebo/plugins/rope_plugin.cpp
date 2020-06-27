@@ -14,8 +14,6 @@
 
 namespace gazebo
 {
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "cppcoreguidelines-pro-type-vararg"
 void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 {
   model_ = parent;
@@ -80,9 +78,8 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
   }
   gzlog << "Rope Plugin finished initializing!\n";
 }
-#pragma clang diagnostic pop
 
-bool RopePlugin::GetObjectRope(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
+bool RopePlugin::GetObjectRope(peter_msgs::GetObjectRequest &, peter_msgs::GetObjectResponse &res)
 {
   res.object.name = "link_bot";
   for (auto link_idx{ 1U }; link_idx <= num_links_; ++link_idx)
@@ -108,7 +105,7 @@ bool RopePlugin::GetObjectRope(peter_msgs::GetObjectRequest &req, peter_msgs::Ge
   return true;
 }
 
-bool RopePlugin::SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::SetRopeStateResponse &res)
+bool RopePlugin::SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::SetRopeStateResponse &)
 {
   for (auto pair : enumerate(model_->GetJoints()))
   {
@@ -126,7 +123,7 @@ bool RopePlugin::SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::
   return true;
 }
 
-bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &req, peter_msgs::GetRopeStateResponse &res)
+bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &, peter_msgs::GetRopeStateResponse &res)
 {
   static peter_msgs::GetRopeStateResponse previous_res;
   static auto initialized = false;
@@ -140,7 +137,7 @@ bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &req, peter_msgs::
   {
     auto const &[i, link] = pair;
     auto const name = link->GetName();
-    boost::regex e(".*link_\\d+");
+    boost::regex e("link_bot::link_\\d+");
     if (boost::regex_match(name, e))
     {
       geometry_msgs::Point pt;

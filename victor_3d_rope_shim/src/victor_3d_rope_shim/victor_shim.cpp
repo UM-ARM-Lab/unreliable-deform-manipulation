@@ -384,10 +384,9 @@ void VictorInterface::test()
   // Left arm, palm forward, where the rope starts in Gazebo (gripper1)
   if (false)
   {
-    Eigen::Quaterniond const root_to_tool_rot =
-        Eigen::AngleAxisd( 90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
-        Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ()) *
-        Eigen::AngleAxisd(-45.0 * TO_RADIANS, Eigen::Vector3d::UnitY());
+    Eigen::Quaterniond const root_to_tool_rot = Eigen::AngleAxisd(90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
+                                                Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ()) *
+                                                Eigen::AngleAxisd(-45.0 * TO_RADIANS, Eigen::Vector3d::UnitY());
     Eigen::Translation3d const root_to_tool(1.0, 0.3, 0.95);
     Pose const world_target_pose = worldTrobot * root_to_tool * root_to_tool_rot;
     auto const ik_solutions = left_arm_->IK(world_target_pose, robotTworld, home_state_, planning_scene_);
@@ -434,10 +433,9 @@ void VictorInterface::test()
   // Right arm, palm forward, where the rope starts in Gazebo (gripper2)
   if (false)
   {
-    Eigen::Quaterniond const root_to_tool_rot =
-        Eigen::AngleAxisd( 90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
-        Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ()) *
-        Eigen::AngleAxisd(-45.0 * TO_RADIANS, Eigen::Vector3d::UnitY());
+    Eigen::Quaterniond const root_to_tool_rot = Eigen::AngleAxisd(90.0 * TO_RADIANS, Eigen::Vector3d::UnitY()) *
+                                                Eigen::AngleAxisd(180.0 * TO_RADIANS, Eigen::Vector3d::UnitZ()) *
+                                                Eigen::AngleAxisd(-45.0 * TO_RADIANS, Eigen::Vector3d::UnitY());
     Eigen::Translation3d const root_to_tool(1.0, -0.3, 0.95);
     Pose const world_target_pose = worldTrobot * root_to_tool * root_to_tool_rot;
     auto const ik_solutions = right_arm_->IK(world_target_pose, robotTworld, home_state_, planning_scene_);
@@ -792,23 +790,18 @@ void VictorInterface::moveInTableFrameJacobianIk(
   auto const steps = static_cast<int>(std::ceil(max_dist / translation_step_size_)) + 1;
   auto const left_path = [&] {
     EigenHelpers::VectorVector3d path;
-    MPS_ASSERT(left_arm_->interpolate(
-      current_tool_poses.first.translation(),
-      target_poses.first.translation(),
-      path,
-      steps));
+    MPS_ASSERT(
+        left_arm_->interpolate(current_tool_poses.first.translation(), target_poses.first.translation(), path, steps));
     return path;
   }();
   auto const right_path = [&] {
     EigenHelpers::VectorVector3d path;
-    MPS_ASSERT(left_arm_->interpolate(
-      current_tool_poses.second.translation(),
-      target_poses.second.translation(),
-      path,
-      steps));
+    MPS_ASSERT(left_arm_->interpolate(current_tool_poses.second.translation(), target_poses.second.translation(), path,
+                                      steps));
     return path;
   }();
-  MPS_ASSERT(left_path.size() == right_path.size() && "Later code assumes these are of equal length for synchronization");
+  MPS_ASSERT(left_path.size() == right_path.size() && "Later code assumes these are of equal length for "
+                                                      "synchronization");
 
   // Debugging - visualize interpolated path in world frame
   if (true)
@@ -874,27 +867,15 @@ void VictorInterface::moveInTableFrameJacobianIk(
   auto const left_cmd = [&] {
     auto const flange_home_frame = home_state_.getGlobalLinkTransform(left_arm_->arm->getLinkModels().back());
     trajectory_msgs::JointTrajectory cmd;
-    MPS_ASSERT(left_arm_->jacobianPath3D(
-      left_path,
-      (flange_home_frame * left_tool_offset_).rotation(),
-      robotTworld,
-      left_tool_offset_,
-      current_state,
-      planning_scene_,
-      cmd));
+    MPS_ASSERT(left_arm_->jacobianPath3D(left_path, (flange_home_frame * left_tool_offset_).rotation(), robotTworld,
+                                         left_tool_offset_, current_state, planning_scene_, cmd));
     return cmd;
   }();
   auto const right_cmd = [&] {
     auto const flange_home_frame = home_state_.getGlobalLinkTransform(right_arm_->arm->getLinkModels().back());
     trajectory_msgs::JointTrajectory cmd;
-    MPS_ASSERT(right_arm_->jacobianPath3D(
-      right_path,
-      (flange_home_frame * right_tool_offset_).rotation(),
-      robotTworld,
-      right_tool_offset_,
-      current_state,
-      planning_scene_,
-      cmd));
+    MPS_ASSERT(right_arm_->jacobianPath3D(right_path, (flange_home_frame * right_tool_offset_).rotation(), robotTworld,
+                                          right_tool_offset_, current_state, planning_scene_, cmd));
     return cmd;
   }();
 
@@ -981,7 +962,11 @@ void VictorInterface::moveInTableFrameJacobianIk(
     planning_scene_->checkCollision(collision_req, collision_res, state);
     if (collision_res.collision)
     {
-      ROS_WARN_STREAM("Collision at idx " << idx << " in merged arm trajectories. Returning valid portion only");
+      auto const first_contact = *collision_res.contacts.begin();
+      auto const first_contact_first_name = first_contact.first.first;
+      auto const first_contact_second_name = first_contact.first.second;
+      ROS_WARN_STREAM("Collision at idx " << idx << " in merged arm trajectories involving " << first_contact_first_name
+                                          << " and " << first_contact_first_name << "Returning valid portion only");
       merged_cmd.points.resize(idx);
       break;
     }
@@ -1000,7 +985,7 @@ void VictorInterface::visualizePlanningScene()
   planning_scene_publisher_.publish(scene_msg);
 }
 
-////////////////////////////////////////////////////////////////////////////////
+//////// ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
 VictorShim::VictorShim(ros::NodeHandle nh, ros::NodeHandle ph)

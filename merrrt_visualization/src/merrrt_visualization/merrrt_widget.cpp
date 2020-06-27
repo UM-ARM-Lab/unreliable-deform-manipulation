@@ -11,8 +11,13 @@ MerrrtWidget::MerrrtWidget(QWidget *parent) : rviz::Panel(parent)
   stdev_sub_ = ros_node_.subscribe<std_msgs::Float32>("stdev", 10, &MerrrtWidget::StdevCallback, this);
   accept_probability_sub_ =
       ros_node_.subscribe<std_msgs::Float32>("accept_probability_viz", 10, &MerrrtWidget::OnAcceptProbability, this);
+  traj_idx_sub_ = ros_node_.subscribe<std_msgs::Float32>("traj_idx_viz", 10, &MerrrtWidget::OnTrajIdx, this);
 }
 
+void MerrrtWidget::OnTrajIdx(const std_msgs::Float32::ConstPtr &msg)
+{
+  ui.traj_idx->setText(QString::number(msg->data));
+}
 void MerrrtWidget::StdevCallback(const std_msgs::Float32::ConstPtr &msg)
 {
   ui.stdev_label->setText(QString::number(msg->data));

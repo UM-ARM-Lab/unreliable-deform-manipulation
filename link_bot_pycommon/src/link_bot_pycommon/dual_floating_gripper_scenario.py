@@ -20,7 +20,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         super().__init__(params)
         self.last_state = None
         self.last_action = None
-        # TODO: rename to _trajectory, advertized by the victor shim
+        self.can_repeat_last_action = False
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
         self.interrupt = rospy.Publisher("interrupt_trajectory", Empty, queue_size=10)
         self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
@@ -41,11 +41,34 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                       params: Dict,
                       action_rng):
         action = None
+
+        gripper1_point = state['gripper1']
+        # the last link connects to gripper 1 at the moment
+        rope_state_vector = state['link_bot']
+        link_point = np.array([rope_state_vector[-3], rope_state_vector[-2], rope_state_vector[-1]])
+        distance_between_gripper1_and_link = np.linalg.norm(gripper1_point - link_point)
+        rope_is_overstretched = distance_between_gripper1_and_link > self.params['max_dist_between_gripper_and_link']
+
+        if rope_is_overstretched and self.last_state is not None:
+            rospy.loginfo("Safety policy reversing last action")
+            last_delta_gripper_1 = self.last_action['gripper1_position'] - self.last_state['gripper1']
+            last_delta_gripper_2 = self.last_action['gripper2_position'] - self.last_state['gripper2']
+            gripper1_position = state['gripper1'] - last_delta_gripper_1
+            gripper2_position = state['gripper2'] - last_delta_gripper_2
+            safety_action = {
+                'gripper1_position': gripper1_position,
+                'gripper2_position': gripper2_position,
+            }
+            # setting this to none will prevent us from re-sampling the action that caused the safety violation
+            self.can_repeat_last_action = False
+            return safety_action
+
         for _ in range(self.max_action_attempts):
-            # move in the same direction as the previous action with 80% probability
-            if self.last_action is not None and action_rng.uniform(0, 1) < 0.8:
-                last_delta_gripper_1 = state['gripper1'] - self.last_state['gripper1']
-                last_delta_gripper_2 = state['gripper2'] - self.last_state['gripper2']
+            # move in the same direction as the previous action with some probability
+            repeat_probability = self.params['repeat_delta_gripper_motion_probability']
+            if self.can_repeat_last_action and action_rng.uniform(0, 1) < repeat_probability:
+                last_delta_gripper_1 = self.last_action['gripper1_position'] - self.last_state['gripper1']
+                last_delta_gripper_2 = self.last_action['gripper2_position'] - self.last_state['gripper2']
                 gripper1_position = state['gripper1'] + last_delta_gripper_1
                 gripper2_position = state['gripper2'] + last_delta_gripper_2
             else:
@@ -60,6 +83,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             if not out_of_bounds:
                 self.last_state = deepcopy(state)
                 self.last_action = deepcopy(action)
+                self.can_repeat_last_action = True
                 return action
 
         rospy.logwarn("Could not find a valid action, executing an invalid one")
@@ -71,7 +95,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return DualFloatingGripperRopeScenario.is_out_of_bounds(gripper1, gripper1_extent) \
             or DualFloatingGripperRopeScenario.is_out_of_bounds(gripper2, gripper2_extent)
 
-    @staticmethod
+    @ staticmethod
     def is_out_of_bounds(p, extent):
         x, y, z = p
         x_min, x_max, y_min, y_max, z_min, z_max = extent
@@ -116,7 +140,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         nudge_action = self.random_nearby_position_action(state, self.nudge_rng, environment)
         self.execute_action(nudge_action)
 
-    @staticmethod
+    @ staticmethod
     def put_state_local_frame(state: Dict):
         rope = state['link_bot']
         rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
@@ -136,7 +160,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'link_bot': rope_local,
         }
 
-    @staticmethod
+    @ staticmethod
     def local_environment_center_differentiable(state):
         """
         :param state: Dict of batched states
@@ -147,11 +171,11 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         center = tf.reduce_mean(rope_points, axis=1)
         return center
 
-    @staticmethod
+    @ staticmethod
     def integrate_dynamics(s_t: Dict, delta_s_t: Dict):
         return {k: s_t[k] + delta_s_t[k] for k in s_t.keys()}
 
-    @staticmethod
+    @ staticmethod
     def put_action_local_frame(state: Dict, action: Dict):
         target_gripper1_position = action['gripper1_position']
         target_gripper2_position = action['gripper2_position']
@@ -167,7 +191,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper2_delta': gripper2_delta,
         }
 
-    @staticmethod
+    @ staticmethod
     def state_to_gripper_position(state: Dict):
         gripper_position1 = np.reshape(state['gripper1'], [3])
         gripper_position2 = np.reshape(state['gripper2'], [3])
@@ -222,7 +246,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'joint_angles_axis2': np.array(rope_res.joint_angles_axis2, np.float32),
         }
 
-    @staticmethod
+    @ staticmethod
     def states_description() -> Dict:
         # should match the keys of the dict return from action_to_dataset_action
         n_links = 15
@@ -237,7 +261,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'joint_angles_axis2': 2 * n_joints,
         }
 
-    @staticmethod
+    @ staticmethod
     def actions_description() -> Dict:
         # should match the keys of the dict return from action_to_dataset_action
         return {
@@ -245,21 +269,21 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper2_position': 3,
         }
 
-    @staticmethod
+    @ staticmethod
     def index_predicted_state_time(state, t):
         state_t = {}
         for feature_name in ['gripper1', 'gripper2', 'link_bot']:
             state_t[feature_name] = state[add_predicted(feature_name)][:, t]
         return state_t
 
-    @staticmethod
+    @ staticmethod
     def index_state_time(state, t):
         state_t = {}
         for feature_name in ['gripper1', 'gripper2', 'link_bot']:
             state_t[feature_name] = state[feature_name][:, t]
         return state_t
 
-    @staticmethod
+    @ staticmethod
     def index_action_time(action, t):
         action_t = {}
         for feature_name in ['gripper1_position', 'gripper2_position']:
@@ -269,25 +293,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                 action_t[feature_name] = action[feature_name][:, t - 1]
         return action_t
 
-    @staticmethod
+    @ staticmethod
     def index_label_time(example: Dict, t: int):
         return example['is_close'][:, t]
-
-    def safety_policy(self, previous_state: Dict, new_state: Dict, environment: Dict):
-        gripper1_point = new_state['gripper1']
-        # the last link connects to gripper 1 at the moment
-        rope_state_vector = new_state['link_bot']
-        link_point = np.array([rope_state_vector[-3], rope_state_vector[-2], rope_state_vector[-1]])
-        distance_between_gripper1_and_link = np.linalg.norm(gripper1_point - link_point)
-        rope_is_overstretched = distance_between_gripper1_and_link > self.params['max_dist_between_gripper_and_link']
-
-        if rope_is_overstretched:
-            rospy.logwarn("safety policy reversing last action")
-            action = {
-                'gripper1_position': previous_state['gripper1'],
-                'gripper2_position': previous_state['gripper2'],
-            }
-            self.execute_action(action)
 
     def __repr__(self):
         return "DualFloatingGripperRope"

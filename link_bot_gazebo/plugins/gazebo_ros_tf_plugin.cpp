@@ -23,7 +23,6 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
   world_ = world;
   victor_ = world_->ModelByName("victor_and_rope");
   table_ = world_->ModelByName("table");
-  assert(victor_ && table_);
 
   // setup ROS stuff
   if (!ros::isInitialized())
@@ -35,7 +34,7 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
   ph_ = std::make_unique<ros::NodeHandle>("ros_tf_plugin");
   callback_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
 
-  std::cerr << "Finished loading ROS TF plugin!" << std::endl;
+  ROS_INFO("Finished loading ROS TF plugin!\n");
 
   periodic_event_thread_ = std::thread([this] {
     while (true)
@@ -48,6 +47,11 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
 
 void GazeboRosTfPlugin::PeriodicUpdate()
 {
+  if (!victor_)
+  {
+    return;
+  }
+
   auto const victor_root_pose = victor_->GetLink("victor_and_rope::victor::victor_root")->WorldPose();
 
   geometry_msgs::TransformStamped victor_root_tf;
@@ -64,31 +68,34 @@ void GazeboRosTfPlugin::PeriodicUpdate()
   tb_.sendTransform(victor_root_tf);
 
   // FIXME: This assumes that the entire table body goes "up" from the base
-  auto const table_base_pose = table_->GetLink("table::link")->WorldPose();
-  geometry_msgs::TransformStamped table_base_tf;
-  table_base_tf.header = victor_root_tf.header;
-  table_base_tf.child_frame_id = "table_base";
-  table_base_tf.transform.translation.x = table_base_pose.Pos().X();
-  table_base_tf.transform.translation.y = table_base_pose.Pos().Y();
-  table_base_tf.transform.translation.z = table_base_pose.Pos().Z();
-  table_base_tf.transform.rotation.w = table_base_pose.Rot().W();
-  table_base_tf.transform.rotation.x = table_base_pose.Rot().X();
-  table_base_tf.transform.rotation.y = table_base_pose.Rot().Y();
-  table_base_tf.transform.rotation.z = table_base_pose.Rot().Z();
-  tb_.sendTransform(table_base_tf);
+  if (table_)
+  {
+    auto const table_base_pose = table_->GetLink("table::link")->WorldPose();
+    geometry_msgs::TransformStamped table_base_tf;
+    table_base_tf.header = victor_root_tf.header;
+    table_base_tf.child_frame_id = "table_base";
+    table_base_tf.transform.translation.x = table_base_pose.Pos().X();
+    table_base_tf.transform.translation.y = table_base_pose.Pos().Y();
+    table_base_tf.transform.translation.z = table_base_pose.Pos().Z();
+    table_base_tf.transform.rotation.w = table_base_pose.Rot().W();
+    table_base_tf.transform.rotation.x = table_base_pose.Rot().X();
+    table_base_tf.transform.rotation.y = table_base_pose.Rot().Y();
+    table_base_tf.transform.rotation.z = table_base_pose.Rot().Z();
+    tb_.sendTransform(table_base_tf);
 
-  geometry_msgs::TransformStamped table_surface_tf;
-  table_surface_tf.header.frame_id = "table_base";
-  table_surface_tf.header.stamp = victor_root_tf.header.stamp;
-  table_surface_tf.child_frame_id = "table_surface";
-  table_surface_tf.transform.translation.x = 0;
-  table_surface_tf.transform.translation.y = 0;
-  table_surface_tf.transform.translation.z = table_->BoundingBox().ZLength();
-  table_surface_tf.transform.rotation.w = 1;
-  table_surface_tf.transform.rotation.x = 0;
-  table_surface_tf.transform.rotation.y = 0;
-  table_surface_tf.transform.rotation.z = 0;
-  tb_.sendTransform(table_surface_tf);
+    geometry_msgs::TransformStamped table_surface_tf;
+    table_surface_tf.header.frame_id = "table_base";
+    table_surface_tf.header.stamp = victor_root_tf.header.stamp;
+    table_surface_tf.child_frame_id = "table_surface";
+    table_surface_tf.transform.translation.x = 0;
+    table_surface_tf.transform.translation.y = 0;
+    table_surface_tf.transform.translation.z = table_->BoundingBox().ZLength();
+    table_surface_tf.transform.rotation.w = 1;
+    table_surface_tf.transform.rotation.x = 0;
+    table_surface_tf.transform.rotation.y = 0;
+    table_surface_tf.transform.rotation.z = 0;
+    tb_.sendTransform(table_surface_tf);
+  }
 }
 
 void GazeboRosTfPlugin::PrivateQueueThread()

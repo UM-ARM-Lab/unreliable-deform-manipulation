@@ -8,20 +8,20 @@
     1.5
   ],
   "gripper1_action_sample_extent": [
-    0.2,
-    1.2,
-    0.1,
-    0.5,
+    0.4,
+    1.0,
+    0.0,
+    0.4,
     0.65,
     1.5
   ],
   "gripper2_action_sample_extent": [
-    0.2,
-    1.2,
-    -0.5,
-    -0.1,
+    0.4,
+    1.0,
+    -0.4,
+    0.0,
     0.65,
-    1.5
+    1.4
   ],
   "res": 0.01,
   "max_step_size": 0.002,
@@ -29,7 +29,8 @@
   "trajs_per_file": 16,
   "no_objects": true,
   "kinematic_objects": false,
+  "repeat_delta_gripper_motion_probability": 0.8,
   "max_dist_between_gripper_and_link": 0.022,
-  "max_distance_gripper_can_move": 0.05,
+  "max_distance_gripper_can_move": 0.10,
   "movable_objects": {}
 }

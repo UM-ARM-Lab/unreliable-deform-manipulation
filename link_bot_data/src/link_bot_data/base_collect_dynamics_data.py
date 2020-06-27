@@ -26,7 +26,6 @@ def collect_trajectory(scenario: ExperimentScenario,
                        params: Dict,
                        service_provider,
                        traj_idx: int,
-                       global_t_step: int,
                        action_rng: np.random.RandomState,
                        verbose: int,
                        ):
@@ -46,8 +45,13 @@ def collect_trajectory(scenario: ExperimentScenario,
     feature = dict_of_float_tensors_to_bytes_feature(environment)
     feature['traj_idx'] = float_tensor_to_bytes_feature(traj_idx)
 
+    # Visualization
+    scenario.plot_environment_rviz(environment)
+    scenario.plot_traj_idx_rviz(traj_idx)
+
     actions = {k: [] for k in scenario.actions_description().keys()}
     states = {k: [] for k in scenario.states_description().keys()}
+
     # sanity check!
     for k in scenario.actions_description().keys():
         if k in scenario.states_description().keys():
@@ -62,7 +66,10 @@ def collect_trajectory(scenario: ExperimentScenario,
                                         params=params,
                                         action_rng=action_rng)
 
-        # add collect for the dataset
+        # execute action
+        scenario.execute_action(action)
+
+        # add to the dataset
         if time_idx < params['steps_per_traj'] - 1:  # skip the last action
             for action_name, action_component in action.items():
                 actions[action_name].append(action_component)
@@ -71,14 +78,10 @@ def collect_trajectory(scenario: ExperimentScenario,
             states[state_component_name].append(state_component)
         time_indices.append(time_idx)
 
-        # execute action
-        scenario.execute_action(action)
-
-        # apply safety policy
-        new_state = scenario.get_state()
-        scenario.safety_policy(previous_state=state, new_state=new_state, environment=environment)
-
-        global_t_step += 1
+        # Visualization
+        scenario.plot_state_rviz(state, label='actual')
+        scenario.plot_action_rviz(state, action)
+        scenario.plot_time_idx_rviz(time_idx)
 
     feature.update(dict_of_float_tensors_to_bytes_feature(states))
     feature.update(dict_of_float_tensors_to_bytes_feature(actions))
@@ -89,7 +92,7 @@ def collect_trajectory(scenario: ExperimentScenario,
 
     example_proto = tf.train.Example(features=tf.train.Features(feature=feature))
     example = example_proto.SerializeToString()
-    return example, global_t_step
+    return example
 
 
 def generate_trajs(service_provider,
@@ -101,7 +104,6 @@ def generate_trajs(service_provider,
                    action_rng: np.random.RandomState,
                    ):
     examples = np.ndarray([params['trajs_per_file']], dtype=object)
-    global_t_step = 0
     last_record_t = perf_counter()
 
     movable_object_services = {k: make_movable_object_services(k) for k in params['movable_objects']}
@@ -110,14 +112,12 @@ def generate_trajs(service_provider,
                                        params['movable_objects'], params['kinematic_objects'])
 
         # Generate a new trajectory
-        example, global_t_step = collect_trajectory(scenario=scenario,
-                                                    params=params,
-                                                    service_provider=service_provider,
-                                                    traj_idx=traj_idx,
-                                                    global_t_step=global_t_step,
-                                                    action_rng=action_rng,
-                                                    verbose=args.verbose,
-                                                    )
+        example = collect_trajectory(scenario=scenario,
+                                     params=params,
+                                     service_provider=service_provider,
+                                     traj_idx=traj_idx,
+                                     action_rng=action_rng,
+                                     verbose=args.verbose)
         current_record_traj_idx = traj_idx % params['trajs_per_file']
         examples[current_record_traj_idx] = example
 
