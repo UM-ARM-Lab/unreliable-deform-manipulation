@@ -56,6 +56,12 @@ def write_model_sdf(sdf_filename, args, model_name):
                             <size>0 0 0</size>
                         </box>
                     </geometry>
+                    <material>
+                        <script>
+                            <name>Gazebo/Orange </name>
+                            <uri>file://media/materials/scripts/gazebo.material</uri>
+                        </script>
+                    </material>
                 </visual>
                 <collision name="box_collision">
                     <geometry>

@@ -347,11 +347,27 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
         world_->SetPaused(false);
         return;
       }
+
+      // Make the grippers match the tool positions
+      TeleportGrippers();
     }
-    // Move the rope kinematic grippers to match
-    if (left_flange_ && right_flange_ && gripper1_ && gripper2_)
+
+    // Step the world
+    world_->Step(steps);
+  }
+
+  follow_traj_server_->setSucceeded(result);
+
+  // TODO: this should possibly be removed
+  world_->SetPaused(false);
+}
+
+void KinematicVictorPlugin::TeleportGrippers()
+{
+  if (left_flange_ && right_flange_ && gripper1_ && gripper2_)
+  {
+    // Gripper 1, left tool
     {
-      // Gripper 1, left tool
       auto gripper1_pose = gripper1_->WorldPose();
 
       geometry_msgs::TransformStamped left_tool_transform;
@@ -365,12 +381,12 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
       }
       catch (tf2::TransformException &ex)
       {
-        ROS_WARN("%s", ex.what());
-        ros::Duration(1.0).sleep();
-        continue;
+        ROS_WARN("failed to lookup transform to victor_left_tool: %s", ex.what());
       }
+    }
 
-      // Gripper 2, right tool
+    // Gripper 2, right tool
+    {
       auto gripper2_pose = gripper2_->WorldPose();
 
       geometry_msgs::TransformStamped right_tool_transform;
@@ -384,17 +400,10 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
       }
       catch (tf2::TransformException &ex)
       {
-        ROS_WARN("%s", ex.what());
-        ros::Duration(1.0).sleep();
-        continue;
+        ROS_WARN("failed to lookup transform to victor_right_tool: %s", ex.what());
       }
     }
-    // Step the world
-    world_->Step(steps);
   }
-  follow_traj_server_->setSucceeded(result);
-
-  world_->SetPaused(false);
 }
 
 void KinematicVictorPlugin::QueueThread()

@@ -5,7 +5,6 @@ import tensorflow as tf
 from matplotlib import colors
 
 import rospy
-import tf2_ros
 from geometry_msgs.msg import Point
 from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE
 from link_bot_data.visualization import rviz_arrow
@@ -30,6 +29,7 @@ class Base3DScenario(ExperimentScenario):
         self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
         self.time_viz_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10, latch=True)
         self.accept_probability_viz_pub = rospy.Publisher("accept_probability_viz", Float32, queue_size=10, latch=True)
+        import tf2_ros
         self.broadcaster = tf2_ros.StaticTransformBroadcaster()
 
     @staticmethod

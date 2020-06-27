@@ -42,6 +42,8 @@ public:
   void PublishLeftGripperStatus();
   void PublishRightGripperStatus();
 
+  void TeleportGrippers();
+
 private:
   void QueueThread();
 
