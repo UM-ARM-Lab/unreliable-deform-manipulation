@@ -173,7 +173,7 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     while (true)
     {
       PeriodicUpdate();
-      sleep(1);
+      usleep(100000);
     }
   });
 }

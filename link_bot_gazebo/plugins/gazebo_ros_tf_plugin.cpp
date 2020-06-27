@@ -1,12 +1,13 @@
 #include "gazebo_ros_tf_plugin.h"
 
-#define create_service_options(type, name, bind) \
+#define create_service_options(type, name, bind)                                                                       \
   ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &queue_)
 
-#define create_service_options_private(type, name, bind) \
+#define create_service_options_private(type, name, bind)                                                               \
   ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &private_queue_)
 
-namespace gazebo {
+namespace gazebo
+{
 GZ_REGISTER_WORLD_PLUGIN(GazeboRosTfPlugin)
 
 GazeboRosTfPlugin::~GazeboRosTfPlugin()
@@ -25,7 +26,8 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
   assert(victor_ && table_);
 
   // setup ROS stuff
-  if (!ros::isInitialized()) {
+  if (!ros::isInitialized())
+  {
     int argc = 0;
     ros::init(argc, nullptr, "ros_tf_plugin", ros::init_options::NoSigintHandler);
   }
@@ -35,11 +37,16 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
 
   std::cerr << "Finished loading ROS TF plugin!" << std::endl;
 
-  auto update = [this](common::UpdateInfo const &/*info*/) { OnUpdate(); };
-  update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
+  periodic_event_thread_ = std::thread([this] {
+    while (true)
+    {
+      PeriodicUpdate();
+      usleep(100000);
+    }
+  });
 }
 
-void GazeboRosTfPlugin::OnUpdate()
+void GazeboRosTfPlugin::PeriodicUpdate()
 {
   auto const victor_root_pose = victor_->GetLink("victor_and_rope::victor::victor_root")->WorldPose();
 
@@ -87,9 +94,10 @@ void GazeboRosTfPlugin::OnUpdate()
 void GazeboRosTfPlugin::PrivateQueueThread()
 {
   double constexpr timeout = 0.01;
-  while (ph_->ok()) {
+  while (ph_->ok())
+  {
     queue_.callAvailable(ros::WallDuration(timeout));
   }
 }
 
-}
+}  // namespace gazebo

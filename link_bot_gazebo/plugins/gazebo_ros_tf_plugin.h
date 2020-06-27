@@ -26,6 +26,7 @@ private:
   std::unique_ptr<ros::NodeHandle> ph_;
   ros::CallbackQueue queue_;
   std::thread callback_queue_thread_;
+  std::thread periodic_event_thread_;
 
   tf2_ros::TransformBroadcaster tb_;
   tf2_ros::StaticTransformBroadcaster stb_;
@@ -36,7 +37,8 @@ private:
   physics::ModelPtr table_;
 
   void PrivateQueueThread();
-  void OnUpdate();
+
+  void PeriodicUpdate();
 };
 }  // namespace gazebo
 
