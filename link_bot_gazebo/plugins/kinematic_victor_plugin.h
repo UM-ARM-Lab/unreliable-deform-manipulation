@@ -2,9 +2,11 @@
 
 #include <actionlib/server/simple_action_server.h>
 #include <control_msgs/FollowJointTrajectoryAction.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
+#include <tf2_ros/transform_listener.h>
 #include <victor_hardware_interface/MotionCommand.h>
 #include <victor_hardware_interface/MotionStatus.h>
 #include <victor_hardware_interface/Robotiq3FingerStatus.h>
@@ -22,6 +24,8 @@ using TrajServer = actionlib::SimpleActionServer<control_msgs::FollowJointTrajec
 class KinematicVictorPlugin : public ModelPlugin
 {
 public:
+  KinematicVictorPlugin();
+
   ~KinematicVictorPlugin() override;
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
@@ -75,6 +79,9 @@ private:
   physics::LinkPtr gripper2_;
   ignition::math::Pose3d left_flange_to_gripper1_;
   ignition::math::Pose3d right_flange_to_gripper2_;
+
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
 };
 
 }  // namespace gazebo

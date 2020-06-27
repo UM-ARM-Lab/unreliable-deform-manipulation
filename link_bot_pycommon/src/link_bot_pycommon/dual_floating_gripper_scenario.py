@@ -33,6 +33,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         self.params['settling_time'] = rospy.get_param("traj_goal_time_tolerance")
 
+        self.max_action_attempts = 1000
+
     def sample_action(self,
                       environment: Dict,
                       state,
@@ -51,11 +53,11 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                     state, action_rng, environment)
 
             out_of_bounds = self.grippers_out_of_bounds(gripper1_position, gripper2_position)
+            action = {
+                'gripper1_position': gripper1_position,
+                'gripper2_position': gripper2_position,
+            }
             if not out_of_bounds:
-                action = {
-                    'gripper1_position': gripper1_position,
-                    'gripper2_position': gripper2_position,
-                }
                 self.last_state = deepcopy(state)
                 self.last_action = deepcopy(action)
                 return action

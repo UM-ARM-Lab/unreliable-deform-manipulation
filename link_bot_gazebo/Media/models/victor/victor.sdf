@@ -2206,6 +2206,7 @@
             <child>victor_left_gripper_fingerA_prox</child>
             <pose frame=''>0 0 0 0 -0 0</pose>
             <axis>
+                <initial_position>0.7</initial_position>
                 <xyz>0.5 -0.5 0.707107</xyz>
                 <use_parent_model_frame>1</use_parent_model_frame>
                 <limit>
@@ -2275,6 +2276,7 @@
             <child>victor_left_gripper_fingerB_prox</child>
             <pose frame=''>0 0 0 0 -0 0</pose>
             <axis>
+                <initial_position>0.7</initial_position>
                 <xyz>-0.5 0.5 -0.707107</xyz>
                 <use_parent_model_frame>1</use_parent_model_frame>
                 <limit>
@@ -2367,6 +2369,7 @@
             <child>victor_left_gripper_fingerC_prox</child>
             <pose frame=''>0 0 0 0 -0 0</pose>
             <axis>
+                <initial_position>0.7</initial_position>
                 <xyz>-0.5 0.5 -0.707107</xyz>
                 <use_parent_model_frame>1</use_parent_model_frame>
                 <limit>
@@ -2620,6 +2623,7 @@
             <child>victor_right_gripper_fingerA_prox</child>
             <pose frame=''>0 0 0 0 -0 0</pose>
             <axis>
+                <initial_position>0.7</initial_position>
                 <xyz>0.5 0.5 -0.707107</xyz>
                 <use_parent_model_frame>1</use_parent_model_frame>
                 <limit>
@@ -2689,6 +2693,7 @@
             <child>victor_right_gripper_fingerB_prox</child>
             <pose frame=''>0 0 0 0 -0 0</pose>
             <axis>
+                <initial_position>0.7</initial_position>
                 <xyz>-0.5 -0.5 0.707107</xyz>
                 <use_parent_model_frame>1</use_parent_model_frame>
                 <limit>
@@ -2781,6 +2786,7 @@
             <child>victor_right_gripper_fingerC_prox</child>
             <pose frame=''>0 0 0 0 -0 0</pose>
             <axis>
+                <initial_position>0.7</initial_position>
                 <xyz>-0.5 -0.5 0.707107</xyz>
                 <use_parent_model_frame>1</use_parent_model_frame>
                 <limit>

@@ -43,6 +43,10 @@ namespace gazebo
 {
 GZ_REGISTER_MODEL_PLUGIN(KinematicVictorPlugin)
 
+KinematicVictorPlugin::KinematicVictorPlugin() : tf_listener_(tf_buffer_)
+{
+}
+
 KinematicVictorPlugin::~KinematicVictorPlugin()
 {
   queue_.clear();
@@ -130,14 +134,6 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     if (!gripper2_)
     {
       ROS_ERROR_STREAM("Invalid link name for rope gripper2: " << gripper2_name_);
-    }
-    if (left_flange_ && gripper1_)
-    {
-      left_flange_to_gripper1_ = gripper1_->WorldPose() - left_flange_->WorldPose();
-    }
-    if (right_flange_ && gripper2_)
-    {
-      right_flange_to_gripper2_ = gripper2_->WorldPose() - right_flange_->WorldPose();
     }
   }
 
@@ -355,12 +351,43 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
     // Move the rope kinematic grippers to match
     if (left_flange_ && right_flange_ && gripper1_ && gripper2_)
     {
-      // Note that in ignition math, adding on the right is equivalent to multiplying on the left in Eigen
-      auto const gripper1_pose = left_flange_to_gripper1_ + left_flange_->WorldPose();
-      auto const gripper2_pose = right_flange_to_gripper2_ + right_flange_->WorldPose();
-      // FIXME: only change the position, not the whole pose?
-      gripper1_->SetWorldPose(gripper1_pose);
-      gripper2_->SetWorldPose(gripper2_pose);
+      // Gripper 1, left tool
+      auto gripper1_pose = gripper1_->WorldPose();
+
+      geometry_msgs::TransformStamped left_tool_transform;
+      try
+      {
+        left_tool_transform = tf_buffer_.lookupTransform("world", "victor_left_tool", ros::Time(0));
+        gripper1_pose.Pos().X(left_tool_transform.transform.translation.x);
+        gripper1_pose.Pos().Y(left_tool_transform.transform.translation.y);
+        gripper1_pose.Pos().Z(left_tool_transform.transform.translation.z);
+        gripper1_->SetWorldPose(gripper1_pose);
+      }
+      catch (tf2::TransformException &ex)
+      {
+        ROS_WARN("%s", ex.what());
+        ros::Duration(1.0).sleep();
+        continue;
+      }
+
+      // Gripper 2, right tool
+      auto gripper2_pose = gripper2_->WorldPose();
+
+      geometry_msgs::TransformStamped right_tool_transform;
+      try
+      {
+        right_tool_transform = tf_buffer_.lookupTransform("world", "victor_right_tool", ros::Time(0));
+        gripper2_pose.Pos().X(right_tool_transform.transform.translation.x);
+        gripper2_pose.Pos().Y(right_tool_transform.transform.translation.y);
+        gripper2_pose.Pos().Z(right_tool_transform.transform.translation.z);
+        gripper2_->SetWorldPose(gripper2_pose);
+      }
+      catch (tf2::TransformException &ex)
+      {
+        ROS_WARN("%s", ex.what());
+        ros::Duration(1.0).sleep();
+        continue;
+      }
     }
     // Step the world
     world_->Step(steps);
