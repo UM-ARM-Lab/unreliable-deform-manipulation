@@ -16,4 +16,4 @@ if __name__ == "__main__":
         req.gripper2_points.append(Point(1.1, -0.4, 1.05))
         resp = srv(req)
     except rospy.ServiceException as ex:
-        print("Service call failed: %s" %ex)
+        print("Service call failed: %s" % ex)
