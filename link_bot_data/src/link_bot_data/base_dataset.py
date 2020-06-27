@@ -17,7 +17,6 @@ class BaseDataset:
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         self.dataset_dirs = dataset_dirs
         self.hparams = {}
-        self.batch_metadata = {}
         for dataset_dir in dataset_dirs:
             dataset_hparams_filename = dataset_dir / 'hparams.json'
 
