@@ -19,6 +19,17 @@
         0.1
     </rosparam>
 
+    <include file="$(find victor_3d_rope_shim)/launch/static_transforms.launch">
+        <arg name="use_sim_time"    value="false"/>
+        <arg name="use_mocap_shims" value="false"/>
+    </include>
+    <group ns="static_transform_publishers">
+        <node pkg="tf2_ros" type="static_transform_publisher" name="rename_origin" required="true"
+              args="0 0 0 0 0 0 world world_origin">
+            <param name="use_sim_time" value="false"/>
+        </node>
+    </group>
+
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name"   value="$(find link_bot_gazebo)/worlds/$(arg world_name).world"/>
         <arg name="verbose"      default="$(arg verbose)"/>
@@ -28,14 +39,4 @@
         <arg name="debug"        default="$(arg debug)"/>
     </include>
 
-    <include file="$(find victor_3d_rope_shim)/launch/static_transforms.launch">
-        <arg name="use_sim_time"    value="true"/>
-        <arg name="use_mocap_shims" value="false"/>
-    </include>
-    <group ns="static_transform_publishers">
-        <node pkg="tf2_ros" type="static_transform_publisher" name="rename_origin" required="true"
-              args="0 0 0 0 0 0 world world_origin">
-            <param name="use_sim_time" value="true"/>
-        </node>
-    </group>
 </launch>

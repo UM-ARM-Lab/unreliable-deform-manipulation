@@ -168,8 +168,10 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   periodic_event_thread_ = std::thread([this] {
     while (true)
     {
-      PeriodicUpdate();
+      // Make the grippers match the initial tool positions
       usleep(100000);
+      PeriodicUpdate();
+      TeleportGrippers();
     }
   });
 }
