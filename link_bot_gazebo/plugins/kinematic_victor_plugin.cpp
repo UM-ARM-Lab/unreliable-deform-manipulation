@@ -169,7 +169,7 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     while (true)
     {
       // Make the grippers match the initial tool positions
-      usleep(100000);
+      usleep(50000);
       PeriodicUpdate();
       TeleportGrippers();
     }
