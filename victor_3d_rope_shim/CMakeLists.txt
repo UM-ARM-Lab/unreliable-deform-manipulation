@@ -43,30 +43,9 @@ set(FLAGS -O3 -g -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Werror=return-t
 add_executable(world_interaction
   src/world_interaction.cpp
   src/${PROJECT_NAME}/victor_shim.cpp
+  src/${PROJECT_NAME}/victor_interface.cpp
   src/${PROJECT_NAME}/Manipulator.cpp
   src/${PROJECT_NAME}/VictorManipulator.cpp
   src/${PROJECT_NAME}/Scene.cpp)
 target_link_libraries(world_interaction ${catkin_LIBRARIES})
 target_compile_options(world_interaction PRIVATE ${FLAGS})
-
-#############
-## Install ##
-#############
-
-## Copy launch files
-# install(DIRECTORY launch/
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
-# )
-
-# ## Install robot files
-# install(DIRECTORY urdf/
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/urdf
-# )
-# install(DIRECTORY Media/models/
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/Media/models
-# )
-
-# ## Install RVIZ configurations
-# install(DIRECTORY rviz/
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/rviz
-# )

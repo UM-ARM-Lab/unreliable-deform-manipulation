@@ -1,7 +1,7 @@
 <?xml version='1.0'?>
 <sdf version='1.6'>
-    <allow_auto_disable>true</allow_auto_disable>
     <model name='victor'>
+        <allow_auto_disable>true</allow_auto_disable>
         <link name='victor_root'>
             <pose frame=''>0 0 0 0 -0 0</pose>
             <inertial>
@@ -2876,10 +2876,10 @@
         </joint>
         <plugin name='kinematic_victor' filename='libkinematic_victor_plugin.so'>
             <arm name="left">
-                <initial_positions> -0.7853981633974481, 0.5759586531581284, 1.5707963267948966, -1.3089969389957472, 9.947598300641403e-14, 0.733038285837619, -0.2617993877991509</initial_positions>
+                <initial_positions> -1.39626, 0.5759586531581284, 1.5707963267948966, -1.3089969389957472, 9.947598300641403e-14, 0.733038285837619, -0.2617993877991509</initial_positions>
             </arm>
             <arm name="right">
-                <initial_positions> -2.356194490192345, -0.5759586531581287, -1.5707963267948968, 1.3089969389957465, -1.9539925233402755e-14, -0.7330382858376183, 1.8325957145940466 </initial_positions>
+                <initial_positions> -1.74533, -0.5759586531581287, -1.5707963267948968, 1.3089969389957465, -1.9539925233402755e-14, -0.7330382858376183, 1.8325957145940466 </initial_positions>
             </arm>
         </plugin>
     </model>

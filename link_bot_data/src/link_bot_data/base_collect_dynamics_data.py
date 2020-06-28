@@ -14,6 +14,7 @@ import rospy
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory, \
     dict_of_float_tensors_to_bytes_feature
 from link_bot_pycommon import ros_pycommon
+from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_shape
@@ -80,7 +81,8 @@ def collect_trajectory(scenario: ExperimentScenario,
 
         # Visualization
         scenario.plot_state_rviz(state, label='actual')
-        scenario.plot_action_rviz(state, action)
+        if time_idx < params['steps_per_traj'] - 1:  # skip the last action in visualization as well
+            scenario.plot_action_rviz(state, action)
         scenario.plot_time_idx_rviz(time_idx)
 
     feature.update(dict_of_float_tensors_to_bytes_feature(states))
@@ -108,6 +110,10 @@ def generate_trajs(service_provider,
 
     movable_object_services = {k: make_movable_object_services(k) for k in params['movable_objects']}
     for traj_idx in range(args.trajs):
+        # Pre-Randomize, for instance to move the robot out of the way
+        scenario.pre_move_objects()
+
+        # Randomize the environment
         scenario.move_objects_randomly(env_rng, movable_object_services,
                                        params['movable_objects'], params['kinematic_objects'])
 

@@ -32,7 +32,6 @@
 
 #include <ros/ros.h>
 #include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
 
 #include <gazebo/common/Events.hh>
 #include <gazebo/common/Plugin.hh>
@@ -92,10 +91,6 @@ namespace gazebo
 
 class GazeboRosMoveItPlanningScene : public ModelPlugin
 {
-  /// \brief Constructor
-public:
-  GazeboRosMoveItPlanningScene();
-
   /// \brief Destructor
 public:
   virtual ~GazeboRosMoveItPlanningScene();
@@ -103,17 +98,6 @@ public:
   // Documentation inherited
 protected:
   void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
-
-  // Documentation inherited
-protected:
-  virtual void UpdateCB();
-
-protected:
-  void subscriber_connected();
-
-  /// \brief publish the complete planning scene next iteration
-private:
-  bool PublishPlanningSceneCB(std_srvs::Empty::Request& req, std_srvs::Empty::Response& resp);
 
   /// \brief Retrieve the current planning scene
 private:
@@ -139,10 +123,6 @@ private:
   ros::Publisher planning_scene_pub_;
   ros::ServiceServer publish_planning_scene_service_;
   ros::ServiceServer get_planning_scene_service_;
-
-  /// \brief A mutex to lock access to fields that are used in ROS message callbacks
-private:
-  boost::mutex mutex_;
 
   /// \brief ROS topic name inputs
 private:
@@ -171,26 +151,13 @@ private:
 private:
   boost::thread callback_queue_thread_;
   /// \brief Container for the planning scene.
-private:
-  moveit_msgs::PlanningScene planning_scene_msg_;
-  std::map<std::string, moveit_msgs::CollisionObject> collision_object_map_;
-  void BuildMessage();
-
-  // Pointer to the update event connection
-private:
-  event::ConnectionPtr update_connection_;
 
 private:
-  event::ConnectionPtr add_connection_;
+  moveit_msgs::PlanningScene BuildMessage();
 
 private:
-  event::ConnectionPtr delete_connection_;
-
-private:
-  std::atomic<bool> publish_full_scene_;
-
   ros::Duration publish_period_;
-  ros::Time last_publish_time_;
+  std::thread periodic_event_thread_;
 };
 /** \} */
 /// @}

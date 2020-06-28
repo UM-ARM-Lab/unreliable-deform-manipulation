@@ -20,10 +20,11 @@
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/TransportTypes.hh>
 
-namespace gazebo {
-
-class Position3dPlugin : public ModelPlugin {
- public:
+namespace gazebo
+{
+class Position3dPlugin : public ModelPlugin
+{
+public:
   ~Position3dPlugin() override;
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
@@ -34,13 +35,15 @@ class Position3dPlugin : public ModelPlugin {
 
   bool OnEnable(peter_msgs::Position3DEnableRequest &req, peter_msgs::Position3DEnableResponse &res);
 
-  bool OnAction(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res);
+  bool OnMove(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res);
+
+  bool OnSet(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res);
 
   bool GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs::GetPosition3DResponse &res);
 
   bool GetObjectCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
 
- private:
+private:
   void QueueThread();
 
   void PrivateQueueThread();
@@ -50,7 +53,7 @@ class Position3dPlugin : public ModelPlugin {
   physics::LinkPtr link_;
   physics::CollisionPtr collision_;
   std::string link_name_;
-  bool enabled_{true};
+  bool enabled_{ true };
   std::unique_ptr<ros::NodeHandle> private_ros_node_;
   ros::NodeHandle ros_node_;
   ros::CallbackQueue queue_;
@@ -58,35 +61,36 @@ class Position3dPlugin : public ModelPlugin {
   std::thread ros_queue_thread_;
   std::thread private_ros_queue_thread_;
   ros::ServiceServer enable_service_;
-  ros::ServiceServer action_service_;
+  ros::ServiceServer move_service_;
+  ros::ServiceServer set_service_;
   ros::ServiceServer stop_service_;
   ros::ServiceServer get_position_service_;
   ros::ServiceServer get_object_service_;
   ros::Publisher register_object_pub_;
-  double kP_pos_{0.0};
-  double kD_pos_{0.0};
-  double max_vel_{0.0};
-  double kP_vel_{0.0};
-  double kI_vel_{0.0};
-  double kD_vel_{0.0};
-  double kP_rot_{0.0};
-  double kD_rot_{0.0};
-  double max_rot_vel_{0.0};
-  double kP_rot_vel_{0.0};
-  double kD_rot_vel_{0.0};
-  double max_torque_{0.0};
-  double max_force_{0.0};
+  double kP_pos_{ 0.0 };
+  double kD_pos_{ 0.0 };
+  double max_vel_{ 0.0 };
+  double kP_vel_{ 0.0 };
+  double kI_vel_{ 0.0 };
+  double kD_vel_{ 0.0 };
+  double kP_rot_{ 0.0 };
+  double kD_rot_{ 0.0 };
+  double max_rot_vel_{ 0.0 };
+  double kP_rot_vel_{ 0.0 };
+  double kD_rot_vel_{ 0.0 };
+  double max_torque_{ 0.0 };
+  double max_force_{ 0.0 };
   common::PID pos_pid_;
   common::PID vel_pid_;
   common::PID rot_pid_;
   common::PID rot_vel_pid_;
-  ignition::math::Vector3d target_position_{0, 0, 0};
-  ignition::math::Vector3d pos_error_{0, 0, 0};
-  double rot_error_{0};
-  double total_mass_{0.0};
+  ignition::math::Vector3d target_position_{ 0, 0, 0 };
+  ignition::math::Vector3d pos_error_{ 0, 0, 0 };
+  double rot_error_{ 0 };
+  double total_mass_{ 0.0 };
   std::string name_;
-  bool gravity_compensation_{false};
-  double z_integral_{0.0};
+  bool gravity_compensation_{ false };
+  double z_integral_{ 0.0 };
 };
 
 }  // namespace gazebo

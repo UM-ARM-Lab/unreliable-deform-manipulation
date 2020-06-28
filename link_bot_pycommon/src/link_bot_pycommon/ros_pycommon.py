@@ -147,6 +147,7 @@ def make_movable_object_services(object_name):
     return {
         'enable': rospy.ServiceProxy(f'{object_name}/enable', Position3DEnable),
         'get_position': rospy.ServiceProxy(f'{object_name}/get', GetPosition3D),
-        'action': rospy.ServiceProxy(f'{object_name}/set', Position3DAction),
+        'set': rospy.ServiceProxy(f'{object_name}/set', Position3DAction),
+        'move': rospy.ServiceProxy(f'{object_name}/move', Position3DAction),
         'stop': rospy.ServiceProxy(f'{object_name}/stop', Empty),
     }

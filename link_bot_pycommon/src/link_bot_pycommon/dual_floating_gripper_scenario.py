@@ -28,12 +28,21 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
         self.set_grippers_srv = rospy.ServiceProxy("set_dual_gripper_points", SetDualGripperPoints)
         self.world_control_srv = rospy.ServiceProxy("world_control", WorldControl)
+        self.last_action_was_safety_action = False
 
         self.nudge_rng = np.random.RandomState(0)
 
         self.params['settling_time'] = rospy.get_param("traj_goal_time_tolerance", -999)
 
         self.max_action_attempts = 1000
+
+    def pre_move_objects(self):
+        rospy.loginfo("resetting arms")
+        reset_action = {
+            'gripper1_position': np.array([0.942119240845, 0.0524258039015, 1.30159484976]),
+            'gripper2_position': np.array([0.94211914028, -0.0524259044672, 1.30159681654])
+        }
+        self.execute_action(reset_action)
 
     def sample_action(self,
                       environment: Dict,
@@ -47,24 +56,31 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         rope_state_vector = state['link_bot']
         link_point = np.array([rope_state_vector[-3], rope_state_vector[-2], rope_state_vector[-1]])
         distance_between_gripper1_and_link = np.linalg.norm(gripper1_point - link_point)
-        rope_is_overstretched = distance_between_gripper1_and_link > self.params['max_dist_between_gripper_and_link']
+        currently_overstretched = distance_between_gripper1_and_link > self.params['max_dist_between_gripper_and_link']
 
-        if rope_is_overstretched and self.last_state is not None:
+        if currently_overstretched and not self.last_action_was_safety_action:
+            if self.last_state is None:
+                rospy.logerror("Starting overstretched!!!")
+
             rospy.loginfo("Safety policy reversing last action")
+            # the delta from where we were to where we wanted to go
             last_delta_gripper_1 = self.last_action['gripper1_position'] - self.last_state['gripper1']
             last_delta_gripper_2 = self.last_action['gripper2_position'] - self.last_state['gripper2']
+
             gripper1_position = state['gripper1'] - last_delta_gripper_1
             gripper2_position = state['gripper2'] - last_delta_gripper_2
             safety_action = {
                 'gripper1_position': gripper1_position,
                 'gripper2_position': gripper2_position,
             }
-            # setting this to none will prevent us from re-sampling the action that caused the safety violation
+
             self.can_repeat_last_action = False
             self.last_state = deepcopy(state)
-            self.last_action = deepcopy(action)
+            self.last_action = deepcopy(safety_action)
+            self.last_action_was_safety_action = True
             return safety_action
 
+        self.last_action_was_safety_action = False
         for _ in range(self.max_action_attempts):
             # move in the same direction as the previous action with some probability
             repeat_probability = self.params['repeat_delta_gripper_motion_probability']

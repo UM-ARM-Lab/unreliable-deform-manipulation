@@ -49,9 +49,9 @@ class ExperimentScenario:
         action_sequences = []
         rng = np.random.RandomState()
 
-        for i in range(n_action_sequences):
+        for _ in range(n_action_sequences):
             action_sequence = []
-            for t in range(action_sequence_length):
+            for __ in range(action_sequence_length):
                 action = self.sample_action(environment=environment,
                                             state=start_state,
                                             params=params,
@@ -404,57 +404,54 @@ class ExperimentScenario:
             positions[object_name] = position_response
         return positions
 
-    def move_objects_randomly(self, env_rng, movable_objects_services, movable_objects, kinematic: bool):
+    def move_objects_randomly(self, env_rng, movable_objects_services, movable_objects, kinematic: bool, timeout: float = 1.0):
         random_object_positions = sample_object_positions(env_rng, movable_objects)
         if kinematic:
             raise NotImplementedError()
         else:
-            ExperimentScenario.move_objects(movable_objects_services, random_object_positions)
+            ExperimentScenario.move_objects(movable_objects_services, random_object_positions, timeout)
 
     @staticmethod
-    def move_objects_to_positions(movable_objects_services: Dict, object_positions: Dict, timeout: float):
-        object_moves = {}
+    def move_objects_to_positions(movable_objects_services: Dict, object_positions: Dict, timeout: float = 1.0):
+        object_positions = {}
         for name, (x, y) in object_positions.items():
             position = Vector3()
             position.x = x
             position.y = y
-            move = {
-                'position': position,
-                'timeout': timeout,
-            }
-            object_moves[name] = move
-        return ExperimentScenario.move_objects(movable_objects_services, object_moves)
+            object_positions[name] = position
+        return ExperimentScenario.move_objects(movable_objects_services, object_positions, timeout)
 
     @staticmethod
-    def move_objects(movable_objects_services: Dict, object_moves: Dict):
-        ExperimentScenario.call_moves(movable_objects_services, object_moves)
+    def set_objects(movable_objects_services: Dict, object_positions: Dict, timeout: float):
+        for name, position in object_positions.items():
+            services = movable_objects_services[name]
+            ExperimentScenario.call_set(services, name, position)
+
+    @staticmethod
+    def move_objects(movable_objects_services: Dict, object_positions: Dict, timeout: float):
+        for name, position in object_positions.items():
+            services = movable_objects_services[name]
+            ExperimentScenario.call_move(services, name, position, timeout)
 
         # disable controller so objects can move around
-        for object_name, _ in object_moves.items():
+        for object_name, _ in object_positions.items():
             movable_object_services = movable_objects_services[object_name]
             enable_req = Position3DEnableRequest()
             enable_req.enable = False
             movable_object_services['enable'](enable_req)
 
     @staticmethod
-    def call_moves(movable_objects_services, object_moves):
-        for name, move in object_moves.items():
-            services = movable_objects_services[name]
-            ExperimentScenario.call_move((services, name, move))
+    def call_set(movable_object_services, object_name, position):
+        set_action_req = Position3DActionRequest()
+        set_action_req.position = position
+        movable_object_services['set'](set_action_req)
 
     @staticmethod
-    def call_moves_async(movable_objects_services, object_moves):
-        with multiprocessing.Pool(len(object_moves)) as pool:
-            args = [(movable_objects_services[name], name, move) for name, move in object_moves.items()]
-            pool.map(func=ExperimentScenario.call_move, iterable=args)
-
-    @staticmethod
-    def call_move(args):
-        movable_object_services, object_name, move = args
+    def call_move(movable_object_services, object_name, position, timeout):
         move_action_req = Position3DActionRequest()
-        move_action_req.position = move['position']
-        move_action_req.timeout = move['timeout']
-        movable_object_services['action'](move_action_req)
+        move_action_req.position = position
+        move_action_req.timeout = timeout
+        movable_object_services['move'](move_action_req)
 
     @staticmethod
     def states_description() -> Dict:
@@ -503,10 +500,7 @@ def sample_object_position(env_rng, xyz_range: Dict) -> Dict:
     position.x = env_rng.uniform(*x_range)
     position.y = env_rng.uniform(*y_range)
     position.z = env_rng.uniform(*z_range)
-    return {
-        'position': position,
-        'timeout': 2.0,
-    }
+    return position
 
 
 def sample_object_positions(env_rng, movable_objects: Dict) -> Dict[str, Dict]:

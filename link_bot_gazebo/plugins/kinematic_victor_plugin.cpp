@@ -319,8 +319,6 @@ void KinematicVictorPlugin::OnRightArmMotionCommand(const victor_hardware_interf
 
 void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr &goal)
 {
-  world_->SetPaused(true);
-
   auto result = control_msgs::FollowJointTrajectoryResult();
   result.error_code = control_msgs::FollowJointTrajectoryResult::SUCCESSFUL;
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
@@ -342,11 +340,10 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
       }
       else
       {
-        gzerr << "Invalid joint: "
-              << "victor::" + joint_name << std::endl;
+        ROS_ERROR_STREAM("Invalid joint: "
+                         << "victor::" + joint_name);
         result.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_JOINTS;
         follow_traj_server_->setSucceeded(result);
-        world_->SetPaused(false);
         return;
       }
 
@@ -359,9 +356,6 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
   }
 
   follow_traj_server_->setSucceeded(result);
-
-  // TODO: this should possibly be removed
-  world_->SetPaused(false);
 }
 
 void KinematicVictorPlugin::TeleportGrippers()
