@@ -388,12 +388,13 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def random_object_position(w: float, h: float, padding: float, rng: np.random.RandomState) -> Dict:
-        xy_range = {
+    def random_object_position(w: float, h: float, c: float, padding: float, rng: np.random.RandomState) -> Dict:
+        xyz_range = {
             'x': [-w / 2 + padding, w / 2 - padding],
             'y': [-h / 2 + padding, h / 2 - padding],
+            'z': [-c / 2 + padding, c / 2 - padding],
         }
-        return sample_object_position(rng, xy_range)
+        return sample_object_position(rng, xyz_range)
 
     @staticmethod
     def get_movable_object_positions(movable_objects_services: Dict):
@@ -411,7 +412,7 @@ class ExperimentScenario:
             ExperimentScenario.move_objects(movable_objects_services, random_object_positions)
 
     @staticmethod
-    def move_objects_to_positions(movable_objects_services: Dict, object_positions: Dict, timeout: float = 10.0):
+    def move_objects_to_positions(movable_objects_services: Dict, object_positions: Dict, timeout: float):
         object_moves = {}
         for name, (x, y) in object_positions.items():
             position = Vector3()
@@ -494,19 +495,21 @@ class ExperimentScenario:
         raise NotImplementedError()
 
 
-def sample_object_position(env_rng, xy_range: Dict) -> Dict:
-    x_range = xy_range['x']
-    y_range = xy_range['y']
+def sample_object_position(env_rng, xyz_range: Dict) -> Dict:
+    x_range = xyz_range['x']
+    y_range = xyz_range['y']
+    z_range = xyz_range['z']
     position = Vector3()
     position.x = env_rng.uniform(*x_range)
     position.y = env_rng.uniform(*y_range)
+    position.z = env_rng.uniform(*z_range)
     return {
         'position': position,
-        'timeout': 1.0,
+        'timeout': 2.0,
     }
 
 
 def sample_object_positions(env_rng, movable_objects: Dict) -> Dict[str, Dict]:
     random_object_positions = {name: sample_object_position(
-        env_rng, xy_range) for name, xy_range in movable_objects.items()}
+        env_rng, xyz_range) for name, xyz_range in movable_objects.items()}
     return random_object_positions

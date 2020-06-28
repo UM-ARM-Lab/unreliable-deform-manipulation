@@ -421,12 +421,19 @@ std::optional<Eigen::VectorXd> Manipulator::jacobianIK(const Pose& robotTgoal, c
 	scene->checkCollision(collisionRequest, collisionResult, state);
 	if (collisionResult.collision)
 	{
-	  auto const first_contact = *collisionResult.contacts.begin();
-	  auto const first_contact_first_name = first_contact.first.first;
-	  auto const first_contact_second_name = first_contact.first.second;
-	  ROS_ERROR_STREAM("Projection stalled at itr: " << itr << "for arm " << palmName << ": collision between "
-													 << first_contact_first_name << " and " << first_contact_second_name
-													 << "\n");
+	  if (collisionResult.contacts.empty())
+	  {
+		ROS_ERROR_STREAM("Projection stalled at itr: " << itr << "for arm " << palmName << ": collision\n");
+	  }
+	  else
+	  {
+		auto const first_contact = *collisionResult.contacts.begin();
+		auto const first_contact_first_name = first_contact.first.first;
+		auto const first_contact_second_name = first_contact.first.second;
+		ROS_ERROR_STREAM("Projection stalled at itr: " << itr << "for arm " << palmName << ": collision between "
+													   << first_contact_first_name << " and "
+													   << first_contact_second_name << "\n");
+	  }
 	  return std::nullopt;
 	}
 	collisionResult.clear();

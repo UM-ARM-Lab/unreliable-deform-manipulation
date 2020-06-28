@@ -61,6 +61,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             }
             # setting this to none will prevent us from re-sampling the action that caused the safety violation
             self.can_repeat_last_action = False
+            self.last_state = deepcopy(state)
+            self.last_action = deepcopy(action)
             return safety_action
 
         for _ in range(self.max_action_attempts):

@@ -256,7 +256,7 @@ class Base3DScenario(ExperimentScenario):
 
     @staticmethod
     def robot_name():
-        return "victor::link_bot"
+        return "victor_and_rope::link_bot"
 
     @staticmethod
     def dynamics_loss_function(dataset_element, predictions):

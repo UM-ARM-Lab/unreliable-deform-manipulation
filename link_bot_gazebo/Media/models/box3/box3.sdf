@@ -1,10 +1,10 @@
 <sdf version="1.6">
     <model name="box3">
-            <allow_auto_disable>true</allow_auto_disable>
+        <allow_auto_disable>true</allow_auto_disable>
         <link name="link_1">
             <pose>0 0 0.11 0 0 0 0</pose>
             <inertial>
-                <pose>0 0 0 0 0 0 0</pose>
+                <pose>0 0 -0.08 0 0 0 0</pose>
                 <inertia>
                     <ixx>0.04441666666666666</ixx>
                     <ixy>0</ixy>

@@ -962,11 +962,19 @@ void VictorInterface::moveInTableFrameJacobianIk(
     planning_scene_->checkCollision(collision_req, collision_res, state);
     if (collision_res.collision)
     {
-      auto const first_contact = *collision_res.contacts.begin();
-      auto const first_contact_first_name = first_contact.first.first;
-      auto const first_contact_second_name = first_contact.first.second;
-      ROS_WARN_STREAM("Collision at idx " << idx << " in merged arm trajectories involving " << first_contact_first_name
-                                          << " and " << first_contact_first_name << "Returning valid portion only");
+      if (collision_res.contacts.empty())
+      {
+        ROS_WARN_STREAM("Collision at idx " << idx << " in merged arm trajectories. Returning valid portion only");
+      }
+      else
+      {
+        auto const first_contact = *collision_res.contacts.begin();
+        auto const first_contact_first_name = first_contact.first.first;
+        auto const first_contact_second_name = first_contact.first.second;
+        ROS_WARN_STREAM("Collision at idx " << idx << " in merged arm trajectories involving "
+                                            << first_contact_first_name << " and " << first_contact_first_name
+                                            << "Returning valid portion only");
+      }
       merged_cmd.points.resize(idx);
       break;
     }
