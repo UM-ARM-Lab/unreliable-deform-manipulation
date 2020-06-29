@@ -19,6 +19,7 @@
     <node name="world_interaction" pkg="victor_3d_rope_shim" type="world_interaction">
         <param name="get_planning_scene_topic"  value="gazebo/get_planning_scene" if="$(arg gazebo)"/>
         <param name="translation_step_size"     value="0.002"   type="double"/>
+        <param name="traj_goal_time_tolerance"  value="0.1"     type="double"/>
     </node>
 
 </launch>

@@ -16,10 +16,6 @@
 
     <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
 
-    <rosparam subst_value="true" param="traj_goal_time_tolerance">
-        0.1
-    </rosparam>
-
     <include file="$(find victor_3d_rope_shim)/launch/static_transforms.launch">
         <arg name="use_sim_time"    value="false"/>
         <arg name="use_mocap_shims" value="false"/>
