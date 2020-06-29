@@ -43,6 +43,5 @@
   "local_env_w_cols": 30,
   "local_env_c_channels": 20,
   "learning_rate": 0.001,
-  "flooding_level": 0.000,
   "stdev": true
 }

@@ -4,7 +4,7 @@ from link_bot_data.link_bot_dataset_utils import is_reconverging
 from shape_completion_training import metric
 
 
-def negative_weighted_binary_classification_sequence_loss_function(dataset_element, predictions):
+def class_weighted_binary_classification_sequence_loss_function(dataset_element, predictions):
     # skip the first element, the label will always be 1
     is_close = dataset_element['is_close'][:, 1:]
     labels = tf.expand_dims(is_close, axis=2)

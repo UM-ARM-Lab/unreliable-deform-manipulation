@@ -1,13 +1,13 @@
 {
   "fwd_model_dir": [
-    "ss_log_data/tf2_rope/0",
-    "ss_log_data/tf2_rope/1",
-    "ss_log_data/tf2_rope/2",
-    "ss_log_data/tf2_rope/3",
-    "ss_log_data/tf2_rope/4",
-    "ss_log_data/tf2_rope/5",
-    "ss_log_data/tf2_rope/6",
-    "ss_log_data/tf2_rope/7"
+    "dy_trials/victor_dual_no_obs_1_0",
+    "dy_trials/victor_dual_no_obs_1_1",
+    "dy_trials/victor_dual_no_obs_1_2",
+    "dy_trials/victor_dual_no_obs_1_3",
+    "dy_trials/victor_dual_no_obs_1_4",
+    "dy_trials/victor_dual_no_obs_1_5",
+    "dy_trials/victor_dual_no_obs_1_6",
+    "dy_trials/victor_dual_no_obs_1_7"
   ],
   "classifier_model_dir": "classifiers/none/",
   "planner_type": "NearestRRT",
@@ -15,7 +15,6 @@
   "directed_control_sampler": "simple",
   "accept_threshold": 0.5,
   "max_angle_rad": 1.0,
-  "random_epsilon": 0.0,
   "full_env_w": 2.0,
   "full_env_h": 2.0,
   "goal_w_m": 1.5,

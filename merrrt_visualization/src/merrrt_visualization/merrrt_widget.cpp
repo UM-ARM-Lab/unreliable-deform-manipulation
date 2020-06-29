@@ -16,21 +16,23 @@ MerrrtWidget::MerrrtWidget(QWidget *parent) : rviz::Panel(parent)
 
 void MerrrtWidget::OnTrajIdx(const std_msgs::Float32::ConstPtr &msg)
 {
-  ui.traj_idx->setText(QString::number(msg->data));
+  auto const text = QString::asprintf("%0.4f", msg->data);
+  ui.traj_idx->setText(text);
 }
 void MerrrtWidget::StdevCallback(const std_msgs::Float32::ConstPtr &msg)
 {
-  ui.stdev_label->setText(QString::number(msg->data));
+  auto const text = QString::asprintf("%0.4f", msg->data);
+  ui.stdev_label->setText(text);
 }
 void MerrrtWidget::BoolCallback(const std_msgs::Bool::ConstPtr &msg)
 {
   if (msg->data)
   {
-    ui.bool_indicator->setStyleSheet("background-color: rgb(0, 250, 0);");
+    ui.bool_indicator->setStyleSheet("background-color: rgb(0, 200, 0);");
   }
   else
   {
-    ui.bool_indicator->setStyleSheet("background-color: rgb(250, 0, 0);");
+    ui.bool_indicator->setStyleSheet("background-color: rgb(200, 0, 0);");
   }
 }
 

@@ -20,7 +20,6 @@ class BaseDynamicsFunction:
         self.hparams = json.load(model_hparams_file.open('r'))
         self.batch_size = batch_size
         self.data_collection_params = self.hparams['dynamics_dataset_hparams']['data_collection_params']
-        self.dt = self.data_collection_params['dt']
         self.max_step_size = self.data_collection_params['max_step_size']
         self.states_description = self.hparams['dynamics_dataset_hparams']['states_description']
         self.state_keys = None
