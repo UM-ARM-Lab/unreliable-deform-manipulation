@@ -40,7 +40,7 @@ rosrun victor_3d_rope_shim test_move.py
 # Nodes/etc open for Gazebo Victor
 ```
 roscore
-roslaunch link_bot_gazebo world.launch world_name:=victor_table_rope pause:=false --screen
+roslaunch link_bot_gazebo victor.launch pause:=true world_name:=victor_table_rope --screen
 roslaunch victor_3d_rope_shim victor_shim.launch --screen
 rviz
 rosrun victor_3d_rope_shim test_move.py
