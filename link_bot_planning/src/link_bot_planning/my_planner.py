@@ -149,7 +149,8 @@ class MyPlanner:
         self.state_space.addSubspace(num_diverged_subspace, weight=0)
         self.state_space_description['num_diverged'] = {
             "idx": self.num_diverged_subspace_idx, "weight": 0, "n_state": 1}
-        self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
+        # TODO: consider implementing better state sampling
+        # self.state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(self.state_sampler_allocator))
         control_bounds = ob.RealVectorBounds(2)
         control_bounds.setLow(0, -np.pi)
         control_bounds.setHigh(0, np.pi)

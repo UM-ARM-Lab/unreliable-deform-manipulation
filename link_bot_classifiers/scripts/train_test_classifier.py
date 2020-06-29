@@ -67,6 +67,7 @@ def train_main(args, seed: int):
                          key_metric=AccuracyMetric,
                          val_every_n_batches=200,
                          mid_epoch_val_batches=32,
+                         restore_from_name=checkpoint_name,
                          batch_metadata=train_dataset.batch_metadata)
 
     # Dataset preprocessing
@@ -91,6 +92,7 @@ def train_main(args, seed: int):
 def eval_main(args, seed: int):
     stdev_pub_ = rospy.Publisher("stdev", Float32, queue_size=10)
     accept_probability_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)
+    traj_idx_pub_ = rospy.Publisher("traj_idx_viz", Float32, queue_size=10)
 
     ###############
     # Model
@@ -126,7 +128,7 @@ def eval_main(args, seed: int):
     # Iterate over test set and compute metrics
     all_accuracies_over_time = []
     test_metrics = []
-    for test_batch in test_tf_dataset:
+    for batch_idx, test_batch in enumerate(test_tf_dataset):
         test_batch.update(test_dataset.batch_metadata)
 
         predictions, test_batch_metrics = runner.model.val_step(test_batch)
@@ -179,6 +181,10 @@ def eval_main(args, seed: int):
                 accept_probability_msg = Float32()
                 accept_probability_msg.data = accept_probability_t
                 accept_probability_pub_.publish(accept_probability_msg)
+
+                traj_idx_msg = Float32()
+                traj_idx_msg.data = batch_idx * args.batch_size + b
+                traj_idx_pub_.publish(traj_idx_msg)
 
                 # this will return when either the animation is "playing" or because the user stepped forward
                 anim.step()

@@ -28,8 +28,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
         self.set_grippers_srv = rospy.ServiceProxy("set_dual_gripper_points", SetDualGripperPoints)
         self.world_control_srv = rospy.ServiceProxy("world_control", WorldControl)
-        self.left_arm_motion_pub = rospy.Publisher("left_arm/motion_command", MotionCommand)
-        self.right_arm_motion_pub = rospy.Publisher("right_arm/motion_command", MotionCommand)
+        self.left_arm_motion_pub = rospy.Publisher("left_arm/motion_command", MotionCommand, queue_size=10)
+        self.right_arm_motion_pub = rospy.Publisher("right_arm/motion_command", MotionCommand, queue_size=10)
         # TODO: could put a more complex state machine here
         # False means we're not in this state
         self.overstretch_safety_state = False

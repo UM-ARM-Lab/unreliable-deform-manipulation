@@ -77,7 +77,7 @@ class NNClassifier(MyKerasModel):
 
         loss_type = self.hparams['loss_type']
         if loss_type == 'weighted_sequence':
-            self.loss_function = classifier_losses_and_metrics.negative_weighted_binary_classification_sequence_loss_function
+            self.loss_function = classifier_losses_and_metrics.class_weighted_binary_classification_sequence_loss_function
         else:
             raise NotImplementedError()
 
