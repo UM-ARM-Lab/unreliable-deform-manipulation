@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 import rospy
-from link_bot_gazebo.gazebo_services import GazeboServices
+from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import point_to_idx_3d_in_env
 from link_bot_pycommon.pycommon import longest_reconverging_subsequence, trim_reconverging

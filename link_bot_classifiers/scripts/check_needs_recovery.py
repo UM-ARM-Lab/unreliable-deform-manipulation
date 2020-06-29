@@ -10,7 +10,7 @@ import rospy
 from link_bot_classifiers import classifier_utils
 from link_bot_classifiers.analysis_utils import execute, predict_and_classify
 from link_bot_data.classifier_dataset_utils import compute_is_close_tf
-from link_bot_gazebo.gazebo_services import GazeboServices
+from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d

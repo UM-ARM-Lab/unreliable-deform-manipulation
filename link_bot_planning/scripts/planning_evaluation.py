@@ -15,8 +15,8 @@ from ompl import base as ob
 
 import rospy
 from link_bot_data.link_bot_dataset_utils import data_directory
-from link_bot_gazebo import gazebo_services
-from link_bot_gazebo.gazebo_services import GazeboServices
+from link_bot_gazebo_python import gazebo_services
+from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus
