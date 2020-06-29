@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VICTOR_SHIM_HPP
+#define VICTOR_SHIM_HPPP
 
 #include <peter_msgs/DualGripperTrajectory.h>
 #include <ros/ros.h>
@@ -18,7 +19,6 @@ public:
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
   ros::ServiceServer execute_traj_srv_;
-  ros::ServiceClient get_planning_scene_client_;
 
   VictorShim(ros::NodeHandle nh, ros::NodeHandle ph);
 
@@ -26,3 +26,5 @@ public:
   bool executeTrajectory(peter_msgs::DualGripperTrajectory::Request& req,
                          peter_msgs::DualGripperTrajectory::Response& res);
 };
+
+#endif

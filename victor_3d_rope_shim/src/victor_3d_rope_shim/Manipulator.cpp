@@ -866,11 +866,14 @@ bool Manipulator::cartesianPath(const PoseSequence& worldGoalPoses, const Pose& 
   return true;
 }
 
-bool Manipulator::jacobianPath3D(const PointSequence& worldGoalPoints,
-                                 const Eigen::Matrix3d& worldNominalToolOrientation, const Pose& robotTworld,
-                                 const Pose& flangeTservo, const robot_state::RobotState& currentState,
-                                 planning_scene::PlanningSceneConstPtr scene,
-                                 trajectory_msgs::JointTrajectory& cmd) const
+bool Manipulator::jacobianPath3D(
+  const PointSequence& worldGoalPoints,
+  const Eigen::Matrix3d& worldNominalToolOrientation,
+  const Pose& robotTworld,
+  const Pose& flangeTservo,
+  const robot_state::RobotState& currentState,
+  planning_scene::PlanningSceneConstPtr scene,
+  trajectory_msgs::JointTrajectory& cmd) const
 {
   MPS_ASSERT(worldGoalPoints.size() > 1);
   if (!scene)
@@ -905,7 +908,7 @@ bool Manipulator::jacobianPath3D(const PointSequence& worldGoalPoints,
         {
           return idx - 5;
         }
-        return (size_t)1;
+        return 1ul;
       }();
       cmd.points.resize(stop_at_idx);
       cmd.points.shrink_to_fit();

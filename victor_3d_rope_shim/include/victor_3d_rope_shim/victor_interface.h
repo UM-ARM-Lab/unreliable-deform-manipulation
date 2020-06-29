@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VICTOR_INTERFACE_HPP
+#define VICTOR_INTERFACE_HPP
 
 #include <actionlib/client/simple_action_client.h>
 #include <control_msgs/FollowJointTrajectoryAction.h>
@@ -63,7 +64,6 @@ public:
   std::shared_ptr<Listener<sensor_msgs::JointState>> joint_states_listener_;
   robot_state::RobotState home_state_;
   std::pair<Pose, Pose> home_state_tool_poses_world_frame_;
-  std::pair<Pose, Pose> home_state_tool_poses_table_frame_;
   std::unique_ptr<TrajectoryClient> trajectory_client_;
   ros::ServiceClient get_planning_scene_client_;
   ros::Duration const traj_goal_time_tolerance_;
@@ -84,9 +84,10 @@ public:
   void followTrajectory(trajectory_msgs::JointTrajectory const& traj);
   void waitForNewState();
   void gotoHome();
-  bool moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions);
-  bool moveInTableFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions);
-  bool moveInTableFrameJacobianIk(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions);
+  bool moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions);
+  bool moveInWorldFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions);
 
   void visualizePlanningScene();
 };
+
+#endif

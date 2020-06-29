@@ -261,7 +261,6 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
     home_state_.setJointGroupPositions(right_arm_->arm, right_arm_->qHome);
     home_state_.update();
     home_state_tool_poses_world_frame_ = getToolTransforms(home_state_);
-    home_state_tool_poses_table_frame_ = Transform(tableTworld, home_state_tool_poses_world_frame_);
     planning_scene_->setCurrentState(home_state_);
   }
 
@@ -655,29 +654,19 @@ void VictorInterface::gotoHome()
   arc_helpers::Sleep(0.5);
 }
 
-bool VictorInterface::moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions)
+bool VictorInterface::moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions)
 {
-  std::pair<Eigen::Translation3d, Eigen::Translation3d> table_frame{
-    (tableTrobot * gripper_positions.first).translation(), (tableTrobot * gripper_positions.second).translation()
+  std::pair<Eigen::Translation3d, Eigen::Translation3d> world_frame{
+    (robotTworld * target_gripper_positions.first).translation(), (robotTworld * target_gripper_positions.second).translation()
   };
-  return moveInTableFrame(table_frame);
+  return moveInWorldFrame(world_frame);
 }
 
-bool VictorInterface::moveInTableFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions)
-{
-  joint_states_listener_->waitForNew(1000.0);
-  return moveInTableFrameJacobianIk(gripper_positions);
-}
-
-bool VictorInterface::moveInTableFrameJacobianIk(
-    std::pair<Eigen::Translation3d, Eigen::Translation3d> const& gripper_positions)
+bool VictorInterface::moveInWorldFrame(
+    std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions)
 {
   auto const current_state = getCurrentRobotState();
   auto const current_tool_poses = getToolTransforms(current_state);
-
-  auto target_poses = Transform(worldTtable, gripper_positions);
-  target_poses.first.linear() = home_state_tool_poses_world_frame_.first.linear();
-  target_poses.second.linear() = home_state_tool_poses_world_frame_.second.linear();
 
   // Debugging
   if (true)
@@ -731,7 +720,7 @@ bool VictorInterface::moveInTableFrameJacobianIk(
         transform.header.frame_id = table_frame_;
         transform.header.stamp = ros::Time::now();
         transform.child_frame_id = "desired_tool_pose_table_frame_left";
-        transform.transform = ConvertTo<geomsg::Transform>(gripper_positions.first);
+        transform.transform = ConvertTo<geomsg::Transform>(target_gripper_positions.first);
         tf_broadcaster_.sendTransform(transform);
       }
       {
@@ -739,7 +728,7 @@ bool VictorInterface::moveInTableFrameJacobianIk(
         transform.header.frame_id = table_frame_;
         transform.header.stamp = ros::Time::now();
         transform.child_frame_id = "desired_tool_pose_table_frame_right";
-        transform.transform = ConvertTo<geomsg::Transform>(gripper_positions.second);
+        transform.transform = ConvertTo<geomsg::Transform>(target_gripper_positions.second);
         tf_broadcaster_.sendTransform(transform);
       }
     }
@@ -751,7 +740,8 @@ bool VictorInterface::moveInTableFrameJacobianIk(
         transform.header.frame_id = world_frame_;
         transform.header.stamp = ros::Time::now();
         transform.child_frame_id = "desired_tool_pose_world_frame_left";
-        transform.transform = ConvertTo<geomsg::Transform>(target_poses.first);
+        transform.transform.translation = ConvertTo<geomsg::Vector3>(target_gripper_positions.first.vector());
+        transform.transform.rotation = ConvertTo<geomsg::Quaternion>(home_state_tool_poses_world_frame_.first.rotation());
         tf_broadcaster_.sendTransform(transform);
       }
       {
@@ -759,15 +749,16 @@ bool VictorInterface::moveInTableFrameJacobianIk(
         transform.header.frame_id = world_frame_;
         transform.header.stamp = ros::Time::now();
         transform.child_frame_id = "desired_tool_pose_world_frame_right";
-        transform.transform = ConvertTo<geomsg::Transform>(target_poses.second);
+        transform.transform.translation = ConvertTo<geomsg::Vector3>(target_gripper_positions.second.vector());
+        transform.transform.rotation = ConvertTo<geomsg::Quaternion>(home_state_tool_poses_world_frame_.second.rotation());
         tf_broadcaster_.sendTransform(transform);
       }
     }
   }
 
   // Create paths for each tool with an equal number of waypoints
-  Eigen::Vector3d const left_delta = target_poses.first.translation() - current_tool_poses.first.translation();
-  Eigen::Vector3d const right_delta = target_poses.second.translation() - current_tool_poses.second.translation();
+  Eigen::Vector3d const left_delta = target_gripper_positions.first.vector() - current_tool_poses.first.translation();
+  Eigen::Vector3d const right_delta = target_gripper_positions.second.vector() - current_tool_poses.second.translation();
   auto const max_dist = std::max(left_delta.norm(), right_delta.norm());
   if (max_dist < translation_step_size_)
   {
@@ -778,17 +769,24 @@ bool VictorInterface::moveInTableFrameJacobianIk(
   auto const left_path = [&] {
     EigenHelpers::VectorVector3d path;
     MPS_ASSERT(
-        left_arm_->interpolate(current_tool_poses.first.translation(), target_poses.first.translation(), path, steps));
+        left_arm_->interpolate(
+          current_tool_poses.first.translation(),
+          target_gripper_positions.first.vector(),
+          path,
+          steps));
     return path;
   }();
   auto const right_path = [&] {
     EigenHelpers::VectorVector3d path;
-    MPS_ASSERT(left_arm_->interpolate(current_tool_poses.second.translation(), target_poses.second.translation(), path,
-                                      steps));
+    MPS_ASSERT(left_arm_->interpolate(
+      current_tool_poses.second.translation(),
+      target_gripper_positions.second.vector(),
+      path,
+      steps));
     return path;
   }();
-  MPS_ASSERT(left_path.size() == right_path.size() && "Later code assumes these are of equal length for "
-                                                      "synchronization");
+  MPS_ASSERT(left_path.size() == right_path.size() &&
+             "Later code assumes these are of equal length for synchronization");
 
   // Debugging - visualize interpolated path in world frame
   if (true)
@@ -852,17 +850,27 @@ bool VictorInterface::moveInTableFrameJacobianIk(
   }
 
   auto const left_cmd = [&] {
-    auto const flange_home_frame = home_state_.getGlobalLinkTransform(left_arm_->arm->getLinkModels().back());
     trajectory_msgs::JointTrajectory cmd;
-    left_arm_->jacobianPath3D(left_path, (flange_home_frame * left_tool_offset_).rotation(), robotTworld,
-                              left_tool_offset_, current_state, planning_scene_, cmd);
+    left_arm_->jacobianPath3D(
+      left_path,
+      home_state_tool_poses_world_frame_.first.rotation(),
+      robotTworld,
+      left_tool_offset_,
+      current_state,
+      planning_scene_,
+      cmd);
     return cmd;
   }();
   auto const right_cmd = [&] {
-    auto const flange_home_frame = home_state_.getGlobalLinkTransform(right_arm_->arm->getLinkModels().back());
     trajectory_msgs::JointTrajectory cmd;
-    right_arm_->jacobianPath3D(right_path, (flange_home_frame * right_tool_offset_).rotation(), robotTworld,
-                               right_tool_offset_, current_state, planning_scene_, cmd);
+    right_arm_->jacobianPath3D(
+      right_path,
+      home_state_tool_poses_world_frame_.second.rotation(),
+      robotTworld,
+      right_tool_offset_,
+      current_state,
+      planning_scene_,
+      cmd);
     return cmd;
   }();
 

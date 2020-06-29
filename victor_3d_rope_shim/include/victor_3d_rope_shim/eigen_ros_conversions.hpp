@@ -53,6 +53,40 @@ inline geometry_msgs::Vector3 ConvertTo<geometry_msgs::Vector3>(Eigen::Vector3d 
 ////////////////////////////////////////////////////////////////////////////////
 
 template<typename Output>
+Output ConvertTo(geometry_msgs::Quaternion const& quat);
+
+template<typename Output>
+Output ConvertTo(Eigen::Quaterniond const& quat);
+
+template<typename Output>
+Output ConvertTo(Eigen::Matrix3d const& rot);
+
+template<>
+Eigen::Quaterniond ConvertTo<Eigen::Quaterniond>(geometry_msgs::Quaternion const& quat)
+{
+    return Eigen::Quaterniond(quat.w, quat.x, quat.y, quat.z);
+}
+
+template<>
+geometry_msgs::Quaternion ConvertTo<geometry_msgs::Quaternion>(Eigen::Quaterniond const& quat)
+{
+    geometry_msgs::Quaternion geo_quat;
+    geo_quat.x = quat.x();
+    geo_quat.y = quat.y();
+    geo_quat.z = quat.z();
+    geo_quat.w = quat.w();
+    return geo_quat;
+}
+
+template<>
+geometry_msgs::Quaternion ConvertTo<geometry_msgs::Quaternion>(Eigen::Matrix3d const& rot)
+{
+    return ConvertTo<geometry_msgs::Quaternion>(Eigen::Quaterniond(rot));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+template<typename Output>
 Output ConvertTo(geometry_msgs::Pose const& pose);
 
 template<typename Output>
