@@ -404,7 +404,7 @@ class ExperimentScenario:
             positions[object_name] = position_response
         return positions
 
-    def move_objects_randomly(self, env_rng, movable_objects_services, movable_objects, kinematic: bool, timeout: float = 1.0):
+    def move_objects_randomly(self, env_rng, movable_objects_services, movable_objects, kinematic: bool, timeout: float = 0.5):
         random_object_positions = sample_object_positions(env_rng, movable_objects)
         if kinematic:
             raise NotImplementedError()
@@ -412,7 +412,7 @@ class ExperimentScenario:
             ExperimentScenario.move_objects(movable_objects_services, random_object_positions, timeout)
 
     @staticmethod
-    def move_objects_to_positions(movable_objects_services: Dict, object_positions: Dict, timeout: float = 1.0):
+    def move_objects_to_positions(movable_objects_services: Dict, object_positions: Dict, timeout: float = 0.5):
         object_positions = {}
         for name, (x, y) in object_positions.items():
             position = Vector3()

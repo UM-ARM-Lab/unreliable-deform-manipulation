@@ -120,9 +120,10 @@ void DualGripperPlugin::OnUpdate()
 bool DualGripperPlugin::OnAction(peter_msgs::DualGripperTrajectoryRequest &req,
                                  peter_msgs::DualGripperTrajectoryResponse &res)
 {
+  (void)res;
   interrupted_ = false;
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
-  auto const steps = static_cast<unsigned int>(req.settling_time_seconds / seconds_per_step);
+  auto const steps = static_cast<int>(req.settling_time_seconds / seconds_per_step);
 
   if (gripper1_ and gripper2_)
   {
@@ -148,6 +149,7 @@ bool DualGripperPlugin::OnAction(peter_msgs::DualGripperTrajectoryRequest &req,
 bool DualGripperPlugin::OnGet(peter_msgs::GetDualGripperPointsRequest &req,
                               peter_msgs::GetDualGripperPointsResponse &res)
 {
+  (void)req;
   if (gripper1_ and gripper2_)
   {
     res.gripper1.x = gripper1_->WorldPose().Pos().X();
@@ -169,6 +171,7 @@ bool DualGripperPlugin::OnGet(peter_msgs::GetDualGripperPointsRequest &req,
 bool DualGripperPlugin::OnSet(peter_msgs::SetDualGripperPointsRequest &req,
                               peter_msgs::SetDualGripperPointsResponse &res)
 {
+  (void)res;
   if (gripper1_ and gripper2_)
   {
     ignition::math::Pose3d gripper1_pose;
@@ -184,6 +187,7 @@ bool DualGripperPlugin::OnSet(peter_msgs::SetDualGripperPointsRequest &req,
 
 bool DualGripperPlugin::GetGripper1Callback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
 {
+  (void)req;
   if (gripper1_)
   {
     res.object.name = "gripper1";
@@ -208,6 +212,7 @@ bool DualGripperPlugin::GetGripper1Callback(peter_msgs::GetObjectRequest &req, p
 
 bool DualGripperPlugin::GetGripper2Callback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
 {
+  (void)req;
   if (gripper2_)
   {
     res.object.name = "gripper2";

@@ -113,6 +113,11 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
     {
       this->publish_period_ = ros::Duration(_sdf->GetElement("updatePeriod")->Get<double>());
     }
+
+    if (_sdf->HasElement("scalePrimitivesFactor"))
+    {
+      this->scale_primitives_factor_ = _sdf->GetElement("scalePrimitivesFactor")->Get<double>();
+    }
   }
 
   // Make sure the ROS node for Gazebo has already been initialized
@@ -399,9 +404,9 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
 
             primitive_msg.type = primitive_msg.BOX;
             primitive_msg.dimensions.resize(3);
-            primitive_msg.dimensions[0] = box_shape->Size().X();
-            primitive_msg.dimensions[1] = box_shape->Size().Y();
-            primitive_msg.dimensions[2] = box_shape->Size().Z();
+            primitive_msg.dimensions[0] = box_shape->Size().X() * scale_primitives_factor_;
+            primitive_msg.dimensions[1] = box_shape->Size().Y() * scale_primitives_factor_;
+            primitive_msg.dimensions[2] = box_shape->Size().Z() * scale_primitives_factor_;
           }
           else if (shape->HasType(Base::CYLINDER_SHAPE))
           {
@@ -409,8 +414,8 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
 
             primitive_msg.type = primitive_msg.CYLINDER;
             primitive_msg.dimensions.resize(2);
-            primitive_msg.dimensions[0] = cylinder_shape->GetLength();
-            primitive_msg.dimensions[1] = cylinder_shape->GetRadius();
+            primitive_msg.dimensions[0] = cylinder_shape->GetLength() * scale_primitives_factor_;
+            primitive_msg.dimensions[1] = cylinder_shape->GetRadius() * scale_primitives_factor_;
           }
           else if (shape->HasType(Base::SPHERE_SHAPE))
           {
@@ -418,7 +423,7 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
 
             primitive_msg.type = primitive_msg.SPHERE;
             primitive_msg.dimensions.resize(1);
-            primitive_msg.dimensions[0] = sphere_shape->GetRadius();
+            primitive_msg.dimensions[0] = sphere_shape->GetRadius() * scale_primitives_factor_;
           }
           else
           {

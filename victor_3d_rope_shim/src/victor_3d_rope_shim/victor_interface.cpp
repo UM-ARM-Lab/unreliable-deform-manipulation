@@ -89,12 +89,12 @@ trajectory_msgs::JointTrajectory MergeTrajectories(trajectory_msgs::JointTraject
                                                               << traj_b.points.size());
     if (traj_a.points.size() != mergable_size)
     {
-      ROS_WARN_STREAM("Merging trajectories of uneven length, discarding " << traj_a.points.size() - mergable_size
+      ROS_INFO_STREAM("Merging trajectories of uneven length, discarding " << traj_a.points.size() - mergable_size
                                                                            << " points from traj_a");
     }
     if (traj_b.points.size() != mergable_size)
     {
-      ROS_WARN_STREAM("Merging trajectories of uneven length, discarding " << traj_b.points.size() - mergable_size
+      ROS_INFO_STREAM("Merging trajectories of uneven length, discarding " << traj_b.points.size() - mergable_size
                                                                            << " points from traj_b");
     }
   }
@@ -268,7 +268,7 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
   // Attach the cat toy/wand to Victor - actually attaches to the state in the planning scene (I think)
   // TODO: attach the wand to states directly where needed
   // NB: This code is old and should not be trusted, it was not in use when copied from old codebase
-  if (false)
+  if (true)
   {
     moveit_msgs::AttachedCollisionObject attached_object;
     // Name of the link that this object will be rigidly attached to
@@ -282,8 +282,8 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
       shape_msgs::SolidPrimitive cylinder;
       cylinder.type = cylinder.CYLINDER;
       cylinder.dimensions.resize(2);
-      cylinder.dimensions[cylinder.CYLINDER_HEIGHT] = 13.5 * 0.0254 + 1;
-      cylinder.dimensions[cylinder.CYLINDER_RADIUS] = 0.005;
+      cylinder.dimensions[cylinder.CYLINDER_HEIGHT] = 8 * 0.0254 + 1;
+      cylinder.dimensions[cylinder.CYLINDER_RADIUS] = 0.05;
       // Define the pose of the cylinder
       geomsg::Pose pose;
       pose.orientation.w = 1.0;
@@ -298,10 +298,6 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
     // Actually attach the object
     planning_scene_->processAttachedCollisionObjectMsg(attached_object);
   }
-  // planning_scene_->printKnownObjects(std::cerr);
-
-  // std::cerr << "ACM:\n";
-  // planning_scene_->getAllowedCollisionMatrix().print(std::cerr);
 }
 
 void VictorInterface::UpdatePlanningScene()
@@ -482,7 +478,7 @@ robot_state::RobotState VictorInterface::getCurrentRobotState() const
   }
   else
   {
-    ROS_WARN("getCurrentRobotState() has no data, returning default values. This ought to be impossible.");
+    ROS_ERROR_STREAM("getCurrentRobotState() has no data, returning default values. This ought to be impossible.");
   }
   state.update();
   return state;
@@ -512,7 +508,7 @@ trajectory_msgs::JointTrajectory VictorInterface::plan(robot_state::RobotState c
   std::string planner_plugin_name = "ompl_interface/OMPLPlanner";
   if (!nh_.getParam("planning_plugin", planner_plugin_name))
   {
-    ROS_WARN_STREAM("Could not find planner plugin name; defaulting to " << planner_plugin_name);
+    ROS_INFO_STREAM("Could not find planner plugin name; defaulting to " << planner_plugin_name);
   }
   try
   {
@@ -617,7 +613,7 @@ void VictorInterface::followTrajectory(trajectory_msgs::JointTrajectory const& t
   talker_.publish(executing_action_str);
   if (traj.points.size() == 0)
   {
-    ROS_WARN("Asked to follow trajectory of length 0; ignoring.");
+    ROS_INFO("Asked to follow trajectory of length 0; ignoring.");
     return;
   }
   if (!trajectory_client_->waitForServer(ros::Duration(3.0)))
@@ -775,7 +771,7 @@ bool VictorInterface::moveInTableFrameJacobianIk(
   auto const max_dist = std::max(left_delta.norm(), right_delta.norm());
   if (max_dist < translation_step_size_)
   {
-    ROS_WARN_STREAM("Motion of distance " << max_dist << " requested. Ignoring.");
+    ROS_INFO_STREAM("Motion of distance " << max_dist << " requested. Ignoring.");
     return false;
   }
   auto const steps = static_cast<int>(std::ceil(max_dist / translation_step_size_)) + 1;
@@ -858,15 +854,15 @@ bool VictorInterface::moveInTableFrameJacobianIk(
   auto const left_cmd = [&] {
     auto const flange_home_frame = home_state_.getGlobalLinkTransform(left_arm_->arm->getLinkModels().back());
     trajectory_msgs::JointTrajectory cmd;
-    MPS_ASSERT(left_arm_->jacobianPath3D(left_path, (flange_home_frame * left_tool_offset_).rotation(), robotTworld,
-                                         left_tool_offset_, current_state, planning_scene_, cmd));
+    left_arm_->jacobianPath3D(left_path, (flange_home_frame * left_tool_offset_).rotation(), robotTworld,
+                              left_tool_offset_, current_state, planning_scene_, cmd);
     return cmd;
   }();
   auto const right_cmd = [&] {
     auto const flange_home_frame = home_state_.getGlobalLinkTransform(right_arm_->arm->getLinkModels().back());
     trajectory_msgs::JointTrajectory cmd;
-    MPS_ASSERT(right_arm_->jacobianPath3D(right_path, (flange_home_frame * right_tool_offset_).rotation(), robotTworld,
-                                          right_tool_offset_, current_state, planning_scene_, cmd));
+    right_arm_->jacobianPath3D(right_path, (flange_home_frame * right_tool_offset_).rotation(), robotTworld,
+                               right_tool_offset_, current_state, planning_scene_, cmd);
     return cmd;
   }();
 
@@ -946,7 +942,6 @@ bool VictorInterface::moveInTableFrameJacobianIk(
   collision_detection::CollisionRequest collision_req;
   collision_detection::CollisionResult collision_res;
   robot_state::RobotState state = current_state;
-  auto first_merged_point_in_collision = false;
   for (size_t idx = 0; idx < merged_cmd.points.size(); ++idx)
   {
     state.setJointGroupPositions(robot_model_->getJointModelGroup("both_arms"), merged_cmd.points[idx].positions);
@@ -955,32 +950,23 @@ bool VictorInterface::moveInTableFrameJacobianIk(
     planning_scene_->checkCollision(collision_req, collision_res, state);
     if (collision_res.collision)
     {
-      if (idx == 0)
-      {
-        first_merged_point_in_collision = true;
-      }
-      if (collision_res.contacts.empty())
-      {
-        ROS_WARN_STREAM("Collision at idx " << idx << " in merged arm trajectories. Returning valid portion only");
-      }
-      else
-      {
-        auto const first_contact = *collision_res.contacts.begin();
-        auto const first_contact_first_name = first_contact.first.first;
-        auto const first_contact_second_name = first_contact.first.second;
-        ROS_WARN_STREAM("Collision at idx " << idx << " in merged arm trajectories involving "
-                                            << first_contact_first_name << " and " << first_contact_first_name
-                                            << "Returning valid portion only");
-      }
+      ROS_INFO_STREAM("Collision at idx " << idx << " in merged arm trajectories. Returning valid portion only");
       merged_cmd.points.resize(idx);
       break;
     }
     collision_res.clear();
   }
 
+  auto empty_merged_cmd = merged_cmd.points.size() < 2;
+  ROS_INFO_STREAM(merged_cmd.points.size());
+  if (empty_merged_cmd)
+  {
+    ROS_WARN_STREAM("final trajectory was empty");
+  }
+
   followTrajectory(merged_cmd);
 
-  return first_merged_point_in_collision;
+  return empty_merged_cmd;
 }
 
 void VictorInterface::visualizePlanningScene()

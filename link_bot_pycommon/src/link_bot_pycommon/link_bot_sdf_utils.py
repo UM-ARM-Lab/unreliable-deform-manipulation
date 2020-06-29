@@ -119,19 +119,19 @@ def environment_to_occupancy_msg(environment: Dict, frame: str = 'occupancy') ->
 
 
 def send_occupancy_tf(broadcaster, environment: Dict, frame: str = 'occupancy'):
-    static_transformStamped = TransformStamped()
-    static_transformStamped.header.stamp = rospy.Time.now()
-    static_transformStamped.header.frame_id = "world"
-    static_transformStamped.child_frame_id = frame
+    transform = TransformStamped()
+    transform.header.stamp = rospy.Time.now()
+    transform.header.frame_id = "world"
+    transform.child_frame_id = frame
     origin_x, origin_y, origin_z = idx_to_point_3d_in_env(0, 0, 0, environment)
-    static_transformStamped.transform.translation.x = origin_x
-    static_transformStamped.transform.translation.y = origin_y
-    static_transformStamped.transform.translation.z = origin_z
-    static_transformStamped.transform.rotation.x = 0
-    static_transformStamped.transform.rotation.y = 0
-    static_transformStamped.transform.rotation.z = 0
-    static_transformStamped.transform.rotation.w = 1
-    broadcaster.sendTransform(static_transformStamped)
+    transform.transform.translation.x = origin_x
+    transform.transform.translation.y = origin_y
+    transform.transform.translation.z = origin_z
+    transform.transform.rotation.x = 0
+    transform.transform.rotation.y = 0
+    transform.transform.rotation.z = 0
+    transform.transform.rotation.w = 1
+    broadcaster.sendTransform(transform)
 
 
 def compute_extent(rows: int,

@@ -59,6 +59,7 @@
                 <robotName>victor</robotName>
                 <frameId>victor_root</frameId>
                 <updatePeriod>0.1</updatePeriod>
+                <scalePrimitivesFactor>0.95</scalePrimitivesFactor>
             </plugin>
         </model>
         <plugin name="gazebo_ros_tf_plugin" filename="libgazebo_ros_tf_plugin.so"/>

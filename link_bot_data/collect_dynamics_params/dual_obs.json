@@ -1,6 +1,6 @@
 {
   "extent": [
-    0.4,
+    0.5,
     1.2,
     -0.72,
     0.72,
@@ -8,25 +8,26 @@
     1.3
   ],
   "gripper1_action_sample_extent": [
-    0.4,
-    1.2,
+    0.5,
+    1.0,
     -0.2,
     0.4,
-    0.7,
+    0.65,
     1.3
   ],
   "gripper2_action_sample_extent": [
-    0.4,
-    1.2,
+    0.5,
+    1.0,
     -0.4,
     0.2,
-    0.7,
+    0.65,
     1.3
   ],
   "res": 0.02,
+  "max_sequential_failed_actions": 10,
   "max_step_size": 0.002,
-  "steps_per_traj": 25,
-  "trajs_per_file": 16,
+  "steps_per_traj": 10,
+  "trajs_per_file": 1,
   "no_objects": false,
   "kinematic_objects": false,
   "repeat_delta_gripper_motion_probability": 0.8,

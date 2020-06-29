@@ -39,7 +39,7 @@ bool VictorShim::executeTrajectory(pm::DualGripperTrajectory::Request& req, pm::
   ROS_INFO_STREAM("Executing dual gripper trajectory of length " << req.gripper1_points.size());
   for (size_t idx = 0; idx < req.gripper1_points.size(); ++idx)
   {
-    res.first_merged_point_in_collision =
+    res.merged_trajectory_empty =
         victor_->moveInRobotFrame(toGripperPositions(req.gripper1_points[idx], req.gripper2_points[idx]));
   }
 

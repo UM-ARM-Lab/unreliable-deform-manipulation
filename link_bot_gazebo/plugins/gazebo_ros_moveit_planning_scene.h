@@ -158,6 +158,7 @@ private:
 private:
   ros::Duration publish_period_;
   std::thread periodic_event_thread_;
+  double scale_primitives_factor_{ 1.0 };
 };
 /** \} */
 /// @}

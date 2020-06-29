@@ -1,7 +1,7 @@
 <launch>
     <arg name="verbose"     default="false"/>
     <arg name="gui"         default="true"/>
-    <arg name="pause"       default="false"/>
+    <arg name="pause"       default="true"/>
     <arg name="debug"       default="false"/>
 
     <!-- Allows users to have slightly modified versions of Victor's URDF -->

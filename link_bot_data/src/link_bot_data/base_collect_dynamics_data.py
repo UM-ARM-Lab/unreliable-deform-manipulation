@@ -68,7 +68,7 @@ def collect_trajectory(scenario: ExperimentScenario,
                                         action_rng=action_rng)
 
         # execute action
-        scenario.execute_action(action)
+        needs_reset = scenario.execute_action(action)
 
         # add to the dataset
         if time_idx < params['steps_per_traj'] - 1:  # skip the last action
@@ -84,6 +84,10 @@ def collect_trajectory(scenario: ExperimentScenario,
         if time_idx < params['steps_per_traj'] - 1:  # skip the last action in visualization as well
             scenario.plot_action_rviz(state, action)
         scenario.plot_time_idx_rviz(time_idx)
+
+    # Possible reset, but only at the end so we don't mess up our data collection
+    if needs_reset:
+        scenario.reset_robot()
 
     feature.update(dict_of_float_tensors_to_bytes_feature(states))
     feature.update(dict_of_float_tensors_to_bytes_feature(actions))
@@ -110,9 +114,6 @@ def generate_trajs(service_provider,
 
     movable_object_services = {k: make_movable_object_services(k) for k in params['movable_objects']}
     for traj_idx in range(args.trajs):
-        # Pre-Randomize, for instance to move the robot out of the way
-        scenario.pre_move_objects()
-
         # Randomize the environment
         scenario.move_objects_randomly(env_rng, movable_object_services,
                                        params['movable_objects'], params['kinematic_objects'])
