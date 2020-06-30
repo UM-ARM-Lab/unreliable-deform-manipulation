@@ -39,6 +39,18 @@ static std::istream &operator>>(std::istream &_in, std::vector<double> &_vec)
   return _in;
 }
 
+static ignition::math::Pose3d ToIgnition(geometry_msgs::Transform const& transform)
+{
+  return ignition::math::Pose3d(
+    transform.translation.x,
+    transform.translation.y,
+    transform.translation.z,
+    transform.rotation.w,
+    transform.rotation.x,
+    transform.rotation.y,
+    transform.rotation.z);
+}
+
 namespace gazebo
 {
 GZ_REGISTER_MODEL_PLUGIN(KinematicVictorPlugin)
@@ -69,9 +81,9 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   world_ = model_->GetWorld();
 
   // Handle initial_position tags because the SDFormat used does not at this version
-  auto victor_sdf = sdf->GetParent();
   {
-    auto joint = victor_sdf->GetElement("joint");
+    auto victor_and_rope_sdf = sdf->GetParent();
+    auto joint = victor_and_rope_sdf->GetElement("joint");
     while (joint)
     {
       if (joint->HasElement("axis"))
@@ -135,26 +147,43 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     {
       ROS_ERROR_STREAM("Invalid link name for rope gripper2: " << gripper2_name_);
     }
+
+    while (!tf_buffer_.canTransform(left_flange_tf_name_, gripper1_tf_name_, ros::Time(0)))
+    {
+      ROS_INFO_STREAM_THROTTLE(1.0, "Waiting for transform between "
+                                    << left_flange_tf_name_ << " and " << gripper1_tf_name_);
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(0.01s);
+    }
+    while (!tf_buffer_.canTransform(right_flange_tf_name_, gripper2_tf_name_, ros::Time(0)))
+    {
+      ROS_INFO_STREAM_THROTTLE(1.0, "Waiting for transform between "
+                                    << right_flange_tf_name_ << " and " << gripper2_tf_name_);
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(0.01s);
+    }
+
+    TeleportGrippers();
   }
 
   // Setup ROS stuff
   {
     private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
-    joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 10);
+    joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 1);
     left_arm_motion_status_pub_ =
-        ros_node_.advertise<victor_hardware_interface::MotionStatus>("left_arm/motion_status", 10);
+        ros_node_.advertise<victor_hardware_interface::MotionStatus>("left_arm/motion_status", 1);
     right_arm_motion_status_pub_ =
-        ros_node_.advertise<victor_hardware_interface::MotionStatus>("right_arm/motion_status", 10);
+        ros_node_.advertise<victor_hardware_interface::MotionStatus>("right_arm/motion_status", 1);
     left_gripper_status_pub_ =
-        ros_node_.advertise<victor_hardware_interface::Robotiq3FingerStatus>("left_arm/gripper_status", 10);
+        ros_node_.advertise<victor_hardware_interface::Robotiq3FingerStatus>("left_arm/gripper_status", 1);
     right_gripper_status_pub_ =
-        ros_node_.advertise<victor_hardware_interface::Robotiq3FingerStatus>("right_arm/gripper_status", 10);
+        ros_node_.advertise<victor_hardware_interface::Robotiq3FingerStatus>("right_arm/gripper_status", 1);
     auto left_arm_motion_command_sub_options = ros::SubscribeOptions::create<victor_hardware_interface::MotionCommand>(
-        "left_arm/motion_command", 10, boost::bind(&KinematicVictorPlugin::OnLeftArmMotionCommand, this, _1),
+        "left_arm/motion_command", 1, boost::bind(&KinematicVictorPlugin::OnLeftArmMotionCommand, this, _1),
         ros::VoidPtr(), &queue_);
     left_arm_motion_command_sub_ = ros_node_.subscribe(left_arm_motion_command_sub_options);
     auto right_arm_motion_command_sub_options = ros::SubscribeOptions::create<victor_hardware_interface::MotionCommand>(
-        "right_arm/motion_command", 10, boost::bind(&KinematicVictorPlugin::OnRightArmMotionCommand, this, _1),
+        "right_arm/motion_command", 1, boost::bind(&KinematicVictorPlugin::OnRightArmMotionCommand, this, _1),
         ros::VoidPtr(), &queue_);
     right_arm_motion_command_sub_ = ros_node_.subscribe(right_arm_motion_command_sub_options);
     auto execute = [this](const TrajServer::GoalConstPtr &goal) { this->FollowJointTrajectory(goal); };
@@ -168,10 +197,11 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   periodic_event_thread_ = std::thread([this] {
     while (true)
     {
-      // Make the grippers match the initial tool positions
-      usleep(50000);
+      // Make the rope grippers match the current Victor tool positions at roughly 100 Hz
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(0.01s);
+      std::lock_guard lock(ros_mutex_);
       PeriodicUpdate();
-      TeleportGrippers();
     }
   });
 }
@@ -273,6 +303,8 @@ void KinematicVictorPlugin::PublishRightArmMotionStatus()
 
 void KinematicVictorPlugin::OnLeftArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg)
 {
+  std::lock_guard lock(ros_mutex_);
+
   std::vector<double> joint_angles{
     msg->joint_position.joint_1, msg->joint_position.joint_2, msg->joint_position.joint_3, msg->joint_position.joint_4,
     msg->joint_position.joint_5, msg->joint_position.joint_6, msg->joint_position.joint_7,
@@ -296,6 +328,8 @@ void KinematicVictorPlugin::OnLeftArmMotionCommand(const victor_hardware_interfa
 
 void KinematicVictorPlugin::OnRightArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg)
 {
+  std::lock_guard lock(ros_mutex_);
+
   std::vector<double> joint_angles{
     msg->joint_position.joint_1, msg->joint_position.joint_2, msg->joint_position.joint_3, msg->joint_position.joint_4,
     msg->joint_position.joint_5, msg->joint_position.joint_6, msg->joint_position.joint_7,
@@ -329,10 +363,11 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
                   << "  steps per point: " << steps << "  points: " << goal->trajectory.points.size());
   for (auto const &point : goal->trajectory.points)
   {
+    std::lock_guard lock(ros_mutex_);
+
     // Move Victor to the specified joint configuration
-    for (auto const &pair : enumerate(goal->trajectory.joint_names))
+    for (auto const &[joint_idx, joint_name]: enumerate(goal->trajectory.joint_names))
     {
-      auto const &[joint_idx, joint_name] = pair;
       auto joint = model_->GetJoint("victor::" + joint_name);
       if (joint)
       {
@@ -340,18 +375,15 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
       }
       else
       {
-        ROS_ERROR_STREAM("Invalid joint: "
-                         << "victor::" + joint_name);
+        ROS_ERROR_STREAM("Invalid joint: " << "victor::" + joint_name);
         result.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_JOINTS;
-        follow_traj_server_->setSucceeded(result);
+        follow_traj_server_->setAborted(result);
         return;
       }
-
-      // Make the grippers match the tool positions
-      TeleportGrippers();
     }
 
-    // Step the world
+    // Make the grippers match the tool positions, then step the world to allow the rope to "catch up"
+    TeleportGrippers();
     world_->Step(steps);
   }
 
@@ -364,41 +396,43 @@ void KinematicVictorPlugin::TeleportGrippers()
   {
     // Gripper 1, left tool
     {
-      auto gripper1_pose = gripper1_->WorldPose();
-
-      geometry_msgs::TransformStamped left_tool_transform;
       try
       {
-        left_tool_transform = tf_buffer_.lookupTransform("world", "victor_left_tool", ros::Time(0));
-        gripper1_pose.Pos().X(left_tool_transform.transform.translation.x);
-        gripper1_pose.Pos().Y(left_tool_transform.transform.translation.y);
-        gripper1_pose.Pos().Z(left_tool_transform.transform.translation.z);
+        auto gripper1_rot = gripper1_->WorldPose().Rot();
+        auto const left_tool_offset = ToIgnition(
+          tf_buffer_.lookupTransform(left_flange_tf_name_, gripper1_tf_name_, ros::Time(0)).transform);
+        auto gripper1_pose = left_tool_offset + left_flange_->WorldPose();
+        gripper1_pose.Rot() = gripper1_rot;
         gripper1_->SetWorldPose(gripper1_pose);
       }
       catch (tf2::TransformException &ex)
       {
-        ROS_WARN("failed to lookup transform to victor_left_tool: %s", ex.what());
+        ROS_WARN_STREAM("Failed to lookup transform between " << left_flange_tf_name_
+                        << " and " << gripper1_tf_name_ << ex.what());
       }
     }
 
     // Gripper 2, right tool
     {
-      auto gripper2_pose = gripper2_->WorldPose();
-
-      geometry_msgs::TransformStamped right_tool_transform;
       try
       {
-        right_tool_transform = tf_buffer_.lookupTransform("world", "victor_right_tool", ros::Time(0));
-        gripper2_pose.Pos().X(right_tool_transform.transform.translation.x);
-        gripper2_pose.Pos().Y(right_tool_transform.transform.translation.y);
-        gripper2_pose.Pos().Z(right_tool_transform.transform.translation.z);
+        auto gripper2_rot = gripper2_->WorldPose().Rot();
+        auto const right_tool_offset = ToIgnition(
+          tf_buffer_.lookupTransform(right_flange_tf_name_, gripper2_tf_name_, ros::Time(0)).transform);
+        auto gripper2_pose = right_tool_offset + right_flange_->WorldPose();
+        gripper2_pose.Rot() = gripper2_rot;
         gripper2_->SetWorldPose(gripper2_pose);
       }
       catch (tf2::TransformException &ex)
       {
-        ROS_WARN("failed to lookup transform to victor_right_tool: %s", ex.what());
+        ROS_WARN_STREAM("Failed to lookup transform between " << left_flange_tf_name_
+                        << " and " << gripper1_tf_name_ << ex.what());
       }
     }
+  }
+  else
+  {
+    ROS_ERROR_THROTTLE(1.0, "Attempting to teleport the grippers, but some pointers are null");
   }
 }
 

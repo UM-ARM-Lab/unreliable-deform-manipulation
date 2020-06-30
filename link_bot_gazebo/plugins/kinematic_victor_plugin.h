@@ -25,16 +25,9 @@ class KinematicVictorPlugin : public ModelPlugin
 {
 public:
   KinematicVictorPlugin();
-
   ~KinematicVictorPlugin() override;
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
-
-  void FollowJointTrajectory(const TrajServer::GoalConstPtr &goal);
-
-  void OnLeftArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg);
-
-  void OnRightArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg);
 
   void PublishLeftArmMotionStatus();
   void PublishRightArmMotionStatus();
@@ -42,19 +35,23 @@ public:
   void PublishLeftGripperStatus();
   void PublishRightGripperStatus();
 
+  void OnLeftArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg);
+  void OnRightArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg);
+  void FollowJointTrajectory(const TrajServer::GoalConstPtr &goal);
+
   void TeleportGrippers();
 
 private:
   void QueueThread();
-
   void PrivateQueueThread();
-
   void PeriodicUpdate();
 
   event::ConnectionPtr update_connection_;
   physics::ModelPtr model_;
   physics::WorldPtr world_;
 
+  // Protects against multiple ROS callbacks or publishers accessing/changing data out of order
+  std::mutex ros_mutex_;
   std::unique_ptr<ros::NodeHandle> private_ros_node_;
   ros::NodeHandle ros_node_;
   ros::CallbackQueue queue_;
@@ -71,10 +68,14 @@ private:
   ros::Subscriber right_arm_motion_command_sub_;
 
   std::unique_ptr<TrajServer> follow_traj_server_;
-  std::string left_flange_name_{ "victor::victor_left_arm_link_7" };
-  std::string right_flange_name_{ "victor::victor_right_arm_link_7" };
-  std::string gripper1_name_{ "link_bot::gripper1" };
-  std::string gripper2_name_{ "link_bot::gripper2" };
+  std::string const left_flange_name_{ "victor::victor_left_arm_link_7" };
+  std::string const right_flange_name_{ "victor::victor_right_arm_link_7" };
+  std::string const gripper1_name_{ "link_bot::gripper1" };
+  std::string const gripper2_name_{ "link_bot::gripper2" };
+  std::string const left_flange_tf_name_ {"victor_left_arm_link_7"};
+  std::string const right_flange_tf_name_ {"victor_right_arm_link_7"};
+  std::string const gripper1_tf_name_{ "victor_left_tool" };
+  std::string const gripper2_tf_name_{ "victor_right_tool" };
   physics::LinkPtr left_flange_;
   physics::LinkPtr right_flange_;
   physics::LinkPtr gripper1_;

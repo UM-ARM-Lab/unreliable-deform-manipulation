@@ -1,19 +1,19 @@
-
 #include "victor_3d_rope_shim/assert.h"
 #include "victor_3d_rope_shim/eigen_ros_conversions.hpp"
 #include "victor_3d_rope_shim/eigen_transforms.hpp"
 #include "victor_3d_rope_shim/moveit_print_state.h"
 #include "victor_3d_rope_shim/victor_interface.h"
 
+#include <algorithm>
+#include <memory>
+
 #include <std_msgs/String.h>
 #include <std_srvs/Empty.h>
-#include <algorithm>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/eigen_helpers.hpp>
 #include <arc_utilities/path_utils.hpp>
 #include <arc_utilities/pretty_print.hpp>
 #include <arc_utilities/ros_helpers.hpp>
-#include <memory>
 
 #include <moveit/kinematic_constraints/utils.h>
 #include <moveit/planning_interface/planning_interface.h>
