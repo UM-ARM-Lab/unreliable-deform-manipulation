@@ -2,6 +2,7 @@
 from __future__ import division, print_function
 
 import time
+import rospy
 from typing import Dict, Optional, List
 
 import numpy as np
@@ -9,8 +10,8 @@ from colorama import Fore
 from ompl import base as ob
 
 from link_bot_classifiers.rnn_recovery_model import RNNRecoveryModelWrapper
-from link_bot_planning.goals import sample_collision_free_goal
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus
+from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
@@ -66,9 +67,6 @@ class PlanAndExecute:
         self.env_rng = np.random.RandomState(seed)
         self.goal_rng = np.random.RandomState(seed)
 
-        # remove all markers
-        self.service_provider.marker_provider.remove_all()
-
         self.total_plan_idx = 0
         self.n_failures = 0
 
@@ -91,25 +89,19 @@ class PlanAndExecute:
         # get the environment, which here means anything which is assumed constant during planning
         # This includes the occupancy map but can also include things like the initial state of the tether
 
-        environment = get_environment_common(w_m=self.planner.full_env_params.w,
-                                             h_m=self.planner.full_env_params.h,
-                                             res=self.planner.full_env_params.res,
-                                             service_provider=self.service_provider,
-                                             scenario=self.planner.scenario)
-
-        environment.update(self.planner.scenario.get_environment_from_state_dict(start_state))
+        environment = get_environment_for_extents_3d(extent=self.planner_params['extent'],
+                                                     res=self.planner.classifier_model.data_collection_params['res'],
+                                                     service_provider=self.service_provider,
+                                                     robot_name=self.planner.fwd_model.scenario.robot_name())
 
         # generate a random target
-        goal = self.get_goal(self.planner_params['goal_w_m'], self.planner_params['goal_h_m'], environment)
+        goal = self.planner.scenario.sample_goal(self.planner_params['goal_extent'], rng=self.goal_rng)
 
         if self.verbose >= 1:
-            # publish goal marker
-            self.planner.scenario.publish_goal_marker(self.service_provider.marker_provider,
-                                                      goal,
-                                                      self.planner_params['goal_threshold'])
+            self.planner.scenario.publish_goal_marker(goal)
 
         if self.verbose >= 1:
-            print(Fore.CYAN + "Planning from {} to {}".format(start_state, goal) + Fore.RESET)
+            print(Fore.MAGENTA + "Planning to {}".format(goal) + Fore.RESET)
 
         ############
         # Planning #
@@ -160,9 +152,6 @@ class PlanAndExecute:
         else:
             raise NotImplementedError()
 
-    def get_goal(self, w_meters, h_meters, environment):
-        return sample_collision_free_goal(goal_w_m=w_meters, goal_h_m=h_meters, environment=environment, rng=self.goal_rng)
-
     def on_plan_complete(self,
                          planned_path: List[Dict],
                          goal,
@@ -198,7 +187,7 @@ class PlanAndExecute:
         pass
 
     def randomize_environment(self):
-        raise NotImplementedError()
+        rospy.logerr("Randomizing environment in planning not implemented!")
 
     def execute_actions(self, start_state: Dict, actions: Optional[List[Dict]]) -> List[Dict]:
         return execute_actions(self.service_provider, self.planner.scenario, start_state, actions)

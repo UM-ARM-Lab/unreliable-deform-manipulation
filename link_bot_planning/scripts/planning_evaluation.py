@@ -22,7 +22,7 @@ from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus
 from link_bot_planning.ompl_viz import plot_plan, planner_data_to_json
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.params import SimParams
+from link_bot_pycommon.base_services import BaseServices
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import listify
 from victor import victor_services
@@ -34,17 +34,15 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
     def __init__(self,
                  planner: MyPlanner,
+                 service_provider: BaseServices,
                  planner_config_name: str,
                  n_plans_per_env: int,
                  n_total_plans: int,
                  verbose: int,
                  planner_params: Dict,
-                 sim_params: SimParams,
-                 service_provider: GazeboServices,
                  comparison_item_idx: int,
                  seed: int,
                  goal,
-                 reset_robot,
                  outdir: pathlib.Path,
                  record: Optional[bool] = False,
                  pause_between_plans: Optional[bool] = False,
@@ -54,7 +52,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                          n_plans_per_env=n_plans_per_env,
                          verbose=verbose,
                          planner_params=planner_params,
-                         sim_params=sim_params,
                          service_provider=service_provider,
                          no_execution=False,
                          pause_between_plans=pause_between_plans,
@@ -68,7 +65,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             "n_total_plans": n_total_plans,
             "n_targets": n_plans_per_env,
             "planner_params": planner_params,
-            "sim_params": sim_params.to_json(),
             "seed": self.seed,
             "metrics": [],
         }
@@ -80,12 +76,8 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.failures_root = self.root / 'failures'
         self.successfully_completed_plan_idx = 0
         self.goal = goal
-        self.reset_robot = reset_robot
 
     def randomize_environment(self):
-        if self.reset_robot is not None:
-            self.service_provider.reset_world(self.verbose, self.reset_robot)
-
         super().randomize_environment()
 
     def on_after_plan(self):
@@ -212,12 +204,13 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
-    parser.add_argument('planners_params', type=pathlib.Path, nargs='+', help='json file(s) describing what should be compared')
+    parser.add_argument('planners_params', type=pathlib.Path, nargs='+',
+                        help='json file(s) describing what should be compared')
     parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time', required=True)
     parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
     parser.add_argument("--pause-between-plans", action='store_true', help='pause between plans')
-    parser.add_argument("--seed", '-s', type=int, default=3)
+    parser.add_argument("--seed", '-s', type=int, default=1)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument('--record', action='store_true', help='record')
 
@@ -249,38 +242,30 @@ def main():
         if args.env_type == 'victor':
             service_provider = victor_services.VictorServices()
         else:
-            service_provider = gazebo_services.GazeboServices(planner_params['movable_obstacles'])
+            service_provider = gazebo_services.GazeboServices()
 
         # look up the planner params
         planner, _ = get_planner(planner_params=planner_params,
-                                 service_provider=service_provider,
                                  seed=args.seed,
                                  verbose=args.verbose)
 
         service_provider.setup_env(verbose=args.verbose,
                                    real_time_rate=planner_params['real_time_rate'],
-                                   reset_robot=planner_params['reset_robot'],
                                    max_step_size=planner.fwd_model.max_step_size)
 
-        sim_params = SimParams(real_time_rate=planner_params['real_time_rate'],
-                               max_step_size=planner.fwd_model.max_step_size,
-                               movable_obstacles=[],  # unused
-                               nudge=False)
         print(Fore.GREEN + "Running {} Trials".format(args.n_total_plans) + Fore.RESET)
 
         runner = EvalPlannerConfigs(
             planner=planner,
+            service_provider=service_provider,
             planner_config_name=planner_config_name,
             n_plans_per_env=args.n_plans_per_env,
             n_total_plans=args.n_total_plans,
             verbose=args.verbose,
             planner_params=planner_params,
-            sim_params=sim_params,
-            service_provider=service_provider,
             seed=args.seed,
             outdir=common_output_directory,
             comparison_item_idx=comparison_idx,
-            reset_robot=planner_params['reset_robot'],
             goal=planner_params['fixed_goal'],
             record=args.record,
             pause_between_plans=args.pause_between_plans

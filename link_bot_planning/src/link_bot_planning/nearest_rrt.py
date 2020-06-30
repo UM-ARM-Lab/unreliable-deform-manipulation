@@ -16,22 +16,17 @@ class NearestRRT(MyPlanner):
                  fwd_model: BaseDynamicsFunction,
                  classifier_model: BaseConstraintChecker,
                  planner_params: Dict,
-                 service_provider: BaseServices,
                  scenario: ExperimentScenario,
-                 viz_object: VizObject,
                  seed: int,
                  verbose: int):
         super().__init__(fwd_model,
                          classifier_model,
                          planner_params,
-                         service_provider,
                          scenario,
-                         viz_object,
                          seed,
                          verbose)
 
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(True)  # this is necessary, because we use this to generate datasets
         self.ss.setPlanner(self.planner)
-        self.si.setPropagationStepSize(self.fwd_model.dt)
         self.si.setMinMaxControlDuration(1, 50)

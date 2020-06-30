@@ -8,7 +8,6 @@ from matplotlib import colors
 
 import rospy
 from geometry_msgs.msg import Pose, Point
-from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -371,16 +370,6 @@ class LinkBotScenario(ExperimentScenario):
         dx = action[0]
         dy = action[1]
         update_arrow(artist, link_bot_points[-1, 0], link_bot_points[-1, 1], dx, dy)
-
-    @staticmethod
-    def publish_state_marker(marker_provider: MarkerProvider, state):
-        link_bot_points = np.reshape(state['link_bot'], [-1, 3])[:, :2]
-        tail_point = link_bot_points[0]
-        marker_provider.publish_marker(id=0, rgb=[1, 0, 0], scale=0.05, x=tail_point[0], y=tail_point[1])
-
-    @staticmethod
-    def publish_goal_marker(marker_provider: MarkerProvider, goal, size: float):
-        marker_provider.publish_marker(id=0, rgb=[1, 0, 0], scale=size, x=goal[0], y=goal[1])
 
     @staticmethod
     def local_environment_center(state):

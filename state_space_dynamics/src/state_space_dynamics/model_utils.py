@@ -111,7 +111,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
     def propagate_differentiable(self,
                                  environment: Dict,
                                  start_states: Dict,
-                                 actions: tf.Variable) -> List[Dict]:
+                                 actions: List[Dict]) -> List[Dict]:
         all_predictions = []
         for fwd_model in self.models:
             predictions = fwd_model.propagate_differentiable(environment=environment,
@@ -121,7 +121,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
 
         # restructure data to be one List of dicts, where each dict has all the states/keys of the original dicts, but averaged
         # and with an additional state/key for stdev
-        T = int(actions.shape[0]) + 1
+        T = len(actions) + 1
         ensemble_predictions = []
         for t in range(T):
             merged_predictions = {}

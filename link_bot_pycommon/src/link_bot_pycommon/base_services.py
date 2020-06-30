@@ -4,7 +4,6 @@ import rospy
 from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingRequest
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from geometry_msgs.msg import Pose
-from ignition.markers import MarkerProvider
 from peter_msgs.srv import ComputeOccupancy, WorldControl, GetObjects, StateSpaceDescription, StateSpaceDescriptionRequest
 from std_srvs.srv import Empty
 
@@ -20,7 +19,6 @@ class BaseServices:
         self.reset = rospy.ServiceProxy("reset", Empty)
         self.get_objects = rospy.ServiceProxy("objects", GetObjects)
         self.states_description = rospy.ServiceProxy("states_description", StateSpaceDescription)
-        self.marker_provider = MarkerProvider()
         self.get_physics = rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('gazebo/set_physics_properties', SetPhysicsProperties)
 

@@ -36,7 +36,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
     def debug_plot(self, s):
         self.scenario.plot_state_rviz({'link_bot': s['link_bot'][0]})
 
-    @tf.function
+    # @tf.function
     def call(self, example, training, mask=None):
         actions = {k: example[k] for k in self.action_keys}
         input_sequence_length = actions[self.action_keys[0]].shape[1]
@@ -45,7 +45,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         pred_states = [s_0]
         for t in range(input_sequence_length):
             s_t = pred_states[-1]
-            action_t = {k: a[:, t] for k, a in actions.items()}
+            action_t = self.scenario.index_action_time(actions, t)
             local_action_t = self.scenario.put_action_local_frame(s_t, action_t)
 
             s_t_local = self.scenario.put_state_local_frame(s_t)
@@ -106,15 +106,15 @@ class UDNNWrapper(BaseDynamicsFunction):
     def propagate_from_example(self, example, training=False):
         return self.net(example, training=training)
 
-    def propagate_differentiable(self, environment: Dict, start_states: Dict, actions) -> List[Dict]:
+    def propagate_differentiable(self, environment: Dict, start_states: Dict, actions: List[Dict]) -> List[Dict]:
         del environment  # unused
         net_inputs = {k: tf.expand_dims(start_states[k], axis=0) for k in self.state_keys}
-        net_inputs.update({k: tf.expand_dims(actions[k], axis=0) for k in self.action_keys})
+        net_inputs.update(sequence_of_dicts_to_dict_of_tensors(actions))
         net_inputs = add_batch(net_inputs)
         # the network returns a dictionary where each value is [T, n_state]
         # which is what you'd want for training, but for planning and execution and everything else
         # it is easier to deal with a list of states where each state is a dictionary
-        predictions = self.net((net_inputs, None), training=False)
+        predictions = self.net(net_inputs, training=False)
         predictions = remove_batch(predictions)
         predictions = dict_of_sequences_to_sequence_of_dicts_tf(predictions)
         return predictions

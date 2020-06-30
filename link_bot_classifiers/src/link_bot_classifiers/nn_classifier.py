@@ -219,6 +219,7 @@ class NNClassifierWrapper(BaseConstraintChecker):
                 raise FileNotFoundError("no hparams file found!")
         self.model_hparams = json.load(model_hparams_file.open('r'))
         self.dataset_labeling_params = self.model_hparams['classifier_dataset_hparams']['labeling_params']
+        self.data_collection_params = self.model_hparams['classifier_dataset_hparams']['data_collection_params']
         self.horizon = self.dataset_labeling_params['classifier_horizon']
         self.model = NNClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
         self.ckpt = tf.train.Checkpoint(model=self.model)
@@ -262,18 +263,19 @@ class NNClassifierWrapper(BaseConstraintChecker):
                             states_sequence: List[Dict],
                             actions: List[Dict]):
         environment = add_batch(environment)
-        states_sequence = add_batch(states_sequence)
         states_sequence_dict = sequence_of_dicts_to_dict_of_tensors(states_sequence)
-        actions = add_batch(actions)
-        accept_probabilities_batched = self.check_constraint_batched_tf(
-            environment, states_sequence_dict, actions, 1, len(states_sequence))
+        actions_dict = sequence_of_dicts_to_dict_of_tensors(actions)
+        accept_probabilities_batched = self.check_constraint_batched_tf(environment=environment,
+                                                                        predictions=add_batch(states_sequence_dict),
+                                                                        actions=add_batch(actions_dict),
+                                                                        batch_size=1,
+                                                                        state_sequence_length=len(states_sequence))
         return remove_batch(accept_probabilities_batched)
 
     def check_constraint(self,
                          environment: Dict,
                          states_sequence: List[Dict],
                          actions: List[Dict]):
-        actions = tf.Variable(actions, dtype=tf.float32, name="actions")
         states_sequence = [make_dict_float32(s) for s in states_sequence]
         accept_probabilities = self.check_constraint_tf(environment=environment,
                                                         states_sequence=states_sequence,

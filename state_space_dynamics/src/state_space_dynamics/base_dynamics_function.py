@@ -22,25 +22,15 @@ class BaseDynamicsFunction:
         self.data_collection_params = self.hparams['dynamics_dataset_hparams']['data_collection_params']
         self.max_step_size = self.data_collection_params['max_step_size']
         self.states_description = self.hparams['dynamics_dataset_hparams']['states_description']
+        self.action_description = self.hparams['dynamics_dataset_hparams']['action_description']
         self.state_keys = None
         self.action_keys = None
 
     def propagate_from_example(self, dataset_element):
         raise NotImplementedError()
 
-    # TODO: make propagate use the "environment" dict abstraction
-    def propagate(self,
-                  environment: Dict,
-                  start_states: Dict[str, np.ndarray],
-                  actions: np.ndarray) -> List[Dict]:
-        for k in start_states.keys():
-            start_states[k] = start_states[k].astype(np.float32)
-        actions = actions.astype(np.float32)
-
-        actions = tf.Variable(actions, dtype=tf.float32, name='actions')
-        predictions = self.propagate_differentiable(environment,
-                                                    start_states,
-                                                    actions)
+    def propagate(self, environment: Dict, start_states: Dict, actions: List[Dict]) -> List[Dict]:
+        predictions = self.propagate_differentiable(environment, start_states, actions)
         predictions_np = []
         for state_t in predictions:
             state_np = {}
@@ -52,6 +42,6 @@ class BaseDynamicsFunction:
 
     def propagate_differentiable(self,
                                  environment: Dict,
-                                 start_states: Dict[str, np.ndarray],
-                                 actions: tf.Variable) -> List[Dict]:
+                                 start_states: Dict,
+                                 actions: List[Dict]) -> List[Dict]:
         raise NotImplementedError()

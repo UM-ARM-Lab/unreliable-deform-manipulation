@@ -1,5 +1,5 @@
 <launch>
-    <arg name="world_name"/>
+    <arg name="world_name" default="victor_table_rope"/>
     <arg name="verbose"     default="false"/>
     <arg name="gui"         default="true"/>
     <arg name="pause"       default="true"/>

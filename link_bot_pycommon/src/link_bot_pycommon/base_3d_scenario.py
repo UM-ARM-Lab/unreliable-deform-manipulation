@@ -2,6 +2,7 @@ from typing import Dict, List
 
 import numpy as np
 import tensorflow as tf
+import ompl.base as ob
 from matplotlib import colors
 
 import rospy
@@ -25,6 +26,7 @@ class Base3DScenario(ExperimentScenario):
         self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10, latch=True)
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10, latch=True)
+        self.planner_viz_pub = rospy.Publisher("planner_viz", MarkerArray, queue_size=10, latch=True)
         self.label_viz_pub = rospy.Publisher("mybool", Bool, queue_size=10, latch=True)
         self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
         self.time_viz_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10, latch=True)
@@ -35,11 +37,26 @@ class Base3DScenario(ExperimentScenario):
         except ImportError:
             self.broadcaster = None
 
+        self.sampled_goal_marker_idx = 0
+        self.tree_idx = 0
+        self.sample_idx = 0
+
     @staticmethod
     def random_pos(action_rng: np.random.RandomState, extent):
         x_min, x_max, y_min, y_max, z_min, z_max = extent
         pos = action_rng.uniform([x_min, y_min, z_min], [x_max, y_max, z_max])
         return pos
+
+    def reset_planning_viz(self):
+        clear_msg = MarkerArray()
+        clear_marker_msg = Marker()
+        clear_marker_msg.action = Marker.DELETEALL
+        clear_msg.markers.append(clear_marker_msg)
+        self.state_viz_pub.publish(clear_msg)
+        self.action_viz_pub.publish(clear_msg)
+        self.sampled_goal_marker_idx = 0
+        self.tree_idx = 0
+        self.sample_idx = 0
 
     def plot_environment_rviz(self, data: Dict):
         self.send_occupancy_tf(data)
@@ -50,8 +67,24 @@ class Base3DScenario(ExperimentScenario):
     def send_occupancy_tf(self, environment: Dict):
         link_bot_sdf_utils.send_occupancy_tf(self.broadcaster, environment)
 
+    def plot_sampled_goal_state(self, state: Dict):
+        self.sampled_goal_marker_idx += 1
+        self.plot_state_rviz(state, idx=self.sampled_goal_marker_idx, label="goal sample", color='#44dddd')
+
+    def plot_start_state(self, state: Dict):
+        self.plot_state_rviz(state, label='start', color='#0088aa')
+
+    def plot_sampled_state(self, state: Dict):
+        self.sample_idx += 1
+        self.plot_state_rviz(state, idx=self.sample_idx, label='samples', color='#ff8888')
+
+    def plot_tree_state(self, state: Dict):
+        self.tree_idx += 1
+        self.plot_state_rviz(state, idx=self.tree_idx, label='tree', color='#ffaaaa')
+
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
+        idx = kwargs.get("idx", 0)
 
         link_bot_points = np.reshape(state['link_bot'], [-1, 3])
 
@@ -62,7 +95,7 @@ class Base3DScenario(ExperimentScenario):
         lines.header.frame_id = "/world"
         lines.header.stamp = rospy.Time.now()
         lines.ns = label
-        lines.id = 0
+        lines.id = 2 * idx + 0
 
         lines.pose.position.x = 0
         lines.pose.position.y = 0
@@ -85,7 +118,7 @@ class Base3DScenario(ExperimentScenario):
         spheres.header.frame_id = "/world"
         spheres.header.stamp = rospy.Time.now()
         spheres.ns = label
-        spheres.id = 1
+        spheres.id = 2 * idx + 1
 
         spheres.scale.x = 0.02
         spheres.scale.y = 0.02
@@ -202,25 +235,29 @@ class Base3DScenario(ExperimentScenario):
 
             anim.step()
 
-    @staticmethod
-    def get_subspace_weight(subspace_name: str):
-        if subspace_name == 'link_bot':
-            return 1.0
-        elif subspace_name == 'tether':
-            return 0.0
-        else:
-            raise NotImplementedError("invalid subspace_name {}".format(subspace_name))
+    def publish_goal_marker(self, goal: Dict):
+        goal_marker_msg = MarkerArray()
+        midpoint_marker = Marker()
+        midpoint_marker.scale.x = 0.02
+        midpoint_marker.scale.y = 0.02
+        midpoint_marker.scale.z = 0.02
+        midpoint_marker.action = Marker.ADD
+        midpoint_marker.type = Marker.SPHERE
+        midpoint_marker.header.frame_id = "/world"
+        midpoint_marker.header.stamp = rospy.Time.now()
+        midpoint_marker.ns = 'goal'
+        midpoint_marker.id = 0
+        midpoint_marker.color.r = 0.5
+        midpoint_marker.color.g = 0.3
+        midpoint_marker.color.b = 0.8
+        midpoint_marker.color.a = 1
+        midpoint_marker.pose.position.x = goal['midpoint'][0]
+        midpoint_marker.pose.position.y = goal['midpoint'][1]
+        midpoint_marker.pose.position.z = goal['midpoint'][2]
+        midpoint_marker.pose.orientation.w = 1
 
-    @staticmethod
-    def sample_goal(state, goal):
-        link_bot_state = state['link_bot']
-        goal_points = np.reshape(link_bot_state, [-1, 3])
-        goal_points -= goal_points[0]
-        goal_points += goal
-        goal_state = goal_points.flatten()
-        return {
-            'link_bot': goal_state
-        }
+        goal_marker_msg.markers.append(midpoint_marker)
+        self.planner_viz_pub.publish(goal_marker_msg)
 
     @staticmethod
     def to_rope_local_frame(state, reference_state=None):

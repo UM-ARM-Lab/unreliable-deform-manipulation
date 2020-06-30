@@ -43,15 +43,15 @@ def get_environment_for_extents_3d(extent,
                                    robot_name: str):
     cx, cy, cz = extent_to_center(extent)
     env_h_rows, env_w_cols, env_c_channels = extent_to_env_shape(extent, res)
-    grid, response = get_occupancy(service_provider,
-                                   env_w_cols=env_w_cols,
-                                   env_h_rows=env_h_rows,
-                                   env_c_channels=env_c_channels,
-                                   res=res,
-                                   center_x=cx,
-                                   center_y=cy,
-                                   center_z=cz,
-                                   robot_name=robot_name)
+    grid, _ = get_occupancy(service_provider,
+                            env_w_cols=env_w_cols,
+                            env_h_rows=env_h_rows,
+                            env_c_channels=env_c_channels,
+                            res=res,
+                            center_x=cx,
+                            center_y=cy,
+                            center_z=cz,
+                            robot_name=robot_name)
     x_min = extent[0]
     y_min = extent[2]
     z_min = extent[4]

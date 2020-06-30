@@ -45,11 +45,10 @@ def main():
 
     scenario = get_scenario(args.scenario)
 
-    environment = get_environment_common(w_m=args.w_m,
-                                         h_m=args.h_m,
-                                         res=args.res,
-                                         service_provider=service_provider,
-                                         scenario=scenario)
+    environment = get_environment_for_extents_3d(extent=test_params['extent'],
+                                                 res=fwd_model.data_collection_params['res'],
+                                                 service_provider=service_provider,
+                                                 robot_name=fwd_model.scenario.robot_name())
     path = []
     for action in actions:
         state_t = {}

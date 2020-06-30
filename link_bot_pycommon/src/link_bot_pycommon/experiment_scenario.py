@@ -6,7 +6,6 @@ import numpy as np
 
 import rospy
 from geometry_msgs.msg import Vector3
-from ignition.markers import MarkerProvider
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_data.visualization import plot_extents
 from link_bot_pycommon.animation_player import Player
@@ -112,11 +111,10 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def publish_goal_marker(marker_provider: MarkerProvider, goal, size: float):
+    def publish_goal_marker(goal, size: float):
         raise NotImplementedError()
 
-    @staticmethod
-    def publish_state_marker(marker_provider: MarkerProvider, state):
+    def sample_goal(self, environment: Dict, rng: np.random.RandomState):
         raise NotImplementedError()
 
     @staticmethod
@@ -137,10 +135,6 @@ class ExperimentScenario:
 
     @staticmethod
     def get_subspace_weight(subspace_name: str):
-        raise NotImplementedError()
-
-    @staticmethod
-    def sample_goal(state, goal):
         raise NotImplementedError()
 
     @staticmethod
