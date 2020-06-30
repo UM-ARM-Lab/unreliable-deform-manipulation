@@ -434,9 +434,9 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
 
           object.primitives.push_back(primitive_msg);
         }
-        ROS_INFO("model %s has %zu links", model_name.c_str(), links.size());
-        ROS_INFO("model %s has %zu meshes, %zu mesh poses", model_name.c_str(), object.meshes.size(),
-                 object.mesh_poses.size());
+        ROS_DEBUG("model %s has %zu links", model_name.c_str(), links.size());
+        ROS_DEBUG("model %s has %zu meshes, %zu mesh poses", model_name.c_str(), object.meshes.size(),
+                  object.mesh_poses.size());
       }
 
       planning_scene_msg.world.collision_objects.push_back(object);
