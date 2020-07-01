@@ -197,10 +197,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.grasping_rope_srv(grasp)
         self.settle()
 
-        # try to move back
+        # try to move back, but add some noise so we don't get immediately stuck again
+        noise1 = env_rng.randn(3) * 0.1
+        noise2 = env_rng.randn(3) * 0.1
         return_action = {
-            'gripper1_position': pre_randomize_gripper1_position,
-            'gripper2_position': pre_randomize_gripper2_position,
+            'gripper1_position': pre_randomize_gripper1_position + noise1,
+            'gripper2_position': pre_randomize_gripper2_position + noise2,
         }
         self.execute_action(return_action)
 

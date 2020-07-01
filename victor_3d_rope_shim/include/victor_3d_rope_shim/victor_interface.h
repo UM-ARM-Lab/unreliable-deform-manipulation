@@ -70,9 +70,13 @@ public:
   ros::ServiceClient get_planning_scene_client_;
   ros::Duration const traj_goal_time_tolerance_;
   ros::ServiceClient obstacles_client_;
+  ros::ServiceClient set_grasping_rope_client_;
+  ros::ServiceClient world_control_client_;
   double const translation_step_size_;
 
   VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer);
+
+  void settle();
 
   void test();
 
