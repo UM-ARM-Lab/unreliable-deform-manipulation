@@ -39,7 +39,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         self.nudge_rng = np.random.RandomState(0)
 
-        self.params['settling_time'] = rospy.get_param("traj_goal_time_tolerance")
+        self.params['settling_time'] = rospy.get_param("world_interaction/traj_goal_time_tolerance")
 
         self.max_action_attempts = 1000
 
