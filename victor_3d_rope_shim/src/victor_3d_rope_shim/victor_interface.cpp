@@ -20,6 +20,8 @@
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit_msgs/DisplayTrajectory.h>
 #include <moveit_msgs/GetPlanningScene.h>
+#include <peter_msgs/SetBool.h>
+#include <peter_msgs/WorldControl.h>
 #include <pluginlib/class_loader.h>
 #include <boost/scoped_ptr.hpp>
 
@@ -133,13 +135,13 @@ static std::ostream& operator<<(std::ostream& out, collision_detection::Collisio
   for (auto const& [names, contact_list] : cr.contacts)
   {
     out << "    " << names.first << "," << names.second << "\n";
-    for (auto const& contact: contact_list)
+    for (auto const& contact : contact_list)
     {
-          out << "      pos:          " << contact.pos.transpose() << "\n"
-              << "      normal:       " << contact.normal.transpose() << "\n"
-              << "      depth:        " << contact.depth << "\n"
-              << "      body_type_1:  " << contact.body_type_1 << " name: " << contact.body_name_1 << "\n"
-              << "      body_type_2:  " << contact.body_type_2 << " name: " << contact.body_name_2 << "\n";
+      out << "      pos:          " << contact.pos.transpose() << "\n"
+          << "      normal:       " << contact.normal.transpose() << "\n"
+          << "      depth:        " << contact.depth << "\n"
+          << "      body_type_1:  " << contact.body_type_1 << " name: " << contact.body_name_1 << "\n"
+          << "      body_type_2:  " << contact.body_type_2 << " name: " << contact.body_name_2 << "\n";
     }
   }
   out << std::flush;
@@ -189,7 +191,8 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
   auto const left_flange_name = left_arm_->arm->getLinkModels().back()->getName();
   left_tool_offset_ = lookupTransform(*tf_buffer_, left_flange_name, left_tool_frame_, ros::Time(0), ros::Duration(5));
   auto const right_flange_name = right_arm_->arm->getLinkModels().back()->getName();
-  right_tool_offset_ = lookupTransform(*tf_buffer_, right_flange_name, right_tool_frame_, ros::Time(0), ros::Duration(5));
+  right_tool_offset_ =
+      lookupTransform(*tf_buffer_, right_flange_name, right_tool_frame_, ros::Time(0), ros::Duration(5));
 
   // Retrieve the planning scene obstacles if possible, otherwise default to a saved set
   {
@@ -266,6 +269,9 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
       updatePlanningScene();
     }
   }
+
+  set_grasping_rope_client_ = nh_.serviceClient<peter_msgs::SetBool>("set_grasping_rope");
+  world_control_client_ = nh_.serviceClient<peter_msgs::WorldControl>("world_control");
 
   // Disable collisions between the static obstacles and Victor's non-moving parts
   planning_scene_->getAllowedCollisionMatrixNonConst().setEntry(Scene::OBSTACLES_NAME, false);
@@ -617,6 +623,11 @@ void VictorInterface::followTrajectory(trajectory_msgs::JointTrajectory const& t
 void VictorInterface::gotoHome()
 {
   ROS_INFO("Going home");
+  // let go of the rope
+  peter_msgs::SetBool release_rope;
+  release_rope.request.data = false;
+  set_grasping_rope_client_.call(release_rope);
+
   // TODO: make this a service call
   joint_states_listener_->waitForNew(1000.0);
   auto const start_state = getCurrentRobotState();
@@ -624,8 +635,20 @@ void VictorInterface::gotoHome()
   ROS_INFO("Planning to home");
   auto const traj = plan(start_state, goal_state);
   followTrajectory(traj);
-  ROS_INFO("At home");
-  arc_helpers::Sleep(0.5);
+  ROS_INFO("Done attempting to move home");
+
+  peter_msgs::SetBool grasp_rope;
+  grasp_rope.request.data = true;
+  set_grasping_rope_client_.call(grasp_rope);
+
+  settle();
+}
+
+void VictorInterface::settle()
+{
+  peter_msgs::WorldControl settle;
+  settle.request.seconds = 30;
+  world_control_client_.call(settle);
 }
 
 bool VictorInterface::moveInRobotFrame(
@@ -968,10 +991,8 @@ void VictorInterface::updatePlanningScene()
   moveit_msgs::GetPlanningSceneRequest req;
   req.components.components =
       moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_NAMES |
-      moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_GEOMETRY |
-      moveit_msgs::PlanningSceneComponents::OCTOMAP |
-      moveit_msgs::PlanningSceneComponents::TRANSFORMS |
-      moveit_msgs::PlanningSceneComponents::OBJECT_COLORS;
+      moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_GEOMETRY | moveit_msgs::PlanningSceneComponents::OCTOMAP |
+      moveit_msgs::PlanningSceneComponents::TRANSFORMS | moveit_msgs::PlanningSceneComponents::OBJECT_COLORS;
   moveit_msgs::GetPlanningSceneResponse resp;
   get_planning_scene_client_.call(req, resp);
   planning_scene_->processPlanningSceneWorldMsg(resp.scene.world);

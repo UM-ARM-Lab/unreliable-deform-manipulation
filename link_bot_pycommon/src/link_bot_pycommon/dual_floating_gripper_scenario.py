@@ -12,7 +12,7 @@ from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from tf import transformations
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
-from victor_hardware_interface.msg import MotionCommand
+from victor_hardware_interface_msgs.msg import MotionCommand
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, WorldControlRequest, \
     WorldControl, SetRopeState, SetRopeStateRequest, SetDualGripperPoints, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest, SetBoolRequest, SetBool
@@ -39,7 +39,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         self.nudge_rng = np.random.RandomState(0)
 
-        self.params['settling_time'] = rospy.get_param("traj_goal_time_tolerance")
+        self.params['settling_time'] = rospy.get_param("world_interaction/traj_goal_time_tolerance")
 
         self.max_action_attempts = 1000
 
@@ -197,10 +197,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.grasping_rope_srv(grasp)
         self.settle()
 
-        # try to move back
+        # try to move back, but add some noise so we don't get immediately stuck again
+        noise1 = env_rng.randn(3) * 0.1
+        noise2 = env_rng.randn(3) * 0.1
         return_action = {
-            'gripper1_position': pre_randomize_gripper1_position,
-            'gripper2_position': pre_randomize_gripper2_position,
+            'gripper1_position': pre_randomize_gripper1_position + noise1,
+            'gripper2_position': pre_randomize_gripper2_position + noise2,
         }
         self.execute_action(return_action)
 

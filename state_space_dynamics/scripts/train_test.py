@@ -122,7 +122,7 @@ def main():
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=16)
     train_parser.add_argument('--take', type=int)
-    train_parser.add_argument('--epochs', type=int, default=100)
+    train_parser.add_argument('--epochs', type=int, default=500)
     train_parser.add_argument('--ensemble-idx', type=int)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
@@ -144,7 +144,10 @@ def main():
 
     args = parser.parse_args()
 
-    rospy.init_node("train_test")
+    from time import time
+    now = str(int(time()))
+    name = f"train_test_{now}"
+    rospy.init_node(name)
 
     if args.seed is None:
         seed = np.random.randint(0, 10000)
