@@ -902,15 +902,7 @@ bool Manipulator::jacobianPath3D(
     if (!ikSoln)
     {
       ROS_WARN_STREAM("IK Stalled at idx " << idx << " for " << palmName << "; returning early");
-      // stop a few steps earlier if possible
-      auto const stop_at_idx = [idx]() {
-        if (idx > 5)
-        {
-          return idx - 5;
-        }
-        return 1ul;
-      }();
-      cmd.points.resize(stop_at_idx);
+      cmd.points.resize(idx);
       cmd.points.shrink_to_fit();
       break;
     }

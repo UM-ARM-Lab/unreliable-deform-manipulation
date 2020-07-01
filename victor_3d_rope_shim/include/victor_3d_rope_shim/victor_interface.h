@@ -57,9 +57,11 @@ public:
   std::shared_ptr<Scene> scene_;
   std::shared_ptr<VictorManipulator> left_arm_;
   std::shared_ptr<VictorManipulator> right_arm_;
+  ros::Publisher talker_;
+
+  std::mutex planning_scene_mtx_;
   planning_scene::PlanningScenePtr planning_scene_;
   ros::Publisher planning_scene_publisher_;
-  ros::Publisher talker_;
 
   std::shared_ptr<Listener<sensor_msgs::JointState>> joint_states_listener_;
   robot_state::RobotState home_state_;
@@ -72,7 +74,6 @@ public:
 
   VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer);
 
-  void UpdatePlanningScene();
   void test();
 
   robot_state::RobotState getCurrentRobotState() const;
@@ -87,7 +88,7 @@ public:
   bool moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions);
   bool moveInWorldFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions);
 
-  void visualizePlanningScene();
+  void updatePlanningScene();
 };
 
 #endif

@@ -12,23 +12,24 @@ std::pair<Eigen::Translation3d, Eigen::Translation3d> toGripperPositions(geometr
 }
 
 VictorShim::VictorShim(ros::NodeHandle nh, ros::NodeHandle ph)
+  : nh_(nh)
+  , ph_(ph)
 {
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>();
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
   victor_ = std::make_shared<VictorInterface>(nh, ph, tf_buffer_);
-
-  // DualGripper control/exection
-  {
-    execute_traj_srv_ = nh.advertiseService("execute_dual_gripper_action", &VictorShim::executeTrajectory, this);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
+void VictorShim::enableServices()
+{
+  execute_traj_srv_ = nh_.advertiseService("execute_dual_gripper_action", &VictorShim::executeTrajectory, this);
+  ROS_INFO("Ready for commands");
+}
+
 bool VictorShim::executeTrajectory(pm::DualGripperTrajectory::Request& req, pm::DualGripperTrajectory::Response& res)
 {
-  victor_->UpdatePlanningScene();
-
   if (req.gripper1_points.size() != req.gripper2_points.size())
   {
     ROS_WARN("Mismatched gripper trajectory sizes, doing nothing.");

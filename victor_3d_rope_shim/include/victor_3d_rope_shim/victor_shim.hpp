@@ -13,16 +13,17 @@
 class VictorShim
 {
 public:
-  std::shared_ptr<VictorInterface> victor_;
-
+  ros::NodeHandle nh_;
+  ros::NodeHandle ph_;
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-
+  std::shared_ptr<VictorInterface> victor_;
   ros::ServiceServer execute_traj_srv_;
 
   VictorShim(ros::NodeHandle nh, ros::NodeHandle ph);
 
   // Victor control/exection
+  void enableServices();
   bool executeTrajectory(peter_msgs::DualGripperTrajectory::Request& req,
                          peter_msgs::DualGripperTrajectory::Response& res);
 };

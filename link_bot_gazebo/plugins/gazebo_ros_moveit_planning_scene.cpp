@@ -54,7 +54,6 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
 {
   // Get the world name.
   this->world_ = _model->GetWorld();
-
   this->model_name_ = _model->GetName();
 
   {

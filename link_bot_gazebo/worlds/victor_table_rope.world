@@ -19,6 +19,8 @@
                     <contact_max_correcting_vel>0</contact_max_correcting_vel>
                 </constraints>
             </ode>
+            <max_step_size>0.002</max_step_size>
+            <real_time_update_rate>0</real_time_update_rate>
         </physics>
 
         <model name="victor_and_rope">
@@ -32,7 +34,7 @@
                 <robotName>victor</robotName>
                 <frameId>victor_root</frameId>
                 <updatePeriod>0.1</updatePeriod>
-                <scalePrimitivesFactor>1.01</scalePrimitivesFactor>
+                <scalePrimitivesFactor>1.0</scalePrimitivesFactor>
             </plugin>
             <include>
                 <name>victor</name>

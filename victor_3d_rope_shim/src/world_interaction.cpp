@@ -12,18 +12,17 @@ int main(int argc, char* argv[])
   spinner.start();
 
   VictorShim vs(nh, ph);
-  vs.victor_->visualizePlanningScene();
-  vs.victor_->test();
+  vs.victor_->updatePlanningScene();
+  // vs.victor_->test();
   vs.victor_->gotoHome();
+  vs.enableServices();
 
-  // Test moving the hands to a specific location relative to the table
-  // peter_msgs::DualGripperTrajectory::Request req;
-  // peter_msgs::DualGripperTrajectory::Response res;
-  // req.gripper1_points = {arc_utilities::rmb::MakePoint(1.1,  0.4, 1.05)};
-  // req.gripper2_points = {arc_utilities::rmb::MakePoint(1.1, -0.4, 1.05)};
-  // vs.executeTrajectory(req, res);
-
-  ros::waitForShutdown();
+  ros::Rate rate(1);
+  while (ros::ok())
+  {
+    vs.victor_->updatePlanningScene();
+    rate.sleep();
+  }
 
   return EXIT_SUCCESS;
 }

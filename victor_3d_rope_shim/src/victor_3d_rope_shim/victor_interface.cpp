@@ -124,6 +124,28 @@ trajectory_msgs::JointTrajectory MergeTrajectories(trajectory_msgs::JointTraject
   return merged;
 }
 
+static std::ostream& operator<<(std::ostream& out, collision_detection::CollisionResult const& cr)
+{
+  out << "  collision:      " << cr.collision << "\n"
+      << "  distance:       " << cr.distance << "\n"
+      << "  contact_count:  " << cr.contact_count << "\n"
+      << "  contacts:\n";
+  for (auto const& [names, contact_list] : cr.contacts)
+  {
+    out << "    " << names.first << "," << names.second << "\n";
+    for (auto const& contact: contact_list)
+    {
+          out << "      pos:          " << contact.pos.transpose() << "\n"
+              << "      normal:       " << contact.normal.transpose() << "\n"
+              << "      depth:        " << contact.depth << "\n"
+              << "      body_type_1:  " << contact.body_type_1 << " name: " << contact.body_name_1 << "\n"
+              << "      body_type_2:  " << contact.body_type_2 << " name: " << contact.body_name_2 << "\n";
+    }
+  }
+  out << std::flush;
+  return out;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -167,8 +189,7 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
   auto const left_flange_name = left_arm_->arm->getLinkModels().back()->getName();
   left_tool_offset_ = lookupTransform(*tf_buffer_, left_flange_name, left_tool_frame_, ros::Time(0), ros::Duration(5));
   auto const right_flange_name = right_arm_->arm->getLinkModels().back()->getName();
-  right_tool_offset_ =
-      lookupTransform(*tf_buffer_, right_flange_name, right_tool_frame_, ros::Time(0), ros::Duration(5));
+  right_tool_offset_ = lookupTransform(*tf_buffer_, right_flange_name, right_tool_frame_, ros::Time(0), ros::Duration(5));
 
   // Retrieve the planning scene obstacles if possible, otherwise default to a saved set
   {
@@ -243,7 +264,7 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
     {
       planning_scene_ = std::make_shared<planning_scene::PlanningScene>(robot_model_, scene_->computeCollisionWorld());
 
-      UpdatePlanningScene();
+      updatePlanningScene();
     }
   }
 
@@ -267,7 +288,7 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
   // Attach the cat toy/wand to Victor - actually attaches to the state in the planning scene (I think)
   // TODO: attach the wand to states directly where needed
   // NB: This code is old and should not be trusted, it was not in use when copied from old codebase
-  if (true)
+  if (false) // Peter: If you change this, please tell me
   {
     moveit_msgs::AttachedCollisionObject attached_object;
     // Name of the link that this object will be rigidly attached to
@@ -297,21 +318,6 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
     // Actually attach the object
     planning_scene_->processAttachedCollisionObjectMsg(attached_object);
   }
-}
-
-void VictorInterface::UpdatePlanningScene()
-{
-  // TODO: Is this request really what we want for a more generic task?
-  moveit_msgs::GetPlanningSceneRequest req;
-  req.components.components =
-      moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_NAMES |
-      moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_GEOMETRY | moveit_msgs::PlanningSceneComponents::OCTOMAP |
-      moveit_msgs::PlanningSceneComponents::TRANSFORMS | moveit_msgs::PlanningSceneComponents::OBJECT_COLORS;
-  moveit_msgs::GetPlanningSceneResponse resp;
-  get_planning_scene_client_.call(req, resp);
-  planning_scene_->processPlanningSceneWorldMsg(resp.scene.world);
-
-  visualizePlanningScene();
 }
 
 void VictorInterface::test()
@@ -667,8 +673,32 @@ bool VictorInterface::moveInRobotFrame(
 bool VictorInterface::moveInWorldFrame(
     std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions)
 {
-  auto const current_state = getCurrentRobotState();
+  updatePlanningScene();
+  // FIXME: updatePlanningScene can be called externally inbetween these 2 statements
+  std::lock_guard lock(planning_scene_mtx_);
+  auto const current_state = planning_scene_->getCurrentState();
   auto const current_tool_poses = getToolTransforms(current_state);
+
+  // Verify that the start state is collision free
+  {
+    collision_detection::CollisionRequest collision_request;
+    collision_detection::CollisionResult collision_result;
+    planning_scene_->checkCollision(collision_request, collision_result, current_state);
+    if (collision_result.collision)
+    {
+      std::cerr << "Collision at start_state:\n" << collision_result << std::endl;
+      std::cerr << "Joint limits at start_state\n";
+      PRINT_STATE_POSITIONS_WITH_JOINT_LIMITS(current_state, left_arm_->arm, std::cerr);
+      PRINT_STATE_POSITIONS_WITH_JOINT_LIMITS(current_state, right_arm_->arm, std::cerr);
+
+      std::string asdf = "";
+      while (asdf != "c")
+      {
+        std::cerr << "Waiting for input/debugger attaching " << std::flush;
+        std::cin >> asdf;
+      }
+    }
+  }
 
   // Debugging
   if (true)
@@ -951,11 +981,10 @@ bool VictorInterface::moveInWorldFrame(
     collision_res.clear();
   }
 
-  auto empty_merged_cmd = merged_cmd.points.size() < 2;
-  ROS_INFO_STREAM(merged_cmd.points.size());
+  auto const empty_merged_cmd = merged_cmd.points.size() < 2;
   if (empty_merged_cmd)
   {
-    ROS_WARN_STREAM("final trajectory was empty");
+    ROS_WARN_STREAM("Final trajectory was empty");
   }
 
   followTrajectory(merged_cmd);
@@ -963,11 +992,24 @@ bool VictorInterface::moveInWorldFrame(
   return empty_merged_cmd;
 }
 
-void VictorInterface::visualizePlanningScene()
+void VictorInterface::updatePlanningScene()
 {
-  moveit_msgs::PlanningScene scene_msg;
+  std::lock_guard lock(planning_scene_mtx_);
+
+  // TODO: Is this request really what we want for a more generic task?
+  moveit_msgs::GetPlanningSceneRequest req;
+  req.components.components =
+      moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_NAMES |
+      moveit_msgs::PlanningSceneComponents::WORLD_OBJECT_GEOMETRY |
+      moveit_msgs::PlanningSceneComponents::OCTOMAP |
+      moveit_msgs::PlanningSceneComponents::TRANSFORMS |
+      moveit_msgs::PlanningSceneComponents::OBJECT_COLORS;
+  moveit_msgs::GetPlanningSceneResponse resp;
+  get_planning_scene_client_.call(req, resp);
+  planning_scene_->processPlanningSceneWorldMsg(resp.scene.world);
   planning_scene_->setCurrentState(getCurrentRobotState());
+
+  moveit_msgs::PlanningScene scene_msg;
   planning_scene_->getPlanningSceneMsg(scene_msg);
-  scene_msg.is_diff = false;
   planning_scene_publisher_.publish(scene_msg);
 }

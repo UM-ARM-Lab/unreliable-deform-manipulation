@@ -244,19 +244,32 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
   }
 
+  // Publish the robot state at roughly 100 Hz
   periodic_event_thread_ = std::thread([this] {
-    while (true)
+    while (ros::ok())
     {
-      // Make the rope grippers match the current Victor tool positions at roughly 100 Hz
       using namespace std::chrono_literals;
       std::this_thread::sleep_for(0.01s);
       std::lock_guard lock(ros_mutex_);
       PeriodicUpdate();
     }
   });
+
+  ROS_INFO("kinematic_victor_plugin loaded.");
 }
 
 void KinematicVictorPlugin::PeriodicUpdate()
+{
+  PublishJointStates();
+
+  PublishLeftArmMotionStatus();
+  PublishRightArmMotionStatus();
+
+  PublishLeftGripperStatus();
+  PublishRightGripperStatus();
+}
+
+void KinematicVictorPlugin::PublishJointStates()
 {
   // Remove the leading "victor::" from the joint names
   auto const n_removed = std::strlen("victor::");
@@ -274,12 +287,6 @@ void KinematicVictorPlugin::PeriodicUpdate()
   }
   msg.header.stamp = ros::Time::now();
   joint_states_pub_.publish(msg);
-
-  PublishLeftArmMotionStatus();
-  PublishRightArmMotionStatus();
-
-  PublishLeftGripperStatus();
-  PublishRightGripperStatus();
 }
 
 void KinematicVictorPlugin::PublishLeftGripperStatus()
@@ -437,6 +444,7 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
 
       // Make the grippers match the tool positions, then step the world to allow the rope to "catch up"
       TeleportGrippers();
+      PublishJointStates();
       world_->Step(steps);
     }
 

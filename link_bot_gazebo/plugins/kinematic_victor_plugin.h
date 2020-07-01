@@ -29,9 +29,9 @@ public:
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
 
+  void PublishJointStates();
   void PublishLeftArmMotionStatus();
   void PublishRightArmMotionStatus();
-
   void PublishLeftGripperStatus();
   void PublishRightGripperStatus();
 
