@@ -263,7 +263,6 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
     else
     {
       planning_scene_ = std::make_shared<planning_scene::PlanningScene>(robot_model_, scene_->computeCollisionWorld());
-
       updatePlanningScene();
     }
   }
@@ -283,40 +282,6 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
     home_state_.update();
     home_state_tool_poses_world_frame_ = getToolTransforms(home_state_);
     planning_scene_->setCurrentState(home_state_);
-  }
-
-  // Attach the cat toy/wand to Victor - actually attaches to the state in the planning scene (I think)
-  // TODO: attach the wand to states directly where needed
-  // NB: This code is old and should not be trusted, it was not in use when copied from old codebase
-  if (false) // Peter: If you change this, please tell me
-  {
-    moveit_msgs::AttachedCollisionObject attached_object;
-    // Name of the link that this object will be rigidly attached to
-    attached_object.link_name = left_flange_name;
-    // Frame to interpret data in, and the name of the object
-    attached_object.object.header.frame_id = "victor_left_gripper_palm_surface";
-    attached_object.object.id = "left_cat_toy_wand";
-    attached_object.object.operation = attached_object.object.ADD;
-    // Define a cylinder to be attached
-    {
-      shape_msgs::SolidPrimitive cylinder;
-      cylinder.type = cylinder.CYLINDER;
-      cylinder.dimensions.resize(2);
-      cylinder.dimensions[cylinder.CYLINDER_HEIGHT] = 8 * 0.0254 + 1;
-      cylinder.dimensions[cylinder.CYLINDER_RADIUS] = 0.05;
-      // Define the pose of the cylinder
-      geomsg::Pose pose;
-      pose.orientation.w = 1.0;
-      pose.position.z = cylinder.dimensions[cylinder.CYLINDER_HEIGHT] / 2;
-
-      attached_object.object.primitives.push_back(cylinder);
-      attached_object.object.primitive_poses.push_back(pose);
-    }
-    // Define the links for which collision is ignored
-    attached_object.touch_links = left_arm_->gripper->getLinkModelNames();
-
-    // Actually attach the object
-    planning_scene_->processAttachedCollisionObjectMsg(attached_object);
   }
 }
 
@@ -380,6 +345,7 @@ void VictorInterface::test()
                                                 Eigen::AngleAxisd(-45.0 * TO_RADIANS, Eigen::Vector3d::UnitY());
     Eigen::Translation3d const root_to_tool(1.0, 0.3, 0.95);
     Pose const world_target_pose = worldTrobot * root_to_tool * root_to_tool_rot;
+    std::lock_guard lock(planning_scene_mtx_);
     auto const ik_solutions = left_arm_->IK(world_target_pose, robotTworld, home_state_, planning_scene_);
     std::cerr << "IK Solutions at target: " << ik_solutions.size() << std::endl;
 
@@ -429,6 +395,7 @@ void VictorInterface::test()
                                                 Eigen::AngleAxisd(-45.0 * TO_RADIANS, Eigen::Vector3d::UnitY());
     Eigen::Translation3d const root_to_tool(1.0, -0.3, 0.95);
     Pose const world_target_pose = worldTrobot * root_to_tool * root_to_tool_rot;
+    std::lock_guard lock(planning_scene_mtx_);
     auto const ik_solutions = right_arm_->IK(world_target_pose, robotTworld, home_state_, planning_scene_);
     std::cerr << "IK Solutions at target: " << ik_solutions.size() << std::endl;
 
@@ -561,6 +528,7 @@ trajectory_msgs::JointTrajectory VictorInterface::plan(robot_state::RobotState c
   req.allowed_planning_time = ALLOWED_PLANNING_TIME;
 
   /* Re-construct the planning context */
+  std::lock_guard lock(planning_scene_mtx_);
   planning_scene_->setCurrentState(start_state);
   ROS_WARN("The following line of code will likely give a 'Found empty JointState message' error,"
            " but can probably be ignored: https://github.com/ros-planning/moveit/issues/659");
