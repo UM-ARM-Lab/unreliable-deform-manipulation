@@ -80,6 +80,9 @@ private:
   physics::LinkPtr right_flange_;
   physics::LinkPtr gripper1_;
   physics::LinkPtr gripper2_;
+  physics::LinkPtr gripper1_rope_link_;
+  physics::LinkPtr gripper2_rope_link_;
+  double max_dist_between_gripper_and_link_;
   ignition::math::Pose3d left_flange_to_gripper1_;
   ignition::math::Pose3d right_flange_to_gripper2_;
 

@@ -51,7 +51,7 @@
             </include>
             <include>
                 <!-- The pose of gripper2 (to be attached to Victor's right gripper) -->
-                <pose>0.869 -0.125 0.867 0 0 1.57079632679</pose>
+                <pose>0.9 -0.3 1.2 0 0 1.57079632679</pose>
                 <uri>model://kinematic_rope</uri>
             </include>
             <plugin name="gazebo_ros_moveit_planning_scene" filename="libgazebo_ros_moveit_planning_scene.so">

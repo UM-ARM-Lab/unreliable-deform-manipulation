@@ -71,14 +71,14 @@ KinematicVictorPlugin::~KinematicVictorPlugin()
 
 void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 {
+  model_ = parent;
+  world_ = model_->GetWorld();
+
   if (!ros::isInitialized())
   {
     int argc = 0;
     ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
   }
-
-  model_ = parent;
-  world_ = model_->GetWorld();
 
   // Handle initial_position tags because the SDFormat used does not at this version
   {
@@ -93,6 +93,15 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
         {
           auto initial_position = axis->GetElement("initial_position")->Get<double>();
           model_->GetJoint(joint->Get<std::string>("name"))->SetPosition(0, initial_position);
+        }
+      }
+      if (joint->HasElement("axis2"))
+      {
+        auto axis = joint->GetElement("axis2");
+        if (axis->HasElement("initial_position"))
+        {
+          auto initial_position = axis->GetElement("initial_position")->Get<double>();
+          model_->GetJoint(joint->Get<std::string>("name"))->SetPosition(1, initial_position);
         }
       }
       joint = joint->GetNextElement("joint");
@@ -148,6 +157,40 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       ROS_ERROR_STREAM("Invalid link name for rope gripper2: " << gripper2_name_);
     }
 
+    // Extract rope links connected to the floating grippers for use in FollowJointTrajectory
+    if (gripper1_)
+    {
+      auto const parent_links = gripper1_->GetParentJointsLinks();
+      ROS_WARN_COND(parent_links.size() != 1,
+                    "Victor plus rope kinematic structure is different than expected."
+                    " Check this code for correctness");
+      gripper1_rope_link_ = parent_links[0];
+    }
+    if (gripper2_)
+    {
+      auto const parent_links = gripper2_->GetParentJointsLinks();
+      ROS_WARN_COND(parent_links.size() != 1,
+                    "Victor plus rope kinematic structure is different than expected."
+                    " Check this code for correctness");
+      gripper2_rope_link_ = parent_links[0];
+    }
+    if (gripper1_rope_link_ && gripper2_rope_link_)
+    {
+      auto const dist_factor = sdf->Get<double>("max_dist_between_gripper_and_link_scale_factor", 1.1);
+      ROS_WARN_COND(!dist_factor.second, "max_dist_between_gripper_and_link_scale_factor not set in victor.sdf, defaulting to 1.1");
+      double const gripper1_dist = (gripper1_->WorldPose().Pos() - gripper1_rope_link_->WorldPose().Pos()).Length();
+      double const gripper2_dist = (gripper2_->WorldPose().Pos() - gripper2_rope_link_->WorldPose().Pos()).Length();
+      max_dist_between_gripper_and_link_ = dist_factor.first * std::max(gripper1_dist, gripper2_dist);
+      ROS_WARN_STREAM_COND(max_dist_between_gripper_and_link_ < 1e-3,
+                           "max_dist_between_gripper_and_link_ is set to " << max_dist_between_gripper_and_link_
+                           << ". This appears abnormally low.");
+    }
+    else
+    {
+      max_dist_between_gripper_and_link_ = std::numeric_limits<double>::max();
+      ROS_WARN_STREAM("Errors getting correct links for overstretching detection. Setting max dist to " << max_dist_between_gripper_and_link_);
+    }
+
     while (!tf_buffer_.canTransform(left_flange_tf_name_, gripper1_tf_name_, ros::Time(0)))
     {
       ROS_INFO_STREAM_THROTTLE(1.0, "Waiting for transform between "
@@ -166,7 +209,7 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     TeleportGrippers();
   }
 
-  // Setup ROS stuff
+  // Setup ROS publishers, subscribers, and services, action servers
   {
     private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
     joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 1);
@@ -193,6 +236,7 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     ros_queue_thread_ = std::thread([this] { QueueThread(); });
     private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
   }
+
 
   periodic_event_thread_ = std::thread([this] {
     while (true)
@@ -361,30 +405,70 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
   ROS_INFO_STREAM("Received trajectory with "
                   << "seconds_per_step: " << seconds_per_step << "  settling_time_seconds: " << settling_time_seconds
                   << "  steps per point: " << steps << "  points: " << goal->trajectory.points.size());
-  for (auto const &point : goal->trajectory.points)
-  {
-    std::lock_guard lock(ros_mutex_);
 
-    // Move Victor to the specified joint configuration
-    for (auto const &[joint_idx, joint_name]: enumerate(goal->trajectory.joint_names))
+  for (auto const &[point_idx, point] : enumerate(goal->trajectory.points))
+  {
+    // Set the kinematic position of Victor plus the rope grippers, then simulate
     {
-      auto joint = model_->GetJoint("victor::" + joint_name);
-      if (joint)
+      std::lock_guard lock(ros_mutex_);
+      // Move Victor to the specified joint configuration
+      for (auto const &[joint_idx, joint_name]: enumerate(goal->trajectory.joint_names))
       {
-        joint->SetPosition(0, point.positions[joint_idx]);
+        auto joint = model_->GetJoint("victor::" + joint_name);
+        if (joint)
+        {
+          joint->SetPosition(0, point.positions[joint_idx]);
+        }
+        else
+        {
+          ROS_ERROR_STREAM("Invalid joint: " << "victor::" + joint_name);
+          result.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_JOINTS;
+          follow_traj_server_->setAborted(result);
+          return;
+        }
       }
-      else
-      {
-        ROS_ERROR_STREAM("Invalid joint: " << "victor::" + joint_name);
-        result.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_JOINTS;
-        follow_traj_server_->setAborted(result);
-        return;
-      }
+
+      // Make the grippers match the tool positions, then step the world to allow the rope to "catch up"
+      TeleportGrippers();
+      world_->Step(steps);
     }
 
-    // Make the grippers match the tool positions, then step the world to allow the rope to "catch up"
-    TeleportGrippers();
-    world_->Step(steps);
+    // Check if the rope has become overstretched
+    auto const rewind_needed = [this] {
+      auto const gripper1_dist = (gripper1_->WorldPose().Pos() - gripper1_rope_link_->WorldPose().Pos()).Length();
+      auto const gripper2_dist = (gripper2_->WorldPose().Pos() - gripper2_rope_link_->WorldPose().Pos()).Length();
+      return (gripper1_dist > max_dist_between_gripper_and_link_) || (gripper2_dist > max_dist_between_gripper_and_link_);
+    };
+
+    if (rewind_needed())
+    {
+      ROS_WARN_STREAM("Requested action overstretched the rope at point_idx " << point_idx << ", rewinding.");
+
+      for (auto rewind_idx = point_idx; rewind_idx > 0; --rewind_idx)
+      {
+        auto const& rewind_point = goal->trajectory.points[rewind_idx - 1];
+        std::lock_guard lock(ros_mutex_);
+        // Move Victor to the specified joint configuration
+        for (auto const &[joint_idx, joint_name]: enumerate(goal->trajectory.joint_names))
+        {
+          auto joint = model_->GetJoint("victor::" + joint_name);
+          joint->SetPosition(0, rewind_point.positions[joint_idx]);
+        }
+
+        // Make the grippers match the tool positions, then step the world to allow the rope to "catch up"
+        TeleportGrippers();
+        world_->Step(steps);
+
+        if (!rewind_needed())
+        {
+          ROS_WARN_STREAM("Rewind stopped at rewind_idx " << rewind_idx - 1);
+          break;
+        }
+      }
+
+      ROS_ERROR_COND(rewind_needed(), "Rewind unable to find unstretched state. Rewound to start of trajectory.");
+      break;
+    }
   }
 
   follow_traj_server_->setSucceeded(result);
