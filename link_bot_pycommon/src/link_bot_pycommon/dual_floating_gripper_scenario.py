@@ -12,7 +12,7 @@ from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from tf import transformations
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
-from victor_hardware_interface.msg import MotionCommand
+from victor_hardware_interface_msgs.msg import MotionCommand
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, WorldControlRequest, \
     WorldControl, SetRopeState, SetRopeStateRequest, SetDualGripperPoints, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest, SetBoolRequest, SetBool

@@ -13,3 +13,4 @@ fwd_model_data
 logdata
 __pycache__
 trials
+CATKIN_IGNORE

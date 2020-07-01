@@ -3,8 +3,8 @@
 # Mostly copied from kuka_iiwa_interface/victor_fake_hardware_interface/src/victor_fake_hardware_interface/minimal_fake_arm_interface.py
 
 import rospy
-from victor_hardware_interface.msg import *
-from victor_hardware_interface.srv import *
+from victor_hardware_interface_msgs.msg import *
+from victor_hardware_interface_msgs.srv import *
 from threading import Thread
 from threading import Lock
 
