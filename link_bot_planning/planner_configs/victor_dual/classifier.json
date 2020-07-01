@@ -1,8 +1,8 @@
 {
   "termination_criteria": {
     "times_called_threshold": 100,
-    "min_distance_to_goal_threshold": 0.5,
-    "timeout": 120
+    "min_distance_to_goal_threshold": 0.25,
+    "timeout": 320
   },
   "extent": [
     0.3,
@@ -36,11 +36,9 @@
   "goal_threshold": 0.05,
   "fixed_goal": null,
   "real_time_rate": 0.0,
-  "scenario": "link_bot",
   "table_config": {
     "nickname": [
       "Classifier",
-      "6-step"
     ],
     "classifier": "Learned",
     "dynamics": [

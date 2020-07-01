@@ -1,134 +1,49 @@
 {
-  "fwd_model_dir": [
-    "dy_trials/victor_dual_no_obs_1_0",
-    "dy_trials/victor_dual_no_obs_1_1",
-    "dy_trials/victor_dual_no_obs_1_2",
-    "dy_trials/victor_dual_no_obs_1_3",
-    "dy_trials/victor_dual_no_obs_1_4",
-    "dy_trials/victor_dual_no_obs_1_5",
-    "dy_trials/victor_dual_no_obs_1_6",
-    "dy_trials/victor_dual_no_obs_1_7"
+  "termination_criteria": {
+    "times_called_threshold": 100,
+    "min_distance_to_goal_threshold": 0.25,
+    "timeout": 120
+  },
+  "extent": [
+    0.3,
+    1.2,
+    -0.72,
+    0.72,
+    0.65,
+    1.4
   ],
-  "classifier_model_dir": "classifiers/none/",
-  "planner_type": "NearestRRT",
-  "sampler_type": "random",
-  "directed_control_sampler": "simple",
+  "goal_extent": [
+    0.4,
+    1.1,
+    -0.62,
+    0.62,
+    0.75,
+    1.2
+  ],
+  "fwd_model_dir": [
+    "dy_trials/victor_dual_no_obs_1_0/best_checkpoint",
+    "dy_trials/victor_dual_no_obs_1_1/best_checkpoint",
+    "dy_trials/victor_dual_no_obs_1_2/best_checkpoint",
+    "dy_trials/victor_dual_no_obs_1_3/best_checkpoint",
+    "dy_trials/victor_dual_no_obs_1_4/best_checkpoint",
+    "dy_trials/victor_dual_no_obs_1_5/best_checkpoint",
+    "dy_trials/victor_dual_no_obs_1_6/best_checkpoint",
+    "dy_trials/victor_dual_no_obs_1_7/best_checkpoint"
+  ],
+  "classifier_model_dir": "cl_trials/none_baseline/none",
   "accept_threshold": 0.5,
-  "max_angle_rad": 1.0,
-  "full_env_w": 2.0,
-  "full_env_h": 2.0,
-  "goal_w_m": 1.5,
-  "goal_h_m": 1.5,
-  "timeout": 120,
+  "movable_obstacles": {},
   "goal_threshold": 0.05,
   "fixed_goal": null,
-  "reset_robot": null,
   "real_time_rate": 0.0,
-  "max_step_size": 0.01,
-  "smoothing": null,
-  "scenario": "link_bot",
   "table_config": {
     "nickname": [
       "None"
     ],
-    "classifier": [
-      "None"
-    ],
+    "classifier": "None",
     "dynamics": [
       "Ensemble",
       "Unconstrained"
     ]
-  },
-  "movable_obstacles": {
-    "moving_box1": {
-      "x": [
-        -0.70,
-        -0.5
-      ],
-      "y": [
-        0.5,
-        0.7
-      ]
-    },
-    "moving_box2": {
-      "x": [
-        -0.4,
-        0.4
-      ],
-      "y": [
-        0.5,
-        0.7
-      ]
-    },
-    "moving_box3": {
-      "x": [
-        0.0,
-        0.4
-      ],
-      "y": [
-        0.5,
-        0.7
-      ]
-    },
-    "moving_box4": {
-      "x": [
-        -0.7,
-        -0.5
-      ],
-      "y": [
-        -0.4,
-        0.4
-      ]
-    },
-    "moving_box5": {
-      "x": [
-        -0.25,
-        0.25
-      ],
-      "y": [
-        -0.25,
-        0.25
-      ]
-    },
-    "moving_box6": {
-      "x": [
-        0.5,
-        0.7
-      ],
-      "y": [
-        -0.4,
-        0.4
-      ]
-    },
-    "moving_box7": {
-      "x": [
-        -0.7,
-        -0.5
-      ],
-      "y": [
-        -0.7,
-        -0.5
-      ]
-    },
-    "moving_box8": {
-      "x": [
-        -0.4,
-        0.4
-      ],
-      "y": [
-        -0.7,
-        -0.5
-      ]
-    },
-    "moving_box9": {
-      "x": [
-        0.5,
-        0.7
-      ],
-      "y": [
-        -0.7,
-        -0.5
-      ]
-    }
   }
 }

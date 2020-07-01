@@ -162,6 +162,21 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             or y < y_min or y > y_max \
             or z < z_min or z > z_max
 
+    def random_delta_position(self, Dict, action_rng: np.random.RandomState, environment: Dict):
+        max_d = self.params['max_distance_gripper_can_move']
+        delta1 = action_rng.uniform([-max_d, -max_d, -max_d], [max_d, max_d, max_d])
+        delta2 = action_rng.uniform([-max_d, -max_d, -max_d], [max_d, max_d, max_d])
+
+        delta1 = delta1 / np.linalg.norm(delta1)
+        gripper1_displacement = gripper1_displacement * max_d * action_rng.uniform(0, 1)
+        target_gripper1_pos = current_gripper1_pos + gripper1_displacement
+
+        gripper2_displacement = gripper2_displacement / np.linalg.norm(gripper2_displacement)
+        gripper2_displacement = gripper2_displacement * max_d * action_rng.uniform(0, 1)
+        target_gripper2_pos = current_gripper2_pos + gripper2_displacement
+
+        return target_gripper1_pos, target_gripper2_pos
+
     def random_nearby_position_action(self, state: Dict, action_rng: np.random.RandomState, environment: Dict):
         max_d = self.params['max_distance_gripper_can_move']
         target_gripper1_pos = Base3DScenario.random_pos(action_rng, self.params['gripper1_action_sample_extent'])
@@ -335,6 +350,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper2_position': 3,
         }
 
+    @staticmethod
+    def state_to_points_for_cc(state: Dict):
+        return state['link_bot'].reshape(-1, 3)
+
     @ staticmethod
     def index_predicted_state_time(state, t):
         state_t = {}
@@ -399,12 +418,24 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         }
 
     @staticmethod
-    def ompl_control_to_numpy(ompl_control: oc.CompoundControl):
-        gripper1_position = np.array([ompl_control[0][0], ompl_control[0][1], ompl_control[0][2]])
-        gripper2_position = np.array([ompl_control[1][0], ompl_control[1][1], ompl_control[1][2]])
+    def ompl_control_to_numpy(ompl_state: ob.CompoundState, ompl_control: oc.CompoundControl):
+        state_np = DualFloatingGripperRopeScenario.ompl_state_to_numpy(ompl_state)
+        current_gripper1_position = state_np['gripper1']
+        current_gripper2_position = state_np['gripper2']
+
+        rotation_matrix_1 = transformations.euler_matrix(0, ompl_control[0][0], ompl_control[0][1])
+        gripper1_delta_position_homo = rotation_matrix_1 @ np.array([1, 0, 0, 1]) * ompl_control[0][2]
+        gripper1_delta_position = gripper1_delta_position_homo[:3]
+
+        rotation_matrix_2 = transformations.euler_matrix(0, ompl_control[1][0], ompl_control[1][1])
+        gripper2_delta_position_homo = rotation_matrix_2 @ np.array([1, 0, 0, 1]) * ompl_control[1][2]
+        gripper2_delta_position = gripper2_delta_position_homo[:3]
+
+        target_gripper1_position = current_gripper1_position + gripper1_delta_position
+        target_gripper2_position = current_gripper2_position + gripper2_delta_position
         return {
-            'gripper1_position': gripper1_position,
-            'gripper2_position': gripper2_position,
+            'gripper1_position': target_gripper1_position,
+            'gripper2_position': target_gripper2_position,
         }
 
     @staticmethod
@@ -433,18 +464,20 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         gripper1_subspace = ob.RealVectorStateSpace(3)
         gripper1_bounds = ob.RealVectorBounds(3)
-        gripper1_bounds.setLow(0, planner_params['extent'][0])
-        gripper1_bounds.setHigh(0, planner_params['extent'][1])
-        gripper1_bounds.setLow(1, planner_params['extent'][2])
-        gripper1_bounds.setHigh(1, planner_params['extent'][3])
-        gripper1_bounds.setLow(2, planner_params['extent'][4])
-        gripper1_bounds.setHigh(2, planner_params['extent'][5])
+        # these bounds are not used for sampling
+        gripper1_bounds.setLow(0, -1000)
+        gripper1_bounds.setHigh(0, 1000)
+        gripper1_bounds.setLow(1, -1000)
+        gripper1_bounds.setHigh(1, 1000)
+        gripper1_bounds.setLow(2, -1000)
+        gripper1_bounds.setHigh(2, 1000)
         gripper1_subspace.setBounds(gripper1_bounds)
         gripper1_subspace.setName("gripper1")
-        state_space.addSubspace(gripper1_subspace, weight=1)
+        state_space.addSubspace(gripper1_subspace, weight=0)
 
         gripper2_subspace = ob.RealVectorStateSpace(3)
         gripper2_bounds = ob.RealVectorBounds(3)
+        # these bounds are not used for sampling
         gripper2_bounds.setLow(0, -1000)
         gripper2_bounds.setHigh(0, 1000)
         gripper2_bounds.setLow(1, -1000)
@@ -453,16 +486,16 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper2_bounds.setHigh(2, 1000)
         gripper2_subspace.setBounds(gripper2_bounds)
         gripper2_subspace.setName("gripper2")
-        state_space.addSubspace(gripper2_subspace, weight=1)
+        state_space.addSubspace(gripper2_subspace, weight=0)
 
         rope_subspace = ob.RealVectorStateSpace(45)
         rope_bounds = ob.RealVectorBounds(45)
-        # bounds for subspaces with zero weight do not matter
+        # these bounds are not used for sampling
         rope_bounds.setLow(-1000)
         rope_bounds.setHigh(1000)
         rope_subspace.setBounds(rope_bounds)
         rope_subspace.setName("rope")
-        state_space.addSubspace(rope_subspace, weight=0)
+        state_space.addSubspace(rope_subspace, weight=1)
 
         # extra subspace component for the variance, which is necessary to pass information from propagate to constraint checker
         stdev_subspace = ob.RealVectorStateSpace(1)
@@ -494,30 +527,39 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         gripper1_control_space = oc.RealVectorControlSpace(state_space, 3)
         gripper1_control_bounds = ob.RealVectorBounds(3)
-        gripper1_control_bounds.setLow(0, -0.05)
-        gripper1_control_bounds.setHigh(0, 0.05)
-        gripper1_control_bounds.setLow(1, -0.05)
-        gripper1_control_bounds.setHigh(1, 0.05)
-        gripper1_control_bounds.setLow(2, -0.05)
-        gripper1_control_bounds.setHigh(2, 0.05)
+        # Roll
+        gripper1_control_bounds.setLow(0, -np.pi)
+        gripper1_control_bounds.setHigh(0, np.pi)
+        # Pitch
+        gripper1_control_bounds.setLow(1, -np.pi)
+        gripper1_control_bounds.setHigh(1, np.pi)
+        # Displacement
+        max_d = self.params['max_distance_gripper_can_move']
+        gripper1_control_bounds.setLow(2, 0)
+        gripper1_control_bounds.setHigh(2, max_d)
         gripper1_control_space.setBounds(gripper1_control_bounds)
         control_space.addSubspace(gripper1_control_space)
 
         gripper2_control_space = oc.RealVectorControlSpace(state_space, 3)
         gripper2_control_bounds = ob.RealVectorBounds(3)
-        gripper2_control_bounds.setLow(0, -0.05)
-        gripper2_control_bounds.setHigh(0, 0.05)
-        gripper2_control_bounds.setLow(1, -0.05)
-        gripper2_control_bounds.setHigh(1, 0.05)
-        gripper2_control_bounds.setLow(2, -0.05)
-        gripper2_control_bounds.setHigh(2, 0.05)
+        # Roll
+        gripper2_control_bounds.setLow(0, -np.pi)
+        gripper2_control_bounds.setHigh(0, np.pi)
+        # Pitch
+        gripper2_control_bounds.setLow(1, -np.pi)
+        gripper2_control_bounds.setHigh(1, np.pi)
+        # Displacement
+        max_d = self.params['max_distance_gripper_can_move']
+        gripper2_control_bounds.setLow(2, 0)
+        gripper2_control_bounds.setHigh(2, max_d)
+
         gripper2_control_space.setBounds(gripper2_control_bounds)
         control_space.addSubspace(gripper2_control_space)
 
         def _control_sampler_allocator(cs):
             return DualGripperControlSampler(cs, scenario=self, rng=rng)
 
-        control_space.setControlSamplerAllocator(oc.ControlSamplerAllocator(_control_sampler_allocator))
+        # control_space.setControlSamplerAllocator(oc.ControlSamplerAllocator(_control_sampler_allocator))
 
         return control_space
 

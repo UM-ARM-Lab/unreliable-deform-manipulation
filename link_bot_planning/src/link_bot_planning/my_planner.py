@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
@@ -86,15 +85,11 @@ class MyPlanner:
     def motions_valid(self, motions):
         final_state = self.scenario.ompl_state_to_numpy(motions[-1].getState())
 
-        motions_valid = bool(np.squeeze(final_state['num_diverged'] <
-                                        self.classifier_model.horizon - 1))  # yes, minus 1
-        if self.verbose >= 3:
-            print(final_state)
-            print(motions_valid)
+        # motions_valid = final_state['num_diverged'] < self.classifier_model.horizon - 1  # yes, minus 1
+        motions_valid = final_state['num_diverged'] < 1
+        motions_valid = bool(np.squeeze(motions_valid))
         if not motions_valid:
-            # TODO visualize with rviz
-            # self.viz_object.rejected_samples.append(final_state)
-            pass
+            self.scenario.plot_rejected_state(final_state)
 
         # Do some bookkeeping to figure out how the planner is progressing
         distance_to_goal = self.scenario.distance_to_goal(final_state, self.goal_region.goal)
@@ -108,10 +103,11 @@ class MyPlanner:
         for t, motion in enumerate(motions):
             # motions is a vector of oc.Motion, which has a state, parent, and control
             state = motion.getState()
+            control = motion.getControl()
             state_t = self.scenario.ompl_state_to_numpy(state)
             states_sequence.append(state_t)
             if t > 0:  # skip the first (null) action, because that would represent the action that brings us to the first state
-                actions.append(self.scenario.ompl_control_to_numpy(motion.getControl()))
+                actions.append(self.scenario.ompl_control_to_numpy(state, control))
         actions = np.array(actions)
         return states_sequence, actions
 
@@ -142,10 +138,6 @@ class MyPlanner:
             all_actions.insert(0, previous_action)
             if self.verbose >= 3:
                 raise NotImplementedError()
-        if self.verbose >= 3:
-            plt.pause(1)
-            print(len(all_states))
-            input("press enter to continue")
         classifier_probabilities = self.classifier_model.check_constraint(environment=self.environment,
                                                                           states_sequence=all_states,
                                                                           actions=all_actions)
@@ -153,20 +145,23 @@ class MyPlanner:
         classifier_accept = final_classifier_probability > self.params['accept_threshold']
         final_predicted_state['num_diverged'] = np.array(
             [0.0]) if classifier_accept else last_previous_state['num_diverged'] + 1
-        return final_predicted_state
+        return final_predicted_state, final_classifier_probability
 
     def propagate(self, motions, control, duration, state_out):
         del duration  # unused, multi-step propagation is handled inside propagateMotionsWhileValid
 
         # Convert from OMPL -> Numpy
-        new_action = self.scenario.ompl_control_to_numpy(control)
         previous_states, previous_actions = self.motions_to_numpy(motions)
-        np_final_state = self.predict(previous_states, previous_actions, new_action)
+        previous_state = previous_states[-1]
+        previous_ompl_state = motions[-1].getState()
+        new_action = self.scenario.ompl_control_to_numpy(previous_ompl_state, control)
+        np_final_state, final_classifier_probability = self.predict(previous_states, previous_actions, new_action)
 
         # Convert back Numpy -> OMPL
         self.scenario.numpy_to_ompl_state(np_final_state, state_out)
 
         if self.verbose >= 2:
+            self.scenario.plot_tree_action(previous_state, new_action, alpha=final_classifier_probability)
             self.scenario.plot_tree_state(np_final_state)
 
     def plan(self,
@@ -207,24 +202,26 @@ class MyPlanner:
         ob_planner_status = self.ss.solve(ptc)
         planner_status = interpret_planner_status(ob_planner_status, ptc)
 
-        if planner_status:
+        if planner_status == planner_status.Failure:
+            self.goal_region = None
+            return PlannerResult(planner_status=planner_status, path=None, actions=None)
+        else:
             ompl_path = self.ss.getSolutionPath()
             actions, planned_path = self.convert_path(ompl_path)
             self.goal_region = None
             return PlannerResult(planner_status=planner_status, path=planned_path, actions=actions)
-        self.goal_region = None
-        return PlannerResult(planner_status=planner_status, path=None, actions=None)
 
     def convert_path(self, ompl_path: oc.PathControl) -> Tuple[List[Dict], List[Dict]]:
         planned_path = []
+        actions = []
+        n_actions = ompl_path.getControlCount()
         for time_idx, state in enumerate(ompl_path.getStates()):
             np_state = self.scenario.ompl_state_to_numpy(state)
+            action = ompl_path.getControl(time_idx)
             planned_path.append(np_state)
-
-        actions = []
-        for time_idx, action in enumerate(ompl_path.getControls()):
-            action_np = self.scenario.ompl_control_to_numpy(action)
-            actions.append(action_np)
+            if time_idx < n_actions:
+                action_np = self.scenario.ompl_control_to_numpy(state, action)
+                actions.append(action_np)
 
         return actions, planned_path
 

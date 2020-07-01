@@ -159,6 +159,17 @@ def batch_point_to_idx_tf(x,
     return row, col
 
 
+def batch_point_to_idx_tf_3d(x,
+                             y,
+                             z,
+                             resolution: float,
+                             origin):
+    col = tf.cast(x / resolution + origin[1], tf.int64)
+    row = tf.cast(y / resolution + origin[0], tf.int64)
+    channel = tf.cast(z / resolution + origin[2], tf.int64)
+    return row, col, channel
+
+
 def point_to_idx_3d_in_env(x: float,
                            y: float,
                            z: float,

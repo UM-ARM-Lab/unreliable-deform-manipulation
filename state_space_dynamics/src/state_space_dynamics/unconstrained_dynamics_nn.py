@@ -10,6 +10,7 @@ from moonshine.moonshine_utils import add_batch, remove_batch, dict_of_sequences
     sequence_of_dicts_to_dict_of_tensors
 from shape_completion_training.my_keras_model import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
+from link_bot_pycommon.pycommon import make_dict_tf_float32
 
 
 class UnconstrainedDynamicsNN(MyKerasModel):
@@ -36,7 +37,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
     def debug_plot(self, s):
         self.scenario.plot_state_rviz({'link_bot': s['link_bot'][0]})
 
-    # @tf.function
+    @tf.function
     def call(self, example, training, mask=None):
         actions = {k: example[k] for k in self.action_keys}
         input_sequence_length = actions[self.action_keys[0]].shape[1]
@@ -111,6 +112,7 @@ class UDNNWrapper(BaseDynamicsFunction):
         net_inputs = {k: tf.expand_dims(start_states[k], axis=0) for k in self.state_keys}
         net_inputs.update(sequence_of_dicts_to_dict_of_tensors(actions))
         net_inputs = add_batch(net_inputs)
+        net_inputs = make_dict_tf_float32(net_inputs)
         # the network returns a dictionary where each value is [T, n_state]
         # which is what you'd want for training, but for planning and execution and everything else
         # it is easier to deal with a list of states where each state is a dictionary

@@ -19,8 +19,8 @@ class TimeoutOrNotProgressing(ob.PlannerTerminationCondition):
 
     def condition(self):
         self.times_called += 1
-        self.not_progressing = self.times_called > self.params['times_called_threshold'] \
-            and self.planner.min_distance_to_goal > self.params['min_distance_to_goal_threshold']
+        self.not_progressing = self.times_called > self.params['times_called_threshold'] and \
+            self.planner.min_distance_to_goal > self.params['min_distance_to_goal_threshold']
         now = perf_counter()
         dt_s = now - self.t0
         self.timed_out = dt_s > self.params['timeout']

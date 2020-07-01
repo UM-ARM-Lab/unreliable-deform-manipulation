@@ -64,7 +64,8 @@ def rviz_arrow(position: np.ndarray,
                b: float,
                a: float,
                label: str = 'arrow',
-               idx: int = 0):
+               idx: int = 0,
+               **kwargs):
     arrow = Marker()
     arrow.action = Marker.ADD  # create or modify
     arrow.type = Marker.ARROW

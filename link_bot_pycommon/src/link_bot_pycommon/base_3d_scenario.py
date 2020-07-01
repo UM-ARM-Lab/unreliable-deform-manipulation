@@ -38,7 +38,9 @@ class Base3DScenario(ExperimentScenario):
             self.broadcaster = None
 
         self.sampled_goal_marker_idx = 0
-        self.tree_idx = 0
+        self.tree_state_idx = 0
+        self.rejected_state_idx = 0
+        self.tree_action_idx = 0
         self.sample_idx = 0
 
     @staticmethod
@@ -55,7 +57,9 @@ class Base3DScenario(ExperimentScenario):
         self.state_viz_pub.publish(clear_msg)
         self.action_viz_pub.publish(clear_msg)
         self.sampled_goal_marker_idx = 0
-        self.tree_idx = 0
+        self.tree_state_idx = 0
+        self.rejected_state_idx = 0
+        self.tree_action_idx = 0
         self.sample_idx = 0
 
     def plot_environment_rviz(self, data: Dict):
@@ -68,19 +72,33 @@ class Base3DScenario(ExperimentScenario):
         link_bot_sdf_utils.send_occupancy_tf(self.broadcaster, environment)
 
     def plot_sampled_goal_state(self, state: Dict):
-        self.sampled_goal_marker_idx += 1
         self.plot_state_rviz(state, idx=self.sampled_goal_marker_idx, label="goal sample", color='#44dddd')
+        self.sampled_goal_marker_idx += 1
 
     def plot_start_state(self, state: Dict):
         self.plot_state_rviz(state, label='start', color='#0088aa')
 
     def plot_sampled_state(self, state: Dict):
-        self.sample_idx += 1
         self.plot_state_rviz(state, idx=self.sample_idx, label='samples', color='#ff8888')
+        self.sample_idx += 1
+
+    def plot_tree_action(self, state: Dict, action: Dict, **kwargs):
+        r = 0.2
+        g = 0.2
+        b = 0.8
+        a = kwargs.get("alpha", 1.0)
+        idx1 = self.tree_action_idx * 2 + 0
+        idx2 = self.tree_action_idx * 2 + 1
+        self.plot_action_rviz(state, action, label='tree', color=[r, g, b, a], idx1=idx1, idx2=idx2, **kwargs)
+        self.tree_action_idx += 1
+
+    def plot_rejected_state(self, state: Dict):
+        self.plot_state_rviz(state, idx=self.rejected_state_idx, label='rejected', color='#ff8822')
+        self.rejected_state_idx += 1
 
     def plot_tree_state(self, state: Dict):
-        self.tree_idx += 1
-        self.plot_state_rviz(state, idx=self.tree_idx, label='tree', color='#ffaaaa')
+        self.plot_state_rviz(state, idx=self.tree_state_idx, label='tree', color='#ffaaaa')
+        self.tree_state_idx += 1
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
@@ -163,22 +181,25 @@ class Base3DScenario(ExperimentScenario):
         msg.markers.append(lines)
         self.state_viz_pub.publish(msg)
 
-    def plot_action_rviz(self, state: Dict, action: Dict, **kwargs):
+    def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):
         state_action = {}
         state_action.update(state)
         state_action.update(action)
-        self.plot_action_rviz_internal(state_action, **kwargs)
+        self.plot_action_rviz_internal(state_action, label=label, **kwargs)
 
-    def plot_action_rviz_internal(self, data: Dict, **kwargs):
+    def plot_action_rviz_internal(self, data: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
         s1 = np.reshape(data['gripper1'], [3])
         s2 = np.reshape(data['gripper2'], [3])
         a1 = np.reshape(data['gripper1_position'], [3])
         a2 = np.reshape(data['gripper2_position'], [3])
 
+        idx1 = kwargs.get("idx1", 0)
+        idx2 = kwargs.get("idx2", 1)
+
         msg = MarkerArray()
-        msg.markers.append(rviz_arrow(s1, a1, r, g, b, a, idx=0))
-        msg.markers.append(rviz_arrow(s2, a2, r, g, b, a, idx=1))
+        msg.markers.append(rviz_arrow(s1, a1, r, g, b, a, idx=idx1, label=label, **kwargs))
+        msg.markers.append(rviz_arrow(s2, a2, r, g, b, a, idx=idx2, label=label, **kwargs))
 
         self.action_viz_pub.publish(msg)
 

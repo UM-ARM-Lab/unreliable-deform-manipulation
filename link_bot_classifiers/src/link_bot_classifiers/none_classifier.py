@@ -12,6 +12,9 @@ class NoneClassifier(BaseConstraintChecker):
     def __init__(self, scenario: ExperimentScenario):
         super().__init__(scenario)
         self.horizon = 2
+        self.data_collection_params = {
+            'res': 0.1,
+        }
 
     def check_constraint(self,
                          environment: Dict,

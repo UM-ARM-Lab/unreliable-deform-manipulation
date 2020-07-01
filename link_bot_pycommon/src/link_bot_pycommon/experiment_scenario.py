@@ -103,7 +103,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def state_to_points(state: Dict):
+    def state_to_points_for_cc(state: Dict):
         raise NotImplementedError()
 
     @staticmethod
