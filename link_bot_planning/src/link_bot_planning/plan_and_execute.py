@@ -98,10 +98,10 @@ class PlanAndExecute:
         goal = self.planner.scenario.sample_goal(self.planner_params['goal_extent'], rng=self.goal_rng)
 
         if self.verbose >= 1:
-            self.planner.scenario.publish_goal_marker(goal)
+            self.planner.scenario.publish_goal_marker(goal, self.planner_params['goal_threshold'])
 
         if self.verbose >= 1:
-            print(Fore.MAGENTA + "Planning to {}".format(goal) + Fore.RESET)
+            (Fore.MAGENTA + "Planning to {}".format(goal) + Fore.RESET)
 
         ############
         # Planning #
@@ -112,7 +112,7 @@ class PlanAndExecute:
         self.planner.planner.getPlannerData(planner_data)
 
         if self.verbose >= 1:
-            print(planner_result.planner_status)
+            rospy.loginfo(planner_result.planner_status)
 
         self.on_after_plan()
 
@@ -126,7 +126,7 @@ class PlanAndExecute:
         elif planner_result.planner_status in [MyPlannerStatus.Solved, MyPlannerStatus.Timeout]:
             planning_time = time.time() - t0
             if self.verbose >= 1:
-                print("Planning time: {:5.3f}s".format(planning_time))
+                rospy.loginfo(f"Planning time: {planning_time:5.3f}s")
 
             self.on_plan_complete(planner_result.path, goal, planner_result.actions, environment, planner_data,
                                   planning_time, planner_result.planner_status)
@@ -134,7 +134,7 @@ class PlanAndExecute:
             # execute the plan, collecting the states that actually occurred
             if not self.no_execution:
                 if self.verbose >= 2:
-                    print(Fore.CYAN + "Executing Plan.".format(goal) + Fore.RESET)
+                    print(Fore.CYAN + "Executing Plan" + Fore.RESET)
 
                 actual_path = self.execute_actions(start_state, planner_result.actions)
                 self.on_execution_complete(planner_result.path,
@@ -160,7 +160,9 @@ class PlanAndExecute:
                          planner_data: ob.PlannerData,
                          planning_time: float,
                          planner_status: MyPlannerStatus):
-        pass
+        # visualize the plan
+        if self.verbose >= 2:
+            self.planner.scenario.animate_final_path(environment, planned_path, planned_actions)
 
     def on_execution_complete(self,
                               planned_path: List[Dict],

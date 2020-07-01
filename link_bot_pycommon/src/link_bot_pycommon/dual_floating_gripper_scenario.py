@@ -473,31 +473,33 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def make_ompl_state_space(self, planner_params, state_sampler_rng: np.random.RandomState):
         state_space = ob.CompoundStateSpace()
 
+        min_x, max_x, min_y, max_y, min_z, max_z = planner_params['extent']
+
         gripper1_subspace = ob.RealVectorStateSpace(3)
         gripper1_bounds = ob.RealVectorBounds(3)
         # these bounds are not used for sampling
-        gripper1_bounds.setLow(0, -1000)
-        gripper1_bounds.setHigh(0, 1000)
-        gripper1_bounds.setLow(1, -1000)
-        gripper1_bounds.setHigh(1, 1000)
-        gripper1_bounds.setLow(2, -1000)
-        gripper1_bounds.setHigh(2, 1000)
+        gripper1_bounds.setLow(0, min_x)
+        gripper1_bounds.setHigh(0, max_x)
+        gripper1_bounds.setLow(1, min_y)
+        gripper1_bounds.setHigh(1, max_y)
+        gripper1_bounds.setLow(2, min_z)
+        gripper1_bounds.setHigh(2, max_z)
         gripper1_subspace.setBounds(gripper1_bounds)
         gripper1_subspace.setName("gripper1")
-        state_space.addSubspace(gripper1_subspace, weight=0)
+        state_space.addSubspace(gripper1_subspace, weight=1)
 
         gripper2_subspace = ob.RealVectorStateSpace(3)
         gripper2_bounds = ob.RealVectorBounds(3)
         # these bounds are not used for sampling
-        gripper2_bounds.setLow(0, -1000)
-        gripper2_bounds.setHigh(0, 1000)
-        gripper2_bounds.setLow(1, -1000)
-        gripper2_bounds.setHigh(1, 1000)
-        gripper2_bounds.setLow(2, -1000)
-        gripper2_bounds.setHigh(2, 1000)
+        gripper2_bounds.setLow(0, min_x)
+        gripper2_bounds.setHigh(0, max_x)
+        gripper2_bounds.setLow(1, min_y)
+        gripper2_bounds.setHigh(1, max_y)
+        gripper2_bounds.setLow(2, min_z)
+        gripper2_bounds.setHigh(2, max_z)
         gripper2_subspace.setBounds(gripper2_bounds)
         gripper2_subspace.setName("gripper2")
-        state_space.addSubspace(gripper2_subspace, weight=0)
+        state_space.addSubspace(gripper2_subspace, weight=1)
 
         rope_subspace = ob.RealVectorStateSpace(45)
         rope_bounds = ob.RealVectorBounds(45)

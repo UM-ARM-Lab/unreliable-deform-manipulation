@@ -83,10 +83,10 @@ class Base3DScenario(ExperimentScenario):
         self.sample_idx += 1
 
     def plot_tree_action(self, state: Dict, action: Dict, **kwargs):
-        r = 0.2
-        g = 0.2
-        b = 0.8
-        a = kwargs.get("alpha", 1.0)
+        r = kwargs.pop("r", 0.2)
+        g = kwargs.pop("g", 0.2)
+        b = kwargs.pop("b", 0.8)
+        a = kwargs.pop("a", 1.0)
         idx1 = self.tree_action_idx * 2 + 0
         idx2 = self.tree_action_idx * 2 + 1
         self.plot_action_rviz(state, action, label='tree', color=[r, g, b, a], idx1=idx1, idx2=idx2, **kwargs)
@@ -256,12 +256,32 @@ class Base3DScenario(ExperimentScenario):
 
             anim.step()
 
-    def publish_goal_marker(self, goal: Dict):
+    def animate_final_path(self,
+                           environment: Dict,
+                           planned_path: List[Dict],
+                           actions: List[Dict]):
+        time_steps = np.arange(len(planned_path))
+        self.plot_environment_rviz(environment)
+
+        anim = RvizAnimationController(time_steps)
+
+        while not anim.done:
+            t = anim.t()
+            s_t_planned = planned_path[t]
+            self.plot_state_rviz(s_t_planned, label='planned', color='#FF4616')
+            if t < anim.max_t:
+                self.plot_action_rviz(s_t_planned, actions[t])
+            else:
+                self.plot_action_rviz(planned_path[t - 1], actions[t - 1])
+
+            anim.step()
+
+    def publish_goal_marker(self, goal: Dict, goal_threshold: float):
         goal_marker_msg = MarkerArray()
         midpoint_marker = Marker()
-        midpoint_marker.scale.x = 0.02
-        midpoint_marker.scale.y = 0.02
-        midpoint_marker.scale.z = 0.02
+        midpoint_marker.scale.x = goal_threshold
+        midpoint_marker.scale.y = goal_threshold
+        midpoint_marker.scale.z = goal_threshold
         midpoint_marker.action = Marker.ADD
         midpoint_marker.type = Marker.SPHERE
         midpoint_marker.header.frame_id = "/world"

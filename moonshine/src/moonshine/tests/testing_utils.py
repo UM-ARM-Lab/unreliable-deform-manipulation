@@ -2,6 +2,13 @@ import numpy as np
 import tensorflow as tf
 
 
+def are_dicts_close_np(a, b):
+    for v1, v2 in zip(a.values(), b.values()):
+        if not np.allclose(v1, v2):
+            return False
+    return True
+
+
 def assert_dicts_close_np(a, b):
     for v1, v2 in zip(a.values(), b.values()):
         assert np.allclose(v1, v2)

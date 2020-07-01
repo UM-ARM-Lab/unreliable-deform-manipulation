@@ -20,8 +20,6 @@ def load_generic_model(model_dir: pathlib.Path, scenario: ExperimentScenario) ->
     if isinstance(model_dir, list):
         assert len(model_dir) == 1
         model_dir = model_dir[0]
-    print(model_dir)
-    print(model_dir.parent)
     _, hparams = load_trial(model_dir.parent.absolute())
     model_type = hparams['model_class']
     if model_type == 'rnn':

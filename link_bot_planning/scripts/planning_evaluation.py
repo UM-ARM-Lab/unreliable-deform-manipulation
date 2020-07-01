@@ -46,6 +46,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  outdir: pathlib.Path,
                  record: Optional[bool] = False,
                  pause_between_plans: Optional[bool] = False,
+                 no_execution: Optional[bool] = False,
                  ):
         super().__init__(planner,
                          n_total_plans=n_total_plans,
@@ -53,8 +54,8 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                          verbose=verbose,
                          planner_params=planner_params,
                          service_provider=service_provider,
-                         no_execution=False,
                          pause_between_plans=pause_between_plans,
+                         no_execution=no_execution,
                          seed=seed)
         self.record = record
         self.planner_config_name = planner_config_name
@@ -208,6 +209,8 @@ def main():
                         help='json file(s) describing what should be compared')
     parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time', required=True)
     parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
+    parser.add_argument("--timeout", type=int, help='timeout to override what is in the planner config file')
+    parser.add_argument("--no-execution", action="store_true", help='no execution')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
     parser.add_argument("--pause-between-plans", action='store_true', help='pause between plans')
     parser.add_argument("--seed", '-s', type=int, default=1)
@@ -235,6 +238,11 @@ def main():
         # setting OMPL random seed should have no effect, because I use numpy's random in my sampler?
         np.random.seed(args.seed)
         tf.random.set_seed(args.seed)  # not sure if this has any effect
+
+        # override some arguments
+        if args.timeout is not None:
+            rospy.loginfo(f"Overriding with timeout {args.timeout}")
+            planner_params["termination_criteria"]['timeout'] = args.timeout
 
         planner_config_name = p_params_name.stem
 
@@ -268,7 +276,8 @@ def main():
             comparison_item_idx=comparison_idx,
             goal=planner_params['fixed_goal'],
             record=args.record,
-            pause_between_plans=args.pause_between_plans
+            pause_between_plans=args.pause_between_plans,
+            no_execution=args.no_execution
         )
         runner.run()
 

@@ -7,6 +7,7 @@ import numpy as np
 import ompl.base as ob
 import ompl.control as oc
 
+from moonshine.tests.testing_utils import are_dicts_close_np
 import rospy
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_planning.timeout_or_not_progressing import TimeoutOrNotProgressing
@@ -161,8 +162,22 @@ class MyPlanner:
         self.scenario.numpy_to_ompl_state(np_final_state, state_out)
 
         if self.verbose >= 2:
-            self.scenario.plot_tree_action(previous_state, new_action, alpha=final_classifier_probability)
+            alpha = final_classifier_probability
+            is_different_action = len(previous_actions) == 0 or not are_dicts_close_np(previous_actions[-1], new_action)
+            if is_different_action:
+                MyPlanner.propagate.r = self.control_sampler_rng.uniform(0, 1)
+                MyPlanner.propagate.g = self.control_sampler_rng.uniform(0, 1)
+                MyPlanner.propagate.b = self.control_sampler_rng.uniform(0, 1)
+            self.scenario.plot_tree_action(previous_state,
+                                           new_action,
+                                           r=MyPlanner.propagate.r,
+                                           g=MyPlanner.propagate.g,
+                                           b=MyPlanner.propagate.b,
+                                           a=alpha)
             self.scenario.plot_tree_state(np_final_state)
+    propagate.r = 0
+    propagate.g = 0
+    propagate.b = 0
 
     def plan(self,
              start_state: Dict,
@@ -202,14 +217,10 @@ class MyPlanner:
         ob_planner_status = self.ss.solve(ptc)
         planner_status = interpret_planner_status(ob_planner_status, ptc)
 
-        if planner_status == planner_status.Failure:
-            self.goal_region = None
-            return PlannerResult(planner_status=planner_status, path=None, actions=None)
-        else:
-            ompl_path = self.ss.getSolutionPath()
-            actions, planned_path = self.convert_path(ompl_path)
-            self.goal_region = None
-            return PlannerResult(planner_status=planner_status, path=planned_path, actions=actions)
+        ompl_path = self.ss.getSolutionPath()
+        actions, planned_path = self.convert_path(ompl_path)
+        self.goal_region = None
+        return PlannerResult(planner_status=planner_status, path=planned_path, actions=actions)
 
     def convert_path(self, ompl_path: oc.PathControl) -> Tuple[List[Dict], List[Dict]]:
         planned_path = []
@@ -217,9 +228,9 @@ class MyPlanner:
         n_actions = ompl_path.getControlCount()
         for time_idx, state in enumerate(ompl_path.getStates()):
             np_state = self.scenario.ompl_state_to_numpy(state)
-            action = ompl_path.getControl(time_idx)
             planned_path.append(np_state)
             if time_idx < n_actions:
+                action = ompl_path.getControl(time_idx)
                 action_np = self.scenario.ompl_control_to_numpy(state, action)
                 actions.append(action_np)
 
@@ -227,11 +238,9 @@ class MyPlanner:
 
 
 def interpret_planner_status(planner_status: ob.PlannerStatus, ptc: TimeoutOrNotProgressing):
-    if planner_status == "Exact solution":
+    if str(planner_status) == "Exact solution":
         return MyPlannerStatus.Solved
     elif ptc.not_progressing:
         return MyPlannerStatus.NotProgressing
-    elif ptc.timed_out:
-        return MyPlannerStatus.Timeout
     else:
-        return MyPlannerStatus.Failure
+        return MyPlannerStatus.Timeout
