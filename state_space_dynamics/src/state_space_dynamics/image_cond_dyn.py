@@ -2,6 +2,7 @@ import pathlib
 from typing import Dict, List
 
 import numpy as np
+import rospy
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore
@@ -9,10 +10,14 @@ from tensorflow import keras
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.get_local_environment import get_local_env_and_origin_2d_tf
-from moonshine.raster_2d import raster_2d
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
+from moonshine.raster_3d import raster_3d
+from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, send_occupancy_tf
+from mps_shape_completion_msgs.msg import OccupancyStamped
+from link_bot_pycommon.pycommon import make_dict_tf_float32
 from moonshine.matrix_operations import batch_outer_product
-from moonshine.moonshine_utils import add_batch, remove_batch, \
-    dict_of_sequences_to_sequence_of_dicts_tf
+from moonshine.moonshine_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts_tf, sequence_of_dicts_to_dict_of_tensors
 from shape_completion_training.my_keras_model import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -24,22 +29,24 @@ class ImageCondDynamics(MyKerasModel):
         self.scenario = scenario
         self.initial_epoch = 0
 
+        self.debug_pub = rospy.Publisher('classifier_debug', OccupancyStamped, queue_size=10, latch=True)
+
         self.rope_image_k = self.hparams['rope_image_k']
-        if not self.hparams['use_full_env']:
-            self.local_env_h_rows = self.hparams['local_env_h_rows']
-            self.local_env_w_cols = self.hparams['local_env_w_cols']
-        self.batch_size = batch_size
+        self.local_env_h_rows = self.hparams['local_env_h_rows']
+        self.local_env_w_cols = self.hparams['local_env_w_cols']
+        self.local_env_c_channels = self.hparams['local_env_c_channels']
+
         self.concat = layers.Concatenate()
         self.concat2 = layers.Concatenate()
         # State keys is all the things we want the model to take in/predict
-        self.states_keys = self.hparams['states_keys']
+        self.state_keys = self.hparams['state_keys']
+        self.action_keys = self.hparams['action_keys']
+
         self.used_states_description = {}
         self.out_dim = 0
-        # the states_description lists what's available in the dataset
-        for available_state_name, n in self.hparams['dynamics_dataset_hparams']['states_description'].items():
-            if available_state_name in self.states_keys:
-                self.used_states_description[available_state_name] = n
-                self.out_dim += n
+        if available_state_name in self.states_keys:
+            self.used_states_description[available_state_name] = n
+            self.out_dim += n
 
         self.state_action_dense_layers = []
         if 'state_action_only_fc_layer_sizes' in self.hparams:
@@ -99,7 +106,6 @@ class ImageCondDynamics(MyKerasModel):
     def calculate_metrics(self, dataset_element, outputs):
         return self.scenario.dynamics_metrics_function(dataset_element, outputs)
 
-    @tf.function
     def get_local_env(self, center_point, full_env_origin, full_env, res):
         local_env, local_env_origin = get_local_env_and_origin_2d_tf(center_point=center_point,
                                                                      full_env=full_env,
@@ -109,50 +115,73 @@ class ImageCondDynamics(MyKerasModel):
                                                                      local_w_cols=self.local_env_w_cols)
         return local_env, local_env_origin
 
-    @tf.function
-    def call(self, dataset_element, training, mask=None):
-        input_dict, _ = dataset_element
-        actions = input_dict['action']
-        input_sequence_length = actions.shape[1]
+    # @tf.function
+    def call(self, example, training, mask=None):
+        batch_size = example['batch_size']
+        time = example['time']
 
-        # Combine all the states into one big vector, based on which states were listed in the hparams file
-        substates_0 = []
-        for state_key, n in self.used_states_description.items():
-            substate_0 = input_dict[state_key][:, 0]
-            substates_0.append(substate_0)
-        s_0 = tf.concat(substates_0, axis=1)
+        s_0 = {k: example[k][:, 0] for k in self.state_keys}
 
-        # Remember everything this batched, but to keep things clear plural variable names will be reserved for sequences
-        res = input_dict['full_env/res']
-        full_env = input_dict['full_env/env']
-        full_env_origin = input_dict['full_env/origin']
+        # DEBUG
+        # plot the occupancy grid
+        time_steps = np.arange(time)
+        anim = RvizAnimationController(time_steps)
+        b = 0
+        full_env_dict = {
+            'env': example['env'][b],
+            'origin': example['origin'][b],
+            'res': example['res'][b],
+        }input_dictexample
+        self.scenarexample_environment_rviz(full_env_dict)
+        # END DEBUG
 
         pred_states = [s_0]
-        for t in range(input_sequence_length):
+        for t in range(time):
             s_t = pred_states[-1]
+            s_t_local = self.scenario.put_state_local_frame(s_t)
+            action_t = {k: example[k][:, t] for k in self.action_keys}
+            local_action_t = self.scenario.put_action_local_frame(s_t, action_t)
 
-            action_t = actions[:, t]
+            local_env_center_t = self.scenario.local_environment_center_differentiable(s_t)
 
-            if self.hparams['use_full_env']:
-                env = full_env
-                env_origin = full_env_origin
-                env_h_rows = self.full_env_params.h_rows
-                env_w_cols = self.full_env_params.w_cols
-            else:
-                state = self.state_vector_to_state_dict(s_t)
-                local_env_center = self.scenario.local_environment_center_differentiable(state)
-                # NOTE: we assume same resolution for local and full environment
-                env, env_origin = self.get_local_env(local_env_center, full_env_origin, full_env, res)
-                env_h_rows = self.local_env_h_rows
-                env_w_cols = self.local_env_w_cols
+            local_env_t, local_env_origin_t = get_local_env(center_point=local_env_center_t,
+                                                            full_env=example['env'],
+                                                            full_env_origin=example['origin'],
+                                                            res=example['res'],
+                                                            local_h_rows=self.local_env_h_rows,
+                                                            local_w_cols=self.local_env_w_cols,
+                                                            local_c_channels=self.local_env_c_channels,
+                                                            batch_size=batch_size)
 
-            rope_image_t = raster_2d(s_t, res, env_origin, env_h_rows, env_w_cols, k=self.rope_image_k,
-                                     batch_size=self.batch_size)
+            concat_args = [tf.expand_dims(local_env_t, axis=4)]
+            for state_component_t in s_t.values():
+                state_component_voxel_grid = raster_3d(state=state_component_t,
+                                                       res=example['res'],
+                                                       origin=local_env_origin_t,
+                                                       h=self.local_env_h_rows,
+                                                       w=self.local_env_w_cols,
+                                                       c=self.local_env_c_channels,
+                                                       k=self.rope_image_k,
+                                                       batch_size=batch_size)
+                concat_args.append(state_component_voxel_grid)
+            local_voxel_grid_t = tf.concat(concat_args, axis=4)
 
-            env = tf.expand_dims(env, axis=3)
+            # DEBUG
+            local_env_dict = {
+                'env': tf.clip_by_value(tf.reduce_sum(local_voxel_grid_t[b], axis=-1), 0, 1),
+                'origin': local_env_origin_t[b].numpy(),
+                'res': example['res'][b].numpy(),
+            }
+            msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
+            send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
+            self.debug_pub.publish(msg)
+
+            # this will return when either the animation is "playing" or because the user stepped forward
+            anim.step()
+            # END DEBUG
 
             # CNN
-            z_t = self.concat([rope_image_t, env])
+            z_t = local_voxel_grid_t
             for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
                 z_t = conv_layer(z_t)
                 z_t = pool_layer(z_t)
@@ -161,7 +190,7 @@ class ImageCondDynamics(MyKerasModel):
                 conv_z_t = dense_layer(conv_z_t)
 
             # state & action
-            state_action_t = self.concat2([s_t, action_t])
+            state_action_t = self.concat2([s_t_local, local_action_t])
             for dense_layer in self.state_action_dense_layers:
                 state_action_t = dense_layer(state_action_t)
 
@@ -172,23 +201,13 @@ class ImageCondDynamics(MyKerasModel):
             for dense_layer in self.final_dense_layers:
                 full_z_t = dense_layer(full_z_t)
 
-            if self.hparams['residual']:
-                # residual prediction, otherwise just take the final hidden representation as the next state
-                residual_t = full_z_t
-                s_t_plus_1_flat = s_t + residual_t
-            else:
-                s_t_plus_1_flat = full_z_t
+            delta_s_t = self.vector_to_state_dict(z_t)
+            s_t_plus_1 = self.scenario.integrate_dynamics(s_t, delta_s_t)
 
-            pred_states.append(s_t_plus_1_flat)
-
-        pred_states = tf.stack(pred_states, axis=1)
-
-        # Split the stack of state vectors up by state name/dim
-        output_states = self.state_vector_to_state_sequence_dict(pred_states)
+            pred_states.append(s_t_plus_1)
 
         return output_states
 
-    @tf.function
     def state_vector_to_state_dict(self, s_t):
         state_dict = {}
         start_idx = 0
@@ -198,7 +217,6 @@ class ImageCondDynamics(MyKerasModel):
             start_idx += n
         return state_dict
 
-    @tf.function
     def state_vector_to_state_sequence_dict(self, pred_states):
         state_dict = {}
         start_idx = 0
@@ -225,43 +243,20 @@ class ImageCondDynamicsWrapper(BaseDynamicsFunction):
         else:
             raise RuntimeError("Failed to restore!!!")
 
-        self.states_keys = self.net.states_keys
+        self.state_keys = self.net.state_keys
         self.action_keys = self.net.action_keys
 
     def propagate_from_example(self, dataset_element, training=False):
         return self.net(dataset_element, training=training)
 
-    def propagate_differentiable(self,
-                                 environment: Dict,
-                                 start_states: Dict[str, np.ndarray],
-                                 actions: tf.Variable) -> List[Dict]:
-        """
-        :param full_env:        (H, W)
-        :param full_env_origin: (2)
-        :param res:             scalar
-        :param start_states:          each value in the dictionary should be of shape (batch, n_state)
-        :param actions:        (T, 2)
-        :return: states:       each value in the dictionary should be a of shape [batch, T+1, n_state)
-        """
-        test_x = {
-            # shape: T, 2
-            'action': tf.convert_to_tensor(actions, dtype=tf.float32),
-            # shape: H, W
-            'full_env/env': tf.convert_to_tensor(environment['full_env/env'], dtype=tf.float32),
-            # shape: 2
-            'full_env/origin': tf.convert_to_tensor(environment['full_env/origin'], dtype=tf.float32),
-            # scalar
-            'full_env/res': tf.convert_to_tensor(environment['full_env/res'], dtype=tf.float32),
-        }
+    def propagate_differentiable(self, environment: Dict, start_states: Dict, actions: List[Dict]) -> List[Dict]:
+        net_inputs = {k: tf.expand_dims(start_states[k], axis=0) for k in self.state_keys}
+        net_inputs.update(sequence_of_dicts_to_dict_of_tensors(actions))
+        net_inputs.update(environment)
+        net_inputs = add_batch(net_inputs)
+        net_inputs = make_dict_tf_float32(net_inputs)
 
-        for state_key, v in start_states.items():
-            # handles conversion from double -> float
-            start_state = tf.convert_to_tensor(v, dtype=tf.float32)
-            start_state_with_time_dim = tf.expand_dims(start_state, axis=0)
-            test_x[state_key] = start_state_with_time_dim
-
-        test_x = add_batch(test_x)
-        predictions = self.net((test_x, False))
+        predictions = self.net((net_inputs, False))
         predictions = remove_batch(predictions)
         predictions = dict_of_sequences_to_sequence_of_dicts_tf(predictions)
 

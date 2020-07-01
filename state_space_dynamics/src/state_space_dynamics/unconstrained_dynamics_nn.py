@@ -46,7 +46,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         pred_states = [s_0]
         for t in range(input_sequence_length):
             s_t = pred_states[-1]
-            action_t = self.scenario.index_action_time(actions, t)
+            action_t = {k: example[k][:, t] for k in self.action_keys}
             local_action_t = self.scenario.put_action_local_frame(s_t, action_t)
 
             s_t_local = self.scenario.put_state_local_frame(s_t)

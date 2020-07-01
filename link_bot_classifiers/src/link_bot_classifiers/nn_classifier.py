@@ -15,12 +15,9 @@ from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
 from link_bot_pycommon.pycommon import make_dict_float32, make_dict_tf_float32
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine import classifier_losses_and_metrics
-from moonshine.classifier_losses_and_metrics import \
-    binary_classification_sequence_metrics_function
-from moonshine.get_local_environment import \
-    get_local_env_and_origin_3d_tf as get_local_env
-from moonshine.moonshine_utils import (add_batch, remove_batch,
-                                       sequence_of_dicts_to_dict_of_tensors)
+from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function
+from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
+from moonshine.moonshine_utils import add_batch, remove_batch, sequence_of_dicts_to_dict_of_tensors
 from moonshine.raster_3d import raster_3d
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from shape_completion_training.my_keras_model import MyKerasModel
@@ -103,9 +100,9 @@ class NNClassifier(MyKerasModel):
             local_env_center_t = self.scenario.local_environment_center_differentiable(state_t)
 
             local_env_t, local_env_origin_t = get_local_env(center_point=local_env_center_t,
-                                                            full_env=input_dict['env'][:],
-                                                            full_env_origin=input_dict['origin'][:],
-                                                            res=input_dict['res'][:],
+                                                            full_env=input_dict['env'],
+                                                            full_env_origin=input_dict['origin'],
+                                                            res=input_dict['res'],
                                                             local_h_rows=self.local_env_h_rows,
                                                             local_w_cols=self.local_env_w_cols,
                                                             local_c_channels=self.local_env_c_channels,
