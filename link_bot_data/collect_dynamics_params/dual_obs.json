@@ -23,72 +23,21 @@
     0.5,
     1.5
   ],
+  "objects_extent": [
+    0.5,
+    1.1,
+    -0.6,
+    0.6,
+    0.715,
+    0.7151
+  ],
   "res": 0.02,
-  "max_sequential_failed_actions": 10,
   "max_step_size": 0.002,
-  "steps_per_traj": 10,
-  "trajs_per_file": 1,
+  "steps_per_traj": 20,
+  "trajs_per_file": 8,
   "no_objects": false,
-  "kinematic_objects": false,
+  "randomize_environment_every_n_trajectories": 8,
   "repeat_delta_gripper_motion_probability": 0.8,
   "max_dist_between_gripper_and_link": 0.022,
-  "max_distance_gripper_can_move": 0.10,
-  "movable_objects": {
-    "box1": {
-      "x": [
-        0.58,
-        1.0
-      ],
-      "y": [
-        -0.4,
-        0.4
-      ],
-      "z": [
-        0.8,
-        0.801
-      ]
-    },
-    "box2": {
-      "x": [
-        0.58,
-        1.0
-      ],
-      "y": [
-        -0.4,
-        0.4
-      ],
-      "z": [
-        0.8,
-        0.801
-      ]
-    },
-    "box3": {
-      "x": [
-        0.58,
-        1.0
-      ],
-      "y": [
-        -0.4,
-        0.4
-      ],
-      "z": [
-        0.8,
-        0.801
-      ]
-    },
-    "box4": {
-      "x": [
-        0.58,
-        1.0
-      ],
-      "y": [
-        -0.4,
-        0.4
-      ],
-      "z": [
-        0.8,
-        0.801
-      ]
-    }
-  }
+  "max_distance_gripper_can_move": 0.10
 }

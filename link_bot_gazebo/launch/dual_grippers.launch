@@ -6,7 +6,11 @@
     <arg name="debug" default="false"/>
 
     <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
-    <node name="dual_gripper_action_forwarder" pkg="link_bot_gazebo" type="dual_gripper_action_forwarder.py"/>
+    <node name="dual_gripper_action_forwarder" pkg="link_bot_gazebo_python" type="dual_gripper_action_forwarder.py"/>
+
+    <rosparam>
+        traj_goal_time_tolerance : 0.1
+    </rosparam>
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name" value="$(find link_bot_gazebo)/worlds/$(arg world_name).world"/>

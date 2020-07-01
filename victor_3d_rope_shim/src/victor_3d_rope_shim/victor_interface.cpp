@@ -654,10 +654,12 @@ void VictorInterface::gotoHome()
   arc_helpers::Sleep(0.5);
 }
 
-bool VictorInterface::moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions)
+bool VictorInterface::moveInRobotFrame(
+    std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions)
 {
   std::pair<Eigen::Translation3d, Eigen::Translation3d> world_frame{
-    (robotTworld * target_gripper_positions.first).translation(), (robotTworld * target_gripper_positions.second).translation()
+    (robotTworld * target_gripper_positions.first).translation(),
+    (robotTworld * target_gripper_positions.second).translation()
   };
   return moveInWorldFrame(world_frame);
 }
@@ -741,7 +743,8 @@ bool VictorInterface::moveInWorldFrame(
         transform.header.stamp = ros::Time::now();
         transform.child_frame_id = "desired_tool_pose_world_frame_left";
         transform.transform.translation = ConvertTo<geomsg::Vector3>(target_gripper_positions.first.vector());
-        transform.transform.rotation = ConvertTo<geomsg::Quaternion>(home_state_tool_poses_world_frame_.first.rotation());
+        transform.transform.rotation =
+            ConvertTo<geomsg::Quaternion>(home_state_tool_poses_world_frame_.first.rotation());
         tf_broadcaster_.sendTransform(transform);
       }
       {
@@ -750,7 +753,8 @@ bool VictorInterface::moveInWorldFrame(
         transform.header.stamp = ros::Time::now();
         transform.child_frame_id = "desired_tool_pose_world_frame_right";
         transform.transform.translation = ConvertTo<geomsg::Vector3>(target_gripper_positions.second.vector());
-        transform.transform.rotation = ConvertTo<geomsg::Quaternion>(home_state_tool_poses_world_frame_.second.rotation());
+        transform.transform.rotation =
+            ConvertTo<geomsg::Quaternion>(home_state_tool_poses_world_frame_.second.rotation());
         tf_broadcaster_.sendTransform(transform);
       }
     }
@@ -758,7 +762,8 @@ bool VictorInterface::moveInWorldFrame(
 
   // Create paths for each tool with an equal number of waypoints
   Eigen::Vector3d const left_delta = target_gripper_positions.first.vector() - current_tool_poses.first.translation();
-  Eigen::Vector3d const right_delta = target_gripper_positions.second.vector() - current_tool_poses.second.translation();
+  Eigen::Vector3d const right_delta =
+      target_gripper_positions.second.vector() - current_tool_poses.second.translation();
   auto const max_dist = std::max(left_delta.norm(), right_delta.norm());
   if (max_dist < translation_step_size_)
   {
@@ -768,25 +773,18 @@ bool VictorInterface::moveInWorldFrame(
   auto const steps = static_cast<int>(std::ceil(max_dist / translation_step_size_)) + 1;
   auto const left_path = [&] {
     EigenHelpers::VectorVector3d path;
-    MPS_ASSERT(
-        left_arm_->interpolate(
-          current_tool_poses.first.translation(),
-          target_gripper_positions.first.vector(),
-          path,
-          steps));
+    MPS_ASSERT(left_arm_->interpolate(current_tool_poses.first.translation(), target_gripper_positions.first.vector(),
+                                      path, steps));
     return path;
   }();
   auto const right_path = [&] {
     EigenHelpers::VectorVector3d path;
-    MPS_ASSERT(left_arm_->interpolate(
-      current_tool_poses.second.translation(),
-      target_gripper_positions.second.vector(),
-      path,
-      steps));
+    MPS_ASSERT(left_arm_->interpolate(current_tool_poses.second.translation(), target_gripper_positions.second.vector(),
+                                      path, steps));
     return path;
   }();
-  MPS_ASSERT(left_path.size() == right_path.size() &&
-             "Later code assumes these are of equal length for synchronization");
+  MPS_ASSERT(left_path.size() == right_path.size() && "Later code assumes these are of equal length for "
+                                                      "synchronization");
 
   // Debugging - visualize interpolated path in world frame
   if (true)
@@ -851,26 +849,14 @@ bool VictorInterface::moveInWorldFrame(
 
   auto const left_cmd = [&] {
     trajectory_msgs::JointTrajectory cmd;
-    left_arm_->jacobianPath3D(
-      left_path,
-      home_state_tool_poses_world_frame_.first.rotation(),
-      robotTworld,
-      left_tool_offset_,
-      current_state,
-      planning_scene_,
-      cmd);
+    left_arm_->jacobianPath3D(left_path, home_state_tool_poses_world_frame_.first.rotation(), robotTworld,
+                              left_tool_offset_, current_state, planning_scene_, cmd);
     return cmd;
   }();
   auto const right_cmd = [&] {
     trajectory_msgs::JointTrajectory cmd;
-    right_arm_->jacobianPath3D(
-      right_path,
-      home_state_tool_poses_world_frame_.second.rotation(),
-      robotTworld,
-      right_tool_offset_,
-      current_state,
-      planning_scene_,
-      cmd);
+    right_arm_->jacobianPath3D(right_path, home_state_tool_poses_world_frame_.second.rotation(), robotTworld,
+                               right_tool_offset_, current_state, planning_scene_, cmd);
     return cmd;
   }();
 

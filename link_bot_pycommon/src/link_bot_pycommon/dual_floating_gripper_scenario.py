@@ -8,13 +8,14 @@ import ompl.control as oc
 
 import rospy
 from geometry_msgs.msg import Point
+from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from tf import transformations
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from victor_hardware_interface.msg import MotionCommand
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, WorldControlRequest, \
     WorldControl, SetRopeState, SetRopeStateRequest, SetDualGripperPoints, GetRopeState, GetRopeStateRequest, \
-    GetDualGripperPointsRequest
+    GetDualGripperPointsRequest, SetBoolRequest, SetBool
 from std_msgs.msg import Empty
 
 
@@ -25,6 +26,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.last_action = None
         self.can_repeat_last_action = False
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
+        self.grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", SetBool)
         self.interrupt = rospy.Publisher("interrupt_trajectory", Empty, queue_size=10)
         self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
         self.set_rope_srv = rospy.ServiceProxy("set_rope_state", SetRopeState)
@@ -33,24 +35,23 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.world_control_srv = rospy.ServiceProxy("world_control", WorldControl)
         self.left_arm_motion_pub = rospy.Publisher("left_arm/motion_command", MotionCommand, queue_size=10)
         self.right_arm_motion_pub = rospy.Publisher("right_arm/motion_command", MotionCommand, queue_size=10)
-        # TODO: could put a more complex state machine here
-        # False means we're not in this state
-        self.overstretch_safety_state = False
-        self.overstretch_safety_state_count = 0
-
-        self.merged_trajectory_empty_count = 0
-
-        self.safe_gripper1_position = np.array([0.942119240845, 0.0524258039015, 1.30159484976])
-        self.safe_gripper2_position = np.array([0.94211914028, -0.0524259044672, 1.30159681654])
+        self.set_model_state_srv = rospy.ServiceProxy("gazebo/set_model_state", SetModelState)
 
         self.nudge_rng = np.random.RandomState(0)
 
-        self.params['settling_time'] = rospy.get_param("traj_goal_time_tolerance", -999)
+        self.params['settling_time'] = rospy.get_param("traj_goal_time_tolerance")
 
         self.max_action_attempts = 1000
 
+        self.object_reset_positions = {
+            'box1': np.zeros(3),
+            'box2': np.zeros(3),
+            'box3': np.zeros(3),
+            'box4': np.zeros(3),
+        }
+
     def reset_robot(self):
-        rospy.logerr("DANGER: resetting arms, ignoring obstacles!!!")
+        rospy.logwarn("teleporting arms to home, ignoring obstacles!!!")
         left_arm_home = rospy.get_param("left_arm_home")
         right_arm_home = rospy.get_param("right_arm_home")
 
@@ -75,13 +76,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.left_arm_motion_pub.publish(left_arm_motion)
         self.right_arm_motion_pub.publish(right_arm_motion)
 
-        req = WorldControlRequest()
-        # wait a while since the rope is probably swinging like crazy
-        req.seconds = 30.0
-        self.world_control_srv(req)
-
-        self.merged_trajectory_empty_count = 0
-
     def sample_action(self,
                       environment: Dict,
                       state,
@@ -94,34 +88,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         rope_state_vector = state['link_bot']
         link_point = np.array([rope_state_vector[-3], rope_state_vector[-2], rope_state_vector[-1]])
         distance_between_gripper1_and_link = np.linalg.norm(gripper1_point - link_point)
-        currently_overstretched = distance_between_gripper1_and_link > self.params['max_dist_between_gripper_and_link']
-
-        if currently_overstretched:
-            self.overstretch_safety_state = True
-
-        if self.overstretch_safety_state:
-            rospy.loginfo("Safety policy")
-            # the delta from where we were to where we wanted to go
-            delta_gripper_1 = self.safe_gripper1_position - state['gripper1']
-            max_d = self.params['max_distance_gripper_can_move']
-            delta_gripper_1 = delta_gripper_1 / np.linalg.norm(delta_gripper_1) * max_d
-            delta_gripper_2 = self.safe_gripper2_position - state['gripper2']
-            delta_gripper_2 = delta_gripper_2 / np.linalg.norm(delta_gripper_2) * max_d
-            gripper1_position = state['gripper1'] + delta_gripper_1
-            gripper2_position = state['gripper2'] + delta_gripper_2
-            safety_action = {
-                'gripper1_position': gripper1_position,
-                'gripper2_position': gripper2_position,
-            }
-
-            self.can_repeat_last_action = False
-            self.last_state = state
-            self.last_action = safety_action
-            self.overstretch_safety_state_count += 1
-            if self.overstretch_safety_state_count == 3:
-                self.overstretch_safety_state_count = 0
-                self.overstretch_safety_state = False
-            return safety_action
 
         for _ in range(self.max_action_attempts):
             # move in the same direction as the previous action with some probability
@@ -200,6 +166,58 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         req.seconds = self.params['settling_time']
         self.world_control_srv(req)
 
+    def randomize_environment(self, env_rng):
+        state = self.get_state()
+        pre_randomize_gripper1_position = state['gripper1']
+        pre_randomize_gripper2_position = state['gripper2']
+
+        # move the objects out of the way
+        self.set_object_positions(self.object_reset_positions)
+
+        # Let go of rope
+        release = SetBoolRequest()
+        release.data = False
+        self.grasping_rope_srv(release)
+
+        # teleport to home
+        self.reset_robot()
+
+        # replace the objects in a new random configuration
+        random_object_positions = {
+            'box1': self.random_object_position(env_rng),
+            'box2': self.random_object_position(env_rng),
+            'box3': self.random_object_position(env_rng),
+            'box4': self.random_object_position(env_rng),
+        }
+        self.set_object_positions(random_object_positions)
+
+        # re-grasp rope
+        grasp = SetBoolRequest()
+        grasp.data = True
+        self.grasping_rope_srv(grasp)
+        self.settle()
+
+        # try to move back
+        return_action = {
+            'gripper1_position': pre_randomize_gripper1_position,
+            'gripper2_position': pre_randomize_gripper2_position,
+        }
+        self.execute_action(return_action)
+
+    def random_object_position(self, env_rng: np.random.RandomState):
+        extent = self.params['objects_extent']
+        extent = np.array(extent).reshape(3, 2)
+        return env_rng.uniform(extent[:, 0], extent[:, 1])
+
+    def set_object_positions(self, object_positions: Dict):
+        for object_name, position in object_positions.items():
+            set_req = SetModelStateRequest()
+            set_req.model_state.model_name = object_name
+            set_req.model_state.pose.position.x = position[0]
+            set_req.model_state.pose.position.y = position[1]
+            set_req.model_state.pose.position.z = position[2]
+            self.set_model_state_srv(set_req)
+
     def execute_action(self, action: Dict):
         target_gripper1_point = ros_numpy.msgify(Point, action['gripper1_position'])
         target_gripper2_point = ros_numpy.msgify(Point, action['gripper2_position'])
@@ -209,13 +227,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
         res = self.action_srv(req)
-        if res.merged_trajectory_empty:
-            self.merged_trajectory_empty_count += 1
-            self.can_repeat_last_action = False
-        else:
-            self.merged_trajectory_empty_count = 0
-            self.can_repeat_last_action = True
-        return self.merged_trajectory_empty_count > self.params['max_sequential_failed_actions']
 
     def nudge(self, state: Dict, environment: Dict):
         nudge_action = self.random_nearby_position_action(state, self.nudge_rng, environment)

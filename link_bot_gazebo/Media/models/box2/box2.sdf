@@ -2,6 +2,7 @@
     <model name="box2">
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link_1">
+            <kinematic>true</kinematic>
             <pose>0 0 0.105 0 0 0 0</pose>
             <inertial>
                 <pose>0 0 -0.08 0 0 0 0</pose>
@@ -48,24 +49,5 @@
                 </surface>
             </collision>
         </link>
-        <plugin name="position_3d_plugin" filename="libposition_3d_plugin.so">
-            <kP_pos>35</kP_pos>
-            <kI_pos>0.0</kI_pos>
-            <kD_pos>0.0</kD_pos>
-            <kP_vel>100.0</kP_vel>
-            <kI_vel>0.0</kI_vel>
-            <kD_vel>0.0</kD_vel>
-            <max_force>40.0</max_force>
-            <max_vel>0.5</max_vel>
-            <kP_rot>0.1</kP_rot>
-            <kI_rot>0.0</kI_rot>
-            <kD_rot>0.0</kD_rot>
-            <kP_rot_vel>0.0</kP_rot_vel>
-            <kI_rot_vel>0.0</kI_rot_vel>
-            <kD_rot_vel>0.0</kD_rot_vel>
-            <max_torque>0.0</max_torque>
-            <max_rot_vel>0.0</max_rot_vel>
-            <link>link_1</link>
-        </plugin>
     </model>
 </sdf>

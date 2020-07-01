@@ -28,9 +28,7 @@
   "steps_per_traj": 10,
   "trajs_per_file": 16,
   "no_objects": true,
-  "kinematic_objects": false,
   "repeat_delta_gripper_motion_probability": 0.8,
   "max_dist_between_gripper_and_link": 0.022,
   "max_distance_gripper_can_move": 0.10,
-  "movable_objects": {}
 }

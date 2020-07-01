@@ -66,14 +66,15 @@ private:
   ros::Publisher right_gripper_status_pub_;
   ros::Subscriber left_arm_motion_command_sub_;
   ros::Subscriber right_arm_motion_command_sub_;
+  ros::ServiceServer grasping_rope_server_;
 
   std::unique_ptr<TrajServer> follow_traj_server_;
   std::string const left_flange_name_{ "victor::victor_left_arm_link_7" };
   std::string const right_flange_name_{ "victor::victor_right_arm_link_7" };
   std::string const gripper1_name_{ "link_bot::gripper1" };
   std::string const gripper2_name_{ "link_bot::gripper2" };
-  std::string const left_flange_tf_name_ {"victor_left_arm_link_7"};
-  std::string const right_flange_tf_name_ {"victor_right_arm_link_7"};
+  std::string const left_flange_tf_name_{ "victor_left_arm_link_7" };
+  std::string const right_flange_tf_name_{ "victor_right_arm_link_7" };
   std::string const gripper1_tf_name_{ "victor_left_tool" };
   std::string const gripper2_tf_name_{ "victor_right_tool" };
   physics::LinkPtr left_flange_;
@@ -88,6 +89,8 @@ private:
 
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
+
+  bool grasping_rope_{ true };
 };
 
 }  // namespace gazebo

@@ -1,5 +1,6 @@
 #include "kinematic_victor_plugin.h"
 
+#include <peter_msgs/SetBool.h>
 #include <ros/subscribe_options.h>
 #include <std_msgs/Empty.h>
 
@@ -39,16 +40,10 @@ static std::istream &operator>>(std::istream &_in, std::vector<double> &_vec)
   return _in;
 }
 
-static ignition::math::Pose3d ToIgnition(geometry_msgs::Transform const& transform)
+static ignition::math::Pose3d ToIgnition(geometry_msgs::Transform const &transform)
 {
-  return ignition::math::Pose3d(
-    transform.translation.x,
-    transform.translation.y,
-    transform.translation.z,
-    transform.rotation.w,
-    transform.rotation.x,
-    transform.rotation.y,
-    transform.rotation.z);
+  return ignition::math::Pose3d(transform.translation.x, transform.translation.y, transform.translation.z,
+                                transform.rotation.w, transform.rotation.x, transform.rotation.y, transform.rotation.z);
 }
 
 namespace gazebo
@@ -161,47 +156,47 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     if (gripper1_)
     {
       auto const parent_links = gripper1_->GetParentJointsLinks();
-      ROS_WARN_COND(parent_links.size() != 1,
-                    "Victor plus rope kinematic structure is different than expected."
-                    " Check this code for correctness");
+      ROS_WARN_COND(parent_links.size() != 1, "Victor plus rope kinematic structure is different than expected."
+                                              " Check this code for correctness");
       gripper1_rope_link_ = parent_links[0];
     }
     if (gripper2_)
     {
       auto const parent_links = gripper2_->GetParentJointsLinks();
-      ROS_WARN_COND(parent_links.size() != 1,
-                    "Victor plus rope kinematic structure is different than expected."
-                    " Check this code for correctness");
+      ROS_WARN_COND(parent_links.size() != 1, "Victor plus rope kinematic structure is different than expected."
+                                              " Check this code for correctness");
       gripper2_rope_link_ = parent_links[0];
     }
     if (gripper1_rope_link_ && gripper2_rope_link_)
     {
       auto const dist_factor = sdf->Get<double>("max_dist_between_gripper_and_link_scale_factor", 1.1);
-      ROS_WARN_COND(!dist_factor.second, "max_dist_between_gripper_and_link_scale_factor not set in victor.sdf, defaulting to 1.1");
+      ROS_WARN_COND(!dist_factor.second, "max_dist_between_gripper_and_link_scale_factor not set in victor.sdf, "
+                                         "defaulting to 1.1");
       double const gripper1_dist = (gripper1_->WorldPose().Pos() - gripper1_rope_link_->WorldPose().Pos()).Length();
       double const gripper2_dist = (gripper2_->WorldPose().Pos() - gripper2_rope_link_->WorldPose().Pos()).Length();
       max_dist_between_gripper_and_link_ = dist_factor.first * std::max(gripper1_dist, gripper2_dist);
-      ROS_WARN_STREAM_COND(max_dist_between_gripper_and_link_ < 1e-3,
-                           "max_dist_between_gripper_and_link_ is set to " << max_dist_between_gripper_and_link_
-                           << ". This appears abnormally low.");
+      ROS_WARN_STREAM_COND(max_dist_between_gripper_and_link_ < 1e-3, "max_dist_between_gripper_and_link_ is set to "
+                                                                          << max_dist_between_gripper_and_link_
+                                                                          << ". This appears abnormally low.");
     }
     else
     {
       max_dist_between_gripper_and_link_ = std::numeric_limits<double>::max();
-      ROS_WARN_STREAM("Errors getting correct links for overstretching detection. Setting max dist to " << max_dist_between_gripper_and_link_);
+      ROS_WARN_STREAM("Errors getting correct links for overstretching detection. Setting max dist to "
+                      << max_dist_between_gripper_and_link_);
     }
 
     while (!tf_buffer_.canTransform(left_flange_tf_name_, gripper1_tf_name_, ros::Time(0)))
     {
-      ROS_INFO_STREAM_THROTTLE(1.0, "Waiting for transform between "
-                                    << left_flange_tf_name_ << " and " << gripper1_tf_name_);
+      ROS_INFO_STREAM_THROTTLE(1.0, "Waiting for transform between " << left_flange_tf_name_ << " and "
+                                                                     << gripper1_tf_name_);
       using namespace std::chrono_literals;
       std::this_thread::sleep_for(0.01s);
     }
     while (!tf_buffer_.canTransform(right_flange_tf_name_, gripper2_tf_name_, ros::Time(0)))
     {
-      ROS_INFO_STREAM_THROTTLE(1.0, "Waiting for transform between "
-                                    << right_flange_tf_name_ << " and " << gripper2_tf_name_);
+      ROS_INFO_STREAM_THROTTLE(1.0, "Waiting for transform between " << right_flange_tf_name_ << " and "
+                                                                     << gripper2_tf_name_);
       using namespace std::chrono_literals;
       std::this_thread::sleep_for(0.01s);
     }
@@ -212,6 +207,18 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   // Setup ROS publishers, subscribers, and services, action servers
   {
     private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
+    auto grasping_rope_bind = [this](peter_msgs::SetBoolRequest &req, peter_msgs::SetBoolResponse &res) {
+      (void)res;
+      grasping_rope_ = req.data;
+      if (grasping_rope_)
+      {
+        TeleportGrippers();
+      }
+      return true;
+    };
+    auto grasping_rope_so =
+        create_service_options_private(peter_msgs::SetBool, "set_grasping_rope", grasping_rope_bind);
+    grasping_rope_server_ = ros_node_.advertiseService(grasping_rope_so);
     joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 1);
     left_arm_motion_status_pub_ =
         ros_node_.advertise<victor_hardware_interface::MotionStatus>("left_arm/motion_status", 1);
@@ -236,7 +243,6 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     ros_queue_thread_ = std::thread([this] { QueueThread(); });
     private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
   }
-
 
   periodic_event_thread_ = std::thread([this] {
     while (true)
@@ -412,7 +418,7 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
     {
       std::lock_guard lock(ros_mutex_);
       // Move Victor to the specified joint configuration
-      for (auto const &[joint_idx, joint_name]: enumerate(goal->trajectory.joint_names))
+      for (auto const &[joint_idx, joint_name] : enumerate(goal->trajectory.joint_names))
       {
         auto joint = model_->GetJoint("victor::" + joint_name);
         if (joint)
@@ -421,7 +427,8 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
         }
         else
         {
-          ROS_ERROR_STREAM("Invalid joint: " << "victor::" + joint_name);
+          ROS_ERROR_STREAM("Invalid joint: "
+                           << "victor::" + joint_name);
           result.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_JOINTS;
           follow_traj_server_->setAborted(result);
           return;
@@ -437,7 +444,8 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
     auto const rewind_needed = [this] {
       auto const gripper1_dist = (gripper1_->WorldPose().Pos() - gripper1_rope_link_->WorldPose().Pos()).Length();
       auto const gripper2_dist = (gripper2_->WorldPose().Pos() - gripper2_rope_link_->WorldPose().Pos()).Length();
-      return (gripper1_dist > max_dist_between_gripper_and_link_) || (gripper2_dist > max_dist_between_gripper_and_link_);
+      return (gripper1_dist > max_dist_between_gripper_and_link_) ||
+             (gripper2_dist > max_dist_between_gripper_and_link_);
     };
 
     if (rewind_needed())
@@ -446,10 +454,10 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
 
       for (auto rewind_idx = point_idx; rewind_idx > 0; --rewind_idx)
       {
-        auto const& rewind_point = goal->trajectory.points[rewind_idx - 1];
+        auto const &rewind_point = goal->trajectory.points[rewind_idx - 1];
         std::lock_guard lock(ros_mutex_);
         // Move Victor to the specified joint configuration
-        for (auto const &[joint_idx, joint_name]: enumerate(goal->trajectory.joint_names))
+        for (auto const &[joint_idx, joint_name] : enumerate(goal->trajectory.joint_names))
         {
           auto joint = model_->GetJoint("victor::" + joint_name);
           joint->SetPosition(0, rewind_point.positions[joint_idx]);
@@ -476,6 +484,10 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
 
 void KinematicVictorPlugin::TeleportGrippers()
 {
+  if (not grasping_rope_)
+  {
+    return;
+  }
   if (left_flange_ && right_flange_ && gripper1_ && gripper2_)
   {
     // Gripper 1, left tool
@@ -483,16 +495,16 @@ void KinematicVictorPlugin::TeleportGrippers()
       try
       {
         auto gripper1_rot = gripper1_->WorldPose().Rot();
-        auto const left_tool_offset = ToIgnition(
-          tf_buffer_.lookupTransform(left_flange_tf_name_, gripper1_tf_name_, ros::Time(0)).transform);
+        auto const left_tool_offset =
+            ToIgnition(tf_buffer_.lookupTransform(left_flange_tf_name_, gripper1_tf_name_, ros::Time(0)).transform);
         auto gripper1_pose = left_tool_offset + left_flange_->WorldPose();
         gripper1_pose.Rot() = gripper1_rot;
         gripper1_->SetWorldPose(gripper1_pose);
       }
       catch (tf2::TransformException &ex)
       {
-        ROS_WARN_STREAM("Failed to lookup transform between " << left_flange_tf_name_
-                        << " and " << gripper1_tf_name_ << ex.what());
+        ROS_WARN_STREAM("Failed to lookup transform between " << left_flange_tf_name_ << " and " << gripper1_tf_name_
+                                                              << ex.what());
       }
     }
 
@@ -501,16 +513,16 @@ void KinematicVictorPlugin::TeleportGrippers()
       try
       {
         auto gripper2_rot = gripper2_->WorldPose().Rot();
-        auto const right_tool_offset = ToIgnition(
-          tf_buffer_.lookupTransform(right_flange_tf_name_, gripper2_tf_name_, ros::Time(0)).transform);
+        auto const right_tool_offset =
+            ToIgnition(tf_buffer_.lookupTransform(right_flange_tf_name_, gripper2_tf_name_, ros::Time(0)).transform);
         auto gripper2_pose = right_tool_offset + right_flange_->WorldPose();
         gripper2_pose.Rot() = gripper2_rot;
         gripper2_->SetWorldPose(gripper2_pose);
       }
       catch (tf2::TransformException &ex)
       {
-        ROS_WARN_STREAM("Failed to lookup transform between " << left_flange_tf_name_
-                        << " and " << gripper1_tf_name_ << ex.what());
+        ROS_WARN_STREAM("Failed to lookup transform between " << left_flange_tf_name_ << " and " << gripper1_tf_name_
+                                                              << ex.what());
       }
     }
   }

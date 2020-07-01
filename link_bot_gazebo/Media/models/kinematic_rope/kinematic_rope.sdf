@@ -1,9 +1,9 @@
 
 <sdf version="1.6">
     <model name="link_bot">
-            <allow_auto_disable>true</allow_auto_disable>
+        <allow_auto_disable>true</allow_auto_disable>
         <pose frame="">0 0 0 0 0 0</pose>
-
+        
         <link name="link_1">
             <pose frame="">0.02 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -112,7 +112,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_2">
             <pose frame="">0.06 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -221,7 +221,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_3">
             <pose frame="">0.1 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -330,7 +330,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_4">
             <pose frame="">0.13999999999999999 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -439,7 +439,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_5">
             <pose frame="">0.18 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -548,7 +548,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_6">
             <pose frame="">0.22 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -657,7 +657,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_7">
             <pose frame="">0.26 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -766,7 +766,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_8">
             <pose frame="">0.30000000000000004 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -875,7 +875,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_9">
             <pose frame="">0.34 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -984,7 +984,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_10">
             <pose frame="">0.38 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -1093,7 +1093,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_11">
             <pose frame="">0.42000000000000004 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -1202,7 +1202,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_12">
             <pose frame="">0.46 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -1311,7 +1311,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_13">
             <pose frame="">0.5 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -1420,7 +1420,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_14">
             <pose frame="">0.54 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -1529,7 +1529,7 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
+        
         <link name="link_15">
             <pose frame="">0.5800000000000001 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
@@ -1638,8 +1638,8 @@
             </visual>
             <self_collide>1</self_collide>
         </link>
-
-
+        
+        
         <joint name="joint_1" type="universal">
             <child>link_2</child>
             <parent>link_1</parent>
@@ -1648,7 +1648,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1656,7 +1656,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1667,7 +1667,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_2" type="universal">
             <child>link_3</child>
             <parent>link_2</parent>
@@ -1676,7 +1676,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1684,7 +1684,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1695,7 +1695,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_3" type="universal">
             <child>link_4</child>
             <parent>link_3</parent>
@@ -1704,7 +1704,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1712,7 +1712,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1723,7 +1723,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_4" type="universal">
             <child>link_5</child>
             <parent>link_4</parent>
@@ -1732,7 +1732,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1740,7 +1740,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1751,7 +1751,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_5" type="universal">
             <child>link_6</child>
             <parent>link_5</parent>
@@ -1760,7 +1760,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1768,7 +1768,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1779,7 +1779,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_6" type="universal">
             <child>link_7</child>
             <parent>link_6</parent>
@@ -1788,7 +1788,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1796,7 +1796,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1807,7 +1807,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_7" type="universal">
             <child>link_8</child>
             <parent>link_7</parent>
@@ -1816,7 +1816,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1824,7 +1824,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1835,7 +1835,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_8" type="universal">
             <child>link_9</child>
             <parent>link_8</parent>
@@ -1844,7 +1844,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1852,7 +1852,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1863,7 +1863,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_9" type="universal">
             <child>link_10</child>
             <parent>link_9</parent>
@@ -1872,7 +1872,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1880,7 +1880,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1891,7 +1891,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_10" type="universal">
             <child>link_11</child>
             <parent>link_10</parent>
@@ -1900,7 +1900,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1908,7 +1908,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1919,7 +1919,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_11" type="universal">
             <child>link_12</child>
             <parent>link_11</parent>
@@ -1928,7 +1928,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1936,7 +1936,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1947,7 +1947,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_12" type="universal">
             <child>link_13</child>
             <parent>link_12</parent>
@@ -1956,7 +1956,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1964,7 +1964,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -1975,7 +1975,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_13" type="universal">
             <child>link_14</child>
             <parent>link_13</parent>
@@ -1984,7 +1984,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -1992,7 +1992,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -2003,7 +2003,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <joint name="joint_14" type="universal">
             <child>link_15</child>
             <parent>link_14</parent>
@@ -2012,7 +2012,7 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
@@ -2020,7 +2020,7 @@
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis2>
@@ -2031,7 +2031,7 @@
                 </ode>
             </physics>
         </joint>
-
+        
         <link name='gripper1'>
             <pose frame=''>0.6 0 0 0 0 0 </pose>
             <inertial>
@@ -2094,14 +2094,14 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
             </axis2>
             <physics>
@@ -2171,14 +2171,14 @@
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping>0.001</damping>
-                    <friction>0.0</friction>
+                    <friction>0.1</friction>
                 </dynamics>
             </axis2>
             <physics>
@@ -2192,6 +2192,7 @@
             <num_links>15</num_links>
             <rope_length>0.6</rope_length>
         </plugin>
-        <plugin name='dual_gripper_plugin' filename='libdual_gripper_plugin.so'/>
+        <plugin name='dual_gripper_plugin' filename='libdual_gripper_plugin.so'>
+        </plugin>
     </model>
 </sdf>

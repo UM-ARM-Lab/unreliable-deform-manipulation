@@ -9,7 +9,7 @@ import numpy as np
 
 import rospy
 from link_bot_data import base_collect_dynamics_data
-from link_bot_gazebo import gazebo_services
+from link_bot_gazebo_python import gazebo_services
 from link_bot_pycommon.args import my_formatter
 from moonshine.gpu_config import limit_gpu_mem
 from victor import victor_services

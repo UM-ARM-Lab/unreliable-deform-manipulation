@@ -82,8 +82,9 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr /*sdf*/)
   auto get_gripper2_so = create_service_options(peter_msgs::GetObject, "gripper2", get_gripper2_bind);
 
   private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
-  gzwarn << "Not advertizing action service\n";
-  // action_service_ = ros_node_.advertiseService(action_so);
+
+  action_service_ = ros_node_.advertiseService(action_so);
+
   get_service_ = ros_node_.advertiseService(get_so);
   set_service_ = ros_node_.advertiseService(set_so);
   register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
