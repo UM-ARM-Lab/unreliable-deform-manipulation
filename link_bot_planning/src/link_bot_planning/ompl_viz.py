@@ -64,7 +64,7 @@ def plot_plan(ax,
     return handles, labels
 
 
-def planner_data_to_json(planner_data, state_space_description):
+def planner_data_to_json(planner_data, scenario):
     json = {
         'vertices': [],
         'edges': [],
@@ -74,15 +74,14 @@ def planner_data_to_json(planner_data, state_space_description):
         s = v.getState()
         edges_map = ob.mapUintToPlannerDataEdge()
 
-        np_s = compound_to_numpy(state_space_description, s)
+        np_s = scenario.ompl_state_to_numpy(s)
         json['vertices'].append(listify(np_s))
 
         planner_data.getEdges(vertex_index, edges_map)
         for vertex_index2 in edges_map.keys():
             v2 = planner_data.getVertex(vertex_index2)
             s2 = v2.getState()
-            np_s2 = compound_to_numpy(state_space_description, s2)
-            # FIXME: have a "plot edge" function in the experiment scenario?
+            np_s2 = scenario.ompl_state_to_numpy(s2)
             json['edges'].append(listify({
                 'from': np_s,
                 'to': np_s2,

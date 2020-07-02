@@ -67,9 +67,7 @@ class MyPlanner:
         self.state_space = self.scenario.make_ompl_state_space(planner_params=self.params,
                                                                state_sampler_rng=self.state_sampler_rng,
                                                                plot=self.verbose >= 2)
-        self.control_space = self.scenario.make_ompl_control_space(self.state_space,
-                                                                   self.params,
-                                                                   self.control_sampler_rng)
+        self.control_space = self.scenario.make_ompl_control_space(self.state_space, self.control_sampler_rng)
 
         self.ss = oc.SimpleSetup(self.control_space)
 

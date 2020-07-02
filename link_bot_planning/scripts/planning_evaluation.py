@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import division, print_function
 
+import gzip
 import argparse
 import json
 import pathlib
@@ -20,7 +21,7 @@ from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus
-from link_bot_planning.ompl_viz import plot_plan, planner_data_to_json
+from link_bot_planning.ompl_viz import planner_data_to_json
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.base_services import BaseServices
 from moonshine.gpu_config import limit_gpu_mem
@@ -62,7 +63,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.outdir = outdir
         self.seed = seed
 
-        self.metrics = {
+        self.data = {
             "n_total_plans": n_total_plans,
             "n_targets": n_plans_per_env,
             "planner_params": planner_params,
@@ -73,7 +74,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.root = self.outdir / self.subfolder
         self.root.mkdir(parents=True)
         print(Fore.CYAN + str(self.root) + Fore.RESET)
-        self.metrics_filename = self.root / 'metrics.json'
+        self.data_filename = self.root / 'metrics.json.gz'
         self.failures_root = self.root / 'failures'
         self.successfully_completed_plan_idx = 0
         self.goal = goal
@@ -120,9 +121,9 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         planned_path_listified = listify(planned_path)
         planned_actions_listified = listify(planned_actions)
         actual_path_listified = listify(actual_path)
-        tree_json = planner_data_to_json(planner_data, self.planner.state_space_description)
+        tree_json = planner_data_to_json(planner_data, self.planner.scenario)
 
-        metrics_for_plan = {
+        data_for_plan = {
             'planner_status': planner_status.value,
             'environment': listify(environment),
             'planned_path': planned_path_listified,
@@ -133,38 +134,40 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'execution_to_goal_error': execution_to_goal_error,
             'plan_to_execution_error': plan_to_execution_error,
             'tree_json': tree_json,
-            'goal': goal,
+            'goal': listify(goal),
             'num_nodes': num_nodes
         }
-        self.metrics['metrics'].append(metrics_for_plan)
-        metrics_file = self.metrics_filename.open('w')
-        json.dump(self.metrics, metrics_file, indent=2)
+        self.data['metrics'].append(data_for_plan)
+        with gzip.open(self.metrics_filename, 'wb') as data_file:
+            data_str = json.dumps(self.data, indent=2)
+            data_file.write(data_str.encode("utf-8"))
 
-        plt.figure()
-        ax = plt.gca()
-        handles, labels = plot_plan(ax=ax,
-                                    state_space_description=self.planner.state_space_description,
-                                    scenario=self.planner.scenario,
-                                    viz_object=self.planner.viz_object,
-                                    planner_data=planner_data,
-                                    environment=environment,
-                                    goal=goal,
-                                    planned_path=planned_path,
-                                    planned_actions=None,
-                                    draw_tree=False,
-                                    draw_rejected=False)
+        # plt.figure()
+        # ax = plt.gca()
+        # handles, labels = plot_plan(ax=ax,
+        #                             state_space_description=self.planner.state_space_description,
+        #                             scenario=self.planner.scenario,
+        #                             viz_object=self.planner.viz_object,
+        #                             planner_data=planner_data,
+        #                             environment=environment,
+        #                             goal=goal,
+        #                             planned_path=planned_path,
+        #                             planned_actions=None,
+        #                             draw_tree=False,
+        #                             draw_rejected=False)
 
-        final_actual_handle = self.planner.scenario.plot_state_simple(ax,
-                                                                      final_state,
-                                                                      color='orange',
-                                                                      zorder=6,
-                                                                      alpha=0.5)
+        # final_actual_handle = self.planner.scenario.plot_state_simple(ax,
+        #                                                               final_state,
+        #                                                               color='orange',
+        #                                                               zorder=6,
+        #                                                               alpha=0.5)
 
-        handles.append(final_actual_handle)
-        labels.append("final tail actual")
-        legend = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1, 1))
+        # handles.append(final_actual_handle)
+        # labels.append("final tail actual")
+        # legend = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1, 1))
+        # plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
+
         plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
-        plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
 
         if self.verbose >= 1:
             print("Final Execution Error: {:0.4f}".format(execution_to_goal_error))
@@ -178,25 +181,26 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             self.service_provider.stop_record_trial()
 
     def on_complete(self):
-        self.metrics['n_failures'] = self.n_failures
-        metrics_file = self.metrics_filename.open('w')
-        json.dump(self.metrics, metrics_file, indent=2)
+        self.data['n_failures'] = self.n_failures
+        with self.data_filename.open('wb') as data_file:
+            json.dump(self.data, data_file, indent=2)
 
     def on_planner_failure(self, start_states, tail_goal_point, environment: Dict, planner_data):
         folder = self.failures_root / str(self.n_failures)
         folder.mkdir(parents=True)
-        info_file = (folder / 'info.json').open('w')
         info = {
             'start_states': {k: v.tolist() for k, v in start_states.items()},
             'tail_goal_point': tail_goal_point,
             'sdf': {
-                'res': environment['full_env/res'],
-                'origin': environment['full_env/origin'].tolist(),
-                'extent': environment['full_env/extent'].tolist(),
-                'data': environment['full_env/env'].tolist(),
+                'res': environment['res'],
+                'origin': environment['origin'].tolist(),
+                'extent': environment['extent'].tolist(),
+                'data': environment['env'].tolist(),
             },
         }
-        json.dump(info, info_file, indent=2)
+        with gzip.open(folder / 'info.json.gz', 'wb') as info_file:
+            info_str = json.dumps(info, indent=2)
+            info_file.write(info_str.encode("utf-8"))
 
 
 def main():

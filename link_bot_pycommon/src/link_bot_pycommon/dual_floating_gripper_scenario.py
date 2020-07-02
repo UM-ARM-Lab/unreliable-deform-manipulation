@@ -567,7 +567,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         return state_space
 
-    def make_ompl_control_space(self, state_space, params, rng: np.random.RandomState):
+    def make_ompl_control_space(self, state_space, rng: np.random.RandomState):
         control_space = oc.CompoundControlSpace(state_space)
 
         gripper1_control_space = oc.RealVectorControlSpace(state_space, 3)
@@ -601,7 +601,51 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper2_control_space.setBounds(gripper2_control_bounds)
         control_space.addSubspace(gripper2_control_space)
 
+        def _allocator(cs):
+            return DualGripperControlSampler(cs, scenario=self, rng=rng, params=self.params)
+
+        # I override the sampler here so I can use numpy RNG to make things more deterministic.
+        # ompl does not allow resetting of seeds, which causes problems when evaluating multiple
+        # planning queries in a row.
+        control_space.setControlSamplerAllocator(oc.ControlSamplerAllocator(_allocator))
+
         return control_space
+
+
+class DualGripperControlSampler(oc.ControlSampler):
+    def __init__(self,
+                 control_space: oc.CompoundControlSpace,
+                 scenario: DualFloatingGripperRopeScenario,
+                 rng: np.random.RandomState,
+                 params: Dict):
+        super().__init__(control_space)
+        self.scenario = scenario
+        self.rng = rng
+        self.control_space = control_space
+        self.params = params
+
+    def sampleNext(self, control_out, previous_control, state):
+        # Roll
+        roll1 = self.rng.uniform(-np.pi, np.pi)
+        roll2 = self.rng.uniform(-np.pi, np.pi)
+        # Pitch
+        pitch1 = self.rng.uniform(-np.pi, np.pi)
+        pitch2 = self.rng.uniform(-np.pi, np.pi)
+        # Displacement
+        displacement1 = self.rng.uniform(0, self.params['max_distance_gripper_can_move'])
+        displacement2 = self.rng.uniform(0, self.params['max_distance_gripper_can_move'])
+
+        control_out[0][0] = roll1
+        control_out[0][1] = pitch1
+        control_out[0][2] = displacement1
+
+        control_out[1][0] = roll2
+        control_out[1][1] = pitch2
+        control_out[1][2] = displacement2
+
+    def sampleStepCount(self, min_steps, max_steps):
+        step_count = self.rng.randint(min_steps, max_steps)
+        return step_count
 
 
 class DualGripperStateSampler(ob.RealVectorStateSampler):
