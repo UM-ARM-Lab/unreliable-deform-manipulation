@@ -39,6 +39,7 @@ class Base3DScenario(ExperimentScenario):
         self.sampled_goal_marker_idx = 0
         self.tree_state_idx = 0
         self.rejected_state_idx = 0
+        self.current_tree_state_idx = 0
         self.tree_action_idx = 0
         self.sample_idx = 0
 
@@ -53,11 +54,15 @@ class Base3DScenario(ExperimentScenario):
         clear_marker_msg = Marker()
         clear_marker_msg.action = Marker.DELETEALL
         clear_msg.markers.append(clear_marker_msg)
-        self.state_viz_pub.publish(clear_msg)
-        self.action_viz_pub.publish(clear_msg)
+        from time import sleep
+        for i in range(10):
+            self.state_viz_pub.publish(clear_msg)
+            self.action_viz_pub.publish(clear_msg)
+            sleep(0.1)
         self.sampled_goal_marker_idx = 0
         self.tree_state_idx = 0
         self.rejected_state_idx = 0
+        self.current_tree_state_idx = 0
         self.tree_action_idx = 0
         self.sample_idx = 0
 
@@ -94,6 +99,9 @@ class Base3DScenario(ExperimentScenario):
     def plot_rejected_state(self, state: Dict):
         self.plot_state_rviz(state, idx=self.rejected_state_idx, label='rejected', color='#ff8822')
         self.rejected_state_idx += 1
+
+    def plot_current_tree_state(self, state: Dict):
+        self.plot_state_rviz(state, idx=1, label='current tree state', color='#777777')
 
     def plot_tree_state(self, state: Dict):
         self.plot_state_rviz(state, idx=self.tree_state_idx, label='tree', color='#777777')
@@ -275,7 +283,7 @@ class Base3DScenario(ExperimentScenario):
 
             anim.step()
 
-    def publish_goal_marker(self, goal: Dict, goal_threshold: float):
+    def plot_goal(self, goal: Dict, goal_threshold: float):
         goal_marker_msg = MarkerArray()
         midpoint_marker = Marker()
         midpoint_marker.scale.x = goal_threshold

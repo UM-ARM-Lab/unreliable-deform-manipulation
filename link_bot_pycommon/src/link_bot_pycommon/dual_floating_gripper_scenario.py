@@ -465,6 +465,31 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         distance = np.linalg.norm(goal['midpoint'] - rope_midpoint)
         return distance
 
+    @staticmethod
+    def distance_to_goal_differentiable(state, goal):
+        rope_points = tf.reshape(state['link_bot'], [-1, 3])
+        rope_midpoint = rope_points[7]
+        distance = tf.linalg.norm(goal['midpoint'] - rope_midpoint)
+        return distance
+
+    @staticmethod
+    def distance(s1, s2):
+        rope1_points = np.reshape(s1['link_bot'], [-1, 3])
+        rope1_midpoint = rope1_points[7]
+        rope2_points = np.reshape(s2['link_bot'], [-1, 3])
+        rope2_midpoint = rope2_points[7]
+        distance = np.linalg.norm(rope2_midpoint - rope1_midpoint)
+        return distance
+
+    @staticmethod
+    def distance_differentiable(s1, s2):
+        rope_points1 = tf.reshape(s1['link_bot'], [-1, 3])
+        rope1_midpoint = rope1_points[7]
+        rope2_points = tf.reshape(s2['link_bot'], [-1, 3])
+        rope2_midpoint = rope2_points[7]
+        distance = tf.linalg.norm(rope2_midpoint - rope1_midpoint)
+        return distance
+
     def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict, plot: bool):
         return DualGripperGoalRegion(si=si,
                                      scenario=self,
@@ -630,6 +655,18 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
         self.rope_link_length = 0.04
         self.rng = rng
         self.plot = plot
+
+    def distanceGoal(self, state: ob.CompoundState):
+        """
+        Uses the distance between a specific point in a specific subspace and the goal point
+        """
+        state_np = self.scenario.ompl_state_to_numpy(state)
+        distance = self.scenario.distance_to_goal(state_np, self.goal)
+
+        # this ensures the goal must have num_diverged = 0
+        if state_np['num_diverged'] > 0:
+            distance = 1e9
+        return distance
 
     def sampleGoal(self, state_out: ob.CompoundState):
         sampler = self.getSpaceInformation().allocStateSampler()

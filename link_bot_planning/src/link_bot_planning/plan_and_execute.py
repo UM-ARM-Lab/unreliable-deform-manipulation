@@ -15,7 +15,6 @@ from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
-from link_bot_pycommon.ros_pycommon import get_states_dict
 
 
 def get_environment_common(w_m: float, h_m: float, res: float, service_provider: BaseServices, scenario: ExperimentScenario):
@@ -37,7 +36,7 @@ def execute_actions(service_provider: BaseServices, scenario: ExperimentScenario
     actual_path = [start_state]
     for action in actions:
         scenario.execute_action(action)
-        state_t = get_states_dict(service_provider)
+        state_t = scenario.get_state()
         actual_path.append(state_t)
     return actual_path
 
@@ -98,9 +97,6 @@ class PlanAndExecute:
         goal = self.planner.scenario.sample_goal(self.planner_params['goal_extent'], rng=self.goal_rng)
 
         if self.verbose >= 1:
-            self.planner.scenario.publish_goal_marker(goal, self.planner_params['goal_threshold'])
-
-        if self.verbose >= 1:
             (Fore.MAGENTA + "Planning to {}".format(goal) + Fore.RESET)
 
         ############
@@ -119,7 +115,7 @@ class PlanAndExecute:
         if planner_result.planner_status in [MyPlannerStatus.Failure, MyPlannerStatus.NotProgressing]:
             if self.recovery_actions_model is not None:
                 print("performing recovery action!")
-                current_state = get_states_dict(self.service_provider)
+                current_state = scenario.get_state()
                 recovery_actions = self.recovery_actions_model.sample(environment, current_state)
                 self.execute_actions(start_state, recovery_actions)
             return False
@@ -161,7 +157,7 @@ class PlanAndExecute:
                          planning_time: float,
                          planner_status: MyPlannerStatus):
         # visualize the plan
-        if self.verbose >= 2:
+        if self.verbose >= 1:
             self.planner.scenario.animate_final_path(environment, planned_path, planned_actions)
 
     def on_execution_complete(self,

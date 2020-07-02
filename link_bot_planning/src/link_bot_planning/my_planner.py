@@ -67,8 +67,9 @@ class MyPlanner:
         self.state_space = self.scenario.make_ompl_state_space(planner_params=self.params,
                                                                state_sampler_rng=self.state_sampler_rng,
                                                                plot=self.verbose >= 2)
-        self.control_space = self.scenario.make_ompl_control_space(
-            self.state_space, self.params, self.control_sampler_rng)
+        self.control_space = self.scenario.make_ompl_control_space(self.state_space,
+                                                                   self.params,
+                                                                   self.control_sampler_rng)
 
         self.ss = oc.SimpleSetup(self.control_space)
 
@@ -123,8 +124,6 @@ class MyPlanner:
                                                     actions=new_actions)
         # get only the final state predicted
         final_predicted_state = predicted_states[-1]
-        if self.verbose >= 3:
-            raise NotImplementedError()
 
         # compute new num_diverged by checking the constraint
         # walk back up the branch until num_diverged == 0
@@ -162,19 +161,28 @@ class MyPlanner:
 
         if self.verbose >= 2:
             alpha = final_classifier_probability
-            is_different_action = len(previous_actions) == 0 or not are_dicts_close_np(previous_actions[-1], new_action)
-            if is_different_action:
+            if len(previous_actions) == 0:
                 random_color = cm.Dark2(self.control_sampler_rng.uniform(0, 1))
                 MyPlanner.propagate.r = random_color[0]
                 MyPlanner.propagate.g = random_color[1]
                 MyPlanner.propagate.b = random_color[2]
+            elif not are_dicts_close_np(previous_actions[-1], new_action):
+                random_color = cm.Dark2(self.control_sampler_rng.uniform(0, 1))
+                MyPlanner.propagate.r = random_color[0]
+                MyPlanner.propagate.g = random_color[1]
+                MyPlanner.propagate.b = random_color[2]
+                self.scenario.plot_tree_state(previous_state)
+                self.scenario.plot_tree_state(MyPlanner.propagate.cached_previous_state)
+
+            self.scenario.plot_current_tree_state(np_final_state)
+
             self.scenario.plot_tree_action(previous_state,
                                            new_action,
                                            r=MyPlanner.propagate.r,
                                            g=MyPlanner.propagate.g,
                                            b=MyPlanner.propagate.b,
                                            a=alpha)
-            self.scenario.plot_tree_state(np_final_state)
+            MyPlanner.propagate.cached_previous_state = np_final_state
     propagate.r = 0
     propagate.g = 0
     propagate.b = 0
@@ -204,10 +212,11 @@ class MyPlanner:
         ompl_start_scoped = ob.State(self.state_space)
         self.scenario.numpy_to_ompl_state(start_state, ompl_start_scoped())
 
+        # visualization
         self.scenario.reset_planning_viz()
-        if self.verbose >= 2:
-            self.scenario.plot_environment_rviz(environment)
-            self.scenario.plot_start_state(start_state)
+        self.scenario.plot_environment_rviz(environment)
+        self.scenario.plot_start_state(start_state)
+        self.scenario.plot_goal(goal, self.params['goal_threshold'])
 
         self.ss.clear()
         self.ss.setStartState(ompl_start_scoped)

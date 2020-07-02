@@ -1,5 +1,6 @@
 from typing import Dict, List
 
+import rospy
 import numpy as np
 import tensorflow as tf
 from link_bot_classifiers.nn_classifier import NNClassifierWrapper
@@ -130,14 +131,17 @@ def execute(service_provider: BaseServices,
     for start_state, actions_for_start_state in zip(start_states, random_actions):
         actual_state_sequences_for_start_state = []
         for actions in actions_for_start_state:
-            # reset to the start state
-            scenario.teleport_to_state(numpify(start_state))
+            rospy.logerr("not resetting to start")
+            # scenario.teleport_to_state(numpify(start_state))
+
             # execute actions and record the observed states
             actual_states = execute_actions(service_provider, scenario, start_state, actions)
             actual_state_sequences_for_start_state.append(actual_states)
+
         # reset when done for conveniently re-running the script
         actual_state_sequences.append(actual_state_sequences_for_start_state)
-        scenario.teleport_to_state(numpify(start_state))
+
+        # scenario.teleport_to_state(numpify(start_state))
     return actual_state_sequences
 
 

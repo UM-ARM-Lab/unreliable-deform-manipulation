@@ -13,7 +13,7 @@ class NoneClassifier(BaseConstraintChecker):
         super().__init__(scenario)
         self.horizon = 2
         self.data_collection_params = {
-            'res': 0.1,
+            'res': 0.02,
         }
 
     def check_constraint(self,

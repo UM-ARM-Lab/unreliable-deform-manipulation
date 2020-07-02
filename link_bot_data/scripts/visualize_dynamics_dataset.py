@@ -66,43 +66,43 @@ def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
     max_z = 0
     for i, example in enumerate(tf_dataset):
         example = numpify(example)
+        time_steps = example['time_idx']
+
+        # for t in time_steps:
+        #     example_t = remove_batch(dataset.index_time(add_batch(example), t))
+        #     x, y, z = example_t['gripper1']
+        #     max_x = max(max_x, x)
+        #     max_y = max(max_y, y)
+        #     max_z = max(max_z, z)
+        #     min_x = min(min_x, x)
+        #     min_y = min(min_y, y)
+        #     min_z = min(min_z, z)
+        #     x, y, z = example_t['gripper2']
+        #     min_x = min(min_x, x)
+        #     min_y = min(min_y, y)
+        #     min_z = min(min_z, z)
+        #     max_x = max(max_x, x)
+        #     max_y = max(max_y, y)
+        #     max_z = max(max_z, z)
 
         dataset.scenario.plot_environment_rviz(example)
-
-        time_steps = example['time_idx']
         anim = RvizAnimationController(time_steps)
-
         while not anim.done:
             t = anim.t()
             example_t = remove_batch(dataset.index_time(add_batch(example), t))
             dataset.scenario.plot_state_rviz(example_t, label='')
             dataset.scenario.plot_action_rviz_internal(example_t, label='')
 
-            x, y, z = example_t['gripper1']
-            max_x = max(max_x, x)
-            max_y = max(max_y, y)
-            max_z = max(max_z, z)
-            min_x = min(min_x, x)
-            min_y = min(min_y, y)
-            min_z = min(min_z, z)
-            x, y, z = example_t['gripper2']
-            min_x = min(min_x, x)
-            min_y = min(min_y, y)
-            min_z = min(min_z, z)
-            max_x = max(max_x, x)
-            max_y = max(max_y, y)
-            max_z = max(max_z, z)
-
             # this will return when either the animation is "playing" or because the user stepped forward
             anim.step()
 
-        if i % 100 == 0:
-            print(min_x, max_x)
-            print(min_y, max_y)
-            print(min_z, max_z)
-    print(min_x, max_x)
-    print(min_y, max_y)
-    print(min_z, max_z)
+    #     if i % 100 == 0:
+    #         print(min_x, max_x)
+    #         print(min_y, max_y)
+    #         print(min_z, max_z)
+    # print(min_x, max_x)
+    # print(min_y, max_y)
+    # print(min_z, max_z)
 
 
 def main():

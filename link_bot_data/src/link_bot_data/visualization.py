@@ -74,8 +74,8 @@ def rviz_arrow(position: np.ndarray,
     arrow.ns = label
     arrow.id = idx
 
-    arrow.scale.x = 0.01
-    arrow.scale.y = 0.02
+    arrow.scale.x = 0.005
+    arrow.scale.y = 0.01
     arrow.scale.z = 0
 
     arrow.pose.orientation.w = 1

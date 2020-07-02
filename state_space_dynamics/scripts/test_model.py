@@ -45,7 +45,8 @@ def main():
     fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir)
 
     service_provider = GazeboServices()
-    service_provider.setup_env(verbose=0, real_time_rate=0, max_step_size=fwd_model.data_collection_params['max_step_size'])
+    service_provider.setup_env(verbose=0, real_time_rate=0,
+                               max_step_size=fwd_model.data_collection_params['max_step_size'])
     environment = get_environment_for_extents_3d(extent=fwd_model.data_collection_params['extent'],
                                                  res=fwd_model.data_collection_params['res'],
                                                  service_provider=service_provider,
@@ -59,10 +60,18 @@ def main():
     scenario = fwd_model.scenario
     actual_states_lists = execute(service_provider, scenario, start_states, expanded_actions)
 
-    visualize(actual_states_lists, environment, labeling_state_key, predicted_states, scenario, time_steps)
+    visualize(
+        scenario,
+        environment,
+        actual_states_lists,
+        actions,
+        predicted_states,
+        labeling_state_key,
+        time_steps
+    )
 
 
-def visualize(actual_states_lists, environment, labeling_state_key, predicted_states, scenario, time_steps):
+def visualize(scenario, environment, actual_states_lists, actions, predicted_states, labeling_state_key, time_steps):
     for actual_states_list, predicted_states_list in zip(actual_states_lists, predicted_states):
         for actual_states, predicted_states in zip(actual_states_list, predicted_states_list):
             scenario.plot_environment_rviz(environment)
@@ -75,6 +84,12 @@ def visualize(actual_states_lists, environment, labeling_state_key, predicted_st
                 s_t_pred = predicted_states[t]
                 scenario.plot_state_rviz(s_t, label='actual', color='#ff0000aa')
                 scenario.plot_state_rviz(s_t_pred, label='predicted', color='#0000ffaa')
+                if t < len(actions):
+                    action_t = actions[t]
+                    scenario.plot_tree_action(s_t, action_t)
+                else:
+                    action_t = actions[-1]
+                    scenario.plot_tree_action(s_t, action_t)
 
                 if t > 0:
                     distance = np.linalg.norm(s_t[labeling_state_key] - s_t_pred[labeling_state_key])
