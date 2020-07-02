@@ -5,6 +5,7 @@
 #include <rviz/panel.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Int64.h>
+#include <QPropertyAnimation>
 
 #include <QObject>
 #include <QWidget>
@@ -53,6 +54,8 @@ private:
 
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
+
+  QPropertyAnimation *highlight_animation_;
 };
 
 }  // namespace merrrt_visualization

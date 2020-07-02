@@ -24,7 +24,8 @@ def load_generic_model(model_dir) -> Tuple[BaseDynamicsFunction, Tuple[str]]:
     #  this API is super messy
     if isinstance(model_dir, list):
         _, hparams_0 = load_trial(model_dir[0].parent.absolute())
-        scenario_0 = get_scenario(hparams_0['dynamics_dataset_hparams'])
+        scenario_name = hparams_0['dynamics_dataset_hparams']['scenario']
+        scenario_0 = get_scenario(scenario_name)
         fwd_model_dirs = [pathlib.Path(d) for d in model_dir]
         fwd_model = EnsembleDynamicsFunction(fwd_model_dirs, batch_size=1, scenario=scenario_0)
         model_path_info = list(fwd_model_dirs[0].parts[1:])
@@ -33,7 +34,8 @@ def load_generic_model(model_dir) -> Tuple[BaseDynamicsFunction, Tuple[str]]:
         return fwd_model, model_path_info
     else:
         _, hparams = load_trial(model_dir.parent.absolute())
-        scenario = get_scenario(hparams['dynamics_dataset_hparams'])
+        scenario_name = hparams['dynamics_dataset_hparams']['scenario']
+        scenario = get_scenario(scenario_name)
         model_type = hparams['model_class']
         if model_type == 'rigid':
             return RigidTranslationModel(model_dir, batch_size=1, scenario=scenario), model_dir.parts[1:]

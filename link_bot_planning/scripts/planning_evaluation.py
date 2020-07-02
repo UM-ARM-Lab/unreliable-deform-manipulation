@@ -138,36 +138,9 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'num_nodes': num_nodes
         }
         self.data['metrics'].append(data_for_plan)
-        with gzip.open(self.metrics_filename, 'wb') as data_file:
+        with gzip.open(self.data_filename, 'wb') as data_file:
             data_str = json.dumps(self.data, indent=2)
             data_file.write(data_str.encode("utf-8"))
-
-        # plt.figure()
-        # ax = plt.gca()
-        # handles, labels = plot_plan(ax=ax,
-        #                             state_space_description=self.planner.state_space_description,
-        #                             scenario=self.planner.scenario,
-        #                             viz_object=self.planner.viz_object,
-        #                             planner_data=planner_data,
-        #                             environment=environment,
-        #                             goal=goal,
-        #                             planned_path=planned_path,
-        #                             planned_actions=None,
-        #                             draw_tree=False,
-        #                             draw_rejected=False)
-
-        # final_actual_handle = self.planner.scenario.plot_state_simple(ax,
-        #                                                               final_state,
-        #                                                               color='orange',
-        #                                                               zorder=6,
-        #                                                               alpha=0.5)
-
-        # handles.append(final_actual_handle)
-        # labels.append("final tail actual")
-        # legend = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1, 1))
-        # plt.savefig(plan_viz_path, dpi=600, bbox_extra_artists=(legend,), bbox_inches='tight')
-
-        plan_viz_path = self.root / "plan_{}.png".format(self.successfully_completed_plan_idx)
 
         if self.verbose >= 1:
             print("Final Execution Error: {:0.4f}".format(execution_to_goal_error))

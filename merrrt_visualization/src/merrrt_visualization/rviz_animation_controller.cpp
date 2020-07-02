@@ -23,6 +23,11 @@ RVizAnimationController::RVizAnimationController(QWidget *parent) : rviz::Panel(
   connect(ui.play_pause_button, &QPushButton::clicked, this, &RVizAnimationController::PlayPauseClicked);
   connect(ui.done_button, &QPushButton::clicked, this, &RVizAnimationController::DoneClicked);
 
+  // highlight_animation_ = new QPropertyAnimation(ui, "background-color");
+  // highlight_animation_->setDuration(1000);
+  // highlight_animation_->setStartValue("#ffff00");
+  // highlight_animation_->setEndValue("#ffffff");
+
   fwd_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/forward", 10);
   bwd_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/backward", 10);
   play_pause_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/play_pause", 10);

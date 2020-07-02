@@ -63,11 +63,14 @@ class MyPlanner:
         self.scenario = scenario
         self.n_total_action = None
         self.goal_region = None
+        self.action_params = self.fwd_model.data_collection_params
 
         self.state_space = self.scenario.make_ompl_state_space(planner_params=self.params,
                                                                state_sampler_rng=self.state_sampler_rng,
                                                                plot=self.verbose >= 2)
-        self.control_space = self.scenario.make_ompl_control_space(self.state_space, self.control_sampler_rng)
+        self.control_space = self.scenario.make_ompl_control_space(self.state_space,
+                                                                   self.control_sampler_rng,
+                                                                   action_params=self.action_params)
 
         self.ss = oc.SimpleSetup(self.control_space)
 

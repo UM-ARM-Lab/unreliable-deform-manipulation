@@ -17,8 +17,16 @@
     1.1,
     -0.4,
     0.4,
-    0.8,
-    1.2
+    0.7,
+    1.0
+  ],
+  "objects_extent": [
+    0.6,
+    1.0,
+    -0.4,
+    0.4,
+    0.715,
+    0.7151
   ],
   "fwd_model_dir": [
     "dy_trials/victor_dual_no_obs_1_0/best_checkpoint",

@@ -11,7 +11,9 @@ from geometry_msgs.msg import Point
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from tf import transformations
+from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
+from link_bot_pycommon.collision_checking import inflate_tf_3d
 from victor_hardware_interface_msgs.msg import MotionCommand
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, WorldControlRequest, \
     WorldControl, SetRopeState, SetRopeStateRequest, SetDualGripperPoints, GetRopeState, GetRopeStateRequest, \
@@ -20,8 +22,8 @@ from std_msgs.msg import Empty
 
 
 class DualFloatingGripperRopeScenario(Base3DScenario):
-    def __init__(self, params: Dict):
-        super().__init__(params)
+    def __init__(self):
+        super().__init__({})
         self.last_state = None
         self.last_action = None
         self.can_repeat_last_action = False
@@ -36,8 +38,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.left_arm_motion_pub = rospy.Publisher("left_arm/motion_command", MotionCommand, queue_size=10)
         self.right_arm_motion_pub = rospy.Publisher("right_arm/motion_command", MotionCommand, queue_size=10)
         self.set_model_state_srv = rospy.ServiceProxy("gazebo/set_model_state", SetModelState)
-
-        self.nudge_rng = np.random.RandomState(0)
 
         self.max_action_attempts = 1000
 
@@ -75,31 +75,28 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.right_arm_motion_pub.publish(right_arm_motion)
 
     def sample_action(self,
+                      action_rng: np.random.RandomState,
                       environment: Dict,
                       state,
-                      params: Dict,
-                      action_rng):
+                      data_collection_params: Dict,
+                      action_params: Dict):
         action = None
-
-        gripper1_point = state['gripper1']
-        # the last link connects to gripper 1 at the moment
-        rope_state_vector = state['link_bot']
-        link_point = np.array([rope_state_vector[-3], rope_state_vector[-2], rope_state_vector[-1]])
-        distance_between_gripper1_and_link = np.linalg.norm(gripper1_point - link_point)
-
         for _ in range(self.max_action_attempts):
             # move in the same direction as the previous action with some probability
-            repeat_probability = self.params['repeat_delta_gripper_motion_probability']
+            repeat_probability = data_collection_params['repeat_delta_gripper_motion_probability']
             if self.can_repeat_last_action and action_rng.uniform(0, 1) < repeat_probability:
                 last_delta_gripper_1 = self.last_action['gripper1_position'] - self.last_state['gripper1']
                 last_delta_gripper_2 = self.last_action['gripper2_position'] - self.last_state['gripper2']
                 gripper1_position = state['gripper1'] + last_delta_gripper_1
                 gripper2_position = state['gripper2'] + last_delta_gripper_2
             else:
-                gripper1_position, gripper2_position = self.random_nearby_position_action(
-                    state, action_rng, environment)
+                gripper1_position, gripper2_position = self.random_nearby_position_action(action_rng,
+                                                                                          environment,
+                                                                                          state,
+                                                                                          data_collection_params,
+                                                                                          action_params)
 
-            out_of_bounds = self.grippers_out_of_bounds(gripper1_position, gripper2_position)
+            out_of_bounds = self.grippers_out_of_bounds(gripper1_position, gripper2_position, data_collection_params)
             action = {
                 'gripper1_position': gripper1_position,
                 'gripper2_position': gripper2_position,
@@ -112,9 +109,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         rospy.logwarn("Could not find a valid action, executing an invalid one")
         return action
 
-    def grippers_out_of_bounds(self, gripper1, gripper2):
-        gripper1_extent = self.params['gripper1_action_sample_extent']
-        gripper2_extent = self.params['gripper2_action_sample_extent']
+    def grippers_out_of_bounds(self, gripper1, gripper2, data_collection_params: Dict):
+        gripper1_extent = data_collection_params['gripper1_action_sample_extent']
+        gripper2_extent = data_collection_params['gripper2_action_sample_extent']
         return DualFloatingGripperRopeScenario.is_out_of_bounds(gripper1, gripper1_extent) \
             or DualFloatingGripperRopeScenario.is_out_of_bounds(gripper2, gripper2_extent)
 
@@ -126,25 +123,17 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             or y < y_min or y > y_max \
             or z < z_min or z > z_max
 
-    def random_delta_position(self, Dict, action_rng: np.random.RandomState, environment: Dict):
-        max_d = self.params['max_distance_gripper_can_move']
-        delta1 = action_rng.uniform([-max_d, -max_d, -max_d], [max_d, max_d, max_d])
-        delta2 = action_rng.uniform([-max_d, -max_d, -max_d], [max_d, max_d, max_d])
-
-        delta1 = delta1 / np.linalg.norm(delta1)
-        gripper1_displacement = gripper1_displacement * max_d * action_rng.uniform(0, 1)
-        target_gripper1_pos = current_gripper1_pos + gripper1_displacement
-
-        gripper2_displacement = gripper2_displacement / np.linalg.norm(gripper2_displacement)
-        gripper2_displacement = gripper2_displacement * max_d * action_rng.uniform(0, 1)
-        target_gripper2_pos = current_gripper2_pos + gripper2_displacement
-
-        return target_gripper1_pos, target_gripper2_pos
-
-    def random_nearby_position_action(self, state: Dict, action_rng: np.random.RandomState, environment: Dict):
-        max_d = self.params['max_distance_gripper_can_move']
-        target_gripper1_pos = Base3DScenario.random_pos(action_rng, self.params['gripper1_action_sample_extent'])
-        target_gripper2_pos = Base3DScenario.random_pos(action_rng, self.params['gripper2_action_sample_extent'])
+    def random_nearby_position_action(self,
+                                      action_rng: np.random.RandomState,
+                                      environment: Dict,
+                                      state: Dict,
+                                      action_params: Dict,
+                                      data_collection_params: Dict):
+        max_d = action_params['max_distance_gripper_can_move']
+        target_gripper1_pos = Base3DScenario.random_pos(
+            action_rng, data_collection_params['gripper1_action_sample_extent'])
+        target_gripper2_pos = Base3DScenario.random_pos(
+            action_rng, data_collection_params['gripper2_action_sample_extent'])
         current_gripper1_pos, current_gripper2_pos = DualFloatingGripperRopeScenario.state_to_gripper_position(state)
 
         gripper1_displacement = target_gripper1_pos - current_gripper1_pos
@@ -161,11 +150,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     def settle(self):
         req = WorldControlRequest()
-        settling_time = rospy.get_param("world_interaction/traj_goal_time_tolerance")
-        req.seconds = settling_time
+        req.seconds = 30
         self.world_control_srv(req)
 
-    def randomize_environment(self, env_rng):
+    def randomize_environment(self, env_rng, objects_params: Dict):
         state = self.get_state()
         pre_randomize_gripper1_position = state['gripper1']
         pre_randomize_gripper2_position = state['gripper2']
@@ -183,10 +171,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         # replace the objects in a new random configuration
         random_object_positions = {
-            'box1': self.random_object_position(env_rng),
-            'box2': self.random_object_position(env_rng),
-            'box3': self.random_object_position(env_rng),
-            'box4': self.random_object_position(env_rng),
+            'box1': self.random_object_position(env_rng, objects_params),
+            'box2': self.random_object_position(env_rng, objects_params),
+            'box3': self.random_object_position(env_rng, objects_params),
+            'box4': self.random_object_position(env_rng, objects_params),
         }
         self.set_object_positions(random_object_positions)
 
@@ -204,9 +192,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper2_position': pre_randomize_gripper2_position + noise2,
         }
         self.execute_action(return_action)
+        self.settle()
 
-    def random_object_position(self, env_rng: np.random.RandomState):
-        extent = self.params['objects_extent']
+    def random_object_position(self, env_rng: np.random.RandomState, objects_params: Dict):
+        extent = objects_params['objects_extent']
         extent = np.array(extent).reshape(3, 2)
         return env_rng.uniform(extent[:, 0], extent[:, 1])
 
@@ -229,10 +218,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
         res = self.action_srv(req)
-
-    def nudge(self, state: Dict, environment: Dict):
-        nudge_action = self.random_nearby_position_action(state, self.nudge_rng, environment)
-        self.execute_action(nudge_action)
 
     @ staticmethod
     def put_state_local_frame(state: Dict):
@@ -452,11 +437,19 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         }
 
     @staticmethod
-    def sample_goal(extent, rng: np.random.RandomState):
-        extent = np.array(extent).reshape(3, 2)
-        return {
-            'midpoint': rng.uniform(extent[:, 0], extent[:, 1]),
-        }
+    def sample_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
+        env_inflated = inflate_tf_3d(env=environment['env'],
+                                     radius_m=planner_params['goal_threshold'], res=environment['res'])
+        goal_extent = planner_params['goal_extent']
+
+        while True:
+            extent = np.array(goal_extent).reshape(3, 2)
+            p = rng.uniform(extent[:, 0], extent[:, 1])
+            goal = {'midpoint': p}
+            row, col, channel = link_bot_sdf_utils.point_to_idx_3d_in_env(p[0], p[1], p[2], environment)
+            collision = env_inflated[row, col, channel] > 0.5
+            if not collision:
+                return goal
 
     @staticmethod
     def distance_to_goal(state: Dict, goal: Dict):
@@ -483,7 +476,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     @staticmethod
     def distance_differentiable(s1, s2):
-        rope_points1 = tf.reshape(s1['link_bot'], [-1, 3])
+        rope1_points = tf.reshape(s1['link_bot'], [-1, 3])
         rope1_midpoint = rope1_points[7]
         rope2_points = tf.reshape(s2['link_bot'], [-1, 3])
         rope2_midpoint = rope2_points[7]
@@ -567,7 +560,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         return state_space
 
-    def make_ompl_control_space(self, state_space, rng: np.random.RandomState):
+    def make_ompl_control_space(self, state_space, rng: np.random.RandomState, action_params: Dict):
         control_space = oc.CompoundControlSpace(state_space)
 
         gripper1_control_space = oc.RealVectorControlSpace(state_space, 3)
@@ -579,7 +572,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper1_control_bounds.setLow(1, -np.pi)
         gripper1_control_bounds.setHigh(1, np.pi)
         # Displacement
-        max_d = self.params['max_distance_gripper_can_move']
+        max_d = action_params['max_distance_gripper_can_move']
         gripper1_control_bounds.setLow(2, 0)
         gripper1_control_bounds.setHigh(2, max_d)
         gripper1_control_space.setBounds(gripper1_control_bounds)
@@ -594,7 +587,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper2_control_bounds.setLow(1, -np.pi)
         gripper2_control_bounds.setHigh(1, np.pi)
         # Displacement
-        max_d = self.params['max_distance_gripper_can_move']
+        max_d = action_params['max_distance_gripper_can_move']
         gripper2_control_bounds.setLow(2, 0)
         gripper2_control_bounds.setHigh(2, max_d)
 
@@ -602,7 +595,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         control_space.addSubspace(gripper2_control_space)
 
         def _allocator(cs):
-            return DualGripperControlSampler(cs, scenario=self, rng=rng, params=self.params)
+            return DualGripperControlSampler(cs, scenario=self, rng=rng, action_params=action_params)
 
         # I override the sampler here so I can use numpy RNG to make things more deterministic.
         # ompl does not allow resetting of seeds, which causes problems when evaluating multiple
@@ -617,12 +610,12 @@ class DualGripperControlSampler(oc.ControlSampler):
                  control_space: oc.CompoundControlSpace,
                  scenario: DualFloatingGripperRopeScenario,
                  rng: np.random.RandomState,
-                 params: Dict):
+                 action_params: Dict):
         super().__init__(control_space)
         self.scenario = scenario
         self.rng = rng
         self.control_space = control_space
-        self.params = params
+        self.action_params = action_params
 
     def sampleNext(self, control_out, previous_control, state):
         # Roll
@@ -632,8 +625,8 @@ class DualGripperControlSampler(oc.ControlSampler):
         pitch1 = self.rng.uniform(-np.pi, np.pi)
         pitch2 = self.rng.uniform(-np.pi, np.pi)
         # Displacement
-        displacement1 = self.rng.uniform(0, self.params['max_distance_gripper_can_move'])
-        displacement2 = self.rng.uniform(0, self.params['max_distance_gripper_can_move'])
+        displacement1 = self.rng.uniform(0, self.action_params['max_distance_gripper_can_move'])
+        displacement2 = self.rng.uniform(0, self.action_params['max_distance_gripper_can_move'])
 
         control_out[0][0] = roll1
         control_out[0][1] = pitch1

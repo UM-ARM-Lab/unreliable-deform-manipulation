@@ -86,6 +86,9 @@ class Base3DScenario(ExperimentScenario):
         self.plot_state_rviz(state, idx=self.sample_idx, label='samples', color='#f52f32')
         self.sample_idx += 1
 
+    def plot_executed_action(self, state: Dict, action: Dict, **kwargs):
+        self.plot_action_rviz(state, action, label='executed action', color="#3876EB", idx1=1, idx2=1, **kwargs)
+
     def plot_tree_action(self, state: Dict, action: Dict, **kwargs):
         r = kwargs.pop("r", 0.2)
         g = kwargs.pop("g", 0.2)
@@ -286,9 +289,9 @@ class Base3DScenario(ExperimentScenario):
     def plot_goal(self, goal: Dict, goal_threshold: float):
         goal_marker_msg = MarkerArray()
         midpoint_marker = Marker()
-        midpoint_marker.scale.x = goal_threshold
-        midpoint_marker.scale.y = goal_threshold
-        midpoint_marker.scale.z = goal_threshold
+        midpoint_marker.scale.x = goal_threshold * 2
+        midpoint_marker.scale.y = goal_threshold * 2
+        midpoint_marker.scale.z = goal_threshold * 2
         midpoint_marker.action = Marker.ADD
         midpoint_marker.type = Marker.SPHERE
         midpoint_marker.header.frame_id = "/world"
@@ -298,7 +301,7 @@ class Base3DScenario(ExperimentScenario):
         midpoint_marker.color.r = 0.5
         midpoint_marker.color.g = 0.3
         midpoint_marker.color.b = 0.8
-        midpoint_marker.color.a = 1
+        midpoint_marker.color.a = 0.8
         midpoint_marker.pose.position.x = goal['midpoint'][0]
         midpoint_marker.pose.position.y = goal['midpoint'][1]
         midpoint_marker.pose.position.z = goal['midpoint'][2]

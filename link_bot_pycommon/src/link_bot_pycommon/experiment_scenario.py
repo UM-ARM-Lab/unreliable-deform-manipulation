@@ -23,9 +23,6 @@ class ExperimentScenario:
             return other == self.simple_name()
         raise NotImplementedError()
 
-    def nudge(self, state: Dict, environment: Dict):
-        raise NotImplementedError()
-
     @staticmethod
     def simple_name():
         raise NotImplementedError()

@@ -125,6 +125,7 @@
                 </material>
             </visual>
             <collision name='victor_left_arm_link_2_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -177,6 +178,7 @@
                 </material>
             </visual>
             <collision name='victor_left_arm_link_3_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 -0.026 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -229,6 +231,7 @@
                 </material>
             </visual>
             <collision name='victor_left_arm_link_4_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -281,6 +284,7 @@
                 </material>
             </visual>
             <collision name='victor_left_arm_link_5_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 -0.026 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -333,6 +337,7 @@
                 </material>
             </visual>
             <collision name='victor_left_arm_link_6_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -415,6 +420,7 @@
                 </material>
             </visual>
             <collision name='victor_left_arm_link_7_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 -0.0005 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -437,6 +443,7 @@
                 </surface>
             </collision>
             <collision name='victor_left_arm_link_7_fixed_joint_lump__victor_left_gripper_mounting_bracket_collision_1'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0.045 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -460,6 +467,7 @@
                 </surface>
             </collision>
             <collision name='victor_left_arm_link_7_fixed_joint_lump__victor_left_gripper_palm_collision_2'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0.07205 0 -0 0.785398</pose>
                 <geometry>
                     <mesh>
@@ -482,6 +490,7 @@
                 </surface>
             </collision>
             <collision name='victor_left_arm_link_7_fixed_joint_lump__victor_left_gripper_fingerA_base_collision_3'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0.015733 0.015733 0.133169 0 -0 0.785398</pose>
                 <geometry>
                     <mesh>
@@ -534,6 +543,7 @@
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerA_dist_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -586,6 +596,7 @@
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerA_med_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -638,6 +649,7 @@
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerA_prox_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -690,6 +702,7 @@
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerB_base_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -742,6 +755,7 @@
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerB_dist_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -794,6 +808,7 @@
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerB_med_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -846,6 +861,7 @@
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerB_prox_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -892,6 +908,7 @@
                 </geometry>
             </visual>
             <collision name='victor_left_gripper_fingerC_base_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -938,6 +955,7 @@
                 </geometry>
             </visual>
             <collision name='victor_left_gripper_fingerC_dist_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -984,6 +1002,7 @@
                 </geometry>
             </visual>
             <collision name='victor_left_gripper_fingerC_med_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1030,6 +1049,7 @@
                 </geometry>
             </visual>
             <collision name='victor_left_gripper_fingerC_prox_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1112,6 +1132,7 @@
                 </material>
             </visual>
             <collision name='victor_right_arm_link_2_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1164,6 +1185,7 @@
                 </material>
             </visual>
             <collision name='victor_right_arm_link_3_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 -0.026 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1216,6 +1238,7 @@
                 </material>
             </visual>
             <collision name='victor_right_arm_link_4_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1268,6 +1291,7 @@
                 </material>
             </visual>
             <collision name='victor_right_arm_link_5_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 -0.026 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1320,6 +1344,7 @@
                 </material>
             </visual>
             <collision name='victor_right_arm_link_6_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1402,6 +1427,7 @@
                 </material>
             </visual>
             <collision name='victor_right_arm_link_7_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 -0.0005 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1423,8 +1449,8 @@
                     </contact>
                 </surface>
             </collision>
-            <collision
-                    name='victor_right_arm_link_7_fixed_joint_lump__victor_right_gripper_mounting_bracket_collision_1'>
+            <collision name='victor_right_arm_link_7_fixed_joint_lump__victor_right_gripper_mounting_bracket_collision_1'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0.045 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1448,6 +1474,7 @@
                 </surface>
             </collision>
             <collision name='victor_right_arm_link_7_fixed_joint_lump__victor_right_gripper_palm_collision_2'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0.07205 0 -0 0.785398</pose>
                 <geometry>
                     <mesh>
@@ -1470,6 +1497,7 @@
                 </surface>
             </collision>
             <collision name='victor_right_arm_link_7_fixed_joint_lump__victor_right_gripper_fingerA_base_collision_3'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0.015733 0.015733 0.133169 0 -0 0.785398</pose>
                 <geometry>
                     <mesh>
@@ -1522,6 +1550,7 @@
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerA_dist_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1574,6 +1603,7 @@
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerA_med_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1626,6 +1656,7 @@
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerA_prox_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1678,6 +1709,7 @@
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerB_base_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1730,6 +1762,7 @@
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerB_dist_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1782,6 +1815,7 @@
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerB_med_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1834,6 +1868,7 @@
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerB_prox_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1880,6 +1915,7 @@
                 </geometry>
             </visual>
             <collision name='victor_right_gripper_fingerC_base_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1926,6 +1962,7 @@
                 </geometry>
             </visual>
             <collision name='victor_right_gripper_fingerC_dist_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -1972,6 +2009,7 @@
                 </geometry>
             </visual>
             <collision name='victor_right_gripper_fingerC_med_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>
@@ -2018,6 +2056,7 @@
                 </geometry>
             </visual>
             <collision name='victor_right_gripper_fingerC_prox_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 -0 0</pose>
                 <geometry>
                     <mesh>

@@ -17,11 +17,7 @@ class ClassifierDataset(BaseDataset):
         self.labeling_params = self.hparams['labeling_params']
         self.label_state_key = self.hparams['labeling_params']['state_key']
         self.horizon = self.hparams['labeling_params']['classifier_horizon']
-        scenario_params = {
-            'scenario': self.hparams['scenario'],
-            'data_collection_params': self.hparams['data_collection_params']
-        }
-        self.scenario = get_scenario(scenario_params)
+        self.scenario = get_scenario(self.hparams['scenario'])
 
         self.state_keys = self.hparams['state_keys']
         self.cache_negative = False

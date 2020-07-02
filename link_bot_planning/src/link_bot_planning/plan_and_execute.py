@@ -32,12 +32,17 @@ def get_environment_common(w_m: float, h_m: float, res: float, service_provider:
     return environment
 
 
-def execute_actions(service_provider: BaseServices, scenario: ExperimentScenario, start_state: Dict, actions: List[Dict]):
-    actual_path = [start_state]
+def execute_actions(service_provider: BaseServices, scenario: ExperimentScenario, start_state: Dict, actions: List[Dict], plot: bool = False):
+    pre_action_state = start_state
+    actual_path = [pre_action_state]
     for action in actions:
         scenario.execute_action(action)
         state_t = scenario.get_state()
         actual_path.append(state_t)
+        if plot:
+            scenario.plot_executed_action(pre_action_state, action)
+            scenario.plot_state_rviz(state_t, label='actual')
+        pre_action_state = state_t
     return actual_path
 
 
@@ -94,7 +99,9 @@ class PlanAndExecute:
                                                      robot_name=self.planner.fwd_model.scenario.robot_name())
 
         # generate a random target
-        goal = self.planner.scenario.sample_goal(self.planner_params['goal_extent'], rng=self.goal_rng)
+        goal = self.planner.scenario.sample_goal(environment=environment,
+                                                 rng=self.goal_rng,
+                                                 planner_params=self.planner_params)
 
         if self.verbose >= 1:
             (Fore.MAGENTA + "Planning to {}".format(goal) + Fore.RESET)
@@ -185,7 +192,8 @@ class PlanAndExecute:
         pass
 
     def randomize_environment(self):
-        rospy.logerr("Randomizing environment in planning not implemented!")
+        self.planner.scenario.randomize_environment(self.env_rng, self.planner_params)
 
     def execute_actions(self, start_state: Dict, actions: Optional[List[Dict]]) -> List[Dict]:
-        return execute_actions(self.service_provider, self.planner.scenario, start_state, actions)
+        plot = self.verbose >= 1
+        return execute_actions(self.service_provider, self.planner.scenario, start_state, actions, plot=plot)
