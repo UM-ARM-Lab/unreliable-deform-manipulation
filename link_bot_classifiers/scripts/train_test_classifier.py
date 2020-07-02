@@ -89,6 +89,43 @@ def train_main(args, seed: int):
     runner.train(train_tf_dataset, val_tf_dataset, num_epochs=args.epochs)
 
 
+def test_main(args, seed: int):
+    ###############
+    # Model
+    ###############
+    trials_directory = pathlib.Path('trials').absolute()
+    trial_path = args.checkpoint.parent.absolute()
+    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path,
+                                                    trials_directory=trials_directory)
+    model = link_bot_classifiers.get_model(params['model_class'])
+
+    ###############
+    # Dataset
+    ###############
+    test_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
+    test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
+    scenario = test_dataset.scenario
+
+    ###############
+    # Evaluate
+    ###############
+    test_tf_dataset = batch_tf_dataset(test_tf_dataset, args.batch_size, drop_remainder=True)
+
+    net = model(hparams=params, batch_size=args.batch_size, scenario=test_dataset.scenario)
+    # This call to model runner restores the model
+    runner = ModelRunner(model=net,
+                         training=False,
+                         params=params,
+                         restore_from_name=args.checkpoint.name,
+                         trial_path=trial_path,
+                         key_metric=AccuracyMetric,
+                         batch_metadata=test_dataset.batch_metadata)
+
+    metrics = runner.val_epoch()
+    for metric_name, metric_value in metrics.items():
+        print(f"{metric_name:30s}: {metric_value}")
+
+
 def eval_main(args, seed: int):
     stdev_pub_ = rospy.Publisher("stdev", Float32, queue_size=10)
     accept_probability_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)
@@ -241,6 +278,15 @@ def main():
                               help='report validation every this many epochs', default=1)
     train_parser.add_argument('--seed', type=int, default=None)
     train_parser.set_defaults(func=train_main)
+
+    test_parser = subparsers.add_parser('test')
+    test_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
+    test_parser.add_argument('checkpoint', type=pathlib.Path)
+    test_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
+    test_parser.add_argument('--batch-size', type=int, default=32)
+    test_parser.add_argument('--verbose', '-v', action='count', default=0)
+    test_parser.add_argument('--seed', type=int, default=None)
+    test_parser.set_defaults(func=test_main)
 
     eval_parser = subparsers.add_parser('eval')
     eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')

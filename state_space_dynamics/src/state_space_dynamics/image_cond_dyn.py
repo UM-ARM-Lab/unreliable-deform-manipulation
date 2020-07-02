@@ -131,7 +131,7 @@ class ImageCondDynamics(MyKerasModel):
             'env': example['env'][b],
             'origin': example['origin'][b],
             'res': example['res'][b],
-        }input_dictexample
+        }
         self.scenarexample_environment_rviz(full_env_dict)
         # END DEBUG
 

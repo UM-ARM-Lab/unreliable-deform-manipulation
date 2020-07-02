@@ -2,6 +2,7 @@
 import argparse
 import pathlib
 from time import perf_counter
+from colorama import Style
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -54,7 +55,7 @@ def print_stats_and_timing(count, positive_count, reconverging_count, total_dt=N
     if total_dt is not None:
         print(f"Total iteration time = {total_dt:.4f}")
     print(f"Total:        {count}")
-    print(f"Positive:     {positive_count} ({positive_count / count * 100:3.2f}%)")
+    print(Style.BRIGHT + f"Positive:     {positive_count} ({positive_count / count * 100:3.2f}%)" + Style.NORMAL)
     print(f"Reconverging: {reconverging_count} ({reconverging_count / count * 100:3.2f}%)")
 
 
