@@ -174,6 +174,12 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
       continue;
     }
 
+    // Skip the special little sphere I used for collision checking
+    if (model_name == "collision_sphere")
+    {
+      continue;
+    }
+
     // Iterate over all links in the model, and add collision objects from each one
     // This adds meshes and primitives to:
     //  object.meshes,
