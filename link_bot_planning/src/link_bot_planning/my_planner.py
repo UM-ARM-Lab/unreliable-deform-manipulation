@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
+from matplotlib import cm
 
 from moonshine.tests.testing_utils import are_dicts_close_np
 import rospy
@@ -63,8 +64,8 @@ class MyPlanner:
         self.n_total_action = None
         self.goal_region = None
 
-        self.state_space = self.scenario.make_ompl_state_space(params=self.params,
-                                                               rng=self.state_sampler_rng,
+        self.state_space = self.scenario.make_ompl_state_space(planner_params=self.params,
+                                                               state_sampler_rng=self.state_sampler_rng,
                                                                plot=self.verbose >= 2)
         self.control_space = self.scenario.make_ompl_control_space(
             self.state_space, self.params, self.control_sampler_rng)
@@ -163,9 +164,10 @@ class MyPlanner:
             alpha = final_classifier_probability
             is_different_action = len(previous_actions) == 0 or not are_dicts_close_np(previous_actions[-1], new_action)
             if is_different_action:
-                MyPlanner.propagate.r = self.control_sampler_rng.uniform(0, 1)
-                MyPlanner.propagate.g = self.control_sampler_rng.uniform(0, 1)
-                MyPlanner.propagate.b = self.control_sampler_rng.uniform(0, 1)
+                random_color = cm.Dark2(self.control_sampler_rng.uniform(0, 1))
+                MyPlanner.propagate.r = random_color[0]
+                MyPlanner.propagate.g = random_color[1]
+                MyPlanner.propagate.b = random_color[2]
             self.scenario.plot_tree_action(previous_state,
                                            new_action,
                                            r=MyPlanner.propagate.r,

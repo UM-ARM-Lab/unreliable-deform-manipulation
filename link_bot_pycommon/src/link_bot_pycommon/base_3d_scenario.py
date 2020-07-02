@@ -26,7 +26,6 @@ class Base3DScenario(ExperimentScenario):
         self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10, latch=True)
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10, latch=True)
-        self.planner_viz_pub = rospy.Publisher("planner_viz", MarkerArray, queue_size=10, latch=True)
         self.label_viz_pub = rospy.Publisher("mybool", Bool, queue_size=10, latch=True)
         self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
         self.time_viz_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10, latch=True)
@@ -79,7 +78,7 @@ class Base3DScenario(ExperimentScenario):
         self.plot_state_rviz(state, label='start', color='#0088aa')
 
     def plot_sampled_state(self, state: Dict):
-        self.plot_state_rviz(state, idx=self.sample_idx, label='samples', color='#ff8888')
+        self.plot_state_rviz(state, idx=self.sample_idx, label='samples', color='#f52f32')
         self.sample_idx += 1
 
     def plot_tree_action(self, state: Dict, action: Dict, **kwargs):
@@ -97,7 +96,7 @@ class Base3DScenario(ExperimentScenario):
         self.rejected_state_idx += 1
 
     def plot_tree_state(self, state: Dict):
-        self.plot_state_rviz(state, idx=self.tree_state_idx, label='tree', color='#ffaaaa')
+        self.plot_state_rviz(state, idx=self.tree_state_idx, label='tree', color='#777777')
         self.tree_state_idx += 1
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
@@ -298,7 +297,7 @@ class Base3DScenario(ExperimentScenario):
         midpoint_marker.pose.orientation.w = 1
 
         goal_marker_msg.markers.append(midpoint_marker)
-        self.planner_viz_pub.publish(goal_marker_msg)
+        self.state_viz_pub.publish(goal_marker_msg)
 
     @staticmethod
     def to_rope_local_frame(state, reference_state=None):
