@@ -607,8 +607,10 @@ class DualGripperStateSampler(ob.RealVectorStateSampler):
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
+
+        self.scenario.numpy_to_ompl_state(state_np, state_out)
+
         if self.plot:
-            self.scenario.numpy_to_ompl_state(state_np, state_out)
             self.scenario.plot_sampled_state(state_np)
 
 
@@ -645,8 +647,10 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
+
+        self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
+
         if self.plot:
-            self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
             self.scenario.plot_sampled_goal_state(goal_state_np)
 
     def maxSampleCount(self):
