@@ -58,6 +58,12 @@ def plot_2d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
 
 def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
     rospy.loginfo("Don't forget to start the viz_stepper")
+    min_x = 1000
+    min_y = 1000
+    min_z = 1000
+    max_x = 0
+    max_y = 0
+    max_z = 0
     for i, example in enumerate(tf_dataset):
         example = numpify(example)
 
@@ -72,8 +78,31 @@ def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
             dataset.scenario.plot_state_rviz(example_t, label='')
             dataset.scenario.plot_action_rviz_internal(example_t, label='')
 
+            x, y, z = example_t['gripper1']
+            max_x = max(max_x, x)
+            max_y = max(max_y, y)
+            max_z = max(max_z, z)
+            min_x = min(min_x, x)
+            min_y = min(min_y, y)
+            min_z = min(min_z, z)
+            x, y, z = example_t['gripper2']
+            min_x = min(min_x, x)
+            min_y = min(min_y, y)
+            min_z = min(min_z, z)
+            max_x = max(max_x, x)
+            max_y = max(max_y, y)
+            max_z = max(max_z, z)
+
             # this will return when either the animation is "playing" or because the user stepped forward
             anim.step()
+
+        if i % 100 == 0:
+            print(min_x, max_x)
+            print(min_y, max_y)
+            print(min_z, max_z)
+    print(min_x, max_x)
+    print(min_y, max_y)
+    print(min_z, max_z)
 
 
 def main():

@@ -2,22 +2,22 @@
   "termination_criteria": {
     "times_called_threshold": 100,
     "min_distance_to_goal_threshold": 0.25,
-    "timeout": 320
+    "timeout": 600
   },
   "extent": [
-    0.3,
-    1.2,
-    -0.72,
-    0.72,
-    0.65,
+    0.5,
+    1.0,
+    -0.5,
+    0.5,
+    0.7,
     1.4
   ],
   "goal_extent": [
+    0.6,
+    1.0,
+    -0.4,
     0.4,
-    1.1,
-    -0.62,
-    0.62,
-    0.75,
+    0.8,
     1.2
   ],
   "fwd_model_dir": [

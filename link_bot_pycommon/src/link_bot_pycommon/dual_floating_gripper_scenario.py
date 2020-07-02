@@ -465,14 +465,15 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         distance = np.linalg.norm(goal['midpoint'] - rope_midpoint)
         return distance
 
-    def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict):
+    def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict, plot: bool):
         return DualGripperGoalRegion(si=si,
                                      scenario=self,
                                      rng=rng,
                                      threshold=params['goal_threshold'],
-                                     goal=goal)
+                                     goal=goal,
+                                     plot=plot)
 
-    def make_ompl_state_space(self, planner_params, state_sampler_rng: np.random.RandomState):
+    def make_ompl_state_space(self, planner_params, state_sampler_rng: np.random.RandomState, plot: bool):
         state_space = ob.CompoundStateSpace()
 
         min_x, max_x, min_y, max_y, min_z, max_z = planner_params['extent']
@@ -531,7 +532,11 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         state_space.addSubspace(num_diverged_subspace, weight=0)
 
         def _state_sampler_allocator(state_space):
-            return DualGripperStateSampler(state_space, scenario=self, extent=planner_params['extent'], rng=state_sampler_rng)
+            return DualGripperStateSampler(state_space,
+                                           scenario=self,
+                                           extent=planner_params['extent'],
+                                           rng=state_sampler_rng,
+                                           plot=plot)
 
         state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(_state_sampler_allocator))
 
@@ -571,35 +576,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper2_control_space.setBounds(gripper2_control_bounds)
         control_space.addSubspace(gripper2_control_space)
 
-        def _control_sampler_allocator(cs):
-            return DualGripperControlSampler(cs, scenario=self, rng=rng)
-
-        # control_space.setControlSamplerAllocator(oc.ControlSamplerAllocator(_control_sampler_allocator))
-
         return control_space
-
-
-class DualGripperControlSampler(oc.ControlSampler):
-    def __init__(self,
-                 control_space: oc.ControlSpace,
-                 scenario: DualFloatingGripperRopeScenario,
-                 rng: np.random.RandomState):
-        super().__init__(control_space)
-        self.scenario = scenario
-        self.rng = rng
-
-    def sampleNext(self, control_out, previous_control, state):
-        state_np = self.scenario.ompl_state_to_numpy(state)
-        gripper1_position, gripper2_position = self.scenario.random_nearby_position_action(state=state_np,
-                                                                                           action_rng=self.rng,
-                                                                                           environment={})
-        control_out[0][0] = gripper1_position[0]
-        control_out[0][1] = gripper1_position[1]
-        control_out[0][2] = gripper1_position[2]
-
-        control_out[1][0] = gripper2_position[0]
-        control_out[1][1] = gripper2_position[1]
-        control_out[1][2] = gripper2_position[2]
 
 
 class DualGripperStateSampler(ob.RealVectorStateSampler):
@@ -608,24 +585,31 @@ class DualGripperStateSampler(ob.RealVectorStateSampler):
                  state_space,
                  scenario: DualFloatingGripperRopeScenario,
                  extent,
-                 rng: np.random.RandomState):
+                 rng: np.random.RandomState,
+                 plot: bool):
         super().__init__(state_space)
         self.scenario = scenario
         self.extent = np.array(extent).reshape(3, 2)
         self.rng = rng
+        self.plot = plot
 
     def sampleUniform(self, state_out: ob.CompoundState):
+        # trying to sample a "valid" rope state is difficult, and probably unimportant
+        # because the only role this plays in planning is to cause exploration/expansion
+        # by biasing towards regions of empty space. So here we just pick a random point
+        # and duplicate it, as if all points on the rope were at this point
         random_point = self.rng.uniform(self.extent[:, 0], self.extent[:, 1])
-        rope = np.concatenate([random_point]*15)
+        random_point_rope = np.concatenate([random_point]*15)
         state_np = {
-            'gripper1': np.zeros(3, np.float64),
-            'gripper2': np.zeros(3, np.float64),
-            'link_bot': rope,
+            'gripper1': random_point,
+            'gripper2': random_point,
+            'link_bot': random_point_rope,
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
-        self.scenario.numpy_to_ompl_state(state_np, state_out)
-        self.scenario.plot_sampled_state(state_np)
+        if self.plot:
+            self.scenario.numpy_to_ompl_state(state_np, state_out)
+            self.scenario.plot_sampled_state(state_np)
 
 
 class DualGripperGoalRegion(ob.GoalSampleableRegion):
@@ -635,25 +619,15 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
                  scenario: DualFloatingGripperRopeScenario,
                  rng: np.random.RandomState,
                  threshold: float,
-                 goal: Dict):
+                 goal: Dict,
+                 plot: bool):
         super(DualGripperGoalRegion, self).__init__(si)
         self.setThreshold(threshold)
         self.goal = goal
         self.scenario = scenario
         self.rope_link_length = 0.04
         self.rng = rng
-
-    def distanceGoal(self, state: ob.CompoundState):
-        """
-        Uses the distance between a specific point in a specific subspace and the goal point
-        """
-        state_np = self.scenario.ompl_state_to_numpy(state)
-        distance = self.scenario.distance_to_goal(state_np, self.goal)
-
-        # this ensures the goal must have num_diverged = 0
-        if state_np['num_diverged'] > 0:
-            distance = 1e9
-        return distance
+        self.plot = plot
 
     def sampleGoal(self, state_out: ob.CompoundState):
         sampler = self.getSpaceInformation().allocStateSampler()
@@ -665,14 +639,15 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
         rope = np.concatenate([self.goal['midpoint']]*15)
 
         goal_state_np = {
-            'gripper1': np.zeros(3, np.float64),
-            'gripper2': np.zeros(3, np.float64),
+            'gripper1': self.goal['midpoint'],
+            'gripper2': self.goal['midpoint'],
             'link_bot': rope,
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
-        self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
-        self.scenario.plot_sampled_goal_state(goal_state_np)
+        if self.plot:
+            self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
+            self.scenario.plot_sampled_goal_state(goal_state_np)
 
     def maxSampleCount(self):
         return 100

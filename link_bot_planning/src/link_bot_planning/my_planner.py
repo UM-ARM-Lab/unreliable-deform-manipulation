@@ -63,7 +63,9 @@ class MyPlanner:
         self.n_total_action = None
         self.goal_region = None
 
-        self.state_space = self.scenario.make_ompl_state_space(self.params, self.state_sampler_rng)
+        self.state_space = self.scenario.make_ompl_state_space(params=self.params,
+                                                               rng=self.state_sampler_rng,
+                                                               plot=self.verbose >= 2)
         self.control_space = self.scenario.make_ompl_control_space(
             self.state_space, self.params, self.control_sampler_rng)
 
@@ -130,15 +132,11 @@ class MyPlanner:
         for previous_idx in range(len(previous_states) - 1, -1, -1):
             previous_state = previous_states[previous_idx]
             all_states.insert(0, previous_state)
-            if self.verbose >= 3:
-                raise NotImplementedError()
             if previous_state['num_diverged'] == 0:
                 break
             # this goes after the break because action_i brings you TO state_i and we don't want that last action
             previous_action = previous_actions[previous_idx - 1]
             all_actions.insert(0, previous_action)
-            if self.verbose >= 3:
-                raise NotImplementedError()
         classifier_probabilities = self.classifier_model.check_constraint(environment=self.environment,
                                                                           states_sequence=all_states,
                                                                           actions=all_actions)
@@ -192,8 +190,11 @@ class MyPlanner:
         """
         self.environment = environment
         self.min_distance_to_goal = sys.maxsize
-        self.goal_region = self.scenario.make_goal_region(
-            self.si, rng=self.state_sampler_rng, params=self.params, goal=goal)
+        self.goal_region = self.scenario.make_goal_region(self.si,
+                                                          rng=self.state_sampler_rng,
+                                                          params=self.params,
+                                                          goal=goal,
+                                                          plot=self.verbose >= 2)
 
         # create start and goal states
         start_state['stdev'] = np.array([0.0])
@@ -209,9 +210,6 @@ class MyPlanner:
         self.ss.clear()
         self.ss.setStartState(ompl_start_scoped)
         self.ss.setGoal(self.goal_region)
-
-        if self.verbose >= 3:
-            raise NotImplementedError()
 
         ptc = TimeoutOrNotProgressing(self, self.params['termination_criteria'], self.verbose)
         ob_planner_status = self.ss.solve(ptc)
