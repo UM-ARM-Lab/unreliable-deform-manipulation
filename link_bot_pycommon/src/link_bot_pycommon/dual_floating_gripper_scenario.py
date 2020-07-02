@@ -39,8 +39,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         self.nudge_rng = np.random.RandomState(0)
 
-        self.params['settling_time'] = rospy.get_param("world_interaction/traj_goal_time_tolerance")
-
         self.max_action_attempts = 1000
 
         self.object_reset_positions = {
@@ -163,7 +161,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     def settle(self):
         req = WorldControlRequest()
-        req.seconds = self.params['settling_time']
+        settling_time = rospy.get_param("world_interaction/traj_goal_time_tolerance")
+        req.seconds = settling_time
         self.world_control_srv(req)
 
     def randomize_environment(self, env_rng):
@@ -225,7 +224,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         target_gripper2_point = ros_numpy.msgify(Point, action['gripper2_position'])
 
         req = DualGripperTrajectoryRequest()
-        req.settling_time_seconds = self.params['settling_time']
+        settling_time = rospy.get_param("world_interaction/traj_goal_time_tolerance")
+        req.settling_time_seconds = settling_time
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
         res = self.action_srv(req)
