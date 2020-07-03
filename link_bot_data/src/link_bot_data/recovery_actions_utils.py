@@ -74,6 +74,7 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
     # TODO: because sampling an action is state dependant, this approach is incorrect
     #  we need to sample 1 action, propagate, and repeat. can we somehow do that in a way that allows batching?
     #  that would require rewriting sample_action to support batching?
+    raise NotImplementedError("SEED ME!")
     rng = np.random.RandomState()
     random_actions_dict = {}
     for b in range(actual_batch_size):

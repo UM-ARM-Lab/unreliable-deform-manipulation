@@ -153,11 +153,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         if self.record:
             self.service_provider.stop_record_trial()
 
-    def on_complete(self):
-        self.data['n_failures'] = self.n_failures
-        with self.data_filename.open('wb') as data_file:
-            json.dump(self.data, data_file, indent=2)
-
     def on_planner_failure(self, start_states, tail_goal_point, environment: Dict, planner_data):
         folder = self.failures_root / str(self.n_failures)
         folder.mkdir(parents=True)

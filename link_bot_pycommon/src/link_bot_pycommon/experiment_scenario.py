@@ -41,9 +41,9 @@ class ExperimentScenario:
                        start_state: Dict,
                        params: Dict,
                        n_action_sequences: int,
-                       action_sequence_length: int):
+                       action_sequence_length: int,
+                       rng: np.random.RandomState):
         action_sequences = []
-        rng = np.random.RandomState()
 
         for _ in range(n_action_sequences):
             action_sequence = []

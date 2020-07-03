@@ -79,7 +79,6 @@ class NNClassifier(MyKerasModel):
             raise NotImplementedError()
 
     def make_traj_voxel_grids_from_input_dict(self, input_dict: Dict, batch_size, time: int):
-        conv_outputs = []
 
         # # DEBUG
         # # plot the occupancy grid
@@ -94,7 +93,8 @@ class NNClassifier(MyKerasModel):
         # self.scenario.plot_environment_rviz(full_env_dict)
         # # END DEBUG
 
-        for t in range(time):
+        conv_outputs_array = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
+        for t in tf.range(time):
             state_t = self.scenario.index_predicted_state_time(input_dict, t)
 
             local_env_center_t = self.scenario.local_environment_center_differentiable(state_t)
@@ -108,8 +108,8 @@ class NNClassifier(MyKerasModel):
                                                             local_c_channels=self.local_env_c_channels,
                                                             batch_size=batch_size)
 
-            concat_args = [tf.expand_dims(local_env_t, axis=4)]
-            for state_component_t in state_t.values():
+            local_voxel_grid_t = tf.expand_dims(local_env_t, axis=4)
+            for i, state_component_t in enumerate(state_t.values()):
                 state_component_voxel_grid = raster_3d(state=state_component_t,
                                                        res=input_dict['res'],
                                                        origin=local_env_origin_t,
@@ -118,8 +118,8 @@ class NNClassifier(MyKerasModel):
                                                        c=self.local_env_c_channels,
                                                        k=self.rope_image_k,
                                                        batch_size=batch_size)
-                concat_args.append(state_component_voxel_grid)
-            local_voxel_grid_t = tf.concat(concat_args, axis=4)
+
+                local_voxel_grid_t = tf.concat([local_voxel_grid_t,  state_component_voxel_grid], axis=4)
 
             # # DEBUG
             # local_env_dict = {
@@ -143,11 +143,10 @@ class NNClassifier(MyKerasModel):
             out_conv_z_dim = out_conv_z.shape[1] * out_conv_z.shape[2] * out_conv_z.shape[3] * out_conv_z.shape[4]
             out_conv_z = tf.reshape(out_conv_z, [batch_size, out_conv_z_dim])
 
-            conv_outputs.append(out_conv_z)
+            conv_outputs_array = conv_outputs_array.write(t, out_conv_z)
 
-        conv_outputs = tf.stack(conv_outputs, axis=1)
-
-        return conv_outputs
+        conv_outputs = conv_outputs_array.stack()
+        return tf.transpose(conv_outputs, [1, 0, 2])
 
     def compute_loss(self, dataset_element, outputs):
         return {
