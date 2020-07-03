@@ -16,7 +16,7 @@ class DynamicsDataset(BaseDataset):
         super(DynamicsDataset, self).__init__(dataset_dirs)
 
         self.step_size = step_size
-        self.scenario = get_scenario(self.hparams)
+        self.scenario = get_scenario(self.hparams['scenario'])
 
         self.state_keys = list(self.hparams['states_description'].keys())
         self.state_keys.append('time_idx')
