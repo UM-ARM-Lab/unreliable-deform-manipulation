@@ -7,11 +7,13 @@ import numpy as np
 import rospy
 import tensorflow as tf
 from colorama import Fore
+from moonshine.moonshine_utils import numpify, index_dict_of_batched_vectors_tf
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_predicted
+from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
-from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
+from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, compute_extent_3d, extent_to_env_size, batch_idx_to_point_3d_in_env_tf, batch_point_to_idx_tf_3d_in_batched_envs
 from link_bot_pycommon.pycommon import make_dict_float32, make_dict_tf_float32
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine import classifier_losses_and_metrics
@@ -32,6 +34,7 @@ class NNClassifier(MyKerasModel):
         self.scenario = scenario
 
         self.debug_pub = rospy.Publisher('classifier_debug', OccupancyStamped, queue_size=10, latch=True)
+        self.local_env_bbox_pub = rospy.Publisher('local_env_bbox', BoundingBox, queue_size=10, latch=True)
 
         self.classifier_dataset_hparams = self.hparams['classifier_dataset_hparams']
         self.dynamics_dataset_hparams = self.classifier_dataset_hparams['fwd_model_hparams']['dynamics_dataset_hparams']
@@ -89,6 +92,7 @@ class NNClassifier(MyKerasModel):
         #     'env': input_dict['env'][b],
         #     'origin': input_dict['origin'][b],
         #     'res': input_dict['res'][b],
+        #     'extent': input_dict['extent'][b],
         # }
         # self.scenario.plot_environment_rviz(full_env_dict)
         # # END DEBUG
@@ -98,6 +102,9 @@ class NNClassifier(MyKerasModel):
             state_t = self.scenario.index_predicted_state_time(input_dict, t)
 
             local_env_center_t = self.scenario.local_environment_center_differentiable(state_t)
+            # by converting too and from the frame of the full environment, we ensure the grids are aligned
+            indices = batch_point_to_idx_tf_3d_in_batched_envs(local_env_center_t, input_dict)
+            local_env_center_t = batch_idx_to_point_3d_in_env_tf(*indices, input_dict)
 
             local_env_t, local_env_origin_t = get_local_env(center_point=local_env_center_t,
                                                             full_env=input_dict['env'],
@@ -130,6 +137,18 @@ class NNClassifier(MyKerasModel):
             # msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
             # link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
             # self.debug_pub.publish(msg)
+            # self.scenario.plot_state_rviz(numpify(index_dict_of_batched_vectors_tf(state_t, b)), label='actual')
+            # local_extent = compute_extent_3d(*local_voxel_grid_t[b].shape[:3], resolution=input_dict['res'][b].numpy())
+            # width, depth, height = extent_to_env_size(local_extent)
+            # bbox_msg = BoundingBox()
+            # bbox_msg.header.frame_id = 'local_occupancy'
+            # bbox_msg.pose.position.x = width / 2
+            # bbox_msg.pose.position.y = depth / 2
+            # bbox_msg.pose.position.z = height / 2
+            # bbox_msg.dimensions.x = width
+            # bbox_msg.dimensions.y = depth
+            # bbox_msg.dimensions.z = height
+            # self.local_env_bbox_pub.publish(bbox_msg)
 
             # # this will return when either the animation is "playing" or because the user stepped forward
             # anim.step()

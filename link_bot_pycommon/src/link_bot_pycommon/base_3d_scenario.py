@@ -7,11 +7,12 @@ from matplotlib import colors
 
 import rospy
 from geometry_msgs.msg import Point
+from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
+from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, extent_to_env_size
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
@@ -24,6 +25,7 @@ class Base3DScenario(ExperimentScenario):
     def __init__(self, params: Dict):
         super().__init__(params)
         self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10, latch=True)
+        self.env_bbox_pub = rospy.Publisher('env_bbox', BoundingBox, queue_size=10, latch=True)
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10, latch=True)
         self.label_viz_pub = rospy.Publisher("mybool", Bool, queue_size=10, latch=True)
@@ -69,8 +71,19 @@ class Base3DScenario(ExperimentScenario):
     def plot_environment_rviz(self, data: Dict):
         self.send_occupancy_tf(data)
 
-        msg = environment_to_occupancy_msg(data)
-        self.env_viz_pub.publish(msg)
+        env_msg = environment_to_occupancy_msg(data)
+        self.env_viz_pub.publish(env_msg)
+
+        depth, width, height = extent_to_env_size(data['extent'])
+        bbox_msg = BoundingBox()
+        bbox_msg.header.frame_id = 'occupancy'
+        bbox_msg.pose.position.x = width / 2
+        bbox_msg.pose.position.y = depth / 2
+        bbox_msg.pose.position.z = height / 2
+        bbox_msg.dimensions.x = width
+        bbox_msg.dimensions.y = depth
+        bbox_msg.dimensions.z = height
+        self.env_bbox_pub.publish(bbox_msg)
 
     def send_occupancy_tf(self, environment: Dict):
         link_bot_sdf_utils.send_occupancy_tf(self.broadcaster, environment)

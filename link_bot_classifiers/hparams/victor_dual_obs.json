@@ -11,7 +11,7 @@
     "gripper2_position"
   ],
   "action_in_image": false,
-  "rope_image_k": 1000,
+  "rope_image_k": 2000,
   "rnn_size": 128,
   "fc_layer_sizes": [
     128
@@ -39,9 +39,9 @@
   "bias_reg": 0.05,
   "activity_reg": 0.05,
   "batch_norm": true,
-  "local_env_h_rows": 30,
-  "local_env_w_cols": 30,
-  "local_env_c_channels": 20,
+  "local_env_h_rows": 32,
+  "local_env_w_cols": 32,
+  "local_env_c_channels": 32,
   "learning_rate": 0.001,
   "stdev": true
 }
