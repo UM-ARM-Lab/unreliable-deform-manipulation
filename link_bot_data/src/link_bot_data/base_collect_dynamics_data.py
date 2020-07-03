@@ -64,7 +64,8 @@ def collect_trajectory(scenario: ExperimentScenario,
         state = scenario.get_state()
         action = scenario.sample_action(environment=environment,
                                         state=state,
-                                        params=params,
+                                        data_collection_params=params,
+                                        action_params=params,
                                         action_rng=action_rng)
 
         # execute action
@@ -72,7 +73,8 @@ def collect_trajectory(scenario: ExperimentScenario,
 
         # add to the dataset
         if time_idx < params['steps_per_traj'] - 1:  # skip the last action
-            for action_name, action_component in action.items():
+            for action_name in scenario.actions_description().keys():
+                action_component = action[action_name]
                 actions[action_name].append(action_component)
         for state_component_name in scenario.states_description().keys():
             state_component = state[state_component_name]
@@ -111,7 +113,7 @@ def generate_trajs(service_provider,
     for traj_idx in range(args.trajs):
         # Randomize the environment
         if traj_idx % params["randomize_environment_every_n_trajectories"] == 0:
-            scenario.randomize_environment(env_rng)
+            scenario.randomize_environment(env_rng, params)
 
         # Generate a new trajectory
         example = collect_trajectory(scenario=scenario,
@@ -147,7 +149,7 @@ def generate_trajs(service_provider,
 
 def generate(service_provider, params: Dict, args):
     rospy.init_node('collect_dynamics_data')
-    scenario = get_scenario({'scenario': args.scenario, 'data_collection_params': params})
+    scenario = get_scenario(args.scenario)
 
     assert args.trajs % params['trajs_per_file'] == 0, f"num trajs must be multiple of {params['trajs_per_file']}"
 

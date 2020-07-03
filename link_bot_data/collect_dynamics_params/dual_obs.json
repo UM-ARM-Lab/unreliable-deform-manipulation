@@ -37,7 +37,7 @@
   "trajs_per_file": 8,
   "no_objects": false,
   "randomize_environment_every_n_trajectories": 8,
-  "repeat_delta_gripper_motion_probability": 0.9,
+  "repeat_delta_gripper_motion_probability": 0.8,
   "max_dist_between_gripper_and_link": 0.022,
   "max_distance_gripper_can_move": 0.10
 }
