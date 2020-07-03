@@ -7,6 +7,7 @@ from typing import List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
+import gzip
 from colorama import Style, Fore
 from scipy import stats
 from tabulate import tabulate
@@ -136,10 +137,14 @@ def metrics_main(args):
         'Num Steps': [],
         '% Steps with MER Violations': [],
     }
+
+    with args.analysis_params.open('r') as analysis_params_file:
+        analysis_params = json.load(analysis_params_file)
+
     execution_to_goal_errors_comparisons = {}
     plan_to_execution_errors_comparisons = {}
-    max_error = 1.25
-    errors_thresholds = np.linspace(0.01, max_error, 49)
+    max_error = analysis_params["max_error"]
+    errors_thresholds = np.linspace(0.01, max_error, analysis_params["n_error_bins"])
     print('-' * 90)
     if not args.no_plot:
         plt.figure()
@@ -181,12 +186,14 @@ def metrics_main(args):
     legend_names = []
     percentages_solved = []
     for color, subfolder in zip(colors, all_subfolders):
-        metrics_filename = subfolder / 'metrics.json'
-        metrics = json.load(metrics_filename.open("r"))
+        metrics_filename = subfolder / 'metrics.json.gz'
+        with gzip.open(metrics_filename, 'rb') as metrics_file:
+            data_str = metrics_file.read()
+        metrics = json.loads(data_str.decode("utf-8"))
         planner_params = metrics['planner_params']
         labeling_params = labeling_params_from_planner_params(planner_params)
         goal_threshold = planner_params['goal_threshold']
-        scenario = get_scenario(planner_params['scenario'])
+        scenario = get_scenario(metrics['scenario'])
         table_config = planner_params['table_config']
         nickname = table_config['nickname']
         legend_nickname = " ".join(nickname) if isinstance(nickname, list) else nickname
@@ -259,7 +266,8 @@ def metrics_main(args):
             for threshold in errors_thresholds:
                 success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / n_for_metrics * 100
                 execution_successes.append(success_percentage)
-            execution_success_ax.plot(errors_thresholds, execution_successes, label=legend_nickname, linewidth=5, color=color)
+            execution_success_ax.plot(errors_thresholds, execution_successes,
+                                      label=legend_nickname, linewidth=5, color=color)
 
             # Execution Error Plot
             final_execution_to_goal_pdf = stats.gaussian_kde(final_execution_to_goal_errors)
@@ -291,12 +299,14 @@ def metrics_main(args):
         aggregate_metrics['Planning Time'].append(make_row(planner_params, planning_times, table_format))
         aggregate_metrics['Final Plan To Execution Error'].append(
             make_row(planner_params, final_plan_to_execution_errors, table_format))
-        aggregate_metrics['Final Plan To Goal Error'].append(make_row(planner_params, final_plan_to_goal_errors, table_format))
+        aggregate_metrics['Final Plan To Goal Error'].append(
+            make_row(planner_params, final_plan_to_goal_errors, table_format))
         aggregate_metrics['Final Execution To Goal Error'].append(
             make_row(planner_params, final_execution_to_goal_errors, table_format))
         aggregate_metrics['Num Nodes'].append(make_row(planner_params, nums_nodes, table_format))
         aggregate_metrics['Num Steps'].append(make_row(planner_params, nums_steps, table_format))
-        aggregate_metrics['% Steps with MER Violations'].append(make_row(planner_params, nums_mer_violations, table_format))
+        aggregate_metrics['% Steps with MER Violations'].append(
+            make_row(planner_params, nums_mer_violations, table_format))
 
         print(f"{subfolder.name:30s}: {timeout_percentage:3.2f}% timeout {poor_plan_percentage:3.2f}% could use RAS")
         for error, plan_idx in sorted(zip(final_execution_to_goal_errors, range(len(final_execution_to_goal_errors)))):
@@ -361,9 +371,11 @@ def main():
 
     metrics_subparser = subparsers.add_parser('metrics')
     metrics_subparser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
+    metrics_subparser.add_argument('analysis_params', type=pathlib.Path)
     metrics_subparser.add_argument('--no-plot', action='store_true')
     metrics_subparser.add_argument('--final', action='store_true')
-    metrics_subparser.add_argument('--ignore-timeouts', action='store_true', help='for error metrics, ignore timeouts/approx sln')
+    metrics_subparser.add_argument('--ignore-timeouts', action='store_true',
+                                   help='for error metrics, ignore timeouts/approx sln')
     metrics_subparser.set_defaults(func=metrics_main)
 
     error_viz_subparser = subparsers.add_parser('error_viz')
