@@ -7,7 +7,6 @@ import json
 import pathlib
 from typing import Optional, Dict, List
 
-import matplotlib.pyplot as plt
 import numpy as np
 import ompl.util as ou
 import tensorflow as tf
@@ -67,6 +66,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             "n_total_plans": n_total_plans,
             "n_targets": n_plans_per_env,
             "planner_params": planner_params,
+            "scenario": self.planner.scenario.simple_name(),
             "seed": self.seed,
             "metrics": [],
         }
@@ -141,12 +141,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         with gzip.open(self.data_filename, 'wb') as data_file:
             data_str = json.dumps(self.data, indent=2)
             data_file.write(data_str.encode("utf-8"))
-
-        if self.verbose >= 1:
-            print("Final Execution Error: {:0.4f}".format(execution_to_goal_error))
-            plt.show()
-        else:
-            plt.close()
 
         self.successfully_completed_plan_idx += 1
 

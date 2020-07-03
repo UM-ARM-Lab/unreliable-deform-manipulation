@@ -34,7 +34,7 @@ def generate_classifier_examples(fwd_model: EnsembleDynamicsFunction,
                                  tf_dataset: tf.data.Dataset,
                                  dataset: DynamicsDataset,
                                  labeling_params: Dict):
-    batch_size = 32
+    batch_size = 128
     classifier_horizon = labeling_params['classifier_horizon']
     scenario = fwd_model.scenario
     assert classifier_horizon >= 2

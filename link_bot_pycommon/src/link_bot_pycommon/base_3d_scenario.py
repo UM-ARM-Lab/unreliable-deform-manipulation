@@ -233,6 +233,42 @@ class Base3DScenario(ExperimentScenario):
         msg.data = time_idx
         self.time_viz_pub.publish(msg)
 
+    def animate_evaluation_results(self,
+                                   environment: Dict,
+                                   actual_states: List[Dict],
+                                   predicted_states: List[Dict],
+                                   actions: List[Dict],
+                                   labels,
+                                   goal: Dict,
+                                   goal_threshold: float,
+                                   accept_probabilities):
+        time_steps = np.arange(len(actual_states))
+        self.plot_environment_rviz(environment)
+        self.plot_goal(goal, goal_threshold)
+
+        anim = RvizAnimationController(time_steps)
+
+        while not anim.done:
+            t = anim.t()
+            s_t = actual_states[t]
+            s_t_pred = predicted_states[t]
+            self.plot_state_rviz(s_t, label='actual', color='#ff0000aa')
+            self.plot_state_rviz(s_t_pred, label='predicted', color='#0000ffaa')
+            if t < anim.max_t:
+                self.plot_action_rviz(s_t, actions[t])
+            else:
+                self.plot_action_rviz(actual_states[t - 1], actions[t - 1])
+
+            if labels is not None:
+                self.plot_is_close(labels[t])
+
+            if accept_probabilities and t > 0:
+                self.plot_accept_probability(accept_probabilities[t - 1])
+            else:
+                self.plot_accept_probability(NULL_PAD_VALUE)
+
+            anim.step()
+
     def animate_rviz(self,
                      environment: Dict,
                      actual_states: List[Dict],

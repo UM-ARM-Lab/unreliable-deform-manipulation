@@ -74,7 +74,8 @@ RVizAnimationController::~RVizAnimationController()
 
 void RVizAnimationController::TimeCallback(const std_msgs::Int64::ConstPtr &msg)
 {
-  auto const text = QString::number(msg->data);
+  QString text;
+  text.sprintf("%3ld", msg->data);
   ui.step_number_label->setText(text);
 }
 
