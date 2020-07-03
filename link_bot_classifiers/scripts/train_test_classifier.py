@@ -121,7 +121,7 @@ def test_main(args, seed: int):
                          key_metric=AccuracyMetric,
                          batch_metadata=test_dataset.batch_metadata)
 
-    metrics = runner.val_epoch()
+    metrics = runner.val_epoch(test_tf_dataset)
     for metric_name, metric_value in metrics.items():
         print(f"{metric_name:30s}: {metric_value}")
 
