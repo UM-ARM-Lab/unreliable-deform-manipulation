@@ -82,6 +82,21 @@ class NNClassifier(MyKerasModel):
             raise NotImplementedError()
 
     def make_traj_voxel_grids_from_input_dict(self, input_dict: Dict, batch_size, time: int):
+        # Construct a b, h, w, c, 3 grid of the indices which make up the local environment
+        pixel_row_indices = tf.range(0, self.local_env_h_rows, dtype=tf.float32)
+        pixel_col_indices = tf.range(0, self.local_env_w_cols, dtype=tf.float32)
+        pixel_channel_indices = tf.range(0, self.local_env_c_channels, dtype=tf.float32)
+        x_indices, y_indices, z_indices = tf.meshgrid(pixel_col_indices, pixel_row_indices, pixel_channel_indices)
+
+        # Make batched versions for creating the local environment
+        batch_y_indices = tf.cast(tf.tile(tf.expand_dims(y_indices, axis=0), [batch_size, 1, 1, 1]), tf.int64)
+        batch_x_indices = tf.cast(tf.tile(tf.expand_dims(x_indices, axis=0), [batch_size, 1, 1, 1]), tf.int64)
+        batch_z_indices = tf.cast(tf.tile(tf.expand_dims(z_indices, axis=0), [batch_size, 1, 1, 1]), tf.int64)
+
+        # Convert for rastering state
+        pixel_indices = tf.stack([y_indices, x_indices, z_indices], axis=3)
+        pixel_indices = tf.expand_dims(pixel_indices, axis=0)
+        pixel_indices = tf.tile(pixel_indices, [batch_size, 1, 1, 1, 1])
 
         # # DEBUG
         # # plot the occupancy grid
@@ -113,11 +128,16 @@ class NNClassifier(MyKerasModel):
                                                             local_h_rows=self.local_env_h_rows,
                                                             local_w_cols=self.local_env_w_cols,
                                                             local_c_channels=self.local_env_c_channels,
+                                                            batch_x_indices=batch_x_indices,
+                                                            batch_y_indices=batch_y_indices,
+                                                            batch_z_indices=batch_z_indices,
                                                             batch_size=batch_size)
 
-            local_voxel_grid_t = tf.expand_dims(local_env_t, axis=4)
+            local_voxel_grid_t_array = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
+            local_voxel_grid_t_array = local_voxel_grid_t_array.write(0, local_env_t)
             for i, state_component_t in enumerate(state_t.values()):
                 state_component_voxel_grid = raster_3d(state=state_component_t,
+                                                       pixel_indices=pixel_indices,
                                                        res=input_dict['res'],
                                                        origin=local_env_origin_t,
                                                        h=self.local_env_h_rows,
@@ -126,11 +146,13 @@ class NNClassifier(MyKerasModel):
                                                        k=self.rope_image_k,
                                                        batch_size=batch_size)
 
-                local_voxel_grid_t = tf.concat([local_voxel_grid_t,  state_component_voxel_grid], axis=4)
+                local_voxel_grid_t_array = local_voxel_grid_t_array.write(i + 1, state_component_voxel_grid)
+            local_voxel_grid_t = tf.transpose(local_voxel_grid_t_array.stack(), [1, 2, 3, 4, 0])
 
             # # DEBUG
             # local_env_dict = {
             #     'env': tf.clip_by_value(tf.reduce_sum(local_voxel_grid_t[b], axis=-1), 0, 1),
+            #     # 'env': local_voxel_grid_t[b],
             #     'origin': local_env_origin_t[b].numpy(),
             #     'res': input_dict['res'][b].numpy(),
             # }
@@ -139,7 +161,7 @@ class NNClassifier(MyKerasModel):
             # self.debug_pub.publish(msg)
             # self.scenario.plot_state_rviz(numpify(index_dict_of_batched_vectors_tf(state_t, b)), label='actual')
             # local_extent = compute_extent_3d(*local_voxel_grid_t[b].shape[:3], resolution=input_dict['res'][b].numpy())
-            # width, depth, height = extent_to_env_size(local_extent)
+            # depth, width, height = extent_to_env_size(local_extent)
             # bbox_msg = BoundingBox()
             # bbox_msg.header.frame_id = 'local_occupancy'
             # bbox_msg.pose.position.x = width / 2
@@ -150,7 +172,6 @@ class NNClassifier(MyKerasModel):
             # bbox_msg.dimensions.z = height
             # self.local_env_bbox_pub.publish(bbox_msg)
 
-            # # this will return when either the animation is "playing" or because the user stepped forward
             # anim.step()
             # # END DEBUG
 

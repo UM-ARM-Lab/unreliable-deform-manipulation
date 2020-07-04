@@ -32,6 +32,14 @@
         3,
         3
       ]
+    ],
+    [
+      32,
+      [
+        3,
+        3,
+        3
+      ]
     ]
   ],
   "loss_type": "weighted_sequence",
@@ -39,9 +47,9 @@
   "bias_reg": 0.05,
   "activity_reg": 0.05,
   "batch_norm": true,
-  "local_env_h_rows": 32,
-  "local_env_w_cols": 32,
-  "local_env_c_channels": 32,
+  "local_env_h_rows": 42,
+  "local_env_w_cols": 42,
+  "local_env_c_channels": 42,
   "learning_rate": 0.001,
   "stdev": true
 }
