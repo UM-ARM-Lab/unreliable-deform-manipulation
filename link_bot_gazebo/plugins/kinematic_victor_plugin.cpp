@@ -212,6 +212,7 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     auto grasping_rope_bind = [this](peter_msgs::SetBoolRequest &req, peter_msgs::SetBoolResponse &res) {
       (void)res;
       grasping_rope_ = req.data;
+      ROS_INFO_STREAM("grasping state set to " << static_cast<bool>(req.data));
       if (grasping_rope_)
       {
         TeleportGrippers();

@@ -45,12 +45,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         self.max_action_attempts = 1000
 
-        self.object_reset_positions = {
-            'box1': np.zeros(3),
-            'box2': np.zeros(3),
-            'box3': np.zeros(3),
-            'box4': np.zeros(3),
-            'hook1': np.zeros(3),
+        self.object_reset_poses = {
+            'box1': (np.zeros(3), np.array([0, 0, 0, 1])),
+            'box2': (np.zeros(3), np.array([0, 0, 0, 1])),
+            'box3': (np.zeros(3), np.array([0, 0, 0, 1])),
+            'box4': (np.zeros(3), np.array([0, 0, 0, 1])),
+            'hook1': (np.zeros(3), np.array([0, 0, 0, 1])),
         }
 
     def reset_robot(self):
@@ -161,7 +161,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         pre_randomize_gripper2_position = state['gripper2']
 
         # move the objects out of the way
-        self.set_object_positions(self.object_reset_positions)
+        self.set_object_poses(self.object_reset_poses)
 
         # Let go of rope
         release = SetBoolRequest()
@@ -172,14 +172,14 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.reset_robot()
 
         # replace the objects in a new random configuration
-        random_object_positions = {
-            'box1': self.random_object_position(env_rng, objects_params),
-            'box2': self.random_object_position(env_rng, objects_params),
-            'box3': self.random_object_position(env_rng, objects_params),
-            'box4': self.random_object_position(env_rng, objects_params),
-            'hook1': self.random_object_position(env_rng, objects_params),
+        random_object_poses = {
+            'box1': self.random_object_pose(env_rng, objects_params),
+            'box2': self.random_object_pose(env_rng, objects_params),
+            'box3': self.random_object_pose(env_rng, objects_params),
+            'box4': self.random_object_pose(env_rng, objects_params),
+            'hook1': self.random_object_pose(env_rng, objects_params),
         }
-        self.set_object_positions(random_object_positions)
+        self.set_object_poses(random_object_poses)
 
         # re-grasp rope
         grasp = SetBoolRequest()
@@ -197,18 +197,25 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.execute_action(return_action)
         self.settle()
 
-    def random_object_position(self, env_rng: np.random.RandomState, objects_params: Dict):
+    def random_object_pose(self, env_rng: np.random.RandomState, objects_params: Dict):
         extent = objects_params['objects_extent']
         extent = np.array(extent).reshape(3, 2)
-        return env_rng.uniform(extent[:, 0], extent[:, 1])
+        position = env_rng.uniform(extent[:, 0], extent[:, 1])
+        yaw = env_rng.uniform(-np.pi, np.pi)
+        orientation = transformations.quaternion_from_euler(0, 0, yaw)
+        return (position, orientation)
 
-    def set_object_positions(self, object_positions: Dict):
-        for object_name, position in object_positions.items():
+    def set_object_poses(self, object_positions: Dict):
+        for object_name, (position, orientation) in object_positions.items():
             set_req = SetModelStateRequest()
             set_req.model_state.model_name = object_name
             set_req.model_state.pose.position.x = position[0]
             set_req.model_state.pose.position.y = position[1]
             set_req.model_state.pose.position.z = position[2]
+            set_req.model_state.pose.orientation.x = orientation[0]
+            set_req.model_state.pose.orientation.y = orientation[1]
+            set_req.model_state.pose.orientation.z = orientation[2]
+            set_req.model_state.pose.orientation.w = orientation[3]
             self.set_model_state_srv(set_req)
 
     def execute_action(self, action: Dict):

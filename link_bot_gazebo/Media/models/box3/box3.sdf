@@ -3,7 +3,7 @@
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link_1">
             <kinematic>true</kinematic>
-            <pose>0 0 0.11 0 0 0 0</pose>
+            <pose>0 0 0.13 0 0 0 0</pose>
             <inertial>
                 <pose>0 0 -0.08 0 0 0 0</pose>
                 <inertia>
@@ -19,7 +19,7 @@
             <visual name="visual">
                 <geometry>
                     <box>
-                        <size>0.09 0.07 0.22</size>
+                        <size>0.09 0.07 0.26</size>
                     </box>
                 </geometry>
                 <material>
@@ -30,7 +30,7 @@
             <collision name="box_collision">
                 <geometry>
                     <box>
-                        <size>0.09 0.07 0.22</size>
+                        <size>0.09 0.07 0.26</size>
                     </box>
                 </geometry>
                 <surface>

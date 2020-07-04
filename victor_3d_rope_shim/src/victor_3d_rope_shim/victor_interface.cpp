@@ -647,7 +647,7 @@ void VictorInterface::gotoHome()
 void VictorInterface::settle()
 {
   peter_msgs::WorldControl settle;
-  settle.request.seconds = 30;
+  settle.request.seconds = 10;
   world_control_client_.call(settle);
 }
 
