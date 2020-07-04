@@ -85,9 +85,7 @@ def main():
         for out_example in generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params):
             for batch_idx in range(out_example['traj_idx'].shape[0]):
                 out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
-                features = {}
-                for k, v in out_example_b.items():
-                    features[k] = float_tensor_to_bytes_feature(v)
+                features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example_b.items()}
 
                 example_proto = tf.train.Example(features=tf.train.Features(feature=features))
                 example = example_proto.SerializeToString()

@@ -66,22 +66,21 @@ class DynamicsDataset(BaseDataset):
         return example_t
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
-        def _make_time_int(example: Dict):
-            example['time_idx'] = tf.cast(example['time_idx'], tf.int64)
-            return example
+        # def _make_time_int(example: Dict):
+        #     example['time_idx'] = tf.cast(example['time_idx'], tf.int64)
+        #     return example
 
-        def _drop_last_action(example: Dict):
-            for k in self.action_keys:
-                example[k] = example[k][:-1]
-            return example
+        # def _drop_last_action(example: Dict):
+        #     for k in self.action_keys:
+        #         example[k] = example[k][:-1]
+        #     return example
 
-        dataset = dataset.map(_make_time_int)
+        # dataset = dataset.map(_make_time_int)
 
-        def _add_time(example: Dict):
-            # this function is called before batching occurs, so the first dimension should be time
-            example['time'] = example[self.state_keys[0]].shape[0]
-            return example
+        # def _add_time(example: Dict):
+        #     # this function is called before batching occurs, so the first dimension should be time
+        #     example['time'] = example[self.state_keys[0]].shape[0]
+        #     return example
 
-        dataset = dataset.map(_add_time)
-
+        # dataset = dataset.map(_add_time)
         return dataset

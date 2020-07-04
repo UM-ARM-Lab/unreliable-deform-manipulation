@@ -325,10 +325,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             rope_res.model_pose.orientation.z,
         ]
 
-        # rospy.logwarn_once("not collecting joint state")
-        joint_res = self.get_joint_state_srv(GetJointStateRequest())
-        victor_joint_names = joint_res.joint_state.name
-        victor_joint_positions = joint_res.joint_state.position
+        rospy.logwarn_once("not collecting joint state")
+        # joint_res = self.get_joint_state_srv(GetJointStateRequest())
+        # victor_joint_names = joint_res.joint_state.name
+        # victor_joint_positions = joint_res.joint_state.position
 
         return {
             'gripper1': ros_numpy.numpify(grippers_res.gripper1),
@@ -338,8 +338,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'model_pose': model_pose,
             'joint_angles_axis1': np.array(rope_res.joint_angles_axis1, np.float32),
             'joint_angles_axis2': np.array(rope_res.joint_angles_axis2, np.float32),
-            'victor_joint_names': victor_joint_names,
-            'victor_joint_positions': victor_joint_positions,
+            # 'victor_joint_names': victor_joint_names,
+            # 'victor_joint_positions': victor_joint_positions,
         }
 
     @ staticmethod
@@ -355,6 +355,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'model_pose': 3 + 4,
             'joint_angles_axis1': 2 * n_joints,
             'joint_angles_axis2': 2 * n_joints,
+            # 'joint_state': 14
         }
 
     @ staticmethod
