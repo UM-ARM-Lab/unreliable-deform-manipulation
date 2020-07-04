@@ -123,7 +123,11 @@ def visualize_dataset(args, classifier_dataset):
                 actual_t = remove_batch(scenario.index_state_time(add_batch(example), t))
                 pred_t = remove_batch(scenario.index_predicted_state_time(add_batch(example), t))
                 action_t = remove_batch(scenario.index_action_time(add_batch(example), t))
-                label_t = remove_batch(scenario.index_label_time(add_batch(example), t)).numpy()
+                if t == 0:
+                    # it makes no sense to have a label at t=0, labels are for transitions/sequences
+                    label_t = None
+                else:
+                    label_t = remove_batch(scenario.index_label_time(add_batch(example), t)).numpy()
                 scenario.plot_state_rviz(actual_t, label='actual', color='#ff0000aa')
                 scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffaa')
                 scenario.plot_action_rviz(actual_t, action_t)

@@ -7,7 +7,7 @@ namespace merrrt_visualization
 MerrrtWidget::MerrrtWidget(QWidget *parent) : rviz::Panel(parent)
 {
   ui.setupUi(this);
-  bool_sub_ = ros_node_.subscribe<std_msgs::Bool>("mybool", 10, &MerrrtWidget::BoolCallback, this);
+  label_sub_ = ros_node_.subscribe<peter_msgs::LabelStatus>("label_viz", 10, &MerrrtWidget::LabelCallback, this);
   stdev_sub_ = ros_node_.subscribe<std_msgs::Float32>("stdev", 10, &MerrrtWidget::StdevCallback, this);
   accept_probability_sub_ =
       ros_node_.subscribe<std_msgs::Float32>("accept_probability_viz", 10, &MerrrtWidget::OnAcceptProbability, this);
@@ -24,15 +24,19 @@ void MerrrtWidget::StdevCallback(const std_msgs::Float32::ConstPtr &msg)
   auto const text = QString::asprintf("%0.4f", msg->data);
   ui.stdev_label->setText(text);
 }
-void MerrrtWidget::BoolCallback(const std_msgs::Bool::ConstPtr &msg)
+void MerrrtWidget::LabelCallback(const peter_msgs::LabelStatus::ConstPtr &msg)
 {
-  if (msg->data)
+  if (msg->status == peter_msgs::LabelStatus::Accept)
   {
     ui.bool_indicator->setStyleSheet("background-color: rgb(0, 200, 0);");
   }
-  else
+  else if (msg->status == peter_msgs::LabelStatus::Reject)
   {
     ui.bool_indicator->setStyleSheet("background-color: rgb(200, 0, 0);");
+  }
+  else
+  {
+    ui.bool_indicator->setStyleSheet("background-color: rgb(150, 150, 150);");
   }
 }
 

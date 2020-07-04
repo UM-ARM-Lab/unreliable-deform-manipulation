@@ -14,10 +14,11 @@ from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, extent_to_env_size
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from peter_msgs.msg import LabelStatus
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
 from mps_shape_completion_msgs.msg import OccupancyStamped
-from std_msgs.msg import Bool, Float32, Int64
+from std_msgs.msg import Float32, Int64
 from visualization_msgs.msg import MarkerArray, Marker
 
 
@@ -28,7 +29,7 @@ class Base3DScenario(ExperimentScenario):
         self.env_bbox_pub = rospy.Publisher('env_bbox', BoundingBox, queue_size=10, latch=True)
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10, latch=True)
-        self.label_viz_pub = rospy.Publisher("mybool", Bool, queue_size=10, latch=True)
+        self.label_viz_pub = rospy.Publisher("label_viz", LabelStatus, queue_size=10, latch=True)
         self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
         self.time_viz_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10, latch=True)
         self.accept_probability_viz_pub = rospy.Publisher("accept_probability_viz", Float32, queue_size=10, latch=True)
@@ -227,8 +228,13 @@ class Base3DScenario(ExperimentScenario):
         self.action_viz_pub.publish(msg)
 
     def plot_is_close(self, label_t):
-        msg = Bool()
-        msg.data = bool(label_t)
+        msg = LabelStatus()
+        if label_t is None:
+            msg.status = LabelStatus.NA
+        elif label_t:
+            msg.status = LabelStatus.Accept
+        else:
+            msg.status = LabelStatus.Reject
         self.label_viz_pub.publish(msg)
 
     def plot_accept_probability(self, accept_probability_t):

@@ -9,6 +9,7 @@ add_message_files(
         FILES
         Action.msg
         IntPoint2D.msg
+        LabelStatus.msg
         LinkBotAction.msg
         ModelPose.msg
         ModelsEnable.msg
