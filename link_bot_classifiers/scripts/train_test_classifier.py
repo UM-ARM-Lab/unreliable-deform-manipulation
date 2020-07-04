@@ -8,8 +8,7 @@ import numpy as np
 import rospy
 import tensorflow as tf
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import (add_predicted,
-                                                  batch_tf_dataset)
+from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset
 from link_bot_pycommon.pycommon import paths_to_json
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.classifier_losses_and_metrics import \

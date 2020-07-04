@@ -9,12 +9,13 @@ import tensorflow as tf
 import rospy
 import state_space_dynamics
 from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset
 from link_bot_pycommon.pycommon import paths_to_json
 from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
 
-limit_gpu_mem(3)
+limit_gpu_mem(8)
 
 
 def train_main(args, seed: int):
@@ -53,17 +54,18 @@ def train_main(args, seed: int):
                          training=True,
                          params=model_hparams,
                          restore_from_name=checkpoint_name,
+                         batch_metadata=train_dataset.batch_metadata,
                          trial_path=trial_path)
 
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
-    val_tf_dataset = val_dataset.get_datasets(mode='val')
+    train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take, desired_sequence_length=10)
+    val_tf_dataset = val_dataset.get_datasets(mode='val', desired_sequence_length=10)
 
     # to mix up examples so each batch is diverse
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)
 
-    train_tf_dataset = train_tf_dataset.batch(args.batch_size, drop_remainder=True)
-    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    train_tf_dataset = batch_tf_dataset(train_tf_dataset, args.batch_size, drop_remainder=True)
+    val_tf_dataset = batch_tf_dataset(val_tf_dataset, args.batch_size, drop_remainder=True)
 
     train_tf_dataset = train_tf_dataset.shuffle(
         buffer_size=128, seed=seed, reshuffle_each_iteration=True)  # to mix up batches

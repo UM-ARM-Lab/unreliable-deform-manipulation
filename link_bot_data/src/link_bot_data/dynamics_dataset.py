@@ -34,7 +34,13 @@ class DynamicsDataset(BaseDataset):
         self.int64_keys = ['time_idx']
 
         self.data_collection_params = self.hparams['data_collection_params']
-        self.sequence_length = self.hparams['data_collection_params']['steps_per_traj']
+        if 'new_sequence_length' in self.hparams:
+            self.sequence_length = self.hparams['new_sequence_length']
+        else:
+            self.sequence_length = self.hparams['data_collection_params']['steps_per_traj']
+        self.batch_metadata = {
+            'sequence_length': self.sequence_length
+        }
 
     def make_features_description(self):
         features_description = {}
@@ -65,7 +71,24 @@ class DynamicsDataset(BaseDataset):
 
         return example_t
 
-    def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
+    def split_into_sequences(self, example, desired_sequence_length):
+        # return a dict where every element has different sequences split across the 0th dimension
+        for start_t in range(0, self.sequence_length - desired_sequence_length + 1):
+            out_example = {}
+            for k in self.constant_feature_names:
+                out_example[k] = example[k]
+
+            for k in self.state_keys:
+                v = example[k][start_t:start_t + desired_sequence_length]
+                out_example[k] = v
+
+            for k in self.action_keys:
+                v = example[k][start_t:start_t + desired_sequence_length - 1]
+                out_example[k] = v
+
+            yield out_example
+
+    def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int, **kwargs):
         # def _make_time_int(example: Dict):
         #     example['time_idx'] = tf.cast(example['time_idx'], tf.int64)
         #     return example

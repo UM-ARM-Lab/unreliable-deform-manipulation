@@ -10,7 +10,6 @@
     "gripper1_position",
     "gripper2_position"
   ],
-  "action_in_image": false,
   "rope_image_k": 2000,
   "rnn_size": 128,
   "fc_layer_sizes": [

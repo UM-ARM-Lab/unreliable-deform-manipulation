@@ -37,7 +37,7 @@ class BaseDataset:
                      do_not_process: bool = False,
                      shard: Optional[int] = None,
                      take: Optional[int] = None,
-                     ) -> tf.data.Dataset:
+                     **kwargs) -> tf.data.Dataset:
         if mode == 'all':
             train_filenames = []
             test_filenames = []
@@ -60,7 +60,8 @@ class BaseDataset:
                                               n_parallel_calls=n_parallel_calls,
                                               do_not_process=do_not_process,
                                               shard=shard,
-                                              take=take)
+                                              take=take,
+                                              **kwargs)
 
     def get_datasets_from_records(self,
                                   records: List[str],
@@ -68,7 +69,7 @@ class BaseDataset:
                                   do_not_process: Optional[bool] = False,
                                   shard: Optional[int] = None,
                                   take: Optional[int] = None,
-                                  ) -> tf.data.Dataset:
+                                  **kwargs) -> tf.data.Dataset:
         dataset = tf.data.TFRecordDataset(records, buffer_size=1 * 1024 * 1024, compression_type='ZLIB')
 
         # Given the member lists of states, actions, and constants set in the constructor, create a dict for parsing a feature
@@ -83,7 +84,7 @@ class BaseDataset:
             dataset = dataset.shard(shard)
 
         if not do_not_process:
-            dataset = self.post_process(dataset, n_parallel_calls)
+            dataset = self.post_process(dataset, n_parallel_calls, **kwargs)
 
         return dataset
 

@@ -82,7 +82,7 @@ class NNClassifier(MyKerasModel):
             raise NotImplementedError()
 
     def make_traj_voxel_grids_from_input_dict(self, input_dict: Dict, batch_size, time: int):
-        # Construct a b, h, w, c, 3 grid of the indices which make up the local environment
+        # Construct a [b, h, w, c, 3] grid of the indices which make up the local environment
         pixel_row_indices = tf.range(0, self.local_env_h_rows, dtype=tf.float32)
         pixel_col_indices = tf.range(0, self.local_env_w_cols, dtype=tf.float32)
         pixel_channel_indices = tf.range(0, self.local_env_c_channels, dtype=tf.float32)
