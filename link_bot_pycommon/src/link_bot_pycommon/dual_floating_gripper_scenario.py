@@ -50,6 +50,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'box2': np.zeros(3),
             'box3': np.zeros(3),
             'box4': np.zeros(3),
+            'hook1': np.zeros(3),
         }
 
     def reset_robot(self):
@@ -151,7 +152,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     def settle(self):
         req = WorldControlRequest()
-        req.seconds = 30
+        req.seconds = 10
         self.world_control_srv(req)
 
     def randomize_environment(self, env_rng, objects_params: Dict):
@@ -176,6 +177,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'box2': self.random_object_position(env_rng, objects_params),
             'box3': self.random_object_position(env_rng, objects_params),
             'box4': self.random_object_position(env_rng, objects_params),
+            'hook1': self.random_object_position(env_rng, objects_params),
         }
         self.set_object_positions(random_object_positions)
 
@@ -316,10 +318,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             rope_res.model_pose.orientation.z,
         ]
 
-        rospy.logwarn_once("not collecting joint state")
-        # joint_res = self.get_joint_state_srv(GetJointStateRequest())
-        # victor_joint_names = joint_res.joint_state.name
-        # victor_joint_positions = joint_res.joint_state.position
+        # rospy.logwarn_once("not collecting joint state")
+        joint_res = self.get_joint_state_srv(GetJointStateRequest())
+        victor_joint_names = joint_res.joint_state.name
+        victor_joint_positions = joint_res.joint_state.position
 
         return {
             'gripper1': ros_numpy.numpify(grippers_res.gripper1),
@@ -329,8 +331,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'model_pose': model_pose,
             'joint_angles_axis1': np.array(rope_res.joint_angles_axis1, np.float32),
             'joint_angles_axis2': np.array(rope_res.joint_angles_axis2, np.float32),
-            # 'victor_joint_names': victor_joint_names,
-            # 'victor_joint_positions': victor_joint_positions,
+            'victor_joint_names': victor_joint_names,
+            'victor_joint_positions': victor_joint_positions,
         }
 
     @ staticmethod

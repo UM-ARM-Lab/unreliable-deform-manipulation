@@ -2,8 +2,9 @@
     <model name='table'>
         <static>1</static>
         <allow_auto_disable>true</allow_auto_disable>
-        <pose frame=''>0.8 0 0 0 0 -1.5708</pose>
+        <pose frame=''>0.8 0 -0.15 0 0 -1.5708</pose>
         <link name='link'>
+            <kinematic>true</kinematic>
             <collision name='surface'>
                 <pose frame=''>0 0 0.75 0 -0 0</pose>
                 <geometry>
