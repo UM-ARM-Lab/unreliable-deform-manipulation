@@ -25,7 +25,7 @@ from shape_completion_training.model.utils import reduce_mean_dict
 from shape_completion_training.model_runner import ModelRunner
 from std_msgs.msg import Float32
 
-limit_gpu_mem(7.0)
+limit_gpu_mem(5.5)
 
 
 def train_main(args, seed: int):

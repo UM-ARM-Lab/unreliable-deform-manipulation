@@ -148,6 +148,8 @@ class NNClassifier(MyKerasModel):
 
                 local_voxel_grid_t_array = local_voxel_grid_t_array.write(i + 1, state_component_voxel_grid)
             local_voxel_grid_t = tf.transpose(local_voxel_grid_t_array.stack(), [1, 2, 3, 4, 0])
+            # add channel dimension information because tf.function erases it somehow...
+            local_voxel_grid_t.set_shape([None, None, None, None, len(self.state_keys) + 1])
 
             # # DEBUG
             # local_env_dict = {
