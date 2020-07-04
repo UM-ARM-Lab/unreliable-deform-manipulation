@@ -1,5 +1,6 @@
 #include "kinematic_victor_plugin.h"
 
+#include <peter_msgs/GetJointState.h>
 #include <peter_msgs/SetBool.h>
 #include <ros/subscribe_options.h>
 #include <std_msgs/Empty.h>
@@ -207,6 +208,7 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   // Setup ROS publishers, subscribers, and services, action servers
   {
     private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
+
     auto grasping_rope_bind = [this](peter_msgs::SetBoolRequest &req, peter_msgs::SetBoolResponse &res) {
       (void)res;
       grasping_rope_ = req.data;
@@ -219,6 +221,14 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     auto grasping_rope_so =
         create_service_options_private(peter_msgs::SetBool, "set_grasping_rope", grasping_rope_bind);
     grasping_rope_server_ = ros_node_.advertiseService(grasping_rope_so);
+
+    auto joint_state_bind = [this](peter_msgs::GetJointStateRequest &req, peter_msgs::GetJointStateResponse &res) {
+      (void)req;
+      res.joint_state = GetJointStates();
+      return true;
+    };
+    auto joint_state_so = create_service_options_private(peter_msgs::GetJointState, "joint_states", joint_state_bind);
+    joint_state_server_ = ros_node_.advertiseService(joint_state_so);
     joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 1);
     left_arm_motion_status_pub_ =
         ros_node_.advertise<victor_hardware_interface::MotionStatus>("left_arm/motion_status", 1);
@@ -269,7 +279,7 @@ void KinematicVictorPlugin::PeriodicUpdate()
   PublishRightGripperStatus();
 }
 
-void KinematicVictorPlugin::PublishJointStates()
+sensor_msgs::JointState KinematicVictorPlugin::GetJointStates()
 {
   // Remove the leading "victor::" from the joint names
   auto const n_removed = std::strlen("victor::");
@@ -286,6 +296,12 @@ void KinematicVictorPlugin::PublishJointStates()
     }
   }
   msg.header.stamp = ros::Time::now();
+  return msg;
+}
+
+void KinematicVictorPlugin::PublishJointStates()
+{
+  auto const msg = GetJointStates();
   joint_states_pub_.publish(msg);
 }
 

@@ -2,6 +2,7 @@
 import pathlib
 
 import shutil
+import gzip
 import json
 import argparse
 
@@ -17,14 +18,16 @@ def main():
     parser.add_argument('out_subdir', type=pathlib.Path, help="combined data will go here")
     args = parser.parse_args()
 
-    in_json = args.subdir / 'metrics.json'
-    with in_json.open('r') as in_json_f:
-        in_metrics = json.load(in_json_f)
+    in_json = args.subdir / 'metrics.json.gz'
+    with gzip.open(in_json, 'rb') as in_json_f:
+        in_json_str = in_json_f.read()
+        in_metrics = json.loads(in_json_str.decode("utf-8"))
 
     args.out_subdir.mkdir(parents=True, exist_ok=True)
-    out_json = args.out_subdir / 'metrics.json'
+    out_json = args.out_subdir / 'metrics.json.gz'
 
     if out_json.exists():
+        # FIXME: continue converting this script
         with out_json.open("r") as out_json_f_read:
             out_metrics = json.load(out_json_f_read)
             # assumes the parameters are the same, only copies the metrics, but will warn on differences
@@ -35,7 +38,8 @@ def main():
                     if k != 'n_total_plans' and k != 'initial_poses_in_collision':
                         # warn on differences
                         if v1 != v2:
-                            warning = "WARNING: hyperparmeter value of {} differs:\n{}\n{}\n using the former".format(k, v1, v2)
+                            warning = "WARNING: hyperparmeter value of {} differs:\n{}\n{}\n using the former".format(
+                                k, v1, v2)
                             print(Fore.YELLOW + warning + Fore.RESET)
 
             in_metrics_list = in_metrics['metrics']

@@ -5,36 +5,37 @@
         <pose frame="">0 0 0 0 0 0</pose>
         
         <link name="link_1">
-            <pose frame="">0.02 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.016 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_1_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -47,7 +48,8 @@
             </collision>
 
             <collision name="link_1_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -56,8 +58,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -70,7 +72,8 @@
             </collision>
 
             <collision name="link_1_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -79,8 +82,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -97,7 +100,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -114,36 +117,37 @@
         </link>
         
         <link name="link_2">
-            <pose frame="">0.06 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.048 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_2_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -156,7 +160,8 @@
             </collision>
 
             <collision name="link_2_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -165,8 +170,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -179,7 +184,8 @@
             </collision>
 
             <collision name="link_2_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -188,8 +194,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -206,7 +212,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -223,36 +229,37 @@
         </link>
         
         <link name="link_3">
-            <pose frame="">0.1 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.08 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_3_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -265,7 +272,8 @@
             </collision>
 
             <collision name="link_3_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -274,8 +282,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -288,7 +296,8 @@
             </collision>
 
             <collision name="link_3_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -297,8 +306,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -315,7 +324,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -332,36 +341,37 @@
         </link>
         
         <link name="link_4">
-            <pose frame="">0.13999999999999999 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.112 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_4_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -374,7 +384,8 @@
             </collision>
 
             <collision name="link_4_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -383,8 +394,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -397,7 +408,8 @@
             </collision>
 
             <collision name="link_4_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -406,8 +418,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -424,7 +436,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -441,36 +453,37 @@
         </link>
         
         <link name="link_5">
-            <pose frame="">0.18 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.14400000000000002 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_5_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -483,7 +496,8 @@
             </collision>
 
             <collision name="link_5_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -492,8 +506,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -506,7 +520,8 @@
             </collision>
 
             <collision name="link_5_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -515,8 +530,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -533,7 +548,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -550,36 +565,37 @@
         </link>
         
         <link name="link_6">
-            <pose frame="">0.22 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.176 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_6_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -592,7 +608,8 @@
             </collision>
 
             <collision name="link_6_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -601,8 +618,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -615,7 +632,8 @@
             </collision>
 
             <collision name="link_6_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -624,8 +642,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -642,7 +660,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -659,36 +677,37 @@
         </link>
         
         <link name="link_7">
-            <pose frame="">0.26 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.20800000000000002 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_7_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -701,7 +720,8 @@
             </collision>
 
             <collision name="link_7_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -710,8 +730,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -724,7 +744,8 @@
             </collision>
 
             <collision name="link_7_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -733,8 +754,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -751,7 +772,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -768,36 +789,37 @@
         </link>
         
         <link name="link_8">
-            <pose frame="">0.30000000000000004 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.24 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_8_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -810,7 +832,8 @@
             </collision>
 
             <collision name="link_8_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -819,8 +842,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -833,7 +856,8 @@
             </collision>
 
             <collision name="link_8_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -842,8 +866,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -860,7 +884,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -877,36 +901,37 @@
         </link>
         
         <link name="link_9">
-            <pose frame="">0.34 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.272 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_9_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -919,7 +944,8 @@
             </collision>
 
             <collision name="link_9_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -928,8 +954,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -942,7 +968,8 @@
             </collision>
 
             <collision name="link_9_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -951,8 +978,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -969,7 +996,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -986,36 +1013,37 @@
         </link>
         
         <link name="link_10">
-            <pose frame="">0.38 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.30400000000000005 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_10_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1028,7 +1056,8 @@
             </collision>
 
             <collision name="link_10_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1037,8 +1066,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1051,7 +1080,8 @@
             </collision>
 
             <collision name="link_10_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1060,8 +1090,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1078,7 +1108,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -1095,36 +1125,37 @@
         </link>
         
         <link name="link_11">
-            <pose frame="">0.42000000000000004 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.336 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_11_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1137,7 +1168,8 @@
             </collision>
 
             <collision name="link_11_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1146,8 +1178,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1160,7 +1192,8 @@
             </collision>
 
             <collision name="link_11_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1169,8 +1202,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1187,7 +1220,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -1204,36 +1237,37 @@
         </link>
         
         <link name="link_12">
-            <pose frame="">0.46 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.368 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_12_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1246,7 +1280,8 @@
             </collision>
 
             <collision name="link_12_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1255,8 +1290,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1269,7 +1304,8 @@
             </collision>
 
             <collision name="link_12_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1278,8 +1314,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1296,7 +1332,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -1313,36 +1349,37 @@
         </link>
         
         <link name="link_13">
-            <pose frame="">0.5 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.4 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_13_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1355,7 +1392,8 @@
             </collision>
 
             <collision name="link_13_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1364,8 +1402,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1378,7 +1416,8 @@
             </collision>
 
             <collision name="link_13_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1387,8 +1426,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1405,7 +1444,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -1422,36 +1461,37 @@
         </link>
         
         <link name="link_14">
-            <pose frame="">0.54 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.43200000000000005 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_14_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1464,7 +1504,8 @@
             </collision>
 
             <collision name="link_14_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1473,8 +1514,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1487,7 +1528,8 @@
             </collision>
 
             <collision name="link_14_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1496,8 +1538,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1514,7 +1556,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -1531,36 +1573,37 @@
         </link>
         
         <link name="link_15">
-            <pose frame="">0.5800000000000001 0 0 3.14159 -1.57079 3.14159</pose>
+            <pose frame="">0.464 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.02
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>3.1666666666666663e-06
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>3.1666666666666663e-06
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>1.0000000000000002e-06
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
             <collision name="link_15_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04</length>
+                        <length>0.032</length>
                         <radius>0.01</radius>
                     </cylinder>
                 </geometry>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1573,7 +1616,8 @@
             </collision>
 
             <collision name="link_15_collision_ball1">
-                <pose frame="">0 0 0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1582,8 +1626,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1596,7 +1640,8 @@
             </collision>
 
             <collision name="link_15_collision_ball2">
-                <pose frame="">0 0 -0.02 0 0 0</pose>
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.01</radius>
@@ -1605,8 +1650,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -1623,7 +1668,7 @@
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
-                        <length>0.04
+                        <length>0.032
                         </length>
                         <radius>0.01
                         </radius>
@@ -1639,15 +1684,1135 @@
             <self_collide>1</self_collide>
         </link>
         
+        <link name="link_16">
+            <pose frame="">0.496 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.008
+                </mass>
+                <inertia>
+                    <ixx>8.826666666666665e-07
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.826666666666665e-07
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>4.0000000000000003e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_16_collision">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032</length>
+                        <radius>0.01</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_16_collision_ball1">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_16_collision_ball2">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <visual name="link_16_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032
+                        </length>
+                        <radius>0.01
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Red </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+        </link>
+        
+        <link name="link_17">
+            <pose frame="">0.528 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.008
+                </mass>
+                <inertia>
+                    <ixx>8.826666666666665e-07
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.826666666666665e-07
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>4.0000000000000003e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_17_collision">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032</length>
+                        <radius>0.01</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_17_collision_ball1">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_17_collision_ball2">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <visual name="link_17_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032
+                        </length>
+                        <radius>0.01
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Orange </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+        </link>
+        
+        <link name="link_18">
+            <pose frame="">0.56 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.008
+                </mass>
+                <inertia>
+                    <ixx>8.826666666666665e-07
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.826666666666665e-07
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>4.0000000000000003e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_18_collision">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032</length>
+                        <radius>0.01</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_18_collision_ball1">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_18_collision_ball2">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <visual name="link_18_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032
+                        </length>
+                        <radius>0.01
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Yellow </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+        </link>
+        
+        <link name="link_19">
+            <pose frame="">0.5920000000000001 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.008
+                </mass>
+                <inertia>
+                    <ixx>8.826666666666665e-07
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.826666666666665e-07
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>4.0000000000000003e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_19_collision">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032</length>
+                        <radius>0.01</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_19_collision_ball1">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_19_collision_ball2">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <visual name="link_19_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032
+                        </length>
+                        <radius>0.01
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Green </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+        </link>
+        
+        <link name="link_20">
+            <pose frame="">0.624 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.008
+                </mass>
+                <inertia>
+                    <ixx>8.826666666666665e-07
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.826666666666665e-07
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>4.0000000000000003e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_20_collision">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032</length>
+                        <radius>0.01</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_20_collision_ball1">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_20_collision_ball2">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <visual name="link_20_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032
+                        </length>
+                        <radius>0.01
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Blue </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+        </link>
+        
+        <link name="link_21">
+            <pose frame="">0.656 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.008
+                </mass>
+                <inertia>
+                    <ixx>8.826666666666665e-07
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.826666666666665e-07
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>4.0000000000000003e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_21_collision">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032</length>
+                        <radius>0.01</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_21_collision_ball1">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_21_collision_ball2">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <visual name="link_21_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032
+                        </length>
+                        <radius>0.01
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Purple </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+        </link>
+        
+        <link name="link_22">
+            <pose frame="">0.6880000000000001 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.008
+                </mass>
+                <inertia>
+                    <ixx>8.826666666666665e-07
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.826666666666665e-07
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>4.0000000000000003e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_22_collision">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032</length>
+                        <radius>0.01</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_22_collision_ball1">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_22_collision_ball2">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <visual name="link_22_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032
+                        </length>
+                        <radius>0.01
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/White </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+        </link>
+        
+        <link name="link_23">
+            <pose frame="">0.72 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.008
+                </mass>
+                <inertia>
+                    <ixx>8.826666666666665e-07
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.826666666666665e-07
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>4.0000000000000003e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_23_collision">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032</length>
+                        <radius>0.01</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_23_collision_ball1">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_23_collision_ball2">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <visual name="link_23_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032
+                        </length>
+                        <radius>0.01
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Black </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+        </link>
+        
+        <link name="link_24">
+            <pose frame="">0.752 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.008
+                </mass>
+                <inertia>
+                    <ixx>8.826666666666665e-07
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.826666666666665e-07
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>4.0000000000000003e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_24_collision">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032</length>
+                        <radius>0.01</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_24_collision_ball1">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_24_collision_ball2">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <visual name="link_24_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032
+                        </length>
+                        <radius>0.01
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Red </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+        </link>
+        
+        <link name="link_25">
+            <pose frame="">0.784 0 0 3.14159 -1.57079 3.14159</pose>
+            <inertial>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <mass>0.008
+                </mass>
+                <inertia>
+                    <ixx>8.826666666666665e-07
+                    </ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.826666666666665e-07
+                    </iyy>
+                    <iyz>0</iyz>
+                    <izz>4.0000000000000003e-07
+                    </izz>
+                </inertia>
+            </inertial>
+            <collision name="link_25_collision">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032</length>
+                        <radius>0.01</radius>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_25_collision_ball1">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <collision name="link_25_collision_ball2">
+                <max_contacts>2</max_contacts>
+                <pose frame="">0 0 -0.016 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.01</radius>
+                    </sphere>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e11</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+
+            <visual name="link_25_visual">
+                <cast_shadows>0</cast_shadows>
+                <pose frame="">0 0 0 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.032
+                        </length>
+                        <radius>0.01
+                        </radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Orange </name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
+            </visual>
+            <self_collide>1</self_collide>
+        </link>
+        
         
         <joint name="joint_1" type="universal">
             <child>link_2</child>
             <parent>link_1</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1655,7 +2820,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1671,11 +2836,11 @@
         <joint name="joint_2" type="universal">
             <child>link_3</child>
             <parent>link_2</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1683,7 +2848,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1699,11 +2864,11 @@
         <joint name="joint_3" type="universal">
             <child>link_4</child>
             <parent>link_3</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1711,7 +2876,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1727,11 +2892,11 @@
         <joint name="joint_4" type="universal">
             <child>link_5</child>
             <parent>link_4</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1739,7 +2904,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1755,11 +2920,11 @@
         <joint name="joint_5" type="universal">
             <child>link_6</child>
             <parent>link_5</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1767,7 +2932,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1783,11 +2948,11 @@
         <joint name="joint_6" type="universal">
             <child>link_7</child>
             <parent>link_6</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1795,7 +2960,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1811,11 +2976,11 @@
         <joint name="joint_7" type="universal">
             <child>link_8</child>
             <parent>link_7</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1823,7 +2988,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1839,11 +3004,11 @@
         <joint name="joint_8" type="universal">
             <child>link_9</child>
             <parent>link_8</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1851,7 +3016,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1867,11 +3032,11 @@
         <joint name="joint_9" type="universal">
             <child>link_10</child>
             <parent>link_9</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1879,7 +3044,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1895,11 +3060,11 @@
         <joint name="joint_10" type="universal">
             <child>link_11</child>
             <parent>link_10</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1907,7 +3072,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1923,11 +3088,11 @@
         <joint name="joint_11" type="universal">
             <child>link_12</child>
             <parent>link_11</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1935,7 +3100,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1951,11 +3116,11 @@
         <joint name="joint_12" type="universal">
             <child>link_13</child>
             <parent>link_12</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1963,7 +3128,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1979,11 +3144,11 @@
         <joint name="joint_13" type="universal">
             <child>link_14</child>
             <parent>link_13</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -1991,7 +3156,7 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -2007,11 +3172,11 @@
         <joint name="joint_14" type="universal">
             <child>link_15</child>
             <parent>link_14</parent>
-            <pose>0 0 0.02 0 0 0 </pose>
+            <pose>0 0 0.016 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -2019,7 +3184,287 @@
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.0005</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
+        </joint>
+        
+        <joint name="joint_15" type="universal">
+            <child>link_16</child>
+            <parent>link_15</parent>
+            <pose>0 0 0.016 0 0 0 </pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis>
+            <axis2>
+                <xyz>0 1 0</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.0005</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
+        </joint>
+        
+        <joint name="joint_16" type="universal">
+            <child>link_17</child>
+            <parent>link_16</parent>
+            <pose>0 0 0.016 0 0 0 </pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis>
+            <axis2>
+                <xyz>0 1 0</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.0005</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
+        </joint>
+        
+        <joint name="joint_17" type="universal">
+            <child>link_18</child>
+            <parent>link_17</parent>
+            <pose>0 0 0.016 0 0 0 </pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis>
+            <axis2>
+                <xyz>0 1 0</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.0005</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
+        </joint>
+        
+        <joint name="joint_18" type="universal">
+            <child>link_19</child>
+            <parent>link_18</parent>
+            <pose>0 0 0.016 0 0 0 </pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis>
+            <axis2>
+                <xyz>0 1 0</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.0005</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
+        </joint>
+        
+        <joint name="joint_19" type="universal">
+            <child>link_20</child>
+            <parent>link_19</parent>
+            <pose>0 0 0.016 0 0 0 </pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis>
+            <axis2>
+                <xyz>0 1 0</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.0005</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
+        </joint>
+        
+        <joint name="joint_20" type="universal">
+            <child>link_21</child>
+            <parent>link_20</parent>
+            <pose>0 0 0.016 0 0 0 </pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis>
+            <axis2>
+                <xyz>0 1 0</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.0005</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
+        </joint>
+        
+        <joint name="joint_21" type="universal">
+            <child>link_22</child>
+            <parent>link_21</parent>
+            <pose>0 0 0.016 0 0 0 </pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis>
+            <axis2>
+                <xyz>0 1 0</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.0005</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
+        </joint>
+        
+        <joint name="joint_22" type="universal">
+            <child>link_23</child>
+            <parent>link_22</parent>
+            <pose>0 0 0.016 0 0 0 </pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis>
+            <axis2>
+                <xyz>0 1 0</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.0005</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
+        </joint>
+        
+        <joint name="joint_23" type="universal">
+            <child>link_24</child>
+            <parent>link_23</parent>
+            <pose>0 0 0.016 0 0 0 </pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis>
+            <axis2>
+                <xyz>0 1 0</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis2>
+            <physics>
+                <ode>
+                    <cfm>0.0005</cfm>
+                    <implicit_spring_damper>1</implicit_spring_damper>
+                </ode>
+            </physics>
+        </joint>
+        
+        <joint name="joint_24" type="universal">
+            <child>link_25</child>
+            <parent>link_24</parent>
+            <pose>0 0 0.016 0 0 0 </pose>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
+                    <friction>0.1</friction>
+                </dynamics>
+                <use_parent_model_frame>1</use_parent_model_frame>
+            </axis>
+            <axis2>
+                <xyz>0 1 0</xyz>
+                <dynamics>
+                    <damping>0.01</damping>
                     <friction>0.1</friction>
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
@@ -2033,7 +3478,7 @@
         </joint>
         
         <link name='gripper1'>
-            <pose frame=''>0.6 0 0 0 0 0 </pose>
+            <pose frame=''>0.8 0 0 0 0 0 </pose>
             <inertial>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <mass>0.1</mass>
@@ -2047,6 +3492,7 @@
                 </inertia>
             </inertial>
             <collision name='gripper1_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
@@ -2056,8 +3502,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.0</mu>
-                            <mu2>0.0</mu2>
+                            <mu>1.0</mu>
+                            <mu2>1.0</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -2088,20 +3534,20 @@
         </link>
         <joint name="gripper1_joint" type="universal">
             <child>gripper1</child>
-            <parent>link_15</parent>
+            <parent>link_25</parent>
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.1</friction>
+                    <damping>0.01</damping>
+                    <friction>1.0</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.1</friction>
+                    <damping>0.01</damping>
+                    <friction>1.0</friction>
                 </dynamics>
             </axis2>
             <physics>
@@ -2126,6 +3572,7 @@
                 </inertia>
             </inertial>
             <collision name='gripper2_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
@@ -2135,8 +3582,8 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.0</mu>
-                            <mu2>0.0</mu2>
+                            <mu>1.0</mu>
+                            <mu2>1.0</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -2170,15 +3617,15 @@
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.1</friction>
+                    <damping>0.01</damping>
+                    <friction>1.0</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
-                    <damping>0.001</damping>
-                    <friction>0.1</friction>
+                    <damping>0.01</damping>
+                    <friction>1.0</friction>
                 </dynamics>
             </axis2>
             <physics>
@@ -2189,8 +3636,8 @@
             </physics>
         </joint>
         <plugin name='rope_plugin' filename='librope_plugin.so'>
-            <num_links>15</num_links>
-            <rope_length>0.6</rope_length>
+            <num_links>25</num_links>
+            <rope_length>0.8</rope_length>
         </plugin>
         <plugin name='dual_gripper_plugin' filename='libdual_gripper_plugin.so'>
         </plugin>

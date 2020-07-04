@@ -48,10 +48,10 @@ def plot_plan(scenario, metrics, plan_idx, labeling_params, planner_params):
 
     planned_actions = metric_for_plan['actions']
 
-    if labeling_params is not None:
-        is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
-    else:
-        is_close = None
+    # if labeling_params is not None:
+    # is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
+    # else:
+    is_close = None
 
     scenario.animate_evaluation_results(environment=environment,
                                         actual_states=actual_path,

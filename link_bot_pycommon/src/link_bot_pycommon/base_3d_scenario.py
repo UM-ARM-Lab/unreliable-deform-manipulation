@@ -257,7 +257,11 @@ class Base3DScenario(ExperimentScenario):
                                    accept_probabilities):
         time_steps = np.arange(len(actual_states))
         self.plot_environment_rviz(environment)
-        self.plot_goal(goal, goal_threshold)
+        from time import sleep
+        for i in range(10):
+            self.plot_goal(goal, goal_threshold)
+            print(goal)
+            sleep(0.2)
 
         anim = RvizAnimationController(time_steps)
 

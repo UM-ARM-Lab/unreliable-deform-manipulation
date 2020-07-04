@@ -50,6 +50,3 @@ class BaseServices:
 
     def reset_world(self, verbose, reset_robot: Optional = None):
         raise NotImplementedError()
-
-    def get_movable_object_positions(self, movable_obstacles):
-        pass

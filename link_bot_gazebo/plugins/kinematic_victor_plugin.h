@@ -29,6 +29,7 @@ public:
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
 
+  sensor_msgs::JointState GetJointStates();
   void PublishJointStates();
   void PublishLeftArmMotionStatus();
   void PublishRightArmMotionStatus();
@@ -67,6 +68,7 @@ private:
   ros::Subscriber left_arm_motion_command_sub_;
   ros::Subscriber right_arm_motion_command_sub_;
   ros::ServiceServer grasping_rope_server_;
+  ros::ServiceServer joint_state_server_;
 
   std::unique_ptr<TrajServer> follow_traj_server_;
   std::string const left_flange_name_{ "victor::victor_left_arm_link_7" };

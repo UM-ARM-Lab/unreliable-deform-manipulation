@@ -5,7 +5,7 @@ radius = ENV['radius'].to_f
 link_length = length/n_links
 link_mass = mass/n_links
 colors = ["Red", "Orange", "Yellow", "Green", "Blue", "Purple", "White", "Black"]
-joint_damping = 0.001
+joint_damping = 0.01
 n_colors = colors.length%>
 <sdf version="1.6">
     <model name="link_bot">
@@ -31,6 +31,7 @@ n_colors = colors.length%>
                 </inertia>
             </inertial>
             <collision name="link_<%=i%>_collision">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
@@ -41,8 +42,8 @@ n_colors = colors.length%>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -55,6 +56,7 @@ n_colors = colors.length%>
             </collision>
 
             <collision name="link_<%=i%>_collision_ball1">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 <%=link_length/2%> 0 0 0</pose>
                 <geometry>
                     <sphere>
@@ -64,8 +66,8 @@ n_colors = colors.length%>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -78,6 +80,7 @@ n_colors = colors.length%>
             </collision>
 
             <collision name="link_<%=i%>_collision_ball2">
+                <max_contacts>2</max_contacts>
                 <pose frame="">0 0 <%=-link_length/2%> 0 0 0</pose>
                 <geometry>
                     <sphere>
@@ -87,8 +90,8 @@ n_colors = colors.length%>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.20</mu>
-                            <mu2>0.20</mu2>
+                            <mu>1.00</mu>
+                            <mu2>1.00</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -165,6 +168,7 @@ n_colors = colors.length%>
                 </inertia>
             </inertial>
             <collision name='gripper1_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
@@ -174,8 +178,8 @@ n_colors = colors.length%>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.0</mu>
-                            <mu2>0.0</mu2>
+                            <mu>1.0</mu>
+                            <mu2>1.0</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -212,14 +216,14 @@ n_colors = colors.length%>
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping><%=joint_damping%></damping>
-                    <friction>0.1</friction>
+                    <friction>1.0</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping><%=joint_damping%></damping>
-                    <friction>0.1</friction>
+                    <friction>1.0</friction>
                 </dynamics>
             </axis2>
             <physics>
@@ -244,6 +248,7 @@ n_colors = colors.length%>
                 </inertia>
             </inertial>
             <collision name='gripper2_collision'>
+                <max_contacts>4</max_contacts>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
@@ -253,8 +258,8 @@ n_colors = colors.length%>
                 <surface>
                     <friction>
                         <ode>
-                            <mu>0.0</mu>
-                            <mu2>0.0</mu2>
+                            <mu>1.0</mu>
+                            <mu2>1.0</mu2>
                         </ode>
                     </friction>
                     <contact>
@@ -289,14 +294,14 @@ n_colors = colors.length%>
                 <xyz>0 0 1</xyz>
                 <dynamics>
                     <damping><%=joint_damping%></damping>
-                    <friction>0.1</friction>
+                    <friction>1.0</friction>
                 </dynamics>
             </axis>
             <axis2>
                 <xyz>0 1 0</xyz>
                 <dynamics>
                     <damping><%=joint_damping%></damping>
-                    <friction>0.1</friction>
+                    <friction>1.0</friction>
                 </dynamics>
             </axis2>
             <physics>

@@ -40,7 +40,6 @@
   ],
   "classifier_model_dir": "cl_trials/none_baseline/none",
   "accept_threshold": 0.5,
-  "movable_obstacles": {},
   "goal_threshold": 0.05,
   "fixed_goal": null,
   "real_time_rate": 0.0,

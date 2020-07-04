@@ -11,6 +11,10 @@ import numpy as np
 import tensorflow as tf
 
 
+def default_if_none(x, default):
+    return default if x is None else x
+
+
 def yaw_diff(a, b):
     diff = a - b
     greater_indeces = np.argwhere(diff > np.pi)

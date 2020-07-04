@@ -34,6 +34,7 @@ add_service_files(
         GetObjects.srv
         GetPosition3D.srv
         GetRopeState.srv
+        GetJointState.srv
         LinkBotReset.srv
         LinkBotState.srv
         LinkBotTrajectory.srv

@@ -15,14 +15,18 @@ from tf import transformations
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import inflate_tf_3d
+from link_bot_pycommon.pycommon import default_if_none
 from victor_hardware_interface_msgs.msg import MotionCommand
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, WorldControlRequest, \
     WorldControl, SetRopeState, SetRopeStateRequest, SetDualGripperPoints, GetRopeState, GetRopeStateRequest, \
-    GetDualGripperPointsRequest, SetBoolRequest, SetBool
+    GetDualGripperPointsRequest, SetBoolRequest, SetBool, GetJointState, GetJointStateRequest
 from std_msgs.msg import Empty
 
 
+# TODO: not floating
 class DualFloatingGripperRopeScenario(Base3DScenario):
+    n_links = 25
+
     def __init__(self):
         super().__init__({})
         self.last_state = None
@@ -32,6 +36,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
         self.set_rope_srv = rospy.ServiceProxy("set_rope_state", SetRopeState)
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
+        self.get_joint_state_srv = rospy.ServiceProxy("joint_states", GetJointState)
         self.set_grippers_srv = rospy.ServiceProxy("set_dual_gripper_points", SetDualGripperPoints)
         self.world_control_srv = rospy.ServiceProxy("world_control", WorldControl)
         self.left_arm_motion_pub = rospy.Publisher("left_arm/motion_command", MotionCommand, queue_size=10)
@@ -118,7 +123,11 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             out_of_bounds = self.grippers_out_of_bounds(gripper1_position,
                                                         gripper2_position,
                                                         data_collection_params)
-            if not out_of_bounds:
+
+            max_gripper_d = default_if_none(data_collection_params['max_distance_between_grippers'], 1000)
+            too_far = np.linalg.norm(gripper1_position - gripper2_position) > max_gripper_d
+
+            if not out_of_bounds and not too_far:
                 self.last_state = state
                 self.last_action = action
                 return action
@@ -307,6 +316,11 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             rope_res.model_pose.orientation.z,
         ]
 
+        rospy.logwarn_once("not collecting joint state")
+        # joint_res = self.get_joint_state_srv(GetJointStateRequest())
+        # victor_joint_names = joint_res.joint_state.name
+        # victor_joint_positions = joint_res.joint_state.position
+
         return {
             'gripper1': ros_numpy.numpify(grippers_res.gripper1),
             'gripper2': ros_numpy.numpify(grippers_res.gripper2),
@@ -315,12 +329,14 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'model_pose': model_pose,
             'joint_angles_axis1': np.array(rope_res.joint_angles_axis1, np.float32),
             'joint_angles_axis2': np.array(rope_res.joint_angles_axis2, np.float32),
+            # 'victor_joint_names': victor_joint_names,
+            # 'victor_joint_positions': victor_joint_positions,
         }
 
     @ staticmethod
     def states_description() -> Dict:
         # should match the keys of the dict return from action_to_dataset_action
-        n_links = 15
+        n_links = DualFloatingGripperRopeScenario.n_links
         # +2 for joints to the grippers
         n_joints = n_links - 1 + 2
         return {
@@ -394,7 +410,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper1 = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
         gripper2 = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
         rope = []
-        for i in range(15):
+        for i in range(DualFloatingGripperRopeScenario.n_links):
             rope.append(ompl_state[2][3*i+0])
             rope.append(ompl_state[2][3*i+1])
             rope.append(ompl_state[2][3*i+2])
@@ -653,7 +669,7 @@ class DualGripperStateSampler(ob.RealVectorStateSampler):
         # by biasing towards regions of empty space. So here we just pick a random point
         # and duplicate it, as if all points on the rope were at this point
         random_point = self.rng.uniform(self.extent[:, 0], self.extent[:, 1])
-        random_point_rope = np.concatenate([random_point]*15)
+        random_point_rope = np.concatenate([random_point]*DualFloatingGripperRopeScenario.n_links)
         state_np = {
             'gripper1': random_point,
             'gripper2': random_point,
@@ -704,7 +720,7 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
 
         # don't bother trying to sample "legit" rope states, because this is only used to bias sampling towards the goal
         # so just prenteing every point on therope is at the goal should be sufficient
-        rope = np.concatenate([self.goal['midpoint']]*15)
+        rope = np.concatenate([self.goal['midpoint']]*DualFloatingGripperRopeScenario.n_links)
 
         goal_state_np = {
             'gripper1': self.goal['midpoint'],

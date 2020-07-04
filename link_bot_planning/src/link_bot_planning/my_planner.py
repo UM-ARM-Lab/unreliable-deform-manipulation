@@ -227,8 +227,13 @@ class MyPlanner:
         ob_planner_status = self.ss.solve(ptc)
         planner_status = interpret_planner_status(ob_planner_status, ptc)
 
-        ompl_path = self.ss.getSolutionPath()
-        actions, planned_path = self.convert_path(ompl_path)
+        if planner_status == MyPlannerStatus.Solved:
+            ompl_path = self.ss.getSolutionPath()
+            actions, planned_path = self.convert_path(ompl_path)
+        else:
+            actions = None
+            planned_path = None
+
         self.goal_region = None
         return PlannerResult(planner_status=planner_status, path=planned_path, actions=actions)
 
