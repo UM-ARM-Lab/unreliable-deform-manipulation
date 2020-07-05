@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -257,17 +257,13 @@ class Base3DScenario(ExperimentScenario):
                                    actual_states: List[Dict],
                                    predicted_states: List[Dict],
                                    actions: List[Dict],
-                                   labels,
                                    goal: Dict,
                                    goal_threshold: float,
+                                   labeling_params: Dict,
                                    accept_probabilities):
         time_steps = np.arange(len(actual_states))
         self.plot_environment_rviz(environment)
-        from time import sleep
-        for i in range(10):
-            self.plot_goal(goal, goal_threshold)
-            print(goal)
-            sleep(0.2)
+        self.plot_goal(goal, goal_threshold)
 
         anim = RvizAnimationController(time_steps)
 
@@ -277,13 +273,17 @@ class Base3DScenario(ExperimentScenario):
             s_t_pred = predicted_states[t]
             self.plot_state_rviz(s_t, label='actual', color='#ff0000aa')
             self.plot_state_rviz(s_t_pred, label='predicted', color='#0000ffaa')
-            if t < anim.max_t:
-                self.plot_action_rviz(s_t, actions[t])
-            else:
-                self.plot_action_rviz(actual_states[t - 1], actions[t - 1])
+            if len(actions) > 0:
+                if t < anim.max_t:
+                    self.plot_action_rviz(s_t, actions[t])
+                else:
+                    self.plot_action_rviz(actual_states[t - 1], actions[t - 1])
 
-            if labels is not None:
-                self.plot_is_close(labels[t])
+            is_close = self.compute_label(s_t, s_t_pred, labeling_params)
+            self.plot_is_close(is_close)
+
+            actually_at_goal = self.distance_to_goal(s_t, goal) < goal_threshold
+            self.plot_goal(goal, goal_threshold, actually_at_goal)
 
             if accept_probabilities and t > 0:
                 self.plot_accept_probability(accept_probabilities[t - 1])
@@ -346,7 +346,7 @@ class Base3DScenario(ExperimentScenario):
 
             anim.step()
 
-    def plot_goal(self, goal: Dict, goal_threshold: float):
+    def plot_goal(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
         goal_marker_msg = MarkerArray()
         midpoint_marker = Marker()
         midpoint_marker.scale.x = goal_threshold * 2
@@ -358,10 +358,16 @@ class Base3DScenario(ExperimentScenario):
         midpoint_marker.header.stamp = rospy.Time.now()
         midpoint_marker.ns = 'goal'
         midpoint_marker.id = 0
-        midpoint_marker.color.r = 0.5
-        midpoint_marker.color.g = 0.3
-        midpoint_marker.color.b = 0.8
-        midpoint_marker.color.a = 0.8
+        if actually_at_goal:
+            midpoint_marker.color.r = 0.4
+            midpoint_marker.color.g = 0.8
+            midpoint_marker.color.b = 0.4
+            midpoint_marker.color.a = 0.8
+        else:
+            midpoint_marker.color.r = 0.5
+            midpoint_marker.color.g = 0.3
+            midpoint_marker.color.b = 0.8
+            midpoint_marker.color.a = 0.8
         midpoint_marker.pose.position.x = goal['midpoint'][0]
         midpoint_marker.pose.position.y = goal['midpoint'][1]
         midpoint_marker.pose.position.z = goal['midpoint'][2]

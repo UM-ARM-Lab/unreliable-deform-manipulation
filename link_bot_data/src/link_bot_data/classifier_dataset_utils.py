@@ -148,17 +148,11 @@ def compute_is_close_tf(actual_states_dict: Dict, predicted_states_dict: Dict, l
     state_key = labeling_params['state_key']
     labeling_states = tf.convert_to_tensor(actual_states_dict[state_key])
     labeling_predicted_states = tf.convert_to_tensor(predicted_states_dict[state_key])
-    # TODO: use scenario to compute distance here?
     model_error = tf.linalg.norm(labeling_states - labeling_predicted_states, axis=-1)
     threshold = labeling_params['threshold']
     is_close = model_error < threshold
 
     return is_close
-
-
-def compute_label_np(actual_states_dict: Dict, predicted_states_dict: Dict, labeling_params: Dict):
-    is_close = remove_batch(compute_is_close_tf(*add_batch(actual_states_dict, predicted_states_dict), labeling_params))
-    return is_close.numpy()
 
 
 def batch_of_many_of_actions_sequences_to_dict(actions, n_actions_sampled, n_start_states, n_actions):

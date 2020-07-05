@@ -210,7 +210,6 @@ def metrics_main(args):
         nums_nodes = []
         nums_steps = []
         nums_mer_violations = []
-        poor_approximate_plans = []
         for plan_idx, datum in enumerate(data):
             planned_path = datum['planned_path']
             actual_path = datum['actual_path']
@@ -222,16 +221,11 @@ def metrics_main(args):
             p = sequence_of_dicts_to_dict_of_np_arrays(planned_path)['link_bot']
             a = sequence_of_dicts_to_dict_of_np_arrays(actual_path)['link_bot']
 
-            if datum['planner_status'] != "Exact solution":
+            if datum['planner_status'] != "solved":
                 timeouts += 1
                 # Do not plot metrics for plans which timeout.
                 if args.ignore_timeouts:
                     continue
-
-                # Check that we didn't get kinda close
-                if final_plan_to_goal_error > 0.5:
-                    print(f"plan {plan_idx} was {final_plan_to_goal_error:.3f} from the goal")
-                    poor_approximate_plans.append(datum)
 
             final_plan_to_execution_errors.append(final_plan_to_execution_error)
             final_plan_to_goal_errors.append(final_plan_to_goal_error)
@@ -257,8 +251,6 @@ def metrics_main(args):
         percentage_solved = n_exact_solutions / N * 100
         percentages_solved.append(percentage_solved)
         n_for_metrics = n_exact_solutions if args.ignore_timeouts else N
-        n_poor_plans = len(poor_approximate_plans)
-        poor_plan_percentage = n_poor_plans / N * 100
 
         if not args.no_plot:
             # Execution Success Plot
@@ -308,7 +300,7 @@ def metrics_main(args):
         aggregate_metrics['% Steps with MER Violations'].append(
             make_row(planner_params, nums_mer_violations, table_format))
 
-        print(f"{subfolder.name:30s}: {timeout_percentage:3.2f}% timeout {poor_plan_percentage:3.2f}% could use RAS")
+        print(f"{subfolder.name:30s}: {timeout_percentage:3.2f}% timeout")
         for error, plan_idx in sorted(zip(final_execution_to_goal_errors, range(len(final_execution_to_goal_errors)))):
             print(f"{plan_idx}: {error:5.3f} error between execution to goal")
         if labeling_params is not None:

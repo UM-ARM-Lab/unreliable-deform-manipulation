@@ -470,7 +470,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return distance
 
     @staticmethod
-    def distance(s1, s2):
+    def distance(s1: Dict, s2: Dict):
         """ this is not the distance metric used in planning, but the one used in evaluation (like distance to goal) """
         rope1_points = np.reshape(s1['link_bot'], [-1, 3])
         rope2_points = np.reshape(s2['link_bot'], [-1, 3])
@@ -480,8 +480,19 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return distance
 
     @staticmethod
-    def distance_differentiable(s1, s2):
+    def distance_differentiable(s1: Dict, s2: Dict):
         raise NotImplementedError()
+
+    @staticmethod
+    def compute_label(actual: Dict, predicted: Dict, labeling_params: Dict):
+        # NOTE: this should be using the same distance metric as the planning, which should also be the same as the labeling
+        # done when making the classifier dataset
+        actual_rope = np.array(actual["link_bot"])
+        predicted_rope = np.array(predicted["link_bot"])
+        model_error = np.linalg.norm(actual_rope - predicted_rope)
+        threshold = labeling_params['threshold']
+        is_close = model_error < threshold
+        return is_close
 
     def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict, plot: bool):
         return DualGripperGoalRegion(si=si,

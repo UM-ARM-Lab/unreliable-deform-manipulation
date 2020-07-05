@@ -42,6 +42,18 @@
    </item>
    <item>
     <widget class="QPushButton" name="backward_button">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>20</width>
+       <height>0</height>
+      </size>
+     </property>
      <property name="text">
       <string>&lt;</string>
      </property>
@@ -49,6 +61,12 @@
    </item>
    <item>
     <widget class="QPushButton" name="play_pause_button">
+     <property name="minimumSize">
+      <size>
+       <width>50</width>
+       <height>0</height>
+      </size>
+     </property>
      <property name="text">
       <string>play</string>
      </property>
@@ -56,6 +74,12 @@
    </item>
    <item>
     <widget class="QPushButton" name="forward_button">
+     <property name="minimumSize">
+      <size>
+       <width>20</width>
+       <height>0</height>
+      </size>
+     </property>
      <property name="text">
       <string>&gt;</string>
      </property>
@@ -76,6 +100,12 @@
    </item>
    <item>
     <widget class="QPushButton" name="done_button">
+     <property name="minimumSize">
+      <size>
+       <width>50</width>
+       <height>0</height>
+      </size>
+     </property>
      <property name="text">
       <string>Done</string>
      </property>
