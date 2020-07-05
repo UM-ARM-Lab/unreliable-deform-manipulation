@@ -24,16 +24,11 @@ def check_collision(scenario, environment, states_sequence, collision_check_obje
     xs = points[:, 0]
     ys = points[:, 1]
     zs = points[:, 2]
-    in_collision, inflated_env = batch_in_collision_tf_3d(environment=environment,
-                                                          xs=xs,
-                                                          ys=ys,
-                                                          zs=zs,
-                                                          inflate_radius_m=DEFAULT_INFLATION_RADIUS)
-    scenario.plot_environment_rviz({
-        'env': inflated_env,
-        'res': environment['res'],
-        'origin': environment['origin'],
-    })
+    in_collision, _ = batch_in_collision_tf_3d(environment=environment,
+                                               xs=xs,
+                                               ys=ys,
+                                               zs=zs,
+                                               inflate_radius_m=DEFAULT_INFLATION_RADIUS)
     prediction = tf.expand_dims(tf.logical_not(in_collision), axis=0)
     return prediction
 

@@ -1,16 +1,16 @@
 {
   "termination_criteria": {
     "times_called_threshold": 100,
-    "min_distance_to_goal_threshold": 0.25,
+    "min_distance_to_goal_threshold": 0.15,
     "timeout": 600
   },
   "extent": [
-    0.5,
+    0.35,
     1.3,
-    -0.5,
-    0.5,
+    -0.7,
     0.7,
-    1.4
+    0.55,
+    1.35
   ],
   "goal_extent": [
     0.6,
@@ -25,18 +25,18 @@
     1.0,
     -0.4,
     0.4,
-    0.715,
-    0.7151
+    0.625,
+    0.6251
   ],
   "fwd_model_dir": [
-    "dy_trials/victor_dual_no_obs_1_0/best_checkpoint",
-    "dy_trials/victor_dual_no_obs_1_1/best_checkpoint",
-    "dy_trials/victor_dual_no_obs_1_2/best_checkpoint",
-    "dy_trials/victor_dual_no_obs_1_3/best_checkpoint",
-    "dy_trials/victor_dual_no_obs_1_4/best_checkpoint",
-    "dy_trials/victor_dual_no_obs_1_5/best_checkpoint",
-    "dy_trials/victor_dual_no_obs_1_6/best_checkpoint",
-    "dy_trials/victor_dual_no_obs_1_7/best_checkpoint"
+    "dy_trials/no_victor_longer_0/best_checkpoint",
+    "dy_trials/no_victor_longer_1/best_checkpoint",
+    "dy_trials/no_victor_longer_2/best_checkpoint",
+    "dy_trials/no_victor_longer_3/best_checkpoint",
+    "dy_trials/no_victor_longer_4/best_checkpoint",
+    "dy_trials/no_victor_longer_5/best_checkpoint",
+    "dy_trials/no_victor_longer_6/best_checkpoint",
+    "dy_trials/no_victor_longer_7/best_checkpoint"
   ],
   "classifier_model_dir": "cl_trials/none_baseline/none",
   "accept_threshold": 0.5,

@@ -58,8 +58,8 @@ def train_main(args, seed: int):
                          trial_path=trial_path)
 
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take, desired_sequence_length=10)
-    val_tf_dataset = val_dataset.get_datasets(mode='val', desired_sequence_length=10)
+    train_tf_dataset = train_dataset.get_datasets(mode='train', take=8)
+    val_tf_dataset = val_dataset.get_datasets(mode='val', take=args.take)
 
     # to mix up examples so each batch is diverse
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)
@@ -88,6 +88,7 @@ def eval_main(args, seed: int):
     runner = ModelRunner(model=net,
                          training=False,
                          restore_from_name=args.checkpoint.name,
+                         val_every_n_batches=4,
                          trial_path=trial_path,
                          params=params)
 

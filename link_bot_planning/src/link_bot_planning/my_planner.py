@@ -231,8 +231,8 @@ class MyPlanner:
             ompl_path = self.ss.getSolutionPath()
             actions, planned_path = self.convert_path(ompl_path)
         else:
-            actions = None
-            planned_path = None
+            actions = []
+            planned_path = [start_state]
 
         self.goal_region = None
         return PlannerResult(planner_status=planner_status, path=planned_path, actions=actions)

@@ -108,6 +108,7 @@
                 </material>
             </visual>
             <collision name='back_left_leg'>
+                <pose frame=''>-0.68 0.38 0.375 0 -0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.02</radius>

@@ -188,8 +188,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.settle()
 
         # try to move back, but add some noise so we don't get immediately stuck again
-        noise1 = env_rng.randn(3) * 0.1
-        noise2 = env_rng.randn(3) * 0.1
+        noise1 = env_rng.randn(3) * 0.02
+        noise2 = env_rng.randn(3) * 0.02
         return_action = {
             'gripper1_position': pre_randomize_gripper1_position + noise1,
             'gripper2_position': pre_randomize_gripper2_position + noise2,
@@ -286,19 +286,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper_position2 = np.reshape(state['gripper2'], [3])
         return gripper_position1, gripper_position2
 
-    def teleport_to_state(self, state: Dict):
-        rope_req = SetRopeStateRequest()
-        rope_req.joint_angles_axis1 = state['joint_angles_axis1'].tolist()
-        rope_req.joint_angles_axis2 = state['joint_angles_axis2'].tolist()
-        rope_req.model_pose.position.x = state['model_pose'][0]
-        rope_req.model_pose.position.y = state['model_pose'][1]
-        rope_req.model_pose.position.z = state['model_pose'][2]
-        rope_req.model_pose.orientation.w = state['model_pose'][3]
-        rope_req.model_pose.orientation.x = state['model_pose'][4]
-        rope_req.model_pose.orientation.y = state['model_pose'][5]
-        rope_req.model_pose.orientation.z = state['model_pose'][6]
-        self.set_rope_srv(rope_req)
-
     def get_state(self):
         grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
         rope_res = self.get_rope_srv(GetRopeStateRequest())
@@ -325,7 +312,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             rope_res.model_pose.orientation.z,
         ]
 
-        rospy.logwarn_once("not collecting joint state")
         # joint_res = self.get_joint_state_srv(GetJointStateRequest())
         # victor_joint_names = joint_res.joint_state.name
         # victor_joint_positions = joint_res.joint_state.position
@@ -410,7 +396,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             state_out[0][i] = np.float64(state_np['gripper1'][i])
         for i in range(3):
             state_out[1][i] = np.float64(state_np['gripper2'][i])
-        for i in range(45):
+        for i in range(DualFloatingGripperRopeScenario.n_links * 3):
             state_out[2][i] = np.float64(state_np['link_bot'][i])
         state_out[3][0] = np.float64(state_np['stdev'][0])
         state_out[4][0] = np.float64(state_np['num_diverged'][0])
@@ -472,34 +458,30 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     @staticmethod
     def distance_to_goal(state: Dict, goal: Dict):
         rope_points = np.reshape(state['link_bot'], [-1, 3])
-        rope_midpoint = rope_points[7]
+        rope_midpoint = rope_points[int(DualFloatingGripperRopeScenario.n_links / 2)]
         distance = np.linalg.norm(goal['midpoint'] - rope_midpoint)
         return distance
 
     @staticmethod
     def distance_to_goal_differentiable(state, goal):
         rope_points = tf.reshape(state['link_bot'], [-1, 3])
-        rope_midpoint = rope_points[7]
+        rope_midpoint = rope_points[int(DualFloatingGripperRopeScenario.n_links / 2)]
         distance = tf.linalg.norm(goal['midpoint'] - rope_midpoint)
         return distance
 
     @staticmethod
     def distance(s1, s2):
+        """ this is not the distance metric used in planning, but the one used in evaluation (like distance to goal) """
         rope1_points = np.reshape(s1['link_bot'], [-1, 3])
-        rope1_midpoint = rope1_points[7]
         rope2_points = np.reshape(s2['link_bot'], [-1, 3])
-        rope2_midpoint = rope2_points[7]
-        distance = np.linalg.norm(rope2_midpoint - rope1_midpoint)
+        rope1_midpoint = rope1_points[int(DualFloatingGripperRopeScenario.n_links / 2)]
+        rope2_midpoint = rope2_points[int(DualFloatingGripperRopeScenario.n_links / 2)]
+        distance = float(np.linalg.norm(rope2_midpoint - rope1_midpoint))
         return distance
 
     @staticmethod
     def distance_differentiable(s1, s2):
-        rope1_points = tf.reshape(s1['link_bot'], [-1, 3])
-        rope1_midpoint = rope1_points[7]
-        rope2_points = tf.reshape(s2['link_bot'], [-1, 3])
-        rope2_midpoint = rope2_points[7]
-        distance = tf.linalg.norm(rope2_midpoint - rope1_midpoint)
-        return distance
+        raise NotImplementedError()
 
     def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict, plot: bool):
         return DualGripperGoalRegion(si=si,
@@ -540,8 +522,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper2_subspace.setName("gripper2")
         state_space.addSubspace(gripper2_subspace, weight=1)
 
-        rope_subspace = ob.RealVectorStateSpace(45)
-        rope_bounds = ob.RealVectorBounds(45)
+        rope_subspace = ob.RealVectorStateSpace(DualFloatingGripperRopeScenario.n_links * 3)
+        rope_bounds = ob.RealVectorBounds(DualFloatingGripperRopeScenario.n_links * 3)
         # these bounds are not used for sampling
         rope_bounds.setLow(-1000)
         rope_bounds.setHigh(1000)

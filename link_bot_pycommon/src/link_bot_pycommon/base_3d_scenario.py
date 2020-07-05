@@ -90,7 +90,7 @@ class Base3DScenario(ExperimentScenario):
         link_bot_sdf_utils.send_occupancy_tf(self.broadcaster, environment)
 
     def plot_sampled_goal_state(self, state: Dict):
-        self.plot_state_rviz(state, idx=self.sampled_goal_marker_idx, label="goal sample", color='#44dddd')
+        self.plot_state_rviz(state, idx=self.sampled_goal_marker_idx, label="goal sample", color='#EB322F')
         self.sampled_goal_marker_idx += 1
 
     def plot_start_state(self, state: Dict):

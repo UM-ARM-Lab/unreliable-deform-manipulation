@@ -79,8 +79,8 @@ class PlanAndExecute:
         while True:
             self.randomize_environment()
             for _ in range(self.n_plans_per_env):
-                success = self.plan_and_execute_once()
-                if success:
+                run_was_valid = self.plan_and_execute_once()
+                if run_was_valid:
                     self.total_plan_idx += 1
                     if self.total_plan_idx >= self.n_total_plans:
                         self.on_complete()
@@ -119,14 +119,16 @@ class PlanAndExecute:
 
         self.on_after_plan()
 
-        if planner_result.planner_status in [MyPlannerStatus.Failure, MyPlannerStatus.NotProgressing]:
-            if self.recovery_actions_model is not None:
-                print("performing recovery action!")
-                current_state = scenario.get_state()
-                recovery_actions = self.recovery_actions_model.sample(environment, current_state)
-                self.execute_actions(start_state, recovery_actions)
+        if planner_result.planner_status == MyPlannerStatus.Failure:
             return False
-        elif planner_result.planner_status in [MyPlannerStatus.Solved, MyPlannerStatus.Timeout]:
+        # if planner_result.planner_status == MyPlannerStatus.NotProgressing:
+        #     if self.recovery_actions_model is not None:
+        #         print("performing recovery action!")
+        #         current_state = scenario.get_state()
+        #         recovery_actions = self.recovery_actions_model.sample(environment, current_state)
+        #         self.execute_actions(start_state, recovery_actions)
+        #     return False
+        elif planner_result.planner_status in [MyPlannerStatus.NotProgressing, MyPlannerStatus.Timeout, MyPlannerStatus.Solved]:
             planning_time = time.time() - t0
             if self.verbose >= 1:
                 rospy.loginfo(f"Planning time: {planning_time:5.3f}s")

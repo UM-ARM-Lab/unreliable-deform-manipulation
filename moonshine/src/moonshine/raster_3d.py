@@ -6,7 +6,7 @@ from link_bot_pycommon.link_bot_sdf_utils import idx_to_point_3d
 
 def raster_3d(state, pixel_indices, res, origin, h, w, c, k, batch_size: int):
     res = res[0]
-    n_points = tf.cast(state.shape[1] / 3, tf.int64)
+    n_points = tf.cast(state.shape[1] / 3, tf.int32)
     points = tf.reshape(state, [batch_size, n_points, 3])
 
     # Below is a un-vectorized implementation, which is much easier to read and understand
