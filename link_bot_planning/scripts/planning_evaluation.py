@@ -2,6 +2,7 @@
 from __future__ import division, print_function
 
 import gzip
+from time import perf_counter
 import argparse
 import json
 import pathlib
@@ -28,6 +29,19 @@ from moonshine.moonshine_utils import listify
 from victor import victor_services
 
 limit_gpu_mem(8)
+
+
+def dummy_proof_write(data, filename):
+    t0 = perf_counter()
+    while True:
+        try:
+            with gzip.open(filename, 'wb') as data_file:
+                data_str = json.dumps(data)
+                data_file.write(data_str.encode("utf-8"))
+            print(f"done saving. took {perf_counter() - t0:.3f}s")
+            return
+        except KeyboardInterrupt:
+            pass
 
 
 class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
@@ -62,19 +76,10 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.outdir = outdir
         self.seed = seed
 
-        self.data = {
-            "n_total_plans": n_total_plans,
-            "n_targets": n_plans_per_env,
-            "planner_params": planner_params,
-            "scenario": self.planner.scenario.simple_name(),
-            "seed": self.seed,
-            "metrics": [],
-        }
         self.subfolder = "{}_{}".format(self.planner_config_name, comparison_item_idx)
         self.root = self.outdir / self.subfolder
         self.root.mkdir(parents=True)
         print(Fore.CYAN + str(self.root) + Fore.RESET)
-        self.data_filename = self.root / 'metrics.json.gz'
         self.failures_root = self.root / 'failures'
         self.successfully_completed_plan_idx = 0
         self.goal = goal
@@ -124,6 +129,11 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         tree_json = planner_data_to_json(planner_data, self.planner.scenario)
 
         data_for_plan = {
+            "n_total_plans": self.n_total_plans,
+            "n_targets": self.n_plans_per_env,
+            "planner_params": self.planner_params,
+            "scenario": self.planner.scenario.simple_name(),
+            "seed": self.seed,
             'planner_status': planner_status.value,
             'environment': listify(environment),
             'planned_path': planned_path_listified,
@@ -137,10 +147,8 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'goal': listify(goal),
             'num_nodes': num_nodes
         }
-        self.data['metrics'].append(data_for_plan)
-        with gzip.open(self.data_filename, 'wb') as data_file:
-            data_str = json.dumps(self.data, indent=2)
-            data_file.write(data_str.encode("utf-8"))
+        data_filename = self.root / f'{self.successfully_completed_plan_idx}_metrics.json.gz'
+        dummy_proof_write(data_for_plan, data_filename)
 
         self.successfully_completed_plan_idx += 1
 
@@ -148,8 +156,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             self.service_provider.stop_record_trial()
 
     def on_planner_failure(self, start_states, tail_goal_point, environment: Dict, planner_data):
-        folder = self.failures_root / str(self.n_failures)
-        folder.mkdir(parents=True)
         info = {
             'start_states': {k: v.tolist() for k, v in start_states.items()},
             'tail_goal_point': tail_goal_point,
@@ -160,9 +166,8 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                 'data': environment['env'].tolist(),
             },
         }
-        with gzip.open(folder / 'info.json.gz', 'wb') as info_file:
-            info_str = json.dumps(info, indent=2)
-            info_file.write(info_str.encode("utf-8"))
+        info_filename = self.root / "failures" / f'{self.n_failures}_info.json.gz'
+        dummy_proof_write(info, info_filename)
 
 
 def main():

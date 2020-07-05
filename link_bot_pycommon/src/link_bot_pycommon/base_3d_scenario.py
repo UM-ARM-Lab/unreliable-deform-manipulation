@@ -338,10 +338,11 @@ class Base3DScenario(ExperimentScenario):
             t = anim.t()
             s_t_planned = planned_path[t]
             self.plot_state_rviz(s_t_planned, label='planned', color='#FF4616')
-            if t < anim.max_t:
-                self.plot_action_rviz(s_t_planned, actions[t])
-            else:
-                self.plot_action_rviz(planned_path[t - 1], actions[t - 1])
+            if len(actions) > 0:
+                if t < anim.max_t:
+                    self.plot_action_rviz(s_t_planned, actions[t])
+                else:
+                    self.plot_action_rviz(planned_path[t - 1], actions[t - 1])
 
             anim.step()
 
