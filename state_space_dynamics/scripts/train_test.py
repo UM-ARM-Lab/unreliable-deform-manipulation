@@ -58,7 +58,7 @@ def train_main(args, seed: int):
                          trial_path=trial_path)
 
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train', take=8)
+    train_tf_dataset = train_dataset.get_datasets(mode='train')
     val_tf_dataset = val_dataset.get_datasets(mode='val', take=args.take)
 
     # to mix up examples so each batch is diverse
