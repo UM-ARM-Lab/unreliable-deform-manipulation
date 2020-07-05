@@ -46,7 +46,7 @@
   "real_time_rate": 0.0,
   "table_config": {
     "nickname": [
-      "None"
+      "Collision Checking"
     ],
     "classifier": [
       "Collision",

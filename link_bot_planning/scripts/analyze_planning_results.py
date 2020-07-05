@@ -186,20 +186,8 @@ def metrics_main(args):
     legend_names = []
     percentages_solved = []
     for color, subfolder in zip(colors, all_subfolders):
-        metrics_filename = subfolder / 'metrics.json.gz'
-        with gzip.open(metrics_filename, 'rb') as metrics_file:
-            data_str = metrics_file.read()
-        metrics = json.loads(data_str.decode("utf-8"))
-        planner_params = metrics['planner_params']
-        labeling_params = labeling_params_from_planner_params(planner_params)
-        goal_threshold = planner_params['goal_threshold']
-        scenario = get_scenario(metrics['scenario'])
-        table_config = planner_params['table_config']
-        nickname = table_config['nickname']
-        legend_nickname = " ".join(nickname) if isinstance(nickname, list) else nickname
-        legend_names.append(legend_nickname)
-        data = metrics.pop('metrics')
-        N = len(data)
+        metrics_filenames = list(subfolder.glob("*_metrics.json.gz"))
+        N = len(metrics_filenames)
         print(Fore.GREEN + f"{subfolder} has {N} examples" + Fore.RESET)
 
         final_plan_to_execution_errors = []
@@ -210,7 +198,23 @@ def metrics_main(args):
         nums_nodes = []
         nums_steps = []
         nums_mer_violations = []
-        for plan_idx, datum in enumerate(data):
+
+        with (subfolder / 'metadata.json').open('r') as metadata_file:
+            metadata = json.load(metadata_file)
+        planner_params = metadata['planner_params']
+        labeling_params = labeling_params_from_planner_params(planner_params)
+        goal_threshold = planner_params['goal_threshold']
+        scenario = get_scenario(metadata['scenario'])
+        table_config = planner_params['table_config']
+        nickname = table_config['nickname']
+        legend_nickname = " ".join(nickname) if isinstance(nickname, list) else nickname
+        legend_names.append(legend_nickname)
+
+        for plan_idx, metrics_filename in enumerate(metrics_filenames):
+            with gzip.open(metrics_filename, 'rb') as metrics_file:
+                data_str = metrics_file.read()
+            datum = json.loads(data_str.decode("utf-8"))
+
             planned_path = datum['planned_path']
             actual_path = datum['actual_path']
             final_planned_state = planned_path[-1]

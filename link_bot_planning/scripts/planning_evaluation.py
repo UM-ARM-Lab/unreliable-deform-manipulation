@@ -84,6 +84,16 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.successfully_completed_plan_idx = 0
         self.goal = goal
 
+        metadata = {
+            "n_total_plans": self.n_total_plans,
+            "n_plans_per_env": self.n_plans_per_env,
+            "planner_params": self.planner_params,
+            "scenario": self.planner.scenario.simple_name(),
+            "seed": self.seed,
+        }
+        with (self.root / 'metadata.json').open("w") as metadata_file:
+            json.dump(metadata, metadata_file, indent=2)
+
     def randomize_environment(self):
         super().randomize_environment()
 
