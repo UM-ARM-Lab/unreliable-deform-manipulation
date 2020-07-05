@@ -29,10 +29,8 @@
                     </box>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/White</name>
-                    </script>
+                    <ambient>0.4 0.3 0.0 1.0</ambient>
+                    <diffuse>0.4 0.3 0.0 1.0</diffuse>
                 </material>
             </visual>
             <collision name='front_left_leg'>
@@ -53,10 +51,8 @@
                     </cylinder>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Grey</name>
-                    </script>
+                    <ambient>0.4 0.3 0.0 1.0</ambient>
+                    <diffuse>0.4 0.3 0.0 1.0</diffuse>
                 </material>
             </visual>
             <collision name='front_right_leg'>
@@ -77,10 +73,8 @@
                     </cylinder>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Grey</name>
-                    </script>
+                    <ambient>0.4 0.3 0.0 1.0</ambient>
+                    <diffuse>0.4 0.3 0.0 1.0</diffuse>
                 </material>
             </visual>
             <collision name='back_right_leg'>
@@ -101,10 +95,8 @@
                     </cylinder>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Grey</name>
-                    </script>
+                    <ambient>0.4 0.3 0.0 1.0</ambient>
+                    <diffuse>0.4 0.3 0.0 1.0</diffuse>
                 </material>
             </visual>
             <collision name='back_left_leg'>
@@ -125,10 +117,8 @@
                     </cylinder>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/Grey</name>
-                    </script>
+                    <ambient>0.4 0.3 0.0 1.0</ambient>
+                    <diffuse>0.4 0.3 0.0 1.0</diffuse>
                 </material>
             </visual>
             <self_collide>0</self_collide>
