@@ -1,0 +1,43 @@
+<sdf version="1.6">
+    <model name="can">
+        <allow_auto_disable>true</allow_auto_disable>
+        <link name="link">
+            <kinematic>true</kinematic>
+            <pose>0 0 0.07 0 0 0 0</pose>
+            <visual name="visual">
+                <geometry>
+                    <cylinder>
+                        <radius>0.05</radius>
+                        <length>0.14</length>
+                    </cylinder>
+                </geometry>
+                <material>
+                <ambient>0.2 0.2 0.6 1.0</ambient>
+                <diffuse>0.2 0.2 0.6 1.0</diffuse>
+                </material>
+            </visual>
+            <collision name="collision">
+                <geometry>
+                    <cylinder>
+                        <radius>0.05</radius>
+                        <length>0.14</length>
+                    </cylinder>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.0</mu>
+                            <mu2>1.0</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e12</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+        </link>
+    </model>
+</sdf>

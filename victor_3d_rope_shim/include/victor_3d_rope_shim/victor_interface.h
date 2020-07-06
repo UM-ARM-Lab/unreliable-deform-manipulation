@@ -9,6 +9,8 @@
 #include <moveit/robot_state/robot_state.h>
 #include <peter_msgs/DualGripperTrajectory.h>
 #include <ros/ros.h>
+#include <std_srvs/EmptyRequest.h>
+#include <std_srvs/EmptyResponse.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
@@ -72,6 +74,7 @@ public:
   ros::ServiceClient obstacles_client_;
   ros::ServiceClient set_grasping_rope_client_;
   ros::ServiceClient world_control_client_;
+  ros::ServiceServer update_planning_scene_server_;
   double const translation_step_size_;
 
   VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer);
@@ -92,6 +95,7 @@ public:
   bool moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions);
   bool moveInWorldFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions);
 
+  bool UpdatePlanningSceneCallback(std_srvs::EmptyRequest& req, std_srvs::EmptyResponse& res);
   void updatePlanningScene();
 };
 

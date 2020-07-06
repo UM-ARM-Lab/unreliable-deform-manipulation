@@ -37,11 +37,18 @@
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>
 
-        <!-- Value recorded from live system on 2020/02/14 -->        
+        <!-- Value recorded from live system on 2020/02/14 -->
         <node pkg="tf2_ros" type="static_transform_publisher" name="clear_table_table_tf_publisher" required="true"
               args="2.5 0 -0.45
                     0 0 0 1
                     mocap_world mocap_ClearTableSurface_ClearTableSurface">
+            <param name="use_sim_time" value="$(arg use_sim_time)"/>
+        </node>
+
+        <node pkg="tf2_ros" type="static_transform_publisher" name="folding_table_table_tf_publisher" required="true"
+              args="2.5 0 -0.45
+                    0 0 0 1
+                    mocap_world mocap_FoldingTableSurface_FoldingTableSurface">
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>
     </group>

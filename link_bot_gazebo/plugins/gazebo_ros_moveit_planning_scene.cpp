@@ -348,7 +348,6 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
                 }
 
                 object.meshes.push_back(mesh_msg);
-                // object.mesh_poses.push_back(collision_pose_msg);
                 break;
               }
               case SubMesh::TRISTRIPS:
@@ -375,7 +374,6 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
                 }
 
                 object.meshes.push_back(mesh_msg);
-                // object.mesh_poses.push_back(collision_pose_msg);
                 break;
               }
               case SubMesh::TRIFANS:

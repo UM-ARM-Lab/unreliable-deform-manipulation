@@ -272,6 +272,8 @@ VictorInterface::VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::sh
 
   set_grasping_rope_client_ = nh_.serviceClient<peter_msgs::SetBool>("set_grasping_rope");
   world_control_client_ = nh_.serviceClient<peter_msgs::WorldControl>("world_control");
+  update_planning_scene_server_ =
+      nh_.advertiseService("update_planning_scene", &VictorInterface::UpdatePlanningSceneCallback, this);
 
   // Disable collisions between the static obstacles and Victor's non-moving parts
   planning_scene_->getAllowedCollisionMatrixNonConst().setEntry(Scene::OBSTACLES_NAME, false);
@@ -442,6 +444,14 @@ void VictorInterface::test()
       }
     }
   }
+}
+
+bool VictorInterface::UpdatePlanningSceneCallback(std_srvs::EmptyRequest& req, std_srvs::EmptyResponse& res)
+{
+  (void)res;
+  (void)req;
+  updatePlanningScene();
+  return true;
 }
 
 robot_state::RobotState VictorInterface::getCurrentRobotState() const
