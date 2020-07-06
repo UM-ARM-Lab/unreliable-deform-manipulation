@@ -17,7 +17,7 @@
     <!-- Task specific transforms -->
     <group ns="static_transform_publishers">
         <node pkg="tf2_ros" type="static_transform_publisher" name="active_table_broadcaster" required="true"
-              args="0 0 0 0 0 0 clear_table_surface table_surface" if="$(arg use_mocap_shims)">
+              args="0 0 0 0 0 0 folding_table_surface table_surface" if="$(arg use_mocap_shims)">
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>
 
