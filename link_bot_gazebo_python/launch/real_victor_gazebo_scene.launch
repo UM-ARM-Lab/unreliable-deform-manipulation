@@ -1,0 +1,4 @@
+<launch>
+    <node name="forward_gazebo_planning_scene" pkg="link_bot_gazebo_python" type="forward_gazebo_planning_scene.py"/>
+    <node name="forward_tf_to_gazebo" pkg="link_bot_gazebo_python" type="forward_tf_to_gazebo.py" args="info.json"/>
+</launch>

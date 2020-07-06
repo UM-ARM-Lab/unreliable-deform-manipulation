@@ -1,0 +1,52 @@
+{
+  "table": {
+    "parent_frame": "table_surface",
+    "translation": null,
+    "yaw": null
+  },
+  "cubes": {
+    "parent_frame": "table_surface",
+    "translation": [
+      -0.2,
+      -0.2,
+      0.0
+    ],
+    "yaw": 0
+  },
+  "bottle": {
+    "parent_frame": "table_surface",
+    "translation": [
+      0.0,
+      -0.2,
+      0.0
+    ],
+    "yaw": 0
+  },
+  "can": {
+    "parent_frame": "table_surface",
+    "translation": [
+      0.2,
+      0.2,
+      0.0
+    ],
+    "yaw": 0
+  },
+  "cheezits": {
+    "parent_frame": "table_surface",
+    "translation": [
+      -0.2,
+      0.0,
+      0.0
+    ],
+    "yaw": 0
+  },
+  "mustard": {
+    "parent_frame": "table_surface",
+    "translation": [
+      0.2,
+      0.0,
+      0.0
+    ],
+    "yaw": 0
+  }
+}
