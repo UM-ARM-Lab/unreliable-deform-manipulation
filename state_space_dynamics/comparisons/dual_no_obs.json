@@ -1,14 +1,17 @@
 {
+  "Full Dynamics": {
+    "model_dir": "trials/dual_full_dynamics/July_05_13-40-43_8e5304f4ac/best_checkpoint"
+  },
   "UDNN": {
     "model_dir": [
-      "trials/dual_no_obs2_0/best_checkpoint",
-      "trials/dual_no_obs2_1/best_checkpoint",
-      "trials/dual_no_obs2_2/best_checkpoint",
-      "trials/dual_no_obs2_3/best_checkpoint",
-      "trials/dual_no_obs2_4/best_checkpoint",
-      "trials/dual_no_obs2_5/best_checkpoint",
-      "trials/dual_no_obs2_6/best_checkpoint",
-      "trials/dual_no_obs2_7/best_checkpoint"
+      "trials/no_victor_longer_0/best_checkpoint",
+      "trials/no_victor_longer_1/best_checkpoint",
+      "trials/no_victor_longer_2/best_checkpoint",
+      "trials/no_victor_longer_3/best_checkpoint",
+      "trials/no_victor_longer_4/best_checkpoint",
+      "trials/no_victor_longer_5/best_checkpoint",
+      "trials/no_victor_longer_6/best_checkpoint",
+      "trials/no_victor_longer_7/best_checkpoint"
     ]
   }
 }

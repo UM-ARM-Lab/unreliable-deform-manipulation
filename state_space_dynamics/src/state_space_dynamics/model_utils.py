@@ -106,7 +106,7 @@ class EnsembleDynamicsFunction(BaseDynamicsFunction):
             all_stdevs.append(tf.math.reduce_std(tf.stack(v, axis=0), axis=0))
             total_prediction[k] = mean_prediction
 
-        total_stdev = tf.reduce_sum(tf.stack(all_stdevs, axis=0), axis=0)
+        total_stdev = tf.reduce_sum(tf.concat(all_stdevs, axis=-1), axis=-1)
         total_prediction['stdev'] = total_stdev
         return total_prediction
 

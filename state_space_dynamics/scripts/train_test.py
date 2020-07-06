@@ -88,15 +88,16 @@ def eval_main(args, seed: int):
     runner = ModelRunner(model=net,
                          training=False,
                          restore_from_name=args.checkpoint.name,
-                         val_every_n_batches=4,
+                         batch_metadata=test_dataset.batch_metadata,
                          trial_path=trial_path,
                          params=params)
 
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
-    test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    test_tf_dataset = batch_tf_dataset(test_tf_dataset, args.batch_size, drop_remainder=True)
     validation_metrics = runner.val_epoch(test_tf_dataset)
     for name, value in validation_metrics.items():
         print(f"{name}: {value}")
+    return
 
     # more metrics that can't be expressed as just an average over metrics on each batch
     all_errors = None

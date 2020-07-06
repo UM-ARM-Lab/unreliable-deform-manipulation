@@ -39,15 +39,11 @@ def main():
         traj_idx = 0
         for i, file in enumerate(files):
             path = pathlib.Path(file)
-            filename = path.name
-            m = re.match(r".*?_(\d+)_to_(\d+).tfrecords", filename)
-            start, end = m.group(1), m.group(2)
-            n_trajs_in_file = int(end) - int(start)
-            new_filename = "traj_{}_to_{}.tfrecords".format(traj_idx, traj_idx + n_trajs_in_file)
+            new_filename = f"example_{traj_idx:08d}.tfrecords"
             mode_outdir = args.outdir / mode
             mode_outdir.mkdir(parents=True, exist_ok=True)
             new_path = pathlib.Path(mode_outdir) / new_filename
-            traj_idx = traj_idx + n_trajs_in_file + 1
+            traj_idx += 1
             print(path, '-->', new_path)
             if not args.dry_run:
                 shutil.copyfile(path, new_path)

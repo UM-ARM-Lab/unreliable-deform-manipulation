@@ -4,7 +4,7 @@ import json
 import pathlib
 import time
 
-import matplotlib.pyplot as plt
+from matplotlib import cm
 import numpy as np
 from colorama import Fore, Style
 from tabulate import tabulate
@@ -15,12 +15,13 @@ from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
 from link_bot_pycommon.pycommon import paths_from_json
+from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import listify, numpify, remove_batch
 from state_space_dynamics import model_utils
 
-limit_gpu_mem(0.5)
+limit_gpu_mem(8.5)
 
 
 def load_dataset_and_models(args):
@@ -34,15 +35,15 @@ def load_dataset_and_models(args):
     dataset = DynamicsDataset(args.dataset_dirs)
     tf_dataset = dataset.get_datasets(mode=args.mode,
                                       shard=args.shard,
-                                      take=args.take).batch(1)
+                                      take=args.take)
+    tf_dataset = batch_tf_dataset(tf_dataset, 1)
 
-    if args.shuffle:
-        tf_dataset = tf_dataset.shuffle(buffer_size=1024)
     return tf_dataset, dataset, models
 
 
 def generate(args):
-    base_folder = pathlib.Path('results') / 'compare_models' / '{}-{}-{}'.format(args.nickname, args.mode, int(time.time()))
+    base_folder = pathlib.Path('results') / 'compare_models' / \
+        '{}-{}-{}'.format(args.nickname, args.mode, int(time.time()))
     base_folder.mkdir(parents=True)
     print("Using output directory: {}".format(base_folder))
 
@@ -50,6 +51,7 @@ def generate(args):
 
     all_data = []
     for example_idx, dataset_element in enumerate(tf_dataset):
+        dataset_element.update(dataset.batch_metadata)
         data_per_model_for_element = {
             'time_steps': dataset.sequence_length,
             'action_keys': dataset.action_keys,
@@ -65,7 +67,6 @@ def generate(args):
 
         for model_name, model in models.items():
             predictions = model.propagate_from_example(dataset_element)
-            print(predictions.keys())
             data_per_model_for_element[model_name] = {
                 'predictions': predictions,
                 'scenario': model.scenario.simple_name(),
@@ -84,7 +85,6 @@ def viz_main(args):
 
 def viz(data_filename, fps, no_plot, save):
     rospy.init_node("compare_models")
-    plt.style.use("slides")
 
     # Load the results
     base_folder = data_filename.parent
@@ -101,8 +101,8 @@ def viz(data_filename, fps, no_plot, save):
         action_keys = datum.pop("action_keys")
         actions = {k: dataset_element[k] for k in action_keys}
 
-        models_scenarios = []
-        models_predictions = []
+        models_viz_info = {}
+        n_models = len(datum)
         time_steps = np.arange(datum.pop('time_steps'))
         for model_name, data_for_model in datum.items():
             scenario = get_scenario(data_for_model['scenario'])
@@ -110,6 +110,7 @@ def viz(data_filename, fps, no_plot, save):
             # Metrics
             metrics_for_model = {}
             predictions = numpify(data_for_model['predictions'])
+            predictions.pop('stdev')
             metrics = scenario.dynamics_metrics_function(dataset_element, predictions)
             loss = scenario.dynamics_loss_function(dataset_element, predictions)
             metrics['loss'] = loss
@@ -126,22 +127,25 @@ def viz(data_filename, fps, no_plot, save):
                     all_metrics[model_name][metric_name] = []
                 all_metrics[model_name][metric_name].append(mean_metric_value)
 
-            models_scenarios.append(scenario)
-            models_predictions.append(predictions)
+            models_viz_info[model_name] = (scenario, predictions)
 
         if not no_plot and not save:
-            models_scenarios[0].plot_environment_rviz(remove_batch(environment))
+            # just use whatever the latest scenario was, it shouldn't matter which we use
+            scenario.plot_environment_rviz(remove_batch(environment))
             anim = RvizAnimationController(time_steps)
             while not anim.done:
                 t = anim.t()
-                for scenario, predictions in zip(models_scenarios, models_predictions):
-                    prediction_t = scenario.index_state_time(predictions, t)
-                    actual_t = scenario.index_state_time(dataset_element, t)
-                    action_t = scenario.index_action_time(actions, t)
-                    scenario.plot_state_rviz(prediction_t, label='prediction', color='#ff0000aa')
-                    scenario.plot_state_rviz(actual_t, label='actual', color='#0000ff88')
-                    scenario.plot_action_rviz(actual_t, action_t, color='gray')
-                    anim.step()
+                actual_t = remove_batch(scenario.index_state_time(dataset_element, t))
+                action_t = remove_batch(scenario.index_action_time(actions, t))
+                scenario.plot_state_rviz(actual_t, label='actual', color='#0000ff88')
+                scenario.plot_action_rviz(actual_t, action_t, color='gray')
+                for model_idx, (model_name, viz_info) in enumerate(models_viz_info.items()):
+                    scenario_i, predictions = viz_info
+                    prediction_t = remove_batch(scenario_i.index_state_time(predictions, t))
+                    color = cm.jet(model_idx / n_models)
+                    scenario_i.plot_state_rviz(prediction_t, label=model_name, color=color)
+
+                anim.step()
 
     metrics_by_model = {}
     for model_name, metrics_for_model in all_metrics.items():
