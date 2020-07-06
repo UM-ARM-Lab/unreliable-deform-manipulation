@@ -338,10 +338,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper1': 3,
             'gripper2': 3,
             'link_bot': n_links * 3,
-            'model_pose': 3 + 4,
-            'joint_angles_axis1': 2 * n_joints,
-            'joint_angles_axis2': 2 * n_joints,
-            # 'joint_state': 14
         }
 
     @ staticmethod
