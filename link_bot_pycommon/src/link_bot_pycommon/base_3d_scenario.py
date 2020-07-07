@@ -18,7 +18,6 @@ from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, e
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from peter_msgs.msg import LabelStatus
 from peter_msgs.srv import WorldControl
-from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from std_msgs.msg import Float32, Int64
@@ -282,14 +281,6 @@ class Base3DScenario(ExperimentScenario):
     @staticmethod
     def robot_name():
         return "victor_and_rope::link_bot"
-
-    @staticmethod
-    def dynamics_loss_function(dataset_element, predictions):
-        return dynamics_loss_function(dataset_element, predictions)
-
-    @staticmethod
-    def dynamics_metrics_function(dataset_element, predictions):
-        return dynamics_points_metrics_function(dataset_element, predictions)
 
     @staticmethod
     def get_environment_from_state_dict(start_states: Dict):

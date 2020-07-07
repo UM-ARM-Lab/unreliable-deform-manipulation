@@ -15,47 +15,6 @@ from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify, add_batch, remove_batch
 
 
-def plot_2d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
-    for i, example in enumerate(tf_dataset):
-        example = numpify(example)
-
-        fig, ax = plt.subplots()
-
-        actions = example['delta_position']
-        environment = dataset.scenario.get_environment_from_example(example)
-
-        ax.set_xlabel("x (m)")
-        ax.set_ylabel("y (m)")
-        ax.axis("equal")
-
-        dataset.scenario.plot_environment(ax, environment)
-
-        first_state = {}
-        for state_key in dataset.state_keys:
-            states = example[state_key]
-            first_state[state_key] = states[0]
-        action_artist = dataset.scenario.plot_action(ax, first_state, actions[0], color='m', s=20, zorder=3)
-
-        state_artist = dataset.scenario.plot_state(ax, first_state, color='b', s=10, zorder=2)
-
-        def update(t):
-            action_t = actions[t]
-            state_t = {}
-            for _state_key in dataset.state_keys:
-                state = example[_state_key][t]
-                state_t[_state_key] = state
-            dataset.scenario.update_action_artist(action_artist, state_t, action_t)
-            dataset.scenario.update_artist(state_artist, state_t)
-
-            ax.set_title("{} {}".format(i, t))
-
-        interval = 100
-        anim = Player(fig, update, max_index=actions.shape[0], interval=interval, repeat=True)
-        plt.show()
-
-        i += 1
-
-
 def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
     rospy.loginfo("Don't forget to start the viz_stepper")
     min_x = 1000
@@ -68,6 +27,8 @@ def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
         example = numpify(example)
         time_steps = example['time_idx']
 
+        if i < 95:
+            continue
         # for t in time_steps:
         #     example_t = remove_batch(dataset.index_time(add_batch(example), t))
         #     x, y, z = example_t['gripper1']

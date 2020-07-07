@@ -13,6 +13,7 @@ from geometry_msgs.msg import Point
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from tf import transformations
+from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import inflate_tf_3d
@@ -586,6 +587,13 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         return control_space
 
+    @staticmethod
+    def dynamics_loss_function(dataset_element, predictions):
+        return dynamics_loss_function(dataset_element, predictions)
+
+    @staticmethod
+    def dynamics_metrics_function(dataset_element, predictions):
+        return dynamics_points_metrics_function(dataset_element, predictions)
 
 class DualGripperControlSampler(oc.ControlSampler):
     def __init__(self,
