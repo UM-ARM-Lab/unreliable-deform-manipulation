@@ -87,6 +87,7 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr /*sdf*/)
 
   auto update = [this](common::UpdateInfo const & /*info*/) { OnUpdate(); };
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
+  ROS_INFO("Dual gripper plugin finished initializing!");
 }
 
 void DualGripperPlugin::OnUpdate()

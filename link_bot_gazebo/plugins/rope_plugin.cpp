@@ -58,7 +58,7 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
       num_links_ = sdf->GetElement("num_links")->Get<unsigned int>();
     }
   }
-  gzlog << "Rope Plugin finished initializing!\n";
+  ROS_INFO("Rope Plugin finished initializing!");
 }
 
 bool RopePlugin::SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::SetRopeStateResponse &)
