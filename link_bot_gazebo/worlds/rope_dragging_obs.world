@@ -3,7 +3,7 @@
     <world name="default">
         <gui>
             <camera name='user_camera'>
-                <pose frame=''>0 0 1.02 0 1.565065 1.565065</pose>
+                <pose frame=''>0.75 0 3.23 0 1.35 -3.14159</pose>
             </camera>
         </gui>
         <physics name="ode" type="ode">
@@ -22,53 +22,58 @@
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
         <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
         <include>
+            <pose>0 0.2 0.01 0 0 0</pose>
+            <uri>model://rope_dragging_2d</uri>
+        </include>
+
+        <include>
             <uri>model://arena_2</uri>
             <pose>0 0 0 0 0 0</pose>
             <name>arena</name>
         </include>
 
         <include>
-            <uri>model://movable_box</uri>
+            <uri>model://moving_box</uri>
             <pose>-0.65 0.65 0 0 0 0</pose>
             <name>moving_box1</name>
         </include>
         <include>
-            <uri>model://movable_box</uri>
+            <uri>model://moving_box</uri>
             <pose>0.0 0.65 0 0 0 0</pose>
             <name>moving_box2</name>
         </include>
         <include>
-            <uri>model://movable_box</uri>
+            <uri>model://moving_box</uri>
             <pose>0.65 0.65 0 0 0 0</pose>
             <name>moving_box3</name>
         </include>
         <include>
-            <uri>model://movable_box</uri>
+            <uri>model://moving_box</uri>
             <pose>-0.65 0.0 0 0 0 0</pose>
             <name>moving_box4</name>
         </include>
         <include>
-            <uri>model://movable_box</uri>
+            <uri>model://moving_box</uri>
             <pose>0.0 0.0 0 0 0 0</pose>
             <name>moving_box5</name>
         </include>
         <include>
-            <uri>model://movable_box</uri>
+            <uri>model://moving_box</uri>
             <pose>0.65 .0 0 0 0 0</pose>
             <name>moving_box6</name>
         </include>
         <include>
-            <uri>model://movable_box</uri>
+            <uri>model://moving_box</uri>
             <pose>-0.65 -0.65 0 0 0 0</pose>
             <name>moving_box7</name>
         </include>
         <include>
-            <uri>model://movable_box</uri>
+            <uri>model://moving_box</uri>
             <pose>0.0 -0.65 0 0 0 0</pose>
             <name>moving_box8</name>
         </include>
         <include>
-            <uri>model://movable_box</uri>
+            <uri>model://moving_box</uri>
             <pose>0.65 -0.65 0 0 0 0</pose>
             <name>moving_box9</name>
         </include>

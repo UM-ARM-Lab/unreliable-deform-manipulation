@@ -29,16 +29,9 @@
     0.6251
   ],
   "fwd_model_dir": [
-    "dy_trials/no_victor_longer_0/best_checkpoint",
-    "dy_trials/no_victor_longer_1/best_checkpoint",
-    "dy_trials/no_victor_longer_2/best_checkpoint",
-    "dy_trials/no_victor_longer_3/best_checkpoint",
-    "dy_trials/no_victor_longer_4/best_checkpoint",
-    "dy_trials/no_victor_longer_5/best_checkpoint",
-    "dy_trials/no_victor_longer_6/best_checkpoint",
-    "dy_trials/no_victor_longer_7/best_checkpoint"
+    "dy_trials/dual_full_dynamics/July_05_13-40-43_8e5304f4ac/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/cc_baseline/cc",
+  "classifier_model_dir": "cl_trials/none_baseline/none",
   "accept_threshold": 0.5,
   "movable_obstacles": {},
   "goal_threshold": 0.05,
@@ -54,5 +47,5 @@
       "Single",
       "Full"
     ]
-  },
+  }
 }

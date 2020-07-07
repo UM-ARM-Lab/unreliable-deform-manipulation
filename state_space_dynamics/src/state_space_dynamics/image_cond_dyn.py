@@ -277,8 +277,10 @@ class ImageCondDynamicsWrapper(BaseDynamicsFunction):
         net_inputs.update(environment)
         net_inputs = add_batch(net_inputs)
         net_inputs = make_dict_tf_float32(net_inputs)
+        net_inputs['batch_size'] = 1
+        net_inputs['sequence_length'] = 2
 
-        predictions = self.net((net_inputs, False))
+        predictions = self.net(net_inputs, False)
         predictions = remove_batch(predictions)
         predictions = dict_of_sequences_to_sequence_of_dicts_tf(predictions)
 

@@ -34,8 +34,6 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
   auto get_state_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetRopeState>("get_rope_state", get_state_bind,
                                                                                      ros::VoidPtr(), &queue_);
 
-  constexpr auto link_bot_service_name{ "link_bot" };
-
   set_state_service_ = ros_node_.advertiseService(set_state_so);
   get_state_service_ = ros_node_.advertiseService(get_state_so);
 
@@ -95,9 +93,10 @@ bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &, peter_msgs::Get
   {
     auto const &[i, link] = pair;
     auto const name = link->GetName();
-    boost::regex e("link_bot::link_\\d+");
+    boost::regex e(".*rope_link_\\d+");
     if (boost::regex_match(name, e))
     {
+      // ROS_INFO_STREAM("using link with name " << name);
       geometry_msgs::Point pt;
       pt.x = link->WorldPose().Pos().X();
       pt.y = link->WorldPose().Pos().Y();
@@ -118,6 +117,10 @@ bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &, peter_msgs::Get
         velocity.z = 0;
       }
       res.velocities.emplace_back(velocity);
+    }
+    else
+    {
+      // ROS_INFO_STREAM("skipping link with name " << name);
     }
   }
   res.model_pose.position.x = model_->WorldPose().Pos().X();

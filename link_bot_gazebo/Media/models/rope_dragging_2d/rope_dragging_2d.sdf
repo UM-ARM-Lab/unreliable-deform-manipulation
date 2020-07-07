@@ -1,8 +1,9 @@
+
 <sdf version="1.6">
     <model name="link_bot">
         <pose frame="">0 0 0.01 0 0 0</pose>
 
-        <link name="link_1">
+        <link name="rope_link_1">
             <pose frame="">0.05 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0.025 0 0 0 0 0</pose>
@@ -16,7 +17,7 @@
                     <izz>1.0e-05</izz>
                 </inertia>
             </inertial>
-            <collision name="link_1_collision">
+            <collision name="rope_link_1_collision">
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
                     <box>
@@ -24,21 +25,22 @@
                     </box>
                 </geometry>
                 <surface>
-                    <contact>
-                        <ode>
-                            <kp>1e15</kp>
-                            <kd>1e13</kd>
-                        </ode>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>0.10</mu>
                             <mu2>0.10</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
                 </surface>
+                <max_contacts>5</max_contacts>
             </collision>
-            <visual name="link_1_visual">
+            <visual name="rope_link_1_visual">
                 <cast_shadows>0</cast_shadows>
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
@@ -57,7 +59,7 @@
             <self_collide>1</self_collide>
         </link>
 
-        <link name="link_2">
+        <link name="rope_link_2">
             <pose frame="">0.1 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0.025 0 0 0 0 0</pose>
@@ -71,7 +73,7 @@
                     <izz>1.0e-05</izz>
                 </inertia>
             </inertial>
-            <collision name="link_2_collision">
+            <collision name="rope_link_2_collision">
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
                     <box>
@@ -79,21 +81,22 @@
                     </box>
                 </geometry>
                 <surface>
-                    <contact>
-                        <ode>
-                            <kp>1e15</kp>
-                            <kd>1e13</kd>
-                        </ode>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>0.10</mu>
                             <mu2>0.10</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
                 </surface>
+                <max_contacts>5</max_contacts>
             </collision>
-            <visual name="link_2_visual">
+            <visual name="rope_link_2_visual">
                 <cast_shadows>0</cast_shadows>
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
@@ -112,7 +115,7 @@
             <self_collide>1</self_collide>
         </link>
 
-        <link name="link_3">
+        <link name="rope_link_3">
             <pose frame="">0.15000000000000002 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0.025 0 0 0 0 0</pose>
@@ -126,7 +129,7 @@
                     <izz>1.0e-05</izz>
                 </inertia>
             </inertial>
-            <collision name="link_3_collision">
+            <collision name="rope_link_3_collision">
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
                     <box>
@@ -134,21 +137,22 @@
                     </box>
                 </geometry>
                 <surface>
-                    <contact>
-                        <ode>
-                            <kp>1e15</kp>
-                            <kd>1e13</kd>
-                        </ode>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>0.10</mu>
                             <mu2>0.10</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
                 </surface>
+                <max_contacts>5</max_contacts>
             </collision>
-            <visual name="link_3_visual">
+            <visual name="rope_link_3_visual">
                 <cast_shadows>0</cast_shadows>
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
@@ -167,7 +171,7 @@
             <self_collide>1</self_collide>
         </link>
 
-        <link name="link_4">
+        <link name="rope_link_4">
             <pose frame="">0.2 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0.025 0 0 0 0 0</pose>
@@ -181,7 +185,7 @@
                     <izz>1.0e-05</izz>
                 </inertia>
             </inertial>
-            <collision name="link_4_collision">
+            <collision name="rope_link_4_collision">
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
                     <box>
@@ -189,21 +193,22 @@
                     </box>
                 </geometry>
                 <surface>
-                    <contact>
-                        <ode>
-                            <kp>1e15</kp>
-                            <kd>1e13</kd>
-                        </ode>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>0.10</mu>
                             <mu2>0.10</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
                 </surface>
+                <max_contacts>5</max_contacts>
             </collision>
-            <visual name="link_4_visual">
+            <visual name="rope_link_4_visual">
                 <cast_shadows>0</cast_shadows>
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
@@ -222,7 +227,7 @@
             <self_collide>1</self_collide>
         </link>
 
-        <link name="link_5">
+        <link name="rope_link_5">
             <pose frame="">0.25 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0.025 0 0 0 0 0</pose>
@@ -236,7 +241,7 @@
                     <izz>1.0e-05</izz>
                 </inertia>
             </inertial>
-            <collision name="link_5_collision">
+            <collision name="rope_link_5_collision">
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
                     <box>
@@ -244,21 +249,22 @@
                     </box>
                 </geometry>
                 <surface>
-                    <contact>
-                        <ode>
-                            <kp>1e15</kp>
-                            <kd>1e13</kd>
-                        </ode>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>0.10</mu>
                             <mu2>0.10</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
                 </surface>
+                <max_contacts>5</max_contacts>
             </collision>
-            <visual name="link_5_visual">
+            <visual name="rope_link_5_visual">
                 <cast_shadows>0</cast_shadows>
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
@@ -277,7 +283,7 @@
             <self_collide>1</self_collide>
         </link>
 
-        <link name="link_6">
+        <link name="rope_link_6">
             <pose frame="">0.30000000000000004 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0.025 0 0 0 0 0</pose>
@@ -291,7 +297,7 @@
                     <izz>1.0e-05</izz>
                 </inertia>
             </inertial>
-            <collision name="link_6_collision">
+            <collision name="rope_link_6_collision">
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
                     <box>
@@ -299,21 +305,22 @@
                     </box>
                 </geometry>
                 <surface>
-                    <contact>
-                        <ode>
-                            <kp>1e15</kp>
-                            <kd>1e13</kd>
-                        </ode>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>0.10</mu>
                             <mu2>0.10</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
                 </surface>
+                <max_contacts>5</max_contacts>
             </collision>
-            <visual name="link_6_visual">
+            <visual name="rope_link_6_visual">
                 <cast_shadows>0</cast_shadows>
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
@@ -332,7 +339,7 @@
             <self_collide>1</self_collide>
         </link>
 
-        <link name="link_7">
+        <link name="rope_link_7">
             <pose frame="">0.35000000000000003 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0.025 0 0 0 0 0</pose>
@@ -346,7 +353,7 @@
                     <izz>1.0e-05</izz>
                 </inertia>
             </inertial>
-            <collision name="link_7_collision">
+            <collision name="rope_link_7_collision">
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
                     <box>
@@ -354,21 +361,22 @@
                     </box>
                 </geometry>
                 <surface>
-                    <contact>
-                        <ode>
-                            <kp>1e15</kp>
-                            <kd>1e13</kd>
-                        </ode>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>0.10</mu>
                             <mu2>0.10</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
                 </surface>
+                <max_contacts>5</max_contacts>
             </collision>
-            <visual name="link_7_visual">
+            <visual name="rope_link_7_visual">
                 <cast_shadows>0</cast_shadows>
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
@@ -387,7 +395,7 @@
             <self_collide>1</self_collide>
         </link>
 
-        <link name="link_8">
+        <link name="rope_link_8">
             <pose frame="">0.4 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0.025 0 0 0 0 0</pose>
@@ -401,7 +409,7 @@
                     <izz>1.0e-05</izz>
                 </inertia>
             </inertial>
-            <collision name="link_8_collision">
+            <collision name="rope_link_8_collision">
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
                     <box>
@@ -409,21 +417,22 @@
                     </box>
                 </geometry>
                 <surface>
-                    <contact>
-                        <ode>
-                            <kp>1e15</kp>
-                            <kd>1e13</kd>
-                        </ode>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>0.10</mu>
                             <mu2>0.10</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
                 </surface>
+                <max_contacts>5</max_contacts>
             </collision>
-            <visual name="link_8_visual">
+            <visual name="rope_link_8_visual">
                 <cast_shadows>0</cast_shadows>
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
@@ -442,7 +451,7 @@
             <self_collide>1</self_collide>
         </link>
 
-        <link name="link_9">
+        <link name="rope_link_9">
             <pose frame="">0.45 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0.025 0 0 0 0 0</pose>
@@ -456,7 +465,7 @@
                     <izz>1.0e-05</izz>
                 </inertia>
             </inertial>
-            <collision name="link_9_collision">
+            <collision name="rope_link_9_collision">
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
                     <box>
@@ -464,21 +473,22 @@
                     </box>
                 </geometry>
                 <surface>
-                    <contact>
-                        <ode>
-                            <kp>1e15</kp>
-                            <kd>1e13</kd>
-                        </ode>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>0.10</mu>
                             <mu2>0.10</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
                 </surface>
+                <max_contacts>5</max_contacts>
             </collision>
-            <visual name="link_9_visual">
+            <visual name="rope_link_9_visual">
                 <cast_shadows>0</cast_shadows>
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
@@ -497,7 +507,7 @@
             <self_collide>1</self_collide>
         </link>
 
-        <link name="link_10">
+        <link name="rope_link_10">
             <pose frame="">0.5 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0.025 0 0 0 0 0</pose>
@@ -511,7 +521,7 @@
                     <izz>1.0e-05</izz>
                 </inertia>
             </inertial>
-            <collision name="link_10_collision">
+            <collision name="rope_link_10_collision">
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
                     <box>
@@ -519,21 +529,22 @@
                     </box>
                 </geometry>
                 <surface>
-                    <contact>
-                        <ode>
-                            <kp>1e15</kp>
-                            <kd>1e13</kd>
-                        </ode>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>0.10</mu>
                             <mu2>0.10</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e13</kd>
+                        </ode>
+                    </contact>
                 </surface>
+                <max_contacts>5</max_contacts>
             </collision>
-            <visual name="link_10_visual">
+            <visual name="rope_link_10_visual">
                 <cast_shadows>0</cast_shadows>
                 <pose frame="">0 0 0.015000000000000001 0 0 0</pose>
                 <geometry>
@@ -554,14 +565,14 @@
 
 
         <joint name="joint_1" type="revolute">
-            <child>link_2</child>
-            <parent>link_1</parent>
+            <child>rope_link_2</child>
+            <parent>rope_link_1</parent>
             <pose>0 0 0.04 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2</lower>
-                    <upper>2</upper>
+                    <lower>-3</lower>
+                    <upper>3</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -574,14 +585,14 @@
         </joint>
 
         <joint name="joint_2" type="revolute">
-            <child>link_3</child>
-            <parent>link_2</parent>
+            <child>rope_link_3</child>
+            <parent>rope_link_2</parent>
             <pose>0 0 0.04 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2</lower>
-                    <upper>2</upper>
+                    <lower>-3</lower>
+                    <upper>3</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -594,14 +605,14 @@
         </joint>
 
         <joint name="joint_3" type="revolute">
-            <child>link_4</child>
-            <parent>link_3</parent>
+            <child>rope_link_4</child>
+            <parent>rope_link_3</parent>
             <pose>0 0 0.04 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2</lower>
-                    <upper>2</upper>
+                    <lower>-3</lower>
+                    <upper>3</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -614,14 +625,14 @@
         </joint>
 
         <joint name="joint_4" type="revolute">
-            <child>link_5</child>
-            <parent>link_4</parent>
+            <child>rope_link_5</child>
+            <parent>rope_link_4</parent>
             <pose>0 0 0.04 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2</lower>
-                    <upper>2</upper>
+                    <lower>-3</lower>
+                    <upper>3</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -634,14 +645,14 @@
         </joint>
 
         <joint name="joint_5" type="revolute">
-            <child>link_6</child>
-            <parent>link_5</parent>
+            <child>rope_link_6</child>
+            <parent>rope_link_5</parent>
             <pose>0 0 0.04 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2</lower>
-                    <upper>2</upper>
+                    <lower>-3</lower>
+                    <upper>3</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -654,14 +665,14 @@
         </joint>
 
         <joint name="joint_6" type="revolute">
-            <child>link_7</child>
-            <parent>link_6</parent>
+            <child>rope_link_7</child>
+            <parent>rope_link_6</parent>
             <pose>0 0 0.04 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2</lower>
-                    <upper>2</upper>
+                    <lower>-3</lower>
+                    <upper>3</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -674,14 +685,14 @@
         </joint>
 
         <joint name="joint_7" type="revolute">
-            <child>link_8</child>
-            <parent>link_7</parent>
+            <child>rope_link_8</child>
+            <parent>rope_link_7</parent>
             <pose>0 0 0.04 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2</lower>
-                    <upper>2</upper>
+                    <lower>-3</lower>
+                    <upper>3</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -694,14 +705,14 @@
         </joint>
 
         <joint name="joint_8" type="revolute">
-            <child>link_9</child>
-            <parent>link_8</parent>
+            <child>rope_link_9</child>
+            <parent>rope_link_8</parent>
             <pose>0 0 0.04 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2</lower>
-                    <upper>2</upper>
+                    <lower>-3</lower>
+                    <upper>3</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -714,14 +725,14 @@
         </joint>
 
         <joint name="joint_9" type="revolute">
-            <child>link_10</child>
-            <parent>link_9</parent>
+            <child>rope_link_10</child>
+            <parent>rope_link_9</parent>
             <pose>0 0 0.04 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2</lower>
-                    <upper>2</upper>
+                    <lower>-3</lower>
+                    <upper>3</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -755,12 +766,6 @@
                     </sphere>
                 </geometry>
                 <surface>
-                    <contact>
-                        <ode>
-                            <kp>1e15</kp>
-                            <kd>1e13</kd>
-                        </ode>
-                    </contact>
                     <friction>
                         <ode>
                             <mu>0.10</mu>
@@ -768,6 +773,7 @@
                         </ode>
                     </friction>
                 </surface>
+                <max_contacts>20</max_contacts>
             </collision>
             <visual name='head_visual'>
                 <cast_shadows>0</cast_shadows>
@@ -785,16 +791,22 @@
                 </material>
             </visual>
             <self_collide>1</self_collide>
+            <sensor name='head_contact' type='contact'>
+                <contact>
+                    <collision>head_collision</collision>
+                    <topic>__default_topic__</topic>
+                </contact>
+            </sensor>
         </link>
         <joint name="head_joint" type="revolute">
             <child>head</child>
-            <parent>link_10</parent>
+            <parent>rope_link_10</parent>
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2</lower>
-                    <upper>2</upper>
+                    <lower>-3</lower>
+                    <upper>3</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -803,6 +815,14 @@
                     <friction>0</friction>
                 </dynamics>
             </axis>
+            <physics>
+                <ode>
+                    <limit>
+                        <cfm>0</cfm>
+                        <erp>0.2</erp>
+                    </limit>
+                </ode>
+            </physics>
         </joint>
         <plugin name='rope_plugin' filename='librope_plugin.so'>
             <num_links>10</num_links>

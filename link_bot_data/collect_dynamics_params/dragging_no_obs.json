@@ -1,0 +1,25 @@
+{
+  "extent": [
+    -1.25,
+    1.25,
+    -1.25,
+    1.25,
+    0,
+    0.04
+  ],
+  "gripper_action_sample_extent": [
+    -1.2,
+    1.2,
+    -1.2,
+    1.2,
+    0,
+    0.04
+  ],
+  "res": 0.01,
+  "dt": 1.0,
+  "max_step_size": 0.005,
+  "max_distance_gripper_can_move": 0.1,
+  "steps_per_traj": 10,
+  "trajs_per_file": 64,
+  "no_objects": true
+}

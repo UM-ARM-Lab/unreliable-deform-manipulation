@@ -6,6 +6,7 @@
     <link name="north_wall">
       <pose>0 1 0.5 0 0 0</pose>
       <visual name="visual">
+        <cast_shadows>false</cast_shadows>
         <geometry>
           <box>
             <size>2.1 0.1 1</size>
@@ -23,6 +24,7 @@
     <link name="south_wall">
       <pose>0 -1 0.5 0 0 0</pose>
       <visual name="visual">
+        <cast_shadows>false</cast_shadows>
         <geometry>
           <box>
             <size>2.1 0.1 1</size>
@@ -40,6 +42,7 @@
     <link name="east_wall">
       <pose>1 0 0.5 0 0 0</pose>
       <visual name="visual">
+        <cast_shadows>false</cast_shadows>
         <geometry>
           <box>
             <size>0.1 2.1 1</size>
@@ -57,6 +60,7 @@
     <link name="west_wall">
       <pose>-1 0 0.5 0 0 0</pose>
       <visual name="visual">
+        <cast_shadows>false</cast_shadows>
         <geometry>
           <box>
             <size>0.1 2.1 1</size>

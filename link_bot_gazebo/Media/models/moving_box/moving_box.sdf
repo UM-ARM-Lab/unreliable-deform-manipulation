@@ -3,7 +3,7 @@
     <model name="moving_box">
         <link name="link_1">
             <inertial>
-                <pose>0 0 0.125 0 0 0</pose>
+                <pose>0 0 0.0 0 0 0</pose>
                 <inertia>
                     <ixx>0.0208333</ixx>
                     <ixy>0</ixy>
@@ -12,9 +12,10 @@
                     <iyz>0</iyz>
                     <izz>0.0208333</izz>
                 </inertia>
-                <mass>2</mass>
+                <mass>1</mass>
             </inertial>
             <visual name="visual">
+                <cast_shadows>false</cast_shadows>
                 <pose>0 0 0.125 0 0 0</pose>
                 <geometry>
                     <box>
@@ -32,10 +33,16 @@
                 <surface>
                     <friction>
                         <ode>
-                            <mu>5.0</mu>
-                            <mu2>5.0</mu2>
+                            <mu>1.0</mu>
+                            <mu2>1.0</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e12</kd>
+                        </ode>
+                    </contact>
                 </surface>
             </collision>
         </link>
@@ -46,16 +53,8 @@
             <kP_vel>100.0</kP_vel>
             <kI_vel>0.0</kI_vel>
             <kD_vel>0.0</kD_vel>
-            <max_force>15.0</max_force>
+            <max_force>40.0</max_force>
             <max_vel>0.5</max_vel>
-            <kP_rot>0.1</kP_rot>
-            <kI_rot>0.0</kI_rot>
-            <kD_rot>0.0</kD_rot>
-            <kP_rot_vel>0.0</kP_rot_vel>
-            <kI_rot_vel>0.0</kI_rot_vel>
-            <kD_rot_vel>0.0</kD_rot_vel>
-            <max_torque>0.0</max_torque>
-            <max_rot_vel>0.0</max_rot_vel>
             <link>link_1</link>
         </plugin>
     </model>

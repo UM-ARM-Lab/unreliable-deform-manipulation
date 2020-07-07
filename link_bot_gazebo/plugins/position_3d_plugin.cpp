@@ -32,15 +32,6 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
   // Get sdf parameters
   {
-    if (sdf->HasElement("object_name"))
-    {
-      name_ = sdf->GetElement("object_name")->Get<std::string>();
-    }
-    else
-    {
-      name_ = model_->GetScopedName();
-    }
-
     if (!sdf->HasElement("kP_pos"))
     {
       printf("using default kP_pos=%f\n", kP_pos_);
@@ -102,51 +93,6 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     else
     {
       max_force_ = sdf->GetElement("max_force")->Get<double>();
-    }
-
-    if (!sdf->HasElement("kP_rot"))
-    {
-      printf("using default kP_rot=%f\n", kP_rot_);
-    }
-    else
-    {
-      kP_rot_ = sdf->GetElement("kP_rot")->Get<double>();
-    }
-
-    if (!sdf->HasElement("kD_rot"))
-    {
-      printf("using default kD_rot=%f\n", kD_rot_);
-    }
-    else
-    {
-      kD_rot_ = sdf->GetElement("kD_rot")->Get<double>();
-    }
-
-    if (!sdf->HasElement("kP_rot_vel"))
-    {
-      printf("using default kP_rot_vel=%f\n", kP_rot_vel_);
-    }
-    else
-    {
-      kP_rot_vel_ = sdf->GetElement("kP_rot_vel")->Get<double>();
-    }
-
-    if (!sdf->HasElement("kD_rot_vel"))
-    {
-      printf("using default kD_rot_vel=%f\n", kD_rot_vel_);
-    }
-    else
-    {
-      kD_rot_vel_ = sdf->GetElement("kD_rot_vel")->Get<double>();
-    }
-
-    if (!sdf->HasElement("max_torque"))
-    {
-      printf("using default max_torque=%f\n", max_torque_);
-    }
-    else
-    {
-      max_torque_ = sdf->GetElement("max_torque")->Get<double>();
     }
 
     if (sdf->HasElement("gravity_compensation"))
@@ -225,33 +171,12 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       get_position_service_ = private_ros_node_->advertiseService(get_pos_so);
     }
 
-    {
-      auto get_object_bind = [this](auto &&req, auto &&res) { return GetObjectCallback(req, res); };
-      auto get_object_so = create_service_options(peter_msgs::GetObject, name_, get_object_bind);
-      get_object_service_ = ros_node_.advertiseService(get_object_so);
-    }
-
-    register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
-
     ros_queue_thread_ = std::thread([this] { QueueThread(); });
     private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
   }
 
-  ROS_WARN_STREAM_NAMED(model_->GetScopedName(), "] Waiting for object server");
-  while (register_object_pub_.getNumSubscribers() < 1)
-  {
-  }
-
-  {
-    std_msgs::String register_object;
-    register_object.data = name_;
-    register_object_pub_.publish(register_object);
-  }
-
   pos_pid_ = common::PID(kP_pos_, 0, kD_pos_, 0, 0, max_vel_, -max_vel_);
   vel_pid_ = common::PID(kP_vel_, 0, kD_vel_, 0, 0, max_force_, -max_force_);
-  rot_pid_ = common::PID(kP_rot_, 0, kD_rot_, 0, 0, max_rot_vel_, -max_rot_vel_);
-  rot_vel_pid_ = common::PID(kP_rot_vel_, 0, kD_rot_vel_, 0, 0, max_torque_, -max_torque_);
 
   auto update = [this](common::UpdateInfo const &info) { OnUpdate(info); };
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
@@ -265,21 +190,13 @@ void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
   constexpr auto dt{ 0.001 };
 
   auto const pos = link_->WorldPose().Pos();
-  auto const rot = link_->RelativePose().Rot();
   auto const vel_ = link_->WorldLinearVel();
-  auto const rot_vel_ = link_->RelativeAngularVel();
 
   pos_error_ = pos - target_position_;
   auto const target_vel = pos_error_.Normalized() * pos_pid_.Update(pos_error_.Length(), dt);
 
   auto const vel_error = vel_ - target_vel;
   auto force = vel_error.Normalized() * vel_pid_.Update(vel_error.Length(), dt);
-
-  rot_error_ = angle_error(rot.Z(), 0);  // assume target rotation is 0
-  auto const target_rot_vel = rot_pid_.Update(rot_error_, dt);
-
-  auto const rot_vel_error = rot_vel_.X() - target_rot_vel;
-  auto const torque = rot_vel_pid_.Update(rot_vel_error, dt);
 
   if (gravity_compensation_)
   {
@@ -300,7 +217,6 @@ void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
   if (enabled_)
   {
     link_->AddForce(force);
-    //    link_->AddRelativeTorque({torque, 0, 0});
   }
 }
 
@@ -309,6 +225,7 @@ bool Position3dPlugin::OnStop(std_srvs::EmptyRequest &req, std_srvs::EmptyRespon
   (void)req;
   (void)res;
 
+  enabled_ = true;
   target_position_ = link_->WorldPose().Pos();
   return true;
 }
@@ -345,9 +262,17 @@ bool Position3dPlugin::OnMove(peter_msgs::Position3DActionRequest &req, peter_ms
 
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
   auto const steps = static_cast<unsigned int>(req.timeout / seconds_per_step);
-  // Wait until the setpoint is reached
-  model_->GetWorld()->Step(steps);
 
+  // Wait until the setpoint or timeout is reached
+  for (auto i{ 0ul }; i < steps; ++i)
+  {
+    model_->GetWorld()->Step(1);
+    auto const reached = pos_error_.Length() < 0.001;
+    if (reached)
+    {
+      break;
+    }
+  }
   return true;
 }
 
@@ -358,30 +283,6 @@ bool Position3dPlugin::GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs:
   res.pos.x = pos.X();
   res.pos.y = pos.Y();
   res.pos.z = pos.Z();
-  return true;
-}
-
-bool Position3dPlugin::GetObjectCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res)
-{
-  (void)req;
-  std::vector<float> state_vector;
-  peter_msgs::NamedPoint link_point;
-  geometry_msgs::Point pt;
-  float const x = link_->WorldPose().Pos().X();
-  float const y = link_->WorldPose().Pos().Y();
-  float const z = link_->WorldPose().Pos().Z();
-  state_vector.push_back(x);
-  state_vector.push_back(y);
-  state_vector.push_back(z);
-  link_point.point.x = x;
-  link_point.point.y = y;
-  link_point.point.z = z;
-  link_point.name = link_->GetName();
-
-  res.object.name = name_;
-  res.object.state_vector = state_vector;
-  res.object.points.emplace_back(link_point);
-
   return true;
 }
 

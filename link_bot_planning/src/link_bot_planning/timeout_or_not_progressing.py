@@ -12,7 +12,6 @@ class TimeoutOrNotProgressing(ob.PlannerTerminationCondition):
         self.planner = planner
         self.times_called = 1
         self.verbose = verbose
-        self.last_distance_to_goal = sys.maxsize
         self.t0 = perf_counter()
         self.timed_out = False
         self.not_progressing = False

@@ -11,11 +11,13 @@ from geometry_msgs.msg import Point
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE
 from link_bot_data.visualization import rviz_arrow
+from tf import transformations
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, extent_to_env_size
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from peter_msgs.msg import LabelStatus
+from peter_msgs.srv import WorldControl
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
 from mps_shape_completion_msgs.msg import OccupancyStamped
@@ -24,8 +26,9 @@ from visualization_msgs.msg import MarkerArray, Marker
 
 
 class Base3DScenario(ExperimentScenario):
-    def __init__(self, params: Dict):
-        super().__init__(params)
+    def __init__(self):
+        super().__init__()
+        self.world_control_srv = rospy.ServiceProxy("world_control", WorldControl)
         self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10, latch=True)
         self.env_bbox_pub = rospy.Publisher('env_bbox', BoundingBox, queue_size=10, latch=True)
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
@@ -103,19 +106,6 @@ class Base3DScenario(ExperimentScenario):
         self.plot_state_rviz(state, idx=self.sample_idx, label='samples', color='#f52f32')
         self.sample_idx += 1
 
-    def plot_executed_action(self, state: Dict, action: Dict, **kwargs):
-        self.plot_action_rviz(state, action, label='executed action', color="#3876EB", idx1=1, idx2=1, **kwargs)
-
-    def plot_tree_action(self, state: Dict, action: Dict, **kwargs):
-        r = kwargs.pop("r", 0.2)
-        g = kwargs.pop("g", 0.2)
-        b = kwargs.pop("b", 0.8)
-        a = kwargs.pop("a", 1.0)
-        idx1 = self.tree_action_idx * 2 + 0
-        idx2 = self.tree_action_idx * 2 + 1
-        self.plot_action_rviz(state, action, label='tree', color=[r, g, b, a], idx1=idx1, idx2=idx2, **kwargs)
-        self.tree_action_idx += 1
-
     def plot_rejected_state(self, state: Dict):
         self.plot_state_rviz(state, idx=self.rejected_state_idx, label='rejected', color='#ff8822')
         self.rejected_state_idx += 1
@@ -134,109 +124,6 @@ class Base3DScenario(ExperimentScenario):
     def plot_tree_state(self, state: Dict):
         self.plot_state_rviz(state, idx=self.tree_state_idx, label='tree', color='#777777')
         self.tree_state_idx += 1
-
-    def plot_state_rviz(self, state: Dict, label: str, **kwargs):
-        r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
-        idx = kwargs.get("idx", 0)
-
-        link_bot_points = np.reshape(state['link_bot'], [-1, 3])
-
-        msg = MarkerArray()
-        lines = Marker()
-        lines.action = Marker.ADD  # create or modify
-        lines.type = Marker.LINE_STRIP
-        lines.header.frame_id = "/world"
-        lines.header.stamp = rospy.Time.now()
-        lines.ns = label
-        lines.id = 2 * idx + 0
-
-        lines.pose.position.x = 0
-        lines.pose.position.y = 0
-        lines.pose.position.z = 0
-        lines.pose.orientation.x = 0
-        lines.pose.orientation.y = 0
-        lines.pose.orientation.z = 0
-        lines.pose.orientation.w = 1
-
-        lines.scale.x = 0.01
-
-        lines.color.r = r
-        lines.color.g = g
-        lines.color.b = b
-        lines.color.a = a
-
-        spheres = Marker()
-        spheres.action = Marker.ADD  # create or modify
-        spheres.type = Marker.SPHERE_LIST
-        spheres.header.frame_id = "/world"
-        spheres.header.stamp = rospy.Time.now()
-        spheres.ns = label
-        spheres.id = 2 * idx + 1
-
-        spheres.scale.x = 0.02
-        spheres.scale.y = 0.02
-        spheres.scale.z = 0.02
-
-        spheres.pose.position.x = 0
-        spheres.pose.position.y = 0
-        spheres.pose.position.z = 0
-        spheres.pose.orientation.x = 0
-        spheres.pose.orientation.y = 0
-        spheres.pose.orientation.z = 0
-        spheres.pose.orientation.w = 1
-
-        spheres.color.r = r
-        spheres.color.g = g
-        spheres.color.b = b
-        spheres.color.a = a
-
-        for i, (x, y, z) in enumerate(link_bot_points):
-            point = Point()
-            point.x = x
-            point.y = y
-            point.z = z
-
-            spheres.points.append(point)
-            lines.points.append(point)
-
-        gripper1_point = Point()
-        gripper1_point.x = state['gripper1'][0]
-        gripper1_point.y = state['gripper1'][1]
-        gripper1_point.z = state['gripper1'][2]
-
-        gripper2_point = Point()
-        gripper2_point.x = state['gripper2'][0]
-        gripper2_point.y = state['gripper2'][1]
-        gripper2_point.z = state['gripper2'][2]
-
-        spheres.points.append(gripper1_point)
-        spheres.points.append(gripper2_point)
-
-        msg.markers.append(spheres)
-        msg.markers.append(lines)
-        self.state_viz_pub.publish(msg)
-
-    def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):
-        state_action = {}
-        state_action.update(state)
-        state_action.update(action)
-        self.plot_action_rviz_internal(state_action, label=label, **kwargs)
-
-    def plot_action_rviz_internal(self, data: Dict, label: str, **kwargs):
-        r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
-        s1 = np.reshape(data['gripper1'], [3])
-        s2 = np.reshape(data['gripper2'], [3])
-        a1 = np.reshape(data['gripper1_position'], [3])
-        a2 = np.reshape(data['gripper2_position'], [3])
-
-        idx1 = kwargs.get("idx1", 0)
-        idx2 = kwargs.get("idx2", 1)
-
-        msg = MarkerArray()
-        msg.markers.append(rviz_arrow(s1, a1, r, g, b, a, idx=idx1, label=label, **kwargs))
-        msg.markers.append(rviz_arrow(s2, a2, r, g, b, a, idx=idx2, label=label, **kwargs))
-
-        self.action_viz_pub.publish(msg)
 
     def plot_is_close(self, label_t):
         msg = LabelStatus()
@@ -271,7 +158,8 @@ class Base3DScenario(ExperimentScenario):
                                    goal: Dict,
                                    goal_threshold: float,
                                    labeling_params: Dict,
-                                   accept_probabilities):
+                                   accept_probabilities,
+                                   horizon: int):
         time_steps = np.arange(len(actual_states))
         self.plot_environment_rviz(environment)
         self.plot_goal(goal, goal_threshold)
@@ -283,7 +171,11 @@ class Base3DScenario(ExperimentScenario):
             s_t = actual_states[t]
             s_t_pred = predicted_states[t]
             self.plot_state_rviz(s_t, label='actual', color='#ff0000aa')
-            self.plot_state_rviz(s_t_pred, label='predicted', color='#0000ffaa')
+            if horizon is None or 'num_diverged' not in s_t_pred:
+                c = '#0000ffaa'
+            else:
+                c = cm.Blues(s_t_pred['num_diverged'][0] / horizon)
+            self.plot_state_rviz(s_t_pred, label='predicted', color=c)
             if len(actions) > 0:
                 if t < anim.max_t:
                     self.plot_action_rviz(s_t, actions[t])
@@ -388,38 +280,6 @@ class Base3DScenario(ExperimentScenario):
         self.state_viz_pub.publish(goal_marker_msg)
 
     @staticmethod
-    def to_rope_local_frame(state, reference_state=None):
-        rope_state = state['link_bot']
-        if reference_state is None:
-            reference_rope_state = np.copy(rope_state)
-        else:
-            reference_rope_state = reference_state['link_bot']
-        return Base3DScenario.to_rope_local_frame_np(rope_state, reference_rope_state)
-
-    @staticmethod
-    def to_rope_local_frame_np(rope_state, reference_rope_state=None):
-        if reference_rope_state is None:
-            reference_rope_state = np.copy(rope_state)
-        rope_local = Base3DScenario.to_rope_local_frame_tf(add_batch(rope_state), add_batch(reference_rope_state))
-        return remove_batch(rope_local).numpy()
-
-    @staticmethod
-    def to_rope_local_frame_tf(rope_state, reference_rope_state=None):
-        if reference_rope_state is None:
-            # identity applies the identity transformation, i.e. copies
-            reference_rope_state = tf.identity(rope_state)
-
-        batch_size = rope_state.shape[0]
-        rope_points = tf.reshape(rope_state, [batch_size, -1, 3])
-        reference_rope_points = tf.reshape(reference_rope_state, [batch_size, -1, 3])
-
-        # translate
-        rope_points -= reference_rope_points[:, tf.newaxis, -1]
-
-        rope_points = tf.reshape(rope_points, [batch_size, -1])
-        return rope_points
-
-    @staticmethod
     def robot_name():
         return "victor_and_rope::link_bot"
 
@@ -446,3 +306,24 @@ class Base3DScenario(ExperimentScenario):
             'res': example['res'],
             'extent': example['extent'],
         }
+
+    def random_object_pose(self, env_rng: np.random.RandomState, objects_params: Dict):
+        extent = objects_params['objects_extent']
+        extent = np.array(extent).reshape(3, 2)
+        position = env_rng.uniform(extent[:, 0], extent[:, 1])
+        yaw = env_rng.uniform(-np.pi, np.pi)
+        orientation = transformations.quaternion_from_euler(0, 0, yaw)
+        return (position, orientation)
+
+    def set_object_poses(self, object_positions: Dict):
+        for object_name, (position, orientation) in object_positions.items():
+            set_req = SetModelStateRequest()
+            set_req.model_state.model_name = object_name
+            set_req.model_state.pose.position.x = position[0]
+            set_req.model_state.pose.position.y = position[1]
+            set_req.model_state.pose.position.z = position[2]
+            set_req.model_state.pose.orientation.x = orientation[0]
+            set_req.model_state.pose.orientation.y = orientation[1]
+            set_req.model_state.pose.orientation.z = orientation[2]
+            set_req.model_state.pose.orientation.w = orientation[3]
+            self.set_model_state_srv(set_req)

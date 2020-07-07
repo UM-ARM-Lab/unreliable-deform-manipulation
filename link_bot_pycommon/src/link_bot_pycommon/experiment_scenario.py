@@ -15,8 +15,8 @@ from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Positi
 
 
 class ExperimentScenario:
-    def __init__(self, params: Dict):
-        self.params = params
+    def __init__(self):
+        pass
 
     def __eq__(self, other):
         if isinstance(other, str):
@@ -33,7 +33,9 @@ class ExperimentScenario:
     def sample_action(self,
                       environment: Dict,
                       state: Dict,
-                      params: Dict, action_rng):
+                      data_collection_params: Dict,
+                      action_params: Dict,
+                      action_rng: np.random.RandomState):
         raise NotImplementedError()
 
     def sample_actions(self,
@@ -101,10 +103,6 @@ class ExperimentScenario:
 
     @staticmethod
     def state_to_points_for_cc(state: Dict):
-        raise NotImplementedError()
-
-    @staticmethod
-    def state_to_gripper_position(state: Dict):
         raise NotImplementedError()
 
     @staticmethod

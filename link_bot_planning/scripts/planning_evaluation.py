@@ -90,6 +90,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             "planner_params": self.planner_params,
             "scenario": self.planner.scenario.simple_name(),
             "seed": self.seed,
+            "horizon": self.planner.classifier_model.horizon,
         }
         with (self.root / 'metadata.json').open("w") as metadata_file:
             json.dump(metadata, metadata_file, indent=2)

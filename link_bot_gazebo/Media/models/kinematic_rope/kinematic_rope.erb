@@ -12,7 +12,7 @@ n_colors = colors.length%>
         <allow_auto_disable>true</allow_auto_disable>
         <pose frame="">0 0 0 0 0 0</pose>
         <% for i in 1..n_links %>
-        <link name="link_<%=i%>">
+        <link name="rope_link_<%=i%>">
             <pose frame=""><%=(i-1)*link_length + link_length/2 %> 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
@@ -126,8 +126,8 @@ n_colors = colors.length%>
         <%end%>
         <% for i in 1..n_links-1 %>
         <joint name="joint_<%=i%>" type="universal">
-            <child>link_<%=i+1%></child>
-            <parent>link_<%=i%></parent>
+            <child>rope_link_<%=i+1%></child>
+            <parent>rope_link_<%=i%></parent>
             <pose>0 0 <%=link_length/2%> 0 0 0 </pose>
             <axis>
                 <xyz>0 0 1</xyz>
@@ -210,7 +210,7 @@ n_colors = colors.length%>
         </link>
         <joint name="gripper1_joint" type="universal">
             <child>gripper1</child>
-            <parent>link_<%=n_links%></parent>
+            <parent>rope_link_<%=n_links%></parent>
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
@@ -288,7 +288,7 @@ n_colors = colors.length%>
         </link>
         <joint name="gripper2_joint" type="universal">
             <child>gripper2</child>
-            <parent>link_1</parent>
+            <parent>rope_link_1</parent>
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>

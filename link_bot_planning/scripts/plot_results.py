@@ -29,17 +29,17 @@ def main():
         metadata_str = metadata_file.read()
         metadata = json.loads(metadata_str)
     scenario = get_scenario(metadata['scenario'])
-    planner_params = metadata['planner_params']
-    labeling_params = labeling_params_from_planner_params(planner_params)
 
     for plan_idx in args.plan_idx:
         with gzip.open(args.results_dir / f'{plan_idx}_metrics.json.gz', 'rb') as metrics_file:
             metrics_str = metrics_file.read()
         metrics = json.loads(metrics_str.decode("utf-8"))
-        plot_plan(scenario, metrics, plan_idx, labeling_params, planner_params)
+        plot_plan(scenario, metrics, plan_idx, metadata)
 
 
-def plot_plan(scenario, metrics_for_plan, plan_idx, labeling_params, planner_params):
+def plot_plan(scenario, metrics_for_plan, plan_idx, metadata):
+    planner_params = metadata['planner_params']
+    labeling_params = labeling_params_from_planner_params(planner_params)
     goal = metrics_for_plan['goal']
     environment = numpify(metrics_for_plan['environment'])
     planned_path = metrics_for_plan['planned_path']
@@ -54,7 +54,8 @@ def plot_plan(scenario, metrics_for_plan, plan_idx, labeling_params, planner_par
                                         goal=goal,
                                         goal_threshold=planner_params['goal_threshold'],
                                         labeling_params=labeling_params,
-                                        accept_probabilities=None)
+                                        accept_probabilities=None,
+                                        horizon=metadata['horizon'])
 
 
 if __name__ == '__main__':

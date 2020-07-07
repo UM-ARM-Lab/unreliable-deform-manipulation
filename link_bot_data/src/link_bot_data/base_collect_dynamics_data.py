@@ -18,7 +18,6 @@ from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_shape
-from link_bot_pycommon.ros_pycommon import make_movable_object_services
 
 
 # TODO: make this a class, to reduce number of arguments passed

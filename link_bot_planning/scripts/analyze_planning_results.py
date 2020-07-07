@@ -251,7 +251,7 @@ def metrics_main(args):
                 nums_mer_violations.append(num_mer_violations)
 
                 planning_times.append(datum['planning_time'])
-            if datum['planner_status'] == "not progressing":
+            elif datum['planner_status'] == "not progressing":
                 not_progressings += 1
                 continue
             elif datum['planner_status'] == "timeout":
@@ -260,8 +260,9 @@ def metrics_main(args):
             elif datum['planner_status'] == "failure":
                 failures += 1
                 continue
+            else:
+                raise NotImplementedError()
 
-        timeout_percentage = timeouts / N * 100
         percentage_solved = solveds / N * 100
         percentages_solved.append(percentage_solved)
         percentage_failed = failures / N * 100
@@ -320,7 +321,7 @@ def metrics_main(args):
         aggregate_metrics['% Steps with MER Violations'].append(
             make_row(planner_params, nums_mer_violations, table_format))
 
-        print(f"{subfolder.name:30s}: {timeout_percentage:3.2f}% timeout")
+        print(f"{subfolder.name:30s}: {percentage_timeout:3.2f}% timeout")
         for error, plan_idx in sorted(zip(final_execution_to_goal_errors, range(len(final_execution_to_goal_errors)))):
             print(f"{plan_idx}: {error:5.3f} error between execution to goal")
         if labeling_params is not None:
@@ -345,8 +346,10 @@ def metrics_main(args):
         percentage_ax = plt.gca()
         failed_bar = percentage_ax.bar(legend_names, percentages_failed)
         timeout_bar = percentage_ax.bar(legend_names, percentages_timeout, bottom=percentages_failed)
-        not_progressing_bar = percentage_ax.bar(legend_names, percentages_not_progressing, bottom=percentages_timeout)
-        solved_bar = percentage_ax.bar(legend_names, percentages_solved, bottom=percentages_not_progressing)
+        failed_plus_timeout = np.add(percentages_failed, percentages_timeout).tolist()
+        not_progressing_bar = percentage_ax.bar(legend_names, percentages_not_progressing, bottom=failed_plus_timeout)
+        failed_plus_timeout_plus_not_p = np.add(failed_plus_timeout, percentages_not_progressing).tolist()
+        solved_bar = percentage_ax.bar(legend_names, percentages_solved, bottom=failed_plus_timeout_plus_not_p)
         percentage_ax.set_ylabel("Percentage")
         percentage_ax.set_xlabel("Methods")
         percentage_ax.set_title("Planner Status Breakdown")
