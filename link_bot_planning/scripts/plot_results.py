@@ -25,28 +25,27 @@ def main():
 
     args = parser.parse_args()
 
-    metrics_filename = args.results_dir / "metrics.json.gz"
-    with gzip.open(metrics_filename, 'rb') as metrics_file:
-        data_str = metrics_file.read()
-        data = json.loads(data_str.decode("utf-8"))
-    scenario = get_scenario(data['scenario'])
-    planner_params = data['planner_params']
+    with (args.results_dir / 'metadata.json').open('r') as metadata_file:
+        metadata_str = metadata_file.read()
+        metadata = json.loads(metadata_str)
+    scenario = get_scenario(metadata['scenario'])
+    planner_params = metadata['planner_params']
     labeling_params = labeling_params_from_planner_params(planner_params)
 
-    metrics = data['metrics']
-
     for plan_idx in args.plan_idx:
+        with gzip.open(args.results_dir / f'{plan_idx}_metrics.json.gz', 'rb') as metrics_file:
+            metrics_str = metrics_file.read()
+        metrics = json.loads(metrics_str.decode("utf-8"))
         plot_plan(scenario, metrics, plan_idx, labeling_params, planner_params)
 
 
-def plot_plan(scenario, metrics, plan_idx, labeling_params, planner_params):
-    metric_for_plan = metrics[plan_idx]
-    goal = metric_for_plan['goal']
-    environment = numpify(metric_for_plan['environment'])
-    planned_path = metric_for_plan['planned_path']
-    actual_path = metric_for_plan['actual_path']
+def plot_plan(scenario, metrics_for_plan, plan_idx, labeling_params, planner_params):
+    goal = metrics_for_plan['goal']
+    environment = numpify(metrics_for_plan['environment'])
+    planned_path = metrics_for_plan['planned_path']
+    actual_path = metrics_for_plan['actual_path']
 
-    planned_actions = metric_for_plan['actions']
+    planned_actions = metrics_for_plan['actions']
 
     scenario.animate_evaluation_results(environment=environment,
                                         actual_states=actual_path,

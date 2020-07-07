@@ -35,27 +35,11 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
                                                                                      ros::VoidPtr(), &queue_);
 
   constexpr auto link_bot_service_name{ "link_bot" };
-  auto get_object_link_bot_bind = [this](auto &&req, auto &&res) { return GetObjectRope(req, res); };
-  auto get_object_link_bot_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetObject>(
-      link_bot_service_name, get_object_link_bot_bind, ros::VoidPtr(), &queue_);
 
   set_state_service_ = ros_node_.advertiseService(set_state_so);
   get_state_service_ = ros_node_.advertiseService(get_state_so);
-  register_object_pub_ = ros_node_.advertise<std_msgs::String>("register_object", 10, true);
-  get_object_link_bot_service_ = ros_node_.advertiseService(get_object_link_bot_so);
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
-
-  gzwarn << "[" << model_->GetScopedName() << "] Waiting for object server\n";
-  while (register_object_pub_.getNumSubscribers() < 1)
-  {
-  }
-
-  {
-    std_msgs::String register_object;
-    register_object.data = link_bot_service_name;
-    register_object_pub_.publish(register_object);
-  }
 
   {
     if (!sdf->HasElement("rope_length"))
@@ -77,32 +61,6 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
     }
   }
   gzlog << "Rope Plugin finished initializing!\n";
-}
-
-bool RopePlugin::GetObjectRope(peter_msgs::GetObjectRequest &, peter_msgs::GetObjectResponse &res)
-{
-  res.object.name = "link_bot";
-  for (auto link_idx{ 1U }; link_idx <= num_links_; ++link_idx)
-  {
-    std::stringstream ss;
-    ss << "link_" << link_idx;
-    auto link_name = ss.str();
-    auto const link = model_->GetLink(link_name);
-    peter_msgs::NamedPoint named_point;
-    float const x = link->WorldPose().Pos().X();
-    float const y = link->WorldPose().Pos().Y();
-    float const z = link->WorldPose().Pos().Z();
-    res.object.state_vector.push_back(x);
-    res.object.state_vector.push_back(y);
-    res.object.state_vector.push_back(z);
-    named_point.point.x = x;
-    named_point.point.y = y;
-    named_point.point.z = z;
-    named_point.name = link_name;
-    res.object.points.emplace_back(named_point);
-  }
-
-  return true;
 }
 
 bool RopePlugin::SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::SetRopeStateResponse &)

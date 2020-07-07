@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
   VictorShim vs(nh, ph);
   vs.victor_->updatePlanningScene();
   // vs.victor_->test();
-  // vs.victor_->gotoHome();
+  vs.victor_->gotoHome();
   vs.enableServices();
 
   ros::Rate rate(1);

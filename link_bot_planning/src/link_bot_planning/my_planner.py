@@ -91,8 +91,7 @@ class MyPlanner:
     def motions_valid(self, motions):
         final_state = self.scenario.ompl_state_to_numpy(motions[-1].getState())
 
-        # motions_valid = final_state['num_diverged'] < self.classifier_model.horizon - 1  # yes, minus 1
-        motions_valid = final_state['num_diverged'] < 1
+        motions_valid = final_state['num_diverged'] < self.classifier_model.horizon - 1  # yes, minus 1
         motions_valid = bool(np.squeeze(motions_valid))
         if not motions_valid:
             self.scenario.plot_rejected_state(final_state)
@@ -142,9 +141,12 @@ class MyPlanner:
                                                                           states_sequence=all_states,
                                                                           actions=all_actions)
         final_classifier_probability = classifier_probabilities[-1]
-        classifier_accept = final_classifier_probability > self.params['accept_threshold']
-        final_predicted_state['num_diverged'] = np.array(
-            [0.0]) if classifier_accept else last_previous_state['num_diverged'] + 1
+        if self.verbose >= 2:
+            self.scenario.plot_accept_probability(final_classifier_probability)
+        if final_classifier_probability > self.params['accept_threshold']:
+            final_predicted_state['num_diverged'] = np.array([0.0])
+        else:
+            final_predicted_state['num_diverged'] = last_previous_state['num_diverged'] + 1
         return final_predicted_state, final_classifier_probability
 
     def propagate(self, motions, control, duration, state_out):

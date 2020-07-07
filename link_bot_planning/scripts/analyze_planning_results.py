@@ -185,6 +185,9 @@ def metrics_main(args):
     colors = prop_cycle.by_key()['color']
     legend_names = []
     percentages_solved = []
+    percentages_timeout = []
+    percentages_not_progressing = []
+    percentages_failed = []
     for color, subfolder in zip(colors, all_subfolders):
         metrics_filenames = list(subfolder.glob("*_metrics.json.gz"))
         N = len(metrics_filenames)
@@ -193,7 +196,10 @@ def metrics_main(args):
         final_plan_to_execution_errors = []
         final_plan_to_goal_errors = []
         final_execution_to_goal_errors = []
+        solveds = 0
         timeouts = 0
+        not_progressings = 0
+        failures = 0
         planning_times = []
         nums_nodes = []
         nums_steps = []
@@ -225,36 +231,46 @@ def metrics_main(args):
             p = sequence_of_dicts_to_dict_of_np_arrays(planned_path)['link_bot']
             a = sequence_of_dicts_to_dict_of_np_arrays(actual_path)['link_bot']
 
-            if datum['planner_status'] != "solved":
+            if datum['planner_status'] == "solved":
+                solveds += 1
+                final_plan_to_execution_errors.append(final_plan_to_execution_error)
+                final_plan_to_goal_errors.append(final_plan_to_goal_error)
+                final_execution_to_goal_errors.append(final_execution_to_goal_error)
+
+                num_nodes = datum['num_nodes']
+                nums_nodes.append(num_nodes)
+
+                num_steps = len(planned_path)
+                nums_steps.append(num_steps)
+
+                if labeling_params is not None:
+                    is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
+                    num_mer_violations = np.count_nonzero(1 - is_close) / num_steps * 100
+                else:
+                    num_mer_violations = 0
+                nums_mer_violations.append(num_mer_violations)
+
+                planning_times.append(datum['planning_time'])
+            if datum['planner_status'] == "not progressing":
+                not_progressings += 1
+                continue
+            elif datum['planner_status'] == "timeout":
                 timeouts += 1
-                # Do not plot metrics for plans which timeout.
-                if args.ignore_timeouts:
-                    continue
-
-            final_plan_to_execution_errors.append(final_plan_to_execution_error)
-            final_plan_to_goal_errors.append(final_plan_to_goal_error)
-            final_execution_to_goal_errors.append(final_execution_to_goal_error)
-
-            num_nodes = datum['num_nodes']
-            nums_nodes.append(num_nodes)
-
-            num_steps = len(planned_path)
-            nums_steps.append(num_steps)
-
-            if labeling_params is not None:
-                is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
-                num_mer_violations = np.count_nonzero(1 - is_close) / num_steps * 100
-            else:
-                num_mer_violations = 0
-            nums_mer_violations.append(num_mer_violations)
-
-            planning_times.append(datum['planning_time'])
+                continue
+            elif datum['planner_status'] == "failure":
+                failures += 1
+                continue
 
         timeout_percentage = timeouts / N * 100
-        n_exact_solutions = N - timeouts
-        percentage_solved = n_exact_solutions / N * 100
+        percentage_solved = solveds / N * 100
         percentages_solved.append(percentage_solved)
-        n_for_metrics = n_exact_solutions if args.ignore_timeouts else N
+        percentage_failed = failures / N * 100
+        percentages_failed.append(percentage_failed)
+        percentage_not_progressing = not_progressings / N * 100
+        percentages_not_progressing.append(percentage_not_progressing)
+        percentage_timeout = timeouts / N * 100
+        percentages_timeout.append(percentage_timeout)
+        n_for_metrics = solveds
 
         if not args.no_plot:
             # Execution Success Plot
@@ -326,10 +342,16 @@ def metrics_main(args):
 
         # Timeout Plot
         plt.figure()
-        timeout_ax = plt.gca()
-        timeout_ax.bar(legend_names, percentages_solved, color=colors)
-        timeout_ax.set_ylabel("percentage solved")
-        timeout_ax.set_title("Percentage Solved")
+        percentage_ax = plt.gca()
+        failed_bar = percentage_ax.bar(legend_names, percentages_failed)
+        timeout_bar = percentage_ax.bar(legend_names, percentages_timeout, bottom=percentages_failed)
+        not_progressing_bar = percentage_ax.bar(legend_names, percentages_not_progressing, bottom=percentages_timeout)
+        solved_bar = percentage_ax.bar(legend_names, percentages_solved, bottom=percentages_not_progressing)
+        percentage_ax.set_ylabel("Percentage")
+        percentage_ax.set_xlabel("Methods")
+        percentage_ax.set_title("Planner Status Breakdown")
+        percentage_ax.legend((solved_bar, not_progressing_bar,  timeout_bar, failed_bar),
+                             ("Solved", "NotProgressing", "Timeout", "Failed"))
     print('-' * 90)
 
     for metric_name, table_data in aggregate_metrics.items():
@@ -370,8 +392,6 @@ def main():
     metrics_subparser.add_argument('analysis_params', type=pathlib.Path)
     metrics_subparser.add_argument('--no-plot', action='store_true')
     metrics_subparser.add_argument('--final', action='store_true')
-    metrics_subparser.add_argument('--ignore-timeouts', action='store_true',
-                                   help='for error metrics, ignore timeouts/approx sln')
     metrics_subparser.set_defaults(func=metrics_main)
 
     error_viz_subparser = subparsers.add_parser('error_viz')

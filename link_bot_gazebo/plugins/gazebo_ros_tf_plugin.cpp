@@ -24,6 +24,15 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
   victor_ = world_->ModelByName("victor_and_rope");
   table_ = world_->ModelByName("table");
 
+  if (!victor_)
+  {
+    ROS_ERROR("could not find model by name victor_and_rope");
+  }
+  if (!table_)
+  {
+    ROS_ERROR("could not find model by name table");
+  }
+
   // setup ROS stuff
   if (!ros::isInitialized())
   {
@@ -52,7 +61,20 @@ void GazeboRosTfPlugin::PeriodicUpdate()
     return;
   }
 
-  auto const victor_root_pose = victor_->GetLink("victor_and_rope::victor::victor_root")->WorldPose();
+  std::string const link_name = "victor_and_rope::victor::victor_root";
+  auto const victor_root_link = victor_->GetLink(link_name);
+  if (!victor_root_link)
+  {
+    ROS_ERROR_STREAM("there is no link " << link_name);
+    ROS_ERROR_STREAM("possible link names are:");
+    for (auto const l : victor_->GetLinks())
+    {
+      ROS_ERROR_STREAM(l->GetScopedName());
+    }
+    return;
+  }
+
+  auto const victor_root_pose = victor_root_link->WorldPose();
 
   geometry_msgs::TransformStamped victor_root_tf;
   victor_root_tf.header.frame_id = "world";
@@ -70,30 +92,31 @@ void GazeboRosTfPlugin::PeriodicUpdate()
   // FIXME: This assumes that the entire table body goes "up" from the base
   if (table_)
   {
-    auto const table_base_pose = table_->GetLink("table::link")->WorldPose();
-    geometry_msgs::TransformStamped table_base_tf;
-    table_base_tf.header = victor_root_tf.header;
-    table_base_tf.child_frame_id = "table_base";
-    table_base_tf.transform.translation.x = table_base_pose.Pos().X();
-    table_base_tf.transform.translation.y = table_base_pose.Pos().Y();
-    table_base_tf.transform.translation.z = table_base_pose.Pos().Z();
-    table_base_tf.transform.rotation.w = table_base_pose.Rot().W();
-    table_base_tf.transform.rotation.x = table_base_pose.Rot().X();
-    table_base_tf.transform.rotation.y = table_base_pose.Rot().Y();
-    table_base_tf.transform.rotation.z = table_base_pose.Rot().Z();
-    tb_.sendTransform(table_base_tf);
+    std::string const table_link_name = "table::surface";
+    auto const table_link = table_->GetLink(table_link_name);
+    if (!table_link)
+    {
+      ROS_ERROR_STREAM("no link " << table_link_name);
+      ROS_ERROR_STREAM("possible link names are:");
+      for (auto const l : table_->GetLinks())
+      {
+        ROS_ERROR_STREAM(l->GetScopedName());
+      }
+      return;
+    }
 
+    auto const table_surface_pose = table_link->WorldPose();
     geometry_msgs::TransformStamped table_surface_tf;
-    table_surface_tf.header.frame_id = "table_base";
+    table_surface_tf.header.frame_id = "world";
     table_surface_tf.header.stamp = victor_root_tf.header.stamp;
     table_surface_tf.child_frame_id = "table_surface";
-    table_surface_tf.transform.translation.x = 0;
-    table_surface_tf.transform.translation.y = 0;
-    table_surface_tf.transform.translation.z = table_->BoundingBox().ZLength();
-    table_surface_tf.transform.rotation.w = 1;
-    table_surface_tf.transform.rotation.x = 0;
-    table_surface_tf.transform.rotation.y = 0;
-    table_surface_tf.transform.rotation.z = 0;
+    table_surface_tf.transform.translation.x = table_surface_pose.Pos().X();
+    table_surface_tf.transform.translation.y = table_surface_pose.Pos().Y();
+    table_surface_tf.transform.translation.z = table_surface_pose.Pos().Z();
+    table_surface_tf.transform.rotation.w = table_surface_pose.Rot().W();
+    table_surface_tf.transform.rotation.x = table_surface_pose.Rot().X();
+    table_surface_tf.transform.rotation.y = table_surface_pose.Rot().Y();
+    table_surface_tf.transform.rotation.z = table_surface_pose.Rot().Z();
     tb_.sendTransform(table_surface_tf);
   }
 }
