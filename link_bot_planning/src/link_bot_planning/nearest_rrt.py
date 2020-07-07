@@ -29,4 +29,4 @@ class NearestRRT(MyPlanner):
         self.planner = oc.RRT(self.si)
         self.planner.setIntermediateStates(True)  # this is necessary, because we use this to generate datasets
         self.ss.setPlanner(self.planner)
-        self.si.setMinMaxControlDuration(20, 50)
+        self.si.setMinMaxControlDuration(1, 50)

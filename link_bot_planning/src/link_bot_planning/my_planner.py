@@ -177,7 +177,7 @@ class MyPlanner:
                 self.scenario.plot_tree_state(previous_state)
                 self.scenario.plot_tree_state(MyPlanner.propagate.cached_previous_state)
 
-            self.scenario.plot_current_tree_state(np_final_state)
+            self.scenario.plot_current_tree_state(np_final_state, horizon=self.classifier_model.horizon)
 
             self.scenario.plot_tree_action(previous_state,
                                            new_action,

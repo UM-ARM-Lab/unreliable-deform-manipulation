@@ -2,6 +2,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import tensorflow as tf
+from matplotlib import cm
 import ompl.base as ob
 from matplotlib import colors
 
@@ -42,6 +43,7 @@ class Base3DScenario(ExperimentScenario):
         self.sampled_goal_marker_idx = 0
         self.tree_state_idx = 0
         self.rejected_state_idx = 0
+        self.maybe_rejected_state_idx = 0
         self.current_tree_state_idx = 0
         self.tree_action_idx = 0
         self.sample_idx = 0
@@ -65,6 +67,7 @@ class Base3DScenario(ExperimentScenario):
         self.sampled_goal_marker_idx = 0
         self.tree_state_idx = 0
         self.rejected_state_idx = 0
+        self.maybe_rejected_state_idx = 0
         self.current_tree_state_idx = 0
         self.tree_action_idx = 0
         self.sample_idx = 0
@@ -117,8 +120,16 @@ class Base3DScenario(ExperimentScenario):
         self.plot_state_rviz(state, idx=self.rejected_state_idx, label='rejected', color='#ff8822')
         self.rejected_state_idx += 1
 
-    def plot_current_tree_state(self, state: Dict):
-        self.plot_state_rviz(state, idx=1, label='current tree state', color='#777777')
+    def plot_maybe_rejected_state(self, state: Dict):
+        self.plot_state_rviz(state, idx=self.maybe_rejected_state_idx, label='rejected', color='#fac57f')
+        self.maybe_rejected_state_idx += 1
+
+    def plot_current_tree_state(self, state: Dict, horizon: int):
+        if horizon is None:
+            c = "#777777"
+        else:
+            c = cm.Oranges(state['num_diverged'][0] / horizon)
+        self.plot_state_rviz(state, idx=1, label='current tree state', color=c)
 
     def plot_tree_state(self, state: Dict):
         self.plot_state_rviz(state, idx=self.tree_state_idx, label='tree', color='#777777')
