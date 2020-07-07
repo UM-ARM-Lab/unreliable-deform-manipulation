@@ -1,53 +1,38 @@
 <launch>
     <arg name="use_sim_time" default="false"/>
-    <!-- Replacements for the live Vicon system -->
+    <!-- Value recorded from live system on 2020/07/07 -->
     <group ns="mocap_replacements">
         <node pkg="tf2_ros" type="static_transform_publisher" name="fake_world_origin" required="true"
-              args="0.75 0 -1
-                    0 0 0 1
+              args="0.751024327411   -0.0822099292439   -0.842606341352
+                    0.00563273052504   -0.0160778014732   0.0153616517013   0.999736863531
                     mocap_world world_origin">
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>
 
         <node pkg="tf2_ros" type="static_transform_publisher" name="victor_torso_tf_publisher" required="true"
-              args="1.359948719894834  -0.000236881033640  -0.143485146036083
-                    0 0 0 1
+              args="1.20539594171   -0.327625793707   -0.0393195178249
+                    0.00972495665652   -0.0161352778699   -0.0152134211858   0.99970677193
                     mocap_world mocap_VictorTorso_VictorTorso">
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>
 
         <node pkg="tf2_ros" type="static_transform_publisher" name="kinect_roof_tf_publisher" required="true"
-              args="2.45096059744   -0.457194716941   1.74597413129
-                    -0.0125701195732   0.705412143756   0.00824661662989   0.708637913783
+              args="2.40499911002   -0.454495540655   1.70358014759
+                    -0.00954801762903   0.713303874225   0.0252600741333   0.700334453693
                     mocap_world mocap_Kinect2BlockRoof_Kinect2BlockRoof">
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>
 
         <node pkg="tf2_ros" type="static_transform_publisher" name="kinect_victor_head_tf_publisher" required="true"
-              args="1.74674250569   -0.159526687575   0.864684909596
-                    -0.00774843183113   0.624205509641   0.0115458815627   0.781136438887
+              args="1.20231720875   -0.436322449389   0.668714685529
+                    -0.0604738283753   0.270203296744   0.174014724877   0.945014269753
                     mocap_world mocap_Kinect2VictorHead_Kinect2VictorHead">
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>
 
-        <node pkg="tf2_ros" type="static_transform_publisher" name="kinect_tripodA_tf_publisher" required="true"
-              args="3.32   0.14   -0.80
-                    0.357371723533   -0.0123808907055   0.932849262557   -0.0438681902077
-                    mocap_world mocap_Kinect2TripodA_Kinect2TripodA">
-            <param name="use_sim_time" value="$(arg use_sim_time)"/>
-        </node>
-
-        <!-- Value recorded from live system on 2020/02/14 -->
-        <node pkg="tf2_ros" type="static_transform_publisher" name="clear_table_table_tf_publisher" required="true"
-              args="2.5 0 -0.45
-                    0 0 0 1
-                    mocap_world mocap_ClearTableSurface_ClearTableSurface">
-            <param name="use_sim_time" value="$(arg use_sim_time)"/>
-        </node>
-
         <node pkg="tf2_ros" type="static_transform_publisher" name="folding_table_table_tf_publisher" required="true"
-              args="2.5 0 -0.45
-                    0 0 0 1
+              args="1.9681283022   -0.319004007232   -0.0894507790879
+                    0.0112067879783   -0.0315789230364   0.00216390852139   0.999436089514
                     mocap_world mocap_FoldingTableSurface_FoldingTableSurface">
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>

@@ -18,12 +18,12 @@ if __name__ == "__main__":
         # req.gripper1_points.append(Point(1.1,  0.4, 1.05))
         # req.gripper2_points.append(Point(1.1, -0.4, 1.05))
         # ERB 1212
-        req.gripper1_points.append(Point(2.13,  0.3, 0.95))
-        req.gripper2_points.append(Point(2.1, -0.4, 1.05))
-        req.gripper1_points.append(Point(2.1,  0.4, 1.05))
-        req.gripper2_points.append(Point(2.1, -0.4, 1.05))
-        req.gripper1_points.append(Point(2.1,  0.4, 1.05))
-        req.gripper2_points.append(Point(2.1, -0.4, 1.05))
+        req.gripper1_points.append(Point(2.0, -0.2, 0.9))
+        req.gripper2_points.append(Point(2.0, -0.9, 1.0))
+        req.gripper1_points.append(Point(2.0, -0.1, 1.0))
+        req.gripper2_points.append(Point(2.0, -0.9, 1.0))
+        req.gripper1_points.append(Point(2.0, -0.1, 1.0))
+        req.gripper2_points.append(Point(2.0, -0.9, 1.0))
         resp = srv(req)
     except rospy.ServiceException as ex:
         print("Service call failed: %s" % ex)

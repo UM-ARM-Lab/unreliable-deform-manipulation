@@ -3,6 +3,7 @@
 #include "victor_3d_rope_shim/eigen_transforms.hpp"
 #include "victor_3d_rope_shim/moveit_print_state.h"
 #include "victor_3d_rope_shim/victor_interface.h"
+#include "ostream_operators.hpp"
 
 #include <algorithm>
 #include <memory>
@@ -104,7 +105,7 @@ trajectory_msgs::JointTrajectory MergeTrajectories(trajectory_msgs::JointTraject
   // Merge the trajectories, checking each individual point for compatability as we go
   trajectory_msgs::JointTrajectory merged = traj_a;
   merged.points.resize(mergable_size);
-  merged.joint_names.insert(merged.joint_names.begin(), traj_b.joint_names.begin(), traj_b.joint_names.end());
+  merged.joint_names.insert(merged.joint_names.end(), traj_b.joint_names.begin(), traj_b.joint_names.end());
   for (size_t idx = 0; idx < merged.points.size(); ++idx)
   {
     trajectory_msgs::JointTrajectoryPoint& point_a = merged.points.at(idx);
@@ -116,36 +117,25 @@ trajectory_msgs::JointTrajectory MergeTrajectories(trajectory_msgs::JointTraject
     MPS_ASSERT(point_a.effort.size() == point_b.effort.size());
     MPS_ASSERT(point_a.time_from_start == point_b.time_from_start);
 
-    point_a.positions.insert(point_a.positions.begin(), point_b.positions.begin(), point_b.positions.end());
-    point_a.velocities.insert(point_a.velocities.begin(), point_b.velocities.begin(), point_b.velocities.end());
-    point_a.accelerations.insert(point_a.accelerations.begin(), point_b.accelerations.begin(),
-                                 point_b.accelerations.end());
-    point_a.effort.insert(point_a.effort.begin(), point_b.effort.begin(), point_b.effort.end());
+    point_a.positions.insert(point_a.positions.end(), point_b.positions.begin(), point_b.positions.end());
+    point_a.velocities.insert(point_a.velocities.end(), point_b.velocities.begin(), point_b.velocities.end());
+    point_a.accelerations.insert(point_a.accelerations.end(), point_b.accelerations.begin(), point_b.accelerations.end());
+    point_a.effort.insert(point_a.effort.end(), point_b.effort.begin(), point_b.effort.end());
+  }
+
+  // Crude "unit test"
+  {
+    if (traj_a.joint_names.size() > 0)
+    {
+      assert(merged.joint_names[0] == traj_a.joint_names[0]);
+    }
+    if (traj_b.joint_names.size() > 0)
+    {
+      assert(merged.joint_names[traj_a.joint_names.size()] == traj_b.joint_names[0]);
+    }
   }
 
   return merged;
-}
-
-static std::ostream& operator<<(std::ostream& out, collision_detection::CollisionResult const& cr)
-{
-  out << "  collision:      " << cr.collision << "\n"
-      << "  distance:       " << cr.distance << "\n"
-      << "  contact_count:  " << cr.contact_count << "\n"
-      << "  contacts:\n";
-  for (auto const& [names, contact_list] : cr.contacts)
-  {
-    out << "    " << names.first << "," << names.second << "\n";
-    for (auto const& contact : contact_list)
-    {
-      out << "      pos:          " << contact.pos.transpose() << "\n"
-          << "      normal:       " << contact.normal.transpose() << "\n"
-          << "      depth:        " << contact.depth << "\n"
-          << "      body_type_1:  " << contact.body_type_1 << " name: " << contact.body_name_1 << "\n"
-          << "      body_type_2:  " << contact.body_type_2 << " name: " << contact.body_name_2 << "\n";
-    }
-  }
-  out << std::flush;
-  return out;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -965,6 +955,7 @@ bool VictorInterface::moveInWorldFrame(
   // Merge the trajectories and then verify that the result is still collision free
   auto merged_cmd = MergeTrajectories(left_cmd, right_cmd);
   collision_detection::CollisionRequest collision_req;
+  collision_req.group_name = "both_arms";
   collision_detection::CollisionResult collision_res;
   robot_state::RobotState state = current_state;
   for (size_t idx = 0; idx < merged_cmd.points.size(); ++idx)

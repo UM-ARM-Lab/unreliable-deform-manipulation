@@ -40,7 +40,7 @@ roscore
 roslaunch victor_fake_hardware_interface fake_dual_arm_lcm_bridge.launch --screen
 roslaunch victor_3d_rope_shim vicon.launch live:=false --screen
 rcnova && rosrun arm_or_robots ros_trajectory_forwarder.py _world_frame:="world_origin"
-roslaunch victor_3d_rope_shim victor_shim.launch --screen
+roslaunch victor_3d_rope_shim victor_shim.launch gazebo:=false --screen
 rviz
 rosrun victor_3d_rope_shim test_move.py
 ```
@@ -49,7 +49,7 @@ rosrun victor_3d_rope_shim test_move.py
 ```
 roscore
 rcnova && roslaunch victor_hardware_interface dual_arm_lcm_bridge.launch --screen
-roslaunch victor_3d_rope_shim vicon.launch live:=false --screen
+roslaunch victor_3d_rope_shim vicon.launch live:=true --screen
 rcnova && rosrun arm_or_robots ros_trajectory_forwarder.py _world_frame:="world_origin"
 roslaunch victor_3d_rope_shim victor_shim.launch gazebo:=false --screen
 rviz
