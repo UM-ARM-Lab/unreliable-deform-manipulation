@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import json
+import gzip
 import pathlib
 import time
 
@@ -72,10 +73,11 @@ def generate(args):
                 'scenario': model.scenario.simple_name(),
             }
         all_data.append(data_per_model_for_element)
-    results_filename = base_folder / 'saved_data.json'
+    results_filename = base_folder / 'saved_data.json.gz'
     print(Fore.GREEN + "Saving results to {}".format(results_filename) + Fore.RESET)
-    with results_filename.open("w") as results_file:
-        json.dump(listify(all_data), results_file)
+    with gzip.open(results_filename, "wb") as results_file:
+        results_str = json.dumps(listify(all_data))
+        results_file.write(results_str.encode("utf-8"))
     viz(results_filename, args.fps, args.no_plot, args.save)
 
 
@@ -88,8 +90,9 @@ def viz(data_filename, fps, no_plot, save):
 
     # Load the results
     base_folder = data_filename.parent
-    with data_filename.open("r") as data_file:
-        saved_data = json.load(data_file)
+    with gzip.open(data_filename, "rb") as data_file:
+        data_str = data_file.read()
+        saved_data = json.loads(data_str.decode("utf-8"))
 
     all_metrics = {}
     for example_idx, datum in enumerate(saved_data):
