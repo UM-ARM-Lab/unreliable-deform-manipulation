@@ -16,7 +16,7 @@ from moonshine.moonshine_utils import numpify, add_batch, remove_batch
 
 
 def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
-    rospy.loginfo("Don't forget to start the viz_stepper")
+    rospy.loginfo("Use the RViz AnimationController")
     min_x = 1000
     min_y = 1000
     min_z = 1000
@@ -27,8 +27,6 @@ def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
         example = numpify(example)
         time_steps = example['time_idx']
 
-        if i < 95:
-            continue
         # for t in time_steps:
         #     example_t = remove_batch(dataset.index_time(add_batch(example), t))
         #     x, y, z = example_t['gripper1']

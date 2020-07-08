@@ -11,11 +11,13 @@ import rospy
 from link_bot_data.visualization import rviz_arrow
 from geometry_msgs.msg import Point
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
+from matplotlib import colors
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from tf import transformations
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
+from visualization_msgs.msg import MarkerArray, Marker
 from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.pycommon import default_if_none
 from victor_hardware_interface_msgs.msg import MotionCommand
@@ -595,6 +597,123 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def dynamics_metrics_function(dataset_element, predictions):
         return dynamics_points_metrics_function(dataset_element, predictions)
 
+    def plot_tree_action(self, state: Dict, action: Dict, **kwargs):
+        r = kwargs.pop("r", 0.2)
+        g = kwargs.pop("g", 0.2)
+        b = kwargs.pop("b", 0.8)
+        a = kwargs.pop("a", 1.0)
+        idx1 = self.tree_action_idx * 2 + 0
+        idx2 = self.tree_action_idx * 2 + 1
+        self.plot_action_rviz(state, action, label='tree', color=[r, g, b, a], idx1=idx1, idx2=idx2, **kwargs)
+        self.tree_action_idx += 1
+
+    def plot_executed_action(self, state: Dict, action: Dict, **kwargs):
+        self.plot_action_rviz(state, action, label='executed action', color="#3876EB", idx1=1, idx2=1, **kwargs)
+
+    def plot_state_rviz(self, state: Dict, label: str, **kwargs):
+        r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
+        idx = kwargs.get("idx", 0)
+
+        link_bot_points = np.reshape(state['link_bot'], [-1, 3])
+
+        msg = MarkerArray()
+        lines = Marker()
+        lines.action = Marker.ADD  # create or modify
+        lines.type = Marker.LINE_STRIP
+        lines.header.frame_id = "/world"
+        lines.header.stamp = rospy.Time.now()
+        lines.ns = label
+        lines.id = 2 * idx + 0
+
+        lines.pose.position.x = 0
+        lines.pose.position.y = 0
+        lines.pose.position.z = 0
+        lines.pose.orientation.x = 0
+        lines.pose.orientation.y = 0
+        lines.pose.orientation.z = 0
+        lines.pose.orientation.w = 1
+
+        lines.scale.x = 0.01
+
+        lines.color.r = r
+        lines.color.g = g
+        lines.color.b = b
+        lines.color.a = a
+
+        spheres = Marker()
+        spheres.action = Marker.ADD  # create or modify
+        spheres.type = Marker.SPHERE_LIST
+        spheres.header.frame_id = "/world"
+        spheres.header.stamp = rospy.Time.now()
+        spheres.ns = label
+        spheres.id = 2 * idx + 1
+
+        spheres.scale.x = 0.02
+        spheres.scale.y = 0.02
+        spheres.scale.z = 0.02
+
+        spheres.pose.position.x = 0
+        spheres.pose.position.y = 0
+        spheres.pose.position.z = 0
+        spheres.pose.orientation.x = 0
+        spheres.pose.orientation.y = 0
+        spheres.pose.orientation.z = 0
+        spheres.pose.orientation.w = 1
+
+        spheres.color.r = r
+        spheres.color.g = g
+        spheres.color.b = b
+        spheres.color.a = a
+
+        for i, (x, y, z) in enumerate(link_bot_points):
+            point = Point()
+            point.x = x
+            point.y = y
+            point.z = z
+
+            spheres.points.append(point)
+            lines.points.append(point)
+
+        gripper1_point = Point()
+        gripper1_point.x = state['gripper1'][0]
+        gripper1_point.y = state['gripper1'][1]
+        gripper1_point.z = state['gripper1'][2]
+
+        gripper2_point = Point()
+        gripper2_point.x = state['gripper2'][0]
+        gripper2_point.y = state['gripper2'][1]
+        gripper2_point.z = state['gripper2'][2]
+
+        spheres.points.append(gripper1_point)
+        spheres.points.append(gripper2_point)
+
+        msg.markers.append(spheres)
+        msg.markers.append(lines)
+        self.state_viz_pub.publish(msg)
+
+    def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):
+        state_action = {}
+        state_action.update(state)
+        state_action.update(action)
+        self.plot_action_rviz_internal(state_action, label=label, **kwargs)
+
+    def plot_action_rviz_internal(self, data: Dict, label: str, **kwargs):
+        r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
+        s1 = np.reshape(data['gripper1'], [3])
+        s2 = np.reshape(data['gripper2'], [3])
+        a1 = np.reshape(data['gripper1_position'], [3])
+        a2 = np.reshape(data['gripper2_position'], [3])
+
+        idx1 = kwargs.get("idx1", 0)
+        idx2 = kwargs.get("idx2", 1)
+
+        msg = MarkerArray()
+        msg.markers.append(rviz_arrow(s1, a1, r, g, b, a, idx=idx1, label=label, **kwargs))
+        msg.markers.append(rviz_arrow(s2, a2, r, g, b, a, idx=idx2, label=label, **kwargs))
+
+        self.action_viz_pub.publish(msg)
+
+
 class DualGripperControlSampler(oc.ControlSampler):
     def __init__(self,
                  control_space: oc.CompoundControlSpace,
@@ -719,119 +838,3 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
 
     def maxSampleCount(self):
         return 100
-
-    def plot_tree_action(self, state: Dict, action: Dict, **kwargs):
-        r = kwargs.pop("r", 0.2)
-        g = kwargs.pop("g", 0.2)
-        b = kwargs.pop("b", 0.8)
-        a = kwargs.pop("a", 1.0)
-        idx1 = self.tree_action_idx * 2 + 0
-        idx2 = self.tree_action_idx * 2 + 1
-        self.plot_action_rviz(state, action, label='tree', color=[r, g, b, a], idx1=idx1, idx2=idx2, **kwargs)
-        self.tree_action_idx += 1
-
-    def plot_executed_action(self, state: Dict, action: Dict, **kwargs):
-        self.plot_action_rviz(state, action, label='executed action', color="#3876EB", idx1=1, idx2=1, **kwargs)
-
-    def plot_state_rviz(self, state: Dict, label: str, **kwargs):
-        r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
-        idx = kwargs.get("idx", 0)
-
-        link_bot_points = np.reshape(state['link_bot'], [-1, 3])
-
-        msg = MarkerArray()
-        lines = Marker()
-        lines.action = Marker.ADD  # create or modify
-        lines.type = Marker.LINE_STRIP
-        lines.header.frame_id = "/world"
-        lines.header.stamp = rospy.Time.now()
-        lines.ns = label
-        lines.id = 2 * idx + 0
-
-        lines.pose.position.x = 0
-        lines.pose.position.y = 0
-        lines.pose.position.z = 0
-        lines.pose.orientation.x = 0
-        lines.pose.orientation.y = 0
-        lines.pose.orientation.z = 0
-        lines.pose.orientation.w = 1
-
-        lines.scale.x = 0.01
-
-        lines.color.r = r
-        lines.color.g = g
-        lines.color.b = b
-        lines.color.a = a
-
-        spheres = Marker()
-        spheres.action = Marker.ADD  # create or modify
-        spheres.type = Marker.SPHERE_LIST
-        spheres.header.frame_id = "/world"
-        spheres.header.stamp = rospy.Time.now()
-        spheres.ns = label
-        spheres.id = 2 * idx + 1
-
-        spheres.scale.x = 0.02
-        spheres.scale.y = 0.02
-        spheres.scale.z = 0.02
-
-        spheres.pose.position.x = 0
-        spheres.pose.position.y = 0
-        spheres.pose.position.z = 0
-        spheres.pose.orientation.x = 0
-        spheres.pose.orientation.y = 0
-        spheres.pose.orientation.z = 0
-        spheres.pose.orientation.w = 1
-
-        spheres.color.r = r
-        spheres.color.g = g
-        spheres.color.b = b
-        spheres.color.a = a
-
-        for i, (x, y, z) in enumerate(link_bot_points):
-            point = Point()
-            point.x = x
-            point.y = y
-            point.z = z
-
-            spheres.points.append(point)
-            lines.points.append(point)
-
-        gripper1_point = Point()
-        gripper1_point.x = state['gripper1'][0]
-        gripper1_point.y = state['gripper1'][1]
-        gripper1_point.z = state['gripper1'][2]
-
-        gripper2_point = Point()
-        gripper2_point.x = state['gripper2'][0]
-        gripper2_point.y = state['gripper2'][1]
-        gripper2_point.z = state['gripper2'][2]
-
-        spheres.points.append(gripper1_point)
-        spheres.points.append(gripper2_point)
-
-        msg.markers.append(spheres)
-        msg.markers.append(lines)
-        self.state_viz_pub.publish(msg)
-
-    def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):
-        state_action = {}
-        state_action.update(state)
-        state_action.update(action)
-        self.plot_action_rviz_internal(state_action, label=label, **kwargs)
-
-    def plot_action_rviz_internal(self, data: Dict, label: str, **kwargs):
-        r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
-        s1 = np.reshape(data['gripper1'], [3])
-        s2 = np.reshape(data['gripper2'], [3])
-        a1 = np.reshape(data['gripper1_position'], [3])
-        a2 = np.reshape(data['gripper2_position'], [3])
-
-        idx1 = kwargs.get("idx1", 0)
-        idx2 = kwargs.get("idx2", 1)
-
-        msg = MarkerArray()
-        msg.markers.append(rviz_arrow(s1, a1, r, g, b, a, idx=idx1, label=label, **kwargs))
-        msg.markers.append(rviz_arrow(s2, a2, r, g, b, a, idx=idx2, label=label, **kwargs))
-
-        self.action_viz_pub.publish(msg)

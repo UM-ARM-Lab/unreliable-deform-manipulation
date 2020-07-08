@@ -16,6 +16,7 @@ from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, extent_to_env_size
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from gazebo_msgs.srv import SetModelStateRequest
 from peter_msgs.msg import LabelStatus
 from peter_msgs.srv import WorldControl
 from moonshine.moonshine_utils import remove_batch, add_batch
