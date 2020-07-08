@@ -82,7 +82,7 @@ class ImageCondDynamics(MyKerasModel):
                                  activation='relu',
                                  kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
                                  bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']))
-            pool = layers.MaxPool3D(2)
+            pool = layers.MaxPool3D(self.hparams['pooling'])
             self.conv_layers.append(conv)
             self.pool_layers.append(pool)
 

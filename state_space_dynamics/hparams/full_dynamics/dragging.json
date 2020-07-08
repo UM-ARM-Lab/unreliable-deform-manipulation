@@ -1,0 +1,60 @@
+{
+  "model_class": "ImageCondDyn",
+  "type": "obs",
+  "state_keys": [
+    "link_bot",
+    "gripper"
+  ],
+  "action_keys": [
+    "gripper_position"
+  ],
+  "sequence_length": 10,
+  "conv_only_fc_layer_sizes": [
+    32,
+    32,
+    5
+  ],
+  "state_action_only_fc_layer_sizes": [
+    200
+  ],
+  "final_fc_layer_sizes": [
+    200,
+    200
+  ],
+  "rope_image_k": 2000,
+  "pooling": [2, 2, 1],
+  "conv_filters": [
+    [
+      26,
+      [
+        3,
+        3,
+        1
+      ]
+    ],
+    [
+      26,
+      [
+        3,
+        3,
+        1
+      ]
+    ],
+    [
+      26,
+      [
+        3,
+        3,
+        1
+      ]
+    ]
+  ],
+  "local_env_h_rows": 50,
+  "local_env_w_cols": 50,
+  "local_env_c_channels": 1,
+  "kernel_reg": 0.05,
+  "bias_reg": 0.05,
+  "combine": "outer_product",
+  "learning_rate": 0.001,
+  "epochs": 50
+}
