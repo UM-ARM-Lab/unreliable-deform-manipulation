@@ -619,7 +619,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         lines.header.frame_id = "/world"
         lines.header.stamp = rospy.Time.now()
         lines.ns = label
-        lines.id = 2 * idx + 0
+        lines.id = 5 * idx + 0
 
         lines.pose.position.x = 0
         lines.pose.position.y = 0
@@ -642,7 +642,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         spheres.header.frame_id = "/world"
         spheres.header.stamp = rospy.Time.now()
         spheres.ns = label
-        spheres.id = 2 * idx + 1
+        spheres.id = 5 * idx + 1
 
         spheres.scale.x = 0.02
         spheres.scale.y = 0.02
@@ -670,20 +670,83 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             spheres.points.append(point)
             lines.points.append(point)
 
-        gripper1_point = Point()
-        gripper1_point.x = state['gripper1'][0]
-        gripper1_point.y = state['gripper1'][1]
-        gripper1_point.z = state['gripper1'][2]
+        gripper1_sphere = Marker()
+        gripper1_sphere.action = Marker.ADD  # create or modify
+        gripper1_sphere.type = Marker.SPHERE
+        gripper1_sphere.header.frame_id = "/world"
+        gripper1_sphere.header.stamp = rospy.Time.now()
+        gripper1_sphere.ns = label
+        gripper1_sphere.id = 5 * idx + 2
 
-        gripper2_point = Point()
-        gripper2_point.x = state['gripper2'][0]
-        gripper2_point.y = state['gripper2'][1]
-        gripper2_point.z = state['gripper2'][2]
+        gripper1_sphere.scale.x = 0.02
+        gripper1_sphere.scale.y = 0.02
+        gripper1_sphere.scale.z = 0.02
 
-        spheres.points.append(gripper1_point)
-        spheres.points.append(gripper2_point)
+        gripper1_sphere.pose.position.x = state['gripper1'][0]
+        gripper1_sphere.pose.position.y = state['gripper1'][1]
+        gripper1_sphere.pose.position.z = state['gripper1'][2]
+        gripper1_sphere.pose.orientation.x = 0
+        gripper1_sphere.pose.orientation.y = 0
+        gripper1_sphere.pose.orientation.z = 0
+        gripper1_sphere.pose.orientation.w = 1
+
+        gripper1_sphere.color.r = 0.2
+        gripper1_sphere.color.g = 0.2
+        gripper1_sphere.color.b = 0.8
+        gripper1_sphere.color.a = a
+
+        gripper2_sphere = Marker()
+        gripper2_sphere.action = Marker.ADD  # create or modify
+        gripper2_sphere.type = Marker.SPHERE
+        gripper2_sphere.header.frame_id = "/world"
+        gripper2_sphere.header.stamp = rospy.Time.now()
+        gripper2_sphere.ns = label
+        gripper2_sphere.id = 5 * idx + 3
+
+        gripper2_sphere.scale.x = 0.02
+        gripper2_sphere.scale.y = 0.02
+        gripper2_sphere.scale.z = 0.02
+
+        gripper2_sphere.pose.position.x = state['gripper2'][0]
+        gripper2_sphere.pose.position.y = state['gripper2'][1]
+        gripper2_sphere.pose.position.z = state['gripper2'][2]
+        gripper2_sphere.pose.orientation.x = 0
+        gripper2_sphere.pose.orientation.y = 0
+        gripper2_sphere.pose.orientation.z = 0
+        gripper2_sphere.pose.orientation.w = 1
+
+        gripper2_sphere.color.r = 0.8
+        gripper2_sphere.color.g = 0.2
+        gripper2_sphere.color.b = 0.2
+        gripper2_sphere.color.a = a
+
+        gripper1_text = Marker()
+        gripper1_text.action = Marker.ADD  # create or modify
+        gripper1_text.type = Marker.TEXT_VIEW_FACING
+        gripper1_text.header.frame_id = "/world"
+        gripper1_text.header.stamp = rospy.Time.now()
+        gripper1_text.ns = label
+        gripper1_text.id = 5 * idx + 4
+        gripper1_text.text = "left gripper"
+        gripper1_text.scale.z = 0.02
+
+        gripper1_text.pose.position.x = state['gripper1'][0]
+        gripper1_text.pose.position.y = state['gripper1'][1]
+        gripper1_text.pose.position.z = state['gripper1'][2] + 0.02
+        gripper1_text.pose.orientation.x = 0
+        gripper1_text.pose.orientation.y = 0
+        gripper1_text.pose.orientation.z = 0
+        gripper1_text.pose.orientation.w = 1
+
+        gripper1_text.color.r = 1.0
+        gripper1_text.color.g = 1.0
+        gripper1_text.color.b = 1.0
+        gripper1_text.color.a = 1.0
 
         msg.markers.append(spheres)
+        msg.markers.append(gripper1_sphere)
+        msg.markers.append(gripper2_sphere)
+        msg.markers.append(gripper1_text)
         msg.markers.append(lines)
         self.state_viz_pub.publish(msg)
 

@@ -70,7 +70,6 @@ class NNClassifier(MyKerasModel):
                                  bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']))
             self.dense_layers.append(dense)
 
-        self.mask = layers.Masking(mask_value=NULL_PAD_VALUE)
         self.lstm = layers.LSTM(self.hparams['rnn_size'], unroll=True, return_sequences=True)
         self.output_layer = layers.Dense(1, activation=None)
         self.sigmoid = layers.Activation("sigmoid")
@@ -206,33 +205,28 @@ class NNClassifier(MyKerasModel):
         conv_output = self.make_traj_voxel_grids_from_input_dict(input_dict, batch_size, time)
 
         states = {k: input_dict[add_predicted(k)] for k in self.state_keys}
-        states = self.scenario.put_state_local_frame(states)
+        states_local = self.scenario.put_state_local_frame(states)
         actions = {k: input_dict[k] for k in self.action_keys}
         all_but_last_states = {k: v[:, :-1] for k, v in states.items()}
         actions = self.scenario.put_action_local_frame(all_but_last_states, actions)
         padded_actions = [tf.pad(v, [[0, 0], [0, 1], [0, 0]]) for v in actions.values()]
-        concat_args = [conv_output] + list(states.values()) + list(padded_actions)
+        concat_args = [conv_output] + list(states_local.values()) + padded_actions
 
         if self.hparams['stdev']:
             stdevs = input_dict[add_predicted('stdev')]
             concat_args.append(stdevs)
 
-        conv_output = tf.concat(concat_args, axis=2)
+        concat_output = tf.concat(concat_args, axis=2)
 
         if self.hparams['batch_norm']:
-            conv_output = self.batch_norm(conv_output, training=training)
+            concat_output = self.batch_norm(concat_output, training=training)
 
-        z = conv_output
+        z = concat_output
         for dense_layer in self.dense_layers:
             z = dense_layer(z)
         out_d = z
 
-        # TODO: remove masking, no longer used I believe
-        # doesn't matter which state_key we use, they're all null padded the same way
-        state_key_for_mask = add_predicted(self.state_keys[0])
-        state_for_mask = input_dict[state_key_for_mask]
-        mask = self.mask(state_for_mask)._keras_mask
-        out_h = self.lstm(out_d, mask=mask)
+        out_h = self.lstm(out_d)
 
         # for every timestep's output, map down to a single scalar, the logit for accept probability
         all_accept_logits = self.output_layer(out_h)
@@ -243,7 +237,6 @@ class NNClassifier(MyKerasModel):
         return {
             'logits': valid_accept_logits,
             'probabilities': valid_accept_probabilities,
-            'mask': mask,
         }
 
 
