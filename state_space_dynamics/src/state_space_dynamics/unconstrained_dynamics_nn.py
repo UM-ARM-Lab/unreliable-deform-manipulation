@@ -34,9 +34,6 @@ class UnconstrainedDynamicsNN(MyKerasModel):
 
         self.dense_layers.append(layers.Dense(self.total_state_dimensions, activation=None))
 
-    def debug_plot(self, s):
-        self.scenario.plot_state_rviz({'link_bot': s['link_bot'][0]})
-
     @tf.function
     def call(self, example, training, mask=None):
         actions = {k: example[k] for k in self.action_keys}
@@ -50,7 +47,6 @@ class UnconstrainedDynamicsNN(MyKerasModel):
             local_action_t = self.scenario.put_action_local_frame(s_t, action_t)
 
             s_t_local = self.scenario.put_state_local_frame(s_t)
-            # self.debug_plot(s_t_local)
             states_and_actions = list(s_t_local.values()) + list(local_action_t.values())
 
             # concat into one big state-action vector

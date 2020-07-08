@@ -25,6 +25,7 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
                                labeling_params: Dict):
     batch_size = 1
     action_sequence_horizon = labeling_params['action_sequence_horizon']
+    action_rng = np.random.RandomState(0)
     for example in tf_dataset.batch(batch_size):
         actual_batch_size = int(example['traj_idx'].shape[0])
         # iterate over every subsequence of exactly length actions_sequence_horizon
@@ -46,12 +47,12 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
                          actual_batch_size,
                          start_t,
                          end_t)
-            out_examples = generate_recovery_actions_examples(fwd_model, classifier_model, data, constants)
+            out_examples = generate_recovery_actions_examples(fwd_model, classifier_model, data, constants, action_rng)
             if out_examples is not None:
                 yield out_examples
 
 
-def generate_recovery_actions_examples(fwd_model, classifier_model, data, constants):
+def generate_recovery_actions_examples(fwd_model, classifier_model, data, constants, action_rng):
     example, actual_actions, actual_states, labeling_params, data_collection_params = data
     actual_batch_size, action_sequence_horizon, classifier_horizon, batch_size, start_t, end_t = constants
     scenario = fwd_model.scenario
@@ -74,8 +75,6 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
     # TODO: because sampling an action is state dependant, this approach is incorrect
     #  we need to sample 1 action, propagate, and repeat. can we somehow do that in a way that allows batching?
     #  that would require rewriting sample_action to support batching?
-    raise NotImplementedError("SEED ME!")
-    rng = np.random.RandomState()
     random_actions_dict = {}
     for b in range(actual_batch_size):
         environment_b = index_dict_of_batched_vectors_tf(environment, b)
@@ -84,10 +83,13 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
             actual_state_b_t = index_dict_of_batched_vectors_tf(actual_state_b, t)
             for s in range(n_action_samples):
                 for t in range(n_actions):
+                    scenario.last_action = None
+                    rospy.logerr("HACK!!!! FIXME!!!!")
                     action = scenario.sample_action(environment=environment_b,
                                                     state=actual_state_b_t,
-                                                    params=data_collection_params,
-                                                    action_rng=rng)
+                                                    data_collection_params=data_collection_params,
+                                                    action_params=data_collection_params,
+                                                    action_rng=action_rng)
                     for k, v in action.items():
                         if k not in random_actions_dict:
                             random_actions_dict[k] = []
@@ -110,8 +112,9 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
                                                                         actions=random_actions_dict,
                                                                         batch_size=batch_sequence_sample,
                                                                         state_sequence_length=classifier_horizon)
-    accept_prob_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)
 
+    # BEGIN DEBUG
+    accept_prob_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)
     for b in range(actual_batch_size):
         environment_b = index_dict_of_batched_vectors_tf(environment, b)
         actual_state_b = index_dict_of_batched_vectors_tf(actual_states, b)
@@ -121,24 +124,37 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
                 time_steps = np.arange(classifier_horizon)
                 scenario.plot_environment_rviz(environment_b)
                 anim = RvizAnimationController(time_steps)
+                ravel_batch_idx = np.ravel_multi_index(dims=[actual_batch_size, action_sequence_horizon, n_action_samples],
+                                                       multi_index=[b, a, s])
+                # ravel_batch_idx = actual_batch_size * b + action_sequence_horizon * a + s
+
+                # TODO: DEBUG ME!!!!!
+
                 scenario.plot_state_rviz(actual_state_b_a, label='start', color='#ffff00aa')
                 while not anim.done:
                     t = anim.t()
-                    ravel_batch_idx = actual_batch_size * b + action_sequence_horizon * a + n_action_samples * s
                     pred_b_a_s = index_dict_of_batched_vectors_tf(predictions, ravel_batch_idx)
                     action_b_a_s = index_dict_of_batched_vectors_tf(random_actions_dict, ravel_batch_idx)
                     pred_t = remove_batch(scenario.index_state_time(add_batch(pred_b_a_s), t))
-                    action_t = remove_batch(scenario.index_action_time(add_batch(action_b_a_s), t))
                     scenario.plot_state_rviz(pred_t, label='predicted', color='#00ffffaa')
-                    scenario.plot_action_rviz(pred_t, action_t)
+                    if t < anim.max_t:
+                        action_t = remove_batch(scenario.index_action_time(add_batch(action_b_a_s), t))
+                        scenario.plot_action_rviz(pred_t, action_t)
+                    else:
+                        action_t = remove_batch(scenario.index_action_time(add_batch(action_b_a_s), t - 1))
+                        prev_pred_t = remove_batch(scenario.index_state_time(add_batch(pred_b_a_s), t - 1))
+                        scenario.plot_action_rviz(prev_pred_t, action_t)
 
                     if t > 0:
                         accept_prob_t = accept_probabilities[ravel_batch_idx, t - 1].numpy()
-                        accept_prob_msg = Float32()
-                        accept_prob_msg.data = accept_prob_t
-                        accept_prob_pub_.publish(accept_prob_msg)
+                    else:
+                        accept_prob_t = -999
+                    accept_prob_msg = Float32()
+                    accept_prob_msg.data = accept_prob_t
+                    accept_prob_pub_.publish(accept_prob_msg)
 
                     anim.step()
+    # END DEBUG
 
     # reshape to separate batch from sampled actions
     accept_probabilities = tf.reshape(accept_probabilities, [batch_size, -1])
