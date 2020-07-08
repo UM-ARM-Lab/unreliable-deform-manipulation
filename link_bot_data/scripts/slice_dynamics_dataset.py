@@ -28,7 +28,7 @@ def main():
 
     args = parser.parse_args()
 
-    rospy.init_node("filter_dataset")
+    rospy.init_node("slice_dataset")
 
     outdir = args.dataset_dir.parent / (args.dataset_dir.name + f'+L{args.desired_sequence_length}')
     record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
