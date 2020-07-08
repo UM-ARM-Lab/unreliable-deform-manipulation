@@ -1,0 +1,59 @@
+{
+  "model_class": "rnn",
+  "scenario": "link_bot",
+  "state_keys": [
+    "link_bot",
+    "gripper1",
+    "gripper2"
+  ],
+  "action_keys": [
+    "gripper1_position",
+    "gripper2_position"
+  ],
+  "rope_image_k": 2000,
+  "rnn_size": 128,
+  "fc_layer_sizes": [
+    128
+  ],
+  "pooling": [
+    2,
+    2,
+    2
+  ],
+  "conv_filters": [
+    [
+      26,
+      [
+        3,
+        3,
+        3
+      ]
+    ],
+    [
+      26,
+      [
+        3,
+        3,
+        3
+      ]
+    ],
+    [
+      26,
+      [
+        3,
+        3,
+        3
+      ]
+    ]
+  ],
+  "loss_type": "weighted_sequence",
+  "kernel_reg": 0.05,
+  "bias_reg": 0.05,
+  "activity_reg": 0.05,
+  "batch_norm": true,
+  "local_env_h_rows": 40,
+  "local_env_w_cols": 40,
+  "local_env_c_channels": 40,
+  "learning_rate": 0.001,
+  "stdev": false
+}
