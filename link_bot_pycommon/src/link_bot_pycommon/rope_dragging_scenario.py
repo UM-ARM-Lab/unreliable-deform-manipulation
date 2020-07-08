@@ -273,21 +273,9 @@ class RopeDraggingScenario(Base3DScenario):
     #         'link_bot': goal_state
     #     }
 
-    # @staticmethod
-    # def local_environment_center_differentiable(state):
-    #     """
-    #     :param state: Dict of batched states
-    #     :return:
-    #     """
-    #     link_bot_state = None
-    #     if 'link_bot' in state:
-    #         link_bot_state = state['link_bot']
-    #     elif add_predicted('link_bot') in state:
-    #         link_bot_state = state[add_predicted('link_bot')]
-    #     b = int(link_bot_state.shape[0])
-    #     link_bot_points = tf.reshape(link_bot_state, [b, -1, 3])[:, :2]
-    #     head_point_where_gripper_is = link_bot_points[:, -1]
-    #     return head_point_where_gripper_is
+    @staticmethod
+    def local_environment_center_differentiable(state):
+        return state['gripper']
 
     @staticmethod
     def __repr__():
@@ -369,6 +357,34 @@ class RopeDraggingScenario(Base3DScenario):
     @ staticmethod
     def integrate_dynamics(s_t: Dict, delta_s_t: Dict):
         return {k: s_t[k] + delta_s_t[k] for k in s_t.keys()}
+
+    @ staticmethod
+    def index_predicted_state_time(state, t):
+        state_t = {}
+        for feature_name in ['gripper', 'link_bot']:
+            state_t[feature_name] = state[add_predicted(feature_name)][:, t]
+        return state_t
+
+    @ staticmethod
+    def index_state_time(state, t):
+        state_t = {}
+        for feature_name in ['gripper', 'link_bot']:
+            state_t[feature_name] = state[feature_name][:, t]
+        return state_t
+
+    @ staticmethod
+    def index_action_time(action, t):
+        action_t = {}
+        for feature_name in ['gripper_position']:
+            if t < action[feature_name].shape[1]:
+                action_t[feature_name] = action[feature_name][:, t]
+            else:
+                action_t[feature_name] = action[feature_name][:, t - 1]
+        return action_t
+
+    @ staticmethod
+    def index_label_time(example: Dict, t: int):
+        return example['is_close'][:, t]
 
     # @staticmethod
     # def get_environment_from_state_dict(start_states: Dict):

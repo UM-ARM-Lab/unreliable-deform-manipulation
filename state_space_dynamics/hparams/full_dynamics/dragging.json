@@ -22,7 +22,11 @@
     200
   ],
   "rope_image_k": 2000,
-  "pooling": [2, 2, 1],
+  "pooling": [
+    2,
+    2,
+    1
+  ],
   "conv_filters": [
     [
       26,

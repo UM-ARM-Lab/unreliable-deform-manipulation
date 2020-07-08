@@ -187,7 +187,6 @@ def metrics_main(args):
     percentages_solved = []
     percentages_timeout = []
     percentages_not_progressing = []
-    percentages_failed = []
     for color, subfolder in zip(colors, all_subfolders):
         metrics_filenames = list(subfolder.glob("*_metrics.json.gz"))
         N = len(metrics_filenames)
@@ -199,7 +198,6 @@ def metrics_main(args):
         solveds = 0
         timeouts = 0
         not_progressings = 0
-        failures = 0
         planning_times = []
         nums_nodes = []
         nums_steps = []
@@ -257,16 +255,11 @@ def metrics_main(args):
             elif datum['planner_status'] == "timeout":
                 timeouts += 1
                 continue
-            elif datum['planner_status'] == "failure":
-                failures += 1
-                continue
             else:
                 raise NotImplementedError()
 
         percentage_solved = solveds / N * 100
         percentages_solved.append(percentage_solved)
-        percentage_failed = failures / N * 100
-        percentages_failed.append(percentage_failed)
         percentage_not_progressing = not_progressings / N * 100
         percentages_not_progressing.append(percentage_not_progressing)
         percentage_timeout = timeouts / N * 100
@@ -344,17 +337,15 @@ def metrics_main(args):
         # Timeout Plot
         plt.figure()
         percentage_ax = plt.gca()
-        failed_bar = percentage_ax.bar(legend_names, percentages_failed)
-        timeout_bar = percentage_ax.bar(legend_names, percentages_timeout, bottom=percentages_failed)
-        failed_plus_timeout = np.add(percentages_failed, percentages_timeout).tolist()
-        not_progressing_bar = percentage_ax.bar(legend_names, percentages_not_progressing, bottom=failed_plus_timeout)
-        failed_plus_timeout_plus_not_p = np.add(failed_plus_timeout, percentages_not_progressing).tolist()
-        solved_bar = percentage_ax.bar(legend_names, percentages_solved, bottom=failed_plus_timeout_plus_not_p)
+        timeout_bar = percentage_ax.bar(legend_names, percentages_timeout)
+        not_progressing_bar = percentage_ax.bar(legend_names, percentages_not_progressing, bottom=percentages_timeout)
+        solved_bar = percentage_ax.bar(legend_names, percentages_solved,
+                                       bottom=np.add(percentages_not_progressing, percentages_timeout))
         percentage_ax.set_ylabel("Percentage")
         percentage_ax.set_xlabel("Methods")
         percentage_ax.set_title("Planner Status Breakdown")
-        percentage_ax.legend((solved_bar, not_progressing_bar,  timeout_bar, failed_bar),
-                             ("Solved", "NotProgressing", "Timeout", "Failed"))
+        percentage_ax.legend((solved_bar, not_progressing_bar,  timeout_bar),
+                             ("Solved", "NotProgressing", "Timeout"))
     print('-' * 90)
 
     for metric_name, table_data in aggregate_metrics.items():

@@ -15,6 +15,11 @@
   "fc_layer_sizes": [
     128
   ],
+  "pooling": [
+    2,
+    2,
+    2
+  ],
   "conv_filters": [
     [
       26,

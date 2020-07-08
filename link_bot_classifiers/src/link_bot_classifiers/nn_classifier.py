@@ -55,7 +55,7 @@ class NNClassifier(MyKerasModel):
                                  activation='relu',
                                  kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
                                  bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']))
-            pool = layers.MaxPool3D(2)
+            pool = layers.MaxPool3D(self.hparams['pooling'])
             self.conv_layers.append(conv)
             self.pool_layers.append(pool)
 
@@ -210,8 +210,8 @@ class NNClassifier(MyKerasModel):
         actions = {k: input_dict[k] for k in self.action_keys}
         all_but_last_states = {k: v[:, :-1] for k, v in states.items()}
         actions = self.scenario.put_action_local_frame(all_but_last_states, actions)
-        padded_actions = {k: tf.pad(v, [[0, 0], [0, 1], [0, 0]]) for k, v in actions.items()}
-        concat_args = [conv_output] + list(states.values()) + list(padded_actions.values())
+        padded_actions = [tf.pad(v, [[0, 0], [0, 1], [0, 0]]) for v in actions.values()]
+        concat_args = [conv_output] + list(states.values()) + list(padded_actions)
 
         if self.hparams['stdev']:
             stdevs = input_dict[add_predicted('stdev')]

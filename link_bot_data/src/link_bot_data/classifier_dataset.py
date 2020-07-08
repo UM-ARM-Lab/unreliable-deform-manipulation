@@ -20,7 +20,7 @@ class ClassifierDataset(BaseDataset):
         self.scenario = get_scenario(self.hparams['scenario'])
 
         self.state_keys = self.hparams['state_keys']
-        self.cache_negative = False
+        self.action_keys = self.hparams['action_keys']
 
         self.feature_names = [
             'classifier_start_t',
@@ -45,7 +45,7 @@ class ClassifierDataset(BaseDataset):
         for k in self.state_keys:
             self.feature_names.append(add_predicted(k))
 
-        for k in self.hparams['action_description'].keys():
+        for k in self.action_keys:
             self.feature_names.append(k)
 
         self.feature_names.append(add_predicted('stdev'))
