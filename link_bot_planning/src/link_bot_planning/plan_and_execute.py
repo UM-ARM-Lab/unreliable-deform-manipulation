@@ -77,6 +77,7 @@ class PlanAndExecute:
     def run(self):
         self.total_plan_idx = 0
         while True:
+            self.randomize_environment()
             for _ in range(self.n_plans_per_env):
                 run_was_valid = self.plan_and_execute_once()
                 if run_was_valid:
@@ -84,7 +85,6 @@ class PlanAndExecute:
                     if self.total_plan_idx >= self.n_total_plans:
                         self.on_complete()
                         return
-            self.randomize_environment()
 
     def plan_and_execute_once(self):
         # get start states
@@ -113,48 +113,37 @@ class PlanAndExecute:
         planner_result = self.plan_with_random_restarts_when_not_progressing(start_state, environment, goal)
         planner_data = ob.PlannerData(self.planner.si)
         self.planner.planner.getPlannerData(planner_data)
-
-        rospy.loginfo(planner_result.planner_status)
+        planning_time = time.time() - t0
+        rospy.loginfo(f"Planning time: {planning_time:5.3f}s, Status: {planner_result.planner_status}")
 
         self.on_after_plan()
 
         if planner_result.planner_status == MyPlannerStatus.Failure:
+            # this run won't count if we return false, the environment will be randomized, then we'll try again
             return False
-        # if planner_result.planner_status == MyPlannerStatus.NotProgressing:
-        #     if self.recovery_actions_model is not None:
-        #         print("performing recovery action!")
-        #         current_state = scenario.get_state()
-        #         recovery_actions = self.recovery_actions_model.sample(environment, current_state)
-        #         self.execute_actions(start_state, recovery_actions)
-        #     return False
-        elif planner_result.planner_status in [MyPlannerStatus.NotProgressing, MyPlannerStatus.Timeout, MyPlannerStatus.Solved]:
-            planning_time = time.time() - t0
-            if self.verbose >= 1:
-                rospy.loginfo(f"Planning time: {planning_time:5.3f}s")
 
-            self.on_plan_complete(planner_result.path, goal, planner_result.actions, environment, planner_data,
-                                  planning_time, planner_result.planner_status)
+        self.on_plan_complete(planner_result.path, goal, planner_result.actions, environment, planner_data,
+                              planning_time, planner_result.planner_status)
 
-            # execute the plan, collecting the states that actually occurred
-            if not self.no_execution:
-                if self.verbose >= 2:
-                    print(Fore.CYAN + "Executing Plan" + Fore.RESET)
+        # execute the plan, collecting the states that actually occurred
+        if not self.no_execution:
+            if self.verbose >= 2:
+                print(Fore.CYAN + "Executing Plan" + Fore.RESET)
 
-                actual_path = self.execute_actions(start_state, planner_result.actions)
-                self.on_execution_complete(planner_result.path,
-                                           planner_result.actions,
-                                           goal,
-                                           actual_path,
-                                           environment,
-                                           planner_data,
-                                           planning_time,
-                                           planner_result.planner_status)
-
-            if self.pause_between_plans:
-                input("Press enter to proceed to next plan...")
-            return True
+            actual_path = self.execute_actions(start_state, planner_result.actions)
         else:
-            raise NotImplementedError()
+            state_t = self.planner.scenario.get_state()
+            actual_path = [state_t]
+        self.on_execution_complete(planner_result.path,
+                                   planner_result.actions,
+                                   goal,
+                                   actual_path,
+                                   environment,
+                                   planner_data,
+                                   planning_time,
+                                   planner_result.planner_status)
+
+        return True
 
     def plan_with_random_restarts_when_not_progressing(self, start_state: Dict, environment: Dict, goal):
         for _ in range(4):
@@ -203,7 +192,7 @@ class PlanAndExecute:
         pass
 
     def randomize_environment(self):
-        self.planner.scenario.randomize_environment(self.env_rng, self.planner_params)
+        self.planner.scenario.randomize_environment(self.env_rng, self.planner_params, self.planner_params)
 
     def execute_actions(self, start_state: Dict, actions: Optional[List[Dict]]) -> List[Dict]:
         plot = self.verbose >= 1

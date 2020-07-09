@@ -28,7 +28,7 @@ from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import listify
 from victor import victor_services
 
-limit_gpu_mem(8)
+limit_gpu_mem(7.5)
 
 
 def dummy_proof_write(data, filename):

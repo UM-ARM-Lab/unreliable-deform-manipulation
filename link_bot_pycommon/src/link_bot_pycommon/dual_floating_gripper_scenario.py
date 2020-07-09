@@ -159,11 +159,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         req.seconds = 10
         self.world_control_srv(req)
 
-    def randomize_environment(self, env_rng, objects_params: Dict):
-        state = self.get_state()
-        pre_randomize_gripper1_position = state['gripper1']
-        pre_randomize_gripper2_position = state['gripper2']
-
+    def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
         # move the objects out of the way
         self.set_object_poses(self.object_reset_poses)
 
@@ -174,6 +170,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         # teleport to home
         self.reset_robot()
+
+        # re-grasp rope
+        grasp = SetBoolRequest()
+        grasp.data = True
+        self.grasping_rope_srv(grasp)
+        self.settle()
 
         # replace the objects in a new random configuration
         random_object_poses = {
@@ -186,18 +188,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         }
         self.set_object_poses(random_object_poses)
 
-        # re-grasp rope
-        grasp = SetBoolRequest()
-        grasp.data = True
-        self.grasping_rope_srv(grasp)
-        self.settle()
-
-        # try to move back, but add some noise so we don't get immediately stuck again
-        noise1 = env_rng.randn(3) * 0.1
-        noise2 = env_rng.randn(3) * 0.1
+        extent = np.array(data_collection_params['extent']).reshape(3, 2)
+        gripper1_position = env_rng.uniform(extent[:, 0], extent[:, 1])
+        gripper2_position = env_rng.uniform(extent[:, 0], extent[:, 1])
         return_action = {
-            'gripper1_position': pre_randomize_gripper1_position + noise1,
-            'gripper2_position': pre_randomize_gripper2_position + noise2,
+            'gripper1_position': gripper1_position,
+            'gripper2_position': gripper2_position
         }
         self.execute_action(return_action)
         self.settle()

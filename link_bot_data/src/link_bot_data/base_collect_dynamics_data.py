@@ -112,7 +112,7 @@ def generate_trajs(service_provider,
     for traj_idx in range(args.trajs):
         # Randomize the environment
         if not params['no_objects'] and traj_idx % params["randomize_environment_every_n_trajectories"] == 0:
-            scenario.randomize_environment(env_rng, params)
+            scenario.randomize_environment(env_rng, objects_params=params, data_collection_params=params)
 
         # Generate a new trajectory
         example = collect_trajectory(scenario=scenario,

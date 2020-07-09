@@ -77,12 +77,6 @@ def metrics_main(args):
     print('-' * 90)
     if not args.no_plot:
         plt.figure()
-        execution_success_ax = plt.gca()
-        execution_success_ax.set_xlabel("Success Threshold, Task Error")
-        execution_success_ax.set_ylabel("Success Rate")
-        execution_success_ax.set_ylim([-0.1, 100.5])
-
-        plt.figure()
         planning_success_ax = plt.gca()
         planning_success_ax.set_xlabel("Success Threshold, Task Error")
         planning_success_ax.set_ylabel("Success Rate")
@@ -97,6 +91,12 @@ def metrics_main(args):
         planning_error_ax = plt.gca()
         planning_error_ax.set_xlabel("Task Error")
         planning_error_ax.set_ylabel("Density")
+
+        plt.figure()
+        execution_success_ax = plt.gca()
+        execution_success_ax.set_xlabel("Success Threshold, Task Error")
+        execution_success_ax.set_ylabel("Success Rate")
+        execution_success_ax.set_ylim([-0.1, 100.5])
 
     all_subfolders = get_all_subfolders(args)
 
