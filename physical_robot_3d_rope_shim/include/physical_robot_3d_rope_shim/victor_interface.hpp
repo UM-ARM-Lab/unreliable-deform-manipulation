@@ -18,8 +18,6 @@
 #include <mutex>
 #include <string>
 
-#include "victor_3d_rope_shim/Listener.hpp"
-#include "victor_3d_rope_shim/Scene.h"
 #include "victor_3d_rope_shim/VictorManipulator.h"
 
 class VictorInterface
@@ -56,25 +54,19 @@ public:
 
   std::unique_ptr<robot_model_loader::RobotModelLoader> model_loader_;
   robot_model::RobotModelPtr robot_model_;
-  std::shared_ptr<Scene> scene_;
   std::shared_ptr<VictorManipulator> left_arm_;
   std::shared_ptr<VictorManipulator> right_arm_;
   ros::Publisher talker_;
-
-  std::mutex planning_scene_mtx_;
-  planning_scene::PlanningScenePtr planning_scene_;
-  ros::Publisher planning_scene_publisher_;
 
   std::shared_ptr<Listener<sensor_msgs::JointState>> joint_states_listener_;
   robot_state::RobotState home_state_;
   std::pair<Pose, Pose> home_state_tool_poses_world_frame_;
   std::unique_ptr<TrajectoryClient> trajectory_client_;
-  ros::ServiceClient get_planning_scene_client_;
   ros::Duration const traj_goal_time_tolerance_;
   ros::ServiceClient obstacles_client_;
   ros::ServiceClient set_grasping_rope_client_;
   ros::ServiceClient world_control_client_;
-  ros::ServiceServer update_planning_scene_server_;
+
   double const translation_step_size_;
 
   VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer);
@@ -94,9 +86,6 @@ public:
   void gotoHome();
   bool moveInRobotFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions);
   bool moveInWorldFrame(std::pair<Eigen::Translation3d, Eigen::Translation3d> const& target_gripper_positions);
-
-  bool UpdatePlanningSceneCallback(std_srvs::EmptyRequest& req, std_srvs::EmptyResponse& res);
-  void updatePlanningScene();
 };
 
 #endif

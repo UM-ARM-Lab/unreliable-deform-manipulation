@@ -1,4 +1,4 @@
-#include "victor_3d_rope_shim/victor_shim.hpp"
+#include "physical_robot_3d_rope_shim/dual_gripper_shim.hpp"
 
 #include <memory>
 #include <vector>
@@ -11,7 +11,7 @@ std::pair<Eigen::Translation3d, Eigen::Translation3d> toGripperPositions(geometr
   return { Eigen::Translation3d(g1.x, g1.y, g1.z), Eigen::Translation3d(g2.x, g2.y, g2.z) };
 }
 
-VictorShim::VictorShim(ros::NodeHandle nh, ros::NodeHandle ph)
+DualGripperShim::DualGripperShim(ros::NodeHandle nh, ros::NodeHandle ph)
   : nh_(nh)
   , ph_(ph)
 {
@@ -22,13 +22,13 @@ VictorShim::VictorShim(ros::NodeHandle nh, ros::NodeHandle ph)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void VictorShim::enableServices()
+void DualGripperShim::enableServices()
 {
-  execute_traj_srv_ = nh_.advertiseService("execute_dual_gripper_action", &VictorShim::executeTrajectory, this);
+  execute_traj_srv_ = nh_.advertiseService("execute_dual_gripper_action", &DualGripperShim::executeTrajectory, this);
   ROS_INFO("Ready for commands");
 }
 
-bool VictorShim::executeTrajectory(pm::DualGripperTrajectory::Request& req, pm::DualGripperTrajectory::Response& res)
+bool DualGripperShim::executeTrajectory(pm::DualGripperTrajectory::Request& req, pm::DualGripperTrajectory::Response& res)
 {
   if (req.gripper1_points.size() != req.gripper2_points.size())
   {

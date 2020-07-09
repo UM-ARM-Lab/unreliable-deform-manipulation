@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>victor_3d_rope_shim</name>
+  <name>physical_robot_3d_rope_shim</name>
   <version>0.0.0</version>
-  <description>Files for shim between link_bot execution code and Victor</description>
+  <description>Files for shim between link_bot execution code and Victor or Val</description>
   <maintainer email="pmitrano@umich.edu">Peter Mitrano</maintainer>
   <license>BSD</license>
 
@@ -10,7 +10,6 @@
 
   <depend>arc_utilities</depend>
   <depend>moveit_ros_planning</depend>
-  <depend>pcl_ros</depend>
   <depend>peter_msgs</depend>
   <depend>roscpp</depend>
   <depend>tf2_ros</depend>
