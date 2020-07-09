@@ -10,7 +10,9 @@ import rospy
 import state_space_dynamics
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from link_bot_pycommon.pycommon import paths_to_json
+from moonshine.moonshine_utils import add_batch, remove_batch
 from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
@@ -107,11 +109,51 @@ def eval_main(args, seed: int):
             all_errors = tf.concat([all_errors, errors_for_batch], axis=0)
         else:
             all_errors = errors_for_batch
-    print(f"50th percentile {np.percentile(all_errors.numpy(), 50)}")
     print(f"90th percentile {np.percentile(all_errors.numpy(), 90)}")
     print(f"95th percentile {np.percentile(all_errors.numpy(), 95)}")
     print(f"99th percentile {np.percentile(all_errors.numpy(), 99)}")
     print(f"max {np.max(all_errors.numpy())}")
+
+
+def viz_main(args, seed: int):
+    test_dataset = DynamicsDataset(args.dataset_dirs)
+
+    trials_directory = pathlib.Path('trials').absolute()
+    trial_path = args.checkpoint.parent.absolute()
+    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path,
+                                                    trials_directory=trials_directory)
+    model = state_space_dynamics.get_model(params['model_class'])
+    net = model(hparams=params, batch_size=1, scenario=test_dataset.scenario)
+
+    runner = ModelRunner(model=net,
+                         training=False,
+                         restore_from_name=args.checkpoint.name,
+                         batch_metadata=test_dataset.batch_metadata,
+                         trial_path=trial_path,
+                         params=params)
+
+    test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
+    test_tf_dataset = batch_tf_dataset(test_tf_dataset, 1, drop_remainder=True)
+
+    for i, batch in enumerate(test_tf_dataset):
+        if i < 100:
+            continue
+        print(i)
+        batch.update(test_dataset.batch_metadata)
+        predictions = runner.model(batch, training=False)
+
+        test_dataset.scenario.plot_environment_rviz(remove_batch(batch))
+        anim = RvizAnimationController(np.arange(test_dataset.sequence_length))
+        while not anim.done:
+            t = anim.t()
+            actual_t = remove_batch(test_dataset.scenario.index_state_time(batch, t))
+            action_t = remove_batch(test_dataset.scenario.index_action_time(batch, t))
+            test_dataset.scenario.plot_state_rviz(actual_t, label='actual', color='red')
+            test_dataset.scenario.plot_action_rviz(actual_t, action_t, color='gray')
+            prediction_t = remove_batch(test_dataset.scenario.index_state_time(predictions, t))
+            test_dataset.scenario.plot_state_rviz(prediction_t, label='predicted', color='blue')
+
+            anim.step()
 
 
 def main():
@@ -141,10 +183,17 @@ def main():
     eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
-    eval_parser.add_argument('--batch-size', type=int, default=16)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.add_argument('--seed', type=int, default=None)
     eval_parser.set_defaults(func=eval_main)
+
+    viz_parser = subparsers.add_parser('viz')
+    viz_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
+    viz_parser.add_argument('checkpoint', type=pathlib.Path)
+    viz_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
+    viz_parser.add_argument('--verbose', '-v', action='count', default=0)
+    viz_parser.add_argument('--seed', type=int, default=None)
+    viz_parser.set_defaults(func=viz_main)
 
     args = parser.parse_args()
 

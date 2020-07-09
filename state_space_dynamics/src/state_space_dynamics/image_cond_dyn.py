@@ -104,7 +104,7 @@ class ImageCondDynamics(MyKerasModel):
     def calculate_metrics(self, dataset_element, outputs):
         return self.scenario.dynamics_metrics_function(dataset_element, outputs)
 
-    @tf.function
+    # @tf.function
     def call(self, example, training, mask=None):
         batch_size = example['batch_size']
         time = example['sequence_length']
