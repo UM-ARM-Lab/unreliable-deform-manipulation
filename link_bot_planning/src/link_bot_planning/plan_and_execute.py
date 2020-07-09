@@ -165,6 +165,7 @@ class PlanAndExecute:
                 break
             if planner_result.planner_status == MyPlannerStatus.Timeout:
                 break
+        print(planner_result)
         return planner_result
 
     def on_plan_complete(self,

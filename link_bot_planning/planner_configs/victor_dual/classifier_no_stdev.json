@@ -38,7 +38,7 @@
     "dy_trials/no_victor_longer_6/best_checkpoint",
     "dy_trials/no_victor_longer_7/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/victor_dual_obs_6_h2/July_08_12-22-44_36e7a60225/best_checkpoint",
+  "classifier_model_dir": "cl_trials/dual_6_h2_no_stdev/July_08_16-51-00_83b7b0bb54/best_checkpoint",
   "accept_threshold": 0.5,
   "goal_threshold": 0.05,
   "fixed_goal": null,

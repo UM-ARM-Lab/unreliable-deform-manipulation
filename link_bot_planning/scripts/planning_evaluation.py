@@ -38,7 +38,6 @@ def dummy_proof_write(data, filename):
             with gzip.open(filename, 'wb') as data_file:
                 data_str = json.dumps(data)
                 data_file.write(data_str.encode("utf-8"))
-            print(f"done saving. took {perf_counter() - t0:.3f}s")
             return
         except KeyboardInterrupt:
             pass

@@ -94,7 +94,8 @@ class MyPlanner:
         motions_valid = final_state['num_diverged'] < self.classifier_model.horizon - 1  # yes, minus 1
         motions_valid = bool(np.squeeze(motions_valid))
         if not motions_valid:
-            self.scenario.plot_rejected_state(final_state)
+            if self.verbose >= 2:
+                self.scenario.plot_rejected_state(final_state)
 
         # Do some bookkeeping to figure out how the planner is progressing
         distance_from_start = self.scenario.distance(final_state, self.start_state)
