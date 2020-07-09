@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 from time import sleep
@@ -583,6 +583,36 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         return control_space
 
+    def plot_goal(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
+        goal_marker_msg = MarkerArray()
+        midpoint_marker = Marker()
+        midpoint_marker.scale.x = goal_threshold * 2
+        midpoint_marker.scale.y = goal_threshold * 2
+        midpoint_marker.scale.z = goal_threshold * 2
+        midpoint_marker.action = Marker.ADD
+        midpoint_marker.type = Marker.SPHERE
+        midpoint_marker.header.frame_id = "/world"
+        midpoint_marker.header.stamp = rospy.Time.now()
+        midpoint_marker.ns = 'goal'
+        midpoint_marker.id = 0
+        if actually_at_goal:
+            midpoint_marker.color.r = 0.4
+            midpoint_marker.color.g = 0.8
+            midpoint_marker.color.b = 0.4
+            midpoint_marker.color.a = 0.8
+        else:
+            midpoint_marker.color.r = 0.5
+            midpoint_marker.color.g = 0.3
+            midpoint_marker.color.b = 0.8
+            midpoint_marker.color.a = 0.8
+        midpoint_marker.pose.position.x = goal['midpoint'][0]
+        midpoint_marker.pose.position.y = goal['midpoint'][1]
+        midpoint_marker.pose.position.z = goal['midpoint'][2]
+        midpoint_marker.pose.orientation.w = 1
+
+        goal_marker_msg.markers.append(midpoint_marker)
+        self.state_viz_pub.publish(goal_marker_msg)
+
     @staticmethod
     def dynamics_loss_function(dataset_element, predictions):
         return dynamics_loss_function(dataset_element, predictions)
@@ -855,7 +885,6 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
         self.setThreshold(threshold)
         self.goal = goal
         self.scenario = scenario
-        self.rope_link_length = 0.04
         self.rng = rng
         self.plot = plot
 

@@ -77,7 +77,6 @@ class PlanAndExecute:
     def run(self):
         self.total_plan_idx = 0
         while True:
-            self.randomize_environment()
             for _ in range(self.n_plans_per_env):
                 run_was_valid = self.plan_and_execute_once()
                 if run_was_valid:
@@ -85,6 +84,7 @@ class PlanAndExecute:
                     if self.total_plan_idx >= self.n_total_plans:
                         self.on_complete()
                         return
+            self.randomize_environment()
 
     def plan_and_execute_once(self):
         # get start states

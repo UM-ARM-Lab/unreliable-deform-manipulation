@@ -4,15 +4,18 @@ import numpy as np
 import ros_numpy
 import tensorflow as tf
 from matplotlib import colors
+import ompl.base as ob
+import ompl.control as oc
 
 import rospy
 from geometry_msgs.msg import Pose, Point
 from link_bot_data.visualization import rviz_arrow
 from link_bot_data.link_bot_dataset_utils import add_predicted
+from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_data.visualization import plot_arrow, update_arrow
 from link_bot_pycommon.ros_pycommon import make_movable_object_services
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
+from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, point_to_idx_3d_in_env
 from link_bot_pycommon.params import CollectDynamicsParams
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
@@ -234,9 +237,9 @@ class RopeDraggingScenario(Base3DScenario):
         :param goal: Assumed to be a point in 3D
         :return:
         """
-        link_bot_points = np.reshape(state['link_bot'], [-1, 3])[:, :2]
+        link_bot_points = np.reshape(state['link_bot'], [-1, 3])
         tail_point = link_bot_points[0]
-        distance = np.linalg.norm(tail_point - goal)
+        distance = np.linalg.norm(tail_point - goal['tail'])
         return distance
 
     @staticmethod
@@ -262,16 +265,24 @@ class RopeDraggingScenario(Base3DScenario):
         tail_point2 = link_bot_points2[0]
         return tf.linalg.norm(tail_point1 - tail_point2)
 
-    # @staticmethod
-    # def sample_goal(state, goal):
-    #     link_bot_state = state['link_bot']
-    #     goal_points = np.reshape(link_bot_state, [-1, 3])
-    #     goal_points -= goal_points[0]
-    #     goal_points += goal
-    #     goal_state = goal_points.flatten()
-    #     return {
-    #         'link_bot': goal_state
-    #     }
+    @staticmethod
+    def state_to_points_for_cc(state: Dict):
+        return state['link_bot'].reshape(-1, 3)
+
+    @staticmethod
+    def sample_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
+        env_inflated = inflate_tf_3d(env=environment['env'],
+                                     radius_m=planner_params['goal_threshold'], res=environment['res'])
+        goal_extent = planner_params['goal_extent']
+
+        while True:
+            extent = np.array(goal_extent).reshape(3, 2)
+            p = rng.uniform(extent[:, 0], extent[:, 1])
+            goal = {'tail': p}
+            row, col, channel = point_to_idx_3d_in_env(p[0], p[1], p[2], environment)
+            collision = env_inflated[row, col, channel] > 0.5
+            if not collision:
+                return goal
 
     @staticmethod
     def local_environment_center_differentiable(state):
@@ -324,7 +335,7 @@ class RopeDraggingScenario(Base3DScenario):
             'gripper_delta': gripper_delta,
         }
 
-    def randomize_environment(self, env_rng, objects_params: Dict):
+    def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
         self.reset_sim_srv(EmptyRequest())
 
         # set random positions for all the objects
@@ -386,18 +397,286 @@ class RopeDraggingScenario(Base3DScenario):
     def index_label_time(example: Dict, t: int):
         return example['is_close'][:, t]
 
-    # @staticmethod
-    # def get_environment_from_state_dict(start_states: Dict):
-    #     return {}
+    @staticmethod
+    def numpy_to_ompl_state(state_np: Dict, state_out: ob.CompoundState):
+        for i in range(3):
+            state_out[0][i] = np.float64(state_np['gripper'][i])
+        for i in range(RopeDraggingScenario.n_links * 3):
+            state_out[1][i] = np.float64(state_np['link_bot'][i])
+        state_out[2][0] = np.float64(state_np['stdev'][0])
+        state_out[3][0] = np.float64(state_np['num_diverged'][0])
 
-    # @staticmethod
-    # def get_environment_from_example(example: Dict):
-    #     if isinstance(example, tuple):
-    #         example = example[0]
+    @staticmethod
+    def ompl_state_to_numpy(ompl_state: ob.CompoundState):
+        gripper = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
+        rope = []
+        for i in range(RopeDraggingScenario.n_links):
+            rope.append(ompl_state[1][3*i+0])
+            rope.append(ompl_state[1][3*i+1])
+            rope.append(ompl_state[1][3*i+2])
+        rope = np.array(rope)
+        return {
+            'gripper': gripper,
+            'link_bot': rope,
+            'stdev': np.array([ompl_state[2][0]]),
+            'num_diverged': np.array([ompl_state[3][0]]),
+        }
 
-    #     return {
-    #         'env': example['env'],
-    #         'origin': example['origin'],
-    #         'res': example['res'],
-    #         'extent': example['extent'],
-    #     }
+    def ompl_control_to_numpy(self, ompl_state: ob.CompoundState, ompl_control: oc.CompoundControl):
+        state_np = RopeDraggingScenario.ompl_state_to_numpy(ompl_state)
+        current_gripper_position = state_np['gripper']
+
+        gripper_delta_position = np.array([np.cos(ompl_control[0][0]) * ompl_control[0][1],
+                                           np.sin(ompl_control[0][0])*ompl_control[0][1],
+                                           0])
+        target_gripper_position = current_gripper_position + gripper_delta_position
+        return {
+            'gripper_position': target_gripper_position,
+            'timeout': [self.action_params['dt']],
+        }
+
+    def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict, plot: bool):
+        return RopeDraggingGoalRegion(si=si,
+                                      scenario=self,
+                                      rng=rng,
+                                      threshold=params['goal_threshold'],
+                                      goal=goal,
+                                      plot=plot)
+
+    def make_ompl_state_space(self, planner_params, state_sampler_rng: np.random.RandomState, plot: bool):
+        state_space = ob.CompoundStateSpace()
+
+        min_x, max_x, min_y, max_y, min_z, max_z = planner_params['extent']
+
+        gripper_subspace = ob.RealVectorStateSpace(3)
+        gripper_bounds = ob.RealVectorBounds(3)
+        # these bounds are not used for sampling
+        gripper_bounds.setLow(0, min_x)
+        gripper_bounds.setHigh(0, max_x)
+        gripper_bounds.setLow(1, min_y)
+        gripper_bounds.setHigh(1, max_y)
+        gripper_bounds.setLow(2, min_z)
+        gripper_bounds.setHigh(2, max_z)
+        gripper_subspace.setBounds(gripper_bounds)
+        gripper_subspace.setName("gripper")
+        state_space.addSubspace(gripper_subspace, weight=1)
+
+        rope_subspace = ob.RealVectorStateSpace(RopeDraggingScenario.n_links * 3)
+        rope_bounds = ob.RealVectorBounds(RopeDraggingScenario.n_links * 3)
+        # these bounds are not used for sampling
+        rope_bounds.setLow(-1000)
+        rope_bounds.setHigh(1000)
+        rope_subspace.setBounds(rope_bounds)
+        rope_subspace.setName("rope")
+        state_space.addSubspace(rope_subspace, weight=1)
+
+        # extra subspace component for the variance, which is necessary to pass information from propagate to constraint checker
+        stdev_subspace = ob.RealVectorStateSpace(1)
+        stdev_bounds = ob.RealVectorBounds(1)
+        stdev_bounds.setLow(-1000)
+        stdev_bounds.setHigh(1000)
+        stdev_subspace.setBounds(stdev_bounds)
+        stdev_subspace.setName("stdev")
+        state_space.addSubspace(stdev_subspace, weight=0)
+
+        # extra subspace component for the number of diverged steps
+        num_diverged_subspace = ob.RealVectorStateSpace(1)
+        num_diverged_bounds = ob.RealVectorBounds(1)
+        num_diverged_bounds.setLow(-1000)
+        num_diverged_bounds.setHigh(1000)
+        num_diverged_subspace.setBounds(num_diverged_bounds)
+        num_diverged_subspace.setName("stdev")
+        state_space.addSubspace(num_diverged_subspace, weight=0)
+
+        def _state_sampler_allocator(state_space):
+            return RopeDraggingStateSampler(state_space,
+                                            scenario=self,
+                                            extent=planner_params['extent'],
+                                            rng=state_sampler_rng,
+                                            plot=plot)
+
+        state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(_state_sampler_allocator))
+
+        return state_space
+
+    def make_ompl_control_space(self, state_space, rng: np.random.RandomState, action_params: Dict):
+        control_space = oc.CompoundControlSpace(state_space)
+
+        gripper_control_space = oc.RealVectorControlSpace(state_space, 3)
+        gripper_control_bounds = ob.RealVectorBounds(3)
+        # Direction (in XY plane)
+        gripper_control_bounds.setLow(1, -np.pi)
+        gripper_control_bounds.setHigh(1, np.pi)
+        # Displacement
+        self.action_params = action_params  # FIXME: terrible API
+        max_d = action_params['max_distance_gripper_can_move']
+        gripper_control_bounds.setLow(2, 0)
+        gripper_control_bounds.setHigh(2, max_d)
+        gripper_control_space.setBounds(gripper_control_bounds)
+        control_space.addSubspace(gripper_control_space)
+
+        def _allocator(cs):
+            return RopeDraggingControlSampler(cs, scenario=self, rng=rng, action_params=action_params)
+
+        # I override the sampler here so I can use numpy RNG to make things more deterministic.
+        # ompl does not allow resetting of seeds, which causes problems when evaluating multiple
+        # planning queries in a row.
+        control_space.setControlSamplerAllocator(oc.ControlSamplerAllocator(_allocator))
+
+        return control_space
+
+    def plot_tree_action(self, state: Dict, action: Dict, **kwargs):
+        r = kwargs.pop("r", 0.2)
+        g = kwargs.pop("g", 0.2)
+        b = kwargs.pop("b", 0.8)
+        a = kwargs.pop("a", 1.0)
+        idx1 = self.tree_action_idx * 2 + 0
+        idx2 = self.tree_action_idx * 2 + 1
+        self.plot_action_rviz(state, action, label='tree', color=[r, g, b, a], idx1=idx1, idx2=idx2, **kwargs)
+        self.tree_action_idx += 1
+
+    def plot_executed_action(self, state: Dict, action: Dict, **kwargs):
+        self.plot_action_rviz(state, action, label='executed action', color="#3876EB", idx1=1, idx2=1, **kwargs)
+
+    def plot_goal(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
+        goal_marker_msg = MarkerArray()
+        tail_marker = Marker()
+        tail_marker.scale.x = goal_threshold * 2
+        tail_marker.scale.y = goal_threshold * 2
+        tail_marker.scale.z = goal_threshold * 2
+        tail_marker.action = Marker.ADD
+        tail_marker.type = Marker.SPHERE
+        tail_marker.header.frame_id = "/world"
+        tail_marker.header.stamp = rospy.Time.now()
+        tail_marker.ns = 'goal'
+        tail_marker.id = 0
+        if actually_at_goal:
+            tail_marker.color.r = 0.4
+            tail_marker.color.g = 0.8
+            tail_marker.color.b = 0.4
+            tail_marker.color.a = 0.8
+        else:
+            tail_marker.color.r = 0.5
+            tail_marker.color.g = 0.3
+            tail_marker.color.b = 0.8
+            tail_marker.color.a = 0.8
+        tail_marker.pose.position.x = goal['tail'][0]
+        tail_marker.pose.position.y = goal['tail'][1]
+        tail_marker.pose.position.z = goal['tail'][2]
+        tail_marker.pose.orientation.w = 1
+
+        goal_marker_msg.markers.append(tail_marker)
+        self.state_viz_pub.publish(goal_marker_msg)
+
+
+class RopeDraggingControlSampler(oc.ControlSampler):
+    def __init__(self,
+                 control_space: oc.CompoundControlSpace,
+                 scenario: RopeDraggingScenario,
+                 rng: np.random.RandomState,
+                 action_params: Dict):
+        super().__init__(control_space)
+        self.scenario = scenario
+        self.rng = rng
+        self.control_space = control_space
+        self.action_params = action_params
+
+    def sampleNext(self, control_out, previous_control, state):
+        # Direction
+        yaw = self.rng.uniform(-np.pi, np.pi)
+        # Displacement
+        displacement = self.rng.uniform(0, self.action_params['max_distance_gripper_can_move'])
+
+        control_out[0][0] = yaw
+        control_out[0][1] = displacement
+
+    def sampleStepCount(self, min_steps, max_steps):
+        step_count = self.rng.randint(min_steps, max_steps)
+        return step_count
+
+
+class RopeDraggingStateSampler(ob.RealVectorStateSampler):
+
+    def __init__(self,
+                 state_space,
+                 scenario: RopeDraggingScenario,
+                 extent,
+                 rng: np.random.RandomState,
+                 plot: bool):
+        super().__init__(state_space)
+        self.scenario = scenario
+        self.extent = np.array(extent).reshape(3, 2)
+        self.rng = rng
+        self.plot = plot
+
+    def sampleUniform(self, state_out: ob.CompoundState):
+        # trying to sample a "valid" rope state is difficult, and probably unimportant
+        # because the only role this plays in planning is to cause exploration/expansion
+        # by biasing towards regions of empty space. So here we just pick a random point
+        # and duplicate it, as if all points on the rope were at this point
+        random_point = self.rng.uniform(self.extent[:, 0], self.extent[:, 1])
+        random_point_rope = np.concatenate([random_point]*RopeDraggingScenario.n_links)
+        state_np = {
+            'gripper': random_point,
+            'link_bot': random_point_rope,
+            'num_diverged': np.zeros(1, dtype=np.float64),
+            'stdev': np.zeros(1, dtype=np.float64),
+        }
+
+        self.scenario.numpy_to_ompl_state(state_np, state_out)
+
+        if self.plot:
+            self.scenario.plot_sampled_state(state_np)
+
+
+class RopeDraggingGoalRegion(ob.GoalSampleableRegion):
+
+    def __init__(self,
+                 si: oc.SpaceInformation,
+                 scenario: RopeDraggingScenario,
+                 rng: np.random.RandomState,
+                 threshold: float,
+                 goal: Dict,
+                 plot: bool):
+        super(RopeDraggingGoalRegion, self).__init__(si)
+        self.setThreshold(threshold)
+        self.goal = goal
+        self.scenario = scenario
+        self.rng = rng
+        self.plot = plot
+
+    def distanceGoal(self, state: ob.CompoundState):
+        """
+        Uses the distance between a specific point in a specific subspace and the goal point
+        """
+        state_np = self.scenario.ompl_state_to_numpy(state)
+        distance = self.scenario.distance_to_goal(state_np, self.goal)
+
+        # this ensures the goal must have num_diverged = 0
+        if state_np['num_diverged'] > 0:
+            distance = 1e9
+        return distance
+
+    def sampleGoal(self, state_out: ob.CompoundState):
+        sampler = self.getSpaceInformation().allocStateSampler()
+        # sample a random state via the state space sampler, in hopes that OMPL will clean up the memory...
+        sampler.sampleUniform(state_out)
+
+        # don't bother trying to sample "legit" rope states, because this is only used to bias sampling towards the goal
+        # so just prenteing every point on therope is at the goal should be sufficient
+        rope = np.concatenate([self.goal['tail']]*RopeDraggingScenario.n_links)
+
+        goal_state_np = {
+            'gripper': self.goal['tail'],
+            'link_bot': rope,
+            'num_diverged': np.zeros(1, dtype=np.float64),
+            'stdev': np.zeros(1, dtype=np.float64),
+        }
+
+        self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
+
+        if self.plot:
+            self.scenario.plot_sampled_goal_state(goal_state_np)
+
+    def maxSampleCount(self):
+        return 100

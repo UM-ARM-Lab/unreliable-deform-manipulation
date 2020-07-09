@@ -58,7 +58,7 @@ def main():
 
     plt.figure()
     plt.title("planning times")
-    plt.hist(planning_times, bins=100)
+    plt.hist(planning_times, bins=50)
     plt.xlabel("planning time (s)")
     plt.ylabel("count")
     plt.axvline(timeout, color='r')
@@ -66,7 +66,7 @@ def main():
     for status, times in planning_times_by_status.items():
         plt.figure()
         plt.title(f"planning times [{status}]")
-        plt.hist(times, bins=100)
+        plt.hist(times)
         plt.xlabel("planning time (s)")
         plt.ylabel("count")
         plt.axvline(timeout, color='r')

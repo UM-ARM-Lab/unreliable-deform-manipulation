@@ -1,7 +1,7 @@
 {
   "termination_criteria": {
     "times_called_threshold": 20,
-    "max_distance_from_start_threshold": 0.50,
+    "max_distance_from_start_threshold": 0.40,
     "timeout": 240
   },
   "extent": [
@@ -38,7 +38,7 @@
     "dy_trials/dragging_no_obs_6/best_checkpoint",
     "dy_trials/dragging_no_obs_7/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/cc_baseline/cc",
+  "classifier_model_dir": "cl_trials/rope_dragging_onestep/July_08_12-00-59_36e7a60225/best_checkpoint/",
   "accept_threshold": 0.5,
   "movable_obstacles": {},
   "goal_threshold": 0.05,
@@ -46,11 +46,10 @@
   "real_time_rate": 0.0,
   "table_config": {
     "nickname": [
-      "Collision Checking"
+      "Classifier"
     ],
     "classifier": [
-      "Collision",
-      "Checker"
+      "Learned"
     ],
     "dynamics": [
       "Ensemble",
