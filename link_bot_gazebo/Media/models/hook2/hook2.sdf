@@ -1,5 +1,5 @@
 <sdf version="1.6">
-    <model name="hook1">
+    <model name="hook2">
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link_1">
             <kinematic>true</kinematic>
@@ -22,20 +22,20 @@
                     </box>
                 </geometry>
                     <material>
-                    <ambient>0.2 0.9 0.7 1.0</ambient>
-                    <diffuse>0.2 0.9 0.7 1.0</diffuse>
+                    <ambient>0.9 0.8 0.2 1.0</ambient>
+                    <diffuse>0.9 0.8 0.2 1.0</diffuse>
                     </material>
             </visual>
             <visual name="visual2">
-                <pose>-0.10 0 0.14 0 0 0 0</pose>
+                <pose>0.0 0 0.14 0 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>0.24 0.08 0.02</size>
+                        <size>0.18 0.08 0.02</size>
                     </box>
                 </geometry>
                     <material>
-                    <ambient>0.2 0.9 0.7 1.0</ambient>
-                    <diffuse>0.2 0.9 0.7 1.0</diffuse>
+                    <ambient>0.9 0.8 0.2 1.0</ambient>
+                    <diffuse>0.9 0.8 0.2 1.0</diffuse>
                     </material>
             </visual>
             <collision name="box_collision1">
@@ -60,10 +60,10 @@
                 </surface>
             </collision>
             <collision name="box_collision2">
-                <pose>-0.10 0 0.14 0 0 0 0</pose>
+                <pose>0.0 0 0.14 0 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>0.24 0.08 0.02</size>
+                        <size>0.18 0.08 0.02</size>
                     </box>
                 </geometry>
                 <surface>

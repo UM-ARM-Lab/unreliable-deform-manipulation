@@ -135,7 +135,7 @@ def metrics_main(args):
         with (subfolder / 'metadata.json').open('r') as metadata_file:
             metadata = json.load(metadata_file)
         planner_params = metadata['planner_params']
-        labeling_params = labeling_params_from_planner_params(planner_params)
+        labeling_params = labeling_params_from_planner_params(planner_params, fallback_labeling_params=None)
         goal_threshold = planner_params['goal_threshold']
         scenario = get_scenario(metadata['scenario'])
         table_config = planner_params['table_config']

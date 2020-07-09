@@ -2,7 +2,7 @@
   "termination_criteria": {
     "times_called_threshold": 20,
     "max_distance_from_start_threshold": 0.20,
-    "timeout": 240
+    "timeout": 300
   },
   "extent": [
     0.35,
@@ -29,7 +29,7 @@
     0.6251
   ],
   "fwd_model_dir": [
-    "dy_trials/dual_full_dynamics/July_05_13-40-43_8e5304f4ac/best_checkpoint"
+    "dy_trials/dual_full_dynamics/July_08_16-25-56_cb6fb59301/best_checkpoint"
   ],
   "classifier_model_dir": "cl_trials/none_baseline/none",
   "accept_threshold": 0.5,

@@ -114,8 +114,7 @@ class PlanAndExecute:
         planner_data = ob.PlannerData(self.planner.si)
         self.planner.planner.getPlannerData(planner_data)
 
-        if self.verbose >= 1:
-            rospy.loginfo(planner_result.planner_status)
+        rospy.loginfo(planner_result.planner_status)
 
         self.on_after_plan()
 
@@ -165,7 +164,6 @@ class PlanAndExecute:
                 break
             if planner_result.planner_status == MyPlannerStatus.Timeout:
                 break
-        print(planner_result)
         return planner_result
 
     def on_plan_complete(self,

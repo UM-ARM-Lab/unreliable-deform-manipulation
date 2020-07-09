@@ -54,6 +54,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'box3': (np.zeros(3), np.array([0, 0, 0, 1])),
             'box4': (np.zeros(3), np.array([0, 0, 0, 1])),
             'hook1': (np.zeros(3), np.array([0, 0, 0, 1])),
+            'hook2': (np.zeros(3), np.array([0, 0, 0, 1])),
         }
 
     def reset_robot(self):
@@ -181,6 +182,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'box3': self.random_object_pose(env_rng, objects_params),
             'box4': self.random_object_pose(env_rng, objects_params),
             'hook1': self.random_object_pose(env_rng, objects_params),
+            'hook2': self.random_object_pose(env_rng, objects_params),
         }
         self.set_object_poses(random_object_poses)
 
@@ -191,8 +193,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.settle()
 
         # try to move back, but add some noise so we don't get immediately stuck again
-        noise1 = env_rng.randn(3) * 0.02
-        noise2 = env_rng.randn(3) * 0.02
+        noise1 = env_rng.randn(3) * 0.1
+        noise2 = env_rng.randn(3) * 0.1
         return_action = {
             'gripper1_position': pre_randomize_gripper1_position + noise1,
             'gripper2_position': pre_randomize_gripper2_position + noise2,
