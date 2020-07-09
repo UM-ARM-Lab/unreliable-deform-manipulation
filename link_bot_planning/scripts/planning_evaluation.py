@@ -151,8 +151,8 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'actual_path': actual_path_listified,
             'planning_time': planning_time,
             'plan_to_goal_error': plan_to_goal_error,
-            'execution_to_goal_error': execution_to_goal_error,
-            'plan_to_execution_error': plan_to_execution_error,
+            'execution_to_goal_error': float(execution_to_goal_error),
+            'plan_to_execution_error': float(plan_to_execution_error),
             'tree_json': tree_json,
             'goal': listify(goal),
             'num_nodes': num_nodes
