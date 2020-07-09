@@ -727,12 +727,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper1_text.header.stamp = rospy.Time.now()
         gripper1_text.ns = label
         gripper1_text.id = 5 * idx + 4
-        gripper1_text.text = "left gripper"
-        gripper1_text.scale.z = 0.02
+        gripper1_text.text = "L"
+        gripper1_text.scale.z = 0.015
 
         gripper1_text.pose.position.x = state['gripper1'][0]
         gripper1_text.pose.position.y = state['gripper1'][1]
-        gripper1_text.pose.position.z = state['gripper1'][2] + 0.02
+        gripper1_text.pose.position.z = state['gripper1'][2] + 0.015
         gripper1_text.pose.orientation.x = 0
         gripper1_text.pose.orientation.y = 0
         gripper1_text.pose.orientation.z = 0

@@ -82,8 +82,8 @@ class MyPlanner:
 
         # a Dictionary containing the parts of state which are not predicted/planned for, i.e. the environment
         self.environment = None
-
-        self.min_distance_to_goal = sys.maxsize
+        self.start_state = None
+        self.max_distance_from_start = 0
 
     def is_valid(self, state):
         return self.state_space.satisfiesBounds(state)
@@ -97,8 +97,8 @@ class MyPlanner:
             self.scenario.plot_rejected_state(final_state)
 
         # Do some bookkeeping to figure out how the planner is progressing
-        distance_to_goal = self.scenario.distance_to_goal(final_state, self.goal_region.goal)
-        self.min_distance_to_goal = min(self.min_distance_to_goal, distance_to_goal)
+        distance_from_start = self.scenario.distance(final_state, self.start_state)
+        self.max_distance_from_start = max(self.max_distance_from_start, distance_from_start)
 
         return motions_valid
 
@@ -202,7 +202,6 @@ class MyPlanner:
         :return: controls, states
         """
         self.environment = environment
-        self.min_distance_to_goal = sys.maxsize
         self.goal_region = self.scenario.make_goal_region(self.si,
                                                           rng=self.state_sampler_rng,
                                                           params=self.params,
@@ -212,6 +211,7 @@ class MyPlanner:
         # create start and goal states
         start_state['stdev'] = np.array([0.0])
         start_state['num_diverged'] = np.array([0.0])
+        self.start_state = start_state
         ompl_start_scoped = ob.State(self.state_space)
         self.scenario.numpy_to_ompl_state(start_state, ompl_start_scoped())
 

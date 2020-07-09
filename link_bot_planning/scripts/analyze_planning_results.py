@@ -55,77 +55,6 @@ def make_row(planner_params, metric_data, tablefmt):
     return row
 
 
-def error_viz_main(args):
-    labeling_params = json.load(args.labeling_params.open("r"))
-    all_subfolders = get_all_subfolders(args)
-    for subfolder in all_subfolders:
-        metrics_filename = subfolder / 'metrics.json'
-        metrics = json.load(metrics_filename.open("r"))
-        planner_params = metrics['planner_params']
-        scenario = get_scenario(planner_params['scenario'])
-        table_config = planner_params['table_config']
-        nickname = table_config['nickname']
-        goal_threshold = planner_params['goal_threshold']
-
-        error_metrics = []
-        violations_counts = []
-        final_plan_to_execution_errors = []
-        data = metrics['metrics']
-        num_plans = len(data)
-        for traj_idx, datum in enumerate(data):
-            planned_path = datum['planned_path']
-            actual_path = datum['actual_path']
-            final_planned_state = planned_path[-1]
-            final_actual_state = actual_path[-1]
-            final_plan_to_execution_error = scenario.distance(final_planned_state, final_actual_state)
-
-            # split the planned/actual path into classifier examples
-            inputs = datum['environment']
-            inputs['traj_idx'] = traj_idx
-            planned_path_dict = sequence_of_dicts_to_dict_of_np_arrays(planned_path)
-            actual_path_dict = sequence_of_dicts_to_dict_of_np_arrays(actual_path)
-            examples_generator = generate_classifier_examples_from_batch(inputs=inputs,
-                                                                         outputs=actual_path_dict,
-                                                                         predictions=planned_path_dict,
-                                                                         start_t=0,
-                                                                         labeling_params=labeling_params,
-                                                                         prediction_horizon=len(planned_path))
-
-            # count number of not-close (diverged) time steps
-
-            violations = 0
-            examples = list(examples_generator)
-            for example in examples:
-                label = example['label'].numpy().squeeze()
-                if not label:
-                    # this example violates the MER!
-                    violations += 1
-
-            error_metrics_i = (
-                final_plan_to_execution_error,
-                traj_idx,
-                {
-                    'violations': violations,
-                    'final_error_gt_goal_threshold': final_plan_to_execution_error > goal_threshold,
-                }
-            )
-            violations_counts.append(violations)
-            final_plan_to_execution_errors.append(final_plan_to_execution_error)
-            error_metrics.append(error_metrics_i)
-
-        violations_counts = np.array(violations_counts)
-        final_plan_to_execution_errors = np.array(final_plan_to_execution_errors)
-
-        print(' '.join(nickname))
-        print(f"mean final execution to plan error {np.mean(final_plan_to_execution_errors)}")
-        print(violations_counts)
-        num_plans_with_violations = np.count_nonzero(violations_counts)
-        print(f"{num_plans_with_violations}/{num_plans}")
-        # sorted_errors_with_indices = sorted(error_metrics, reverse=True)
-        # for error, index, other_metrics in sorted_errors_with_indices:
-        #     print(f"{index:3d} {error:.4f} {other_metrics['violations']} {other_metrics['final_error_gt_goal_threshold']}")
-
-
 def metrics_main(args):
     headers = ['']
     aggregate_metrics = {
@@ -387,13 +316,6 @@ def main():
     metrics_subparser.add_argument('--no-plot', action='store_true')
     metrics_subparser.add_argument('--final', action='store_true')
     metrics_subparser.set_defaults(func=metrics_main)
-
-    error_viz_subparser = subparsers.add_parser('error_viz')
-    error_viz_subparser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
-    error_viz_subparser.add_argument('labeling_params', help='labeling params json file', type=pathlib.Path)
-    error_viz_subparser.add_argument('--no-plot', action='store_true')
-    error_viz_subparser.add_argument('--final', action='store_true')
-    error_viz_subparser.set_defaults(func=error_viz_main)
 
     args = parser.parse_args()
 

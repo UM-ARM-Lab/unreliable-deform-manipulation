@@ -77,7 +77,6 @@ class PlanAndExecute:
     def run(self):
         self.total_plan_idx = 0
         while True:
-            self.randomize_environment()
             for _ in range(self.n_plans_per_env):
                 run_was_valid = self.plan_and_execute_once()
                 if run_was_valid:
@@ -85,6 +84,7 @@ class PlanAndExecute:
                     if self.total_plan_idx >= self.n_total_plans:
                         self.on_complete()
                         return
+            self.randomize_environment()
 
     def plan_and_execute_once(self):
         # get start states
@@ -110,7 +110,7 @@ class PlanAndExecute:
         # Planning #
         ############
         t0 = time.time()
-        planner_result = self.planner.plan(start_state, environment, goal)
+        planner_result = self.plan_with_random_restarts_when_not_progressing(start_state, environment, goal)
         planner_data = ob.PlannerData(self.planner.si)
         self.planner.planner.getPlannerData(planner_data)
 
@@ -156,6 +156,16 @@ class PlanAndExecute:
             return True
         else:
             raise NotImplementedError()
+
+    def plan_with_random_restarts_when_not_progressing(self, start_state: Dict, environment: Dict, goal):
+        for _ in range(4):
+            # retry on "Failure" or "Not Progressing"
+            planner_result = self.planner.plan(start_state, environment, goal)
+            if planner_result.planner_status == MyPlannerStatus.Solved:
+                break
+            if planner_result.planner_status == MyPlannerStatus.Timeout:
+                break
+        return planner_result
 
     def on_plan_complete(self,
                          planned_path: List[Dict],

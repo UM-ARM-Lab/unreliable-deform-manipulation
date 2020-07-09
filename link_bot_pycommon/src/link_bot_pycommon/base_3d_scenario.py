@@ -121,8 +121,8 @@ class Base3DScenario(ExperimentScenario):
             c = cm.Oranges(state['num_diverged'][0] / horizon)
         self.plot_state_rviz(state, idx=1, label='current tree state', color=c)
 
-    def plot_tree_state(self, state: Dict):
-        self.plot_state_rviz(state, idx=self.tree_state_idx, label='tree', color='#777777')
+    def plot_tree_state(self, state: Dict, color='#777777'):
+        self.plot_state_rviz(state, idx=self.tree_state_idx, label='tree', color=color)
         self.tree_state_idx += 1
 
     def plot_is_close(self, label_t):
