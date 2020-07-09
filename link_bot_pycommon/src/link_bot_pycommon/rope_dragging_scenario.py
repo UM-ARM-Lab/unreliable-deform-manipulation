@@ -59,7 +59,7 @@ class RopeDraggingScenario(Base3DScenario):
         lines.header.frame_id = "/world"
         lines.header.stamp = rospy.Time.now()
         lines.ns = label
-        lines.id = 2 * idx + 0
+        lines.id = 3 * idx + 0
 
         lines.pose.position.x = 0
         lines.pose.position.y = 0
@@ -77,12 +77,12 @@ class RopeDraggingScenario(Base3DScenario):
         lines.color.a = a
 
         spheres = Marker()
-        spheres.action = Marker.ADD  # create or modify
+        spheres.action = Marker.ADD
         spheres.type = Marker.SPHERE_LIST
         spheres.header.frame_id = "/world"
         spheres.header.stamp = rospy.Time.now()
         spheres.ns = label
-        spheres.id = 2 * idx + 1
+        spheres.id = 3 * idx + 1
 
         spheres.scale.x = 0.02
         spheres.scale.y = 0.02
@@ -117,8 +117,34 @@ class RopeDraggingScenario(Base3DScenario):
 
         spheres.points.append(gripper_point)
 
+        gripper = Marker()
+        gripper.action = Marker.ADD
+        gripper.type = Marker.SPHERE
+        gripper.header.frame_id = "/world"
+        gripper.header.stamp = rospy.Time.now()
+        gripper.ns = label
+        gripper.id = 3 * idx + 2
+
+        gripper.scale.x = 0.02
+        gripper.scale.y = 0.02
+        gripper.scale.z = 0.02
+
+        gripper.pose.position.x = state['gripper'][0]
+        gripper.pose.position.y = state['gripper'][1]
+        gripper.pose.position.z = state['gripper'][2]
+        gripper.pose.orientation.x = 0
+        gripper.pose.orientation.y = 0
+        gripper.pose.orientation.z = 0
+        gripper.pose.orientation.w = 1
+
+        gripper.color.r = 1 - r
+        gripper.color.g = 1 - g
+        gripper.color.b = b
+        gripper.color.a = a
+
         msg.markers.append(spheres)
         msg.markers.append(lines)
+        msg.markers.append(gripper)
         self.state_viz_pub.publish(msg)
 
     def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):
