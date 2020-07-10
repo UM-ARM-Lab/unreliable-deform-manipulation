@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import threading
 from time import sleep
 
 import argparse
@@ -65,12 +66,12 @@ def plot_plan(args, scenario, metrics_for_plan, plan_idx, metadata, fallback_lab
 
     scenario.reset_planning_viz()
     if args.show_tree:
-        for vertex in metrics_for_plan['tree_json']['vertices']:
-            scenario.plot_tree_state(vertex, color='#77777722')
-            sleep(0.01)
-        # for edge in metrics_for_plan['tree_json']['edges']:
-        #     scenario.plot_tree_state(edge['from'])
-        #     scenario.plot_tree_state(edge['to'])
+        def _draw_tree_function(scenario, tree_json):
+            for vertex in tree_json['vertices']:
+                scenario.plot_tree_state(vertex, color='#77777722')
+                sleep(0.001)
+        tree_thread = threading.Thread(target=_draw_tree_function, args=(scenario, metrics_for_plan['tree_json'],))
+        tree_thread.start()
 
     scenario.animate_evaluation_results(environment=environment,
                                         actual_states=actual_path,

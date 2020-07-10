@@ -1,4 +1,4 @@
 {
-  "max_error": 1.5,
+  "max_error": 0.5,
   "n_error_bins": 49
 }

@@ -61,6 +61,7 @@ class MyPlanner:
         self.state_sampler_rng = np.random.RandomState(seed)
         self.control_sampler_rng = np.random.RandomState(seed)
         self.scenario = scenario
+        self.ptc = None
         self.n_total_action = None
         self.goal_region = None
         self.action_params = self.fwd_model.data_collection_params
@@ -83,7 +84,6 @@ class MyPlanner:
         # a Dictionary containing the parts of state which are not predicted/planned for, i.e. the environment
         self.environment = None
         self.start_state = None
-        self.max_distance_from_start = 0
 
     def is_valid(self, state):
         return self.state_space.satisfiesBounds(state)
@@ -99,7 +99,7 @@ class MyPlanner:
 
         # Do some bookkeeping to figure out how the planner is progressing
         distance_from_start = self.scenario.distance(final_state, self.start_state)
-        self.max_distance_from_start = max(self.max_distance_from_start, distance_from_start)
+        self.ptc.max_distance_from_start = max(self.ptc.max_distance_from_start, distance_from_start)
 
         return motions_valid
 
@@ -202,6 +202,7 @@ class MyPlanner:
         :param goal:
         :return: controls, states
         """
+        # very important we reset this!
         self.environment = environment
         self.goal_region = self.scenario.make_goal_region(self.si,
                                                           rng=self.state_sampler_rng,
@@ -226,9 +227,9 @@ class MyPlanner:
         self.ss.setStartState(ompl_start_scoped)
         self.ss.setGoal(self.goal_region)
 
-        ptc = TimeoutOrNotProgressing(self, self.params['termination_criteria'], self.verbose)
-        ob_planner_status = self.ss.solve(ptc)
-        planner_status = interpret_planner_status(ob_planner_status, ptc)
+        self.ptc = TimeoutOrNotProgressing(self, self.params['termination_criteria'], self.verbose)
+        ob_planner_status = self.ss.solve(self.ptc)
+        planner_status = interpret_planner_status(ob_planner_status, self.ptc)
 
         if planner_status == MyPlannerStatus.Solved:
             ompl_path = self.ss.getSolutionPath()
