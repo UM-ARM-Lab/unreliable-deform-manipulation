@@ -20,16 +20,17 @@ def compute_weighted_mean_loss(bce, positives):
     n_positive = tf.math.reduce_sum(positives)
     n_negative = tf.math.reduce_sum(negatives)
     n_total = n_positive + n_negative
-    if tf.equal(n_positive, 0):
-        weight_for_positive = tf.constant(100, dtype=tf.float32)
-    else:
-        weight_for_positive = n_total / 2.0 / n_positive
-    if tf.equal(n_negative, 0):
-        weight_for_negative = tf.constant(100, dtype=tf.float32)
+    if tf.logical_or(tf.equal(n_positive, 0), tf.equal(n_negative, 0)):
+        weight_for_negative = tf.constant(1, dtype=tf.float32)
+        weight_for_positive = tf.constant(1, dtype=tf.float32)
     else:
         weight_for_negative = n_total / 2.0 / n_negative
+        weight_for_positive = n_total / 2.0 / n_positive
     weighted_bce = tf.math.add(tf.math.multiply(bce, positives * weight_for_positive),
                                tf.math.multiply(bce, negatives * weight_for_negative))
+    if tf.equal(n_negative, 0):
+        weight_for_negative = tf.constant(1, dtype=tf.float32)
+        weight_for_positive = tf.constant(1, dtype=tf.float32)
     # mean over batch & time
     total_bce = tf.reduce_mean(weighted_bce)
     return total_bce

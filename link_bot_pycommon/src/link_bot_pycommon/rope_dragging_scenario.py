@@ -297,8 +297,9 @@ class RopeDraggingScenario(Base3DScenario):
 
     @staticmethod
     def sample_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
+        # We want goals to be very much in free space otherwise they're often not reachable
         env_inflated = inflate_tf_3d(env=environment['env'],
-                                     radius_m=planner_params['goal_threshold'], res=environment['res'])
+                                     radius_m=3 * planner_params['goal_threshold'], res=environment['res'])
         goal_extent = planner_params['goal_extent']
 
         while True:
@@ -397,17 +398,17 @@ class RopeDraggingScenario(Base3DScenario):
 
     @ staticmethod
     def index_predicted_state_time(state, t):
-        state_t = {}
-        for feature_name in ['gripper', 'link_bot']:
-            state_t[feature_name] = state[add_predicted(feature_name)][:, t]
-        return state_t
+        return {
+            'gripper': state[add_predicted('gripper')][:, t],
+            'link_bot': state[add_predicted('link_bot')][:, t],
+        }
 
     @ staticmethod
     def index_state_time(state, t):
-        state_t = {}
-        for feature_name in ['gripper', 'link_bot']:
-            state_t[feature_name] = state[feature_name][:, t]
-        return state_t
+        return {
+            'gripper': state['gripper'][:, t],
+            'link_bot': state['link_bot'][:, t],
+        }
 
     @ staticmethod
     def index_action_time(action, t):
@@ -422,6 +423,15 @@ class RopeDraggingScenario(Base3DScenario):
     @ staticmethod
     def index_label_time(example: Dict, t: int):
         return example['is_close'][:, t]
+
+    @staticmethod
+    def compute_label(actual: Dict, predicted: Dict, labeling_params: Dict):
+        actual_rope = np.array(actual["link_bot"])
+        predicted_rope = np.array(predicted["link_bot"])
+        model_error = np.linalg.norm(actual_rope - predicted_rope)
+        threshold = labeling_params['threshold']
+        is_close = model_error < threshold
+        return is_close
 
     @staticmethod
     def numpy_to_ompl_state(state_np: Dict, state_out: ob.CompoundState):

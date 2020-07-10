@@ -233,6 +233,11 @@ class MyPlanner:
         if planner_status == MyPlannerStatus.Solved:
             ompl_path = self.ss.getSolutionPath()
             actions, planned_path = self.convert_path(ompl_path)
+        elif planner_status == MyPlannerStatus.Timeout:
+            # Use the approximate solution, since it's usually pretty darn close, and sometimes
+            # our goals are impossible to reach so this is important to have
+            ompl_path = self.ss.getSolutionPath()
+            actions, planned_path = self.convert_path(ompl_path)
         else:
             actions = []
             planned_path = [start_state]

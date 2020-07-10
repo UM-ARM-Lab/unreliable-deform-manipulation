@@ -34,6 +34,7 @@ class NNClassifier(MyKerasModel):
         self.scenario = scenario
 
         self.debug_pub = rospy.Publisher('classifier_debug', OccupancyStamped, queue_size=10, latch=True)
+        self.raster_debug_pub = rospy.Publisher('classifier_raster_debug', OccupancyStamped, queue_size=10, latch=True)
         self.local_env_bbox_pub = rospy.Publisher('local_env_bbox', BoundingBox, queue_size=10, latch=True)
 
         self.classifier_dataset_hparams = self.hparams['classifier_dataset_hparams']
@@ -113,7 +114,7 @@ class NNClassifier(MyKerasModel):
 
         conv_outputs_array = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
         for t in tf.range(time):
-            state_t = self.scenario.index_predicted_state_time(input_dict, t)
+            state_t = {k: input_dict[add_predicted(k)][:, t] for k in self.state_keys}
 
             local_env_center_t = self.scenario.local_environment_center_differentiable(state_t)
             # by converting too and from the frame of the full environment, we ensure the grids are aligned
@@ -151,15 +152,21 @@ class NNClassifier(MyKerasModel):
             local_voxel_grid_t.set_shape([None, None, None, None, len(self.state_keys) + 1])
 
             # # DEBUG
+            # raster_dict = {
+            #     'env': tf.clip_by_value(tf.reduce_max(local_voxel_grid_t[b][:, :, :, 1:], axis=-1), 0, 1),
+            #     'origin': local_env_origin_t[b].numpy(),
+            #     'res': input_dict['res'][b].numpy(),
+            # }
+            # raster_msg = environment_to_occupancy_msg(raster_dict, frame='local_occupancy')
             # local_env_dict = {
-            #     'env': tf.clip_by_value(tf.reduce_sum(local_voxel_grid_t[b], axis=-1), 0, 1),
-            #     # 'env': local_voxel_grid_t[b],
+            #     'env': local_env_t[b],
             #     'origin': local_env_origin_t[b].numpy(),
             #     'res': input_dict['res'][b].numpy(),
             # }
             # msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
             # link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
             # self.debug_pub.publish(msg)
+            # self.raster_debug_pub.publish(raster_msg)
             # self.scenario.plot_state_rviz(numpify(index_dict_of_batched_vectors_tf(state_t, b)), label='actual')
             # local_extent = compute_extent_3d(*local_voxel_grid_t[b].shape[:3], resolution=input_dict['res'][b].numpy())
             # depth, width, height = extent_to_env_size(local_extent)
