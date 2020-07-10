@@ -2,7 +2,7 @@
 // Created by arprice on 9/13/18.
 //
 
-#include "victor_3d_rope_shim/VictorManipulator.h"
+#include "physical_robot_3d_rope_shim/victor_manipulator.hpp"
 #include <victor_hardware_interface/SetControlMode.h>
 #include <arc_utilities/ros_helpers.hpp>
 

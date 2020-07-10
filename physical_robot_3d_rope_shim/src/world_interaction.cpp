@@ -1,5 +1,7 @@
 #include <ros/ros.h>
-#include "victor_3d_rope_shim/victor_shim.hpp"
+
+#include "physical_robot_3d_rope_shim/dual_gripper_shim.hpp"
+#include "physical_robot_3d_rope_shim/val_interface.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -11,18 +13,18 @@ int main(int argc, char* argv[])
   ros::AsyncSpinner spinner(1);
   spinner.start();
 
-  VictorShim vs(nh, ph);
-  vs.victor_->updatePlanningScene();
-  // vs.victor_->test();
-  vs.victor_->gotoHome();
-  vs.enableServices();
+  auto shim = DualGripperShim(nh, ph);
+  shim.test();
+  // shim.gotoHome();
+  // shim.enableServices();
+  // shim.scene_->updatePlanningScene();
 
-  ros::Rate rate(1);
-  while (ros::ok())
-  {
-    vs.victor_->updatePlanningScene();
-    rate.sleep();
-  }
+  // ros::Rate rate(1);
+  // while (ros::ok())
+  // {
+  //   shim.scene_->updatePlanningScene();
+  //   rate.sleep();
+  // }
 
   return EXIT_SUCCESS;
 }

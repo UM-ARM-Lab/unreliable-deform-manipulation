@@ -62,13 +62,13 @@ template<typename Output>
 Output ConvertTo(Eigen::Matrix3d const& rot);
 
 template<>
-Eigen::Quaterniond ConvertTo<Eigen::Quaterniond>(geometry_msgs::Quaternion const& quat)
+inline Eigen::Quaterniond ConvertTo<Eigen::Quaterniond>(geometry_msgs::Quaternion const& quat)
 {
     return Eigen::Quaterniond(quat.w, quat.x, quat.y, quat.z);
 }
 
 template<>
-geometry_msgs::Quaternion ConvertTo<geometry_msgs::Quaternion>(Eigen::Quaterniond const& quat)
+inline geometry_msgs::Quaternion ConvertTo<geometry_msgs::Quaternion>(Eigen::Quaterniond const& quat)
 {
     geometry_msgs::Quaternion geo_quat;
     geo_quat.x = quat.x();
@@ -79,7 +79,7 @@ geometry_msgs::Quaternion ConvertTo<geometry_msgs::Quaternion>(Eigen::Quaternion
 }
 
 template<>
-geometry_msgs::Quaternion ConvertTo<geometry_msgs::Quaternion>(Eigen::Matrix3d const& rot)
+inline geometry_msgs::Quaternion ConvertTo<geometry_msgs::Quaternion>(Eigen::Matrix3d const& rot)
 {
     return ConvertTo<geometry_msgs::Quaternion>(Eigen::Quaterniond(rot));
 }

@@ -1,26 +1,49 @@
 #include "physical_robot_3d_rope_shim/dual_gripper_shim.hpp"
+#include "physical_robot_3d_rope_shim/val_interface.hpp"
 
-#include <memory>
-#include <vector>
+#include <arc_utilities/ros_helpers.hpp>
+
+#include "eigen_ros_conversions.hpp"
+#include "assert.hpp"
 
 namespace pm = peter_msgs;
-
-std::pair<Eigen::Translation3d, Eigen::Translation3d> toGripperPositions(geometry_msgs::Point const& g1,
-                                                                         geometry_msgs::Point const& g2)
-{
-  return { Eigen::Translation3d(g1.x, g1.y, g1.z), Eigen::Translation3d(g2.x, g2.y, g2.z) };
-}
 
 DualGripperShim::DualGripperShim(ros::NodeHandle nh, ros::NodeHandle ph)
   : nh_(nh)
   , ph_(ph)
+  , tf_buffer_(std::make_shared<tf2_ros::Buffer>())
+  , tf_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_buffer_))
 {
-  tf_buffer_ = std::make_shared<tf2_ros::Buffer>();
-  tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
-  victor_ = std::make_shared<VictorInterface>(nh, ph, tf_buffer_);
+  auto const robot_name = ROSHelpers::GetParam<std::string>(nh, "robot_name", "val");
+  assert(robot_name == "val" || robot_name == "victor");
+
+  if (robot_name == "victor")
+  {
+    // robot_ = std::make_shared<ValInterface>(nh, ph, tf_buffer_, "both_arms");
+  }
+  else if (robot_name == "val")
+  {
+    robot_ = std::make_shared<ValInterface>(nh_, ph_, tf_buffer_, "both_arms");
+  }
+  robot_->configureHomeState();
+  scene_ = std::make_shared<Scene>(nh_, ph_, robot_);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+void DualGripperShim::test()
+{
+  auto const tool_transforms = robot_->getToolTransforms(robot_->home_state_);
+  PointSequence target_positions(tool_transforms.size());
+  for (auto idx = 0ul; idx < target_positions.size(); ++idx)
+  {
+    target_positions[idx] += 0.2 * Eigen::Vector3d::Random();
+  }
+
+  auto ps = scene_->clonePlanningScene();
+  ps->setCurrentState(robot_->home_state_);
+  auto const traj = robot_->moveInWorldFrame(ps, target_positions);
+}
 
 void DualGripperShim::enableServices()
 {
@@ -28,7 +51,8 @@ void DualGripperShim::enableServices()
   ROS_INFO("Ready for commands");
 }
 
-bool DualGripperShim::executeTrajectory(pm::DualGripperTrajectory::Request& req, pm::DualGripperTrajectory::Response& res)
+bool DualGripperShim::executeTrajectory(pm::DualGripperTrajectory::Request& req,
+                                        pm::DualGripperTrajectory::Response& res)
 {
   if (req.gripper1_points.size() != req.gripper2_points.size())
   {
@@ -36,12 +60,18 @@ bool DualGripperShim::executeTrajectory(pm::DualGripperTrajectory::Request& req,
     return false;
   }
 
-  // NB: positions are assumed to be in `victor_root` frame.
+  // NB: positions are assumed to be in `victor_root/val_root` frame.
   ROS_INFO_STREAM("Executing dual gripper trajectory of length " << req.gripper1_points.size());
   for (size_t idx = 0; idx < req.gripper1_points.size(); ++idx)
   {
-    res.merged_trajectory_empty =
-        victor_->moveInRobotFrame(toGripperPositions(req.gripper1_points[idx], req.gripper2_points[idx]));
+    auto ps = scene_->clonePlanningScene();
+    auto const target = PointSequence{ ConvertTo<Eigen::Vector3d>(req.gripper1_points[idx]),
+                                       ConvertTo<Eigen::Vector3d>(req.gripper2_points[idx]) };
+    auto const traj = robot_->moveInRobotFrame(ps, target);
+
+    MPS_ASSERT(false && "Still needs to move");
+
+    res.merged_trajectory_empty = (traj.points.size() == 0);
   }
 
   ROS_INFO("Done trajectory");

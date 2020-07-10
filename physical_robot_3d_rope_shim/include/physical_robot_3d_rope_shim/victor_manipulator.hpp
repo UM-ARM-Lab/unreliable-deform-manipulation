@@ -5,7 +5,7 @@
 #ifndef MPS_VICTORMANIPULATOR_H
 #define MPS_VICTORMANIPULATOR_H
 
-#include "victor_3d_rope_shim/Manipulator.h"
+#include "physical_robot_3d_rope_shim/manipulator.hpp"
 
 #include <ros/node_handle.h>
 #include <ros/service_client.h>

@@ -1,0 +1,82 @@
+#ifndef ROBOT_INTERFACE_HPP
+#define ROBOT_INTERFACE_HPP
+
+#include <moveit/planning_scene/planning_scene.h>
+#include <moveit/robot_model/robot_model.h>
+#include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit/robot_state/robot_state.h>
+#include <ros/ros.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <trajectory_msgs/JointTrajectory.h>
+#include <arc_utilities/eigen_typedefs.hpp>
+#include <memory>
+
+#include "physical_robot_3d_rope_shim/moveit_pose_type.hpp"
+
+class RobotInterface
+{
+public:
+  enum
+  {
+    NeedsToAlign = ((sizeof(Pose) % 16) == 0)
+  };
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(NeedsToAlign)
+  ros::NodeHandle nh_;
+  ros::NodeHandle ph_;
+
+  std::unique_ptr<robot_model_loader::RobotModelLoader> model_loader_;
+  robot_model::RobotModelPtr model_;
+  std::string const planning_group_;
+  moveit::core::JointModelGroup const* const jmg_;
+  size_t const num_ees_;
+  std::vector<std::string> tool_names_;
+  PoseSequence tool_offsets_;
+
+  // Debugging
+  tf2_ros::TransformBroadcaster tf_broadcaster_;
+  ros::Publisher vis_pub_;
+
+  std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::string const world_frame_;
+  std::string const robot_frame_;
+  Pose const worldTrobot;
+  Pose const robotTworld;
+
+  // Home state data
+  Eigen::VectorXd q_home_;
+  robot_state::RobotState home_state_;
+  PoseSequence home_state_tool_poses_;
+
+  // For use when moving the EE positions using moveIn[Robot/World]Frame
+  double const translation_step_size_;
+
+  RobotInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
+                 std::string const& group);
+
+  virtual Eigen::VectorXd lookupQHome() = 0;
+
+  void configureHomeState();
+
+  PoseSequence getToolTransforms(robot_state::RobotState const& state) const;
+
+  trajectory_msgs::JointTrajectory plan(planning_scene::PlanningScenePtr planning_scene,
+                                        robot_state::RobotState const& goal_state);
+
+  trajectory_msgs::JointTrajectory moveInRobotFrame(planning_scene::PlanningScenePtr planning_scene,
+                                                    PointSequence const& target_tool_positions);
+
+  trajectory_msgs::JointTrajectory moveInWorldFrame(planning_scene::PlanningScenePtr planning_scene,
+                                                    PointSequence const& target_tool_positions);
+
+protected:
+  ////////////////////////////////////////////////////////////////////
+  // Destructor that prevents "delete pointer to base object"
+  ////////////////////////////////////////////////////////////////////
+
+  ~RobotInterface()
+  {
+  }
+};
+
+#endif

@@ -1,8 +1,8 @@
-#include "victor_3d_rope_shim/assert.h"
-#include "victor_3d_rope_shim/eigen_ros_conversions.hpp"
-#include "victor_3d_rope_shim/eigen_transforms.hpp"
-#include "victor_3d_rope_shim/moveit_print_state.h"
-#include "victor_3d_rope_shim/victor_interface.h"
+#include "physical_robot_3d_rope_shim/assert.hpp"
+#include "physical_robot_3d_rope_shim/victor_interface.hpp"
+#include "eigen_transforms.hpp"
+#include "eigen_ros_conversions.hpp"
+#include "moveit_print_state.hpp"
 #include "ostream_operators.hpp"
 
 #include <algorithm>
@@ -783,8 +783,7 @@ bool VictorInterface::moveInWorldFrame(
 
   // Create paths for each tool with an equal number of waypoints
   Eigen::Vector3d const left_delta = target_gripper_positions.first.vector() - current_tool_poses.first.translation();
-  Eigen::Vector3d const right_delta =
-      target_gripper_positions.second.vector() - current_tool_poses.second.translation();
+  Eigen::Vector3d const right_delta = target_gripper_positions.second.vector() - current_tool_poses.second.translation();
   auto const max_dist = std::max(left_delta.norm(), right_delta.norm());
   if (max_dist < translation_step_size_)
   {

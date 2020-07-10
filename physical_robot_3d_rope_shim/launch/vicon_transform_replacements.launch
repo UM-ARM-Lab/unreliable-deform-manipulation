@@ -16,6 +16,13 @@
             <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>
 
+        <node pkg="tf2_ros" type="static_transform_publisher" name="val_root_tf_publisher" required="true"
+              args="2.5 0 -0.2
+                    0 0 1 0
+                    mocap_world mocap_ValOnHusky_ValOnHusky">
+                  <param name="use_sim_time" value="$(arg use_sim_time)"/>
+            </node>
+
         <node pkg="tf2_ros" type="static_transform_publisher" name="kinect_roof_tf_publisher" required="true"
               args="2.40499911002   -0.454495540655   1.70358014759
                     -0.00954801762903   0.713303874225   0.0252600741333   0.700334453693

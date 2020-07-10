@@ -1,10 +1,8 @@
 <launch>
     <arg name="use_sim_time"    default="false"/>
     <arg name="use_mocap_shims" default="true"/>
-
-    <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_victor_static_transform.launch" if="$(arg use_mocap_shims)">
-        <arg name="use_sim_time" value="$(arg use_sim_time)"/>
-    </include>
+    <arg name="use_victor"      default="false"/>
+    <arg name="use_val"         default="false"/>
 
     <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_tables_static_transform.launch" if="$(arg use_mocap_shims)">
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
@@ -14,26 +12,64 @@
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
     </include>
 
-    <!-- Task specific transforms -->
-    <group ns="static_transform_publishers">
-        <node pkg="tf2_ros" type="static_transform_publisher" name="active_table_broadcaster" required="true"
-              args="0 0 0 0 0 0 folding_table_surface table_surface" if="$(arg use_mocap_shims)">
-            <param name="use_sim_time" value="$(arg use_sim_time)"/>
-        </node>
+    <group if="$(arg use_victor)">
+        <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_victor_static_transform.launch" if="$(arg use_mocap_shims)">
+            <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+        </include>
 
-        <node pkg="tf2_ros" type="static_transform_publisher" name="left_tool_frame_broadcaster" required="true"
-              args="0.0 0.0 0.13
-                    0 0 0 1
-                    victor_left_gripper_palm_surface victor_left_tool">
-            <param name="use_sim_time" value="$(arg use_sim_time)"/>
-        </node>
+        <!-- Task specific transforms -->
+        <group ns="static_transform_publishers">
+            <node pkg="tf2_ros" type="static_transform_publisher" name="active_robot_root_broadcaster" required="true"
+                  args="0 0 0 0 0 0 victor_root robot_root">
+                <param name="use_sim_time" value="$(arg use_sim_time)"/>
+            </node>
 
-        <node pkg="tf2_ros" type="static_transform_publisher" name="right_tool_frame_broadcaster" required="true"
-              args="0.0 0.0 0.13
-                    0 0 0 1
-                    victor_right_gripper_palm_surface victor_right_tool">
-            <param name="use_sim_time" value="$(arg use_sim_time)"/>
-        </node>
+            <node pkg="tf2_ros" type="static_transform_publisher" name="left_tool_frame_broadcaster" required="true"
+                  args="0.0 0.0 0.13
+                        0 0 0 1
+                        victor_left_gripper_palm_surface left_ee_tool">
+                <param name="use_sim_time" value="$(arg use_sim_time)"/>
+            </node>
+
+            <node pkg="tf2_ros" type="static_transform_publisher" name="right_tool_frame_broadcaster" required="true"
+                  args="0.0 0.0 0.13
+                        0 0 0 1
+                        victor_right_gripper_palm_surface right_ee_tool">
+                <param name="use_sim_time" value="$(arg use_sim_time)"/>
+            </node>
+
+            <node pkg="tf2_ros" type="static_transform_publisher" name="active_table_broadcaster" required="true"
+                  args="0 0 0 0 0 0 folding_table_surface table_surface" if="$(arg use_mocap_shims)">
+                <param name="use_sim_time" value="$(arg use_sim_time)"/>
+            </node>
+        </group>
+    </group>
+
+    <group if="$(arg use_val)">
+        <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_val_static_transform.launch" if="$(arg use_mocap_shims)">
+            <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+        </include>
+
+        <group ns="static_transform_publishers">
+            <node pkg="tf2_ros" type="static_transform_publisher" name="active_robot_root_broadcaster" required="true"
+                  args="0 0 0 0 0 0 val_root robot_root">
+                <param name="use_sim_time" value="$(arg use_sim_time)"/>
+            </node>
+
+            <node pkg="tf2_ros" type="static_transform_publisher" name="left_tool_frame_broadcaster" required="true"
+                  args="0 0 0.18
+                        0 0 0 1
+                        end_effector_left left_gripper_tool">
+                <param name="use_sim_time" value="$(arg use_sim_time)"/>
+            </node>
+
+            <node pkg="tf2_ros" type="static_transform_publisher" name="right_tool_frame_broadcaster" required="true"
+                  args="0 0 0.18
+                        0 0 0 1
+                        end_effector_right right_gripper_tool">
+                <param name="use_sim_time" value="$(arg use_sim_time)"/>
+            </node>
+        </group>
     </group>
 </launch>
 

@@ -42,9 +42,10 @@ set(FLAGS -O3 -g -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Werror=return-t
 add_executable(world_interaction
   src/world_interaction.cpp
   src/${PROJECT_NAME}/dual_gripper_shim.cpp
-  src/${PROJECT_NAME}/victor_interface.cpp
-  src/${PROJECT_NAME}/Manipulator.cpp
-  src/${PROJECT_NAME}/VictorManipulator.cpp
-  src/${PROJECT_NAME}/Scene.cpp)
+  src/${PROJECT_NAME}/robot_interface.cpp
+  # src/${PROJECT_NAME}/victor_interface.cpp
+  src/${PROJECT_NAME}/val_interface.cpp
+  src/${PROJECT_NAME}/scene.cpp
+)
 target_link_libraries(world_interaction PRIVATE ${catkin_LIBRARIES})
 target_compile_options(world_interaction PRIVATE ${FLAGS})

@@ -18,7 +18,7 @@
 #include <mutex>
 #include <string>
 
-#include "victor_3d_rope_shim/VictorManipulator.h"
+#include "physical_robot_3d_rope_shim/victor_manipulator.hpp"
 
 class VictorInterface
 {
@@ -27,7 +27,7 @@ public:
 
   enum
   {
-    NeedsToAlign = (sizeof(Pose) % 16) == 0
+    NeedsToAlign = ((sizeof(Pose) % 16) == 0)
   };
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(NeedsToAlign)
   ros::NodeHandle nh_;

@@ -12,13 +12,13 @@
                                        (MOVEIT_VERSION_MINOR>y || (MOVEIT_VERSION_MINOR>=y && \
                                                                    MOVEIT_VERSION_PATCH>=z))))
 
-namespace moveit
-{
 #if MOVEIT_VERSION_AT_LEAST(1, 0, 1)
-    using Pose = Eigen::Isometry3d;
+using Pose = Eigen::Isometry3d;
 #else
-    using Pose = Eigen::Affine3d;
+using Pose = Eigen::Affine3d;
 #endif
-}
+
+using PoseSequence = std::vector<Pose, Eigen::aligned_allocator<Pose>>;
+using PointSequence = std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>;
 
 #endif //MPS_MOVEIT_POSE_TYPE_H
