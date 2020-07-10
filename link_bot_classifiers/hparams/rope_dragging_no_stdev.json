@@ -50,7 +50,7 @@
   "batch_norm": true,
   "local_env_h_rows": 100,
   "local_env_w_cols": 100,
-  "local_env_c_channels": 1,
+  "local_env_c_channels": 4,
   "learning_rate": 0.001,
   "flooding_level": 0.01,
   "stdev": false
