@@ -23,7 +23,7 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
                                tf_dataset: tf.data.Dataset,
                                dataset: DynamicsDataset,
                                labeling_params: Dict):
-    batch_size = 4
+    batch_size = 1
     action_sequence_horizon = labeling_params['action_sequence_horizon']
     tf_dataset = tf_dataset.batch(batch_size)
     action_rng = np.random.RandomState(0)
@@ -167,10 +167,9 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
     # needs_recovery is false
     all_rejected = tf.stack(all_rejected, axis=1)
     first_time_step_needs_recovery = all_rejected[:, 0]
-    later_time_step_doesnt_need_recovery = tf.reduce_any(tf.logical_not(all_rejected[:, 1:]), axis=1)
-    valid_example = tf.logical_and(first_time_step_needs_recovery, later_time_step_doesnt_need_recovery)
-    needs_recovery_int = tf.cast(all_rejected, tf.int32)
-    mask = recovering_mask(needs_recovery_int)
+    # here we check only the last, allowing intermediate states to be whatever
+    last_time_step_doesnt_need_recovery = tf.logical_not(all_rejected[:, -1])
+    valid_example = tf.logical_and(first_time_step_needs_recovery, last_time_step_doesnt_need_recovery)
 
     # construct output examples dict
     out_examples = {
@@ -181,7 +180,6 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         'traj_idx': example['traj_idx'],
         'start_t': tf.stack([start_t] * batch_size),
         'end_t': tf.stack([end_t] * batch_size),
-        'mask': mask,
     }
     # add true start states
     out_examples.update(actual_states)
@@ -192,15 +190,18 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
     if tf.greater(tf.size(valid_indices), 0):
         valid_out_examples = gather_dict(out_examples, valid_indices)
         for b in range(tf.size(valid_indices)):
+            print(b)
             valid_out_example_b = index_dict_of_batched_vectors_tf(valid_out_examples, b)
             scenario.plot_environment_rviz(valid_out_example_b)
 
             anim = RvizAnimationController(np.arange(action_sequence_horizon))
             while not anim.done:
                 t = anim.t()
-                if valid_out_example_b['mask'][t]:
-                    s_t = {k: valid_out_example_b[k][t] for k in actual_states.keys()}
-                    scenario.plot_state_rviz(s_t, label='start', color='#ff0000')
+                s_t = {k: valid_out_example_b[k][t] for k in actual_states.keys()}
+                scenario.plot_state_rviz(s_t, label='start', color='#ff0000')
+                if t < anim.max_t:
+                    a_t = {k: valid_out_example_b[k][t] for k in actual_actions.keys()}
+                    scenario.plot_action_rviz(s_t, a_t)
                 anim.step()
 
         return valid_out_examples
