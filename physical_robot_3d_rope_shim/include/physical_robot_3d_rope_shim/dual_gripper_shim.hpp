@@ -28,7 +28,7 @@ public:
   using TrajectoryClient = actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>;
   std::unique_ptr<TrajectoryClient> trajectory_client_;
   ros::Duration const traj_goal_time_tolerance_;
-  // ros::ServiceClient set_grasping_rope_client_;
+  ros::ServiceClient set_grasping_rope_client_;
   ros::ServiceClient world_control_client_;
 
   // Manages the planning scene and robot manipulators

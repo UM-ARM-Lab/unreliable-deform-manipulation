@@ -17,7 +17,7 @@
         </node>
 
         <node pkg="tf2_ros" type="static_transform_publisher" name="val_root_tf_publisher" required="true"
-              args="2.5 0 -0.2
+              args="2.2 0 -0.2
                     0 0 1 0
                     mocap_world mocap_ValOnHusky_ValOnHusky">
                   <param name="use_sim_time" value="$(arg use_sim_time)"/>

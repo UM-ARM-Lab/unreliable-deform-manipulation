@@ -19,7 +19,7 @@ DualGripperShim::DualGripperShim(ros::NodeHandle nh, ros::NodeHandle ph)
   , talker_(nh_.advertise<std_msgs::String>("polly", 10, false))
   , trajectory_client_(std::make_unique<TrajectoryClient>("follow_joint_trajectory", true))
   , traj_goal_time_tolerance_(ROSHelpers::GetParam(ph_, "traj_goal_time_tolerance", 0.05))
-  // , set_grasping_rope_client_(nh_.serviceClient<peter_msgs::SetBool>("set_grasping_rope"))
+  , set_grasping_rope_client_(nh_.serviceClient<peter_msgs::SetBool>("set_grasping_rope"))
   , world_control_client_(nh_.serviceClient<peter_msgs::WorldControl>("world_control"))
 {
   auto const robot_name = ROSHelpers::GetParam<std::string>(nh, "robot_name", "val");
@@ -57,6 +57,24 @@ void DualGripperShim::test()
 
 void DualGripperShim::gotoHome()
 {
+  ROS_INFO("Going home");
+  // let go of the rope
+  peter_msgs::SetBool release_rope;
+  release_rope.request.data = false;
+  set_grasping_rope_client_.call(release_rope);
+
+  // TODO: make this a service call
+  auto ps = scene_->clonePlanningScene();
+  ROS_INFO("Planning to home");
+  auto const traj = planner_->plan(ps, planner_->home_state_);
+  followJointTrajectory(traj);
+  ROS_INFO("Done attempting to move home");
+
+  peter_msgs::SetBool grasp_rope;
+  grasp_rope.request.data = true;
+  set_grasping_rope_client_.call(grasp_rope);
+
+  settle();
 }
 
 void DualGripperShim::settle()
