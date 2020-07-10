@@ -215,52 +215,59 @@ def main():
 
     planners_params = [(json.load(p_params_name.open("r")), p_params_name) for p_params_name in args.planners_params]
     for comparison_idx, (planner_params, p_params_name) in enumerate(planners_params):
-        # start at the same seed every time to make the planning environments & plans the same (hopefully?)
-        # setting OMPL random seed should have no effect, because I use numpy's random in my sampler?
-        np.random.seed(args.seed)
-        tf.random.set_seed(args.seed)  # not sure if this has any effect
+        try:
+            evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory)
+        except Exception as e:
+            print(e)
 
-        # override some arguments
-        if args.timeout is not None:
-            rospy.loginfo(f"Overriding with timeout {args.timeout}")
-            planner_params["termination_criteria"]['timeout'] = args.timeout
 
-        planner_config_name = p_params_name.stem
+def evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory):
+    # start at the same seed every time to make the planning environments & plans the same (hopefully?)
+    # setting OMPL random seed should have no effect, because I use numpy's random in my sampler?
+    np.random.seed(args.seed)
+    tf.random.set_seed(args.seed)  # not sure if this has any effect
 
-        # Start Services
-        if args.env_type == 'victor':
-            service_provider = victor_services.VictorServices()
-        else:
-            service_provider = gazebo_services.GazeboServices()
+    # override some arguments
+    if args.timeout is not None:
+        rospy.loginfo(f"Overriding with timeout {args.timeout}")
+        planner_params["termination_criteria"]['timeout'] = args.timeout
 
-        # look up the planner params
-        planner, _ = get_planner(planner_params=planner_params,
-                                 seed=args.seed,
-                                 verbose=args.verbose)
+    planner_config_name = p_params_name.stem
 
-        service_provider.setup_env(verbose=args.verbose,
-                                   real_time_rate=planner_params['real_time_rate'],
-                                   max_step_size=planner.fwd_model.max_step_size)
+    # Start Services
+    if args.env_type == 'victor':
+        service_provider = victor_services.VictorServices()
+    else:
+        service_provider = gazebo_services.GazeboServices()
 
-        print(Fore.GREEN + "Running {} Trials".format(args.n_total_plans) + Fore.RESET)
+    # look up the planner params
+    planner, _ = get_planner(planner_params=planner_params,
+                             seed=args.seed,
+                             verbose=args.verbose)
 
-        runner = EvalPlannerConfigs(
-            planner=planner,
-            service_provider=service_provider,
-            planner_config_name=planner_config_name,
-            n_plans_per_env=args.n_plans_per_env,
-            n_total_plans=args.n_total_plans,
-            verbose=args.verbose,
-            planner_params=planner_params,
-            seed=args.seed,
-            outdir=common_output_directory,
-            comparison_item_idx=comparison_idx,
-            goal=planner_params['fixed_goal'],
-            record=args.record,
-            pause_between_plans=args.pause_between_plans,
-            no_execution=args.no_execution
-        )
-        runner.run()
+    service_provider.setup_env(verbose=args.verbose,
+                               real_time_rate=planner_params['real_time_rate'],
+                               max_step_size=planner.fwd_model.max_step_size)
+
+    print(Fore.GREEN + "Running {} Trials".format(args.n_total_plans) + Fore.RESET)
+
+    runner = EvalPlannerConfigs(
+        planner=planner,
+        service_provider=service_provider,
+        planner_config_name=planner_config_name,
+        n_plans_per_env=args.n_plans_per_env,
+        n_total_plans=args.n_total_plans,
+        verbose=args.verbose,
+        planner_params=planner_params,
+        seed=args.seed,
+        outdir=common_output_directory,
+        comparison_item_idx=comparison_idx,
+        goal=planner_params['fixed_goal'],
+        record=args.record,
+        pause_between_plans=args.pause_between_plans,
+        no_execution=args.no_execution
+    )
+    runner.run()
 
 
 if __name__ == '__main__':

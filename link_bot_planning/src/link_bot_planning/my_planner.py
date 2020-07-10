@@ -236,8 +236,13 @@ class MyPlanner:
         elif planner_status == MyPlannerStatus.Timeout:
             # Use the approximate solution, since it's usually pretty darn close, and sometimes
             # our goals are impossible to reach so this is important to have
-            ompl_path = self.ss.getSolutionPath()
-            actions, planned_path = self.convert_path(ompl_path)
+            try:
+                ompl_path = self.ss.getSolutionPath()
+                actions, planned_path = self.convert_path(ompl_path)
+            except RuntimeError:
+                rospy.logerr("No solution path on timeout?! considering this a failure.")
+                actions = []
+                planned_path = [start_state]
         else:
             actions = []
             planned_path = [start_state]
