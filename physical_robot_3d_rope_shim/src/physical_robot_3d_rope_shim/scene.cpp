@@ -12,7 +12,7 @@
 Scene::Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<PlanningInterace> robot)
   : nh_(nh)
   , ph_(ph)
-  , robot_(robot)
+  , planner_(robot)
   , joint_states_listener_(std::make_shared<Listener<sensor_msgs::JointState>>(nh_, "joint_states", true))
   , planning_scene_publisher_(nh.advertise<moveit_msgs::PlanningScene>("planning_scene", 1, true))
 {
@@ -22,7 +22,7 @@ Scene::Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<PlanningInt
     get_planning_scene_client_ = nh_.serviceClient<moveit_msgs::GetPlanningScene>(topic);
     if (get_planning_scene_client_.waitForExistence(ros::Duration(3)))
     {
-      planning_scene_ = std::make_shared<planning_scene::PlanningScene>(robot_->model_, computeCollisionWorld());
+      planning_scene_ = std::make_shared<planning_scene::PlanningScene>(planner_->model_, computeCollisionWorld());
       updatePlanningScene();
     }
     else
@@ -36,22 +36,22 @@ Scene::Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<PlanningInt
       {
         auto const wall = std::make_shared<shapes::Box>(5, wall_width, 3);
         Pose const pose(Eigen::Translation3d(2.8 + wall_width / 2, 1.1, 1.5));
-        static_obstacles_.push_back({ wall, robot_->robotTworld * pose });
+        static_obstacles_.push_back({ wall, planner_->robotTworld * pose });
       }
       // Protect Dale's monitors
       {
         auto const wall = std::make_shared<shapes::Box>(5, wall_width, 3);
         Pose const pose(Eigen::Translation3d(2.8 + wall_width / 2, -1.1, 1.5));
-        static_obstacles_.push_back({ wall, robot_->robotTworld * pose });
+        static_obstacles_.push_back({ wall, planner_->robotTworld * pose });
       }
       // Protect stuff behind Victor
       {
         auto const wall = std::make_shared<shapes::Box>(0.1, 2.2 + wall_width, 3);
         Pose const pose(Eigen::Translation3d(0.3, 0.0, 1.5));
-        static_obstacles_.push_back({ wall, robot_->robotTworld * pose });
+        static_obstacles_.push_back({ wall, planner_->robotTworld * pose });
       }
 
-      planning_scene_ = std::make_shared<planning_scene::PlanningScene>(robot_->model_, computeCollisionWorld());
+      planning_scene_ = std::make_shared<planning_scene::PlanningScene>(planner_->model_, computeCollisionWorld());
     }
   }
 }
@@ -68,7 +68,7 @@ collision_detection::WorldPtr Scene::computeCollisionWorld()
 
 robot_state::RobotState Scene::getCurrentRobotState() const
 {
-  auto state = robot_state::RobotState(robot_->model_);
+  auto state = robot_state::RobotState(planner_->model_);
   auto const joints = joint_states_listener_->waitForNew(1000.0);
   if (joints)
   {

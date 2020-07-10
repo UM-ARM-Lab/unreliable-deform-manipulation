@@ -15,16 +15,16 @@ int main(int argc, char* argv[])
 
   auto shim = DualGripperShim(nh, ph);
   shim.test();
-  // shim.gotoHome();
-  // shim.enableServices();
-  // shim.scene_->updatePlanningScene();
+  shim.gotoHome();
+  shim.scene_->updatePlanningScene();
+  shim.enableServices();
 
-  // ros::Rate rate(1);
-  // while (ros::ok())
-  // {
-  //   shim.scene_->updatePlanningScene();
-  //   rate.sleep();
-  // }
+  ros::Rate rate(1);
+  while (ros::ok())
+  {
+    shim.scene_->updatePlanningScene();
+    rate.sleep();
+  }
 
   return EXIT_SUCCESS;
 }
