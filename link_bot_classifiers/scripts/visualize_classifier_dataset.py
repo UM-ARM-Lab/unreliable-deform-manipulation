@@ -98,6 +98,9 @@ def visualize_dataset(args, classifier_dataset):
         if args.only_reconverging and not reconverging:
             continue
 
+        if args.only_negative and np.any(is_close[1:]):
+            continue
+
         if count == 0:
             print_dict(example)
 

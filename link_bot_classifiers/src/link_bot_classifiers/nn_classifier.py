@@ -75,11 +75,7 @@ class NNClassifier(MyKerasModel):
         self.output_layer = layers.Dense(1, activation=None)
         self.sigmoid = layers.Activation("sigmoid")
 
-        loss_type = self.hparams['loss_type']
-        if loss_type == 'weighted_sequence':
-            self.loss_function = classifier_losses_and_metrics.class_weighted_binary_classification_sequence_loss_function
-        else:
-            raise NotImplementedError()
+        self.loss_function = classifier_losses_and_metrics.class_weighted_binary_classification_sequence_loss_function
 
     def make_traj_voxel_grids_from_input_dict(self, input_dict: Dict, batch_size, time: int):
         # Construct a [b, h, w, c, 3] grid of the indices which make up the local environment

@@ -1,6 +1,6 @@
 {
   "model_class": "rnn",
-  "scenario": "link_bot",
+  "scenario": "dual",
   "state_keys": [
     "link_bot",
     "gripper1",
@@ -46,10 +46,8 @@
       ]
     ]
   ],
-  "loss_type": "weighted_sequence",
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
-  "activity_reg": 0.05,
   "batch_norm": true,
   "local_env_h_rows": 40,
   "local_env_w_cols": 40,

@@ -45,7 +45,7 @@ def main():
     n_actions = len(actions)
     actions = [[[numpify(a) for a in actions]]]
 
-    fwd_model, _ = model_utils.load_generic_model([pathlib.Path(p) for p in test_config['fwd_model_dirs']])
+    fwd_model, _ = model_utils.load_generic_model([pathlib.Path(p) for p in test_config['fwd_model_dir']])
     classifier = classifier_utils.load_generic_model(test_config['classifier_model_dir'], fwd_model.scenario)
 
     service_provider = GazeboServices()
