@@ -14,6 +14,8 @@
 
 #include "physical_robot_3d_rope_shim/moveit_pose_type.hpp"
 
+using Matrix6Xd = Eigen::Matrix<double, 6, Eigen::Dynamic>;
+
 class RobotInterface
 {
 public:
@@ -47,6 +49,7 @@ public:
   Eigen::VectorXd q_home_;
   robot_state::RobotState home_state_;
   PoseSequence home_state_tool_poses_;
+  EigenHelpers::VectorQuaterniond robot_nominal_tool_orientations_;
 
   // For use when moving the EE positions using moveIn[Robot/World]Frame
   double const translation_step_size_;
@@ -68,6 +71,17 @@ public:
 
   trajectory_msgs::JointTrajectory moveInWorldFrame(planning_scene::PlanningScenePtr planning_scene,
                                                     PointSequence const& target_tool_positions);
+
+  trajectory_msgs::JointTrajectory jacobianPath3d(planning_scene::PlanningScenePtr planning_scene,
+                                                  std::vector<PointSequence> const& tool_paths);
+
+  // Note that robot_goal_points is the target points for the tools, measured in robot frame
+  bool jacobianIK(planning_scene::PlanningScenePtr planning_scene, PoseSequence const& robotTtargets);
+
+  Eigen::MatrixXd getJacobianServoFrame(robot_state::RobotState const& state, PoseSequence const& robotTservo);
+
+  Matrix6Xd getJacobianServoFrame(robot_state::RobotState const& state, robot_model::LinkModel const* link,
+                                  Pose const& robotTservo);
 
 protected:
   ////////////////////////////////////////////////////////////////////

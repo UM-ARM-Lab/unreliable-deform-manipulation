@@ -1,9 +1,9 @@
-#include "physical_robot_3d_rope_shim/assert.hpp"
 #include "physical_robot_3d_rope_shim/victor_interface.hpp"
 #include "eigen_transforms.hpp"
 #include "eigen_ros_conversions.hpp"
 #include "moveit_print_state.hpp"
 #include "ostream_operators.hpp"
+#include "assert.hpp"
 
 #include <algorithm>
 #include <memory>

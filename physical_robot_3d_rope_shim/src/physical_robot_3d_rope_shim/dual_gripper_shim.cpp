@@ -37,7 +37,7 @@ void DualGripperShim::test()
   PointSequence target_positions(tool_transforms.size());
   for (auto idx = 0ul; idx < target_positions.size(); ++idx)
   {
-    target_positions[idx] += 0.2 * Eigen::Vector3d::Random();
+    target_positions[idx] = tool_transforms[idx].translation() + 0.2 * Eigen::Vector3d::Random();
   }
 
   auto ps = scene_->clonePlanningScene();
