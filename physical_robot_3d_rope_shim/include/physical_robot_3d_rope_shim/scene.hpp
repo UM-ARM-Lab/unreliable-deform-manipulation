@@ -33,7 +33,7 @@ public:
 
   //////////////////////////////////////////////////////////////////////////////
 
-  Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<PlanningInterace> robot);
+  Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<PlanningInterace> planner);
 
   robot_state::RobotState getCurrentRobotState() const;
 

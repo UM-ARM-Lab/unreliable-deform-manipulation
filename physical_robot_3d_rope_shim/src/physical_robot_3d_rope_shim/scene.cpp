@@ -9,10 +9,10 @@
 #include <moveit_msgs/GetPlanningScene.h>
 #include <arc_utilities/ros_helpers.hpp>
 
-Scene::Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<PlanningInterace> robot)
+Scene::Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<PlanningInterace> planner)
   : nh_(nh)
   , ph_(ph)
-  , planner_(robot)
+  , planner_(planner)
   , joint_states_listener_(std::make_shared<Listener<sensor_msgs::JointState>>(nh_, "joint_states", true))
   , planning_scene_publisher_(nh.advertise<moveit_msgs::PlanningScene>("planning_scene", 1, true))
 {
@@ -54,6 +54,8 @@ Scene::Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<PlanningInt
       planning_scene_ = std::make_shared<planning_scene::PlanningScene>(planner_->model_, computeCollisionWorld());
     }
   }
+
+  planner_->updateAllowedCollisionMatrix(planning_scene_->getAllowedCollisionMatrixNonConst());
 }
 
 collision_detection::WorldPtr Scene::computeCollisionWorld()

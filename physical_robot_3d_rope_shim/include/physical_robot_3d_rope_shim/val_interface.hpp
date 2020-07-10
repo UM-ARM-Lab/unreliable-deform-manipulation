@@ -10,6 +10,7 @@ public:
                std::string const& group);
 
   virtual Eigen::VectorXd lookupQHome() override;
+  virtual void updateAllowedCollisionMatrix(collision_detection::AllowedCollisionMatrix& acm) override;
 };
 
 #endif  // LBV_VAL_INTERFACE_HPP

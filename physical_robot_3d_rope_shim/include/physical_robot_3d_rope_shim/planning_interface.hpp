@@ -59,6 +59,8 @@ public:
 
   virtual Eigen::VectorXd lookupQHome() = 0;
 
+  virtual void updateAllowedCollisionMatrix(collision_detection::AllowedCollisionMatrix& acm) = 0;
+
   void configureHomeState();
 
   PoseSequence getToolTransforms(robot_state::RobotState const& state) const;

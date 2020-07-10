@@ -1,5 +1,6 @@
 #include "physical_robot_3d_rope_shim/dual_gripper_shim.hpp"
 #include "physical_robot_3d_rope_shim/val_interface.hpp"
+#include "physical_robot_3d_rope_shim/victor_interface.hpp"
 
 #include <peter_msgs/SetBool.h>
 #include <peter_msgs/WorldControl.h>
@@ -27,8 +28,7 @@ DualGripperShim::DualGripperShim(ros::NodeHandle nh, ros::NodeHandle ph)
 
   if (robot_name == "victor")
   {
-    MPS_ASSERT(false && "Not implemented");
-    // planner_ = std::make_shared<VictorInterface>(nh, ph, tf_buffer_, "both_arms");
+    planner_ = std::make_shared<VictorInterface>(nh, ph, tf_buffer_, "both_arms");
   }
   else if (robot_name == "val")
   {
