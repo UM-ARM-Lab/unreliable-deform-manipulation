@@ -64,8 +64,8 @@ def train_main(args, seed: int):
                          params=model_hparams,
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
-                         val_every_n_batches=200,
-                         mid_epoch_val_batches=32,
+                         val_every_n_batches=500,
+                         mid_epoch_val_batches=128,
                          restore_from_name=checkpoint_name,
                          batch_metadata=train_dataset.batch_metadata)
 
