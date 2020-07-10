@@ -38,7 +38,7 @@
     "dy_trials/dragging_no_obs_6/best_checkpoint",
     "dy_trials/dragging_no_obs_7/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/rope_dragging_onestep_no_stdev/July_08_12-01-27_36e7a60225/best_checkpoint/",
+  "classifier_model_dir": "cl_trials/dragging_z4_no_stdev/July_09_23-23-45_902924f87a/best_checkpoint",
   "accept_threshold": 0.5,
   "movable_obstacles": {},
   "goal_threshold": 0.05,

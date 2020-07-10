@@ -33,7 +33,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     def __init__(self):
         super().__init__()
-        self.last_state = None
         self.last_action = None
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
         self.grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", SetBool)
@@ -133,7 +132,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             too_far = np.linalg.norm(gripper1_position - gripper2_position) > max_gripper_d
 
             if not out_of_bounds and not too_far:
-                self.last_state = state
                 self.last_action = action
                 return action
 

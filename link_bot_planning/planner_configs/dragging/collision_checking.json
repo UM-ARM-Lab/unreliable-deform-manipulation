@@ -1,7 +1,7 @@
 {
   "termination_criteria": {
     "times_called_threshold": 20,
-    "max_distance_from_start_threshold": 0.50,
+    "max_distance_from_start_threshold": 0.40,
     "timeout": 240
   },
   "extent": [
