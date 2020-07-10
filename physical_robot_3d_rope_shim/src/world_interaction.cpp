@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
   spinner.start();
 
   auto shim = DualGripperShim(nh, ph);
-  shim.test();
+  // shim.test();
   shim.gotoHome();
   shim.scene_->updatePlanningScene();
   shim.enableServices();

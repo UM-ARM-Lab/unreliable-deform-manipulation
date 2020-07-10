@@ -1,0 +1,39 @@
+<launch>
+    <!-- <group ns="link_bot">
+        <param name="n_state"       type="int"      value="11"/>
+        <param name="rope_length"   type="double"   value="$(eval 18.0 * 0.0254)"/>
+        <param name="max_speed"     type="double"   value="0.15"/>
+    </group> -->
+    <arg name="use_victor" default="false"/>
+    <arg name="use_val" default="false"/>
+
+    <arg name="pi_div2" value="$(eval pi/2)"/>
+    <group if="$(arg use_victor)">
+        <rosparam subst_value="true" param="left_arm_home">
+            [-1.39626, 0.5759586531581284, 1.9, -1.3089969389957472, 9.947598300641403e-14, 0.733038285837619, -0.2617993877991509]
+        </rosparam>
+        <rosparam subst_value="true" param="right_arm_home">
+            [-1.74533, -0.5759586531581287, -1.9, 1.3089969389957465, -1.9539925233402755e-14, -0.7330382858376183, 1.8325957145940466]
+        </rosparam>
+    </group>
+    <group if="$(arg use_val)">
+        <rosparam subst_value="true" param="left_arm_home">
+            [0 0 0 0 0 0 0]
+        </rosparam>
+        <rosparam subst_value="true" param="right_arm_home">
+            [0 0 0 0 0 0 0]
+        </rosparam>
+        <rosparam subst_value="true" param="torso_home">
+            [0 0]
+        </rosparam>
+    </group>
+
+    <param name="robot_name" value="victor" type="string" if="$(arg use_victor)"/>
+    <param name="robot_name" value="val" type="string" if="$(arg use_val)"/>
+    <node name="world_interaction" pkg="physical_robot_3d_rope_shim" type="world_interaction">
+        <param name="get_planning_scene_topic"  value="gazebo/get_planning_scene"/>
+        <param name="translation_step_size"     value="0.002"   type="double"/>
+        <param name="traj_goal_time_tolerance"  value="0.1"     type="double"/>
+    </node>
+
+</launch>
