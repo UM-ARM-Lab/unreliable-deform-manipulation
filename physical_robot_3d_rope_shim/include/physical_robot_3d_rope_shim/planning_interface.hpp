@@ -1,5 +1,5 @@
-#ifndef ROBOT_INTERFACE_HPP
-#define ROBOT_INTERFACE_HPP
+#ifndef LBV_PLANNING_INTERFACE_HPP
+#define LBV_PLANNING_INTERFACE_HPP
 
 #include <moveit/planning_scene/planning_scene.h>
 #include <moveit/robot_model/robot_model.h>
@@ -16,7 +16,7 @@
 
 using Matrix6Xd = Eigen::Matrix<double, 6, Eigen::Dynamic>;
 
-class RobotInterface
+class PlanningInterace
 {
 public:
   enum
@@ -54,8 +54,8 @@ public:
   // For use when moving the EE positions using moveIn[Robot/World]Frame
   double const translation_step_size_;
 
-  RobotInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
-                 std::string const& group);
+  PlanningInterace(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
+                   std::string const& group);
 
   virtual Eigen::VectorXd lookupQHome() = 0;
 
@@ -88,9 +88,9 @@ protected:
   // Destructor that prevents "delete pointer to base object"
   ////////////////////////////////////////////////////////////////////
 
-  ~RobotInterface()
+  ~PlanningInterace()
   {
   }
 };
 
-#endif
+#endif // LBV_PLANNING_INTERFACE_HPP

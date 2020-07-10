@@ -12,7 +12,7 @@
 
 #include "physical_robot_3d_rope_shim/listener.hpp"
 #include "physical_robot_3d_rope_shim/moveit_pose_type.hpp"
-#include "physical_robot_3d_rope_shim/robot_interface.hpp"
+#include "physical_robot_3d_rope_shim/planning_interface.hpp"
 
 class Scene
 {
@@ -21,7 +21,7 @@ public:
 
   ros::NodeHandle nh_;
   ros::NodeHandle ph_;
-  std::shared_ptr<RobotInterface> robot_;
+  std::shared_ptr<PlanningInterace> robot_;
 
   std::recursive_mutex planning_scene_mtx_;
   std::vector<std::pair<std::shared_ptr<shapes::Shape>, Pose>> static_obstacles_;
@@ -33,7 +33,7 @@ public:
 
   //////////////////////////////////////////////////////////////////////////////
 
-  Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<RobotInterface> robot);
+  Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<PlanningInterace> robot);
 
   robot_state::RobotState getCurrentRobotState() const;
 

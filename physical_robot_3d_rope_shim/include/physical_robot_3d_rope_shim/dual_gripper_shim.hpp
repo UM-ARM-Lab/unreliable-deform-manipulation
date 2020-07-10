@@ -11,7 +11,7 @@
 
 #include "physical_robot_3d_rope_shim/listener.hpp"
 #include "physical_robot_3d_rope_shim/scene.hpp"
-#include "physical_robot_3d_rope_shim/robot_interface.hpp"
+#include "physical_robot_3d_rope_shim/planning_interface.hpp"
 
 class DualGripperShim
 {
@@ -20,7 +20,7 @@ public:
   ros::NodeHandle ph_;
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-  std::shared_ptr<RobotInterface> robot_;
+  std::shared_ptr<PlanningInterace> robot_;
   ros::ServiceServer execute_traj_srv_;
 
   // Manages the planning scene and robot manipulators

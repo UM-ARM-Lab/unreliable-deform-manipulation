@@ -8,7 +8,7 @@
 #include <arc_utilities/ros_helpers.hpp>
 #include <pluginlib/class_loader.hpp>
 
-#include "physical_robot_3d_rope_shim/robot_interface.hpp"
+#include "physical_robot_3d_rope_shim/planning_interface.hpp"
 
 #include "assert.hpp"
 #include "eigen_ros_conversions.hpp"
@@ -90,7 +90,7 @@ static std::pair<Eigen::VectorXd, Eigen::VectorXd> calcVecError(PoseSequence con
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-RobotInterface::RobotInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
+PlanningInterace::PlanningInterace(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
                                std::string const& group)
   : nh_(nh)
   , ph_(ph)
@@ -125,7 +125,7 @@ RobotInterface::RobotInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shar
   }
 }
 
-void RobotInterface::configureHomeState()
+void PlanningInterace::configureHomeState()
 {
   q_home_ = lookupQHome();
   home_state_.setToDefaultValues();
@@ -139,7 +139,7 @@ void RobotInterface::configureHomeState()
   }
 }
 
-PoseSequence RobotInterface::getToolTransforms(robot_state::RobotState const& state) const
+PoseSequence PlanningInterace::getToolTransforms(robot_state::RobotState const& state) const
 {
   auto const& ees = jmg_->getAttachedEndEffectorNames();
   PoseSequence poses(num_ees_);
@@ -151,7 +151,7 @@ PoseSequence RobotInterface::getToolTransforms(robot_state::RobotState const& st
   return poses;
 }
 
-trajectory_msgs::JointTrajectory RobotInterface::plan(ps::PlanningScenePtr planning_scene,
+trajectory_msgs::JointTrajectory PlanningInterace::plan(ps::PlanningScenePtr planning_scene,
                                                       robot_state::RobotState const& goal_state)
 {
   ///////////// Start ////////////////////////////////////////////////////////
@@ -259,13 +259,13 @@ trajectory_msgs::JointTrajectory RobotInterface::plan(ps::PlanningScenePtr plann
   return msg.trajectory.joint_trajectory;
 }
 
-trajectory_msgs::JointTrajectory RobotInterface::moveInRobotFrame(ps::PlanningScenePtr planning_scene,
+trajectory_msgs::JointTrajectory PlanningInterace::moveInRobotFrame(ps::PlanningScenePtr planning_scene,
                                                                   PointSequence const& target_tool_positions)
 {
   return moveInWorldFrame(planning_scene, Transform(robotTworld, target_tool_positions));
 }
 
-trajectory_msgs::JointTrajectory RobotInterface::moveInWorldFrame(ps::PlanningScenePtr planning_scene,
+trajectory_msgs::JointTrajectory PlanningInterace::moveInWorldFrame(ps::PlanningScenePtr planning_scene,
                                                                   PointSequence const& target_tool_positions)
 {
   MPS_ASSERT(planning_scene);
@@ -397,7 +397,7 @@ trajectory_msgs::JointTrajectory RobotInterface::moveInWorldFrame(ps::PlanningSc
   return cmd;
 }
 
-trajectory_msgs::JointTrajectory RobotInterface::jacobianPath3d(planning_scene::PlanningScenePtr planning_scene,
+trajectory_msgs::JointTrajectory PlanningInterace::jacobianPath3d(planning_scene::PlanningScenePtr planning_scene,
                                                                 std::vector<PointSequence> const& tool_paths)
 {
   // Do some preliminary sanity checks
@@ -457,7 +457,7 @@ trajectory_msgs::JointTrajectory RobotInterface::jacobianPath3d(planning_scene::
 }
 
 // Note that robotTtargets is the target points for the tools, measured in robot frame
-bool RobotInterface::jacobianIK(planning_scene::PlanningScenePtr planning_scene, PoseSequence const& robotTtargets)
+bool PlanningInterace::jacobianIK(planning_scene::PlanningScenePtr planning_scene, PoseSequence const& robotTtargets)
 {
   MPS_ASSERT(planning_scene);
   MPS_ASSERT(robotTtargets.size() == num_ees_);
@@ -740,7 +740,7 @@ bool RobotInterface::jacobianIK(planning_scene::PlanningScenePtr planning_scene,
   return false;
 }
 
-Eigen::MatrixXd RobotInterface::getJacobianServoFrame(robot_state::RobotState const& state,
+Eigen::MatrixXd PlanningInterace::getJacobianServoFrame(robot_state::RobotState const& state,
                                                       PoseSequence const& robotTservo)
 {
   assert(robotTservo.size() == num_ees_);
@@ -759,7 +759,7 @@ Eigen::MatrixXd RobotInterface::getJacobianServoFrame(robot_state::RobotState co
 
 // See MLS Page 115-121
 // https://www.cds.caltech.edu/~murray/books/MLS/pdf/mls94-complete.pdf
-Matrix6Xd RobotInterface::getJacobianServoFrame(robot_state::RobotState const& state,
+Matrix6Xd PlanningInterace::getJacobianServoFrame(robot_state::RobotState const& state,
                                                 robot_model::LinkModel const* link, Pose const& robotTservo)
 {
   const Pose reference_transform = robotTservo.inverse(Eigen::Isometry);

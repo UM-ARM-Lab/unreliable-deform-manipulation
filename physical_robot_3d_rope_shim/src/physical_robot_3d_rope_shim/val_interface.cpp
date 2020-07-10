@@ -4,7 +4,7 @@
 
 ValInterface::ValInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
                            std::string const& group)
-  : RobotInterface(nh, ph, tf_buffer, group)
+  : PlanningInterace(nh, ph, tf_buffer, group)
 {
 }
 

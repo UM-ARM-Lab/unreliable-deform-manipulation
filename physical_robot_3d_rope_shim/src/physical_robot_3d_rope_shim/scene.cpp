@@ -9,7 +9,7 @@
 #include <moveit_msgs/GetPlanningScene.h>
 #include <arc_utilities/ros_helpers.hpp>
 
-Scene::Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<RobotInterface> robot)
+Scene::Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<PlanningInterace> robot)
   : nh_(nh)
   , ph_(ph)
   , robot_(robot)
