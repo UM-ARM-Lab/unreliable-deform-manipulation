@@ -685,7 +685,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         lines.header.frame_id = "/world"
         lines.header.stamp = rospy.Time.now()
         lines.ns = label
-        lines.id = 5 * idx + 0
+        lines.id = 6 * idx + 0
 
         lines.pose.position.x = 0
         lines.pose.position.y = 0
@@ -708,7 +708,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         spheres.header.frame_id = "/world"
         spheres.header.stamp = rospy.Time.now()
         spheres.ns = label
-        spheres.id = 5 * idx + 1
+        spheres.id = 6 * idx + 1
 
         spheres.scale.x = 0.02
         spheres.scale.y = 0.02
@@ -742,7 +742,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper1_sphere.header.frame_id = "/world"
         gripper1_sphere.header.stamp = rospy.Time.now()
         gripper1_sphere.ns = label
-        gripper1_sphere.id = 5 * idx + 2
+        gripper1_sphere.id = 6 * idx + 2
 
         gripper1_sphere.scale.x = 0.02
         gripper1_sphere.scale.y = 0.02
@@ -767,7 +767,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper2_sphere.header.frame_id = "/world"
         gripper2_sphere.header.stamp = rospy.Time.now()
         gripper2_sphere.ns = label
-        gripper2_sphere.id = 5 * idx + 3
+        gripper2_sphere.id = 6 * idx + 3
 
         gripper2_sphere.scale.x = 0.02
         gripper2_sphere.scale.y = 0.02
@@ -792,7 +792,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper1_text.header.frame_id = "/world"
         gripper1_text.header.stamp = rospy.Time.now()
         gripper1_text.ns = label
-        gripper1_text.id = 5 * idx + 4
+        gripper1_text.id = 6 * idx + 4
         gripper1_text.text = "L"
         gripper1_text.scale.z = 0.015
 
@@ -809,11 +809,38 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper1_text.color.b = 1.0
         gripper1_text.color.a = 1.0
 
+        midpoint_sphere = Marker()
+        midpoint_sphere.action = Marker.ADD  # create or modify
+        midpoint_sphere.type = Marker.SPHERE
+        midpoint_sphere.header.frame_id = "/world"
+        midpoint_sphere.header.stamp = rospy.Time.now()
+        midpoint_sphere.ns = label
+        midpoint_sphere.id = 6 * idx + 5
+
+        midpoint_sphere.scale.x = 0.03
+        midpoint_sphere.scale.y = 0.03
+        midpoint_sphere.scale.z = 0.03
+
+        rope_midpoint = link_bot_points[int(DualFloatingGripperRopeScenario.n_links / 2)]
+        midpoint_sphere.pose.position.x = rope_midpoint[0]
+        midpoint_sphere.pose.position.y = rope_midpoint[1]
+        midpoint_sphere.pose.position.z = rope_midpoint[2]
+        midpoint_sphere.pose.orientation.x = 0
+        midpoint_sphere.pose.orientation.y = 0
+        midpoint_sphere.pose.orientation.z = 0
+        midpoint_sphere.pose.orientation.w = 1
+
+        midpoint_sphere.color.r = r * 0.8
+        midpoint_sphere.color.g = g * 0.8
+        midpoint_sphere.color.b = b * 0.8
+        midpoint_sphere.color.a = a
+
         msg.markers.append(spheres)
         msg.markers.append(gripper1_sphere)
         msg.markers.append(gripper2_sphere)
         msg.markers.append(gripper1_text)
         msg.markers.append(lines)
+        msg.markers.append(midpoint_sphere)
         self.state_viz_pub.publish(msg)
 
     def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):

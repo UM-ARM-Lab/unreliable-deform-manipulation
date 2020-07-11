@@ -186,6 +186,7 @@ def metrics_main(args):
                 not_progressings += 1
                 # _include_in_metrics('not progressing')
             elif datum['planner_status'] == "timeout":
+                _include_in_metrics('timeout')
                 timeouts += 1
             else:
                 raise NotImplementedError()
