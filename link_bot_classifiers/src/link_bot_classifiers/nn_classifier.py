@@ -163,7 +163,19 @@ class NNClassifier(MyKerasModel):
             # link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
             # self.debug_pub.publish(msg)
             # self.raster_debug_pub.publish(raster_msg)
-            # self.scenario.plot_state_rviz(numpify(index_dict_of_batched_vectors_tf(state_t, b)), label='actual')
+            # # pred state
+
+            # debugging_s_t = {k: input_dict[add_predicted(k)][b, t] for k in self.state_keys}
+            # self.scenario.plot_state_rviz(debugging_s_t, label='predicted', color='b')
+            # # true state (not known to classifier!)
+            # debugging_true_state_t = numpify({k: input_dict[k][b, t] for k in self.state_keys})
+            # self.scenario.plot_state_rviz(debugging_true_state_t, label='actual')
+            # # action
+            # if t < time - 1:
+            #     debuggin_action_t = numpify({k: input_dict[k][b, t] for k in self.action_keys})
+            #     self.scenario.plot_action_rviz(debugging_s_t, debuggin_action_t)
+            # label_t = input_dict['is_close'][b, t]
+            # self.scenario.plot_is_close(label_t)
             # local_extent = compute_extent_3d(*local_voxel_grid_t[b].shape[:3], resolution=input_dict['res'][b].numpy())
             # depth, width, height = extent_to_env_size(local_extent)
             # bbox_msg = BoundingBox()
