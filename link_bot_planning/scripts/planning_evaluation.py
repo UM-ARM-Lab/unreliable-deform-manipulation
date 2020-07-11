@@ -50,7 +50,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  service_provider: BaseServices,
                  planner_config_name: str,
                  n_plans_per_env: int,
-                 n_total_plans: int,
+                 n_plans: int,
                  verbose: int,
                  planner_params: Dict,
                  comparison_item_idx: int,
@@ -62,7 +62,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  no_execution: Optional[bool] = False,
                  ):
         super().__init__(planner,
-                         n_total_plans=n_total_plans,
+                         n_plans=n_plans,
                          n_plans_per_env=n_plans_per_env,
                          verbose=verbose,
                          planner_params=planner_params,
@@ -84,7 +84,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.goal = goal
 
         metadata = {
-            "n_total_plans": self.n_total_plans,
+            "n_plans": self.n_plans,
             "n_plans_per_env": self.n_plans_per_env,
             "planner_params": self.planner_params,
             "scenario": self.planner.scenario.simple_name(),
@@ -99,7 +99,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
     def on_after_plan(self):
         if self.record:
-            filename = self.root.absolute() / 'plan-{}.avi'.format(self.total_plan_idx)
+            filename = self.root.absolute() / 'plan-{}.avi'.format(self.plan_idx)
             self.service_provider.start_record_trial(str(filename))
 
         super().on_after_plan()
@@ -139,7 +139,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         tree_json = planner_data_to_json(planner_data, self.planner.scenario)
 
         data_for_plan = {
-            "n_total_plans": self.n_total_plans,
+            "n_plans": self.n_plans,
             "n_targets": self.n_plans_per_env,
             "planner_params": self.planner_params,
             "scenario": self.planner.scenario.simple_name(),
@@ -189,7 +189,7 @@ def main():
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+',
                         help='json file(s) describing what should be compared')
     parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time', required=True)
-    parser.add_argument("--n-total-plans", type=int, default=100, help='total number of plans')
+    parser.add_argument("--n-plans", type=int, default=100, help='number of plans per method')
     parser.add_argument("--timeout", type=int, help='timeout to override what is in the planner config file')
     parser.add_argument("--no-execution", action="store_true", help='no execution')
     parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
@@ -249,14 +249,14 @@ def evaluate_planning_method(args, comparison_idx, planner_params, p_params_name
                                real_time_rate=planner_params['real_time_rate'],
                                max_step_size=planner.fwd_model.max_step_size)
 
-    print(Fore.GREEN + "Running {} Trials".format(args.n_total_plans) + Fore.RESET)
+    print(Fore.GREEN + "Running {} Trials".format(args.n_plans) + Fore.RESET)
 
     runner = EvalPlannerConfigs(
         planner=planner,
         service_provider=service_provider,
         planner_config_name=planner_config_name,
         n_plans_per_env=args.n_plans_per_env,
-        n_total_plans=args.n_total_plans,
+        n_plans=args.n_plans,
         verbose=args.verbose,
         planner_params=planner_params,
         seed=args.seed,

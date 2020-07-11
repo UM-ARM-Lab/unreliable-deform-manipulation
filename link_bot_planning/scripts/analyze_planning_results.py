@@ -141,6 +141,7 @@ def metrics_main(args):
         legend_nickname = " ".join(nickname) if isinstance(nickname, list) else nickname
         legend_names.append(legend_nickname)
 
+        # TODO: parallelize this
         for plan_idx, metrics_filename in enumerate(metrics_filenames):
             with gzip.open(metrics_filename, 'rb') as metrics_file:
                 data_str = metrics_file.read()
@@ -156,23 +157,12 @@ def metrics_main(args):
             p = sequence_of_dicts_to_dict_of_np_arrays(planned_path)['link_bot']
             a = sequence_of_dicts_to_dict_of_np_arrays(actual_path)['link_bot']
 
-            # rospy.logwarn("currently including timeout and not progressing in error metrics")
-            # final_plan_to_execution_errors.append(final_plan_to_execution_error)
-            # final_plan_to_goal_errors.append(final_plan_to_goal_error)
-            # final_execution_to_goal_errors.append(final_execution_to_goal_error)
-
-            # num_nodes = datum['num_nodes']
-            # nums_nodes.append(num_nodes)
-
-            # num_steps = len(planned_path)
-            # nums_steps.append(num_steps)
-
-            if datum['planner_status'] == "solved":
-                solveds += 1
-
+            def _include_in_metrics(status):
+                rospy.logwarn(f"including {status} in error metrics")
                 final_plan_to_execution_errors.append(final_plan_to_execution_error)
                 final_plan_to_goal_errors.append(final_plan_to_goal_error)
                 final_execution_to_goal_errors.append(final_execution_to_goal_error)
+                print(f"{legend_nickname} {status} {final_execution_to_goal_error:.3f}")
 
                 num_nodes = datum['num_nodes']
                 nums_nodes.append(num_nodes)
@@ -188,12 +178,15 @@ def metrics_main(args):
                 nums_mer_violations.append(num_mer_violations)
 
                 planning_times.append(datum['planning_time'])
+
+            if datum['planner_status'] == "solved":
+                solveds += 1
+                _include_in_metrics('solved')
             elif datum['planner_status'] == "not progressing":
                 not_progressings += 1
-                continue
+                # _include_in_metrics('not progressing')
             elif datum['planner_status'] == "timeout":
                 timeouts += 1
-                continue
             else:
                 raise NotImplementedError()
 
@@ -255,12 +248,12 @@ def metrics_main(args):
         aggregate_metrics['% Steps with MER Violations'].append(
             make_row(planner_params, nums_mer_violations, table_format))
 
-        print(f"{subfolder.name:30s}: {percentage_timeout:3.2f}% timeout")
-        for error, plan_idx in sorted(zip(final_execution_to_goal_errors, range(len(final_execution_to_goal_errors)))):
-            print(f"{plan_idx}: {error:5.3f} error between execution to goal")
-        if labeling_params is not None:
-            for num_mer_violations, plan_idx in sorted(zip(nums_mer_violations, range(len(nums_mer_violations)))):
-                print(f"{plan_idx}: {num_mer_violations:5.1f}% of steps violate MER")
+        # print(f"{subfolder.name:30s}: {percentage_timeout:3.2f}% timeout")
+        # for error, plan_idx in sorted(zip(final_execution_to_goal_errors, range(len(final_execution_to_goal_errors)))):
+        #     print(f"{plan_idx}: {error:5.3f} error between execution to goal")
+        # if labeling_params is not None:
+        #     for num_mer_violations, plan_idx in sorted(zip(nums_mer_violations, range(len(nums_mer_violations)))):
+        #         print(f"{plan_idx}: {num_mer_violations:5.1f}% of steps violate MER")
     if not args.no_plot:
         execution_success_ax.plot([goal_threshold, goal_threshold], [0, 100], color='k', linestyle='--')
         execution_error_ax.plot([goal_threshold, goal_threshold], [0, max_density], color='k', linestyle='--')

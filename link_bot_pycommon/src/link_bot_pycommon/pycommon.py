@@ -11,6 +11,21 @@ import numpy as np
 import tensorflow as tf
 
 
+def directions_3d(pitch, yaw):
+    """
+    pitch : [B, S, T]
+    yaw : [B, S, T]
+    """
+    # implement me, and test generating recovery action dataset
+    # should be much faster than before?
+    c1 = tf.math.cos(pitch)
+    s1 = tf.math.sin(pitch)
+    c2 = tf.math.cos(yaw)
+    s2 = tf.math.sin(yaw)
+    directions = tf.stack([c1 * c2, c1 * s2, -s1], axis=-1)
+    return directions
+
+
 def default_if_none(x, default):
     return default if x is None else x
 

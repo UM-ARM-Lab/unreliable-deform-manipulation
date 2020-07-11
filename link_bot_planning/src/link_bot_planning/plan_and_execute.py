@@ -50,7 +50,7 @@ class PlanAndExecute:
 
     def __init__(self,
                  planner: MyPlanner,
-                 n_total_plans: int,
+                 n_plans: int,
                  n_plans_per_env: int,
                  verbose: int,
                  planner_params: Dict,
@@ -62,7 +62,7 @@ class PlanAndExecute:
         self.pause_between_plans = pause_between_plans
         self.planner = planner
         self.recovery_actions_model = recovery_actions_model
-        self.n_total_plans = n_total_plans
+        self.n_plans = n_plans
         self.n_plans_per_env = n_plans_per_env
         self.planner_params = planner_params
         self.verbose = verbose
@@ -71,17 +71,17 @@ class PlanAndExecute:
         self.env_rng = np.random.RandomState(seed)
         self.goal_rng = np.random.RandomState(seed)
 
-        self.total_plan_idx = 0
+        self.plan_idx = 0
         self.n_failures = 0
 
     def run(self):
-        self.total_plan_idx = 0
+        self.plan_idx = 0
         while True:
             for _ in range(self.n_plans_per_env):
                 run_was_valid = self.plan_and_execute_once()
                 if run_was_valid:
-                    self.total_plan_idx += 1
-                    if self.total_plan_idx >= self.n_total_plans:
+                    self.plan_idx += 1
+                    if self.plan_idx >= self.n_plans:
                         self.on_complete()
                         return
             self.randomize_environment()

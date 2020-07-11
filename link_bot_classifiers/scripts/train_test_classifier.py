@@ -64,7 +64,7 @@ def train_main(args, seed: int):
                          params=model_hparams,
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
-                         val_every_n_batches=500,
+                         val_every_n_batches=100,
                          mid_epoch_val_batches=128,
                          restore_from_name=checkpoint_name,
                          batch_metadata=train_dataset.batch_metadata)
@@ -161,7 +161,7 @@ def eval_main(args, seed: int):
                          key_metric=AccuracyMetric,
                          batch_metadata=test_dataset.batch_metadata)
 
-    # Iterate over test set and compute metrics
+    # Iterate over test set
     all_accuracies_over_time = []
     test_metrics = []
     for batch_idx, test_batch in enumerate(test_tf_dataset):

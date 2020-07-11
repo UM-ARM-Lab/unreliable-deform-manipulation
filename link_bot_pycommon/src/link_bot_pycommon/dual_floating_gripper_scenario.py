@@ -19,7 +19,7 @@ from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from visualization_msgs.msg import MarkerArray, Marker
 from link_bot_pycommon.collision_checking import inflate_tf_3d
-from link_bot_pycommon.pycommon import default_if_none
+from link_bot_pycommon.pycommon import default_if_none, directions_3d
 from victor_hardware_interface_msgs.msg import MotionCommand
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, WorldControlRequest, \
     SetRopeState, SetRopeStateRequest, SetDualGripperPoints, GetRopeState, GetRopeStateRequest, \
@@ -84,6 +84,45 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             self.right_arm_motion_pub.publish(right_arm_motion)
             sleep(0.2)
 
+    def batch_stateless_sample_action(self,
+                                      environment: Dict,
+                                      state: Dict,
+                                      batch_size: int,
+                                      n_action_samples: int,
+                                      n_actions: int,
+                                      data_collection_params: Dict,
+                                      action_params: Dict,
+                                      action_rng: np.random.RandomState):
+        action = None
+        del action_rng  # unused, we used tf here
+        # Sample a new random action
+        pitch_1 = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
+        pitch_2 = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
+        yaw_1 = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
+        yaw_2 = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
+        max_d = action_params['max_distance_gripper_can_move']
+
+        displacement1 = tf.random.uniform([batch_size, n_action_samples, n_actions], 0, max_d)
+        displacement2 = tf.random.uniform([batch_size, n_action_samples, n_actions], 0, max_d)
+
+        random_directions_1 = directions_3d(pitch1, yaw_1)
+        gripper1_delta_position = random_directions_1 * displacement1
+
+        random_directions_2 = directions_3d(pitch2, yaw_2)
+        gripper2_delta_position = random_directions_2 * displacement2
+
+        # Apply delta and check for out of bounds
+        gripper1_position = state['gripper1'] + gripper1_delta_position
+        gripper2_position = state['gripper2'] + gripper2_delta_position
+
+        action = {
+            'gripper1_position': gripper1_position,
+            'gripper2_position': gripper2_position,
+            'gripper1_delta_position': gripper1_delta_position,
+            'gripper2_delta_position': gripper2_delta_position,
+        }
+        return actions_dict
+
     def sample_action(self,
                       action_rng: np.random.RandomState,
                       environment: Dict,
@@ -124,9 +163,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                 'gripper1_delta_position': gripper1_delta_position,
                 'gripper2_delta_position': gripper2_delta_position,
             }
-            out_of_bounds = self.grippers_out_of_bounds(gripper1_position,
-                                                        gripper2_position,
-                                                        data_collection_params)
+            out_of_bounds = DualFloatingGripperRopeScenario.grippers_out_of_bounds(gripper1_position,
+                                                                                   gripper2_position,
+                                                                                   data_collection_params)
 
             max_gripper_d = default_if_none(data_collection_params['max_distance_between_grippers'], 1000)
             too_far = np.linalg.norm(gripper1_position - gripper2_position) > max_gripper_d
@@ -138,7 +177,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         rospy.logwarn("Could not find a valid action, executing an invalid one")
         return action
 
-    def grippers_out_of_bounds(self, gripper1, gripper2, data_collection_params: Dict):
+    @staticmethod
+    def grippers_out_of_bounds(ripper1, gripper2, data_collection_params: Dict):
         gripper1_extent = data_collection_params['gripper1_action_sample_extent']
         gripper2_extent = data_collection_params['gripper2_action_sample_extent']
         return DualFloatingGripperRopeScenario.is_out_of_bounds(gripper1, gripper1_extent) \

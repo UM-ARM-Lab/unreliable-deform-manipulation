@@ -84,25 +84,15 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         # Sample actions
         n_action_samples = labeling_params['n_action_samples']
         n_actions = classifier_horizon - 1
-        random_actions_dict = {}
-        for b in range(actual_batch_size):
-            environment_b = index_dict_of_batched_vectors_tf(environment, b)
-            actual_state_b = index_dict_of_batched_vectors_tf(actual_states, b)
-            actual_state_b_t = index_dict_of_batched_vectors_tf(actual_state_b, t)
-            for s in range(n_action_samples):
-                # Reset the "last_action" (and any other internal state) for sampling actions
-                # because we want sample to be independant across batch/sequence-sample
-                scenario.last_action = None
-                for _ in range(n_actions):
-                    action = scenario.sample_action(environment=environment_b,
-                                                    state=actual_state_b_t,
-                                                    data_collection_params=data_collection_params,
-                                                    action_params=data_collection_params,
-                                                    action_rng=action_rng)
-                    for k, v in action.items():
-                        if k not in random_actions_dict:
-                            random_actions_dict[k] = []
-                        random_actions_dict[k].append(v)
+        actual_states_t = index_dict_of_batched_vectors_tf(actual_states, t, batch_axis=1)
+        random_actions_dict = scenario.batch_stateless_sample_action(environment=environment,
+                                                                     state=actual_states_t,
+                                                                     batch_size=actual_batch_size,
+                                                                     n_action_samples=n_action_samples,
+                                                                     n_actions=n_actions,
+                                                                     data_collection_params=data_collection_params,
+                                                                     action_params=data_collection_params,
+                                                                     action_rng=action_rng)
         batch_sample = actual_batch_size * n_action_samples
         random_actions_dict = {k: tf.reshape(v, [batch_sample, n_actions, -1])
                                for k, v in random_actions_dict.items()}

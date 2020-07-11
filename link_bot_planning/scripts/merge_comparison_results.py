@@ -16,6 +16,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('subdir', type=pathlib.Path, help="subdir")
     parser.add_argument('out_subdir', type=pathlib.Path, help="combined data will go here")
+    parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
 
     old_metrics_filenames = list(args.subdir.glob("*_metrics.json.gz"))
@@ -29,7 +30,8 @@ def main():
             return
         else:
             print(f"Copying {old_metrics_filename} -> {new_metrics_filename}")
-            shutil.copy(old_metrics_filename, new_metrics_filename)
+            if not args.dry_run:
+                shutil.copy(old_metrics_filename, new_metrics_filename)
         new_idx += 1
 
 

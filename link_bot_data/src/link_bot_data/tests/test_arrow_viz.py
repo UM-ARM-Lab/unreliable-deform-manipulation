@@ -1,9 +1,11 @@
 from time import sleep
 
 import numpy as np
+import tensorflow as tf
 
 import rospy
 from link_bot_data.visualization import rviz_arrow
+from link_bot_pycommon.pycommon import directions_3d
 from visualization_msgs.msg import MarkerArray
 
 if __name__ == '__main__':
@@ -13,14 +15,19 @@ if __name__ == '__main__':
     g = 0
     b = 0
     a = 1
-    s1 = np.array([0.5, 0.0, 0.0])
 
-    a1 = np.array([0.0, 0.0, 0.0])
+    N = 200
+    pitch = tf.random.uniform([N], -np.pi, np.pi)
+    yaw = tf.random.uniform([N], -np.pi, np.pi)
+    directions = directions_3d(pitch, yaw)
+
+    s1 = np.array([0.0, 0.0, 0.0])
     msg = MarkerArray()
-    arrow = rviz_arrow(s1, a1, r, g, b, 1)
-    msg.markers.append(arrow)
-    print(msg)
+    for idx, direction in enumerate(directions):
+        s2 = s1 + direction * 0.1
+        arrow = rviz_arrow(s1, s2, r, g, b, 1, idx=idx)
+        msg.markers.append(arrow)
 
     for i in range(5):
         action_viz_pub.publish(msg)
-        sleep(0.5)
+        sleep(0.01)
