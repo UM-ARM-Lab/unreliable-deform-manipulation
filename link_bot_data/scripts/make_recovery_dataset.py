@@ -3,7 +3,6 @@ import argparse
 import json
 import logging
 import pathlib
-from time import perf_counter
 
 import rospy
 import tensorflow as tf
@@ -19,7 +18,7 @@ from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 from state_space_dynamics import model_utils
 
-limit_gpu_mem(6)
+limit_gpu_mem(64)
 
 
 def main():
@@ -77,7 +76,6 @@ def main():
         'train': train_split
     }
 
-    t0 = perf_counter()
     for mode in ['train', 'test', 'val']:
         tf_dataset = dataset.get_datasets(mode=mode, take=take_split[mode])
 
@@ -100,7 +98,6 @@ def main():
                 with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
                     writer.write(example)
                 total_count += 1
-            print(total_count, perf_counter() - t0)
 
 
 if __name__ == '__main__':

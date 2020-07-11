@@ -3,6 +3,7 @@ from typing import Dict
 import numpy as np
 import rospy
 import tensorflow as tf
+from time import perf_counter
 from link_bot_classifiers.nn_classifier import NNClassifierWrapper
 from link_bot_data.classifier_dataset_utils import \
     batch_of_many_of_actions_sequences_to_dict
@@ -23,7 +24,7 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
                                tf_dataset: tf.data.Dataset,
                                dataset: DynamicsDataset,
                                labeling_params: Dict):
-    batch_size = 1
+    batch_size = 32
     action_sequence_horizon = labeling_params['action_sequence_horizon']
     tf_dataset = tf_dataset.batch(batch_size)
     action_rng = np.random.RandomState(0)
@@ -31,8 +32,8 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
     for _ in tf_dataset:
         n_batches += 1
 
+    t0 = perf_counter()
     for in_batch_idx, example in enumerate(tf_dataset):
-        print(f"{in_batch_idx}/{n_batches}")
         actual_batch_size = int(example['traj_idx'].shape[0])
         # iterate over every subsequence of exactly length actions_sequence_horizon
         for start_t in range(0, dataset.sequence_length - action_sequence_horizon + 1, labeling_params['start_step']):
@@ -56,6 +57,8 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
             out_examples = generate_recovery_actions_examples(fwd_model, classifier_model, data, constants, action_rng)
             if out_examples is not None:
                 yield out_examples
+        dt = perf_counter() - t0
+        print(f"{in_batch_idx}/{n_batches}, {dt:.3f}s")
 
 
 def generate_recovery_actions_examples(fwd_model, classifier_model, data, constants, action_rng):
@@ -135,14 +138,6 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         #             pred_b_a_s = index_dict_of_batched_vectors_tf(predictions, ravel_batch_idx)
         #             action_b_a_s = index_dict_of_batched_vectors_tf(random_actions_dict, ravel_batch_idx)
         #             pred_t = remove_batch(scenario.index_state_time(add_batch(pred_b_a_s), h))
-        #             scenario.plot_state_rviz(pred_t, label='predicted', color='#00ffffaa')
-        #             if h < anim.max_t:
-        #                 action_t = remove_batch(scenario.index_action_time(add_batch(action_b_a_s), h))
-        #                 scenario.plot_action_rviz(pred_t, action_t)
-        #             else:
-        #                 action_t = remove_batch(scenario.index_action_time(add_batch(action_b_a_s), h - 1))
-        #                 prev_pred_t = remove_batch(scenario.index_state_time(add_batch(pred_b_a_s), h - 1))
-        #                 scenario.plot_action_rviz(prev_pred_t, action_t)
 
         #             if h > 0:
         #                 accept_prob_t = accept_probabilities[ravel_batch_idx, h - 1].numpy()
@@ -151,6 +146,16 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         #             accept_prob_msg = Float32()
         #             accept_prob_msg.data = accept_prob_t
         #             accept_prob_pub_.publish(accept_prob_msg)
+
+        #             color = "#ff0000aa" if accept_prob_t < 0.5 else "#00ff00aa"
+        #             scenario.plot_state_rviz(pred_t, label='predicted', color=color)
+        #             if h < anim.max_t:
+        #                 action_t = remove_batch(scenario.index_action_time(add_batch(action_b_a_s), h))
+        #                 scenario.plot_action_rviz(pred_t, action_t)
+        #             else:
+        #                 action_t = remove_batch(scenario.index_action_time(add_batch(action_b_a_s), h - 1))
+        #                 prev_pred_t = remove_batch(scenario.index_state_time(add_batch(pred_b_a_s), h - 1))
+        #                 scenario.plot_action_rviz(prev_pred_t, action_t)
 
         #             anim.step()
         # # END DEBUG
@@ -189,20 +194,20 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
     valid_indices = tf.squeeze(tf.where(valid_example), axis=1)
     if tf.greater(tf.size(valid_indices), 0):
         valid_out_examples = gather_dict(out_examples, valid_indices)
-        for b in range(tf.size(valid_indices)):
-            print(b)
-            valid_out_example_b = index_dict_of_batched_vectors_tf(valid_out_examples, b)
-            scenario.plot_environment_rviz(valid_out_example_b)
+        # for b in range(tf.size(valid_indices)):
+        #     print(b)
+        #     valid_out_example_b = index_dict_of_batched_vectors_tf(valid_out_examples, b)
+        #     scenario.plot_environment_rviz(valid_out_example_b)
 
-            anim = RvizAnimationController(np.arange(action_sequence_horizon))
-            while not anim.done:
-                t = anim.t()
-                s_t = {k: valid_out_example_b[k][t] for k in actual_states.keys()}
-                scenario.plot_state_rviz(s_t, label='start', color='#ff0000')
-                if t < anim.max_t:
-                    a_t = {k: valid_out_example_b[k][t] for k in actual_actions.keys()}
-                    scenario.plot_action_rviz(s_t, a_t)
-                anim.step()
+        #     anim = RvizAnimationController(np.arange(action_sequence_horizon))
+        #     while not anim.done:
+        #         t = anim.t()
+        #         s_t = {k: valid_out_example_b[k][t] for k in actual_states.keys()}
+        #         scenario.plot_state_rviz(s_t, label='start', color='#ff0000')
+        #         if t < anim.max_t:
+        #             a_t = {k: valid_out_example_b[k][t] for k in actual_actions.keys()}
+        #             scenario.plot_action_rviz(s_t, a_t)
+        #         anim.step()
 
         return valid_out_examples
     else:
