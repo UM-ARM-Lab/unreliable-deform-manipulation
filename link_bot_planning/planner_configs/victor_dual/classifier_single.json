@@ -29,7 +29,7 @@
     0.6251
   ],
   "fwd_model_dir": [
-    "dy_trials/no_victor_longer_0/best_checkpoint",
+    "dy_trials/no_victor_longer_0/best_checkpoint"
   ],
   "classifier_model_dir": "cl_trials/dual_single/July_09_21-32-32_38fd4ea005/best_checkpoint/",
   "accept_threshold": 0.5,
