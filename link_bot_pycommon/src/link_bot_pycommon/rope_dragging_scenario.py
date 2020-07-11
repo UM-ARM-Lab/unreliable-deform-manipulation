@@ -176,6 +176,32 @@ class RopeDraggingScenario(Base3DScenario):
 
         _ = self.move_gripper_srv(req)
 
+    def batch_stateless_sample_action(self,
+                                      environment: Dict,
+                                      state: Dict,
+                                      batch_size: int,
+                                      n_action_samples: int,
+                                      n_actions: int,
+                                      data_collection_params: Dict,
+                                      action_params: Dict,
+                                      action_rng: np.random.RandomState):
+        del action_rng  # unused, we used tf here
+        yaw = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
+        max_d = action_params['max_distance_gripper_can_move']
+
+        displacement = tf.random.uniform([batch_size, n_action_samples, n_actions], 0, max_d)
+
+        random_directions = tf.stack([tf.math.cos(yaw), tf.math.sin(yaw)], axis=2)
+        gripper_delta_position = random_directions * displacement
+
+        gripper_position = state['gripper'] + gripper_delta_position
+
+        action = {
+            'gripper_position': gripper_position,
+            'gripper_delta_position': gripper_delta_position,
+        }
+        return actions_dict
+
     def sample_action(self,
                       action_rng: np.random.RandomState,
                       environment: Dict,

@@ -127,7 +127,7 @@ def test_main(args, seed: int):
     # Dataset
     ###############
     test_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
-    test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
+    test_tf_dataset = test_dataset.get_datasets(mode=args.mode, take=args.take)
     scenario = test_dataset.scenario
 
     ###############
@@ -309,6 +309,7 @@ def main():
     test_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
     test_parser.add_argument('--batch-size', type=int, default=8)
     test_parser.add_argument('--verbose', '-v', action='count', default=0)
+    test_parser.add_argument('--take', type=int)
     test_parser.add_argument('--seed', type=int, default=None)
     test_parser.set_defaults(func=test_main)
 

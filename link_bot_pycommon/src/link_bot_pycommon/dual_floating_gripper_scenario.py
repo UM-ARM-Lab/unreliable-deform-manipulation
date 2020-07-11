@@ -93,7 +93,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                                       data_collection_params: Dict,
                                       action_params: Dict,
                                       action_rng: np.random.RandomState):
-        action = None
         del action_rng  # unused, we used tf here
         # Sample a new random action
         pitch_1 = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
@@ -111,7 +110,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         random_directions_2 = directions_3d(pitch_2, yaw_2)
         gripper2_delta_position = random_directions_2 * displacement2
 
-        # Apply delta and check for out of bounds
+        # Apply delta
         gripper1_position = state['gripper1'] + gripper1_delta_position
         gripper2_position = state['gripper2'] + gripper2_delta_position
 
