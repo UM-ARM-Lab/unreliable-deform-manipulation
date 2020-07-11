@@ -24,7 +24,7 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
                                tf_dataset: tf.data.Dataset,
                                dataset: DynamicsDataset,
                                labeling_params: Dict):
-    batch_size = 32
+    batch_size = 1
     action_sequence_horizon = labeling_params['action_sequence_horizon']
     tf_dataset = tf_dataset.batch(batch_size)
     action_rng = np.random.RandomState(0)
@@ -34,9 +34,12 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
 
     t0 = perf_counter()
     for in_batch_idx, example in enumerate(tf_dataset):
+        dt = perf_counter() - t0
+        print(f"{in_batch_idx}/{n_batches}, {dt:.3f}s")
         actual_batch_size = int(example['traj_idx'].shape[0])
         # iterate over every subsequence of exactly length actions_sequence_horizon
         for start_t in range(0, dataset.sequence_length - action_sequence_horizon + 1, labeling_params['start_step']):
+            print(f"start_t={start_t}")
             end_t = start_t + action_sequence_horizon
 
             actual_states_from_start_t = {k: example[k][:, start_t:end_t] for k in fwd_model.state_keys}
@@ -57,8 +60,6 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
             out_examples = generate_recovery_actions_examples(fwd_model, classifier_model, data, constants, action_rng)
             if out_examples is not None:
                 yield out_examples
-        dt = perf_counter() - t0
-        print(f"{in_batch_idx}/{n_batches}, {dt:.3f}s")
 
 
 def generate_recovery_actions_examples(fwd_model, classifier_model, data, constants, action_rng):
@@ -79,6 +80,7 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
 
     all_rejected = []
     for t in range(action_sequence_horizon):
+        print(f"t={t}")
         # Sample actions
         n_action_samples = labeling_params['n_action_samples']
         n_actions = classifier_horizon - 1

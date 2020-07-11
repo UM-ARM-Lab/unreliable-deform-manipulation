@@ -24,6 +24,7 @@ def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
     max_y = 0
     max_z = 0
     for i, example in enumerate(tf_dataset):
+        print(i)
         example = numpify(example)
         time_steps = example['time_idx']
 

@@ -45,7 +45,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.right_arm_motion_pub = rospy.Publisher("right_arm/motion_command", MotionCommand, queue_size=10)
         self.set_model_state_srv = rospy.ServiceProxy("gazebo/set_model_state", SetModelState)
 
-        self.max_action_attempts = 1000
+        self.max_action_attempts = 500
 
         self.object_reset_poses = {
             'box1': (np.zeros(3), np.array([0, 0, 0, 1])),
