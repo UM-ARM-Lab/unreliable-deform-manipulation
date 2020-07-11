@@ -39,11 +39,11 @@
   "real_time_rate": 0.0,
   "table_config": {
     "nickname": [
-      "Classifier"
+      "Classifier",
+      "(single)"
     ],
     "classifier": [
-      "Learned",
-      "(No Stdev)"
+      "Learned"
     ],
     "dynamics": [
       "Single",

@@ -78,24 +78,20 @@ def metrics_main(args):
     fine_errors_thresholds = np.linspace(0.01, max_error, analysis_params["n_error_bins"] * 5)
     print('-' * 90)
     if not args.no_plot:
-        plt.figure()
-        planning_success_ax = plt.gca()
+        planning_success_fig, planning_success_ax = plt.subplots(figsize=(16, 16))
         planning_success_ax.set_xlabel("Success Threshold, Task Error")
         planning_success_ax.set_ylabel("Success Rate")
         planning_success_ax.set_ylim([-0.1, 100.5])
 
-        plt.figure()
-        execution_error_ax = plt.gca()
+        execution_error_fig, execution_error_ax = plt.subplots(figsize=(16, 16))
         execution_error_ax.set_xlabel("Task Error")
         execution_error_ax.set_ylabel("Density")
 
-        plt.figure()
-        planning_error_ax = plt.gca()
+        planning_error_fig, planning_error_ax = plt.subplots(figsize=(16, 16))
         planning_error_ax.set_xlabel("Task Error")
         planning_error_ax.set_ylabel("Density")
 
-        plt.figure()
-        execution_success_ax = plt.gca()
+        execution_success_fig, execution_success_ax = plt.subplots(figsize=(16, 16))
         execution_success_ax.set_xlabel("Success Threshold, Task Error")
         execution_success_ax.set_ylabel("Success Rate")
         execution_success_ax.set_ylim([-0.1, 100.5])
@@ -160,19 +156,29 @@ def metrics_main(args):
             p = sequence_of_dicts_to_dict_of_np_arrays(planned_path)['link_bot']
             a = sequence_of_dicts_to_dict_of_np_arrays(actual_path)['link_bot']
 
-            rospy.logwarn("currently including timeout and not progressing in error metrics")
-            final_plan_to_execution_errors.append(final_plan_to_execution_error)
-            final_plan_to_goal_errors.append(final_plan_to_goal_error)
-            final_execution_to_goal_errors.append(final_execution_to_goal_error)
+            # rospy.logwarn("currently including timeout and not progressing in error metrics")
+            # final_plan_to_execution_errors.append(final_plan_to_execution_error)
+            # final_plan_to_goal_errors.append(final_plan_to_goal_error)
+            # final_execution_to_goal_errors.append(final_execution_to_goal_error)
 
-            num_nodes = datum['num_nodes']
-            nums_nodes.append(num_nodes)
+            # num_nodes = datum['num_nodes']
+            # nums_nodes.append(num_nodes)
 
-            num_steps = len(planned_path)
-            nums_steps.append(num_steps)
+            # num_steps = len(planned_path)
+            # nums_steps.append(num_steps)
 
             if datum['planner_status'] == "solved":
                 solveds += 1
+
+                final_plan_to_execution_errors.append(final_plan_to_execution_error)
+                final_plan_to_goal_errors.append(final_plan_to_goal_error)
+                final_execution_to_goal_errors.append(final_execution_to_goal_error)
+
+                num_nodes = datum['num_nodes']
+                nums_nodes.append(num_nodes)
+
+                num_steps = len(planned_path)
+                nums_steps.append(num_steps)
 
                 if labeling_params is not None:
                     is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
@@ -209,7 +215,7 @@ def metrics_main(args):
                                       label=legend_nickname, linewidth=5, color=color)
 
             # Execution Error Plot
-            final_execution_to_goal_pdf = stats.gaussian_kde(final_execution_to_goal_errors, bw_method=0.05)
+            final_execution_to_goal_pdf = stats.gaussian_kde(final_execution_to_goal_errors, bw_method=0.1)
             final_execution_to_goal_densities_at_thresholds = final_execution_to_goal_pdf(fine_errors_thresholds)
             execution_error_ax.hist(final_execution_to_goal_errors, color=color, alpha=0.2, bins=fine_errors_thresholds)
             execution_error_ax.plot(fine_errors_thresholds, final_execution_to_goal_densities_at_thresholds, label=legend_nickname,
@@ -225,10 +231,10 @@ def metrics_main(args):
             planning_success_ax.plot(errors_thresholds, planning_successes, label=legend_nickname, linewidth=5, c=color)
 
             # Planning Error Plot
-            final_planning_to_goal_pdf = stats.gaussian_kde(final_plan_to_execution_errors, bw_method=0.05)
-            final_planning_to_goal_densities_at_thresholds = final_planning_to_goal_pdf(errors_thresholds)
-            planning_error_ax.hist(final_plan_to_execution_errors, color=color, alpha=0.2, bins=errors_thresholds)
-            planning_error_ax.plot(errors_thresholds, final_planning_to_goal_densities_at_thresholds, label=legend_nickname,
+            final_planning_to_goal_pdf = stats.gaussian_kde(final_plan_to_execution_errors, bw_method=0.1)
+            final_planning_to_goal_densities_at_thresholds = final_planning_to_goal_pdf(fine_errors_thresholds)
+            planning_error_ax.hist(final_plan_to_execution_errors, color=color, alpha=0.2, bins=fine_errors_thresholds)
+            planning_error_ax.plot(fine_errors_thresholds, final_planning_to_goal_densities_at_thresholds, label=legend_nickname,
                                    linewidth=5,
                                    c=color)
             max_density = max(np.max(final_planning_to_goal_densities_at_thresholds), max_density)
@@ -270,17 +276,18 @@ def metrics_main(args):
         planning_error_ax.legend()
 
         # Timeout Plot
-        plt.figure()
-        percentage_ax = plt.gca()
-        timeout_bar = percentage_ax.bar(legend_names, percentages_timeout)
-        not_progressing_bar = percentage_ax.bar(legend_names, percentages_not_progressing, bottom=percentages_timeout)
-        solved_bar = percentage_ax.bar(legend_names, percentages_solved,
-                                       bottom=np.add(percentages_not_progressing, percentages_timeout))
-        percentage_ax.set_ylabel("Percentage")
-        percentage_ax.set_xlabel("Methods")
-        percentage_ax.set_title("Planner Status Breakdown")
-        percentage_ax.legend((solved_bar, not_progressing_bar,  timeout_bar),
-                             ("Solved", "NotProgressing", "Timeout"))
+        planner_status_fig, planner_status_ax = plt.subplots(figsize=(32, 10))
+        planner_status_ax = plt.gca()
+        timeout_bar = planner_status_ax.bar(legend_names, percentages_timeout)
+        not_progressing_bar = planner_status_ax.bar(
+            legend_names, percentages_not_progressing, bottom=percentages_timeout)
+        solved_bar = planner_status_ax.bar(legend_names, percentages_solved,
+                                           bottom=np.add(percentages_not_progressing, percentages_timeout))
+        planner_status_ax.set_ylabel("Percentage")
+        planner_status_ax.set_xlabel("Methods")
+        planner_status_ax.set_title("Planner Status Breakdown")
+        planner_status_ax.legend((solved_bar, not_progressing_bar,  timeout_bar),
+                                 ("Solved", "NotProgressing", "Timeout"))
     print('-' * 90)
 
     for metric_name, table_data in aggregate_metrics.items():
@@ -296,7 +303,18 @@ def metrics_main(args):
     print(Style.BRIGHT + "p-value matrix (goal vs execution)" + Style.NORMAL)
     print(dict_to_pvalue_table(execution_to_goal_errors_comparisons, table_format=table_format))
     if not args.no_plot:
+        first_results_dir = args.results_dirs[0]
+        save_unconstrained_layout(execution_success_fig, first_results_dir / "execution_success.png")
+        save_unconstrained_layout(execution_error_fig, first_results_dir / "execution_error.png")
+        save_unconstrained_layout(planning_error_fig, first_results_dir / "planning_error.png")
+        save_unconstrained_layout(planning_success_fig, first_results_dir / "planning_success.png")
+        save_unconstrained_layout(planner_status_fig, first_results_dir / "status_breakdown.png")
         plt.show()
+
+
+def save_unconstrained_layout(fig, filename, dpi=300):
+    fig.set_constrained_layout(False)
+    fig.savefig(filename, bbox_inches='tight', dpi=100)
 
 
 def get_all_subfolders(args):
