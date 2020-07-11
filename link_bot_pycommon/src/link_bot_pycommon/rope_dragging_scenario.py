@@ -21,7 +21,7 @@ from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import remove_batch, add_batch
 from mps_shape_completion_msgs.msg import OccupancyStamped
-from peter_msgs.srv import GetRopeState, GetRopeStateRequest, Position3DAction, Position3DActionRequest, Position3DEnableRequest, Position3DEnable, GetPosition3D, GetPosition3DRequest, WorldControlRequest
+from peter_msgs.srv import GetRopeState, GetRopeStateRequest, Position3DDeltaAction, Position3DDeltaActionRequest, Position3DAction, Position3DActionRequest, Position3DEnableRequest, Position3DEnable, GetPosition3D, GetPosition3DRequest, WorldControlRequest
 from std_srvs.srv import EmptyRequest, Empty
 from tf.transformations import quaternion_from_euler
 from visualization_msgs.msg import MarkerArray, Marker
@@ -32,10 +32,9 @@ class RopeDraggingScenario(Base3DScenario):
 
     def __init__(self):
         super().__init__()
-        object_name = 'link_bot'
-        self.move_srv = rospy.ServiceProxy(f"{object_name}/move", Position3DAction)
-        self.object_enable_srv = rospy.ServiceProxy(f"{object_name}/enable", Position3DEnable)
-        self.get_object_srv = rospy.ServiceProxy(f"{object_name}/get", GetPosition3D)
+        rope_name = 'link_bot'
+        self.move_gripper_srv = rospy.ServiceProxy(f"{rope_name}/move_delta", Position3DDeltaAction)
+        self.get_gripper_srv = rospy.ServiceProxy(f"{rope_name}/get", GetPosition3D)
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
         self.reset_sim_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
         self.last_action = None
@@ -156,7 +155,7 @@ class RopeDraggingScenario(Base3DScenario):
     def plot_action_rviz_internal(self, data: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
         gripper = np.reshape(data['gripper'], [3])
-        target_gripper = np.reshape(data['gripper_position'], [3])
+        target_gripper = data['gripper'] + data['gripper_delta_position']
 
         idx = kwargs.get("idx", 0)
 
@@ -169,13 +168,13 @@ class RopeDraggingScenario(Base3DScenario):
         self.action_viz_pub.publish(msg)
 
     def execute_action(self, action: Dict):
-        req = Position3DActionRequest()
-        req.position.x = action['gripper_position'][0]
-        req.position.y = action['gripper_position'][1]
-        req.position.z = action['gripper_position'][2]
+        req = Position3DDeltaActionRequest()
+        req.position.x = action['gripper_delta_position'][0]
+        req.position.y = action['gripper_delta_position'][1]
+        req.position.z = action['gripper_delta_position'][2]
         req.timeout = action['timeout'][0]
 
-        _ = self.move_srv(req)
+        _ = self.move_gripper_srv(req)
 
     def sample_action(self,
                       action_rng: np.random.RandomState,
@@ -197,13 +196,12 @@ class RopeDraggingScenario(Base3DScenario):
 
                 gripper_delta_position = np.array([dx, dy, 0])
 
-            gripper_position = state['gripper'] + gripper_delta_position
+            expected_gripper_position = state['gripper'] + gripper_delta_position
             action = {
-                'gripper_position': gripper_position,
                 'gripper_delta_position': gripper_delta_position,
                 'timeout': [action_params['dt']],
             }
-            out_of_bounds = self.gripper_out_of_bounds(gripper_position, data_collection_params)
+            out_of_bounds = self.gripper_out_of_bounds(expected_gripper_position, data_collection_params)
             if not out_of_bounds:
                 self.last_action = action
                 return action
@@ -224,7 +222,7 @@ class RopeDraggingScenario(Base3DScenario):
             or z < z_min or z > z_max
 
     def get_state(self):
-        gripper_res = self.get_object_srv(GetPosition3DRequest())
+        gripper_res = self.get_gripper_srv(GetPosition3DRequest())
         rope_res = self.get_rope_srv(GetRopeStateRequest())
 
         rope_state_vector = []
@@ -249,7 +247,7 @@ class RopeDraggingScenario(Base3DScenario):
     def actions_description() -> Dict:
         # should match the keys of the dict return from action_to_dataset_action
         return {
-            'gripper_position': 3,
+            'gripper_delta_position': 3,
             'timeout': 1,
         }
 
@@ -352,15 +350,7 @@ class RopeDraggingScenario(Base3DScenario):
 
     @ staticmethod
     def put_action_local_frame(state: Dict, action: Dict):
-        target_gripper_position = action['gripper_position']
-
-        current_gripper_point = state['gripper']
-
-        gripper_delta = target_gripper_position - current_gripper_point
-
-        return {
-            'gripper_delta': gripper_delta,
-        }
+        return action
 
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
         self.reset_sim_srv(EmptyRequest())
@@ -413,7 +403,7 @@ class RopeDraggingScenario(Base3DScenario):
     @ staticmethod
     def index_action_time(action, t):
         action_t = {}
-        for feature_name in ['gripper_position']:
+        for feature_name in ['gripper_delta_position']:
             if t < action[feature_name].shape[1]:
                 action_t[feature_name] = action[feature_name][:, t]
             else:
@@ -460,14 +450,12 @@ class RopeDraggingScenario(Base3DScenario):
 
     def ompl_control_to_numpy(self, ompl_state: ob.CompoundState, ompl_control: oc.CompoundControl):
         state_np = RopeDraggingScenario.ompl_state_to_numpy(ompl_state)
-        current_gripper_position = state_np['gripper']
 
         gripper_delta_position = np.array([np.cos(ompl_control[0][0]) * ompl_control[0][1],
                                            np.sin(ompl_control[0][0])*ompl_control[0][1],
                                            0])
-        target_gripper_position = current_gripper_position + gripper_delta_position
         return {
-            'gripper_position': target_gripper_position,
+            'gripper_delta_position': gripper_delta_position,
             'timeout': [self.action_params['dt']],
         }
 

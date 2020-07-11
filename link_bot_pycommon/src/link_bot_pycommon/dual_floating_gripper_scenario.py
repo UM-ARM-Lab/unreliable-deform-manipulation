@@ -105,10 +105,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         displacement1 = tf.random.uniform([batch_size, n_action_samples, n_actions], 0, max_d)
         displacement2 = tf.random.uniform([batch_size, n_action_samples, n_actions], 0, max_d)
 
-        random_directions_1 = directions_3d(pitch1, yaw_1)
+        random_directions_1 = directions_3d(pitch_1, yaw_1)
         gripper1_delta_position = random_directions_1 * displacement1
 
-        random_directions_2 = directions_3d(pitch2, yaw_2)
+        random_directions_2 = directions_3d(pitch_2, yaw_2)
         gripper2_delta_position = random_directions_2 * displacement2
 
         # Apply delta and check for out of bounds

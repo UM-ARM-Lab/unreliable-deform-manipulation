@@ -26,6 +26,7 @@ def compute_weighted_mean_loss(bce, positives):
     else:
         weight_for_negative = n_total / 2.0 / n_negative
         weight_for_positive = n_total / 2.0 / n_positive
+    # tf.print(f"\n{n_positive:.3f}, {n_negative:.3f}, {weight_for_positive:.3f}, {weight_for_negative:.3f}")
     weighted_bce = tf.math.add(tf.math.multiply(bce, positives * weight_for_positive),
                                tf.math.multiply(bce, negatives * weight_for_negative))
     if tf.equal(n_negative, 0):

@@ -27,6 +27,29 @@ from std_msgs.msg import Float32
 limit_gpu_mem(5.5)
 
 
+def _label_is(label_is):
+    def __filter(example):
+        result = tf.squeeze(tf.equal(example['is_close'][1], label_is))
+        return result
+
+    return __filter
+
+
+def flatten_concat_pairs(ex_pos, ex_neg):
+    flat_pair = tf.data.Dataset.from_tensors(ex_pos).concatenate(tf.data.Dataset.from_tensors(ex_neg))
+    return flat_pair
+
+
+def balance(dataset):
+    positive_examples = dataset.filter(_label_is(1))
+    negative_examples = dataset.filter(_label_is(0))
+    negative_examples = negative_examples.repeat()
+    balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
+    balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
+
+    return balanced_dataset
+
+
 def train_main(args, seed: int):
     ###############
     # Datasets
@@ -64,8 +87,6 @@ def train_main(args, seed: int):
                          params=model_hparams,
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
-                         val_every_n_batches=100,
-                         mid_epoch_val_batches=128,
                          restore_from_name=checkpoint_name,
                          batch_metadata=train_dataset.batch_metadata)
 
@@ -75,6 +96,10 @@ def train_main(args, seed: int):
 
     # to mix up examples so each batch is diverse
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=50, seed=seed, reshuffle_each_iteration=False)
+
+    # DEBGUGING: balance classes?
+    train_tf_dataset = balance(train_tf_dataset)
+    val_tf_dataset = balance(val_tf_dataset)
 
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, args.batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, args.batch_size, drop_remainder=True)
