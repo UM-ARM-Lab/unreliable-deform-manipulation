@@ -40,7 +40,7 @@ def execute_actions(service_provider: BaseServices, scenario: ExperimentScenario
         state_t = scenario.get_state()
         actual_path.append(state_t)
         if plot:
-            scenario.plot_executed_action(pre_action_state, action)
+            scenario.plot_executed_action(pre_action_state, action, label='executed')
             scenario.plot_state_rviz(state_t, label='actual')
         pre_action_state = state_t
     return actual_path

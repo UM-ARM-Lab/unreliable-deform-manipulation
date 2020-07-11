@@ -24,7 +24,7 @@ from shape_completion_training.model.utils import reduce_mean_dict
 from shape_completion_training.model_runner import ModelRunner
 from std_msgs.msg import Float32
 
-limit_gpu_mem(5.5)
+limit_gpu_mem(6.5)
 
 
 def _label_is(label_is):
@@ -209,12 +209,8 @@ def eval_main(args, seed: int):
             example = index_dict_of_batched_vectors_tf(test_batch, b)
 
             # if the classifier is correct at all time steps, ignore
-            if tf.reduce_all(classifier_is_correct[b]):
+            if args.only_errors and tf.reduce_all(classifier_is_correct[b]):
                 continue
-            predicted_rope_points = tf.reshape(example[add_predicted('link_bot')], [test_dataset.horizon, -1, 3])
-            predicted_rope_z = predicted_rope_points[:, :, 2]
-            # if tf.reduce_min(predicted_rope_z) > 0.02:
-            #     continue
 
             time_steps = np.arange(test_dataset.horizon)
             scenario.plot_environment_rviz(example)
@@ -239,6 +235,7 @@ def eval_main(args, seed: int):
                     accept_probability_t = predictions['probabilities'][b, t-1, 0].numpy()
                 else:
                     accept_probability_t = -999
+                print(label_t, accept_probability_t)
                 accept_probability_msg = Float32()
                 accept_probability_msg.data = accept_probability_t
                 accept_probability_pub_.publish(accept_probability_msg)
@@ -319,6 +316,7 @@ def main():
     eval_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
     eval_parser.add_argument('--batch-size', type=int, default=8)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
+    eval_parser.add_argument('--only-errors', action='store_true')
     eval_parser.add_argument('--seed', type=int, default=None)
     eval_parser.set_defaults(func=eval_main)
 
