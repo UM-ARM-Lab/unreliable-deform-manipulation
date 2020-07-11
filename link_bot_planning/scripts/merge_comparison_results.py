@@ -23,13 +23,14 @@ def main():
     # start off where existing metrics left off
     new_idx = len(existing_metrics_filenames)
     for old_metrics_filename in old_metrics_filenames:
-        new_metrics_filename = f"{new_idx}_metrics.json.gz"
+        new_metrics_filename = args.out_subdir / f"{new_idx}_metrics.json.gz"
         if new_metrics_filename.exists():
             print(Fore.RED + f"Refusing to overwrite {new_metrics_filename}. Aborting." + Fore.RESET)
             return
         else:
             print(f"Copying {old_metrics_filename} -> {new_metrics_filename}")
-            # shutil.copy(old_metrics_filename, new_metrics_filename)
+            shutil.copy(old_metrics_filename, new_metrics_filename)
+        new_idx += 1
 
 
 if __name__ == '__main__':
