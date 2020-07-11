@@ -41,6 +41,7 @@ add_service_files(
         LinkBotTrajectory.srv
         ListObjects.srv
         Position3DAction.srv
+        Position3DDeltaAction.srv
         Position3DEnable.srv
         Reconstruction.srv
         SetBool.srv
