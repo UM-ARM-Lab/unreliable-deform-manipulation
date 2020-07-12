@@ -23,8 +23,8 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
                                classifier_model: NNClassifierWrapper,
                                tf_dataset: tf.data.Dataset,
                                dataset: DynamicsDataset,
-                               labeling_params: Dict):
-    batch_size = 1
+                               labeling_params: Dict,
+                               batch_size: int):
     action_sequence_horizon = labeling_params['action_sequence_horizon']
     tf_dataset = tf_dataset.batch(batch_size)
     action_rng = np.random.RandomState(0)

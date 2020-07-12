@@ -31,6 +31,7 @@ def main():
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
     parser.add_argument('--max-examples-per-record', type=int, default=128, help="examples per file")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
+    parser.add_argument('--batch-size', type=int, help="batch size")
 
     args = parser.parse_args()
 
@@ -83,7 +84,7 @@ def main():
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
         total_count = 0
-        for out_example in generate_recovery_examples(fwd_models, classifier_model, tf_dataset, dataset, labeling_params):
+        for out_example in generate_recovery_examples(fwd_models, classifier_model, tf_dataset, dataset, labeling_params, args.batch_size):
             # FIXME: is there an extra time/batch dimension?
             for batch_idx in range(out_example['traj_idx'].shape[0]):
                 out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
