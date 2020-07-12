@@ -98,6 +98,7 @@ def main():
                 with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
                     writer.write(example)
                 total_count += 1
+                print(f"Examples: {total_count:8d}")
 
 
 if __name__ == '__main__':

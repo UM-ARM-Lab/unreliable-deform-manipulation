@@ -105,22 +105,20 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         displacement2 = tf.random.uniform([batch_size, n_action_samples, n_actions], 0, max_d)
 
         random_directions_1 = directions_3d(pitch_1, yaw_1)
-        gripper1_delta_position = random_directions_1 * displacement1
+        gripper1_delta_position = random_directions_1 * displacement1[:, :, :, tf.newaxis]
 
         random_directions_2 = directions_3d(pitch_2, yaw_2)
-        gripper2_delta_position = random_directions_2 * displacement2
+        gripper2_delta_position = random_directions_2 * displacement2[:, :, :, tf.newaxis]
 
         # Apply delta
         gripper1_position = state['gripper1'] + gripper1_delta_position
         gripper2_position = state['gripper2'] + gripper2_delta_position
 
-        action = {
+        actions = {
             'gripper1_position': gripper1_position,
             'gripper2_position': gripper2_position,
-            'gripper1_delta_position': gripper1_delta_position,
-            'gripper2_delta_position': gripper2_delta_position,
         }
-        return actions_dict
+        return actions
 
     def sample_action(self,
                       action_rng: np.random.RandomState,
