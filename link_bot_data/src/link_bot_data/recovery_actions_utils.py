@@ -77,7 +77,7 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         'res': full_env_res,
     }
 
-    all_rejected = []
+    classifier_rejects = []
     for t in range(action_sequence_horizon):
         # Sample actions
         n_action_samples = labeling_params['n_action_samples']
@@ -155,15 +155,16 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
 
         # a time step needs recovery if every time step of every sampled random action sequence was rejected by the classifier
         # needs_recovery has shape [batch size, action_sequence_horizon]
-        all_rejected_t = tf.reduce_all(accept_probabilities < 0.5, axis=1)
-        all_rejected.append(all_rejected_t)
+        classifier_rejects_t = accept_probabilities < 0.5
+        classifier_rejects.append(classifier_rejects_t)
 
     # an example is recovering if at the first time step (axis 1) needs_recovery is true, and if at some point later in time
     # needs_recovery is false
-    all_rejected = tf.stack(all_rejected, axis=1)
-    first_time_step_needs_recovery = all_rejected[:, 0]
+    classifier_rejects = tf.stack(classifier_rejects, axis=1)
+    classifier_accepts = tf.logical_not(classifier_rejects)
+    first_time_step_needs_recovery = tf.reduce_all(classifier_rejects[:, 0], axis=-1)
     # here we check only the last, allowing intermediate states to be whatever
-    last_time_step_doesnt_need_recovery = tf.logical_not(all_rejected[:, -1])
+    last_time_step_doesnt_need_recovery = tf.reduce_any(classifier_accepts[:, -1], axis=-1)
     valid_example = tf.logical_and(first_time_step_needs_recovery, last_time_step_doesnt_need_recovery)
 
     # construct output examples dict
