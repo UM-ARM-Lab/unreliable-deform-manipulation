@@ -241,7 +241,8 @@ class MyPlanner:
                 ompl_path = self.ss.getSolutionPath()
                 actions, planned_path = self.convert_path(ompl_path)
             except RuntimeError:
-                rospy.logerr("No solution path on timeout?! considering this a failure.")
+                rospy.logerr("No solution path on timeout?! considering this as Not Progressing.")
+                planner_status = MyPlannerStatus.NotProgressing
                 actions = []
                 planned_path = [start_state]
         else:
