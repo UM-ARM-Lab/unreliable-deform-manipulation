@@ -189,6 +189,8 @@ def eval_main(args, seed: int):
     # Iterate over test set
     all_accuracies_over_time = []
     test_metrics = []
+    all_stdevs = []
+    all_labels = []
     for batch_idx, test_batch in enumerate(test_tf_dataset):
         test_batch.update(test_dataset.batch_metadata)
 
@@ -196,6 +198,10 @@ def eval_main(args, seed: int):
 
         test_metrics.append(test_batch_metrics)
         labels = tf.expand_dims(test_batch['is_close'][:, 1:], axis=2)
+
+        all_labels = tf.concat((all_labels, tf.reshape(test_batch['is_close'][:, 1:], [-1])))
+        all_stdevs = tf.concat((all_stdevs, tf.reshape(test_batch[add_predicted('stdev')], [-1])))
+        print(all_labels.shape, all_stdevs.shape)
 
         probabilities = predictions['probabilities']
         accuracy_over_time = tf.keras.metrics.binary_accuracy(y_true=labels, y_pred=probabilities)

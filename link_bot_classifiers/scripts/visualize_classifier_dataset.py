@@ -15,6 +15,7 @@ from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import remove_batch, add_batch
 from std_msgs.msg import Float32
+from scipy import stats
 
 limit_gpu_mem(1)
 
@@ -159,9 +160,13 @@ def visualize_dataset(args, classifier_dataset):
     total_dt = perf_counter() - t0
 
     if args.display_type == 'stdev':
+
+        print(f"p={stats.f_oneway(stdevs_for_negative, stdevs_for_positive)[1]}")
+
         plt.figure()
-        plt.hist(stdevs_for_negative, label='negative examples', alpha=0.8, bins=100)
-        plt.hist(stdevs_for_positive, label='positive examples', alpha=0.8, bins=100)
+        plt.title(" ".join([str(d.name) for d in args.dataset_dirs]))
+        bins = plt.hist(stdevs_for_negative, label='negative examples', alpha=0.8, density=True)[1]
+        plt.hist(stdevs_for_positive, label='positive examples', alpha=0.8, bins=bins, density=True)
         plt.ylabel("count")
         plt.xlabel("stdev")
         plt.legend()

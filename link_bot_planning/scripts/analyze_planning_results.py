@@ -77,20 +77,20 @@ def metrics_main(args):
     errors_thresholds = np.linspace(0.01, max_error, analysis_params["n_error_bins"])
     print('-' * 90)
     if not args.no_plot:
-        planning_success_fig, planning_success_ax = plt.subplots(figsize=(16, 16))
+        planning_success_fig, planning_success_ax = plt.subplots(figsize=(16, 10))
         planning_success_ax.set_xlabel("Success Threshold, Task Error")
         planning_success_ax.set_ylabel("Success Rate")
         planning_success_ax.set_ylim([-0.1, 100.5])
 
-        execution_error_fig, execution_error_ax = plt.subplots(figsize=(16, 16))
+        execution_error_fig, execution_error_ax = plt.subplots(figsize=(16, 10))
         execution_error_ax.set_xlabel("Task Error")
         execution_error_ax.set_ylabel("Density")
 
-        planning_error_fig, planning_error_ax = plt.subplots(figsize=(16, 16))
+        planning_error_fig, planning_error_ax = plt.subplots(figsize=(16, 10))
         planning_error_ax.set_xlabel("Task Error")
         planning_error_ax.set_ylabel("Density")
 
-        execution_success_fig, execution_success_ax = plt.subplots(figsize=(16, 16))
+        execution_success_fig, execution_success_ax = plt.subplots(figsize=(16, 10))
         execution_success_ax.set_xlabel("Success Threshold, Task Error")
         execution_success_ax.set_ylabel("Success Rate")
         execution_success_ax.set_ylim([-0.1, 100.5])
@@ -106,7 +106,6 @@ def metrics_main(args):
     else:
         table_format = 'fancy_grid'
 
-    max_density = 0
     prop_cycle = plt.rcParams['axes.prop_cycle']
     colors = prop_cycle.by_key()['color']
     legend_names = []
@@ -134,6 +133,7 @@ def metrics_main(args):
         planner_params = metadata['planner_params']
         labeling_params = labeling_params_from_planner_params(planner_params, fallback_labeling_params=None)
         goal_threshold = planner_params['goal_threshold']
+        print(subfolder, goal_threshold)
         scenario = get_scenario(metadata['scenario'])
         table_config = planner_params['table_config']
         nickname = table_config['nickname']
@@ -211,11 +211,9 @@ def metrics_main(args):
             # Execution Error Plot
             final_execution_to_goal_pdf = stats.gaussian_kde(final_execution_to_goal_errors, bw_method=0.1)
             final_execution_to_goal_densities_at_thresholds = final_execution_to_goal_pdf(errors_thresholds)
-            execution_error_ax.hist(final_execution_to_goal_errors, color=color, alpha=0.2, bins=errors_thresholds)
             execution_error_ax.plot(errors_thresholds, final_execution_to_goal_densities_at_thresholds, label=legend_nickname,
                                     linewidth=5,
                                     c=color)
-            max_density = max(np.max(final_execution_to_goal_densities_at_thresholds), max_density)
 
             # Planning Success Plot
             planning_successes = []
@@ -227,11 +225,9 @@ def metrics_main(args):
             # Planning Error Plot
             final_planning_to_goal_pdf = stats.gaussian_kde(final_plan_to_execution_errors, bw_method=0.1)
             final_planning_to_goal_densities_at_thresholds = final_planning_to_goal_pdf(errors_thresholds)
-            planning_error_ax.hist(final_plan_to_execution_errors, color=color, alpha=0.2, bins=errors_thresholds)
             planning_error_ax.plot(errors_thresholds, final_planning_to_goal_densities_at_thresholds, label=legend_nickname,
                                    linewidth=5,
                                    c=color)
-            max_density = max(np.max(final_planning_to_goal_densities_at_thresholds), max_density)
 
         execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
         plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
@@ -256,9 +252,9 @@ def metrics_main(args):
         #     for num_mer_violations, plan_idx in sorted(zip(nums_mer_violations, range(len(nums_mer_violations)))):
         #         print(f"{plan_idx}: {num_mer_violations:5.1f}% of steps violate MER")
     if not args.no_plot:
-        execution_success_ax.plot([goal_threshold, goal_threshold], [0, 100], color='k', linestyle='--')
-        execution_error_ax.plot([goal_threshold, goal_threshold], [0, max_density], color='k', linestyle='--')
-        planning_success_ax.plot([goal_threshold, goal_threshold], [0, 100], color='k', linestyle='--')
+        execution_success_ax.axvline(goal_threshold, color='k', linestyle='--')
+        execution_error_ax.axvline(goal_threshold, color='k', linestyle='--')
+        planning_success_ax.axvline(goal_threshold, color='k', linestyle='--')
 
         execution_success_ax.set_title("Success In Execution, {}".format(scenario))
         planning_success_ax.set_title("Success In Planning, {}".format(scenario))
