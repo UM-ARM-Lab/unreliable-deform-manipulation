@@ -31,7 +31,7 @@
   "fwd_model_dir": [
     "dy_trials/dragging_no_obs_0/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/dragging_z4_single/July_10_12-04-52_3afc98c2ba/best_checkpoint",
+  "classifier_model_dir": "cl_trials/dragging_balance_no_uncertainty/July_11_17-07-46_eccab5e838/best_checkpoint",
   "accept_threshold": 0.5,
   "movable_obstacles": {},
   "goal_threshold": 0.05,
