@@ -58,8 +58,7 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
                          start_t,
                          end_t)
             out_examples = generate_recovery_actions_examples(fwd_model, classifier_model, data, constants, action_rng)
-            if out_examples is not None:
-                yield out_examples
+            yield out_examples
 
 
 def generate_recovery_actions_examples(fwd_model, classifier_model, data, constants, action_rng):
@@ -183,27 +182,24 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
     out_examples = make_dict_tf_float32(out_examples)
 
     valid_indices = tf.squeeze(tf.where(valid_example), axis=1)
-    if tf.greater(tf.size(valid_indices), 0):
-        valid_out_examples = gather_dict(out_examples, valid_indices)
-        # BEGIN DEBUG
-        for b in range(tf.size(valid_indices)):
-            valid_out_example_b = index_dict_of_batched_vectors_tf(valid_out_examples, b)
-            scenario.plot_environment_rviz(valid_out_example_b)
+    valid_out_examples = gather_dict(out_examples, valid_indices)
+    # # BEGIN DEBUG
+    # for b in range(tf.size(valid_indices)):
+    #     valid_out_example_b = index_dict_of_batched_vectors_tf(valid_out_examples, b)
+    #     scenario.plot_environment_rviz(valid_out_example_b)
 
-            anim = RvizAnimationController(np.arange(action_sequence_horizon))
-            while not anim.done:
-                t = anim.t()
-                s_t = {k: valid_out_example_b[k][t] for k in actual_states.keys()}
-                scenario.plot_state_rviz(s_t, label='start', color='#ff0000')
-                if t < anim.max_t:
-                    a_t = {k: valid_out_example_b[k][t] for k in actual_actions.keys()}
-                    scenario.plot_action_rviz(s_t, a_t)
-                anim.step()
-        # END DEBUG
+    #     anim = RvizAnimationController(np.arange(action_sequence_horizon))
+    #     while not anim.done:
+    #         t = anim.t()
+    #         s_t = {k: valid_out_example_b[k][t] for k in actual_states.keys()}
+    #         scenario.plot_state_rviz(s_t, label='start', color='#ff0000')
+    #         if t < anim.max_t:
+    #             a_t = {k: valid_out_example_b[k][t] for k in actual_actions.keys()}
+    #             scenario.plot_action_rviz(s_t, a_t)
+    #         anim.step()
+    # # END DEBUG
 
-        return valid_out_examples
-    else:
-        return None
+    return valid_out_examples
 
 
 def recovering_mask(needs_recovery):

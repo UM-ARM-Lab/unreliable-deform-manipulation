@@ -111,8 +111,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper2_delta_position = random_directions_2 * displacement2[:, :, :, tf.newaxis]
 
         # Apply delta
-        gripper1_position = state['gripper1'] + gripper1_delta_position
-        gripper2_position = state['gripper2'] + gripper2_delta_position
+        gripper1_position = state['gripper1'][:, tf.newaxis, tf.newaxis] + gripper1_delta_position
+        gripper2_position = state['gripper2'][:, tf.newaxis, tf.newaxis] + gripper2_delta_position
 
         actions = {
             'gripper1_position': gripper1_position,
