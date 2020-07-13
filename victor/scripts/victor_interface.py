@@ -2,36 +2,68 @@
 
 import numpy as np
 
+from ros_numpy import numpify
+import tf2_ros
+from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
+from geometry_msgs.msg import Point
+from sensor_msgs.msg import PointCloud2
+from peter_msgs.srv import GetDualGripperPoints, GetDualGripperPointsRequest, GetDualGripperPointsResponse, GetRopeState, GetRopeStateResponse, GetRopeStateRequest
 import rospy
-from victor_hardware_interface.msg import ControlMode
-from tf.transformations import compose_matrix
 
-from arm_or_robots import motion_victor
+class CDCPDGetStateNode:
 
-config_start = [0.527, 1.378, 1.278, 1.153, -2.438, -0.64, 0.43]
+    def __init__(self):
+        rospy.init_node("cdcpd_get_state")
+        self.get_grippers_srv = rospy.Service("get_dual_gripper_points", GetDualGripperPoints, self.get_dual_gripper_points_callback)
+        self.get_rope_srv = rospy.Service("get_rope_state", GetRopeState, self.get_rope_state_callback)
 
+        self.cdcpd_sub = rospy.Subscriber("cdcpd/output", PointCloud2, self.cdcpd_callback)
+        self.latest_cdcpd_output = None
 
-def grab_cloth(mev):
-    """Pickup and drop a cloth from the table"""
-    # mev.set_gripper("right", [0.3, 0.3, 0.3], blocking=False)
-    mev.set_manipulator("right_arm")
-    mev.change_control_mode(ControlMode.JOINT_IMPEDANCE)
-
-    # raw_input("give me the rope plz!")
-    mev.set_gripper("right", [0.38, 0.36, 0.36], blocking=True)
-
-    mev.plan_to_configuration(config_start, execute=True, blocking=True)
-    # mev.guarded_move_hand_straight([-1, 0, 0], 0.1, force_trigger=15, step_size=0.01)
-
-    mev.guarded_move_hand_straight([0, 1, 0], 0.1, force_trigger=15, step_size=0.01)
+        self.buffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.buffer)
 
 
-def run_mev():
-    rospy.init_node("motion")
-    mev = motion_victor.MotionEnabledVictor()
+    def cdcpd_callback(self, output: PointCloud2):
+        self.latest_cdcpd_output = output
 
-    grab_cloth(mev)
+    def get_rope_state_callback(self, req : GetRopeStateRequest):
+        if self.latest_cdcpd_output is None:
+            rospy.logwarn("No CDPCD output available")
+            raise rospy.ServiceException("No CDPCD output available")
+        cdcpd_points = numpify(self.latest_cdcpd_output)
+        res = GetRopeStateResponse()
+        for cdcpd_point in cdcpd_points:
+            point = Point()
+            point.x = cdcpd_point[0]
+            point.y = cdcpd_point[1]
+            point.z = cdcpd_point[2]
+            res.positions.append(point)
+        return res
 
+    def get_dual_gripper_points_callback(self, req : GetDualGripperPointsRequest):
+        res = GetDualGripperPointsResponse()
+
+        # lookup TF of left and right gripper tool frames
+        left_gripper_transform = self.buffer.lookup_transform("world_origin", 'left_gripper_tool', rospy.Time(), rospy.Duration(1))
+        res.gripper1.x = left_gripper_transform.transform.translation.x
+        res.gripper1.y = left_gripper_transform.transform.translation.y
+        res.gripper1.z = left_gripper_transform.transform.translation.z
+
+        right_gripper_transform = self.buffer.lookup_transform("world_origin", "right_gripper_tool", rospy.Time(), rospy.Duration(1))
+        res.gripper2.x = right_gripper_transform.transform.translation.x
+        res.gripper2.y = right_gripper_transform.transform.translation.y
+        res.gripper2.z = right_gripper_transform.transform.translation.z
+        return res
 
 if __name__ == "__main__":
-    run_mev()
+    n = CDCPDGetStateNode()
+
+    # TESTING
+    scenario = DualFloatingGripperRopeScenario()
+    while True:
+        state = scenario.get_state()
+        scenario.plot_state_rviz(state, label="observed")
+        rospy.sleep(0.1)
+
+

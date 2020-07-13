@@ -37,13 +37,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
         self.grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", SetBool)
         self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
-        self.set_rope_srv = rospy.ServiceProxy("set_rope_state", SetRopeState)
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
-        self.get_joint_state_srv = rospy.ServiceProxy("joint_states", GetJointState)
-        self.set_grippers_srv = rospy.ServiceProxy("set_dual_gripper_points", SetDualGripperPoints)
         self.left_arm_motion_pub = rospy.Publisher("left_arm/motion_command", MotionCommand, queue_size=10)
         self.right_arm_motion_pub = rospy.Publisher("right_arm/motion_command", MotionCommand, queue_size=10)
-        self.set_model_state_srv = rospy.ServiceProxy("gazebo/set_model_state", SetModelState)
 
         self.max_action_attempts = 500
 
