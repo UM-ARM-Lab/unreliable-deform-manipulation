@@ -67,5 +67,6 @@ if __name__ == "__main__":
     scenario = DualFloatingGripperRopeScenario()
     while True:
         state = scenario.get_state()
+        print(state)
         scenario.plot_state_rviz(state, label="observed")
         rospy.sleep(0.1)
