@@ -308,20 +308,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             rope_velocity_vector.append(v.y)
             rope_velocity_vector.append(v.z)
 
-        model_pose = [
-            rope_res.model_pose.position.x,
-            rope_res.model_pose.position.y,
-            rope_res.model_pose.position.z,
-            rope_res.model_pose.orientation.w,
-            rope_res.model_pose.orientation.x,
-            rope_res.model_pose.orientation.y,
-            rope_res.model_pose.orientation.z,
-        ]
-
-        # joint_res = self.get_joint_state_srv(GetJointStateRequest())
-        # victor_joint_names = joint_res.joint_state.name
-        # victor_joint_positions = joint_res.joint_state.position
-
         return {
             'gripper1': ros_numpy.numpify(grippers_res.gripper1),
             'gripper2': ros_numpy.numpify(grippers_res.gripper2),

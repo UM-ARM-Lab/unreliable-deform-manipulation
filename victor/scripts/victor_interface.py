@@ -4,8 +4,9 @@ import numpy as np
 
 from ros_numpy import numpify
 import tf2_ros
+import tf2_geometry_msgs
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, PoseStamped, PointStamped
 from sensor_msgs.msg import PointCloud2
 from peter_msgs.srv import GetDualGripperPoints, GetDualGripperPointsRequest, GetDualGripperPointsResponse, GetRopeState, GetRopeStateResponse, GetRopeStateRequest
 import rospy
@@ -39,7 +40,15 @@ class CDCPDGetStateNode:
             point.x = cdcpd_point[0]
             point.y = cdcpd_point[1]
             point.z = cdcpd_point[2]
-            res.positions.append(point)
+
+            # translate the point from the CDCPD frame to world frame
+            point_stamped = PointStamped()
+            point_stamped.header.frame_id = self.latest_cdcpd_output.header.frame_id
+            point_stamped.point = point
+            cdcpd_to_world = self.buffer.lookup_transform("world", self.latest_cdcpd_output.header.frame_id, rospy.Time(0), rospy.Duration(1.0))
+            point_transformed = tf2_geometry_msgs.do_transform_point(point_stamped, cdcpd_to_world)
+
+            res.positions.append(point_transformed.point)
         return res
 
     def get_dual_gripper_points_callback(self, req: GetDualGripperPointsRequest):
@@ -47,13 +56,13 @@ class CDCPDGetStateNode:
 
         # lookup TF of left and right gripper tool frames
         left_gripper_transform = self.buffer.lookup_transform(
-            "world_origin", 'left_gripper_tool', rospy.Time.now, rospy.Duration(1))
+            "world", 'left_gripper_tool', rospy.Time(0), rospy.Duration(5.0))
         res.gripper1.x = left_gripper_transform.transform.translation.x
         res.gripper1.y = left_gripper_transform.transform.translation.y
         res.gripper1.z = left_gripper_transform.transform.translation.z
 
         right_gripper_transform = self.buffer.lookup_transform(
-            "world_origin", "right_gripper_tool", rospy.Time.now, rospy.Duration(1))
+            "world", "right_gripper_tool", rospy.Time(0), rospy.Duration(5.0))
         res.gripper2.x = right_gripper_transform.transform.translation.x
         res.gripper2.y = right_gripper_transform.transform.translation.y
         res.gripper2.z = right_gripper_transform.transform.translation.z
@@ -67,6 +76,5 @@ if __name__ == "__main__":
     scenario = DualFloatingGripperRopeScenario()
     while True:
         state = scenario.get_state()
-        print(state)
         scenario.plot_state_rviz(state, label="observed")
-        rospy.sleep(0.1)
+        rospy.sleep(1.0)
