@@ -10,7 +10,6 @@ import ompl.control as oc
 import rospy
 from link_bot_data.visualization import rviz_arrow
 from geometry_msgs.msg import Point
-from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from matplotlib import colors
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from tf import transformations

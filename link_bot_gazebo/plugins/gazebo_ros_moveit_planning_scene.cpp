@@ -197,6 +197,15 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
       object.header.stamp = ros::Time::now();
       object.operation = moveit_msgs::CollisionObject::ADD;
 
+      moveit_msgs::ObjectColor object_color;
+      object_color.id = id;
+      std_msgs::ColorRGBA color;
+      color.r = 1.f;
+      color.g = 1.f;
+      color.b = 1.f;
+      color.a = 1.f;
+      object_color.color = color;
+
       ROS_DEBUG_STREAM("Adding object: " << id);
 
       ignition::math::Pose3d link_pose = link->WorldPose();
@@ -443,6 +452,7 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
       }
 
       planning_scene_msg.world.collision_objects.push_back(object);
+      // planning_scene_msg.object_colors.push_back(object_color);
     }
   }
 

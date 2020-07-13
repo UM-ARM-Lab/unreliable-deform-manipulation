@@ -39,7 +39,9 @@
 #include <gazebo/transport/TransportTypes.hh>
 
 #include <moveit_msgs/GetPlanningScene.h>
+#include <moveit_msgs/ObjectColor.h>
 #include <moveit_msgs/PlanningScene.h>
+#include <std_msgs/ColorRGBA.h>
 #include <std_srvs/Empty.h>
 
 namespace gazebo

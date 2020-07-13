@@ -14,6 +14,7 @@ from link_bot_data.visualization import rviz_arrow
 from tf import transformations
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, extent_to_env_size
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from gazebo_msgs.srv import SetModelStateRequest
@@ -50,6 +51,8 @@ class Base3DScenario(ExperimentScenario):
         self.current_tree_state_idx = 0
         self.tree_action_idx = 0
         self.sample_idx = 0
+
+        self.set_model_state_srv = rospy.ServiceProxy("gazebo/set_model_state", SetModelState)
 
     @staticmethod
     def random_pos(action_rng: np.random.RandomState, extent):
