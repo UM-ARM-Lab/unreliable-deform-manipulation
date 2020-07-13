@@ -262,7 +262,7 @@ trajectory_msgs::JointTrajectory PlanningInterace::plan(ps::PlanningScenePtr pla
 trajectory_msgs::JointTrajectory PlanningInterace::moveInRobotFrame(ps::PlanningScenePtr planning_scene,
                                                                   PointSequence const& target_tool_positions)
 {
-  return moveInWorldFrame(planning_scene, Transform(robotTworld, target_tool_positions));
+  return moveInWorldFrame(planning_scene, Transform(worldTrobot, target_tool_positions));
 }
 
 trajectory_msgs::JointTrajectory PlanningInterace::moveInWorldFrame(ps::PlanningScenePtr planning_scene,

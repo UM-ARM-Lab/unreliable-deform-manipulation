@@ -107,7 +107,7 @@ bool DualGripperShim::executeDualGripperTrajectory(pm::DualGripperTrajectory::Re
     auto ps = scene_->clonePlanningScene();
     auto const target = PointSequence{ ConvertTo<Eigen::Vector3d>(req.gripper1_points[idx]),
                                        ConvertTo<Eigen::Vector3d>(req.gripper2_points[idx]) };
-    auto const traj = planner_->moveInRobotFrame(ps, target);
+    auto const traj = planner_->moveInWorldFrame(ps, target);
     followJointTrajectory(traj);
     res.merged_trajectory_empty = (traj.points.size() < 2);
   }

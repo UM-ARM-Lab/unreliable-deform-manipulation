@@ -52,7 +52,7 @@ rosrun physical_robot_3d_rope_shim test_move.py
 ```
 roscore
 rcnova && roslaunch hdt_michigan_control joint_control_filter_robot.launch --screen
-roslaunch physical_robot_3d_rope_shim vicon.launch live:=false use_val:=true
+roslaunch physical_robot_3d_rope_shim vicon.launch live:=true use_val:=true
 rcnova && rosrun arm_or_robots ros_trajectory_forwarder.py _world_frame:="robot_root" _robot:="val"
 rviz
 roslaunch physical_robot_3d_rope_shim robot_shim.launch use_val:=true --screen
