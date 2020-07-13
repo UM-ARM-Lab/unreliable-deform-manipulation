@@ -42,7 +42,13 @@
   "accept_threshold": 0.5,
   "movable_obstacles": {},
   "goal_threshold": 0.07,
-  "fixed_goal": null,
+  "fixed_goal": {
+    "midpoint": [
+      1.0,
+      0.4,
+      0.75
+    ]
+  },
   "real_time_rate": 0.0,
   "table_config": {
     "nickname": [

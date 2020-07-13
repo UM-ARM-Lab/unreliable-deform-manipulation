@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-from __future__ import division, print_function
-
 import time
 import rospy
 from typing import Dict, Optional, List
@@ -40,7 +38,7 @@ def execute_actions(service_provider: BaseServices, scenario: ExperimentScenario
         state_t = scenario.get_state()
         actual_path.append(state_t)
         if plot:
-            scenario.plot_executed_action(pre_action_state, action, label='executed')
+            scenario.plot_executed_action(pre_action_state, action)
             scenario.plot_state_rviz(state_t, label='actual')
         pre_action_state = state_t
     return actual_path
@@ -98,10 +96,8 @@ class PlanAndExecute:
                                                      service_provider=self.service_provider,
                                                      robot_name=self.planner.fwd_model.scenario.robot_name())
 
-        # generate a random target
-        goal = self.planner.scenario.sample_goal(environment=environment,
-                                                 rng=self.goal_rng,
-                                                 planner_params=self.planner_params)
+        # Get the goal (default is to randomly sample one)
+        goal = self.get_goal(environment)
 
         if self.verbose >= 1:
             (Fore.MAGENTA + "Planning to {}".format(goal) + Fore.RESET)
@@ -144,6 +140,12 @@ class PlanAndExecute:
                                    planner_result.planner_status)
 
         return True
+
+    def get_goal(self, environment: Dict):
+        goal = self.planner.scenario.sample_goal(environment=environment,
+                                                 rng=self.goal_rng,
+                                                 planner_params=self.planner_params)
+        return goal
 
     def plan_with_random_restarts_when_not_progressing(self, start_state: Dict, environment: Dict, goal):
         for _ in range(4):
