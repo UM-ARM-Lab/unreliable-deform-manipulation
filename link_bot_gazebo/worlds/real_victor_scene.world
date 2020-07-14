@@ -55,6 +55,7 @@
         </include>
 
         <model name="safety walls">
+            <static>true</static>
             <link name="1212_west_monitors">
                 <pose>2.85 -1.1 1.5 0 0 0</pose>
                 <collision name="collision">

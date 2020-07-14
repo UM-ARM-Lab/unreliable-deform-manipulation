@@ -104,7 +104,7 @@ PlanningInterace::PlanningInterace(ros::NodeHandle nh, ros::NodeHandle ph, std::
   , vis_pub_(nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10, true))
 
   , tf_buffer_(tf_buffer)
-  , world_frame_("world_origin")
+  , world_frame_("robot_root")
   , robot_frame_(model_->getRootLinkName())
   , worldTrobot(lookupTransform(*tf_buffer_, world_frame_, robot_frame_, ros::Time(0), ros::Duration(1)))
   , robotTworld(worldTrobot.inverse(Eigen::Isometry))
@@ -287,13 +287,6 @@ trajectory_msgs::JointTrajectory PlanningInterace::moveInWorldFrame(ps::Planning
       std::cerr << "Collision at start_state:\n" << result << std::endl;
       std::cerr << "Joint limits at start_state\n";
       start_state.printStatePositionsWithJointLimits(jmg_, std::cerr);
-
-      std::string asdf = "";
-      while (asdf != "c")
-      {
-        std::cerr << "Waiting for input/debugger attaching " << std::flush;
-        std::cin >> asdf;
-      }
     }
   }
 

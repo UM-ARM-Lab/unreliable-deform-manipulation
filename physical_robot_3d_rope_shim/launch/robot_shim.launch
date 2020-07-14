@@ -10,22 +10,22 @@
         <rosparam subst_value="true" param="right_arm_home">
             [-1.74533, -0.5759586531581287, -1.9, 1.3089969389957465, -1.9539925233402755e-14, -0.7330382858376183, 1.8325957145940466]
         </rosparam>
-        <!-- Load Victor's URDF, SRDF and other .yaml configuration files on the param server --> 
+        <!-- Load Victor's URDF, SRDF and other .yaml configuration files on the param server -->
         <include file="$(find victor_moveit_config)/launch/planning_context.launch">
             <arg name="load_robot_description" value="false"/>
         </include>
     </group>
     <group if="$(arg use_val)">
         <rosparam subst_value="true" param="left_arm_home">
-            [0 0 0 0 0 0 0]
+            [2.7, 0.25, 0.25, -3.0, 2.51, -0.05, 0.0]
         </rosparam>
         <rosparam subst_value="true" param="right_arm_home">
-            [0 0 0 0 0 0 0]
+            [2.7, -0.25, -0.25, -3.0, -1.51, 0.43, 0.0]
         </rosparam>
         <rosparam subst_value="true" param="torso_home">
             [0 0]
         </rosparam>
-        <!-- Load Val's URDF, SRDF and other .yaml configuration files on the param server --> 
+        <!-- Load Val's URDF, SRDF and other .yaml configuration files on the param server -->
         <include file="$(find hdt_michigan_moveit)/launch/planning_context.launch">
             <arg name="load_robot_description" value="true"/>
         </include>

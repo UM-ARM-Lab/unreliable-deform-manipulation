@@ -77,7 +77,7 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
     get_occupancy_service_ = ros_node_->advertiseService(so);
   }
 
-  gzlog << "Finished loading collision map plugin!\n";
+  ROS_INFO_STREAM("Finished loading collision map plugin!");
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
 }
 void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels,
@@ -96,6 +96,11 @@ void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, 
   auto const t0 = std::chrono::steady_clock::now();
 
   m_ = world_->ModelByName("collision_sphere");
+  if (!m_) {
+    ROS_WARN_STREAM("Collision sphere is not in the world (yet)");
+    return;
+  }
+
   auto c = m_->GetChildCollision("collision");
   ode_collision_ = boost::dynamic_pointer_cast<physics::ODECollision>(c);
   auto const sphere_collision_geom_id = ode_collision_->GetCollisionId();
