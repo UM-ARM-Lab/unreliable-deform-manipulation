@@ -15,21 +15,6 @@ from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 
 
-def get_environment_common(w_m: float, h_m: float, res: float, service_provider: BaseServices, scenario: ExperimentScenario):
-    full_env_data = get_occupancy_data(env_w_m=w_m,
-                                       env_h_m=h_m,
-                                       res=res,
-                                       service_provider=service_provider,
-                                       robot_name=scenario.robot_name())
-    environment = {
-        'full_env/env': full_env_data.data,
-        'full_env/origin': full_env_data.origin,
-        'full_env/res': full_env_data.resolution,
-        'full_env/extent': full_env_data.extent,
-    }
-    return environment
-
-
 def execute_actions(service_provider: BaseServices, scenario: ExperimentScenario, start_state: Dict, actions: List[Dict], plot: bool = False):
     pre_action_state = start_state
     actual_path = [pre_action_state]

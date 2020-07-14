@@ -55,7 +55,7 @@ def main():
             broadcaster.sendTransform(t)
 
             try:
-                transform = buffer.lookup_transform("world", gazebo_model_frame, rospy.Time())
+                transform = buffer.lookup_transform("world", gazebo_model_frame, rospy.Time(), rospy.Duration(0.1))
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 rospy.logwarn(f"failed to lookup transform between world and {gazebo_model_frame}")
                 continue

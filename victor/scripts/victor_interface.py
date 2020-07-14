@@ -2,6 +2,7 @@
 
 import numpy as np
 
+import argparse
 from ros_numpy import numpify
 import tf2_ros
 import tf2_geometry_msgs
@@ -70,11 +71,19 @@ class CDCPDGetStateNode:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action='store_true')
+    args = parser.parse_args()
     n = CDCPDGetStateNode()
 
     # TESTING
     scenario = DualFloatingGripperRopeScenario()
-    while True:
-        state = scenario.get_state()
-        scenario.plot_state_rviz(state, label="observed")
-        rospy.sleep(1.0)
+
+    if args.debug:
+        while True:
+            state = scenario.get_state()
+            scenario.plot_state_rviz(state, label="observed")
+            rospy.sleep(1.0)
+    else:
+        rospy.spin()
+

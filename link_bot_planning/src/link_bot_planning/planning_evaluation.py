@@ -1,6 +1,7 @@
 import gzip
 import json
 import pathlib
+from time import sleep
 from typing import Optional, Dict, List
 
 import rospy
@@ -100,7 +101,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                 print("Using Goal {}".format(self.goal))
             return self.goal
         else:
-            return super().get_goal()
+            return super().get_goal(environment)
 
     def on_execution_complete(self,
                               planned_path: List[Dict],
@@ -153,6 +154,8 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.successfully_completed_plan_idx += 1
 
         if self.record:
+            # TODO: maybe make this happen async?
+            sleep(1)
             self.service_provider.stop_record_trial()
 
     def on_planner_failure(self, start_states, tail_goal_point, environment: Dict, planner_data):
@@ -185,6 +188,8 @@ def evaluate_planning_method(args, comparison_idx, planner_params, p_params_name
 
     # Start Services
     if args.env_type == 'victor':
+        service_provider = victor_services.VictorServices()
+    elif args.env_type == 'val':
         service_provider = victor_services.VictorServices()
     else:
         service_provider = gazebo_services.GazeboServices()

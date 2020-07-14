@@ -20,7 +20,7 @@ def main():
     ou.setLogLevel(ou.LOG_ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("env_type", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
+    parser.add_argument("env_type", choices=['victor', 'val', 'gazebo'], default='gazebo', help='env type')
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+',
                         help='json file(s) describing what should be compared')
     parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time', required=True)
@@ -45,7 +45,7 @@ def main():
         print(Fore.YELLOW + "Creating output directory: {}".format(common_output_directory) + Fore.RESET)
         common_output_directory.mkdir(parents=True)
 
-    rospy.init_node("final_evaluation")
+    rospy.init_node("planning_evaluation")
     rospy.set_param('service_provider', args.env_type)
 
     planners_params = [(json.load(p_params_name.open("r")), p_params_name) for p_params_name in args.planners_params]

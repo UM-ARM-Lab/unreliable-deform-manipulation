@@ -17,7 +17,8 @@ broadcaster = tf2_ros.StaticTransformBroadcaster()
 
 res = 0.03
 
-extent_3d = [0.4, 1.2, -0.72, 0.72, 0.5, 1.5]
+# this is assumed to be in frame "robot_root"
+extent_3d = [-0.5, 0.5, 0.1, 1.0, -0.5, 0.5]
 # extent_3d = [-0.3, 0.3, -0.3, 0.3, 0.00, 0.3]
 while True:
     try:
@@ -25,7 +26,6 @@ while True:
                                                      res=res,
                                                      service_provider=services,
                                                      robot_name='victor_and_rope::link_bot')
-        print(link_bot_sdf_utils.idx_to_point_3d(0, 0, 0, res, environment['origin']))
         msg = link_bot_sdf_utils.environment_to_occupancy_msg(environment)
         print(msg.header.stamp)
 
