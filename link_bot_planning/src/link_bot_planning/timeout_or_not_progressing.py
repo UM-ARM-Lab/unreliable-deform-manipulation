@@ -10,21 +10,18 @@ class TimeoutOrNotProgressing(ob.PlannerTerminationCondition):
         super().__init__(ob.PlannerTerminationConditionFn(self.condition))
         self.params = params
         self.planner = planner
-        self.times_called = 1
         self.verbose = verbose
         self.t0 = perf_counter()
-        self.timed_out = False
-        self.not_progressing = False
-        self.max_distance_from_start = 0
+        self.attempted_extensions = 0
+        self.all_rejected = True
+        self.not_progressing = None
 
     def condition(self):
-        self.times_called += 1
-        self.not_progressing = self.times_called > self.params['times_called_threshold'] and \
-            self.max_distance_from_start < self.params['max_distance_from_start_threshold']
+        self.not_progressing = self.attempted_extensions >= self.params['attempted_extensions_threshold'] and self.all_rejected
         now = perf_counter()
         dt_s = now - self.t0
-        self.timed_out = dt_s > self.params['timeout']
-        should_terminate = self.timed_out or self.not_progressing
+        timed_out = dt_s > self.params['timeout']
+        should_terminate = timed_out or self.not_progressing
         if self.verbose >= 3:
-            print(f"{self.times_called:6d}, {self.max_distance_from_start:6.4f} {dt_s:7.4f} --> {should_terminate}")
+            print(f"{self.attempted_extensions:6d}, {self.all_rejected}")
         return should_terminate

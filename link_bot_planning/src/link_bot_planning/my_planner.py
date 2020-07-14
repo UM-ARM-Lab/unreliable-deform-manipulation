@@ -97,9 +97,11 @@ class MyPlanner:
             if self.verbose >= 2:
                 self.scenario.plot_rejected_state(final_state)
 
-        # Do some bookkeeping to figure out how the planner is progressing
-        distance_from_start = self.scenario.distance(final_state, self.start_state)
-        self.ptc.max_distance_from_start = max(self.ptc.max_distance_from_start, distance_from_start)
+        # PTC bookkeeping to figure out how the planner is progressing
+        self.ptc.attempted_extensions += 1
+        if motions_valid:
+            self.ptc.all_rejected = False
+        # end PTC bookkeeping
 
         return motions_valid
 

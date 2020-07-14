@@ -2,6 +2,7 @@
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import argparse
 import pathlib
 import rospy
@@ -42,12 +43,18 @@ def visualize_dataset(args, dataset):
     idx = 0
     deltas = []
     for example_idx, example in enumerate(tf_dataset):
-        print(example_idx)
+        p_accepts = tf.reduce_mean(example['accept_probabilities'], axis=1)
+        max_scores = tf.reduce_max(example['accept_probabilities'], axis=1)
         anim = RvizAnimationController(np.arange(dataset.horizon))
         scenario.plot_environment_rviz(example)
+        p_accept = tf.reduce_max(p_accepts)
+        print(p_accept)
+
         while not anim.done:
 
             t = anim.t()
+            mean_score_t = p_accepts[t]
+            max_score_t = max_scores[t]
             s_t = {k: example[k][t] for k in dataset.state_keys}
             if t < dataset.horizon - 1:
                 a_t = {k: example[k][t] for k in dataset.action_keys}
@@ -102,7 +109,7 @@ def visualize_dataset(args, dataset):
                 marker_msg.markers.append(marker)
                 marker_msg.markers.append(rviz_arrow([0, 0, 0], mean_delta, 0, 1, 0, 1, idx=0, label='observed'))
                 testing_pub.publish(marker_msg)
-            scenario.plot_state_rviz(s_t, label='observed')
+            scenario.plot_state_rviz(s_t, label='observed', color=cm.Reds(mean_score_t))
             anim.step()
 
             idx += 1
