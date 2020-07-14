@@ -47,10 +47,10 @@ def main():
 
     dataset = DynamicsDataset([args.dataset_dir])
 
-    # success = mkdir_and_ask(args.out_dir, parents=True)
-    # if not success:
-    #     print(Fore.RED + "Aborting" + Fore.RESET)
-    #     return
+    success = mkdir_and_ask(args.out_dir, parents=True)
+    if not success:
+        print(Fore.RED + "Aborting" + Fore.RESET)
+        return
 
     new_hparams_filename = args.out_dir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams
