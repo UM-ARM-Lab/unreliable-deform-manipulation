@@ -21,6 +21,7 @@ class RecoveryDataset(BaseDataset):
             'traj_idx',
             'start_t',
             'end_t',
+            'accept_probabilities'
         ]
 
         for k in self.hparams['state_keys']:

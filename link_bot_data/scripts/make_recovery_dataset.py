@@ -93,18 +93,18 @@ def main():
             for batch_idx in range(out_example['traj_idx'].shape[0]):
                 out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
 
-                # BEGIN DEBUG
-                anim = RvizAnimationController(np.arange(labeling_params['action_sequence_horizon']))
-                scenario.plot_environment_rviz(out_example_b)
-                while not anim.done:
-                    t = anim.t()
-                    s_t = {k: out_example_b[k][t] for k in fwd_models.state_keys}
-                    if t < labeling_params['action_sequence_horizon'] - 1:
-                        a_t = {k: out_example_b[k][t] for k in fwd_models.action_keys}
-                        scenario.plot_action_rviz(s_t, a_t, label='observed')
-                    scenario.plot_state_rviz(s_t, label='observed')
-                    anim.step()
-                # END DEBUG
+                # # BEGIN DEBUG
+                # anim = RvizAnimationController(np.arange(labeling_params['action_sequence_horizon']))
+                # scenario.plot_environment_rviz(out_example_b)
+                # while not anim.done:
+                #     t = anim.t()
+                #     s_t = {k: out_example_b[k][t] for k in fwd_models.state_keys}
+                #     if t < labeling_params['action_sequence_horizon'] - 1:
+                #         a_t = {k: out_example_b[k][t] for k in fwd_models.action_keys}
+                #         scenario.plot_action_rviz(s_t, a_t, label='observed')
+                #     scenario.plot_state_rviz(s_t, label='observed')
+                #     anim.step()
+                # # END DEBUG
 
                 features = {}
                 for k, v in out_example_b.items():
