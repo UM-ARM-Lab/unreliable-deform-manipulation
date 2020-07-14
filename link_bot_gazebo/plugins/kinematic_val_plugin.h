@@ -7,9 +7,6 @@
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 #include <tf2_ros/transform_listener.h>
-#include <victor_hardware_interface/MotionCommand.h>
-#include <victor_hardware_interface/MotionStatus.h>
-#include <victor_hardware_interface/Robotiq3FingerStatus.h>
 
 #include <gazebo/common/Events.hh>
 #include <gazebo/common/Plugin.hh>
@@ -21,23 +18,17 @@ namespace gazebo
 {
 using TrajServer = actionlib::SimpleActionServer<control_msgs::FollowJointTrajectoryAction>;
 
-class KinematicVictorPlugin : public ModelPlugin
+class KinematicValPlugin : public ModelPlugin
 {
 public:
-  KinematicVictorPlugin();
-  ~KinematicVictorPlugin() override;
+  KinematicValPlugin();
+  ~KinematicValPlugin() override;
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
 
   sensor_msgs::JointState GetJointStates();
   void PublishJointStates();
   void PublishLeftArmMotionStatus();
-  void PublishRightArmMotionStatus();
-  void PublishLeftGripperStatus();
-  void PublishRightGripperStatus();
-
-  void OnLeftArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg);
-  void OnRightArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg);
   void FollowJointTrajectory(const TrajServer::GoalConstPtr &goal);
 
   void TeleportGrippers();
@@ -72,23 +63,15 @@ private:
   // here this just sets a flag so we don't teleport the rope to match the grippers
   ros::ServiceServer grasping_rope_server_;
 
-  // mocking Victor specific things, so that we can use the ARM Command Gui
-  ros::Publisher left_arm_motion_status_pub_;
-  ros::Publisher right_arm_motion_status_pub_;
-  ros::Publisher left_gripper_status_pub_;
-  ros::Publisher right_gripper_status_pub_;
-  ros::Subscriber left_arm_motion_command_sub_;
-  ros::Subscriber right_arm_motion_command_sub_;
-
   // Rope-overstretching-detection
-  std::string const left_flange_name_{ "victor::victor_left_arm_link_7" };
-  std::string const right_flange_name_{ "victor::victor_right_arm_link_7" };
+  std::string const left_flange_name_{ "hdt_michigan::leftgripper" };
+  std::string const right_flange_name_{ "hdt_michigan::rightgripper" };
   std::string const gripper1_name_{ "link_bot::gripper1" };
   std::string const gripper2_name_{ "link_bot::gripper2" };
-  std::string const left_flange_tf_name_{ "victor_left_arm_link_7" };
-  std::string const right_flange_tf_name_{ "victor_right_arm_link_7" };
-  std::string const gripper1_tf_name_{ "left_ee_tool" };
-  std::string const gripper2_tf_name_{ "right_ee_tool" };
+  std::string const left_flange_tf_name_{ "end_effector_left" };
+  std::string const right_flange_tf_name_{ "end_effector_right" };
+  std::string const gripper1_tf_name_{ "left_gripper_tool" };
+  std::string const gripper2_tf_name_{ "right_gripper_tool" };
   physics::LinkPtr left_flange_;
   physics::LinkPtr right_flange_;
   physics::LinkPtr gripper1_;

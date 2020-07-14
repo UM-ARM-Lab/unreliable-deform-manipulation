@@ -40,8 +40,8 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>UM/Maize</name>
+            <uri>file://media/materials/scripts/armlab.material</uri>
           </script>
         </material>
       </visual>
@@ -52,6 +52,11 @@
             <uri>file://hdt_michigan_description/meshes/MK4_MT.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -84,6 +89,11 @@
             <uri>file://hdt_michigan_description/meshes/MK4_MT.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -151,6 +161,11 @@
             <uri>file://hdt_michigan_description/meshes/TORSO.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Maize</name>
+          </script>
+        </material>
       </visual>
       <visual name='torso_fixed_joint_lump__drive41_visual_1'>
         <pose frame=''>-0.092094 0 0.44399 -1.5708 -0 -1.5708</pose>
@@ -159,6 +174,11 @@
             <uri>file://hdt_michigan_description/meshes/MK4_MT.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <visual name='torso_fixed_joint_lump__drive1_visual_2'>
         <pose frame=''>0.167906 0 0.44399 -1.5708 0 1.5708</pose>
@@ -169,8 +189,7 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/FlatBlack</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>UM/Blue</name>
           </script>
         </material>
       </visual>
@@ -224,6 +243,11 @@
             <uri>file://hdt_michigan_description/meshes/MK4_LT.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -283,6 +307,11 @@
             <uri>file://hdt_michigan_description/meshes/SHOULDER_BRACKET.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <visual name='leftshoulder_fixed_joint_lump__drive43_visual_1'>
         <pose frame=''>0 -0.1 0.07526 -1.5708 0 0</pose>
@@ -291,6 +320,11 @@
             <uri>file://hdt_michigan_description/meshes/MK4_LT.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -350,6 +384,11 @@
             <uri>file://hdt_michigan_description/meshes/PROXIMAL_TUBE.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Maize</name>
+          </script>
+        </material>
       </visual>
       <visual name='lefttube_fixed_joint_lump__drive44_visual_1'>
         <pose frame=''>0 0 0.04863 -1.5708 0 1.5708</pose>
@@ -358,6 +397,11 @@
             <uri>file://hdt_michigan_description/meshes/MK4_LT.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -417,6 +461,11 @@
             <uri>file://hdt_michigan_description/meshes/FOREARM_BRACKET.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Maize</name>
+          </script>
+        </material>
       </visual>
       <visual name='leftforearm_fixed_joint_lump__drive45_visual_1'>
         <pose frame=''>0 -0.17 0.05749 -1.5708 0 0</pose>
@@ -425,6 +474,11 @@
             <uri>file://hdt_michigan_description/meshes/A35_DRIVE.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -476,6 +530,11 @@
             <uri>file://hdt_michigan_description/meshes/A35_DRIVE.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -535,6 +594,11 @@
             <uri>file://hdt_michigan_description/meshes/A35_BRACKET.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Maize</name>
+          </script>
+        </material>
       </visual>
       <visual name='leftwrist_fixed_joint_lump__drive47_visual_1'>
         <pose frame=''>0 -0.05 0.056673 -1.5708 0 0</pose>
@@ -543,6 +607,11 @@
             <uri>file://hdt_michigan_description/meshes/A35_DRIVE.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -594,6 +663,11 @@
             <uri>file://hdt_michigan_description/meshes/PINCER_HOUSING.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Maize</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -645,6 +719,11 @@
             <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -696,6 +775,11 @@
             <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -749,8 +833,7 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Grey</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>UM/Blue</name>
           </script>
         </material>
       </visual>
@@ -812,6 +895,11 @@
             <uri>file://hdt_michigan_description/meshes/SHOULDER_BRACKET.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Maize</name>
+          </script>
+        </material>
       </visual>
       <visual name='rightshoulder_fixed_joint_lump__drive3_visual_1'>
         <pose frame=''>0 -0.1 0.07526 -1.5708 0 0</pose>
@@ -822,8 +910,7 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/FlatBlack</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>UM/Blue</name>
           </script>
         </material>
       </visual>
@@ -885,6 +972,11 @@
             <uri>file://hdt_michigan_description/meshes/PROXIMAL_TUBE.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Maize</name>
+          </script>
+        </material>
       </visual>
       <visual name='righttube_fixed_joint_lump__drive4_visual_1'>
         <pose frame=''>0 0 0.04863 -1.5708 0 1.5708</pose>
@@ -895,8 +987,7 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/FlatBlack</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>UM/Blue</name>
           </script>
         </material>
       </visual>
@@ -958,6 +1049,11 @@
             <uri>file://hdt_michigan_description/meshes/FOREARM_BRACKET.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Maize</name>
+          </script>
+        </material>
       </visual>
       <visual name='rightforearm_fixed_joint_lump__drive5_visual_1'>
         <pose frame=''>0 -0.17 0.05749 -1.5708 0 0</pose>
@@ -968,8 +1064,7 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Grey</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>UM/Blue</name>
           </script>
         </material>
       </visual>
@@ -1025,8 +1120,7 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Grey</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>UM/Blue</name>
           </script>
         </material>
       </visual>
@@ -1088,6 +1182,11 @@
             <uri>file://hdt_michigan_description/meshes/A35_BRACKET.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Maize</name>
+          </script>
+        </material>
       </visual>
       <visual name='rightwrist_fixed_joint_lump__drive7_visual_1'>
         <pose frame=''>0 -0.05 0.056673 -1.5708 0 0</pose>
@@ -1098,8 +1197,7 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Grey</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>UM/Blue</name>
           </script>
         </material>
       </visual>
@@ -1153,6 +1251,11 @@
             <uri>file://hdt_michigan_description/meshes/PINCER_HOUSING.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Maize</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -1204,6 +1307,11 @@
             <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -1255,6 +1363,11 @@
             <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
           </mesh>
         </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+          </script>
+        </material>
       </visual>
       <self_collide>0</self_collide>
     </link>
@@ -1276,7 +1389,24 @@
         <use_parent_model_frame>1</use_parent_model_frame>
       </axis>
     </joint>
-    <plugin filename="libkinematic_robot_plugin.so" name="kinematic_robot_plugin">
+    <plugin name='kinematic_val' filename='libkinematic_val_plugin.so'>
+      <initial_positions>
+        <joint1>2.7</joint1>
+        <joint2>-0.25</joint2>
+        <joint3>-0.25</joint3>
+        <joint4>-3.0</joint4>
+        <joint5>-1.51</joint5>
+        <joint6>0.43</joint6>
+        <joint7>0.0</joint7>
+        <joint41>2.7</joint41>
+        <joint42>0.25</joint42>
+        <joint43>0.25</joint43>
+        <joint44>-3.0</joint44>
+        <joint45>2.51</joint45>
+        <joint46>-0.05</joint46>
+        <joint47>0.0</joint47>
+        </initial_positions>
+      <max_dist_between_gripper_and_link_scale_factor>1.1</max_dist_between_gripper_and_link_scale_factor>
     </plugin>
   </model>
 </sdf>

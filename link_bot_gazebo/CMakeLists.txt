@@ -88,6 +88,13 @@ target_link_libraries(kinematic_victor_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRA
 add_dependencies(kinematic_victor_plugin ${catkin_EXPORTED_TARGETS})
 target_compile_options(kinematic_victor_plugin PRIVATE ${FLAGS})
 
+add_library(kinematic_val_plugin SHARED plugins/kinematic_val_plugin.cpp)
+target_include_directories(kinematic_val_plugin PUBLIC include)
+target_include_directories(kinematic_val_plugin SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(kinematic_val_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+add_dependencies(kinematic_val_plugin ${catkin_EXPORTED_TARGETS})
+target_compile_options(kinematic_val_plugin PRIVATE ${FLAGS})
+
 add_library(gazebo_ros_moveit_planning_scene plugins/gazebo_ros_moveit_planning_scene.cpp)
 target_include_directories(gazebo_ros_moveit_planning_scene PUBLIC include)
 target_include_directories(gazebo_ros_moveit_planning_scene SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})
