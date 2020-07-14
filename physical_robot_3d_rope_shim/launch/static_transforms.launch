@@ -27,14 +27,14 @@
             <node pkg="tf2_ros" type="static_transform_publisher" name="left_tool_frame_broadcaster" required="true"
                   args="0.0 0.0 0.13
                         0 0 0 1
-                        victor_left_gripper_palm_surface left_gripper_tool">
+                        victor_left_gripper_palm_surface left_ee_tool">
                 <param name="use_sim_time" value="$(arg use_sim_time)"/>
             </node>
 
             <node pkg="tf2_ros" type="static_transform_publisher" name="right_tool_frame_broadcaster" required="true"
                   args="0.0 0.0 0.13
                         0 0 0 1
-                        victor_right_gripper_palm_surface right_gripper_tool">
+                        victor_right_gripper_palm_surface right_ee_tool">
                 <param name="use_sim_time" value="$(arg use_sim_time)"/>
             </node>
 
