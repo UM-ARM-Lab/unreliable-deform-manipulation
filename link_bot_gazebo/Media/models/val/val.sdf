@@ -2,6 +2,7 @@
   <model name='hdt_michigan'>
     <link name='val_root'>
       <kinematic>true</kinematic>
+      <pose frame=''>0 0 0 0 -0 0</pose>
       <inertial>
         <pose frame=''>0.001015 0.078389 -0.006463 0 -0 0</pose>
         <mass>1.98803</mass>
@@ -39,7 +40,7 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Yellow</name>
+            <name>Gazebo/Blue</name>
             <uri>file://media/materials/scripts/gazebo.material</uri>
           </script>
         </material>
@@ -51,16 +52,10 @@
             <uri>file://hdt_michigan_description/meshes/MK4_MT.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Yellow</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <link name='drive57'>
-      <kinematic>true</kinematic>
       <pose frame=''>0 0.0891 0.082642 -1.5708 0 -1.5708</pose>
       <inertial>
         <pose frame=''>-3.7e-05 0.00177 0.006313 0 -0 0</pose>
@@ -89,13 +84,8 @@
             <uri>file://hdt_michigan_description/meshes/MK4_MT.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint56' type='revolute'>
       <child>drive57</child>
@@ -161,12 +151,6 @@
             <uri>file://hdt_michigan_description/meshes/TORSO.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
       <visual name='torso_fixed_joint_lump__drive41_visual_1'>
         <pose frame=''>-0.092094 0 0.44399 -1.5708 -0 -1.5708</pose>
@@ -175,12 +159,6 @@
             <uri>file://hdt_michigan_description/meshes/MK4_MT.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
       <visual name='torso_fixed_joint_lump__drive1_visual_2'>
         <pose frame=''>0.167906 0 0.44399 -1.5708 0 1.5708</pose>
@@ -191,11 +169,12 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Blue</name>
+            <name>Gazebo/FlatBlack</name>
             <uri>file://media/materials/scripts/gazebo.material</uri>
           </script>
         </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint57' type='revolute'>
       <child>torso</child>
@@ -245,13 +224,8 @@
             <uri>file://hdt_michigan_description/meshes/MK4_LT.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Yellow</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint41' type='revolute'>
       <child>drive42</child>
@@ -309,12 +283,6 @@
             <uri>file://hdt_michigan_description/meshes/SHOULDER_BRACKET.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
       <visual name='leftshoulder_fixed_joint_lump__drive43_visual_1'>
         <pose frame=''>0 -0.1 0.07526 -1.5708 0 0</pose>
@@ -323,13 +291,8 @@
             <uri>file://hdt_michigan_description/meshes/MK4_LT.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint42' type='revolute'>
       <child>leftshoulder</child>
@@ -387,12 +350,6 @@
             <uri>file://hdt_michigan_description/meshes/PROXIMAL_TUBE.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
       <visual name='lefttube_fixed_joint_lump__drive44_visual_1'>
         <pose frame=''>0 0 0.04863 -1.5708 0 1.5708</pose>
@@ -401,13 +358,8 @@
             <uri>file://hdt_michigan_description/meshes/MK4_LT.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint43' type='revolute'>
       <child>lefttube</child>
@@ -465,12 +417,6 @@
             <uri>file://hdt_michigan_description/meshes/FOREARM_BRACKET.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
       <visual name='leftforearm_fixed_joint_lump__drive45_visual_1'>
         <pose frame=''>0 -0.17 0.05749 -1.5708 0 0</pose>
@@ -479,13 +425,8 @@
             <uri>file://hdt_michigan_description/meshes/A35_DRIVE.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Yellow</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint44' type='revolute'>
       <child>leftforearm</child>
@@ -535,13 +476,8 @@
             <uri>file://hdt_michigan_description/meshes/A35_DRIVE.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Yellow</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint45' type='revolute'>
       <child>drive46</child>
@@ -599,12 +535,6 @@
             <uri>file://hdt_michigan_description/meshes/A35_BRACKET.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Yellow</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
       <visual name='leftwrist_fixed_joint_lump__drive47_visual_1'>
         <pose frame=''>0 -0.05 0.056673 -1.5708 0 0</pose>
@@ -613,13 +543,8 @@
             <uri>file://hdt_michigan_description/meshes/A35_DRIVE.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Yellow</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint46' type='revolute'>
       <child>leftwrist</child>
@@ -631,6 +556,159 @@
           <upper>1.5708</upper>
           <effort>35</effort>
           <velocity>2.0944</velocity>
+        </limit>
+        <dynamics>
+          <damping>0.7</damping>
+          <friction>0</friction>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+    <link name='drive50'>
+      <kinematic>true</kinematic>
+      <pose frame=''>-0.225676 0.412362 0.262114 -1.5708 0 0</pose>
+      <inertial>
+        <pose frame=''>-0.028282 2e-06 -0.017228 0 -0 0</pose>
+        <mass>0.272659</mass>
+        <inertia>
+          <ixx>9.278e-05</ixx>
+          <ixy>6.08e-06</ixy>
+          <ixz>5.85667e-10</ixz>
+          <iyy>7.523e-05</iyy>
+          <iyz>-2.38698e-09</iyz>
+          <izz>0.00010001</izz>
+        </inertia>
+      </inertial>
+      <collision name='drive50_fixed_joint_lump__end_effector_left_collision'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>file://hdt_michigan_description/meshes/PINCER_HOUSING.STL</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='drive50_fixed_joint_lump__end_effector_left_visual'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>file://hdt_michigan_description/meshes/PINCER_HOUSING.STL</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name='joint47' type='revolute'>
+      <child>drive50</child>
+      <parent>leftwrist</parent>
+      <axis>
+        <xyz>0 -1 -0</xyz>
+        <limit>
+          <lower>-6.28319</lower>
+          <upper>6.28319</upper>
+          <effort>35</effort>
+          <velocity>3.14159</velocity>
+        </limit>
+        <dynamics>
+          <damping>0.7</damping>
+          <friction>0</friction>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+    <link name='leftgripper'>
+      <kinematic>true</kinematic>
+      <pose frame=''>-0.225676 0.480915 0.248614 -1.5708 -1.1508 1.5708</pose>
+      <inertial>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <mass>0.0682176</mass>
+        <inertia>
+          <ixx>0.00024539</ixx>
+          <ixy>1.1e-07</ixy>
+          <ixz>0</ixz>
+          <iyy>9.13e-06</iyy>
+          <iyz>-7e-08</iyz>
+          <izz>0.00024787</izz>
+        </inertia>
+      </inertial>
+      <collision name='leftgripper_collision'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='leftgripper_visual'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name='leftgripper' type='revolute'>
+      <child>leftgripper</child>
+      <parent>drive50</parent>
+      <axis>
+        <xyz>-1 -0 0</xyz>
+        <limit>
+          <lower>-0.1166</lower>
+          <upper>1</upper>
+          <effort>35</effort>
+          <velocity>0.5</velocity>
+        </limit>
+        <dynamics>
+          <damping>0.7</damping>
+          <friction>0</friction>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+    <link name='leftgripper2'>
+      <kinematic>true</kinematic>
+      <pose frame=''>-0.225676 0.480915 0.275614 1.5708 1.1508 1.5708</pose>
+      <inertial>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <mass>0.0682176</mass>
+        <inertia>
+          <ixx>0.00024539</ixx>
+          <ixy>1.1e-07</ixy>
+          <ixz>0</ixz>
+          <iyy>9.13e-06</iyy>
+          <iyz>-7e-08</iyz>
+          <izz>0.00024787</izz>
+        </inertia>
+      </inertial>
+      <collision name='leftgripper2_collision'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='leftgripper2_visual'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name='leftgripper2' type='revolute'>
+      <child>leftgripper2</child>
+      <parent>drive50</parent>
+      <axis>
+        <xyz>1 0 -0</xyz>
+        <limit>
+          <lower>-0.1166</lower>
+          <upper>1</upper>
+          <effort>35</effort>
+          <velocity>0.5</velocity>
         </limit>
         <dynamics>
           <damping>0.7</damping>
@@ -671,11 +749,12 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Yellow</name>
+            <name>Gazebo/Grey</name>
             <uri>file://media/materials/scripts/gazebo.material</uri>
           </script>
         </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint1' type='revolute'>
       <child>drive2</child>
@@ -733,12 +812,6 @@
             <uri>file://hdt_michigan_description/meshes/SHOULDER_BRACKET.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
       <visual name='rightshoulder_fixed_joint_lump__drive3_visual_1'>
         <pose frame=''>0 -0.1 0.07526 -1.5708 0 0</pose>
@@ -749,11 +822,12 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Blue</name>
+            <name>Gazebo/FlatBlack</name>
             <uri>file://media/materials/scripts/gazebo.material</uri>
           </script>
         </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint2' type='revolute'>
       <child>rightshoulder</child>
@@ -811,12 +885,6 @@
             <uri>file://hdt_michigan_description/meshes/PROXIMAL_TUBE.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
       <visual name='righttube_fixed_joint_lump__drive4_visual_1'>
         <pose frame=''>0 0 0.04863 -1.5708 0 1.5708</pose>
@@ -827,11 +895,12 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Blue</name>
+            <name>Gazebo/FlatBlack</name>
             <uri>file://media/materials/scripts/gazebo.material</uri>
           </script>
         </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint3' type='revolute'>
       <child>righttube</child>
@@ -889,12 +958,6 @@
             <uri>file://hdt_michigan_description/meshes/FOREARM_BRACKET.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
       <visual name='rightforearm_fixed_joint_lump__drive5_visual_1'>
         <pose frame=''>0 -0.17 0.05749 -1.5708 0 0</pose>
@@ -905,11 +968,12 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Yellow</name>
+            <name>Gazebo/Grey</name>
             <uri>file://media/materials/scripts/gazebo.material</uri>
           </script>
         </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint4' type='revolute'>
       <child>rightforearm</child>
@@ -961,11 +1025,12 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Yellow</name>
+            <name>Gazebo/Grey</name>
             <uri>file://media/materials/scripts/gazebo.material</uri>
           </script>
         </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint5' type='revolute'>
       <child>drive6</child>
@@ -1023,12 +1088,6 @@
             <uri>file://hdt_michigan_description/meshes/A35_BRACKET.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
       <visual name='rightwrist_fixed_joint_lump__drive7_visual_1'>
         <pose frame=''>0 -0.05 0.056673 -1.5708 0 0</pose>
@@ -1039,11 +1098,12 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Yellow</name>
+            <name>Gazebo/Grey</name>
             <uri>file://media/materials/scripts/gazebo.material</uri>
           </script>
         </material>
       </visual>
+      <self_collide>0</self_collide>
     </link>
     <joint name='joint6' type='revolute'>
       <child>rightwrist</child>
@@ -1063,28 +1123,74 @@
         <use_parent_model_frame>1</use_parent_model_frame>
       </axis>
     </joint>
-
-    <joint name="rightgripper" type="revolute">
-      <child>rightgripper</child>
-      <parent>end_effector_right</parent>
-      <pose>0 0.0135 0.068553 1.57079632679 -0.42 -1.57079632679</pose>
+    <link name='drive10'>
+      <kinematic>true</kinematic>
+      <pose frame=''>0.219788 0.412362 0.262114 1.5708 0 -3.14159</pose>
+      <inertial>
+        <pose frame=''>-0.028282 2e-06 -0.017228 0 -0 0</pose>
+        <mass>0.272659</mass>
+        <inertia>
+          <ixx>9.278e-05</ixx>
+          <ixy>6.08e-06</ixy>
+          <ixz>5.85667e-10</ixz>
+          <iyy>7.523e-05</iyy>
+          <iyz>-2.38698e-09</iyz>
+          <izz>0.00010001</izz>
+        </inertia>
+      </inertial>
+      <collision name='drive10_fixed_joint_lump__end_effector_right_collision'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>file://hdt_michigan_description/meshes/PINCER_HOUSING.STL</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='drive10_fixed_joint_lump__end_effector_right_visual'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>file://hdt_michigan_description/meshes/PINCER_HOUSING.STL</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name='joint7' type='revolute'>
+      <child>drive10</child>
+      <parent>rightwrist</parent>
       <axis>
-        <xyz>0 0 1</xyz>
+        <xyz>0 -1 0</xyz>
         <limit>
-          <lower>-0.1166</lower>
-          <upper>1</upper>
-          <effort>35.0</effort>
-          <velocity>0.5</velocity>
+          <lower>-6.28319</lower>
+          <upper>6.28319</upper>
+          <effort>35</effort>
+          <velocity>3.14159</velocity>
         </limit>
         <dynamics>
           <damping>0.7</damping>
-          <friction>0.0</friction>
+          <friction>0</friction>
         </dynamics>
         <use_parent_model_frame>1</use_parent_model_frame>
       </axis>
     </joint>
-    <link name="rightgripper">
+    <link name='rightgripper'>
+      <kinematic>true</kinematic>
+      <pose frame=''>0.219788 0.480915 0.275614 1.5708 1.1508 1.5708</pose>
+      <inertial>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <mass>0.0682176</mass>
+        <inertia>
+          <ixx>0.00024539</ixx>
+          <ixy>1.1e-07</ixy>
+          <ixz>0</ixz>
+          <iyy>9.13e-06</iyy>
+          <iyz>-7e-08</iyz>
+          <izz>0.00024787</izz>
+        </inertia>
+      </inertial>
       <collision name='rightgripper_collision'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
             <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
@@ -1092,40 +1198,24 @@
         </geometry>
       </collision>
       <visual name='rightgripper_visual'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
             <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
-      <inertial>
-        <mass>0.06821764</mass>
-        <inertia>
-          <ixx>0.00024539</ixx>
-          <ixy>0.00000011</ixy>
-          <ixz>0.0</ixz>
-          <iyy>0.00000913</iyy>
-          <iyz>-0.00000007</iyz>
-          <izz>0.00024787/></izz>
-        </inertia>
-      </inertial>
+      <self_collide>0</self_collide>
     </link>
-    <joint name="rightgripper2" type="revolute">
-      <pose>0 -0.0135 0.068553 1.57079632679 -0.42 1.57079632679</pose>
-      <parent>end_effector_right</parent>
-      <child>rightgripper2</child>
+    <joint name='rightgripper' type='revolute'>
+      <child>rightgripper</child>
+      <parent>drive10</parent>
       <axis>
-        <xyz>0 0 1</xyz>
+        <xyz>1 0 0</xyz>
         <limit>
           <lower>-0.1166</lower>
           <upper>1</upper>
-          <effort>35.0</effort>
+          <effort>35</effort>
           <velocity>0.5</velocity>
         </limit>
         <dynamics>
@@ -1135,38 +1225,58 @@
         <use_parent_model_frame>1</use_parent_model_frame>
       </axis>
     </joint>
-    <link name="rightgripper2">
-      <collision name="rightgripper2_collision">
+    <link name='rightgripper2'>
+      <kinematic>true</kinematic>
+      <pose frame=''>0.219788 0.480915 0.248614 -1.5708 -1.1508 1.5708</pose>
+      <inertial>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <mass>0.0682176</mass>
+        <inertia>
+          <ixx>0.00024539</ixx>
+          <ixy>1.1e-07</ixy>
+          <ixz>0</ixz>
+          <iyy>9.13e-06</iyy>
+          <iyz>-7e-08</iyz>
+          <izz>0.00024787</izz>
+        </inertia>
+      </inertial>
+      <collision name='rightgripper2_collision'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
             <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
           </mesh>
         </geometry>
       </collision>
-      <visual name="rightgripper2_visual">
+      <visual name='rightgripper2_visual'>
+        <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
             <uri>file://hdt_michigan_description/meshes/PINCER_FINGER.STL</uri>
           </mesh>
         </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
       </visual>
-      <inertial>
-        <mass>0.06821764</mass>
-        <inertia>
-          <ixx>0.00024539</ixx>
-          <ixy>0.00000011</ixy>
-          <ixz>0.0</ixz>
-          <iyy>0.00000913</iyy>
-          <iyz>-0.00000007</iyz>
-          <izz>0.00024787</izz>
-        </inertia>
-      </inertial>
+      <self_collide>0</self_collide>
     </link>
+    <joint name='rightgripper2' type='revolute'>
+      <child>rightgripper2</child>
+      <parent>drive10</parent>
+      <axis>
+        <xyz>-1 0 -0</xyz>
+        <limit>
+          <lower>-0.116</lower>
+          <upper>1</upper>
+          <effort>35</effort>
+          <velocity>0.5</velocity>
+        </limit>
+        <dynamics>
+          <damping>0.7</damping>
+          <friction>0</friction>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+    <plugin filename="libkinematic_robot_plugin.so" name="kinematic_robot_plugin">
+    </plugin>
   </model>
 </sdf>
