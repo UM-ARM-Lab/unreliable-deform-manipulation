@@ -2,8 +2,8 @@
 
 #include <peter_msgs/DualGripperTrajectory.h>
 #include <peter_msgs/GetDualGripperPoints.h>
-#include <peter_msgs/SetDualGripperPoints.h>
 #include <peter_msgs/GetObject.h>
+#include <peter_msgs/SetDualGripperPoints.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <std_msgs/String.h>
@@ -14,10 +14,11 @@
 #include <gazebo/physics/physics.hh>
 #include <thread>
 
-namespace gazebo {
-
-class DualGripperPlugin : public ModelPlugin {
- public:
+namespace gazebo
+{
+class DualGripperPlugin : public ModelPlugin
+{
+public:
   ~DualGripperPlugin() override;
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
@@ -28,11 +29,7 @@ class DualGripperPlugin : public ModelPlugin {
 
   bool OnSet(peter_msgs::SetDualGripperPointsRequest &req, peter_msgs::SetDualGripperPointsResponse &res);
 
-  bool GetGripper1Callback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
-
-  bool GetGripper2Callback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
-
- private:
+private:
   void QueueThread();
 
   void PrivateQueueThread();
@@ -45,7 +42,7 @@ class DualGripperPlugin : public ModelPlugin {
   physics::LinkPtr gripper1_;
   physics::LinkPtr gripper2_;
 
-  bool interrupted_{false};
+  bool interrupted_{ false };
 
   std::unique_ptr<ros::NodeHandle> private_ros_node_;
   ros::NodeHandle ros_node_;
@@ -58,7 +55,6 @@ class DualGripperPlugin : public ModelPlugin {
   ros::ServiceServer set_service_;
   ros::Publisher joint_states_pub_;
   ros::Subscriber interrupt_sub_;
-  ros::Publisher register_object_pub_;
   ros::ServiceServer get_gripper1_service_;
   ros::ServiceServer get_gripper2_service_;
 };

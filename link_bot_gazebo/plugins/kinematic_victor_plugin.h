@@ -60,17 +60,23 @@ private:
   std::thread ros_queue_thread_;
   std::thread private_ros_queue_thread_;
   std::thread periodic_event_thread_;
+
   ros::Publisher joint_states_pub_;
+  ros::ServiceServer joint_state_server_;
+  std::unique_ptr<TrajServer> follow_traj_server_;
+
+  // A task specific thing, but many robots could implement this.
+  // here this just sets a flag so we don't teleport the rope to match the grippers
+  ros::ServiceServer grasping_rope_server_;
+
+  // mocking Victor specific things
   ros::Publisher left_arm_motion_status_pub_;
   ros::Publisher right_arm_motion_status_pub_;
   ros::Publisher left_gripper_status_pub_;
   ros::Publisher right_gripper_status_pub_;
   ros::Subscriber left_arm_motion_command_sub_;
   ros::Subscriber right_arm_motion_command_sub_;
-  ros::ServiceServer grasping_rope_server_;
-  ros::ServiceServer joint_state_server_;
 
-  std::unique_ptr<TrajServer> follow_traj_server_;
   std::string const left_flange_name_{ "victor::victor_left_arm_link_7" };
   std::string const right_flange_name_{ "victor::victor_right_arm_link_7" };
   std::string const gripper1_name_{ "link_bot::gripper1" };

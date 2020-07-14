@@ -153,6 +153,10 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       ROS_ERROR_STREAM("Invalid link name for rope gripper2: " << gripper2_name_);
     }
 
+    // Forcing these to be kinematic means that in the SDF we don't actually have to specify that they're kinematic
+    gripper1_->SetKinematic(true);
+    gripper2_->SetKinematic(true);
+
     // Extract rope links connected to the floating grippers for use in FollowJointTrajectory
     if (gripper1_)
     {
