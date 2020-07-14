@@ -77,8 +77,8 @@ private:
   std::string const gripper2_name_{ "link_bot::gripper2" };
   std::string const left_flange_tf_name_{ "victor_left_arm_link_7" };
   std::string const right_flange_tf_name_{ "victor_right_arm_link_7" };
-  std::string const gripper1_tf_name_{ "victor_left_tool" };
-  std::string const gripper2_tf_name_{ "victor_right_tool" };
+  std::string const gripper1_tf_name_{ "left_gripper_tool" };
+  std::string const gripper2_tf_name_{ "right_gripper_tool" };
   physics::LinkPtr left_flange_;
   physics::LinkPtr right_flange_;
   physics::LinkPtr gripper1_;

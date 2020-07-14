@@ -7,7 +7,7 @@
 
     <group ns="static_transform_publishers">
         <node pkg="tf2_ros" type="static_transform_publisher" name="rename_origin" required="true"
-              args="0 0 0 0 0 0 val_root world">
+              args="0 0 0 0 0 0 robot_root world">
             <param name="use_sim_time" value="false"/>
         </node>
     </group>

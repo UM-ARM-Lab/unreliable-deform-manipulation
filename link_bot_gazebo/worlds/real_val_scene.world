@@ -36,7 +36,7 @@
         <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
 
         <include>
-            <uri>model://victor_table</uri>
+            <uri>model://table</uri>
         </include>
 
         <include>

@@ -1,3 +1,5 @@
+#include <boost/algorithm/string.hpp>
+
 #include "gazebo_ros_tf_plugin.h"
 
 #define create_service_options(type, name, bind)                                                                       \
@@ -8,8 +10,6 @@
 
 namespace gazebo
 {
-GZ_REGISTER_WORLD_PLUGIN(GazeboRosTfPlugin)
-
 GazeboRosTfPlugin::~GazeboRosTfPlugin()
 {
   queue_.clear();
@@ -18,26 +18,58 @@ GazeboRosTfPlugin::~GazeboRosTfPlugin()
   callback_queue_thread_.join();
 }
 
-void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
+void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr sdf)
 {
   world_ = world;
-  victor_ = world_->ModelByName("victor_and_rope");
-  table_ = world_->ModelByName("table");
-
-  if (!victor_)
-  {
-    ROS_ERROR("could not find model by name victor_and_rope");
-  }
-  if (!table_)
-  {
-    ROS_ERROR("could not find model by name table");
-  }
 
   // setup ROS stuff
   if (!ros::isInitialized())
   {
     int argc = 0;
     ros::init(argc, nullptr, "ros_tf_plugin", ros::init_options::NoSigintHandler);
+  }
+
+  {
+    if (!sdf->HasElement("frame"))
+    {
+      frame_id_ = "robot_root";
+      ROS_INFO_STREAM("using default frame " << frame_id_);
+    }
+    else
+    {
+      frame_id_ = sdf->GetElement("frame")->Get<std::string>();
+      ROS_INFO_STREAM("using non-standard frame " << frame_id_);
+    }
+
+    // Find the links we're supposed to publish TF for
+    if (!sdf->HasElement("model_names"))
+    {
+      ROS_WARN("No element model_names, this plugin will do nothing.");
+    }
+    else
+    {
+      auto const model_names_str = sdf->GetElement("model_names")->Get<std::string>();
+      std::vector<std::string> model_names;
+      boost::split(model_names, model_names_str, boost::is_any_of(" "));
+      for (auto const model_name : model_names)
+      {
+        auto const model = world_->ModelByName(model_name);
+        if (!model)
+        {
+          ROS_ERROR_STREAM("could not find model with name " << model_name);
+          ROS_ERROR_STREAM("possible model names are:");
+          for (auto const available_model : world_->Models())
+          {
+            ROS_ERROR_STREAM(available_model->GetScopedName()
+                             << "[ scoped: " << available_model->GetScopedName() << " ]");
+          }
+        }
+        else
+        {
+          models_.push_back(model);
+        }
+      }
+    }
   }
 
   ph_ = std::make_unique<ros::NodeHandle>("ros_tf_plugin");
@@ -56,68 +88,22 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
 
 void GazeboRosTfPlugin::PeriodicUpdate()
 {
-  if (!victor_)
+  for (auto const model : models_)
   {
-    return;
-  }
+    auto const pose = model->WorldPose();
 
-  std::string const link_name = "victor_and_rope::victor::victor_root";
-  auto const victor_root_link = victor_->GetLink(link_name);
-  if (!victor_root_link)
-  {
-    ROS_ERROR_STREAM("there is no link " << link_name);
-    ROS_ERROR_STREAM("possible link names are:");
-    for (auto const l : victor_->GetLinks())
-    {
-      ROS_ERROR_STREAM(l->GetScopedName());
-    }
-    return;
-  }
-
-  auto const victor_root_pose = victor_root_link->WorldPose();
-
-  geometry_msgs::TransformStamped victor_root_tf;
-  victor_root_tf.header.frame_id = "world";
-  victor_root_tf.header.stamp = ros::Time::now();
-  victor_root_tf.child_frame_id = "victor_root";
-  victor_root_tf.transform.translation.x = victor_root_pose.Pos().X();
-  victor_root_tf.transform.translation.y = victor_root_pose.Pos().Y();
-  victor_root_tf.transform.translation.z = victor_root_pose.Pos().Z();
-  victor_root_tf.transform.rotation.w = victor_root_pose.Rot().W();
-  victor_root_tf.transform.rotation.x = victor_root_pose.Rot().X();
-  victor_root_tf.transform.rotation.y = victor_root_pose.Rot().Y();
-  victor_root_tf.transform.rotation.z = victor_root_pose.Rot().Z();
-  tb_.sendTransform(victor_root_tf);
-
-  // FIXME: This assumes that the entire table body goes "up" from the base
-  if (table_)
-  {
-    std::string const table_link_name = "table::surface";
-    auto const table_link = table_->GetLink(table_link_name);
-    if (!table_link)
-    {
-      ROS_ERROR_STREAM("no link " << table_link_name);
-      ROS_ERROR_STREAM("possible link names are:");
-      for (auto const l : table_->GetLinks())
-      {
-        ROS_ERROR_STREAM(l->GetScopedName());
-      }
-      return;
-    }
-
-    auto const table_surface_pose = table_link->WorldPose();
-    geometry_msgs::TransformStamped table_surface_tf;
-    table_surface_tf.header.frame_id = "world";
-    table_surface_tf.header.stamp = victor_root_tf.header.stamp;
-    table_surface_tf.child_frame_id = "table_surface";
-    table_surface_tf.transform.translation.x = table_surface_pose.Pos().X();
-    table_surface_tf.transform.translation.y = table_surface_pose.Pos().Y();
-    table_surface_tf.transform.translation.z = table_surface_pose.Pos().Z();
-    table_surface_tf.transform.rotation.w = table_surface_pose.Rot().W();
-    table_surface_tf.transform.rotation.x = table_surface_pose.Rot().X();
-    table_surface_tf.transform.rotation.y = table_surface_pose.Rot().Y();
-    table_surface_tf.transform.rotation.z = table_surface_pose.Rot().Z();
-    tb_.sendTransform(table_surface_tf);
+    geometry_msgs::TransformStamped transform_msg;
+    transform_msg.header.frame_id = frame_id_;
+    transform_msg.header.stamp = ros::Time::now();
+    transform_msg.child_frame_id = model->GetName() + "_gazebo";
+    transform_msg.transform.translation.x = pose.Pos().X();
+    transform_msg.transform.translation.y = pose.Pos().Y();
+    transform_msg.transform.translation.z = pose.Pos().Z();
+    transform_msg.transform.rotation.w = pose.Rot().W();
+    transform_msg.transform.rotation.x = pose.Rot().X();
+    transform_msg.transform.rotation.y = pose.Rot().Y();
+    transform_msg.transform.rotation.z = pose.Rot().Z();
+    tb_.sendTransform(transform_msg);
   }
 }
 
@@ -129,5 +115,7 @@ void GazeboRosTfPlugin::PrivateQueueThread()
     queue_.callAvailable(ros::WallDuration(timeout));
   }
 }
+
+GZ_REGISTER_WORLD_PLUGIN(GazeboRosTfPlugin)
 
 }  // namespace gazebo

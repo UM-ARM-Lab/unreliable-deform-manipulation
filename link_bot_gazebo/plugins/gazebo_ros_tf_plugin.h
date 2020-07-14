@@ -14,7 +14,6 @@
 
 namespace gazebo
 {
-// class GazeboRosTfPlugin : public ModelPlugin
 class GazeboRosTfPlugin : public WorldPlugin
 {
 public:
@@ -33,8 +32,8 @@ private:
 
   event::ConnectionPtr update_connection_;
   physics::WorldPtr world_;
-  physics::ModelPtr victor_;
-  physics::ModelPtr table_;
+  physics::Model_V models_;
+  std::string frame_id_;
 
   void PrivateQueueThread();
 
