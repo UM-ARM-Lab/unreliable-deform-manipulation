@@ -24,20 +24,20 @@
 
         <model name="val_and_rope">
             <include>
-                <pose>0.0 0.0 0.0 0 0 0</pose>
+                <pose>0.4 0.6 0.5 0 0 3.141592</pose>
                 <uri>model://kinematic_rope</uri>
             </include>
 
             <include>
                 <uri>model://val</uri>
             </include>
-            <!-- <plugin name="gazebo_ros_moveit_planning_scene" filename="libgazebo_ros_moveit_planning_scene.so">
+            <plugin name="gazebo_ros_moveit_planning_scene" filename="libgazebo_ros_moveit_planning_scene.so">
                 <topicName>gazebo/planning_scene</topicName>
                 <robotName>hdt_michigan</robotName>
                 <frameId>robot_root</frameId>
-                <updatePeriod>0.1</updatePeriod>
+                <updatePeriod>0</updatePeriod>
                 <scalePrimitivesFactor>1.1</scalePrimitivesFactor>
-            </plugin> -->
+            </plugin>
         </model>
 
         <include>
@@ -50,31 +50,37 @@
         </include>
 
         <include>
-            <pose>0 0 0 0 0 0</pose>
+            <pose>0.0 0.7 0 0 0 1.5707</pose>
             <uri>model://table</uri>
         </include>
 
         <include>
+            <pose>0.0 0.5 0 0 0 1.5707</pose>
             <uri>model://box1</uri>
         </include>
 
         <include>
+            <pose>-0.2 0.5 0 0 0 1.5707</pose>
             <uri>model://box2</uri>
         </include>
 
         <include>
+            <pose>-0 0.9 0 0 0 1.5707</pose>
             <uri>model://box3</uri>
         </include>
 
         <include>
+            <pose>0.0 0.9 0 0 0 1.5707</pose>
             <uri>model://box4</uri>
         </include>
 
         <include>
+            <pose>0.1 0.9 0 0 0 1.5707</pose>
             <uri>model://hook1</uri>
         </include>
 
         <include>
+            <pose>0.2 0.9 0 0 0 1.5707</pose>
             <uri>model://hook2</uri>
         </include>
     </world>

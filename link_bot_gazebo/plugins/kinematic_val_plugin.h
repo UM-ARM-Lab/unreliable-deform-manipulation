@@ -64,8 +64,8 @@ private:
   ros::ServiceServer grasping_rope_server_;
 
   // Rope-overstretching-detection
-  std::string const left_flange_name_{ "hdt_michigan::leftgripper" };
-  std::string const right_flange_name_{ "hdt_michigan::rightgripper" };
+  std::string const left_flange_name_{ "hdt_michigan::drive50" };
+  std::string const right_flange_name_{ "hdt_michigan::drive10" };
   std::string const gripper1_name_{ "link_bot::gripper1" };
   std::string const gripper2_name_{ "link_bot::gripper2" };
   std::string const left_flange_tf_name_{ "end_effector_left" };

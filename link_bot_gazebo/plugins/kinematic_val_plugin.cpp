@@ -130,10 +130,6 @@ void KinematicValPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       ROS_ERROR_STREAM("Invalid link name for rope gripper2: " << gripper2_name_);
     }
 
-    // Forcing these to be kinematic means that in the SDF we don't actually have to specify that they're kinematic
-    gripper1_->SetKinematic(true);
-    gripper2_->SetKinematic(true);
-
     // Extract rope links connected to the floating grippers for use in FollowJointTrajectory
     if (gripper1_)
     {
@@ -286,7 +282,7 @@ void KinematicValPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr &g
       // Move Val to the specified joint configuration
       for (auto const &[joint_idx, joint_name] : enumerate(goal->trajectory.joint_names))
       {
-        auto joint = model_->GetJoint("val::" + joint_name);
+        auto joint = model_->GetJoint("hdt_michigan::" + joint_name);
         if (joint)
         {
           joint->SetPosition(0, point.positions[joint_idx]);
@@ -294,7 +290,7 @@ void KinematicValPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr &g
         else
         {
           ROS_ERROR_STREAM("Invalid joint: "
-                           << "val::" + joint_name);
+                           << "hdt_michigan::" + joint_name);
           result.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_JOINTS;
           follow_traj_server_->setAborted(result);
           return;
@@ -326,7 +322,7 @@ void KinematicValPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr &g
         // Move Val to the specified joint configuration
         for (auto const &[joint_idx, joint_name] : enumerate(goal->trajectory.joint_names))
         {
-          auto joint = model_->GetJoint("val::" + joint_name);
+          auto joint = model_->GetJoint("hdt_michigan::" + joint_name);
           joint->SetPosition(0, rewind_point.positions[joint_idx]);
         }
 

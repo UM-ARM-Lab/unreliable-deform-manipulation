@@ -57,14 +57,14 @@
             </node>
 
             <node pkg="tf2_ros" type="static_transform_publisher" name="left_tool_frame_broadcaster" required="true"
-                  args="0 0 0.18
+                  args="0 0 0.2
                         0 0 0 1
                         end_effector_left left_gripper_tool">
                 <param name="use_sim_time" value="$(arg use_sim_time)"/>
             </node>
 
             <node pkg="tf2_ros" type="static_transform_publisher" name="right_tool_frame_broadcaster" required="true"
-                  args="0 0 0.18
+                  args="0 0 0.2
                         0 0 0 1
                         end_effector_right right_gripper_tool">
                 <param name="use_sim_time" value="$(arg use_sim_time)"/>

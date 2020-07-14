@@ -1,5 +1,6 @@
 <sdf version='1.6'>
   <model name='hdt_michigan'>
+    <allow_auto_disable>true</allow_auto_disable>
     <link name='val_root'>
       <kinematic>true</kinematic>
       <pose frame=''>0 0 0 0 -0 0</pose>
@@ -61,6 +62,7 @@
       <self_collide>0</self_collide>
     </link>
     <link name='drive57'>
+      <kinematic>true</kinematic>
       <pose frame=''>0 0.0891 0.082642 -1.5708 0 -1.5708</pose>
       <inertial>
         <pose frame=''>-3.7e-05 0.00177 0.006313 0 -0 0</pose>
