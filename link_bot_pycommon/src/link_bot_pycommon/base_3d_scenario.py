@@ -254,7 +254,7 @@ class Base3DScenario(ExperimentScenario):
 
     @staticmethod
     def robot_name():
-        return "victor_and_rope::link_bot"
+        return "link_bot"
 
     @staticmethod
     def get_environment_from_state_dict(start_states: Dict):

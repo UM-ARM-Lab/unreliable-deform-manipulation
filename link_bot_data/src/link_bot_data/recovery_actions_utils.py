@@ -96,20 +96,25 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         random_actions_dict = {k: tf.reshape(v, [batch_sample, n_actions, -1])
                                for k, v in random_actions_dict.items()}
 
-        # [t:t+1] to keep dim, as opposed to just [t]
-        start_states_tiled = {k: tf.tile(v[:, t:t+1, :], [n_action_samples, 1, 1]) for k, v in actual_states.items()}
+        # @tf.function
+        def _predict_and_classify(_actual_states, _random_actions_dict):
+            # [t:t+1] to keep dim, as opposed to just [t]
+            start_states_tiled = {k: tf.tile(v[:, t:t+1, :], [n_action_samples, 1, 1])
+                                  for k, v in _actual_states.items()}
 
-        # Predict
-        predictions = fwd_model.propagate_differentiable_batched(
-            start_states=start_states_tiled, actions=random_actions_dict)
+            # Predict
+            predictions = fwd_model.propagate_differentiable_batched(
+                start_states=start_states_tiled, actions=_random_actions_dict)
 
-        # Check classifier
-        environment_tiled = {k: tf.concat([v] * n_action_samples, axis=0) for k, v in environment.items()}
-        accept_probabilities = classifier_model.check_constraint_batched_tf(environment=environment_tiled,
-                                                                            predictions=predictions,
-                                                                            actions=random_actions_dict,
-                                                                            batch_size=batch_sample,
-                                                                            state_sequence_length=classifier_horizon)
+            # Check classifier
+            environment_tiled = {k: tf.concat([v] * n_action_samples, axis=0) for k, v in environment.items()}
+            accept_probabilities = classifier_model.check_constraint_batched_tf(environment=environment_tiled,
+                                                                                predictions=predictions,
+                                                                                actions=_random_actions_dict,
+                                                                                batch_size=batch_sample,
+                                                                                state_sequence_length=classifier_horizon)
+            return predictions, accept_probabilities
+        predictions, accept_probabilities = _predict_and_classify(actual_states, random_actions_dict)
 
         # # BEGIN DEBUG
         # accept_prob_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)

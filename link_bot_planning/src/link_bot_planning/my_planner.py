@@ -1,6 +1,7 @@
 import sys
 from dataclasses import dataclass
 from enum import Enum
+import time
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -12,9 +13,9 @@ from moonshine.tests.testing_utils import are_dicts_close_np
 import rospy
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_planning.timeout_or_not_progressing import TimeoutOrNotProgressing
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 class MyPlannerStatus(Enum):
@@ -33,10 +34,12 @@ class MyPlannerStatus(Enum):
 
 
 @dataclass
-class PlannerResult:
+class PlanningResult:
     path: Optional[List[Dict]]
     actions: Optional[List[Dict]]
-    planner_status: MyPlannerStatus
+    status: MyPlannerStatus
+    data: ob.PlannerData
+    time: float
 
 
 class MyPlanner:
@@ -61,9 +64,6 @@ class MyPlanner:
         self.state_sampler_rng = np.random.RandomState(seed)
         self.control_sampler_rng = np.random.RandomState(seed)
         self.scenario = scenario
-        self.ptc = None
-        self.n_total_action = None
-        self.goal_region = None
         self.action_params = self.fwd_model.data_collection_params
 
         self.state_space = self.scenario.make_ompl_state_space(planner_params=self.params,
@@ -81,6 +81,12 @@ class MyPlanner:
         self.ss.setMotionsValidityChecker(oc.MotionsValidityCheckerFn(self.motions_valid))
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
 
+        self.cleanup_before_plan()
+
+    def cleanup_before_plan(self):
+        self.ptc = None
+        self.n_total_action = None
+        self.goal_region = None
         # a Dictionary containing the parts of state which are not predicted/planned for, i.e. the environment
         self.environment = None
         self.start_state = None
@@ -197,14 +203,15 @@ class MyPlanner:
              start_state: Dict,
              environment: Dict,
              goal: Dict,
-             ) -> PlannerResult:
+             ) -> PlanningResult:
         """
         :param start_states: each element is a vector
         :type environment: each element is a vector of state which we don't predict
         :param goal:
         :return: controls, states
         """
-        # very important we reset this!
+        self.cleanup_before_plan()
+
         self.environment = environment
         self.goal_region = self.scenario.make_goal_region(self.si,
                                                           rng=self.state_sampler_rng,
@@ -230,7 +237,17 @@ class MyPlanner:
         self.ss.setGoal(self.goal_region)
 
         self.ptc = TimeoutOrNotProgressing(self, self.params['termination_criteria'], self.verbose)
+
+        # START TIMING
+        t0 = time.time()
+
+        # acutally run the planner
         ob_planner_status = self.ss.solve(self.ptc)
+
+        # END TIMING
+        planning_time = time.time() - t0
+
+        # handle results and cleanup
         planner_status = interpret_planner_status(ob_planner_status, self.ptc)
 
         if planner_status == MyPlannerStatus.Solved:
@@ -251,8 +268,10 @@ class MyPlanner:
             actions = []
             planned_path = [start_state]
 
-        self.goal_region = None
-        return PlannerResult(planner_status=planner_status, path=planned_path, actions=actions)
+        planner_data = ob.PlannerData(self.si)
+        self.planner.getPlannerData(planner_data)
+
+        return PlanningResult(status=planner_status, path=planned_path, actions=actions, time=planning_time, data=planner_data)
 
     def convert_path(self, ompl_path: oc.PathControl) -> Tuple[List[Dict], List[Dict]]:
         planned_path = []

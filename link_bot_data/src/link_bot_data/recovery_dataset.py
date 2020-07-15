@@ -28,6 +28,7 @@ class RecoveryDataset(BaseDataset):
             self.feature_names.append(k)
 
         self.horizon = self.hparams["labeling_params"]["action_sequence_horizon"]
+        self.n_action_samples = self.hparams["labeling_params"]["n_action_samples"]
 
         for k in self.state_keys:
             self.feature_names.append(k)

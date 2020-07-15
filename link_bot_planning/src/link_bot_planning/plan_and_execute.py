@@ -7,15 +7,20 @@ import numpy as np
 from colorama import Fore
 from ompl import base as ob
 
-from link_bot_classifiers.rnn_recovery_model import RNNRecoveryModelWrapper
-from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus
+from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlanningResult
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from link_bot_pycommon.base_services import BaseServices
+from link_bot_classifiers.base_recovery_policy import BaseRecoveryPolicy
+from link_bot_classifiers.random_recovery_policy import RandomRecoveryPolicy
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 
 
-def execute_actions(service_provider: BaseServices, scenario: ExperimentScenario, start_state: Dict, actions: List[Dict], plot: bool = False):
+def execute_actions(service_provider: BaseServices,
+                    scenario: ExperimentScenario,
+                    start_state: Dict,
+                    actions: List[Dict],
+                    plot: bool = False):
     pre_action_state = start_state
     actual_path = [pre_action_state]
     for action in actions:
@@ -40,11 +45,10 @@ class PlanAndExecute:
                  service_provider: BaseServices,
                  no_execution: bool,
                  seed: int,
-                 recovery_actions_model: Optional[RNNRecoveryModelWrapper] = None,
-                 pause_between_plans: Optional[bool] = False):
+                 pause_between_plans: Optional[bool] = False,
+                 recovery_policy: BaseRecoveryPolicy = RandomRecoveryPolicy):
         self.pause_between_plans = pause_between_plans
         self.planner = planner
-        self.recovery_actions_model = recovery_actions_model
         self.n_plans = n_plans
         self.n_plans_per_env = n_plans_per_env
         self.planner_params = planner_params
@@ -53,6 +57,7 @@ class PlanAndExecute:
         self.no_execution = no_execution
         self.env_rng = np.random.RandomState(seed)
         self.goal_rng = np.random.RandomState(seed)
+        self.recovery_policy = recovery_policy
 
         self.plan_idx = 0
         self.n_failures = 0
@@ -61,21 +66,27 @@ class PlanAndExecute:
         self.plan_idx = 0
         while True:
             for _ in range(self.n_plans_per_env):
-                run_was_valid = self.plan_and_execute_once()
-                if run_was_valid:
-                    self.plan_idx += 1
-                    if self.plan_idx >= self.n_plans:
-                        self.on_complete()
-                        return
-            self.randomize_environment()
+                done = self.run_and_check_valid()
+                if done:
+                    return
+                self.randomize_environment()
 
-    def plan_and_execute_once(self):
+    def run_and_check_valid(self):
+        run_was_valid = self.plan_and_execute_once()
+        if run_was_valid:
+            # only count if it was valid
+            self.plan_idx += 1
+            if self.plan_idx >= self.n_plans:
+                self.on_complete()
+                return True
+        return False
+
+    def setup_planning_query(self):
         # get start states
         start_state = self.planner.scenario.get_state()
 
         # get the environment, which here means anything which is assumed constant during planning
         # This includes the occupancy map but can also include things like the initial state of the tether
-
         environment = get_environment_for_extents_3d(extent=self.planner_params['extent'],
                                                      res=self.planner.classifier_model.data_collection_params['res'],
                                                      service_provider=self.service_provider,
@@ -84,45 +95,105 @@ class PlanAndExecute:
         # Get the goal (default is to randomly sample one)
         goal = self.get_goal(environment)
 
-        if self.verbose >= 1:
-            (Fore.MAGENTA + "Planning to {}".format(goal) + Fore.RESET)
+        planning_query_info = {
+            'goal': goal,
+            'environment': environment,
+            'start_state': start_state,
+        }
+        return planning_query_info
 
+    def plan_with_random_restarts_when_not_progressing(self, planning_query_info: Dict):
+        for _ in range(4):
+            # retry on "Failure" or "Not Progressing"
+            planning_result = self.planner.plan(environment=planning_query_info['environment'],
+                                                start_state=planning_query_info['start_state'],
+                                                goal=planning_query_info['goal'])
+            if planning_result['status'] == MyPlannerStatus.Solved:
+                break
+            if planning_result['status'] == MyPlannerStatus.Timeout:
+                break
+        return planning_result
+
+    def plan(self, planning_query_info: Dict):
         ############
         # Planning #
         ############
-        t0 = time.time()
-        planner_result = self.plan_with_random_restarts_when_not_progressing(start_state, environment, goal)
-        planner_data = ob.PlannerData(self.planner.si)
-        self.planner.planner.getPlannerData(planner_data)
-        planning_time = time.time() - t0
-        rospy.loginfo(f"Planning time: {planning_time:5.3f}s, Status: {planner_result.planner_status}")
+        if self.verbose >= 1:
+            (Fore.MAGENTA + "Planning to {}".format(planning_query_info['goal']) + Fore.RESET)
+        planning_result = self.plan_with_random_restarts_when_not_progressing(planning_query_info)
+        rospy.loginfo(f"Planning time: {planning_result['time']:5.3f}s, Status: {planning_result['status']}")
 
-        self.on_after_plan()
+        self.on_plan_complete(planning_query_info, planning_result)
 
-        if planner_result.planner_status == MyPlannerStatus.Failure:
+        return planning_result
+
+    def execute(self, planning_query_info: Dict, planning_result: PlanningResult):
+        # execute the plan, collecting the states that actually occurred
+        self.on_before_execute()
+        if self.no_execution:
+            state_t = self.planner.scenario.get_state()
+            actual_path = [state_t]
+        else:
+            if self.verbose >= 2:
+                print(Fore.CYAN + "Executing Plan" + Fore.RESET)
+            start_state = planning_query_info['start_state']
+            plot = self.verbose >= 1
+            actual_path = execute_actions(self.service_provider,
+                                          self.planner.scenario,
+                                          start_state,
+                                          planning_result['actions'],
+                                          plot=plot)
+        # post-execution callback
+        execution_result = {
+            'path': actual_path
+        }
+        self.on_execution_complete(planning_query_info, planning_result, execution_result)
+
+    def execute_recovery_action(self, action: Dict):
+        if self.no_execution:
+            pass
+        else:
+            self.planner.scenario.execute_action(action)
+
+    def plan_and_execute_with_recovery(self):
+        n_attempts = self.planner_params['recovery']['n_attempts']
+        for attempt_idx in range(n_attempts):
+            if self.verbose >= 1:
+                rospy.loginfo(f"Attempting recovery action {attempt_idx} of {n_attempts}")
+
+            planning_query_info = self.setup_planning_query()
+
+            planning_result = self.plan(planning_query_info)
+
+            if planning_result['status'] == MyPlannerStatus.Failure:
+                # this run won't count if we return false, the environment will be randomized, then we'll try again
+                return False
+            elif planning_result['status'] == MyPlannerStatus.NotProgressing:
+                action = self.recovery_policy(environment=planning_query_info['environment'],
+                                              state=planning_query_info['start_state'])
+                if self.verbose >= 3:
+                    rospy.loginfo("Chosen Recovery Action:")
+                    rospy.loginfo(action)
+                self.execute_recovery_action(action)
+            else:
+                if self.verbose >= 3:
+                    rospy.loginfo(f"recovery succeeded on attempt {attempt_idx}")
+                break
+
+        self.execute(planning_query_info, planning_result)
+
+        return True
+
+    def plan_and_execute_once(self):
+        planning_query_info = self.setup_planning_query()
+
+        planning_result = self.plan(planning_query_info)
+
+        if planning_result['status'] == MyPlannerStatus.Failure:
             # this run won't count if we return false, the environment will be randomized, then we'll try again
             return False
 
-        self.on_plan_complete(planner_result.path, goal, planner_result.actions, environment, planner_data,
-                              planning_time, planner_result.planner_status)
-
-        # execute the plan, collecting the states that actually occurred
-        if not self.no_execution:
-            if self.verbose >= 2:
-                print(Fore.CYAN + "Executing Plan" + Fore.RESET)
-
-            actual_path = self.execute_actions(start_state, planner_result.actions)
-        else:
-            state_t = self.planner.scenario.get_state()
-            actual_path = [state_t]
-        self.on_execution_complete(planner_result.path,
-                                   planner_result.actions,
-                                   goal,
-                                   actual_path,
-                                   environment,
-                                   planner_data,
-                                   planning_time,
-                                   planner_result.planner_status)
+        self.execute(planning_query_info, planning_result)
 
         return True
 
@@ -132,55 +203,26 @@ class PlanAndExecute:
                                                  planner_params=self.planner_params)
         return goal
 
-    def plan_with_random_restarts_when_not_progressing(self, start_state: Dict, environment: Dict, goal):
-        for _ in range(4):
-            # retry on "Failure" or "Not Progressing"
-            planner_result = self.planner.plan(start_state, environment, goal)
-            if planner_result.planner_status == MyPlannerStatus.Solved:
-                break
-            if planner_result.planner_status == MyPlannerStatus.Timeout:
-                break
-        return planner_result
-
     def on_plan_complete(self,
-                         planned_path: List[Dict],
-                         goal,
-                         planned_actions: List[Dict],
-                         environment: Dict,
-                         planner_data: ob.PlannerData,
-                         planning_time: float,
-                         planner_status: MyPlannerStatus):
+                         planning_query_info: Dict,
+                         planning_result: PlanningResult):
         # visualize the plan
         if self.verbose >= 1:
-            self.planner.scenario.animate_final_path(environment, planned_path, planned_actions)
+            self.planner.scenario.animate_final_path(environment=planning_query_info['environment'],
+                                                     planned_path=planning_result['path'],
+                                                     planned_actions=planning_result['actions'])
+
+    def on_before_execute(self):
+        pass
 
     def on_execution_complete(self,
-                              planned_path: List[Dict],
-                              planned_actions: List[Dict],
-                              goal,
-                              actual_path: List[Dict],
-                              environment: Dict,
-                              planner_data: ob.PlannerData,
-                              planning_time: float,
-                              planner_status: MyPlannerStatus):
+                              planning_query_info: Dict,
+                              planning_result: PlanningResult,
+                              execution_result: Dict):
         pass
 
     def on_complete(self):
         pass
 
-    def on_planner_failure(self,
-                           start_states: Dict[str, np.ndarray],
-                           goal,
-                           environment: Dict,
-                           planner_data: ob.PlannerData):
-        pass
-
-    def on_after_plan(self):
-        pass
-
     def randomize_environment(self):
         self.planner.scenario.randomize_environment(self.env_rng, self.planner_params, self.planner_params)
-
-    def execute_actions(self, start_state: Dict, actions: Optional[List[Dict]]) -> List[Dict]:
-        plot = self.verbose >= 1
-        return execute_actions(self.service_provider, self.planner.scenario, start_state, actions, plot=plot)

@@ -43,12 +43,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.max_action_attempts = 500
 
         self.object_reset_poses = {
-            'box1': (np.zeros(3), np.array([0, 0, 0, 1])),
-            'box2': (np.zeros(3), np.array([0, 0, 0, 1])),
-            'box3': (np.zeros(3), np.array([0, 0, 0, 1])),
-            'box4': (np.zeros(3), np.array([0, 0, 0, 1])),
-            'hook1': (np.zeros(3), np.array([0, 0, 0, 1])),
-            'hook2': (np.zeros(3), np.array([0, 0, 0, 1])),
+            'box1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'box2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'box3': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'box4': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'hook1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'hook2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
         }
 
     def reset_robot(self):
@@ -170,7 +170,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return action
 
     @staticmethod
-    def grippers_out_of_bounds(ripper1, gripper2, data_collection_params: Dict):
+    def grippers_out_of_bounds(gripper1, gripper2, data_collection_params: Dict):
         gripper1_extent = data_collection_params['gripper1_action_sample_extent']
         gripper2_extent = data_collection_params['gripper2_action_sample_extent']
         return DualFloatingGripperRopeScenario.is_out_of_bounds(gripper1, gripper1_extent) \

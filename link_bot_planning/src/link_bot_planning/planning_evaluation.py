@@ -16,14 +16,13 @@ from moonshine.moonshine_utils import listify
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_gazebo_python import gazebo_services
 from link_bot_planning.ompl_viz import planner_data_to_json
-from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus
+from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlanningResult
 from link_bot_planning.get_planner import get_planner
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute
 
 
 def dummy_proof_write(data, filename):
-    t0 = perf_counter()
     while True:
         try:
             with gzip.open(filename, 'wb') as data_file:
@@ -88,12 +87,10 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
     def randomize_environment(self):
         super().randomize_environment()
 
-    def on_after_plan(self):
+    def on_before_execute(self):
         if self.record:
             filename = self.root.absolute() / 'plan-{}.avi'.format(self.plan_idx)
             self.service_provider.start_record_trial(str(filename))
-
-        super().on_after_plan()
 
     def get_goal(self, environment: Dict):
         if self.goal is not None:
@@ -104,14 +101,17 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             return super().get_goal(environment)
 
     def on_execution_complete(self,
-                              planned_path: List[Dict],
-                              planned_actions: np.ndarray,
-                              goal,
-                              actual_path: List[Dict],
-                              environment: Dict,
-                              planner_data: ob.PlannerData,
-                              planning_time: float,
-                              planner_status: MyPlannerStatus):
+                              planning_query_info: Dict,
+                              planning_result: PlanningResult,
+                              execution_result: Dict):
+        goal = planning_query_info['goal']
+        environment = planning_query_info['environment']
+        planner_data = planning_result['data']
+        planned_path = planning_result['path']
+        planned_actions = planning_result['actions']
+        planning_time = planning_result['time']
+        actual_path = execution_result['path']
+
         num_nodes = planner_data.numVertices()
 
         final_planned_state = planned_path[-1]
@@ -135,7 +135,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             "planner_params": self.planner_params,
             "scenario": self.planner.scenario.simple_name(),
             "seed": self.seed,
-            'planner_status': planner_status.value,
+            'planner_status': planning_result['status'].value,
             'environment': listify(environment),
             'planned_path': planned_path_listified,
             'actions': planned_actions_listified,
@@ -157,20 +157,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             # TODO: maybe make this happen async?
             sleep(1)
             self.service_provider.stop_record_trial()
-
-    def on_planner_failure(self, start_states, tail_goal_point, environment: Dict, planner_data):
-        info = {
-            'start_states': {k: v.tolist() for k, v in start_states.items()},
-            'tail_goal_point': tail_goal_point,
-            'sdf': {
-                'res': environment['res'],
-                'origin': environment['origin'].tolist(),
-                'extent': environment['extent'].tolist(),
-                'data': environment['env'].tolist(),
-            },
-        }
-        info_filename = self.root / "failures" / f'{self.n_failures}_info.json.gz'
-        dummy_proof_write(info, info_filename)
 
 
 def evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory):
