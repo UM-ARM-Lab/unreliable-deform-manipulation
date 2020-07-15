@@ -156,12 +156,10 @@ def metrics_main(args):
             p = sequence_of_dicts_to_dict_of_np_arrays(planned_path)['link_bot']
             a = sequence_of_dicts_to_dict_of_np_arrays(actual_path)['link_bot']
 
-            def _include_in_metrics(status):
-                # rospy.logwarn(f"including {status} in error metrics")
+            def _include_in_metrics():
                 final_plan_to_execution_errors.append(final_plan_to_execution_error)
                 final_plan_to_goal_errors.append(final_plan_to_goal_error)
                 final_execution_to_goal_errors.append(final_execution_to_goal_error)
-                # print(f"{legend_nickname} {status} {final_execution_to_goal_error:.3f}")
 
                 num_nodes = datum['num_nodes']
                 nums_nodes.append(num_nodes)
@@ -180,12 +178,12 @@ def metrics_main(args):
 
             if datum['planner_status'] == "solved":
                 solveds += 1
-                _include_in_metrics('solved')
+                _include_in_metrics()
             elif datum['planner_status'] == "not progressing":
+                _include_in_metrics()
                 not_progressings += 1
-                # _include_in_metrics('not progressing')
             elif datum['planner_status'] == "timeout":
-                _include_in_metrics('timeout')
+                _include_in_metrics()
                 timeouts += 1
             else:
                 raise NotImplementedError()
