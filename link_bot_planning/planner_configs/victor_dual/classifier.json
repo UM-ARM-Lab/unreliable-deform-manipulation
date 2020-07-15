@@ -1,6 +1,6 @@
 {
   "termination_criteria": {
-    "attempted_extensions_threshold": 32,
+    "attempted_extensions_threshold": 128,
     "timeout": 180
   },
   "extent": [
