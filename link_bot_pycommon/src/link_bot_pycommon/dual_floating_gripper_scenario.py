@@ -67,7 +67,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.set_rope_state_srv(reset)
 
     def reset_robot(self):
-        rospy.logwarn("teleporting arms to home, ignoring obstacles!!!")
         left_arm_home = rospy.get_param("left_arm_home")
         right_arm_home = rospy.get_param("right_arm_home")
 
