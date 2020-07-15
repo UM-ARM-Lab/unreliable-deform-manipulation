@@ -106,10 +106,10 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                               execution_result: Dict):
         goal = planning_query_info['goal']
         environment = planning_query_info['environment']
-        planner_data = planning_result['data']
-        planned_path = planning_result['path']
-        planned_actions = planning_result['actions']
-        planning_time = planning_result['time']
+        planner_data = planning_result.data
+        planned_path = planning_result.path
+        planned_actions = planning_result.actions
+        planning_time = planning_result.time
         actual_path = execution_result['path']
 
         num_nodes = planner_data.numVertices()
@@ -135,7 +135,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             "planner_params": self.planner_params,
             "scenario": self.planner.scenario.simple_name(),
             "seed": self.seed,
-            'planner_status': planning_result['status'].value,
+            'planner_status': planning_result.status.value,
             'environment': listify(environment),
             'planned_path': planned_path_listified,
             'actions': planned_actions_listified,

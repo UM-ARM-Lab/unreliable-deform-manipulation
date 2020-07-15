@@ -1,4 +1,24 @@
 {
+  "left_gripper_home_position": [
+    -0.16,
+    0.7,
+    0.6
+  ],
+  "right_gripper_home_position": [
+    0.16,
+    0.7,
+    0.6
+  ],
+  "left_gripper_reset_position": [
+    -0.12,
+    1.2,
+    0.4
+  ],
+  "right_gripper_reset_position": [
+    0.12,
+    1.2,
+    0.4
+  ],
   "extent": [
     -0.7,
     0.7,

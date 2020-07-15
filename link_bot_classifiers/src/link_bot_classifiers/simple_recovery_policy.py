@@ -12,6 +12,7 @@ class RandomRecoveryPolicy(BaseRecoveryPolicy):
     def __call__(self, environment: Dict, state: Dict):
         gripper1_delta = np.array([-0.01711, 0.05217, 0.07524], dtype=np.float32)
         gripper2_delta = np.array([0.00152, -0.01089, 0.0239], dtype=np.float32)
+
         action = {
             'gripper1_position': state['gripper1'] + gripper1_delta,
             'gripper2_position': state['gripper2'] + gripper2_delta,

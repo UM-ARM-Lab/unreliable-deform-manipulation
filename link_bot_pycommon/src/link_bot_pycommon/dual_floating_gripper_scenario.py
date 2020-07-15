@@ -17,13 +17,13 @@ from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynami
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from visualization_msgs.msg import MarkerArray, Marker
+from moonshine.moonshine_utils import numpify
 from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.pycommon import default_if_none, directions_3d
-from victor_hardware_interface_msgs.msg import MotionCommand
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, WorldControlRequest, \
     SetRopeState, SetRopeStateRequest, SetDualGripperPoints, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest, SetBoolRequest, SetBool, GetJointState, GetJointStateRequest
-from std_msgs.msg import Empty
+from std_srvs.srv import Empty, EmptyRequest
 
 
 # TODO: not floating
@@ -37,9 +37,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", SetBool)
         self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
-        self.left_arm_motion_pub = rospy.Publisher("left_arm/motion_command", MotionCommand, queue_size=10)
-        self.right_arm_motion_pub = rospy.Publisher("right_arm/motion_command", MotionCommand, queue_size=10)
         self.set_rope_state_srv = rospy.ServiceProxy("set_rope_state", SetRopeState)
+        self.goto_home = rospy.ServiceProxy("goto_home", Empty)
 
         self.max_action_attempts = 500
 
@@ -52,46 +51,20 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'hook2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
         }
 
-    def reset_rope(self):
+    def reset_rope(self, data_collection_params: Dict):
         reset = SetRopeStateRequest()
 
-        # reset.joint_angles_axis1 = [0] * (DualFloatingGripperRopeScenario.n_links - 1)
-        # reset.joint_angles_axis2 = [0] * (DualFloatingGripperRopeScenario.n_links - 1)
-        reset.gripper1.x = 1.0
-        reset.gripper1.y = -0.4
-        reset.gripper1.z = 1.0
-        reset.gripper2.x = 1.0
-        reset.gripper2.y = 0.4
-        reset.gripper2.z = 1.0
+        reset.gripper1.x = numpify(data_collection_params['left_gripper_reset_position'][0])
+        reset.gripper1.y = numpify(data_collection_params['left_gripper_reset_position'][1])
+        reset.gripper1.z = numpify(data_collection_params['left_gripper_reset_position'][2])
+        reset.gripper2.x = numpify(data_collection_params['right_gripper_reset_position'][0])
+        reset.gripper2.y = numpify(data_collection_params['right_gripper_reset_position'][1])
+        reset.gripper2.z = numpify(data_collection_params['right_gripper_reset_position'][2])
 
         self.set_rope_state_srv(reset)
 
-    def reset_robot(self):
-        left_arm_home = rospy.get_param("left_arm_home")
-        right_arm_home = rospy.get_param("right_arm_home")
-
-        left_arm_motion = MotionCommand()
-        left_arm_motion.joint_position.joint_1 = left_arm_home[0]
-        left_arm_motion.joint_position.joint_2 = left_arm_home[1]
-        left_arm_motion.joint_position.joint_3 = left_arm_home[2]
-        left_arm_motion.joint_position.joint_4 = left_arm_home[3]
-        left_arm_motion.joint_position.joint_5 = left_arm_home[4]
-        left_arm_motion.joint_position.joint_6 = left_arm_home[5]
-        left_arm_motion.joint_position.joint_7 = left_arm_home[6]
-
-        right_arm_motion = MotionCommand()
-        right_arm_motion.joint_position.joint_1 = right_arm_home[0]
-        right_arm_motion.joint_position.joint_2 = right_arm_home[1]
-        right_arm_motion.joint_position.joint_3 = right_arm_home[2]
-        right_arm_motion.joint_position.joint_4 = right_arm_home[3]
-        right_arm_motion.joint_position.joint_5 = right_arm_home[4]
-        right_arm_motion.joint_position.joint_6 = right_arm_home[5]
-        right_arm_motion.joint_position.joint_7 = right_arm_home[6]
-
-        for i in range(10):
-            self.left_arm_motion_pub.publish(left_arm_motion)
-            self.right_arm_motion_pub.publish(right_arm_motion)
-            sleep(0.2)
+    def reset_robot(self, data_collection_params: Dict):
+        self.goto_home(EmptyRequest())
 
     def batch_stateless_sample_action(self,
                                       environment: Dict,
@@ -212,11 +185,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         release.data = False
         self.grasping_rope_srv(release)
 
-        # step to home
-        self.reset_robot()
-
         # reset rope to home/starting configuration
-        self.reset_rope()
+        self.reset_rope(data_collection_params)
+        self.settle()
+
+        # move robot to home
+        self.reset_robot(data_collection_params)
 
         # re-grasp rope
         grasp = SetBoolRequest()
@@ -254,7 +228,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         req.settling_time_seconds = settling_time
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
-        res = self.action_srv(req)
+        _ = self.action_srv(req)
 
     @ staticmethod
     def put_state_local_frame(state: Dict):

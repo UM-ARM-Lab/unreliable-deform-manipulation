@@ -108,9 +108,9 @@ class PlanAndExecute:
             planning_result = self.planner.plan(environment=planning_query_info['environment'],
                                                 start_state=planning_query_info['start_state'],
                                                 goal=planning_query_info['goal'])
-            if planning_result['status'] == MyPlannerStatus.Solved:
+            if planning_result.status == MyPlannerStatus.Solved:
                 break
-            if planning_result['status'] == MyPlannerStatus.Timeout:
+            if planning_result.status == MyPlannerStatus.Timeout:
                 break
         return planning_result
 
@@ -121,7 +121,7 @@ class PlanAndExecute:
         if self.verbose >= 1:
             (Fore.MAGENTA + "Planning to {}".format(planning_query_info['goal']) + Fore.RESET)
         planning_result = self.plan_with_random_restarts_when_not_progressing(planning_query_info)
-        rospy.loginfo(f"Planning time: {planning_result['time']:5.3f}s, Status: {planning_result['status']}")
+        rospy.loginfo(f"Planning time: {planning_result.time:5.3f}s, Status: {planning_result.status}")
 
         self.on_plan_complete(planning_query_info, planning_result)
 
@@ -141,7 +141,7 @@ class PlanAndExecute:
             actual_path = execute_actions(self.service_provider,
                                           self.planner.scenario,
                                           start_state,
-                                          planning_result['actions'],
+                                          planning_result.actions,
                                           plot=plot)
         # post-execution callback
         execution_result = {
@@ -165,10 +165,10 @@ class PlanAndExecute:
 
             planning_result = self.plan(planning_query_info)
 
-            if planning_result['status'] == MyPlannerStatus.Failure:
+            if planning_result.status == MyPlannerStatus.Failure:
                 # this run won't count if we return false, the environment will be randomized, then we'll try again
                 return False
-            elif planning_result['status'] == MyPlannerStatus.NotProgressing:
+            elif planning_result.status == MyPlannerStatus.NotProgressing:
                 action = self.recovery_policy(environment=planning_query_info['environment'],
                                               state=planning_query_info['start_state'])
                 if self.verbose >= 3:
@@ -189,7 +189,7 @@ class PlanAndExecute:
 
         planning_result = self.plan(planning_query_info)
 
-        if planning_result['status'] == MyPlannerStatus.Failure:
+        if planning_result.status == MyPlannerStatus.Failure:
             # this run won't count if we return false, the environment will be randomized, then we'll try again
             return False
 
@@ -209,8 +209,8 @@ class PlanAndExecute:
         # visualize the plan
         if self.verbose >= 1:
             self.planner.scenario.animate_final_path(environment=planning_query_info['environment'],
-                                                     planned_path=planning_result['path'],
-                                                     planned_actions=planning_result['actions'])
+                                                     planned_path=planning_result.path,
+                                                     planned_actions=planning_result.actions)
 
     def on_before_execute(self):
         pass
