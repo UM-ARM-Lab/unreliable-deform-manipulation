@@ -20,7 +20,7 @@ from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 from state_space_dynamics import model_utils
 
-limit_gpu_mem(64)
+limit_gpu_mem(7.5)
 
 
 def main():
