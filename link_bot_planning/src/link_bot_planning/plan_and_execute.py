@@ -179,9 +179,7 @@ class PlanAndExecute:
             elif planning_result.status == MyPlannerStatus.NotProgressing:
                 recovery_action = self.recovery_policy(environment=planning_query_info['environment'],
                                                        state=planning_query_info['start_state'])
-                if self.verbose >= 1:
-                    # +1 to make it more human friendly
-                    rospy.loginfo(f"Attempting recovery action {attempt_idx + 1} of {n_attempts}")
+                rospy.loginfo(f"Attempting recovery action {attempt_idx + 1} of {n_attempts}")
 
                 if self.verbose >= 3:
                     rospy.loginfo("Chosen Recovery Action:")
@@ -189,7 +187,7 @@ class PlanAndExecute:
                 recovery_actions_taken.append(recovery_action)
                 self.execute_recovery_action(recovery_action)
             else:
-                if self.verbose >= 2 and attempt_idx > 0:
+                if self.verbose >= 1 and attempt_idx > 0:
                     rospy.loginfo(f"recovery succeeded on attempt {attempt_idx}")
                 break
         recovery_actions_result = {

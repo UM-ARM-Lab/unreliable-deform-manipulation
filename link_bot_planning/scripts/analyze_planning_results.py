@@ -322,21 +322,15 @@ def main():
     plt.style.use('paper')
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    subparsers = parser.add_subparsers()
-
-    metrics_subparser = subparsers.add_parser('metrics')
-    metrics_subparser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
-    metrics_subparser.add_argument('analysis_params', type=pathlib.Path)
-    metrics_subparser.add_argument('--no-plot', action='store_true')
-    metrics_subparser.add_argument('--final', action='store_true')
-    metrics_subparser.set_defaults(func=metrics_main)
+    parser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
+    parser.add_argument('analysis_params', type=pathlib.Path)
+    parser.add_argument('--no-plot', action='store_true')
+    parser.add_argument('--final', action='store_true')
+    parser.set_defaults(func=metrics_main)
 
     args = parser.parse_args()
 
-    if args == argparse.Namespace():
-        parser.print_usage()
-    else:
-        args.func(args)
+    metrics_main(args)
 
 
 if __name__ == '__main__':
