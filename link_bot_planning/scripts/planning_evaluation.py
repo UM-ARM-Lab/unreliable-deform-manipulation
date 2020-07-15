@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import rospy
+import traceback
 import numpy as np
 import json
 import ompl.util as ou
@@ -53,7 +54,8 @@ def main():
         try:
             evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory)
         except Exception as e:
-            print(e)
+            traceback.print_exc()
+            rospy.logerr(e)
 
 
 if __name__ == '__main__':

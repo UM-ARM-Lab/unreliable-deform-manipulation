@@ -209,8 +209,16 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         }
         self.set_object_poses(random_object_poses)
 
-        gripper1_extent = np.array(data_collection_params['gripper1_action_sample_extent']).reshape([3,2])
-        gripper2_extent = np.array(data_collection_params['gripper2_action_sample_extent']).reshape([3,2])
+        if 'gripper1_action_sample_extent' in data_collection_params:
+            gripper1_extent = np.array(data_collection_params['gripper1_action_sample_extent']).reshape([3, 2])
+        else:
+            gripper1_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+
+        if 'gripper2_action_sample_extent' in data_collection_params:
+            gripper2_extent = np.array(data_collection_params['gripper2_action_sample_extent']).reshape([3, 2])
+        else:
+            gripper2_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+
         gripper1_position = env_rng.uniform(gripper1_extent[:, 0], gripper1_extent[:, 1])
         gripper2_position = env_rng.uniform(gripper2_extent[:, 0], gripper2_extent[:, 1])
         return_action = {
