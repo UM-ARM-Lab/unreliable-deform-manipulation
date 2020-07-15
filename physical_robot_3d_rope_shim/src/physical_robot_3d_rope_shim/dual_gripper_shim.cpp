@@ -12,6 +12,9 @@
 
 namespace pm = peter_msgs;
 
+#define COLOR_GREEN "\033[32m"
+#define COLOR_NORMAL "\033[0m"
+
 DualGripperShim::DualGripperShim(ros::NodeHandle nh, ros::NodeHandle ph)
   : nh_(nh)
   , ph_(ph)
@@ -69,12 +72,12 @@ void DualGripperShim::gotoHome()
   auto const traj = planner_->plan(ps, planner_->home_state_);
   followJointTrajectory(traj);
   ROS_INFO("Done attempting to move home");
+}
 
-  peter_msgs::SetBool grasp_rope;
-  grasp_rope.request.data = true;
-  set_grasping_rope_client_.call(grasp_rope);
-
-  settle();
+bool DualGripperShim::gotoHomeCallback(std_srvs::EmptyRequest& /*req*/, std_srvs::EmptyResponse& /*res*/)
+{
+  gotoHome();
+  return true;
 }
 
 void DualGripperShim::settle()
@@ -88,7 +91,8 @@ void DualGripperShim::enableServices()
 {
   execute_traj_srv_ =
       nh_.advertiseService("execute_dual_gripper_action", &DualGripperShim::executeDualGripperTrajectory, this);
-  ROS_INFO("Ready for commands");
+  goto_home_srv_ = nh_.advertiseService("goto_home", &DualGripperShim::gotoHomeCallback, this);
+  ROS_WARN_STREAM(COLOR_GREEN << "Ready for commands" << COLOR_NORMAL);
 }
 
 bool DualGripperShim::executeDualGripperTrajectory(pm::DualGripperTrajectory::Request& req,

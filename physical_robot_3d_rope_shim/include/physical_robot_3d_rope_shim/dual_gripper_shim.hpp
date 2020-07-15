@@ -7,6 +7,7 @@
 #include <control_msgs/FollowJointTrajectoryAction.h>
 #include <peter_msgs/DualGripperTrajectory.h>
 #include <ros/ros.h>
+#include <std_srvs/Empty.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
@@ -24,6 +25,7 @@ public:
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   std::shared_ptr<PlanningInterace> planner_;
   ros::ServiceServer execute_traj_srv_;
+  ros::ServiceServer goto_home_srv_;
   ros::Publisher talker_;
   using TrajectoryClient = actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>;
   std::unique_ptr<TrajectoryClient> trajectory_client_;
@@ -41,9 +43,10 @@ public:
 
   // Control/exection
   void enableServices();
-  bool executeDualGripperTrajectory(peter_msgs::DualGripperTrajectory::Request& req,
-                                    peter_msgs::DualGripperTrajectory::Response& res);
-  void followJointTrajectory(trajectory_msgs::JointTrajectory const& traj);
+  bool gotoHomeCallback(std_srvs::EmptyRequest & /*req*/, std_srvs::EmptyResponse & /*res*/);
+  bool executeDualGripperTrajectory(peter_msgs::DualGripperTrajectory::Request &req,
+                                    peter_msgs::DualGripperTrajectory::Response &res);
+  void followJointTrajectory(trajectory_msgs::JointTrajectory const &traj);
 };
 
 #endif
