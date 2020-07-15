@@ -34,7 +34,7 @@
             <plugin name="gazebo_ros_moveit_planning_scene" filename="libgazebo_ros_moveit_planning_scene.so">
                 <topicName>gazebo/planning_scene</topicName>
                 <robotName>hdt_michigan</robotName>
-                <frameId>robot_root</frameId>
+                <frameId>val_root</frameId>
                 <updatePeriod>0</updatePeriod>
                 <scalePrimitivesFactor>1.1</scalePrimitivesFactor>
             </plugin>
