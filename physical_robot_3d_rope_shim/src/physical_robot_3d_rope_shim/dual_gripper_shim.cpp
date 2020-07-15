@@ -72,6 +72,12 @@ void DualGripperShim::gotoHome()
   auto const traj = planner_->plan(ps, planner_->home_state_);
   followJointTrajectory(traj);
   ROS_INFO("Done attempting to move home");
+
+  peter_msgs::SetBool grasp_rope;
+  grasp_rope.request.data = true;
+  set_grasping_rope_client_.call(grasp_rope);
+
+  settle();
 }
 
 bool DualGripperShim::gotoHomeCallback(std_srvs::EmptyRequest& /*req*/, std_srvs::EmptyResponse& /*res*/)
