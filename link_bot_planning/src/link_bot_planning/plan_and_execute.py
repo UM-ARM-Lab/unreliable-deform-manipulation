@@ -167,9 +167,6 @@ class PlanAndExecute:
     def plan_and_execute_with_recovery(self):
         n_attempts = self.planner_params['recovery']['n_attempts']
         for attempt_idx in range(n_attempts):
-            if self.verbose >= 1:
-                rospy.loginfo(f"Attempting recovery action {attempt_idx} of {n_attempts}")
-
             planning_query_info = self.setup_planning_query()
 
             planning_result = self.plan(planning_query_info)
@@ -180,12 +177,16 @@ class PlanAndExecute:
             elif planning_result.status == MyPlannerStatus.NotProgressing:
                 action = self.recovery_policy(environment=planning_query_info['environment'],
                                               state=planning_query_info['start_state'])
+                if self.verbose >= 1:
+                    # +1 to make it more human friendly
+                    rospy.loginfo(f"Attempting recovery action {attempt_idx + 1} of {n_attempts}")
+
                 if self.verbose >= 3:
                     rospy.loginfo("Chosen Recovery Action:")
                     rospy.loginfo(action)
                 self.execute_recovery_action(action)
             else:
-                if self.verbose >= 3:
+                if self.verbose >= 2 and attempt_idx > 0:
                     rospy.loginfo(f"recovery succeeded on attempt {attempt_idx}")
                 break
 
@@ -219,7 +220,7 @@ class PlanAndExecute:
         if self.verbose >= 1:
             self.planner.scenario.animate_final_path(environment=planning_query_info['environment'],
                                                      planned_path=planning_result.path,
-                                                     planned_actions=planning_result.actions)
+                                                     actions=planning_result.actions)
 
     def on_before_execute(self):
         pass
