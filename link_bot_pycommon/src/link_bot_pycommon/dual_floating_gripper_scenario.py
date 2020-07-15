@@ -39,6 +39,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
         self.left_arm_motion_pub = rospy.Publisher("left_arm/motion_command", MotionCommand, queue_size=10)
         self.right_arm_motion_pub = rospy.Publisher("right_arm/motion_command", MotionCommand, queue_size=10)
+        self.set_rope_state_srv = rospy.ServiceProxy("set_rope_state", SetRopeState)
 
         self.max_action_attempts = 500
 
@@ -50,6 +51,20 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'hook1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
             'hook2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
         }
+
+    def reset_rope(self):
+        reset = SetRopeStateRequest()
+
+        # reset.joint_angles_axis1 = [0] * (DualFloatingGripperRopeScenario.n_links - 1)
+        # reset.joint_angles_axis2 = [0] * (DualFloatingGripperRopeScenario.n_links - 1)
+        reset.gripper1.x = 1.0
+        reset.gripper1.y = -0.4
+        reset.gripper1.z = 1.0
+        reset.gripper2.x = 1.0
+        reset.gripper2.y = 0.4
+        reset.gripper2.z = 1.0
+
+        self.set_rope_state_srv(reset)
 
     def reset_robot(self):
         rospy.logwarn("teleporting arms to home, ignoring obstacles!!!")
@@ -198,8 +213,11 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         release.data = False
         self.grasping_rope_srv(release)
 
-        # teleport to home
+        # step to home
         self.reset_robot()
+
+        # reset rope to home/starting configuration
+        self.reset_rope()
 
         # re-grasp rope
         grasp = SetBoolRequest()

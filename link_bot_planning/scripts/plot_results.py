@@ -67,7 +67,7 @@ def plot_plan(args, scenario, metrics_for_plan, plan_idx, metadata, fallback_lab
     scenario.reset_planning_viz()
     if args.show_tree:
         def _draw_tree_function(scenario, tree_json):
-            print(f"n vertices{len(tree_json['vertices'])}")
+            print(f"n vertices {len(tree_json['vertices'])}")
             for vertex in tree_json['vertices']:
                 scenario.plot_tree_state(vertex, color='#77777722')
                 sleep(0.001)
