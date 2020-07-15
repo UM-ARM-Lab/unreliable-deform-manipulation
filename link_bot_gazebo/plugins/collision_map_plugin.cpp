@@ -96,7 +96,8 @@ void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, 
   auto const t0 = std::chrono::steady_clock::now();
 
   m_ = world_->ModelByName("collision_sphere");
-  if (!m_) {
+  if (!m_)
+  {
     ROS_WARN_STREAM("Collision sphere is not in the world (yet)");
     return;
   }
@@ -120,7 +121,7 @@ void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, 
           MyIntersection intersection;
           auto const collision_space = (dGeomID)(ode_->GetSpaceId());
           dSpaceCollide2(sphere_collision_geom_id, collision_space, &intersection, &nearCallback);
-          if (intersection.in_collision and (intersection.name.find(robot_name) != 0))
+          if (intersection.in_collision and (intersection.name.find(robot_name) == std::string::npos))
           {
             grid_.SetValue(x_idx, y_idx, z_idx, occupied_value);
           }

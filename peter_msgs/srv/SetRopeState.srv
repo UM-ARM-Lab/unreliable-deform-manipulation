@@ -1,4 +1,5 @@
 float64[] joint_angles_axis1
 float64[] joint_angles_axis2
-geometry_msgs/Pose model_pose
+geometry_msgs/Point gripper1
+geometry_msgs/Point gripper2
 ---

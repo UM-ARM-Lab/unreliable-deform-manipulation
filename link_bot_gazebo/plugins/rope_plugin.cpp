@@ -72,10 +72,23 @@ bool RopePlugin::SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::
       joint->SetPosition(1, req.joint_angles_axis2[i]);
     }
   }
-  ignition::math::Pose3d pose{ req.model_pose.position.x,    req.model_pose.position.y,    req.model_pose.position.z,
-                               req.model_pose.orientation.w, req.model_pose.orientation.x, req.model_pose.orientation.y,
-                               req.model_pose.orientation.z };
-  model_->SetWorldPose(pose);
+  auto const gripper1 = model_->GetLink("link_bot::gripper1");
+  auto const gripper2 = model_->GetLink("link_bot::gripper2");
+  if (gripper1 and gripper2)
+  {
+    gripper1->SetWorldPose({ req.gripper1.x, req.gripper1.y, req.gripper1.z, 0, 0, 0 });
+    gripper2->SetWorldPose({ req.gripper2.x, req.gripper2.y, req.gripper2.z, 0, 0, 0 });
+  }
+  else
+  {
+    ROS_ERROR_STREAM("Tried to set link to pose but couldn't find the gripper links");
+    ROS_ERROR_STREAM("Available link names are");
+    for (auto const l : model_->GetLinks())
+    {
+      ROS_ERROR_STREAM(l->GetName());
+    }
+  }
+
   return true;
 }
 
