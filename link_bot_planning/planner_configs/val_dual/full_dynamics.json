@@ -1,7 +1,16 @@
 {
+  "left_gripper_reset_position": [
+    1.1,
+    0.15,
+    1.0
+  ],
+  "right_gripper_reset_position": [
+    1.1,
+    -0.15,
+    1.0
+  ],
   "termination_criteria": {
-    "times_called_threshold": 50,
-    "max_distance_from_start_threshold": 0.25,
+    "attempted_extensions_threshold": 128,
     "timeout": 180
   },
   "extent": [
@@ -28,9 +37,7 @@
     0.625,
     0.6251
   ],
-  "fwd_model_dir": [
-    "dy_trials/dual_full_dynamics/July_08_16-25-56_cb6fb59301/best_checkpoint"
-  ],
+  "fwd_model_dir": [],
   "classifier_model_dir": "cl_trials/none_baseline/none",
   "accept_threshold": 0.5,
   "movable_obstacles": {},

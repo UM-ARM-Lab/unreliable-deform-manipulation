@@ -1,8 +1,17 @@
 {
+  "left_gripper_reset_position": [
+    1.1,
+    0.15,
+    1.0
+  ],
+  "right_gripper_reset_position": [
+    1.1,
+    -0.15,
+    1.0
+  ],
   "termination_criteria": {
-    "times_called_threshold": 50,
-    "max_distance_from_start_threshold": 0.25,
-    "timeout": 240
+    "attempted_extensions_threshold": 128,
+    "timeout": 180
   },
   "extent": [
     -0.8,
@@ -38,7 +47,7 @@
     "dy_trials/no_victor_longer_6/best_checkpoint",
     "dy_trials/no_victor_longer_7/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/dual-balance/July_11_13-20-26_8ca7b28567/best_checkpoint",
+  "classifier_model_dir": "",
   "accept_threshold": 0.5,
   "goal_threshold": 0.07,
   "fixed_goal": null,

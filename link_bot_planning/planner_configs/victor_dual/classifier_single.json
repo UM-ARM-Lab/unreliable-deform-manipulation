@@ -1,7 +1,16 @@
 {
+  "left_gripper_reset_position": [
+    1.1,
+    0.15,
+    1.0
+  ],
+  "right_gripper_reset_position": [
+    1.1,
+    -0.15,
+    1.0
+  ],
   "termination_criteria": {
-    "times_called_threshold": 50,
-    "max_distance_from_start_threshold": 0.25,
+    "attempted_extensions_threshold": 128,
     "timeout": 180
   },
   "extent": [
