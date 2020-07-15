@@ -103,7 +103,8 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
     def on_execution_complete(self,
                               planning_query_info: Dict,
                               planning_result: PlanningResult,
-                              execution_result: Dict):
+                              execution_result: Dict,
+                              recovery_actions_result: Dict):
         goal = planning_query_info['goal']
         environment = planning_query_info['environment']
         planner_data = planning_result.data
@@ -146,7 +147,8 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'plan_to_execution_error': float(plan_to_execution_error),
             'tree_json': tree_json,
             'goal': listify(goal),
-            'num_nodes': num_nodes
+            'num_nodes': num_nodes,
+            'recovery_actions_result': listify(recovery_actions_result)
         }
         data_filename = self.root / f'{self.successfully_completed_plan_idx}_metrics.json.gz'
         dummy_proof_write(data_for_plan, data_filename)

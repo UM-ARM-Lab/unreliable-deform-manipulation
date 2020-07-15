@@ -49,8 +49,8 @@
   ],
   "classifier_model_dir": "cl_trials/cc_baseline/cc",
   "accept_threshold": 0.5,
-  "movable_obstacles": {},
   "goal_threshold": 0.07,
+  "n_random_restarts": 0,
   "fixed_goal": null,
   "real_time_rate": 0.0,
   "table_config": {

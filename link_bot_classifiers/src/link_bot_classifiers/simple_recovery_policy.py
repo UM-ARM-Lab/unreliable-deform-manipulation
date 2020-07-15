@@ -9,8 +9,8 @@ from link_bot_classifiers.base_recovery_policy import BaseRecoveryPolicy
 
 class SimpleRecoveryPolicy(BaseRecoveryPolicy):
 
-    def __init__(self, hparams: Dict, model_dir: pathlib.Path, scenario: ExperimentScenario):
-        super().__init__(hparams, model_dir, scenario)
+    def __init__(self, hparams: Dict, model_dir: pathlib.Path, scenario: ExperimentScenario, rng: np.random.RandomState):
+        super().__init__(hparams, model_dir, scenario, rng)
         self.model_dir = model_dir
         with (self.model_dir / 'action.json').open('r') as action_file:
             self.action = json.load(action_file)

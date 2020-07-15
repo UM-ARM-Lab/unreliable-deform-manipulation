@@ -61,7 +61,8 @@ class PlanAndExecute:
         if self.planner_params['recovery']['use_recovery']:
             recovery_model_dir = pathlib.Path(self.planner_params['recovery']['recovery_model_dir'])
             self.recovery_policy = recovery_policy_utils.load_generic_model(model_dir=recovery_model_dir,
-                                                                            scenario=self.planner.scenario)
+                                                                            scenario=self.planner.scenario,
+                                                                            rng=np.random.RandomState(seed))
         else:
             self.recovery_policy = None
 
@@ -112,7 +113,7 @@ class PlanAndExecute:
         return planning_query_info
 
     def plan_with_random_restarts_when_not_progressing(self, planning_query_info: Dict):
-        for _ in range(4):
+        for _ in range(self.planner_params['n_random_restarts'] + 1):
             # retry on "Failure" or "Not Progressing"
             planning_result = self.planner.plan(environment=planning_query_info['environment'],
                                                 start_state=planning_query_info['start_state'],
@@ -156,7 +157,7 @@ class PlanAndExecute:
         execution_result = {
             'path': actual_path
         }
-        self.on_execution_complete(planning_query_info, planning_result, execution_result)
+        return execution_result
 
     def execute_recovery_action(self, action: Dict):
         if self.no_execution:
@@ -166,6 +167,7 @@ class PlanAndExecute:
 
     def plan_and_execute_with_recovery(self):
         n_attempts = self.planner_params['recovery']['n_attempts']
+        recovery_actions_taken = []
         for attempt_idx in range(n_attempts):
             planning_query_info = self.setup_planning_query()
 
@@ -175,25 +177,32 @@ class PlanAndExecute:
                 # this run won't count if we return false, the environment will be randomized, then we'll try again
                 return False
             elif planning_result.status == MyPlannerStatus.NotProgressing:
-                action = self.recovery_policy(environment=planning_query_info['environment'],
-                                              state=planning_query_info['start_state'])
+                recovery_action = self.recovery_policy(environment=planning_query_info['environment'],
+                                                       state=planning_query_info['start_state'])
                 if self.verbose >= 1:
                     # +1 to make it more human friendly
                     rospy.loginfo(f"Attempting recovery action {attempt_idx + 1} of {n_attempts}")
 
                 if self.verbose >= 3:
                     rospy.loginfo("Chosen Recovery Action:")
-                    rospy.loginfo(action)
-                self.execute_recovery_action(action)
+                    rospy.loginfo(recovery_action)
+                recovery_actions_taken.append(recovery_action)
+                self.execute_recovery_action(recovery_action)
             else:
                 if self.verbose >= 2 and attempt_idx > 0:
                     rospy.loginfo(f"recovery succeeded on attempt {attempt_idx}")
                 break
+        recovery_actions_result = {
+            'attempt_idx': attempt_idx,
+            'recovery_actions_taken': recovery_actions_taken,
+        }
 
-        self.execute(planning_query_info, planning_result)
+        execution_result = self.execute(planning_query_info, planning_result)
+        self.on_execution_complete(planning_query_info, planning_result, execution_result, recovery_actions_result)
 
         return True
 
+    # FIXME: don't need this special case probably
     def plan_and_execute_without_recovery(self):
         planning_query_info = self.setup_planning_query()
 
@@ -203,7 +212,12 @@ class PlanAndExecute:
             # this run won't count if we return false, the environment will be randomized, then we'll try again
             return False
 
-        self.execute(planning_query_info, planning_result)
+        execution_result = self.execute(planning_query_info, planning_result)
+        recovery_actions_result = {
+            'attempt_idx': 0,
+            'recovery_actions_taken': [],
+        }
+        self.on_execution_complete(planning_query_info, planning_result, execution_result, recovery_actions_result)
 
         return True
 
@@ -228,7 +242,8 @@ class PlanAndExecute:
     def on_execution_complete(self,
                               planning_query_info: Dict,
                               planning_result: PlanningResult,
-                              execution_result: Dict):
+                              execution_result: Dict,
+                              recovery_actions_result: Dict):
         pass
 
     def on_complete(self):

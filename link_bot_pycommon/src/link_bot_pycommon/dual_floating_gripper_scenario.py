@@ -857,6 +857,9 @@ class DualGripperControlSampler(oc.ControlSampler):
         self.action_params = action_params
 
     def sampleNext(self, control_out, previous_control, state):
+        del previous_control
+        del state
+
         # Pitch
         pitch_1 = self.rng.uniform(-np.pi, np.pi)
         pitch_2 = self.rng.uniform(-np.pi, np.pi)
