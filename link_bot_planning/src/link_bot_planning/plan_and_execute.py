@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import time
+import pathlib
 import rospy
 from typing import Dict, Optional, List
 
@@ -12,6 +13,7 @@ from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_classifiers.base_recovery_policy import BaseRecoveryPolicy
 from link_bot_classifiers.random_recovery_policy import RandomRecoveryPolicy
+from link_bot_classifiers import recovery_policy_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 
@@ -45,8 +47,7 @@ class PlanAndExecute:
                  service_provider: BaseServices,
                  no_execution: bool,
                  seed: int,
-                 pause_between_plans: Optional[bool] = False,
-                 recovery_policy: BaseRecoveryPolicy = RandomRecoveryPolicy):
+                 pause_between_plans: Optional[bool] = False):
         self.pause_between_plans = pause_between_plans
         self.planner = planner
         self.n_plans = n_plans
@@ -57,7 +58,12 @@ class PlanAndExecute:
         self.no_execution = no_execution
         self.env_rng = np.random.RandomState(seed)
         self.goal_rng = np.random.RandomState(seed)
-        self.recovery_policy = recovery_policy
+        if self.planner_params['recovery']['use_recovery']:
+            recovery_model_dir = pathlib.Path(self.planner_params['recovery']['recovery_model_dir'])
+            self.recovery_policy = recovery_policy_utils.load_generic_model(model_dir=recovery_model_dir,
+                                                                            scenario=self.planner.scenario)
+        else:
+            self.recovery_policy = None
 
         self.plan_idx = 0
         self.n_failures = 0
@@ -72,7 +78,10 @@ class PlanAndExecute:
                 self.randomize_environment()
 
     def run_and_check_valid(self):
-        run_was_valid = self.plan_and_execute_once()
+        if self.planner_params['recovery']['use_recovery']:
+            run_was_valid = self.plan_and_execute_with_recovery()
+        else:
+            run_was_valid = self.plan_and_execute_without_recovery()
         if run_was_valid:
             # only count if it was valid
             self.plan_idx += 1
@@ -184,7 +193,7 @@ class PlanAndExecute:
 
         return True
 
-    def plan_and_execute_once(self):
+    def plan_and_execute_without_recovery(self):
         planning_query_info = self.setup_planning_query()
 
         planning_result = self.plan(planning_query_info)

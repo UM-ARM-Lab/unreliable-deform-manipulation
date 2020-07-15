@@ -37,6 +37,11 @@
     0.625,
     0.6251
   ],
+  "recovery": {
+    "use_recovery": true,
+    "n_attempts": 4,
+    "recovery_model_dir": "recovery_models/victor_simple"
+  },
   "fwd_model_dir": [
     "dy_trials/no_victor_longer_0/best_checkpoint",
     "dy_trials/no_victor_longer_1/best_checkpoint",

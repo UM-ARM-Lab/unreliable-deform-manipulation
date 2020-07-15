@@ -173,7 +173,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     def settle(self):
         req = WorldControlRequest()
-        req.seconds = 10
+        req.seconds = 6
         self.world_control_srv(req)
 
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
