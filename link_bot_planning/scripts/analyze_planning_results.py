@@ -61,15 +61,17 @@ def metrics_main(args):
     aggregate_metrics = {
         'Planning Time': [],
         'Final Execution To Goal Error': [],
-        'Final Plan To Goal Error': [],
+        # 'Final Plan To Goal Error': [],
         'Final Plan To Execution Error': [],
-        'Num Nodes': [],
-        'Num Steps': [],
+        # 'Num Nodes': [],
+        # 'Num Steps': [],
         '% Steps with MER Violations': [],
     }
 
     with args.analysis_params.open('r') as analysis_params_file:
         analysis_params = json.load(analysis_params_file)
+    with args.fallback_labeling_params.open('r') as fallback_labeling_params_file:
+        fallback_labeling_params = json.load(fallback_labeling_params_file)
 
     execution_to_goal_errors_comparisons = {}
     plan_to_execution_errors_comparisons = {}
@@ -109,6 +111,7 @@ def metrics_main(args):
     prop_cycle = plt.rcParams['axes.prop_cycle']
     colors = prop_cycle.by_key()['color']
     legend_names = []
+    status_table_data = []
     percentages_solved = []
     percentages_timeout = []
     percentages_not_progressing = []
@@ -131,9 +134,8 @@ def metrics_main(args):
         with (subfolder / 'metadata.json').open('r') as metadata_file:
             metadata = json.load(metadata_file)
         planner_params = metadata['planner_params']
-        labeling_params = labeling_params_from_planner_params(planner_params, fallback_labeling_params=None)
+        labeling_params = labeling_params_from_planner_params(planner_params, fallback_labeling_params)
         goal_threshold = planner_params['goal_threshold']
-        print(subfolder, goal_threshold)
         scenario = get_scenario(metadata['scenario'])
         table_config = planner_params['table_config']
         nickname = table_config['nickname']
@@ -167,11 +169,8 @@ def metrics_main(args):
                 num_steps = len(planned_path)
                 nums_steps.append(num_steps)
 
-                if labeling_params is not None:
-                    is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
-                    num_mer_violations = np.count_nonzero(1 - is_close) / num_steps * 100
-                else:
-                    num_mer_violations = 0
+                is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
+                num_mer_violations = np.count_nonzero(1 - is_close) / num_steps * 100
                 nums_mer_violations.append(num_mer_violations)
 
                 planning_times.append(datum['planning_time'])
@@ -195,7 +194,6 @@ def metrics_main(args):
         percentage_timeout = timeouts / N * 100
         percentages_timeout.append(percentage_timeout)
         n_for_metrics = len(final_execution_to_goal_errors)
-        print(n_for_metrics)
 
         if not args.no_plot:
             # Execution Success Plot
@@ -234,14 +232,15 @@ def metrics_main(args):
         aggregate_metrics['Planning Time'].append(make_row(planner_params, planning_times, table_format))
         aggregate_metrics['Final Plan To Execution Error'].append(
             make_row(planner_params, final_plan_to_execution_errors, table_format))
-        aggregate_metrics['Final Plan To Goal Error'].append(
-            make_row(planner_params, final_plan_to_goal_errors, table_format))
+        # aggregate_metrics['Final Plan To Goal Error'].append(
+        #     make_row(planner_params, final_plan_to_goal_errors, table_format))
         aggregate_metrics['Final Execution To Goal Error'].append(
             make_row(planner_params, final_execution_to_goal_errors, table_format))
-        aggregate_metrics['Num Nodes'].append(make_row(planner_params, nums_nodes, table_format))
-        aggregate_metrics['Num Steps'].append(make_row(planner_params, nums_steps, table_format))
+        # aggregate_metrics['Num Nodes'].append(make_row(planner_params, nums_nodes, table_format))
+        # aggregate_metrics['Num Steps'].append(make_row(planner_params, nums_steps, table_format))
         aggregate_metrics['% Steps with MER Violations'].append(
             make_row(planner_params, nums_mer_violations, table_format))
+        status_table_data.append([legend_nickname, percentage_solved, percentage_timeout, percentage_not_progressing])
 
         # print(f"{subfolder.name:30s}: {percentage_timeout:3.2f}% timeout")
         # for error, plan_idx in sorted(zip(final_execution_to_goal_errors, range(len(final_execution_to_goal_errors)))):
@@ -263,7 +262,17 @@ def metrics_main(args):
         planning_success_ax.legend()
         planning_error_ax.legend()
 
-        # Timeout Plot
+        # Planner status table
+        print(Style.BRIGHT + "Planner Status" + Style.NORMAL)
+        table = tabulate(status_table_data,
+                         headers=['Method', 'Solved', 'Timed Out', 'Not Progressing'],
+                         tablefmt=table_format,
+                         floatfmt='6.4f',
+                         numalign='center',
+                         stralign='left')
+        print(table)
+        print()
+        # Planner status plot
         planner_status_fig, planner_status_ax = plt.subplots(figsize=(32, 10))
         planner_status_ax = plt.gca()
         timeout_bar = planner_status_ax.bar(legend_names, percentages_timeout)
@@ -322,6 +331,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
     parser.add_argument('analysis_params', type=pathlib.Path)
+    parser.add_argument('fallback_labeling_params', type=pathlib.Path)
     parser.add_argument('--no-plot', action='store_true')
     parser.add_argument('--final', action='store_true')
     parser.set_defaults(func=metrics_main)

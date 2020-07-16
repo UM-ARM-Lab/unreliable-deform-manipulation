@@ -1,8 +1,13 @@
 {
+  "n_random_restarts": 0,
   "termination_criteria": {
-    "times_called_threshold": 20,
-    "max_distance_from_start_threshold": 0.40,
+    "attempted_extensions_threshold": 128,
     "timeout": 240
+  },
+  "recovery": {
+    "use_recovery": true,
+    "n_attempts": 1,
+    "recovery_model_dir": null
   },
   "extent": [
     -1.2,
