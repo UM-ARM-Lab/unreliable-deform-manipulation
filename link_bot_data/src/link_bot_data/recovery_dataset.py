@@ -37,7 +37,7 @@ class RecoveryDataset(BaseDataset):
             self.feature_names.append(k)
 
         self.batch_metadata = {
-            'time': 2
+            'time': 1
         }
 
     def make_features_description(self):

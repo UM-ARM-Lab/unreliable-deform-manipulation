@@ -12,9 +12,9 @@ from link_bot_classifiers.base_recovery_policy import BaseRecoveryPolicy
 from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_predicted
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_pycommon import link_bot_sdf_utils
-from link_bot_pycommon.base_3d_scenario import Base3DScenario
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, compute_extent_3d, extent_to_env_size, batch_idx_to_point_3d_in_env_tf, batch_point_to_idx_tf_3d_in_batched_envs
-from link_bot_pycommon.pycommon import make_dict_float32, make_dict_tf_float32
+from link_bot_pycommon.pycommon import make_dict_tf_float32
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
 from moonshine.moonshine_utils import add_batch, remove_batch, sequence_of_dicts_to_dict_of_tensors
@@ -27,7 +27,7 @@ from visualization_msgs.msg import Marker
 
 
 class NNRecoveryModel(MyKerasModel):
-    def __init__(self, hparams: Dict, batch_size: int, scenario: Base3DScenario):
+    def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams, batch_size)
         self.scenario = scenario
 
@@ -53,7 +53,7 @@ class NNRecoveryModel(MyKerasModel):
                                  activation='relu',
                                  kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
                                  bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']),
-                                 trainable=False)
+                                 trainable=True)
             pool = layers.MaxPool3D(self.hparams['pooling'])
             self.conv_layers.append(conv)
             self.pool_layers.append(pool)
@@ -222,10 +222,10 @@ class NNRecoveryModel(MyKerasModel):
 
         conv_output = self.make_traj_voxel_grids_from_input_dict(input_dict, batch_size, time)
 
-        states = {k: input_dict[k] for k in self.state_keys}
+        states = {k: input_dict[k][:, :time] for k in self.state_keys}
         states_local = self.scenario.put_state_local_frame(states)
-        actions = {k: input_dict[k] for k in self.action_keys}
-        all_but_last_states = {k: v[:, :-1] for k, v in states.items()}
+        actions = {k: input_dict[k][:, :time] for k in self.action_keys}
+        all_but_last_states = {k: v[:, :time-1] for k, v in states.items()}
         actions = self.scenario.put_action_local_frame(all_but_last_states, actions)
         padded_actions = [tf.pad(v, [[0, 0], [0, 1], [0, 0]]) for v in actions.values()]
         concat_args = [conv_output] + list(states_local.values()) + padded_actions
@@ -240,8 +240,7 @@ class NNRecoveryModel(MyKerasModel):
             z = dense_layer(z)
         out_h = z
 
-        # reduce across time, combining the two time steps into one latent vector
-        out_h = tf.reshape(out_h, [batch_size, -1])
+        out_h = out_h[:, 0]
 
         # for every timestep's output, map down to a single scalar, the logit for accept probability
         out_h = self.output_layer1(out_h)
@@ -256,20 +255,19 @@ class NNRecoveryModel(MyKerasModel):
 
 class NNRecoveryPolicy(BaseRecoveryPolicy):
 
-    def __init__(self, path: pathlib.Path, batch_size: int, scenario: Base3DScenario):
-        super().__init__(scenario)
-        model_hparams_file = path.parent / 'params.json'
+    def __init__(self, hparams: Dict, model_dir: pathlib.Path, scenario: ExperimentScenario, rng: np.random.RandomState):
+        super().__init__(hparams, model_dir, scenario, rng)
+        self.model_dir = model_dir
+        self.scenario = scenario
+
+        # load the model?
+        model_hparams_file = model_dir / 'params.json'
         if not model_hparams_file.exists():
-            model_hparams_file = path / 'hparams.json'
-            if not model_hparams_file.exists():
-                raise FileNotFoundError("no hparams file found!")
+            raise FileNotFoundError("no hparams file found!")
         self.model_hparams = json.load(model_hparams_file.open('r'))
-        self.dataset_labeling_params = self.model_hparams['classifier_dataset_hparams']['labeling_params']
-        self.data_collection_params = self.model_hparams['classifier_dataset_hparams']['data_collection_params']
-        self.horizon = self.dataset_labeling_params['classifier_horizon']
-        self.model = NNClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
+        self.model = NNRecoveryModel(hparams=self.model_hparams, batch_size=1, scenario=self.scenario)
         self.ckpt = tf.train.Checkpoint(model=self.model)
-        self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
+        self.manager = tf.train.CheckpointManager(self.ckpt, model_dir / 'best_checkpoint', max_to_keep=1)
 
         self.ckpt.restore(self.manager.latest_checkpoint)
         if self.manager.latest_checkpoint:
@@ -277,26 +275,36 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
         else:
             raise RuntimeError("Failed to restore!!!")
 
-    def __calL__(self,
-                 environment: Dict,
-                 predictions: Dict,
-                 actions: Dict,
-                 batch_size: int,
-                 state_sequence_length: int):
-        # construct network inputs
-        net_inputs = {
-            'batch_size': batch_size,
-            'time': state_sequence_length,
-        }
-        net_inputs.update(make_dict_tf_float32(environment))
+        self.action_rng = np.random.RandomState(0)
+        self.n_action_samples = self.hparams['n_action_samples']
+        self.data_collection_params = self.hparams['recovery_dataset_hparams']['data_collection_params']
 
-        for action_key in self.model.action_keys:
-            net_inputs[action_key] = tf.cast(actions[action_key], tf.float32)
+    def __call__(self, environment: Dict, state: Dict):
+        # sample a bunch of actions (batched?) and pick the best one
+        max_unstuck_probability = -1
+        best_action = None
+        for _ in range(self.n_action_samples):
+            self.scenario.last_action = None
+            action = self.scenario.sample_action(environment=environment,
+                                                 state=state,
+                                                 data_collection_params=self.data_collection_params,
+                                                 action_params=self.data_collection_params,
+                                                 action_rng=self.action_rng)
 
-        for state_key in self.model.state_keys:
-            planned_state_key = add_predicted(state_key)
-            net_inputs[planned_state_key] = tf.cast(predictions[state_key], tf.float32)
+            # TODO: use the unconstrained dynamics to predict the state resulting from (e, s, a)
+            # then add that to the recovery_model_input
 
-        predictions = self.model(net_inputs, training=False)
-        accept_probabilities = tf.squeeze(predictions['probabilities'], axis=2)
-        return accept_probabilities
+            recovery_model_input = environment
+            recovery_model_input.update(add_batch(state))  # add time dimension to state and action
+            recovery_model_input.update(add_batch(action))
+            recovery_model_input = make_dict_tf_float32(add_batch(recovery_model_input))
+            recovery_model_input.update({
+                'batch_size': 1,
+                'time': 1,
+            })
+            recovery_model_output = self.model(recovery_model_input, training=False)
+            unstuck_probability = recovery_model_output['probabilities']
+            if unstuck_probability > max_unstuck_probability:
+                max_unstuck_probability = unstuck_probability
+                best_action = action
+        return best_action

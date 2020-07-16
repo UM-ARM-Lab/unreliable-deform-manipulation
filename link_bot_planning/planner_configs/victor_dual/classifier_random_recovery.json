@@ -40,7 +40,7 @@
   "recovery": {
     "use_recovery": true,
     "n_attempts": 8,
-    "recovery_model_dir": "recovery_models/random"
+    "recovery_model_dir": "rcv_trials/random"
   },
   "fwd_model_dir": [
     "dy_trials/no_victor_longer_0/best_checkpoint",
@@ -60,7 +60,7 @@
   "real_time_rate": 0.0,
   "table_config": {
     "nickname": [
-      "Classifier"
+      "Random"
     ],
     "classifier": "Learned",
     "dynamics": [

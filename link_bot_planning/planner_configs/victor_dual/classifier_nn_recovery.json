@@ -10,7 +10,7 @@
     1.0
   ],
   "termination_criteria": {
-    "attempted_extensions_threshold": 128,
+    "attempted_extensions_threshold": 0,
     "timeout": 180
   },
   "extent": [
@@ -39,8 +39,8 @@
   ],
   "recovery": {
     "use_recovery": true,
-    "n_attempts": 10,
-    "recovery_model_dir": "recovery_models/nn"
+    "n_attempts": 8,
+    "recovery_model_dir": "rcv_trials/dual-recovery-s0/July_16_09-30-03_e19123d612"
   },
   "fwd_model_dir": [
     "dy_trials/no_victor_longer_0/best_checkpoint",

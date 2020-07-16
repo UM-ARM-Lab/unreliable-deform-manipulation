@@ -19,7 +19,7 @@ from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
 
-limit_gpu_mem(8)
+limit_gpu_mem(6)
 
 
 def train_main(args, seed: int):
@@ -60,16 +60,17 @@ def train_main(args, seed: int):
     ############
     # Initialize weights from classifier model by "restoring" from checkpoint
     ############
-    classifier_model = tf.train.Checkpoint(conv_layers=model.conv_layers, dense_layers=model.dense_layers)
-    classifier_root = tf.train.Checkpoint(model=classifier_model)
-    classifier_checkpoint_manager = tf.train.CheckpointManager(
-        classifier_root, args.classifier_checkpoint.as_posix(), max_to_keep=1)
+    if not args.checkpoint:
+        classifier_model = tf.train.Checkpoint(conv_layers=model.conv_layers, dense_layers=model.dense_layers)
+        classifier_root = tf.train.Checkpoint(model=classifier_model)
+        classifier_checkpoint_manager = tf.train.CheckpointManager(
+            classifier_root, args.classifier_checkpoint.as_posix(), max_to_keep=1)
 
-    status = classifier_root.restore(classifier_checkpoint_manager.latest_checkpoint)
-    status.expect_partial()
-    status.assert_existing_objects_matched()
-    assert classifier_checkpoint_manager.latest_checkpoint is not None
-    print(Fore.CYAN + "Restored {}".format(classifier_checkpoint_manager.latest_checkpoint) + Fore.RESET)
+        status = classifier_root.restore(classifier_checkpoint_manager.latest_checkpoint)
+        status.expect_partial()
+        status.assert_existing_objects_matched()
+        assert classifier_checkpoint_manager.latest_checkpoint is not None
+        print(Fore.MAGENTA + "Restored {}".format(classifier_checkpoint_manager.latest_checkpoint) + Fore.RESET)
     ############
 
     trial_path = None
