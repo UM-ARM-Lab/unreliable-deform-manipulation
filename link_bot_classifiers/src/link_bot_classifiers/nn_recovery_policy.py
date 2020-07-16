@@ -53,7 +53,7 @@ class NNRecoveryModel(MyKerasModel):
                                  activation='relu',
                                  kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
                                  bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']),
-                                 trainable=True)
+                                 trainable=False)
             pool = layers.MaxPool3D(self.hparams['pooling'])
             self.conv_layers.append(conv)
             self.pool_layers.append(pool)
@@ -70,7 +70,8 @@ class NNRecoveryModel(MyKerasModel):
                                  trainable=True)
             self.dense_layers.append(dense)
 
-        self.output_layer = layers.Dense(1, activation=None, trainable=True)
+        self.output_layer1 = layers.Dense(128, activation='relu', trainable=True)
+        self.output_layer2 = layers.Dense(1, activation=None, trainable=True)
         self.sigmoid = layers.Activation("sigmoid")
 
     def make_traj_voxel_grids_from_input_dict(self, input_dict: Dict, batch_size, time: int):
@@ -199,13 +200,19 @@ class NNRecoveryModel(MyKerasModel):
         return tf.transpose(conv_outputs, [1, 0, 2])
 
     def compute_loss(self, dataset_element, outputs):
-        # skip the first element, the label will always be 1
+        y_true = tf.expand_dims(dataset_element['unstuck_probability'], axis=1)
+        y_pred = outputs['logits']
+        loss = tf.keras.losses.binary_crossentropy(y_true=y_true, y_pred=y_pred, from_logits=True)
+        return {
+            'loss': tf.reduce_mean(loss)
+        }
+
+    def calculate_metrics(self, dataset_element, outputs):
         y_true = dataset_element['unstuck_probability']
         y_pred = tf.squeeze(outputs['probabilities'], axis=1)
-        squared_error = tf.math.square(y_true - y_pred)
-        loss = tf.reduce_mean(squared_error)
+        error = tf.reduce_mean(tf.math.abs(y_true - y_pred))
         return {
-            'loss': loss
+            'error': error
         }
 
     # @tf.function
@@ -237,7 +244,8 @@ class NNRecoveryModel(MyKerasModel):
         out_h = tf.reshape(out_h, [batch_size, -1])
 
         # for every timestep's output, map down to a single scalar, the logit for accept probability
-        logits = self.output_layer(out_h)
+        out_h = self.output_layer1(out_h)
+        logits = self.output_layer2(out_h)
         probabilities = self.sigmoid(logits)
 
         return {

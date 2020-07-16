@@ -50,7 +50,7 @@ def train_main(args, seed: int):
     # and in my experince just having class weights on the loss doesn't work very well,
     # so we should re-sample elements and write that out as a new dataset? maybe?
 
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed)
 
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
@@ -60,12 +60,13 @@ def train_main(args, seed: int):
     ############
     # Initialize weights from classifier model by "restoring" from checkpoint
     ############
-    classifier_model = tf.train.Checkpoint(conv_layers=model.conv_layers)
+    classifier_model = tf.train.Checkpoint(conv_layers=model.conv_layers, dense_layers=model.dense_layers)
     classifier_root = tf.train.Checkpoint(model=classifier_model)
     classifier_checkpoint_manager = tf.train.CheckpointManager(
         classifier_root, args.classifier_checkpoint.as_posix(), max_to_keep=1)
 
     status = classifier_root.restore(classifier_checkpoint_manager.latest_checkpoint)
+    status.expect_partial()
     status.assert_existing_objects_matched()
     assert classifier_checkpoint_manager.latest_checkpoint is not None
     print(Fore.CYAN + "Restored {}".format(classifier_checkpoint_manager.latest_checkpoint) + Fore.RESET)
