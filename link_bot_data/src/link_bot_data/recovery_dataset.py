@@ -36,6 +36,10 @@ class RecoveryDataset(BaseDataset):
         for k in self.action_keys:
             self.feature_names.append(k)
 
+        self.batch_metadata = {
+            'time': 2
+        }
+
     def make_features_description(self):
         features_description = {}
         for feature_name in self.feature_names:
@@ -44,12 +48,10 @@ class RecoveryDataset(BaseDataset):
         return features_description
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
-        def _rename_env(example):
-            example['env'] = example['env']
-            example['res'] = example['res']
-            example['origin'] = example['origin']
-            example['extent'] = example['extent']
+        def _add_unstuck_probability(example):
+            n_accepts = tf.math.count_nonzero(example['accept_probabilities'][1] > 0.5)
+            example['unstuck_probability'] = tf.cast(n_accepts / self.n_action_samples, tf.float32)
             return example
 
-        dataset = dataset.map(_rename_env)
+        dataset = dataset.map(_add_unstuck_probability)
         return dataset

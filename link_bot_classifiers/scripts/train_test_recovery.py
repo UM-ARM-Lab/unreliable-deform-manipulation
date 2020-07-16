@@ -1,5 +1,7 @@
 #!/usr/bin/env python
+import rospy
 import argparse
+from colorama import Fore
 import json
 import pathlib
 
@@ -10,11 +12,14 @@ import link_bot_classifiers
 from link_bot_data.recovery_dataset import RecoveryDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import paths_to_json
+from shape_completion_training.metric import LossMetric
+from link_bot_classifiers.nn_recovery_policy import NNRecoveryModel
+from link_bot_data.link_bot_dataset_utils import balance, batch_tf_dataset
 from moonshine.gpu_config import limit_gpu_mem
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
 
-limit_gpu_mem(3)
+limit_gpu_mem(8)
 
 
 def train_main(args, seed: int):
@@ -32,36 +37,60 @@ def train_main(args, seed: int):
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
     model_hparams['datasets'] = paths_to_json(args.dataset_dirs)
-    model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
     scenario = get_scenario(model_hparams['scenario'])
 
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=args.take)
     val_tf_dataset = val_dataset.get_datasets(mode='val')
 
-    # to mix up examples so each batch is diverse
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=2048, seed=seed, reshuffle_each_iteration=True)
+    train_tf_dataset = batch_tf_dataset(train_tf_dataset, args.batch_size, drop_remainder=True)
+    val_tf_dataset = batch_tf_dataset(val_tf_dataset, args.batch_size, drop_remainder=True)
 
-    train_tf_dataset = train_tf_dataset.batch(args.batch_size, drop_remainder=True)
-    val_tf_dataset = val_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    # FIXME: need to re-balance the dataset, but since it's not binary that's actually not easy to do
+    # and in my experince just having class weights on the loss doesn't work very well,
+    # so we should re-sample elements and write that out as a new dataset? maybe?
 
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)  # to mix up batches
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)
 
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
-    model = model_class(hparams=model_hparams, scenario=scenario)
+    model = NNRecoveryModel(hparams=model_hparams, scenario=scenario, batch_size=args.batch_size)
 
-    # Train
-    trial_path = args.checkpoint.absolute() if args.checkpoint is not None else None
+    ############
+    # Initialize weights from classifier model by "restoring" from checkpoint
+    ############
+    classifier_model = tf.train.Checkpoint(conv_layers=model.conv_layers)
+    classifier_root = tf.train.Checkpoint(model=classifier_model)
+    classifier_checkpoint_manager = tf.train.CheckpointManager(
+        classifier_root, args.classifier_checkpoint.as_posix(), max_to_keep=1)
+
+    status = classifier_root.restore(classifier_checkpoint_manager.latest_checkpoint)
+    status.assert_existing_objects_matched()
+    assert classifier_checkpoint_manager.latest_checkpoint is not None
+    print(Fore.CYAN + "Restored {}".format(classifier_checkpoint_manager.latest_checkpoint) + Fore.RESET)
+    ############
+
+    trial_path = None
+    checkpoint_name = None
+    if args.checkpoint:
+        trial_path = args.checkpoint.parent.absolute()
+        checkpoint_name = args.checkpoint.name
+    trials_directory = pathlib.Path('recovery_trials').absolute()
     group_name = args.log if trial_path is None else None
+    trial_path, _ = filepath_tools.create_or_load_trial(group_name=group_name,
+                                                        params=model_hparams,
+                                                        trial_path=trial_path,
+                                                        trials_directory=trials_directory,
+                                                        write_summary=False)
     runner = ModelRunner(model=model,
                          training=True,
                          params=model_hparams,
-                         group_name=group_name,
                          trial_path=trial_path,
-                         trials_directory=pathlib.Path('trials'),
-                         write_summary=False)
+                         restore_from_name=checkpoint_name,
+                         batch_metadata=train_dataset.batch_metadata)
+
+    # Train
     runner.train(train_tf_dataset, val_tf_dataset, num_epochs=args.epochs)
 
 
@@ -105,10 +134,11 @@ def main():
     train_parser = subparsers.add_parser('train')
     train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
+    train_parser.add_argument('classifier_checkpoint', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
     train_parser.add_argument('--batch-size', type=int, default=64)
     train_parser.add_argument('--take', type=int)
-    train_parser.add_argument('--epochs', type=int, default=50)
+    train_parser.add_argument('--epochs', type=int, default=10)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
     train_parser.add_argument('--log-scalars-every', type=int, help='loss every this many steps/batches',
@@ -136,6 +166,8 @@ def main():
     print("Using seed {}".format(seed))
     np.random.seed(seed)
     tf.random.set_seed(seed)
+
+    rospy.init_node("train_test_recovery")
 
     if args == argparse.Namespace():
         parser.print_usage()

@@ -4,9 +4,9 @@ from link_bot_data.link_bot_dataset_utils import is_reconverging
 from shape_completion_training import metric
 
 
-def class_weighted_binary_classification_sequence_loss_function(dataset_element, predictions):
+def class_weighted_binary_classification_sequence_loss_function(dataset_element, predictions, key='is_close'):
     # skip the first element, the label will always be 1
-    is_close = dataset_element['is_close'][:, 1:]
+    is_close = dataset_element[key][:, 1:]
     labels = tf.expand_dims(is_close, axis=2)
     logits = predictions['logits']
     bce = tf.keras.losses.binary_crossentropy(y_true=labels, y_pred=logits, from_logits=True)

@@ -24,7 +24,8 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
                                tf_dataset: tf.data.Dataset,
                                dataset: DynamicsDataset,
                                labeling_params: Dict,
-                               batch_size: int):
+                               batch_size: int,
+                               start_at: int):
     action_sequence_horizon = labeling_params['action_sequence_horizon']
     tf_dataset = tf_dataset.batch(batch_size)
     action_rng = np.random.RandomState(0)
@@ -34,12 +35,13 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
 
     t0 = perf_counter()
     for in_batch_idx, example in enumerate(tf_dataset):
+        if start_at is not None and in_batch_idx < start_at:
+            continue
         dt = perf_counter() - t0
         print(f"{in_batch_idx}/{n_batches}, {dt:.3f}s")
         actual_batch_size = int(example['traj_idx'].shape[0])
         # iterate over every subsequence of exactly length actions_sequence_horizon
         for start_t in range(0, dataset.sequence_length - action_sequence_horizon + 1, labeling_params['start_step']):
-            print(f"start_t={start_t}")
             end_t = start_t + action_sequence_horizon
 
             actual_states_from_start_t = {k: example[k][:, start_t:end_t] for k in fwd_model.state_keys}
@@ -96,7 +98,6 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         random_actions_dict = {k: tf.reshape(v, [batch_sample, n_actions, -1])
                                for k, v in random_actions_dict.items()}
 
-        # @tf.function
         def _predict_and_classify(_actual_states, _random_actions_dict):
             # [t:t+1] to keep dim, as opposed to just [t]
             start_states_tiled = {k: tf.tile(v[:, t:t+1, :], [n_action_samples, 1, 1])
@@ -114,6 +115,7 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
                                                                                 batch_size=batch_sample,
                                                                                 state_sequence_length=classifier_horizon)
             return predictions, accept_probabilities
+
         predictions, accept_probabilities = _predict_and_classify(actual_states, random_actions_dict)
 
         # # BEGIN DEBUG
@@ -169,11 +171,8 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
     # needs_recovery is false
     classifier_rejects = tf.stack(classifier_rejects, axis=1)
     all_accept_probabilities = tf.stack(all_accept_probabilities, axis=1)
-    classifier_accepts = tf.logical_not(classifier_rejects)
     first_time_step_needs_recovery = tf.reduce_all(classifier_rejects[:, 0], axis=-1)
-    # here we check only the last, allowing intermediate states to be whatever
-    last_time_step_doesnt_need_recovery = tf.reduce_any(classifier_accepts[:, -1], axis=-1)
-    valid_example = tf.logical_and(first_time_step_needs_recovery, last_time_step_doesnt_need_recovery)
+    valid_example = first_time_step_needs_recovery
 
     # construct output examples dict
     out_examples = {

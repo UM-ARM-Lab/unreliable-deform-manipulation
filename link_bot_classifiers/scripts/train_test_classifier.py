@@ -8,7 +8,7 @@ import numpy as np
 import rospy
 import tensorflow as tf
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset
+from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, balance
 from link_bot_pycommon.pycommon import paths_to_json
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.classifier_losses_and_metrics import \
@@ -25,29 +25,6 @@ from shape_completion_training.model_runner import ModelRunner
 from std_msgs.msg import Float32
 
 limit_gpu_mem(6.5)
-
-
-def _label_is(label_is):
-    def __filter(example):
-        result = tf.squeeze(tf.equal(example['is_close'][1], label_is))
-        return result
-
-    return __filter
-
-
-def flatten_concat_pairs(ex_pos, ex_neg):
-    flat_pair = tf.data.Dataset.from_tensors(ex_pos).concatenate(tf.data.Dataset.from_tensors(ex_neg))
-    return flat_pair
-
-
-def balance(dataset):
-    positive_examples = dataset.filter(_label_is(1))
-    negative_examples = dataset.filter(_label_is(0))
-    negative_examples = negative_examples.repeat()
-    balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
-    balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
-
-    return balanced_dataset
 
 
 def train_main(args, seed: int):
@@ -97,7 +74,6 @@ def train_main(args, seed: int):
     # to mix up examples so each batch is diverse
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=50, seed=seed, reshuffle_each_iteration=False)
 
-    # DEBGUGING: balance classes?
     train_tf_dataset = balance(train_tf_dataset)
     val_tf_dataset = balance(val_tf_dataset)
 

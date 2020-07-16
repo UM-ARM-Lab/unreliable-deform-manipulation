@@ -31,8 +31,8 @@ def main():
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
     parser.add_argument('classifier_model_dir', type=pathlib.Path)
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
+    parser.add_argument('--start-at', type=int, help='start at this example in the input dynamic dataste')
     parser.add_argument('--max-examples-per-record', type=int, default=128, help="examples per file")
-    parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
     parser.add_argument('--batch-size', type=int, help="batch size", default=2)
 
     args = parser.parse_args()
@@ -72,52 +72,48 @@ def main():
     scenario = fwd_models.scenario
     classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, scenario)
 
-    val_split = int(args.total_take * DEFAULT_VAL_SPLIT) if args.total_take is not None else None
-    test_split = int(args.total_take * DEFAULT_TEST_SPLIT) if args.total_take is not None else None
-    train_split = args.total_take - val_split - test_split if args.total_take is not None else None
-    take_split = {
-        'test': test_split,
-        'val': val_split,
-        'train': train_split
-    }
+    tf_dataset = dataset.get_datasets(mode='all')
 
-    for mode in ['train', 'test', 'val']:
-        tf_dataset = dataset.get_datasets(mode=mode, take=take_split[mode])
+    full_output_directory = args.out_dir
+    full_output_directory.mkdir(parents=True, exist_ok=True)
 
-        full_output_directory = args.out_dir / mode
-        full_output_directory.mkdir(parents=True, exist_ok=True)
+    record_idx = 0
+    while True:
+        record_filename = "example_{:09d}.tfrecords".format(record_idx)
+        full_filename = full_output_directory / record_filename
+        if not full_filename.exists():
+            break
+        record_idx += 1
+    for out_example in generate_recovery_examples(fwd_models, classifier_model, tf_dataset, dataset, labeling_params, args.batch_size, args.start_at):
+        # FIXME: is there an extra time/batch dimension?
+        for batch_idx in range(out_example['traj_idx'].shape[0]):
+            out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
 
-        total_count = 0
-        for out_example in generate_recovery_examples(fwd_models, classifier_model, tf_dataset, dataset, labeling_params, args.batch_size):
-            # FIXME: is there an extra time/batch dimension?
-            for batch_idx in range(out_example['traj_idx'].shape[0]):
-                out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
+            # # BEGIN DEBUG
+            # anim = RvizAnimationController(np.arange(labeling_params['action_sequence_horizon']))
+            # scenario.plot_environment_rviz(out_example_b)
+            # while not anim.done:
+            #     t = anim.t()
+            #     s_t = {k: out_example_b[k][t] for k in fwd_models.state_keys}
+            #     if t < labeling_params['action_sequence_horizon'] - 1:
+            #         a_t = {k: out_example_b[k][t] for k in fwd_models.action_keys}
+            #         scenario.plot_action_rviz(s_t, a_t, label='observed')
+            #     scenario.plot_state_rviz(s_t, label='observed')
+            #     anim.step()
+            # # END DEBUG
 
-                # # BEGIN DEBUG
-                # anim = RvizAnimationController(np.arange(labeling_params['action_sequence_horizon']))
-                # scenario.plot_environment_rviz(out_example_b)
-                # while not anim.done:
-                #     t = anim.t()
-                #     s_t = {k: out_example_b[k][t] for k in fwd_models.state_keys}
-                #     if t < labeling_params['action_sequence_horizon'] - 1:
-                #         a_t = {k: out_example_b[k][t] for k in fwd_models.action_keys}
-                #         scenario.plot_action_rviz(s_t, a_t, label='observed')
-                #     scenario.plot_state_rviz(s_t, label='observed')
-                #     anim.step()
-                # # END DEBUG
+            features = {}
+            for k, v in out_example_b.items():
+                features[k] = float_tensor_to_bytes_feature(v)
 
-                features = {}
-                for k, v in out_example_b.items():
-                    features[k] = float_tensor_to_bytes_feature(v)
-
-                example_proto = tf.train.Example(features=tf.train.Features(feature=features))
-                example = example_proto.SerializeToString()
-                record_filename = "example_{:09d}.tfrecords".format(total_count)
-                full_filename = full_output_directory / record_filename
-                print(f"writing {full_filename}")
-                with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
-                    writer.write(example)
-                total_count += 1
+            example_proto = tf.train.Example(features=tf.train.Features(feature=features))
+            example = example_proto.SerializeToString()
+            record_filename = "example_{:09d}.tfrecords".format(record_idx)
+            full_filename = full_output_directory / record_filename
+            print(f"writing {full_filename}")
+            with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
+                writer.write(example)
+            record_idx += 1
 
 
 if __name__ == '__main__':
