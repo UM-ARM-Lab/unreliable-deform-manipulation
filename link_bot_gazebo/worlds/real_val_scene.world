@@ -40,19 +40,10 @@
         </include>
 
         <include>
-            <uri>model://cubes</uri>
+            <uri>model://keyboard</uri>
         </include>
         <include>
-            <uri>model://bottle</uri>
-        </include>
-        <include>
-            <uri>model://mustard</uri>
-        </include>
-        <include>
-            <uri>model://can</uri>
-        </include>
-        <include>
-            <uri>model://cheezits</uri>
+            <uri>model://tissues</uri>
         </include>
 
         <model name="safety walls">

@@ -39,7 +39,7 @@
   ],
   "recovery": {
     "use_recovery": true,
-    "n_attempts": 5,
+    "n_attempts": 8,
     "recovery_model_dir": "recovery_models/random"
   },
   "fwd_model_dir": [

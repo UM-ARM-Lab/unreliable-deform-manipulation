@@ -14,7 +14,11 @@ def cylinder(mass, radius, length):
     ]
 
 
-def box(mass, x, y, z):
+def box(args):
+    mass = args.mass
+    x = args.x
+    y = args.y
+    z = args.z
     return [
         1.0 / 12 * mass * (z ** 2 + y ** 2),
         1.0 / 12 * mass * (x ** 2 + z ** 2),

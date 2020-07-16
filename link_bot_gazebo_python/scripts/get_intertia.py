@@ -28,6 +28,7 @@ def main():
     cylinder_parser.set_defaults(func=cylinder)
 
     args = parser.parse_args()
+    print(args)
     inertia = args.func(args)
     print("ixx: {:.8f}".format(inertia[0]))
     print("iyy: {:.8f}".format(inertia[1]))
