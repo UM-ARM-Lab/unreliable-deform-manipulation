@@ -5,8 +5,8 @@
     "timeout": 240
   },
   "recovery": {
-    "use_recovery": true,
-    "n_attempts": 1,
+    "use_recovery": false,
+    "n_attempts": 0,
     "recovery_model_dir": null
   },
   "extent": [
