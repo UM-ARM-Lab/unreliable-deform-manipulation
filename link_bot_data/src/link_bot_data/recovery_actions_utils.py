@@ -192,6 +192,11 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
 
     valid_indices = tf.squeeze(tf.where(valid_example), axis=1)
     valid_out_examples = gather_dict(out_examples, valid_indices)
+
+    for b in range(tf.size(valid_indices)):
+        score = tf.math.count_nonzero(all_accept_probabilities[b][1] > 0.5) / n_action_samples
+        print(f"score {score.numpy()}")
+
     # # BEGIN DEBUG
     # for b in range(tf.size(valid_indices)):
     #     valid_out_example_b = index_dict_of_batched_vectors_tf(valid_out_examples, b)
@@ -199,7 +204,6 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
     #     score = tf.math.count_nonzero(all_accept_probabilities[b][1] > 0.5) / n_action_samples
 
     #     anim = RvizAnimationController(np.arange(action_sequence_horizon))
-    #     print(score.numpy())
     #     while not anim.done:
     #         t = anim.t()
     #         s_t = {k: valid_out_example_b[k][t] for k in actual_states.keys()}

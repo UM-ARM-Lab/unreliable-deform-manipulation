@@ -37,6 +37,9 @@ def main():
 
     args = parser.parse_args()
 
+    np.random.seed(0)
+    tf.random.set_seed(0)
+
     rospy.init_node("make_recovery_dataset")
 
     labeling_params = json.load(args.labeling_params.open("r"))
@@ -47,10 +50,10 @@ def main():
 
     dataset = DynamicsDataset([args.dataset_dir])
 
-    success = mkdir_and_ask(args.out_dir, parents=True)
-    if not success:
-        print(Fore.RED + "Aborting" + Fore.RESET)
-        return
+    # success = mkdir_and_ask(args.out_dir, parents=True)
+    # if not success:
+    #     print(Fore.RED + "Aborting" + Fore.RESET)
+    #     return
 
     new_hparams_filename = args.out_dir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams
