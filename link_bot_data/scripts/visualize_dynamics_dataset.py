@@ -15,7 +15,7 @@ from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify, add_batch, remove_batch
 
 
-def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
+def plot_3d(args, dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
     rospy.loginfo("Use the RViz AnimationController")
     min_x = 1000
     min_y = 1000
@@ -25,6 +25,9 @@ def plot_3d(dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
     max_z = 0
     for i, example in enumerate(tf_dataset):
         print(i)
+        if args.start_at is not None and i < args.start_at:
+            continue
+
         example = numpify(example)
         time_steps = example['time_idx']
 
@@ -73,6 +76,7 @@ def main():
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory', nargs='+')
     parser.add_argument('plot_type', choices=['2d', '3d', 'sanity_check', 'just_count'], default='2d')
     parser.add_argument('--take', type=int)
+    parser.add_argument('--start-at', type=int)
     parser.add_argument('--mode', choices=['train', 'test', 'val', 'all'], default='train', help='train test or val')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
 
@@ -100,7 +104,7 @@ def main():
         plot_2d(dataset, tf_dataset)
     elif args.plot_type == '3d':
         # uses rviz
-        plot_3d(dataset, tf_dataset)
+        plot_3d(args, dataset, tf_dataset)
     elif args.plot_type == 'sanity_check':
         min_x = 100
         max_x = -100
