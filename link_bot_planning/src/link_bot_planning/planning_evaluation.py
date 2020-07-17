@@ -1,7 +1,7 @@
 import gzip
 import json
 import pathlib
-from time import sleep
+from time import sleep, time
 from typing import Optional, Dict, List
 
 import rospy
@@ -148,7 +148,8 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'tree_json': tree_json,
             'goal': listify(goal),
             'num_nodes': num_nodes,
-            'recovery_actions_result': listify(recovery_actions_result)
+            'recovery_actions_result': listify(recovery_actions_result),
+            'current_time': int(time()),
         }
         data_filename = self.root / f'{self.successfully_completed_plan_idx}_metrics.json.gz'
         dummy_proof_write(data_for_plan, data_filename)

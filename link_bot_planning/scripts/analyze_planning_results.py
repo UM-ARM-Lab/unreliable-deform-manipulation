@@ -73,6 +73,10 @@ def metrics_main(args):
     with args.fallback_labeling_params.open('r') as fallback_labeling_params_file:
         fallback_labeling_params = json.load(fallback_labeling_params_file)
 
+    # The default for where we write results
+    first_results_dir = args.results_dirs[0]
+    print(f"Writing analysis to {first_results_dir}")
+
     execution_to_goal_errors_comparisons = {}
     plan_to_execution_errors_comparisons = {}
     max_error = analysis_params["max_error"]
@@ -262,16 +266,6 @@ def metrics_main(args):
         planning_success_ax.legend()
         planning_error_ax.legend()
 
-        # Planner status table
-        print(Style.BRIGHT + "Planner Status" + Style.NORMAL)
-        table = tabulate(status_table_data,
-                         headers=['Method', 'Solved', 'Timed Out', 'Not Progressing'],
-                         tablefmt=table_format,
-                         floatfmt='6.4f',
-                         numalign='center',
-                         stralign='left')
-        print(table)
-        print()
         # Planner status plot
         planner_status_fig, planner_status_ax = plt.subplots(figsize=(32, 10))
         planner_status_ax = plt.gca()
@@ -285,6 +279,20 @@ def metrics_main(args):
         planner_status_ax.set_title("Planner Status Breakdown")
         planner_status_ax.legend((solved_bar, not_progressing_bar,  timeout_bar),
                                  ("Solved", "NotProgressing", "Timeout"))
+
+    # Planner status table
+    print(Style.BRIGHT + "Planner Status" + Style.NORMAL)
+    table = tabulate(status_table_data,
+                     headers=['Method', 'Solved', 'Timed Out', 'Not Progressing'],
+                     tablefmt=table_format,
+                     floatfmt='6.4f',
+                     numalign='center',
+                     stralign='left')
+    table_outfile = open(first_results_dir / 'tables.txt', 'w')
+    table_outfile.write(table)
+    table_outfile.write('\n')
+    print(table)
+    print()
     print('-' * 90)
 
     for metric_name, table_data in aggregate_metrics.items():
@@ -297,10 +305,19 @@ def metrics_main(args):
                          stralign='left')
         print(table)
         print()
-    print(Style.BRIGHT + "p-value matrix (goal vs execution)" + Style.NORMAL)
-    print(dict_to_pvalue_table(execution_to_goal_errors_comparisons, table_format=table_format))
+        table_outfile.write(metric_name)
+        table_outfile.write('\n')
+        table_outfile.write(table)
+        table_outfile.write('\n')
+    pvalue_table_title = "p-value matrix (goal vs execution)"
+    pvalue_table = dict_to_pvalue_table(execution_to_goal_errors_comparisons, table_format=table_format)
+    print(Style.BRIGHT + pvalue_table_title + Style.NORMAL)
+    print(pvalue_table)
+    table_outfile.write(pvalue_table_title)
+    table_outfile.write('\n')
+    table_outfile.write(pvalue_table)
+    table_outfile.write('\n')
     if not args.no_plot:
-        first_results_dir = args.results_dirs[0]
         save_unconstrained_layout(execution_success_fig, first_results_dir / "execution_success.png")
         save_unconstrained_layout(execution_error_fig, first_results_dir / "execution_error.png")
         save_unconstrained_layout(planning_error_fig, first_results_dir / "planning_error.png")
