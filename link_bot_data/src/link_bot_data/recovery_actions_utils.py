@@ -196,8 +196,10 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
     # for b in range(tf.size(valid_indices)):
     #     valid_out_example_b = index_dict_of_batched_vectors_tf(valid_out_examples, b)
     #     scenario.plot_environment_rviz(valid_out_example_b)
+    #     score = tf.math.count_nonzero(all_accept_probabilities[b][1] > 0.5) / n_action_samples
 
     #     anim = RvizAnimationController(np.arange(action_sequence_horizon))
+    #     print(score.numpy())
     #     while not anim.done:
     #         t = anim.t()
     #         s_t = {k: valid_out_example_b[k][t] for k in actual_states.keys()}

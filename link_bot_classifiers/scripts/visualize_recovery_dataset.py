@@ -59,15 +59,15 @@ def visualize_dataset(args, dataset: RecoveryDataset):
     for out_example in out_examples:
         anim = RvizAnimationController(np.arange(dataset.horizon))
         scenario.plot_environment_rviz(out_example)
+        # score = out_example['score'].numpy()
+        print(score)
         while not anim.done:
 
             t = anim.t()
-            score = out_example['score'].numpy()
             state = {k: out_example[k][0] for k in dataset.state_keys}
             action = {k: out_example[k][0] for k in dataset.action_keys}
 
             local_action = scenario.put_action_local_frame(state, action)
-            print(score, local_action)
             s_t = {k: out_example[k][t] for k in dataset.state_keys}
             if t < dataset.horizon - 1:
                 a_t = {k: out_example[k][t] for k in dataset.action_keys}
