@@ -84,8 +84,9 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         'res': full_env_res,
     }
 
-    classifier_rejects = []
     all_accept_probabilities = []
+    all_actions = []
+    all_predictions = []
     for t in range(action_sequence_horizon):
         # Sample actions
         n_action_samples = labeling_params['n_action_samples']
@@ -122,6 +123,12 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
             return predictions, accept_probabilities
 
         predictions, accept_probabilities = _predict_and_classify(actual_states, random_actions_dict)
+
+        # reshape to separate batch from sampled actions
+        accept_probabilities = tf.reshape(accept_probabilities, [batch_size, n_action_samples])
+        all_accept_probabilities.append(accept_probabilities)
+        all_actions.append(random_actions_dict)
+        all_predictions.append(predictions)
 
         # # BEGIN DEBUG
         # accept_prob_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)
@@ -163,23 +170,13 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         #             anim.step()
         # # END DEBUG
 
-        # reshape to separate batch from sampled actions
-        accept_probabilities = tf.reshape(accept_probabilities, [batch_size, n_action_samples])
-
-        # a time step needs recovery if every time step of every sampled random action sequence was rejected by the classifier
-        # needs_recovery has shape [batch size, action_sequence_horizon]
-        classifier_rejects_t = accept_probabilities < 0.5
-        all_accept_probabilities.append(accept_probabilities)
-        classifier_rejects.append(classifier_rejects_t)
-
-    # an example is recovering if at the first time step (axis 1) needs_recovery is true, and if at some point later in time
-    # needs_recovery is false
-    classifier_rejects = tf.stack(classifier_rejects, axis=1)
+    # NOTE: just store all examples with their probabilities, we can filter later. Generating/iterating this is what's really slow
+    # so we want avoid doing that many times
     all_accept_probabilities = tf.stack(all_accept_probabilities, axis=1)
-    first_time_step_needs_recovery = tf.reduce_all(classifier_rejects[:, 0], axis=-1)
-    valid_example = first_time_step_needs_recovery
 
     # construct output examples dict
+    # TODO: include predictions and the sampled actions. Including these is not easy,
+    # because the right way to do this would be to have nested structure, but that's not supported by TF datasets API
     out_examples = {
         'env': full_env,
         'origin': full_env_origin,
@@ -194,13 +191,6 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
     out_examples.update(actual_states)
     out_examples.update(actual_actions)
     out_examples = make_dict_tf_float32(out_examples)
-
-    valid_indices = tf.squeeze(tf.where(valid_example), axis=1)
-    valid_out_examples = gather_dict(out_examples, valid_indices)
-
-    for b in range(tf.size(valid_indices)):
-        score = tf.math.count_nonzero(all_accept_probabilities[b][1] > 0.5) / n_action_samples
-        print(f"score {score.numpy()}")
 
     # # BEGIN DEBUG
     # for b in range(tf.size(valid_indices)):
@@ -219,7 +209,7 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
     #         anim.step()
     # # END DEBUG
 
-    return valid_out_examples
+    return out_examples
 
 
 def recovering_mask(needs_recovery):
