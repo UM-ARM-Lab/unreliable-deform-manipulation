@@ -26,7 +26,8 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
                                dataset: DynamicsDataset,
                                labeling_params: Dict,
                                batch_size: int,
-                               start_at: int):
+                               start_at: int,
+                               stop_at: int):
     action_sequence_horizon = labeling_params['action_sequence_horizon']
     tf_dataset = tf_dataset.batch(batch_size)
     action_rng = np.random.RandomState(0)
@@ -38,6 +39,9 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
     for in_batch_idx, example in enumerate(tf_dataset):
         if start_at is not None and in_batch_idx < start_at:
             continue
+        if stop_at is not None and in_batch_idx >= stop_at:
+            print(Fore.GREEN + "Done!" + Fore.RESET)
+            break
         dt = perf_counter() - t0
         print(Fore.GREEN + f"{in_batch_idx}/{n_batches}, {dt:.3f}s" + Fore.RESET)
         actual_batch_size = int(example['traj_idx'].shape[0])

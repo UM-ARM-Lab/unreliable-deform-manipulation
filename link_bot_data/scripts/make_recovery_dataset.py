@@ -32,6 +32,7 @@ def main():
     parser.add_argument('classifier_model_dir', type=pathlib.Path)
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
     parser.add_argument('--start-at', type=int, help='start at this example in the input dynamic dataste')
+    parser.add_argument('--stop-at', type=int, help='start at this example in the input dynamic dataste')
     parser.add_argument('--max-examples-per-record', type=int, default=128, help="examples per file")
     parser.add_argument('--batch-size', type=int, help="batch size", default=2)
 
@@ -87,7 +88,7 @@ def main():
         if not full_filename.exists():
             break
         record_idx += 1
-    for out_example in generate_recovery_examples(fwd_models, classifier_model, tf_dataset, dataset, labeling_params, args.batch_size, args.start_at):
+    for out_example in generate_recovery_examples(fwd_models, classifier_model, tf_dataset, dataset, labeling_params, args.batch_size, args.start_at, args.stop_at):
         # FIXME: is there an extra time/batch dimension?
         for batch_idx in range(out_example['traj_idx'].shape[0]):
             out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
