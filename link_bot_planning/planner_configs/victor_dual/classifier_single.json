@@ -40,8 +40,7 @@
   "fwd_model_dir": [
     "dy_trials/no_victor_longer_0/best_checkpoint"
   ],
-  "recovery":
-  {
+  "recovery": {
     "use_recovery": false,
     "n_attempts": 1,
     "recovery_model_dir": null
