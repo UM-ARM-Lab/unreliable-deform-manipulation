@@ -1,0 +1,24 @@
+<launch>
+    <arg name="use_val" default="true"/>
+    <rosparam subst_value="true" param="right_arm_home">
+        [2.7, 0.48, 0.0, -3.1, 1.0, -0.8, -0.126365527510643]
+    </rosparam>
+    <rosparam subst_value="true" param="left_arm_home">
+        [2.2174367904663086, -0.14822542667388916, 0.31735196709632874, -2.151090383529663, 1.5796648263931274, -0.43336284160614014, -0.12617377936840057]
+    </rosparam>
+    <rosparam subst_value="true" param="torso_home">
+        [-0.36, 0.0]
+    </rosparam>
+    <!-- Load Val's URDF, SRDF and other .yaml configuration files on the param server -->
+    <include file="$(find hdt_michigan_moveit)/launch/planning_context.launch">
+        <arg name="load_robot_description" value="true"/>
+    </include>
+
+    <param name="robot_name" value="val" type="string"/>
+    <node name="world_interaction" pkg="physical_robot_3d_rope_shim" type="world_interaction">
+        <param name="get_planning_scene_topic"  value="gazebo/get_planning_scene"/>
+        <param name="translation_step_size"     value="0.002"   type="double"/>
+        <param name="traj_goal_time_tolerance"  value="0.1"     type="double"/>
+    </node>
+
+</launch>

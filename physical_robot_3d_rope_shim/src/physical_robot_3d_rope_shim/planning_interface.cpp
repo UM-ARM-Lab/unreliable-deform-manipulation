@@ -236,7 +236,11 @@ trajectory_msgs::JointTrajectory PlanningInterace::plan(ps::PlanningScenePtr pla
       request.verbose = true;
       collision_detection::CollisionResult result;
       planning_scene->checkCollision(request, result, goal_state);
-      std::cerr << "Collision at goal_state? " << result.collision << std::endl;
+      if (result.collision)
+      {
+        auto const first_contact = result.contacts.cbegin()->first;
+        ROS_ERROR_STREAM("Collision at goal state between " << first_contact.first << " and "<< first_contact.second);
+      }
     }
     ROS_ERROR("Could not compute plan successfully");
     throw_arc_exception(std::runtime_error, "Planning failed");
@@ -309,7 +313,7 @@ trajectory_msgs::JointTrajectory PlanningInterace::moveInWorldFrame(ps::Planning
     tool_paths[idx] = interpolate(start_tool_transforms[idx].translation(), target_tool_positions[idx], steps);
   }
 
-  // Debugging - visualize interpolated path
+  // visualize interpolated path
   {
     visualization_msgs::MarkerArray msg;
     msg.markers.resize(num_ees_);
@@ -509,6 +513,9 @@ bool PlanningInterace::jacobianIK(planning_scene::PlanningScenePtr planning_scen
   const auto damping = EigenHelpers::SuggestedRcond();
 
   collision_detection::CollisionRequest collisionRequest;
+  collisionRequest.contacts = true;
+  collisionRequest.max_contacts = 1;
+  collisionRequest.max_contacts_per_pair = 1;
   collision_detection::CollisionResult collisionResult;
   VecArrayXb goodJoints = VecArrayXb::Ones(ndof);
   const int maxItr = 200;
@@ -723,7 +730,8 @@ bool PlanningInterace::jacobianIK(planning_scene::PlanningScenePtr planning_scen
     planning_scene->checkCollision(collisionRequest, collisionResult, state);
     if (collisionResult.collision)
     {
-      ROS_WARN("Projection stalled at itr %d: collision", itr);
+      auto const first_contact = collisionResult.contacts.cbegin()->first;
+      ROS_WARN_STREAM("Projection stalled at itr " << itr << " due to collision between " << first_contact.first << " and "<< first_contact.second);
       return false;
     }
     collisionResult.clear();

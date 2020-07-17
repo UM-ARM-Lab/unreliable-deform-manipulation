@@ -4,48 +4,30 @@
     "translation": null,
     "yaw": null
   },
-  "cubes": {
-    "parent_frame": "table_surface",
-    "translation": [
-      1.0,
-      0.0,
-      0.0
-    ],
-    "yaw": 0
-  },
-  "bottle": {
-    "parent_frame": "table_surface",
-    "translation": [
-      1.0,
-      0.0,
-      0.0
-    ],
-    "yaw": 0
-  },
-  "can": {
-    "parent_frame": "table_surface",
-    "translation": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "yaw": 0
-  },
-  "cheezits": {
-    "parent_frame": "table_surface",
-    "translation": [
-      1.0,
-      0.0,
-      0.0
-    ],
-    "yaw": 0
-  },
   "mustard": {
     "parent_frame": "table_surface",
     "translation": [
-      1.0,
-      0.0,
+      -0.1,
+      -0.1,
       0.0
+    ],
+    "yaw": 0
+  },
+  "tissues": {
+    "parent_frame": "table_surface",
+    "translation": [
+      0.0,
+      0.0,
+      0.07
+    ],
+    "yaw": 0
+  },
+  "keyboard": {
+    "parent_frame": "table_surface",
+    "translation": [
+      0.0,
+      0.0,
+      0.18
     ],
     "yaw": 0
   }
