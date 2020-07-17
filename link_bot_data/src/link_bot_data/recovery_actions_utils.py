@@ -41,7 +41,7 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
             continue
         if stop_at is not None and in_batch_idx >= stop_at:
             print(Fore.GREEN + "Done!" + Fore.RESET)
-            raise StopIteration()
+            return
         dt = perf_counter() - t0
         print(Fore.GREEN + f"{in_batch_idx}/{n_batches}, {dt:.3f}s" + Fore.RESET)
         actual_batch_size = int(example['traj_idx'].shape[0])
