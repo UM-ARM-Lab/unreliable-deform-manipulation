@@ -2,6 +2,7 @@ from typing import Dict
 
 import numpy as np
 import rospy
+from colorama import Fore
 import tensorflow as tf
 from time import perf_counter
 from link_bot_classifiers.nn_classifier import NNClassifierWrapper
@@ -38,7 +39,7 @@ def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
         if start_at is not None and in_batch_idx < start_at:
             continue
         dt = perf_counter() - t0
-        print(f"{in_batch_idx}/{n_batches}, {dt:.3f}s")
+        print(Fore.GREEN + f"{in_batch_idx}/{n_batches}, {dt:.3f}s" + Fore.RESET)
         actual_batch_size = int(example['traj_idx'].shape[0])
         # iterate over every subsequence of exactly length actions_sequence_horizon
         for start_t in range(0, dataset.sequence_length - action_sequence_horizon + 1, labeling_params['start_step']):
