@@ -22,6 +22,7 @@ from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynami
 from moonshine.moonshine_utils import remove_batch, add_batch
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from peter_msgs.srv import GetRopeState, GetRopeStateRequest, Position3DAction, Position3DActionRequest, Position3DEnableRequest, Position3DEnable, GetPosition3D, GetPosition3DRequest, WorldControlRequest
+from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, GetDualGripperPointsRequest
 from std_srvs.srv import EmptyRequest, Empty
 from tf.transformations import quaternion_from_euler
 from visualization_msgs.msg import MarkerArray, Marker
@@ -34,10 +35,15 @@ class RopeDraggingScenario(Base3DScenario):
         super().__init__()
         object_name = 'link_bot'
         self.move_srv = rospy.ServiceProxy(f"{object_name}/move", Position3DAction)
-        self.object_enable_srv = rospy.ServiceProxy(f"{object_name}/enable", Position3DEnable)
         self.get_object_srv = rospy.ServiceProxy(f"{object_name}/get", GetPosition3D)
+
+        self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
+        self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
+
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
+
         self.reset_sim_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
+
         self.last_action = None
         self.max_action_attempts = 1000
 
@@ -168,7 +174,25 @@ class RopeDraggingScenario(Base3DScenario):
 
         self.action_viz_pub.publish(msg)
 
+
+    def val_execute_action(self, action: Dict):
+        target_gripper1_point = ros_numpy.msgify(Point, action['gripper_position'])
+        target_gripper1_point.z = max(target_gripper1_point.z, -0.38)
+        grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
+        target_gripper2_point = grippers_res.gripper2
+
+        req = DualGripperTrajectoryRequest()
+        req.gripper1_points.append(target_gripper1_point)
+        req.gripper2_points.append(target_gripper2_point)
+        print(target_gripper1_point, target_gripper2_point )
+        _ = self.action_srv(req)
+
     def execute_action(self, action: Dict):
+        if rospy.get_param("use_val"):
+            rospy.logwarn("TESTING WITH VAL")
+            self.val_execute_action(action)
+            return
+
         req = Position3DActionRequest()
         req.position.x = action['gripper_position'][0]
         req.position.y = action['gripper_position'][1]
@@ -223,11 +247,34 @@ class RopeDraggingScenario(Base3DScenario):
             or y < y_min or y > y_max \
             or z < z_min or z > z_max
 
-    def get_state(self):
-        gripper_res = self.get_object_srv(GetPosition3DRequest())
+    def get_state_val(self):
+        grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
+
         rope_res = self.get_rope_srv(GetRopeStateRequest())
 
         rope_state_vector = []
+        assert(len(rope_res.positions) == RopeDraggingScenario.n_links)
+        for p in rope_res.positions:
+            rope_state_vector.append(p.x)
+            rope_state_vector.append(p.y)
+            rope_state_vector.append(p.z)
+
+        return {
+            'gripper': ros_numpy.numpify(grippers_res.gripper1),
+            'link_bot': np.array(rope_state_vector, np.float32),
+        }
+
+    def get_state(self):
+        if rospy.get_param("use_val"):
+            rospy.logwarn("TESTING WITH VAL")
+            return self.get_state_val()
+
+        gripper_res = self.get_object_srv(GetPosition3DRequest())
+
+        rope_res = self.get_rope_srv(GetRopeStateRequest())
+
+        rope_state_vector = []
+        assert(len(rope_res.positions) == RopeDraggingScenario.n_links)
         for p in rope_res.positions:
             rope_state_vector.append(p.x)
             rope_state_vector.append(p.y)
@@ -342,8 +389,13 @@ class RopeDraggingScenario(Base3DScenario):
         points = tf.reshape(rope, rope_points_shape)
         center = state['gripper']
         rope_points_local = points - tf.expand_dims(center, axis=-2)
-        rope_local = tf.reshape(rope_points_local, rope.shape)
         gripper_local = state['gripper'] - center
+
+        # # project all z coordinates down to what we saw in simulation... the real fix for this is to use TF and have actually cordinate frames
+        # gripper_local = gripper_local * tf.constant([[1, 1, 0]], tf.float32) + tf.constant([[1, 1, 0.02]], tf.float32)
+        # rope_points_local = rope_points_local * tf.constant([[1, 1, 0]], tf.float32)+ tf.constant([[1, 1, 0.02]], tf.float32)
+
+        rope_local = tf.reshape(rope_points_local, rope.shape)
 
         return {
             'gripper': gripper_local,

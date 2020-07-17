@@ -104,6 +104,9 @@ def eval_main(args, seed: int):
     all_errors = None
     for batch in test_tf_dataset:
         outputs = runner.model(batch, training=False)
+        zs = tf.reshape(batch['link_bot'], [-1, 3])[:, 2]
+        print(tf.reduce_min(zs))
+        print(tf.reduce_max(zs))
         errors_for_batch = tf.linalg.norm(outputs['link_bot'] - batch['link_bot'], axis=2)
         if all_errors is not None:
             all_errors = tf.concat([all_errors, errors_for_batch], axis=0)
